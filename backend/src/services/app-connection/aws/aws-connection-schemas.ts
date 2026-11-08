@@ -42,12 +42,57 @@ export const AwsConnectionAssumeRoleCredentialsSchema = z.object({
     .describe(AppConnections.CREATE(AppConnection.AWS).stsEndpoint)
 });
 
+// Any Partition label is accepted so private and future Partitions work. Applied on create and update only, never on reads.
+const AWS_ROLE_ARN_REGEX = /^arn:[a-z0-9-]+:iam::\d{12}:role\/[\w+=,.@/-]+$/;
+
+export const AwsRoleArnInputSchema = z
+  .string()
+  .trim()
+  .min(1, "Role ARN required")
+  .regex(
+    AWS_ROLE_ARN_REGEX,
+    "Role ARN must look like arn:<partition>:iam::<12-digit account ID>:role/<role name>, for example arn:aws:iam::123456789012:role/infisical"
+  );
+
+const AwsConnectionAssumeRoleInputCredentialsSchema = AwsConnectionAssumeRoleCredentialsSchema.extend({
+  roleArn: AwsRoleArnInputSchema
+});
+
 export const AwsConnectionAccessTokenCredentialsSchema = z.object({
   accessKeyId: z.string().trim().min(1, "Access Key ID required"),
   secretAccessKey: z.string().trim().min(1, "Secret Access Key required")
 });
 
-const BaseAwsConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.AWS) });
+export const AwsConnectionProvisioningSchema = z.object({
+  launchMethod: z.enum(["launch-stack"]).describe("How the IAM role was provisioned."),
+  useCases: z
+    .array(z.string().trim().min(1).max(64))
+    .min(1)
+    .max(64)
+    .describe("The Use cases the role was provisioned for."),
+  stackName: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z][A-Za-z0-9-]{0,127}$/, "Stack name must be a valid CloudFormation stack name")
+    .describe("The CloudFormation stack name."),
+  partition: z
+    .string()
+    .trim()
+    .regex(/^[a-z][a-z0-9-]{0,31}$/, "Partition must be a valid AWS partition label")
+    .describe("The AWS partition the stack was launched in."),
+  templateVersion: z.string().trim().min(1).max(64).describe("The version of the Provisioning template.")
+});
+
+export const AwsConnectionConfigurationSchema = z.object({
+  provisioning: AwsConnectionProvisioningSchema.nullish().describe(
+    "How the connection's role was provisioned. Null for roles created manually."
+  )
+});
+
+const BaseAwsConnectionSchema = BaseAppConnectionSchema.extend({
+  app: z.literal(AppConnection.AWS),
+  configuration: AwsConnectionConfigurationSchema.optional()
+});
 
 export const AwsConnectionSchema = z.intersection(
   BaseAwsConnectionSchema,
@@ -77,7 +122,9 @@ export const SanitizedAwsConnectionSchema = z.discriminatedUnion("method", [
 export const ValidateAwsConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z.literal(AwsConnectionMethod.AssumeRole).describe(AppConnections.CREATE(AppConnection.AWS).method),
-    credentials: AwsConnectionAssumeRoleCredentialsSchema.describe(AppConnections.CREATE(AppConnection.AWS).credentials)
+    credentials: AwsConnectionAssumeRoleInputCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.AWS).credentials
+    )
   }),
   z.object({
     method: z.literal(AwsConnectionMethod.AccessKey).describe(AppConnections.CREATE(AppConnection.AWS).method),
@@ -89,12 +136,12 @@ export const ValidateAwsConnectionCredentialsSchema = z.discriminatedUnion("meth
 
 export const CreateAwsConnectionSchema = ValidateAwsConnectionCredentialsSchema.and(
   GenericCreateAppConnectionFieldsSchema(AppConnection.AWS)
-);
+).and(z.object({ configuration: AwsConnectionConfigurationSchema.optional() }));
 
 export const UpdateAwsConnectionSchema = z
   .object({
     credentials: z
-      .union([AwsConnectionAccessTokenCredentialsSchema, AwsConnectionAssumeRoleCredentialsSchema])
+      .union([AwsConnectionAccessTokenCredentialsSchema, AwsConnectionAssumeRoleInputCredentialsSchema])
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AWS).credentials)
   })
