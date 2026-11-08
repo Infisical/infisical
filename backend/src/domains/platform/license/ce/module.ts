@@ -5,7 +5,7 @@ import { logger } from "@app/lib/logger";
 import type { TQueueServiceFactory } from "@app/queue";
 
 import { PlanCache } from "./data-access/plan-cache";
-import { UsageReportMemory } from "./data-access/usage-report-memory";
+import { UsageReportCache } from "./data-access/usage-report-cache";
 import { InstanceType, TInstanceEntitlementsProps, TInstanceFeatures } from "./model/instance-entitlements";
 import { TPlanFeature, TPlanProps } from "./model/plan";
 import { SeatUsage } from "./model/seat-usage";
@@ -109,16 +109,16 @@ export class LicenseModule {
     const instance = this.instanceEntitlements;
     const { hooks, counters, organizations } = this;
     const planCache = new PlanCache(deps.keyStore);
-    const usageReportMemory = new UsageReportMemory(deps.keyStore);
+    const usageReportCache = new UsageReportCache(deps.keyStore);
 
-    this.usageQueue = new UsageQueue({ queueService: deps.queueService, hooks, usageReportMemory, counters });
+    this.usageQueue = new UsageQueue({ queueService: deps.queueService, hooks, usageReportCache, counters });
     const { usageQueue } = this;
-    this.plans = new PlanService({ instance, planCache, usageReportMemory, organizations, hooks, usageQueue });
+    this.plans = new PlanService({ instance, planCache, usageReportCache, organizations, hooks, usageQueue });
     this.usage = new UsageService({
       instance,
       counters,
       organizations,
-      usageReportMemory,
+      usageReportCache,
       usageQueue,
       hooks,
       planService: this.plans

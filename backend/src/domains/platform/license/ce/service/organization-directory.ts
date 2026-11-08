@@ -41,4 +41,8 @@ export class OrganizationDirectory {
   countWorkspacesUsed(rootOrgId: string) {
     return this.registered.countWorkspacesUsed(rootOrgId);
   }
+
+  countSeats(orgId: string | null) {
+    return this.registered.countSeats(orgId);
+  }
 }

@@ -51,7 +51,11 @@ export class OrganizationsProjectsModule {
 
     licenseRegistry.registerOrganizations({
       findRootOrgId: (orgId) => organizations.findRootOrgId(orgId),
-      countWorkspacesUsed: (rootOrgId) => organizations.countWorkspaces(rootOrgId)
+      countWorkspacesUsed: (rootOrgId) => organizations.countWorkspaces(rootOrgId),
+      countSeats: async (orgId) => {
+        const { users, identities } = await actors.countBillableOrgActors(orgId);
+        return { membersUsed: users, identitiesUsed: users + identities };
+      }
     });
     licenseRegistry.registerUsageCounter({
       meter: Meter.Identities,

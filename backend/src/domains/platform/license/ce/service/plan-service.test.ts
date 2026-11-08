@@ -141,6 +141,27 @@ describe("PlanService.getPlan", () => {
     expect(lastKnown).toBeNull();
   });
 
+  test("should throw and keep the cached plan when the org lookup fails", async () => {
+    // Setup
+    const { licenseDomain, keyStore } = await buildLicense({
+      organizations: {
+        findRootOrgId: async () => {
+          throw new Error("replica timeout");
+        }
+      }
+    });
+    const cachedPlan = JSON.stringify({ ...enterprisePlan(), slug: "pro" });
+    await keyStore.setItemWithExpiry(`infisical-cloud-plan-${ROOT.id}`, 900, cachedPlan);
+
+    // Action
+    const result = licenseDomain.getPlan(ROOT.id);
+
+    // Assert
+    await expect(result).rejects.toThrow("replica timeout");
+    expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBe(cachedPlan);
+    expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBeNull();
+  });
+
   test("should serve the fallback for an org that does not exist", async () => {
     // Setup
     const { licenseDomain, hooks } = await buildLicense();

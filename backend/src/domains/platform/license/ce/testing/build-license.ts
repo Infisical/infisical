@@ -16,13 +16,16 @@ export type TBuildLicenseOptions = {
   counters?: TUsageCounter[];
   // The key store's clock, for tests that let entries expire.
   now?: () => number;
+  // Replaces parts of the organizations registration below.
+  organizations?: Partial<TLicenseOrganizations>;
 };
 
-// ROOT with SUB_ORG_ID under it, and OTHER_ROOT.
-const organizations: TLicenseOrganizations = {
+// ROOT with SUB_ORG_ID under it, and OTHER_ROOT, with no seats used.
+const defaultOrganizations: TLicenseOrganizations = {
   findRootOrgId: async (orgId) =>
     ({ [ROOT.id]: ROOT.id, [SUB_ORG_ID]: ROOT.id, [OTHER_ROOT.id]: OTHER_ROOT.id })[orgId] ?? null,
-  countWorkspacesUsed: async () => WORKSPACES_USED
+  countWorkspacesUsed: async () => WORKSPACES_USED,
+  countSeats: async () => ({ membersUsed: 0, identitiesUsed: 0 })
 };
 
 // A started License module over an in-memory key store and queue, with the organizations above and the
@@ -30,7 +33,8 @@ const organizations: TLicenseOrganizations = {
 export const buildLicense = async ({
   hooks = new FakeLicenseHooks(),
   counters = [],
-  now
+  now,
+  organizations
 }: TBuildLicenseOptions = {}) => {
   const keyStore = new InMemoryKeyStore(now);
   const queue = new FakeQueue();
@@ -43,7 +47,7 @@ export const buildLicense = async ({
     startLocalRefresh: () => ({ stop: () => undefined }) as never,
     hooks
   });
-  module.registry.registerOrganizations(organizations);
+  module.registry.registerOrganizations({ ...defaultOrganizations, ...organizations });
   counters.forEach((counter) => module.registry.registerUsageCounter(counter));
   await module.start();
   return { module, licenseDomain: module.service, hooks, keyStore, queue, registeredCrons };

@@ -14,7 +14,7 @@ may edit into a paid one.
 | Layer | Holds |
 | --- | --- |
 | `ce/model/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`: classes only, with no feature data |
-| `ce/data-access/` | `PlanCache` and `UsageReportMemory`, both in the key store, with their key names |
+| `ce/data-access/` | `PlanCache` and `UsageReportCache`, both in the key store, with their key names |
 | `ce/service/` | The mechanism, using data access and the hooks: `PlanService` (plans, refresh, seat sync, cancellation), `UsageService` (live counts and the usage workers), `UsageQueue` (putting usage on the queues). Also `TLicenseHooks` and the registrations products implement (`TUsageCounter`, `TLicenseOrganizations`) |
 | `ce/service/license-server-types/` | The License Server's request and response shapes, which `billing` and the hooks expose |
 | `ee/service/` | The policy behind `TLicenseHooks`: default features and license key parsing (`license-fns.ts`), the license resolver, entitlement projection and its feature mapping |
@@ -23,9 +23,12 @@ may edit into a paid one.
 - **Cloud plans are cached under the root org.** A sub-org's plan is its root's; `OrganizationDirectory` maps an
   org to its root once per process. Last-known plan, fallback marker and pass-through marker are keyed by the
   root too. The usage reconcile marker stays per org.
-- **Key names, TTLs and queue names are frozen** (`data-access/plan-cache.ts`, `data-access/usage-report-memory.ts`,
+- **Key names, TTLs and queue names are frozen** (`data-access/plan-cache.ts`, `data-access/usage-report-cache.ts`,
   `UsageQueues` in `service/usage-queue.ts`): pods of the previous release read the same cache and run the same
   jobs during a rolling deploy.
+- **Only a License Server failure writes the fallback plan** (`PlanService.fetchPlanOrFallback`): the fallback
+  marker means the License Server could not answer. A database or key store error is thrown, so it never
+  overwrites a cached paid plan.
 - **`getPlan` returns plain data** (`TPlanProps`, from `plan.toJSON()`). Inside the domain, work with `Plan`.
 - **Keep `ce/module.ts` cheap to import.** Consumers import values from it (`Plan`, `Meter`, `InstanceType`),
   and `@app/queue`, `@app/keystore/keystore` and `@app/lib/cron/*` sit in an import cycle with
@@ -37,7 +40,7 @@ may edit into a paid one.
   else is thrown so the delete stops.
 - **License is built first and knows no product.** Products plug in through `LicenseModule.registry`
   while `domains.ts` builds them: `registerUsageCounter` (one `TUsageCounter` per `Meter`, from the domain that
-  owns the data) and `registerOrganizations` (root orgs and workspace counts, from organizations-projects,
+  owns the data) and `registerOrganizations` (root org ids, workspace counts and seat counts, from organizations-projects,
   exactly once). A meter's `scope` decides the report identity: `org-tree` reports at the root, `org` at the
   org that changed. Self-hosted reports everything once, as `self-hosted`, counting the whole instance
   (`count(null)`).

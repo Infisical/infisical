@@ -13,7 +13,7 @@ const UsageKeyTtls = {
 };
 
 // What has been reported to the License Server, in the key store, so an unchanged value is not sent again.
-export class UsageReportMemory {
+export class UsageReportCache {
   constructor(private readonly keyStore: TDomainKeyStore) {}
 
   // Once per interval per org; the jitter keeps a cold start from expiring every marker together.

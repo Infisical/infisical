@@ -155,23 +155,31 @@ describe("UsageService.handleUsageEvent", () => {
 });
 
 describe("UsageService.getSeatUsage", () => {
-  test("should count the root org's tree on cloud", async () => {
+  test("should count the root org's tree on cloud, in one count", async () => {
     // Setup
-    const members = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 3);
-    const identities = new FakeUsageCounter(Meter.Identities).set(ROOT.id, 7);
-    const { licenseDomain } = await buildLicense({ counters: [members, identities] });
+    const counted: (string | null)[] = [];
+    const { licenseDomain } = await buildLicense({
+      organizations: {
+        countSeats: async (orgId) => {
+          counted.push(orgId);
+          return { membersUsed: 3, identitiesUsed: 7 };
+        }
+      }
+    });
 
     // Action
     const usage = await licenseDomain.getSeatUsage(SUB_ORG_ID);
 
     // Assert
-    expect(usage).toEqual({ membersUsed: 3, identitiesUsed: 7 });
+    expect([usage.membersUsed, usage.identitiesUsed]).toEqual([3, 7]);
+    expect(counted).toEqual([ROOT.id]);
   });
 
   test("should count every org on the instance for the instance's seat usage, even on cloud", async () => {
     // Setup
-    const identities = new FakeUsageCounter(Meter.Identities).set(ROOT.id, 2).set(null, 9);
-    const { licenseDomain } = await buildLicense({ counters: [identities] });
+    const { licenseDomain } = await buildLicense({
+      organizations: { countSeats: async (orgId) => ({ membersUsed: 0, identitiesUsed: orgId === null ? 9 : 2 }) }
+    });
 
     // Action
     const usage = await licenseDomain.getInstanceSeatUsage();
@@ -210,7 +218,11 @@ describe("LicenseModule", () => {
 
     // Action
     const register = () =>
-      module.registry.registerOrganizations({ findRootOrgId: async () => null, countWorkspacesUsed: async () => 0 });
+      module.registry.registerOrganizations({
+        findRootOrgId: async () => null,
+        countWorkspacesUsed: async () => 0,
+        countSeats: async () => ({ membersUsed: 0, identitiesUsed: 0 })
+      });
 
     // Assert
     expect(register).toThrow("The organizations directory was registered twice");

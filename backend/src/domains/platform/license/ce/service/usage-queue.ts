@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { logger } from "@app/lib/logger";
 import type { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
-import { UsageReportMemory } from "../data-access/usage-report-memory";
+import { UsageReportCache } from "../data-access/usage-report-cache";
 import { CounterRegistry } from "./counter-registry";
 import { TLicenseHooks } from "./license-hooks";
 import { MAX_USAGE_EVENTS_PER_REQUEST } from "./license-server-types/usage-reports";
@@ -32,7 +32,7 @@ export type TMeteringEventPayload = TQueueJobTypes[QueueName.MeteringEvent]["pay
 export type TUsageQueueDeps = {
   queueService: Pick<TQueueServiceFactory, "queue">;
   hooks: TLicenseHooks;
-  usageReportMemory: UsageReportMemory;
+  usageReportCache: UsageReportCache;
   counters: CounterRegistry;
 };
 
@@ -78,14 +78,14 @@ export class UsageQueue {
   }
 
   // Reports are sent only when a metered write happens, and the last reported value is remembered for
-  // seven days. A report lost to a failed job, or a meter whose memory expired, would stay wrong until the
+  // seven days. A report lost to a failed job, or a meter whose last reported value expired, would stay wrong until the
   // next write to it. So once per interval per org, the first plan read re-sends every meter; the worker
   // skips the ones whose value the server already has.
   reconcile(orgId: string): void {
     if (!this.deps.hooks.isMeteringEnabled()) return;
 
     void (async () => {
-      if (!(await this.deps.usageReportMemory.acquireReconcileMarker(orgId))) return;
+      if (!(await this.deps.usageReportCache.acquireReconcileMarker(orgId))) return;
       this.emitAll(orgId);
     })().catch((error) => {
       logger.error(error, `usage-metering: failed to reconcile org usage [orgId=${orgId}]`);

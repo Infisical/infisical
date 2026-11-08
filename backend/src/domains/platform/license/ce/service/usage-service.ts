@@ -1,8 +1,7 @@
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { UsageReportMemory } from "../data-access/usage-report-memory";
-import { Meter } from "../model/meter";
+import { UsageReportCache } from "../data-access/usage-report-cache";
 import { SeatUsage } from "../model/seat-usage";
 import { CounterRegistry } from "./counter-registry";
 import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
@@ -17,7 +16,7 @@ export type TUsageServiceDeps = {
   instance: InstanceEntitlementsHolder;
   counters: CounterRegistry;
   organizations: OrganizationDirectory;
-  usageReportMemory: UsageReportMemory;
+  usageReportCache: UsageReportCache;
   usageQueue: UsageQueue;
   hooks: TLicenseHooks;
   // Read-only: the usage worker skips an org with no paid plan.
@@ -73,7 +72,7 @@ export class UsageService {
 
     try {
       const value = await counter.count(cloud ? reportOrgId : null);
-      const lastReported = await this.deps.usageReportMemory.lastReported(reportOrgId, dimensionKey);
+      const lastReported = await this.deps.usageReportCache.lastReported(reportOrgId, dimensionKey);
       if (lastReported === value) return;
 
       try {
@@ -112,7 +111,7 @@ export class UsageService {
       logger.info(
         `usage-event-queue: reported usage event [orgId=${reportOrgId}] [dimensionKey=${dimensionKey}] [value=${value}]`
       );
-      await this.deps.usageReportMemory.recordReported(reportOrgId, dimensionKey, value);
+      await this.deps.usageReportCache.recordReported(reportOrgId, dimensionKey, value);
     } catch (error) {
       logger.error(
         error,
@@ -171,12 +170,6 @@ export class UsageService {
   }
 
   private async countSeats(scope: string | null): Promise<SeatUsage> {
-    const members = this.deps.counters.get(Meter.UserIdentities.key);
-    const identities = this.deps.counters.get(Meter.Identities.key);
-    const [membersUsed, identitiesUsed] = await Promise.all([
-      members ? members.count(scope) : 0,
-      identities ? identities.count(scope) : 0
-    ]);
-    return SeatUsage.create({ membersUsed, identitiesUsed });
+    return SeatUsage.create(await this.deps.organizations.countSeats(scope));
   }
 }

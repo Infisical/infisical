@@ -2,7 +2,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { PlanCache } from "../data-access/plan-cache";
-import { UsageReportMemory } from "../data-access/usage-report-memory";
+import { UsageReportCache } from "../data-access/usage-report-cache";
 import { InstanceType, TInstanceEntitlementsProps, TInstanceFeatures } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
 import { Plan, TPlanFeature, TPlanProps } from "../model/plan";
@@ -20,7 +20,7 @@ export type TRefreshPlanOptions = {
 export type TPlanServiceDeps = {
   instance: InstanceEntitlementsHolder;
   planCache: PlanCache;
-  usageReportMemory: UsageReportMemory;
+  usageReportCache: UsageReportCache;
   organizations: OrganizationDirectory;
   hooks: TLicenseHooks;
   usageQueue: UsageQueue;
@@ -79,26 +79,18 @@ export class PlanService {
     const instance = this.deps.instance.get();
     if (!instance.isCloud()) return instance.plan();
 
-    let cacheKey = orgId;
-    try {
-      const rootOrgId = await this.deps.organizations.findRootOrgId(orgId);
-      if (!rootOrgId) throw new Error(`Organization with ID '${orgId}' not found`);
-      cacheKey = rootOrgId;
+    // An org that does not exist has no plan to fetch: it gets the fallback, which is not cached.
+    const rootOrgId = await this.deps.organizations.findRootOrgId(orgId);
+    if (!rootOrgId) return this.deps.hooks.fallbackPlan();
 
-      const [cached, isReconciled] = await Promise.all([
-        this.deps.planCache.read(rootOrgId),
-        this.deps.usageReportMemory.isReconciled(orgId)
-      ]);
-      const plan = cached.plan ?? (await this.fetchAndCache(rootOrgId));
-      if (cached.plan && cached.passThrough) this.revalidateInBackground(rootOrgId);
-      if (!isReconciled && plan.isPaid) this.deps.usageQueue.reconcile(orgId);
-      return plan;
-    } catch (error) {
-      logger.error(error, `getPlan: serving the fallback plan [orgId=${orgId}]`);
-      const fallback = this.deps.hooks.fallbackPlan();
-      await this.deps.planCache.writeFallback(cacheKey, fallback);
-      return fallback;
-    }
+    const [cached, isReconciled] = await Promise.all([
+      this.deps.planCache.read(rootOrgId),
+      this.deps.usageReportCache.isReconciled(orgId)
+    ]);
+    const plan = cached.plan ?? (await this.fetchPlanOrFallback(rootOrgId));
+    if (cached.plan && cached.passThrough) this.revalidateInBackground(rootOrgId);
+    if (!isReconciled && plan.isPaid) this.deps.usageQueue.reconcile(orgId);
+    return plan;
   }
 
   // Fetches the plan again now; after a billing change, refreshes it in the background instead.
@@ -148,10 +140,23 @@ export class PlanService {
     await this.deps.planCache.invalidate(orgId);
   }
 
-  private async fetchAndCache(rootOrgId: string): Promise<Plan> {
-    const plan = (await this.deps.hooks.fetchPlan(rootOrgId)).withWorkspacesUsed(
-      await this.deps.organizations.countWorkspacesUsed(rootOrgId)
-    );
+  // Only a License Server failure serves and caches the fallback: that is what the fallback marker records. A
+  // database or key store error is thrown instead, so it can never overwrite a cached paid plan.
+  private async fetchPlanOrFallback(rootOrgId: string): Promise<Plan> {
+    let fetched: Plan;
+    try {
+      fetched = await this.deps.hooks.fetchPlan(rootOrgId);
+    } catch (error) {
+      logger.error(error, `getPlan: the License Server failed, serving the fallback plan [orgId=${rootOrgId}]`);
+      const fallback = this.deps.hooks.fallbackPlan();
+      await this.deps.planCache.writeFallback(rootOrgId, fallback);
+      return fallback;
+    }
+    return this.cachePlan(rootOrgId, fetched);
+  }
+
+  private async cachePlan(rootOrgId: string, fetched: Plan): Promise<Plan> {
+    const plan = fetched.withWorkspacesUsed(await this.deps.organizations.countWorkspacesUsed(rootOrgId));
     await this.deps.planCache.write(rootOrgId, plan);
     return plan;
   }
@@ -161,7 +166,7 @@ export class PlanService {
   private revalidateInBackground(rootOrgId: string) {
     void (async () => {
       if (!(await this.deps.planCache.acquireRevalidateLock(rootOrgId))) return;
-      await this.fetchAndCache(rootOrgId);
+      await this.cachePlan(rootOrgId, await this.deps.hooks.fetchPlan(rootOrgId));
     })().catch((error) => {
       logger.error(error, `getPlan: background revalidation failed [orgId=${rootOrgId}]`);
     });
