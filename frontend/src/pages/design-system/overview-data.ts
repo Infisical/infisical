@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "bulk-bar-window",
+    title: "Bulk bar at the window",
+    description:
+      "The bulk action bar sits at the bottom center of the window on every table, and the page pads itself so nothing hides behind it.",
+    date: "2026-11-07",
+    commit: "2f8f8ef459",
+    page: "floating-action-bar"
+  },
+  {
     id: "autofill",
     title: "Autofill keeps the field",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "82f79f402f",
     page: "toggle-group"
-  },
-  {
-    id: "secret-input-rowlink",
-    title: "Quiet secret inputs and row chevrons",
-    description:
-      "Secret value fields use the UI sans and the same muted placeholder as Input, and navigable rows end in a chevron.",
-    date: "2026-11-07",
-    commit: "c47e88f745",
-    page: "row-link"
   }
 ];
