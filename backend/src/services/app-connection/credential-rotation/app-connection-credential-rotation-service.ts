@@ -42,9 +42,10 @@ import {
 import {
   TAppConnectionCredentialCredentials,
   TAppConnectionCredentialRotationStrategyConfig,
-  TCreateAppConnectionCredentialRotationDTO,
   TCredentialRotationProviderFactory,
   TCredentialRotationProviderServices,
+  TPrepareAppConnectionCredentialRotationDTO,
+  TPreparedAppConnectionCredentialRotation,
   TTriggerAppConnectionCredentialRotationDTO,
   TUpdateAppConnectionCredentialRotationDTO
 } from "./app-connection-credential-rotation-types";
@@ -156,36 +157,24 @@ export const appConnectionCredentialRotationServiceFactory = ({
   };
 
   /**
-   * Update the connection's stored credentials.
+   * Stores already-encrypted connection credentials. Encrypt before opening the transaction: KMS Core is never
+   * called inside one.
    */
-  const updateConnectionCredentials = async (
-    connectionId: string,
-    updatedCredentials: TAppConnection["credentials"],
-    tx?: Knex
-  ) => {
-    const connection = await appConnectionDAL.findById(connectionId, tx);
-    if (!connection) throw new NotFoundError({ message: `Connection ${connectionId} not found` });
-
-    const encryptedCredentials = await encryptAppConnectionCredentials({
-      orgId: connection.orgId,
-      credentials: updatedCredentials,
-      kmsCoreDomain,
-      projectId: connection.projectId
-    });
-
+  const updateConnectionCredentials = async (connectionId: string, encryptedCredentials: Buffer, tx: Knex) => {
     await appConnectionDAL.updateById(connectionId, { encryptedCredentials }, tx);
   };
 
   /**
-   * Create credential rotation for a connection.
+   * Issues the initial credentials at the provider and encrypts everything a new rotation stores. Runs before the
+   * caller opens its transaction, so neither the provider call nor KMS Core holds a database connection.
    * Permission checks are handled by the caller (app-connection-endpoints).
    */
-  const createRotation = async (dto: TCreateAppConnectionCredentialRotationDTO, tx?: Knex) => {
-    const { connectionId, rotationInterval, rotateAtUtc } = dto;
-
-    const connection = await appConnectionDAL.findById(connectionId, tx);
-    if (!connection) throw new NotFoundError({ message: `Connection ${connectionId} not found` });
-
+  const prepareRotation = async ({
+    connection,
+    credentials,
+    rotationInterval,
+    rotateAtUtc
+  }: TPrepareAppConnectionCredentialRotationDTO): Promise<TPreparedAppConnectionCredentialRotation> => {
     const strategy = Object.values(AppConnectionCredentialRotationStrategy).find((s) =>
       STRATEGY_MAP[s].some(({ app, method }) => app === connection.app && method === connection.method)
     );
@@ -200,31 +189,31 @@ export const appConnectionCredentialRotationServiceFactory = ({
 
     provider.validateConnectionMethod(connection.method);
 
-    const existingRotation = await appConnectionCredentialRotationDAL.findByConnectionId(connectionId, tx);
-    if (existingRotation) {
-      throw new BadRequestError({ message: "Credential rotation is already configured for this connection" });
-    }
-
-    const credentials = await getConnectionClientCredentials(connection);
-
     const { strategyConfig, generatedCredentials, updatedCredentials, postCommitCallback } =
       await provider.issueInitialCredentials(credentials, rotationInterval);
 
-    const now = new Date();
+    const rotatedAt = new Date();
 
-    const encryptedGeneratedCreds = await encryptCredentialRotationGeneratedCredentials({
-      orgId: connection.orgId,
-      projectId: connection.projectId,
-      generatedCredentials,
-      kmsCoreDomain
-    });
-
-    const encryptedConfig = await encryptStrategyConfig({
-      orgId: connection.orgId,
-      projectId: connection.projectId,
-      config: strategyConfig,
-      kmsCoreDomain
-    });
+    const [encryptedGeneratedCredentials, encryptedStrategyConfig, encryptedConnectionCredentials] = await Promise.all([
+      encryptCredentialRotationGeneratedCredentials({
+        orgId: connection.orgId,
+        projectId: connection.projectId,
+        generatedCredentials,
+        kmsCoreDomain
+      }),
+      encryptStrategyConfig({
+        orgId: connection.orgId,
+        projectId: connection.projectId,
+        config: strategyConfig,
+        kmsCoreDomain
+      }),
+      encryptAppConnectionCredentials({
+        orgId: connection.orgId,
+        projectId: connection.projectId,
+        credentials: updatedCredentials as TAppConnection["credentials"],
+        kmsCoreDomain
+      })
+    ]);
 
     const nextRotationAt = calculateNextRotationAt({
       rotateAtUtc,
@@ -232,50 +221,62 @@ export const appConnectionCredentialRotationServiceFactory = ({
       rotationInterval,
       rotationStatus: AppConnectionCredentialRotationStatus.Success,
       isManualRotation: true,
-      lastRotatedAt: now
+      lastRotatedAt: rotatedAt
     });
 
-    const create = async (trx: Knex) => {
-      await updateConnectionCredentials(connectionId, updatedCredentials as TAppConnection["credentials"], trx);
-
-      return appConnectionCredentialRotationDAL.create(
-        {
-          connectionId,
-          strategy,
-          encryptedStrategyConfig: encryptedConfig,
-          rotationInterval,
-          rotateAtUtc: JSON.stringify(rotateAtUtc),
-          rotationStatus: AppConnectionCredentialRotationStatus.Success,
-          lastRotatedAt: now,
-          lastRotationAttemptedAt: now,
-          nextRotationAt,
-          activeIndex: 0,
-          encryptedGeneratedCredentials: encryptedGeneratedCreds
-        },
-        trx
-      );
+    return {
+      strategy,
+      rotationInterval,
+      rotateAtUtc,
+      rotatedAt,
+      nextRotationAt,
+      encryptedStrategyConfig,
+      encryptedGeneratedCredentials,
+      encryptedConnectionCredentials,
+      postCommitCallback
     };
-
-    const rotation = tx ? await create(tx) : await appConnectionDAL.transaction(create);
-
-    // Revoke old credentials only after the transaction has committed successfully,
-    // so we don't end up with a dead connection if the DB write fails.
-    if (postCommitCallback) {
-      await postCommitCallback();
-    }
-
-    return expandCredentialRotation(rotation, connection.orgId, connection.projectId, kmsCoreDomain);
   };
 
   /**
-   * Update credential rotation config for a connection.
-   * Permission checks are handled by the caller.
+   * Writes a prepared rotation and the credentials it issued, in the caller's transaction. The caller runs
+   * prepared.postCommitCallback after that transaction commits.
    */
-  const updateRotation = async (dto: TUpdateAppConnectionCredentialRotationDTO, tx: Knex) => {
-    const { connectionId, rotationInterval, rotateAtUtc, isAutoRotationEnabled } = dto;
+  const persistRotation = async (
+    connectionId: string,
+    prepared: TPreparedAppConnectionCredentialRotation,
+    tx: Knex
+  ) => {
+    const existingRotation = await appConnectionCredentialRotationDAL.findByConnectionId(connectionId, tx);
+    if (existingRotation) {
+      throw new BadRequestError({ message: "Credential rotation is already configured for this connection" });
+    }
 
-    const connection = await appConnectionDAL.findById(connectionId, tx);
-    if (!connection) throw new NotFoundError({ message: `Connection ${connectionId} not found` });
+    await updateConnectionCredentials(connectionId, prepared.encryptedConnectionCredentials, tx);
+
+    await appConnectionCredentialRotationDAL.create(
+      {
+        connectionId,
+        strategy: prepared.strategy,
+        encryptedStrategyConfig: prepared.encryptedStrategyConfig,
+        rotationInterval: prepared.rotationInterval,
+        rotateAtUtc: JSON.stringify(prepared.rotateAtUtc),
+        rotationStatus: AppConnectionCredentialRotationStatus.Success,
+        lastRotatedAt: prepared.rotatedAt,
+        lastRotationAttemptedAt: prepared.rotatedAt,
+        nextRotationAt: prepared.nextRotationAt,
+        activeIndex: 0,
+        encryptedGeneratedCredentials: prepared.encryptedGeneratedCredentials
+      },
+      tx
+    );
+  };
+
+  /**
+   * Update credential rotation config for a connection. Database writes only, so it is safe in the caller's
+   * transaction. Permission checks are handled by the caller.
+   */
+  const updateRotation = async (dto: TUpdateAppConnectionCredentialRotationDTO, tx: Knex): Promise<void> => {
+    const { connectionId, rotationInterval, rotateAtUtc, isAutoRotationEnabled } = dto;
 
     const existingRotation = await appConnectionCredentialRotationDAL.findByConnectionId(connectionId, tx);
     if (!existingRotation) {
@@ -287,7 +288,7 @@ export const appConnectionCredentialRotationServiceFactory = ({
       await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled: false }, tx);
       await appConnectionCredentialRotationDAL.updateById(existingRotation.id, { nextRotationAt: null }, tx);
 
-      return null;
+      return;
     }
 
     // If re-enabling auto rotation, recalculate nextRotationAt
@@ -310,8 +311,8 @@ export const appConnectionCredentialRotationServiceFactory = ({
       if (rotationInterval !== undefined) updateData.rotationInterval = rotationInterval;
       if (rotateAtUtc !== undefined) updateData.rotateAtUtc = JSON.stringify(rotateAtUtc);
 
-      const updated = await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
-      return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsCoreDomain);
+      await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
+      return;
     }
 
     // Build update payload
@@ -346,12 +347,9 @@ export const appConnectionCredentialRotationServiceFactory = ({
       await appConnectionDAL.updateById(connectionId, { isAutoRotationEnabled }, tx);
     }
 
-    if (Object.keys(updateData).length === 0) {
-      return expandCredentialRotation(existingRotation, connection.orgId, connection.projectId, kmsCoreDomain);
-    }
+    if (Object.keys(updateData).length === 0) return;
 
-    const updated = await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
-    return expandCredentialRotation(updated, connection.orgId, connection.projectId, kmsCoreDomain);
+    await appConnectionCredentialRotationDAL.updateById(existingRotation.id, updateData, tx);
   };
 
   /**
@@ -514,8 +512,15 @@ export const appConnectionCredentialRotationServiceFactory = ({
           lastRotatedAt: now
         });
 
+        const encryptedUpdatedCredentials = await encryptAppConnectionCredentials({
+          orgId,
+          projectId: connection.projectId,
+          credentials: updatedCredentials,
+          kmsCoreDomain
+        });
+
         await appConnectionDAL.transaction(async (tx) => {
-          await updateConnectionCredentials(connectionId, updatedCredentials, tx);
+          await updateConnectionCredentials(connectionId, encryptedUpdatedCredentials, tx);
           await appConnectionCredentialRotationDAL.updateById(
             rotationId,
             {
@@ -609,7 +614,8 @@ export const appConnectionCredentialRotationServiceFactory = ({
   };
 
   return {
-    createRotation,
+    prepareRotation,
+    persistRotation,
     updateRotation,
     getRotationByConnectionId,
     triggerRotation,

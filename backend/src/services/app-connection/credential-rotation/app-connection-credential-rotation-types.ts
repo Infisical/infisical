@@ -85,13 +85,19 @@ export type TCredentialRotationProviderServices = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
+// What a provider reads from the connection. A connection being created has no row yet, so this is not the row.
+export type TCredentialRotationConnection = Pick<
+  TAppConnectionRaw,
+  "app" | "method" | "orgId" | "projectId" | "name" | "gatewayId" | "gatewayPoolId"
+>;
+
 // Factory type — takes connection context, returns typed operations.
 // Mirrors TRotationFactory in secret-rotation-v2.
 export type TCredentialRotationProviderFactory<
   S extends TAppConnectionCredentialRotationStrategyConfig = TAppConnectionCredentialRotationStrategyConfig,
   C extends TAppConnectionCredentialRotationGeneratedCredential = TAppConnectionCredentialRotationGeneratedCredential
 > = (
-  connection: TAppConnectionRaw,
+  connection: TCredentialRotationConnection,
   services: TCredentialRotationProviderServices
 ) => {
   validateConnectionMethod: TCredentialRotationValidateMethod;
@@ -101,10 +107,26 @@ export type TCredentialRotationProviderFactory<
   revokeCredential: TCredentialRotationRevokeCredential<S, C>;
 };
 
-export type TCreateAppConnectionCredentialRotationDTO = {
-  connectionId: string;
+export type TPrepareAppConnectionCredentialRotationDTO = {
+  connection: TCredentialRotationConnection;
+  // The connection's plaintext credentials as they will be stored before the rotation takes over.
+  credentials: Record<string, unknown>;
   rotationInterval: number;
   rotateAtUtc: { hours: number; minutes: number };
+};
+
+// A new rotation with its provider calls done and everything encrypted, ready to be written in the caller's
+// transaction. postCommitCallback revokes the credential the rotation replaced; run it only after that commit.
+export type TPreparedAppConnectionCredentialRotation = {
+  strategy: string;
+  rotationInterval: number;
+  rotateAtUtc: { hours: number; minutes: number };
+  rotatedAt: Date;
+  nextRotationAt: Date | null;
+  encryptedStrategyConfig: Buffer;
+  encryptedGeneratedCredentials: Buffer;
+  encryptedConnectionCredentials: Buffer;
+  postCommitCallback?: () => Promise<void>;
 };
 
 export type TUpdateAppConnectionCredentialRotationDTO = {

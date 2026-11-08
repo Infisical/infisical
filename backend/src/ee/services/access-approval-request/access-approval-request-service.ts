@@ -410,27 +410,26 @@ export const accessApprovalRequestServiceFactory = ({
       }
     }
 
-    const approval = await accessApprovalRequestDAL.transaction(async (tx) => {
-      const parsedMs = policy.requestExpirationTime ? ms(policy.requestExpirationTime) : null;
-      const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
+    const parsedMs = policy.requestExpirationTime ? ms(policy.requestExpirationTime) : null;
+    const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
-      const approvalRequest = await accessApprovalRequestDAL.create(
-        {
-          policyId: policy.id,
-          requestedByUserId: actorId,
-          temporaryRange: temporaryRange || null,
-          permissions: JSON.stringify(requestedPermissions),
-          isTemporary,
-          note: note || null,
-          expiresAt
-        },
-        tx
-      );
+    const approval = await accessApprovalRequestDAL.create({
+      policyId: policy.id,
+      requestedByUserId: actorId,
+      temporaryRange: temporaryRange || null,
+      permissions: JSON.stringify(requestedPermissions),
+      isTemporary,
+      note: note || null,
+      expiresAt
+    });
 
+    // Sent after the request is stored, never inside a transaction: Slack and Teams read KMS Core and call out, and a
+    // notification that fails must not undo the request.
+    try {
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
       // Deep-link approvers straight to this request on the Access Requests tab
-      const approvalPath = `${projectPath}/approval?selectedTab=resource-requests&requestId=${encodeURIComponent(approvalRequest.id)}`;
+      const approvalPath = `${projectPath}/approval?selectedTab=resource-requests&requestId=${encodeURIComponent(approval.id)}`;
       const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
       await triggerWorkflowIntegrationNotification({
@@ -492,9 +491,9 @@ export const accessApprovalRequestServiceFactory = ({
         },
         template: SmtpTemplates.AccessApprovalRequest
       });
-
-      return approvalRequest;
-    });
+    } catch (error) {
+      logger.error(error, `Failed to notify approvers of access request [requestId=${approval.id}]`);
+    }
 
     try {
       const created = await accessApprovalRequestDAL.transaction((tx) =>
@@ -631,6 +630,12 @@ export const accessApprovalRequestServiceFactory = ({
         tx
       );
 
+      return approvalRequest;
+    });
+
+    // Sent after the edit commits, never inside its transaction: Slack and Teams read KMS Core and call out, and a
+    // notification that fails must not undo the edit.
+    try {
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const editorFullName = `${editedByUser.firstName} ${editedByUser.lastName}`;
       const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
@@ -706,9 +711,9 @@ export const accessApprovalRequestServiceFactory = ({
           template: SmtpTemplates.AccessApprovalRequestUpdated
         });
       }
-
-      return approvalRequest;
-    });
+    } catch (error) {
+      logger.error(error, `Failed to notify approvers of access request update [requestId=${requestId}]`);
+    }
 
     try {
       const edited = await accessApprovalRequestDAL.transaction((tx) =>
