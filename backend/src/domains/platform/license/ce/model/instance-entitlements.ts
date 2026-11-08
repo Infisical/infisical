@@ -59,10 +59,10 @@ export class InstanceEntitlements {
     return Boolean(this.props.features[feature]);
   }
 
-  // The plan every org gets on a self-hosted instance.
+  // The plan every org gets on a self-hosted instance. It keeps the instance flags: the admin console reads
+  // instanceUserManagement from the org's plan.
   plan(): Plan {
-    const { fips, instanceUserManagement, ...plan } = this.props.features;
-    return Plan.restore(plan);
+    return Plan.restore(this.props.features);
   }
 
   // Replaces some features in place, as the e2e suite's license overrides do.

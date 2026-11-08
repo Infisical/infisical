@@ -1,5 +1,5 @@
 import { testFeatures } from "../testing/test-features";
-import { InstanceEntitlements, InstanceType } from "./instance-entitlements";
+import { InstanceEntitlements, InstanceType, TInstanceFeatures } from "./instance-entitlements";
 
 const licensed = (instanceType: InstanceType) =>
   InstanceEntitlements.restore({
@@ -15,17 +15,18 @@ const licensed = (instanceType: InstanceType) =>
   });
 
 describe("InstanceEntitlements.plan", () => {
-  test("should give every org the license's features, without the instance-only flags", () => {
+  test("should give every org the license's features, including the instance flags the admin console reads", () => {
     // Setup
     const instance = licensed(InstanceType.EnterpriseOnPremOffline);
 
     // Action
-    const plan = instance.plan().toJSON();
+    const plan = instance.plan().toJSON() as TInstanceFeatures;
 
     // Assert
     expect(plan.rbac).toBe(true);
-    expect("fips" in plan).toBe(false);
+    expect(plan.fips).toBe(true);
   });
+
 });
 
 describe("InstanceEntitlements.isSelfHostedLicensed", () => {
