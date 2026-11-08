@@ -162,7 +162,6 @@ export const AccessList = ({
           ))}
         </List>
         <FloatingActionBar
-          placement="contained"
           label="Member actions"
           count={selected.length}
           onClear={() => setPicked([])}

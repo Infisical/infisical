@@ -1151,15 +1151,14 @@
     {
       "id": "selection-floating-action-bar",
       "title": "Bulk selection uses the floating action bar",
-      "instruction": "When rows are selected, show the count, Clear and the bulk actions in the FloatingActionBar overlay, never in an inline bar above or below the list. Selecting or clearing rows must not move any content. The bar is contained, its default, in every product: pass it to DataTable's actionBar so the table reserves room below its last row, and never set placement fixed, which floats it over the whole viewport.",
-      "good": "Selecting three secrets raises the contained floating action bar at the bottom of the table's column with the count, Clear and the bulk actions, and the table stays where it was.",
+      "instruction": "When rows are selected, show the count, Clear and the bulk actions in the FloatingActionBar overlay, never in an inline bar above or below the list. Selecting or clearing rows must not move any content. The bar is fixed to the bottom center of the window on every page, crossing the sidebar if it must; pass it to DataTable's actionBar when a DataTable holds the selection, and never position it yourself. It pads the page's scroll area while it shows, so the last rows and the pagination scroll clear of it.",
+      "good": "Selecting three secrets raises the floating action bar at the bottom center of the window with the count, Clear and the bulk actions, the table stays where it was, and scrolling to the end shows the pagination above the bar.",
       "avoid": "An inline '3 selected, Clear selection, Bulk actions' row that pushes the table down when the first row is selected.",
       "detect": {
-        "by": "lint",
-        "check": "fixed-bulk-bar"
+        "by": "review",
+        "how": "Select a row and check that nothing above or below the list moves, that the bar sits at the bottom center of the window, and that the pagination scrolls clear of it."
       },
-      "category": "Interaction",
-      "exceptions": "The check reads a literal placement on FloatingActionBar. An inline bar, or selection that moves content, is caught only in review: select a row and check that nothing above or below the list moves."
+      "category": "Interaction"
     },
     {
       "id": "translucent-hover",

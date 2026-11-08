@@ -5,7 +5,6 @@ import { FrameScope, useInFrame } from "../lib/frame-context";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
-import { FloatingActionBarHostContext } from "./floating-action-bar";
 import { Icon, type IconName } from "./icon";
 import {
   rowActionSlots,
@@ -162,7 +161,6 @@ export function DataTable<Row>({
   containerClassName
 }: DataTableProps<Row>) {
   const embedded = useInFrame("DataTable");
-  const [barPlacement, setBarPlacement] = React.useState<"fixed" | "contained" | null>(null);
   const [ownSelected, setOwnSelected] = React.useState<readonly string[]>(defaultSelectedIds);
   const [top, setTop] = React.useState(0);
   const scroll = React.useRef<HTMLDivElement>(null);
@@ -625,7 +623,6 @@ export function DataTable<Row>({
       data-slot="data-table"
       data-variant={variant}
       data-embedded={embedded || undefined}
-      data-action-bar={barPlacement ?? undefined}
     >
       <FrameScope framed>{scrollFrame}</FrameScope>
       {!height && more && <div className={styles.actions}>{more}</div>}
@@ -640,11 +637,7 @@ export function DataTable<Row>({
           </>
         )}
       </span>
-      {actionBar && (
-        <FloatingActionBarHostContext.Provider value={setBarPlacement}>
-          {actionBar}
-        </FloatingActionBarHostContext.Provider>
-      )}
+      {actionBar}
     </div>
   );
 }

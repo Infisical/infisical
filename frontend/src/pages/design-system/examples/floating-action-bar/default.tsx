@@ -12,7 +12,7 @@ export default function Example() {
   const [selected, setSelected] = useState<string[]>(["stripe_api_key", "database_url"]);
   const [message, setMessage] = useState("");
   return (
-    <ExampleCell label="contained, two of five selected" align="stretch">
+    <ExampleCell label="Two of five selected" align="stretch">
       <ExampleStage height="app">
         <List
           label="Secrets"
@@ -27,7 +27,6 @@ export default function Example() {
           ))}
         </List>
         <FloatingActionBar
-          placement="contained"
           count={selected.length}
           total={rows.length}
           onSelectAll={() => setSelected(rows)}

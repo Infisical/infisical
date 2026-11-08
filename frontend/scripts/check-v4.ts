@@ -571,16 +571,6 @@ export const rawTablesInCards = (text: string) => {
   });
 };
 
-/** FloatingActionBars placed fixed over the viewport instead of contained in the content column. */
-export const fixedBulkBars = (text: string) =>
-  [...text.matchAll(/<FloatingActionBar(?=[\s>/])/g)].flatMap((match) => {
-    const at = match.index ?? 0;
-    const tag = text.slice(at, jsxTagEnd(text, at) + 1);
-    return /\splacement=(?:"fixed"|\{\s*["'`]fixed["'`]\s*\})/.test(tag)
-      ? [{ index: at, text: tag.split("\n")[0].trim() }]
-      : [];
-  });
-
 export const v4Checks: readonly V4Check[] = [
   {
     id: "raw-color",
@@ -919,14 +909,6 @@ export const v4Checks: readonly V4Check[] = [
     appliesTo: (file) =>
       isComposition(file) && !file.startsWith("src/pages/v4/secret-manager/OverviewPage/"),
     source: rawTablesInCards
-  },
-  {
-    id: "fixed-bulk-bar",
-    rule: "selection-floating-action-bar",
-    message:
-      'A FloatingActionBar is contained, its default: it sits in the content column above the table it acts on. Drop placement="fixed", which floats it over the whole viewport.',
-    appliesTo: isMarkup,
-    source: fixedBulkBars
   },
   {
     id: "v4-path-literal",

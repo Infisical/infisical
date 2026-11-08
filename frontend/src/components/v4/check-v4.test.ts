@@ -512,17 +512,6 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       ]
     ]
   },
-  "fixed-bulk-bar": {
-    bad: [
-      [page, '<FloatingActionBar placement="fixed" count={2} onClear={clear} />'],
-      [example, '<FloatingActionBar\n  count={2}\n  placement={"fixed"}\n  onClear={clear}\n/>']
-    ],
-    good: [
-      [page, "<FloatingActionBar count={2} onClear={clear} />"],
-      [page, '<FloatingActionBar placement="contained" count={2} onClear={clear} />'],
-      [page, '<Popover placement="fixed" />']
-    ]
-  },
   "v4-path-literal": {
     bad: [
       [page, '<Link to="/v4/organizations/demo/projects">Projects</Link>'],

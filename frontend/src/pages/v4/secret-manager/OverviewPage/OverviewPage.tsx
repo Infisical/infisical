@@ -1888,7 +1888,6 @@ export const OverviewPage = () => {
             >
               {pendingHere.length ? (
                 <FloatingActionBar
-                  placement="contained"
                   label="Pending change actions"
                   count={reviewOpen ? 0 : pendingHere.length}
                   noun={pendingHere.length === 1 ? "pending change" : "pending changes"}
@@ -1909,7 +1908,6 @@ export const OverviewPage = () => {
                 />
               ) : (
                 <FloatingActionBar
-                  placement="contained"
                   count={selected.length}
                   total={selectableOnPage.length}
                   onSelectAll={() => setSelected(selectableOnPage)}

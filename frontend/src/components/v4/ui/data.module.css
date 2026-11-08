@@ -1003,18 +1003,6 @@ tbody > .nativeTableRow[data-loading] {
   z-index: 4;
   background: var(--v4-tint);
 }
-.tableShell[data-action-bar="fixed"] {
-  padding-bottom: calc(var(--v4-size-action-bar) + var(--v4-space-action-bar-offset));
-}
-/* A contained bar hosted by the table rides the scroller's bottom edge while the table is in view and rests in the room it holds below the frame. */
-.tableShell > [data-slot="floating-action-bar"][data-placement="contained"] {
-  position: sticky;
-  bottom: var(--v4-space-action-bar-offset-contained);
-  left: auto;
-  width: fit-content;
-  margin-top: var(--v4-space-action-bar-offset-contained);
-  translate: none;
-}
 .tableScroll table {
   position: relative;
   isolation: isolate;

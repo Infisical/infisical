@@ -453,7 +453,6 @@ export const RuleTable = (props: RuleTableProps) => {
           onSelectionChange={setSelected}
           actionBar={
             <FloatingActionBar
-              placement="contained"
               label="Selected rule actions"
               count={selected.length}
               total={rows.length}

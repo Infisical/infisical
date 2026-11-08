@@ -246,27 +246,30 @@ it("renders the pagination slot inside the table frame, below the rows", async (
   expect(slot.textContent).toBe("1-2 of 2");
 });
 
-it("reserves room for a hosted floating action bar only while it shows", async () => {
-  const table = (count: number, placement?: "fixed" | "contained") => (
-    <DataTable
-      label="Hosts"
-      rows={rows}
-      columns={columns}
-      getRowId={(row) => row.id}
-      rowLabel={(row) => row.name}
-      selectable
-      actionBar={<FloatingActionBar count={count} placement={placement} onClear={() => {}} />}
-    />
+it("portals a hosted floating action bar into the scope and pads the page only while it shows", async () => {
+  const table = (count: number) => (
+    <main data-slot="app-inset">
+      <DataTable
+        label="Hosts"
+        rows={rows}
+        columns={columns}
+        getRowId={(row) => row.id}
+        rowLabel={(row) => row.name}
+        selectable
+        actionBar={<FloatingActionBar count={count} onClear={() => {}} />}
+      />
+    </main>
   );
-  const shell = () => document.querySelector<HTMLElement>("[data-slot=data-table]")!;
+  const reserve = () => document.querySelector("[data-slot=floating-action-bar-reserve]");
   await render(table(0));
-  expect(shell().dataset.actionBar).toBeUndefined();
+  expect(reserve()).toBeNull();
   await render(table(2));
-  expect(shell().dataset.actionBar).toBe("contained");
-  await render(table(2, "fixed"));
-  expect(shell().dataset.actionBar).toBe("fixed");
-  await render(table(0, "contained"));
-  expect(shell().dataset.actionBar).toBeUndefined();
+  const bar = document.querySelector("[data-slot=floating-action-bar]")!;
+  expect(host.contains(bar)).toBe(false);
+  expect(bar.closest(".v4")?.getAttribute("data-theme")).toBeTruthy();
+  expect(reserve()?.closest("[data-slot=app-inset]")).not.toBeNull();
+  await render(table(0));
+  expect(reserve()).toBeNull();
 });
 
 type Grant = { id: string; name: string; read: boolean; locked?: boolean };

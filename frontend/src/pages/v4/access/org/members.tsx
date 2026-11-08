@@ -498,7 +498,6 @@ export const OrgMembersTab = () => {
         onSelectionChange={setSelected}
         actionBar={
           <FloatingActionBar
-            placement="contained"
             label="Selected user actions"
             count={selected.length}
             total={direct.length}
