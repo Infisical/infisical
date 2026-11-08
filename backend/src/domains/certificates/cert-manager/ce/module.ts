@@ -1,4 +1,4 @@
-import { TDbClient } from "@app/db";
+import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 
@@ -24,7 +24,7 @@ export type TCertManagerDomain = {
 };
 
 export type TCertManagerDeps = {
-  db: TDbClient;
+  db: DataAccessDb;
   organizationsProjectsDomain: TOrganizationsProjectsDomain;
   licenseRegistry: TLicenseRegistry;
 };

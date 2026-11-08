@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
-import { TDbClient } from "@app/db";
 import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
+import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
 // A user/identity occupies a billable seat only when it is (a) an org member, and (b) either a member
@@ -16,20 +16,264 @@ export type TIdentityOwnershipRow = { orgId: string; projectId: string | null; c
 
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
+// The orgs in scope (the org and its sub-orgs, or every org), their live projects, their accepted
+// non-ghost users, and their identities.
+const withBillableScopes = (knex: Knex, orgId: string | null) => {
+  const orgIds = orgId
+    ? knex
+        .select("id")
+        .from(TableName.Organization)
+        .where("id", orgId)
+        .union((qb) => void qb.select("id").from(TableName.Organization).where("rootOrgId", orgId), true)
+    : knex.select("id").from(TableName.Organization);
+
+  return (
+    knex
+      .with("orgs", orgIds)
+      .with("counted_projects", (qb) => {
+        void qb
+          .from(TableName.Project)
+          .whereNull("deleteAfter")
+          .whereIn("type", COUNTED_PROJECT_TYPES)
+          .whereIn("orgId", knex.select("id").from("orgs"))
+          .select("id");
+      })
+      .with("all_projects", (qb) => {
+        void qb
+          .from(TableName.Project)
+          .whereNull("deleteAfter")
+          .whereIn("orgId", knex.select("id").from("orgs"))
+          .select("id");
+      })
+      .with("org_users", (qb) => {
+        void qb
+          .from({ m: TableName.Membership })
+          .join({ u: TableName.Users }, "u.id", "m.actorUserId")
+          .where("m.scope", AccessScope.Organization)
+          .whereIn("m.scopeOrgId", knex.select("id").from("orgs"))
+          .whereNotNull("m.actorUserId")
+          .where("u.isGhost", false)
+          .where("u.isAccepted", true)
+          .distinct({ id: "m.actorUserId" });
+      })
+      // Identities that belong to an org in scope, deduped.
+      .with("org_identities", (qb) => {
+        void qb.from(TableName.Identity).whereIn("orgId", knex.select("id").from("orgs")).distinct("id");
+      })
+  );
+};
+
+// Actors present in at least one counted (SM/KMS) project, direct or via a group. UNION dedupes
+// across the four sources, and kind ('u'/'i') lets the caller split by actor type.
+const countedMembersCte = (knex: Knex) => {
+  return (qb: Knex.QueryBuilder) => {
+    void qb.distinct("kind", "entityId").from(
+      knex
+        .from({ m: TableName.Membership })
+        .where("m.scope", AccessScope.Project)
+        .whereNotNull("m.actorUserId")
+        .whereIn("m.scopeProjectId", knex.select("id").from("counted_projects"))
+        .whereIn("m.actorUserId", knex.select("id").from("org_users"))
+        .select(knex.raw("'u' as kind"), { entityId: "m.actorUserId" })
+        .union(
+          [
+            (u) => {
+              void u
+                .from({ m: TableName.Membership })
+                .where("m.scope", AccessScope.Project)
+                .whereNotNull("m.actorIdentityId")
+                .whereIn("m.scopeProjectId", knex.select("id").from("counted_projects"))
+                .whereIn("m.actorIdentityId", knex.select("id").from("org_identities"))
+                .select(knex.raw("'i' as kind"), { entityId: "m.actorIdentityId" });
+            },
+            (u) => {
+              void u
+                .from({ ugm: TableName.UserGroupMembership })
+                .join({ mg: TableName.Membership }, "mg.actorGroupId", "ugm.groupId")
+                .where("mg.scope", AccessScope.Project)
+                .where("ugm.isPending", false)
+                .whereIn("mg.scopeProjectId", knex.select("id").from("counted_projects"))
+                .whereIn("ugm.userId", knex.select("id").from("org_users"))
+                .select(knex.raw("'u' as kind"), { entityId: "ugm.userId" });
+            },
+            (u) => {
+              void u
+                .from({ igm: TableName.IdentityGroupMembership })
+                .join({ mg: TableName.Membership }, "mg.actorGroupId", "igm.groupId")
+                .where("mg.scope", AccessScope.Project)
+                .whereIn("mg.scopeProjectId", knex.select("id").from("counted_projects"))
+                .whereIn("igm.identityId", knex.select("id").from("org_identities"))
+                .select(knex.raw("'i' as kind"), { entityId: "igm.identityId" });
+            }
+          ],
+          true
+        )
+        .as("cm")
+    );
+  };
+};
+
+// Org users with no project membership at all (direct or via a group) count as present in the org.
+const projectlessUsersCte = (knex: Knex) => {
+  return (qb: Knex.QueryBuilder) => {
+    void qb
+      .from({ ou: "org_users" })
+      .whereNotExists((w) => {
+        void w
+          .from({ m: TableName.Membership })
+          .where("m.scope", AccessScope.Project)
+          .whereRaw('m."actorUserId" = ou.id')
+          .whereIn("m.scopeProjectId", knex.select("id").from("all_projects"));
+      })
+      .whereNotExists((w) => {
+        void w
+          .from({ ugm: TableName.UserGroupMembership })
+          .join({ mg: TableName.Membership }, "mg.actorGroupId", "ugm.groupId")
+          .where("mg.scope", AccessScope.Project)
+          .where("ugm.isPending", false)
+          .whereRaw('ugm."userId" = ou.id')
+          .whereIn("mg.scopeProjectId", knex.select("id").from("all_projects"));
+      })
+      .select("ou.id");
+  };
+};
+
+const projectlessIdentitiesCte = (knex: Knex) => {
+  return (qb: Knex.QueryBuilder) => {
+    void qb
+      .from({ oi: "org_identities" })
+      .whereNotExists((w) => {
+        void w
+          .from({ m: TableName.Membership })
+          .where("m.scope", AccessScope.Project)
+          .whereRaw('m."actorIdentityId" = oi.id')
+          .whereIn("m.scopeProjectId", knex.select("id").from("all_projects"));
+      })
+      .whereNotExists((w) => {
+        void w
+          .from({ igm: TableName.IdentityGroupMembership })
+          .join({ mg: TableName.Membership }, "mg.actorGroupId", "igm.groupId")
+          .where("mg.scope", AccessScope.Project)
+          .whereRaw('igm."identityId" = oi.id')
+          .whereIn("mg.scopeProjectId", knex.select("id").from("all_projects"));
+      })
+      .select("oi.id");
+  };
+};
+
+// The distinct actor set behind the project-scoped identity meters, as ('u' | 'i', entityId) rows.
+// Shared by the meter and the usage breakdown so a breakdown can never disagree with the number the
+// customer is billed on.
+const projectIdentityEntities = (knex: Knex, projectType: ProjectType, orgId?: string) => {
+  const scopedOrgIds = () => {
+    const qb = knex(TableName.Organization).select(`${TableName.Organization}.id`);
+    if (orgId) {
+      void qb.where((bd) => {
+        void bd.where(`${TableName.Organization}.id`, orgId).orWhere(`${TableName.Organization}.rootOrgId`, orgId);
+      });
+    }
+    return qb;
+  };
+
+  const typedProjectIds = () => {
+    const qb = knex(TableName.Project)
+      .where(`${TableName.Project}.type`, projectType)
+      .whereNull(`${TableName.Project}.deleteAfter`)
+      .select(`${TableName.Project}.id`);
+    if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, scopedOrgIds());
+    return qb;
+  };
+
+  const orgMemberUserIds = () => {
+    const qb = knex(TableName.Membership)
+      .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+      .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+      .whereNotNull(`${TableName.Membership}.actorUserId`)
+      .where(`${TableName.Users}.isGhost`, false)
+      .where(`${TableName.Users}.isAccepted`, true)
+      .select(`${TableName.Membership}.actorUserId`);
+    if (orgId) void qb.whereIn(`${TableName.Membership}.scopeOrgId`, scopedOrgIds());
+    return qb;
+  };
+
+  // Identities that actually belong to the org / child orgs.
+  const orgIdentityIds = () => {
+    const qb = knex(TableName.Identity).select(`${TableName.Identity}.id`);
+    if (orgId) void qb.whereIn(`${TableName.Identity}.orgId`, scopedOrgIds());
+    return qb;
+  };
+
+  // scope = project + a non-null actor column + whereIn against the typed project ids matches the
+  // partial unique indexes exactly; each project-scope row carries exactly one actor column.
+  const directUsers = knex(TableName.Membership)
+    .where(`${TableName.Membership}.scope`, AccessScope.Project)
+    .whereNotNull(`${TableName.Membership}.actorUserId`)
+    .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+    .whereIn(`${TableName.Membership}.actorUserId`, orgMemberUserIds())
+    .select(knex.raw("'u' as kind"))
+    .select(`${TableName.Membership}.actorUserId as entityId`);
+
+  return directUsers.union(
+    [
+      (qb) =>
+        void qb
+          .from(TableName.Membership)
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+          .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+          .whereIn(`${TableName.Membership}.actorIdentityId`, orgIdentityIds())
+          .select(knex.raw("'i' as kind"))
+          .select(`${TableName.Membership}.actorIdentityId as entityId`),
+      // A group assigned to a project (membership with actorGroupId) brings its members into it. A
+      // pending group membership (invited, not yet joined) does not occupy a seat.
+      (qb) =>
+        void qb
+          .from(TableName.UserGroupMembership)
+          .join(
+            TableName.Membership,
+            `${TableName.UserGroupMembership}.groupId`,
+            `${TableName.Membership}.actorGroupId`
+          )
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .where(`${TableName.UserGroupMembership}.isPending`, false)
+          .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+          .whereIn(`${TableName.UserGroupMembership}.userId`, orgMemberUserIds())
+          .select(knex.raw("'u' as kind"))
+          .select(`${TableName.UserGroupMembership}.userId as entityId`),
+      (qb) =>
+        void qb
+          .from(TableName.IdentityGroupMembership)
+          .join(
+            TableName.Membership,
+            `${TableName.IdentityGroupMembership}.groupId`,
+            `${TableName.Membership}.actorGroupId`
+          )
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
+          .whereIn(`${TableName.IdentityGroupMembership}.identityId`, orgIdentityIds())
+          .select(knex.raw("'i' as kind"))
+          .select(`${TableName.IdentityGroupMembership}.identityId as entityId`)
+    ],
+    true
+  );
+};
+
 // Reads tables a future domain will own (memberships, group memberships, users, identities, projects,
 // organizations); see ../../AGENTS.md.
 export class BillableActorDataAccess {
-  constructor(private readonly db: TDbClient) {}
+  constructor(private readonly db: DataAccessDb) {}
 
   // Billable users and machine identities. A null orgId counts the whole instance.
-  async countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }> {
+  async countBillableOrgActors(
+    orgId: string | null,
+    options?: TReadOptions
+  ): Promise<{ users: number; identities: number }> {
+    const knex = this.db.reader(options);
     try {
-      const knex = this.db.replicaNode();
-
-      const row = (await this.withBillableScopes(orgId)
-        .with("counted_members", this.countedMembersCte())
-        .with("projectless_users", this.projectlessUsersCte())
-        .with("projectless_identities", this.projectlessIdentitiesCte())
+      const row = (await withBillableScopes(knex, orgId)
+        .with("counted_members", countedMembersCte(knex))
+        .with("projectless_users", projectlessUsersCte(knex))
+        .with("projectless_identities", projectlessIdentitiesCte(knex))
         .select(
           knex.raw("(select count(*) from counted_members where kind = 'u') as counted_users"),
           knex.raw("(select count(*) from counted_members where kind = 'i') as counted_identities"),
@@ -59,13 +303,15 @@ export class BillableActorDataAccess {
   // membership would count one identity several times; identities.projectId is a single column, so
   // grouping on ownership partitions the billed total exactly once across the tree.
   // orgId null means the whole instance, matching countBillableOrgActors and the meter it feeds.
-  async getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnershipRow[]> {
+  async getBillableIdentityOwnershipBreakdown(
+    orgId: string | null,
+    options?: TReadOptions
+  ): Promise<TIdentityOwnershipRow[]> {
+    const knex = this.db.reader(options);
     try {
-      const knex = this.db.replicaNode();
-
-      const rows = (await this.withBillableScopes(orgId)
-        .with("counted_members", this.countedMembersCte())
-        .with("projectless_identities", this.projectlessIdentitiesCte())
+      const rows = (await withBillableScopes(knex, orgId)
+        .with("counted_members", countedMembersCte(knex))
+        .with("projectless_identities", projectlessIdentitiesCte(knex))
         .with("billable_identities", (qb) => {
           void qb
             .select("entityId as id")
@@ -87,25 +333,26 @@ export class BillableActorDataAccess {
 
   // Users and machine identities in projects of one type, directly or through a group. orgId omitted counts
   // the whole instance.
-  async countProjectIdentities(projectType: ProjectType, orgId?: string): Promise<number> {
+  async countProjectIdentities(projectType: ProjectType, orgId?: string, options?: TReadOptions): Promise<number> {
+    const knex = this.db.reader(options);
     // .as() on a union builder is typed as any, so cast the awaited row before counting.
-    const row = (await this.db
-      .replicaNode()
+    const row = (await knex
       .count("* as count")
-      .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
+      .from(projectIdentityEntities(knex, projectType, orgId).as("project_identities"))
       .first()) as { count?: string | number } | undefined;
     return toCount(row);
   }
 
   async countProjectIdentitiesByKind(
     projectType: ProjectType,
-    orgId?: string
+    orgId?: string,
+    options?: TReadOptions
   ): Promise<{ users: number; identities: number }> {
-    const rows = (await this.db
-      .replicaNode()
+    const knex = this.db.reader(options);
+    const rows = (await knex
       .select("kind")
       .count("* as count")
-      .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
+      .from(projectIdentityEntities(knex, projectType, orgId).as("project_identities"))
       .groupBy("kind")) as { kind: string; count: string | number }[];
 
     const byKind = (kind: string) => Number(rows.find((row) => row.kind === kind)?.count ?? 0);
@@ -118,16 +365,16 @@ export class BillableActorDataAccess {
   // identities.projectId is a single column and partitions the metered total exactly once.
   async getProjectIdentityOwnershipBreakdown(
     projectType: ProjectType,
-    orgId?: string
+    orgId?: string,
+    options?: TReadOptions
   ): Promise<TIdentityOwnershipRow[]> {
-    const rows = (await this.db
-      .replicaNode()({ i: TableName.Identity })
+    const knex = this.db.reader(options);
+    const rows = (await knex({ i: TableName.Identity })
       .whereIn(
         "i.id",
-        this.db
-          .replicaNode()
+        knex
           .select("entityId")
-          .from(this.projectIdentityEntities(projectType, orgId).as("project_identities"))
+          .from(projectIdentityEntities(knex, projectType, orgId).as("project_identities"))
           .where("kind", "i")
       )
       .groupBy("i.orgId", "i.projectId")
@@ -135,255 +382,5 @@ export class BillableActorDataAccess {
       .count("i.id as count")) as { orgId: string; projectId: string | null; count: string | number }[];
 
     return rows.map((row) => ({ orgId: row.orgId, projectId: row.projectId, count: Number(row.count) }));
-  }
-
-  // The orgs in scope (the org and its sub-orgs, or every org), their live projects, their accepted
-  // non-ghost users, and their identities.
-  private withBillableScopes(orgId: string | null) {
-    const knex = this.db.replicaNode();
-    const orgIds = orgId
-      ? knex
-          .select("id")
-          .from(TableName.Organization)
-          .where("id", orgId)
-          .union((qb) => void qb.select("id").from(TableName.Organization).where("rootOrgId", orgId), true)
-      : knex.select("id").from(TableName.Organization);
-
-    return (
-      knex
-        .with("orgs", orgIds)
-        .with("counted_projects", (qb) => {
-          void qb
-            .from(TableName.Project)
-            .whereNull("deleteAfter")
-            .whereIn("type", COUNTED_PROJECT_TYPES)
-            .whereIn("orgId", knex.select("id").from("orgs"))
-            .select("id");
-        })
-        .with("all_projects", (qb) => {
-          void qb
-            .from(TableName.Project)
-            .whereNull("deleteAfter")
-            .whereIn("orgId", knex.select("id").from("orgs"))
-            .select("id");
-        })
-        .with("org_users", (qb) => {
-          void qb
-            .from({ m: TableName.Membership })
-            .join({ u: TableName.Users }, "u.id", "m.actorUserId")
-            .where("m.scope", AccessScope.Organization)
-            .whereIn("m.scopeOrgId", knex.select("id").from("orgs"))
-            .whereNotNull("m.actorUserId")
-            .where("u.isGhost", false)
-            .where("u.isAccepted", true)
-            .distinct({ id: "m.actorUserId" });
-        })
-        // Identities that belong to an org in scope, deduped.
-        .with("org_identities", (qb) => {
-          void qb.from(TableName.Identity).whereIn("orgId", knex.select("id").from("orgs")).distinct("id");
-        })
-    );
-  }
-
-  // Actors present in at least one counted (SM/KMS) project, direct or via a group. UNION dedupes
-  // across the four sources, and kind ('u'/'i') lets the caller split by actor type.
-  private countedMembersCte() {
-    const knex = this.db.replicaNode();
-    return (qb: Knex.QueryBuilder) => {
-      void qb.distinct("kind", "entityId").from(
-        knex
-          .from({ m: TableName.Membership })
-          .where("m.scope", AccessScope.Project)
-          .whereNotNull("m.actorUserId")
-          .whereIn("m.scopeProjectId", knex.select("id").from("counted_projects"))
-          .whereIn("m.actorUserId", knex.select("id").from("org_users"))
-          .select(knex.raw("'u' as kind"), { entityId: "m.actorUserId" })
-          .union(
-            [
-              (u) => {
-                void u
-                  .from({ m: TableName.Membership })
-                  .where("m.scope", AccessScope.Project)
-                  .whereNotNull("m.actorIdentityId")
-                  .whereIn("m.scopeProjectId", knex.select("id").from("counted_projects"))
-                  .whereIn("m.actorIdentityId", knex.select("id").from("org_identities"))
-                  .select(knex.raw("'i' as kind"), { entityId: "m.actorIdentityId" });
-              },
-              (u) => {
-                void u
-                  .from({ ugm: TableName.UserGroupMembership })
-                  .join({ mg: TableName.Membership }, "mg.actorGroupId", "ugm.groupId")
-                  .where("mg.scope", AccessScope.Project)
-                  .where("ugm.isPending", false)
-                  .whereIn("mg.scopeProjectId", knex.select("id").from("counted_projects"))
-                  .whereIn("ugm.userId", knex.select("id").from("org_users"))
-                  .select(knex.raw("'u' as kind"), { entityId: "ugm.userId" });
-              },
-              (u) => {
-                void u
-                  .from({ igm: TableName.IdentityGroupMembership })
-                  .join({ mg: TableName.Membership }, "mg.actorGroupId", "igm.groupId")
-                  .where("mg.scope", AccessScope.Project)
-                  .whereIn("mg.scopeProjectId", knex.select("id").from("counted_projects"))
-                  .whereIn("igm.identityId", knex.select("id").from("org_identities"))
-                  .select(knex.raw("'i' as kind"), { entityId: "igm.identityId" });
-              }
-            ],
-            true
-          )
-          .as("cm")
-      );
-    };
-  }
-
-  // Org users with no project membership at all (direct or via a group) count as present in the org.
-  private projectlessUsersCte() {
-    const knex = this.db.replicaNode();
-    return (qb: Knex.QueryBuilder) => {
-      void qb
-        .from({ ou: "org_users" })
-        .whereNotExists((w) => {
-          void w
-            .from({ m: TableName.Membership })
-            .where("m.scope", AccessScope.Project)
-            .whereRaw('m."actorUserId" = ou.id')
-            .whereIn("m.scopeProjectId", knex.select("id").from("all_projects"));
-        })
-        .whereNotExists((w) => {
-          void w
-            .from({ ugm: TableName.UserGroupMembership })
-            .join({ mg: TableName.Membership }, "mg.actorGroupId", "ugm.groupId")
-            .where("mg.scope", AccessScope.Project)
-            .where("ugm.isPending", false)
-            .whereRaw('ugm."userId" = ou.id')
-            .whereIn("mg.scopeProjectId", knex.select("id").from("all_projects"));
-        })
-        .select("ou.id");
-    };
-  }
-
-  private projectlessIdentitiesCte() {
-    const knex = this.db.replicaNode();
-    return (qb: Knex.QueryBuilder) => {
-      void qb
-        .from({ oi: "org_identities" })
-        .whereNotExists((w) => {
-          void w
-            .from({ m: TableName.Membership })
-            .where("m.scope", AccessScope.Project)
-            .whereRaw('m."actorIdentityId" = oi.id')
-            .whereIn("m.scopeProjectId", knex.select("id").from("all_projects"));
-        })
-        .whereNotExists((w) => {
-          void w
-            .from({ igm: TableName.IdentityGroupMembership })
-            .join({ mg: TableName.Membership }, "mg.actorGroupId", "igm.groupId")
-            .where("mg.scope", AccessScope.Project)
-            .whereRaw('igm."identityId" = oi.id')
-            .whereIn("mg.scopeProjectId", knex.select("id").from("all_projects"));
-        })
-        .select("oi.id");
-    };
-  }
-
-  // The distinct actor set behind the project-scoped identity meters, as ('u' | 'i', entityId) rows.
-  // Shared by the meter and the usage breakdown so a breakdown can never disagree with the number the
-  // customer is billed on.
-  private projectIdentityEntities(projectType: ProjectType, orgId?: string) {
-    const { db } = this;
-    const scopedOrgIds = () => {
-      const qb = db.replicaNode()(TableName.Organization).select(`${TableName.Organization}.id`);
-      if (orgId) {
-        void qb.where((bd) => {
-          void bd.where(`${TableName.Organization}.id`, orgId).orWhere(`${TableName.Organization}.rootOrgId`, orgId);
-        });
-      }
-      return qb;
-    };
-
-    const typedProjectIds = () => {
-      const qb = db
-        .replicaNode()(TableName.Project)
-        .where(`${TableName.Project}.type`, projectType)
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .select(`${TableName.Project}.id`);
-      if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, scopedOrgIds());
-      return qb;
-    };
-
-    const orgMemberUserIds = () => {
-      const qb = db
-        .replicaNode()(TableName.Membership)
-        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .whereNotNull(`${TableName.Membership}.actorUserId`)
-        .where(`${TableName.Users}.isGhost`, false)
-        .where(`${TableName.Users}.isAccepted`, true)
-        .select(`${TableName.Membership}.actorUserId`);
-      if (orgId) void qb.whereIn(`${TableName.Membership}.scopeOrgId`, scopedOrgIds());
-      return qb;
-    };
-
-    // Identities that actually belong to the org / child orgs.
-    const orgIdentityIds = () => {
-      const qb = db.replicaNode()(TableName.Identity).select(`${TableName.Identity}.id`);
-      if (orgId) void qb.whereIn(`${TableName.Identity}.orgId`, scopedOrgIds());
-      return qb;
-    };
-
-    // scope = project + a non-null actor column + whereIn against the typed project ids matches the
-    // partial unique indexes exactly; each project-scope row carries exactly one actor column.
-    const directUsers = db
-      .replicaNode()(TableName.Membership)
-      .where(`${TableName.Membership}.scope`, AccessScope.Project)
-      .whereNotNull(`${TableName.Membership}.actorUserId`)
-      .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
-      .whereIn(`${TableName.Membership}.actorUserId`, orgMemberUserIds())
-      .select(db.raw("'u' as kind"))
-      .select(`${TableName.Membership}.actorUserId as entityId`);
-
-    return directUsers.union(
-      [
-        (qb) =>
-          void qb
-            .from(TableName.Membership)
-            .where(`${TableName.Membership}.scope`, AccessScope.Project)
-            .whereNotNull(`${TableName.Membership}.actorIdentityId`)
-            .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
-            .whereIn(`${TableName.Membership}.actorIdentityId`, orgIdentityIds())
-            .select(db.raw("'i' as kind"))
-            .select(`${TableName.Membership}.actorIdentityId as entityId`),
-        // A group assigned to a project (membership with actorGroupId) brings its members into it. A
-        // pending group membership (invited, not yet joined) does not occupy a seat.
-        (qb) =>
-          void qb
-            .from(TableName.UserGroupMembership)
-            .join(
-              TableName.Membership,
-              `${TableName.UserGroupMembership}.groupId`,
-              `${TableName.Membership}.actorGroupId`
-            )
-            .where(`${TableName.Membership}.scope`, AccessScope.Project)
-            .where(`${TableName.UserGroupMembership}.isPending`, false)
-            .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
-            .whereIn(`${TableName.UserGroupMembership}.userId`, orgMemberUserIds())
-            .select(db.raw("'u' as kind"))
-            .select(`${TableName.UserGroupMembership}.userId as entityId`),
-        (qb) =>
-          void qb
-            .from(TableName.IdentityGroupMembership)
-            .join(
-              TableName.Membership,
-              `${TableName.IdentityGroupMembership}.groupId`,
-              `${TableName.Membership}.actorGroupId`
-            )
-            .where(`${TableName.Membership}.scope`, AccessScope.Project)
-            .whereIn(`${TableName.Membership}.scopeProjectId`, typedProjectIds())
-            .whereIn(`${TableName.IdentityGroupMembership}.identityId`, orgIdentityIds())
-            .select(db.raw("'i' as kind"))
-            .select(`${TableName.IdentityGroupMembership}.identityId as entityId`)
-      ],
-      true
-    );
   }
 }

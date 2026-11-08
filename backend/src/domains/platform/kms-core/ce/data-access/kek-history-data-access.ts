@@ -1,16 +1,15 @@
-import { Knex } from "knex";
-
 import { TableName, TKmsKekHistory } from "@app/db/schemas";
+import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
 import { KekHistoryEntry } from "../model/kek-history-entry";
 
 export type TKekHistoryDataAccess = {
   // Newest first. Never read unbounded: the history is never pruned.
-  findPage(page: { offset: number; limit: number }): Promise<KekHistoryEntry[]>;
-  count(): Promise<number>;
-  findActiveByLabel(kekLabel: string): Promise<KekHistoryEntry | undefined>;
-  findCurrent(): Promise<KekHistoryEntry | undefined>;
+  findPage(page: { offset: number; limit: number }, options?: TReadOptions): Promise<KekHistoryEntry[]>;
+  count(options?: TReadOptions): Promise<number>;
+  findActiveByLabel(kekLabel: string, options?: TReadOptions): Promise<KekHistoryEntry | undefined>;
+  findCurrent(options?: TReadOptions): Promise<KekHistoryEntry | undefined>;
   create(entry: KekHistoryEntry): Promise<void>;
   markSuperseded(id: string, at: Date): Promise<void>;
   markRetired(id: string, at: Date): Promise<void>;
@@ -28,11 +27,15 @@ const toModel = (row: TKmsKekHistory) =>
   });
 
 export class KekHistoryDataAccess implements TKekHistoryDataAccess {
-  constructor(private readonly db: Knex) {}
+  constructor(private readonly db: DataAccessDb) {}
 
-  async findPage({ offset, limit }: { offset: number; limit: number }): Promise<KekHistoryEntry[]> {
+  async findPage(
+    { offset, limit }: { offset: number; limit: number },
+    options?: TReadOptions
+  ): Promise<KekHistoryEntry[]> {
     try {
-      const rows = (await this.db(TableName.KmsKekHistory)
+      const rows = (await this.db
+        .reader(options)(TableName.KmsKekHistory)
         .select("*")
         .orderBy("activatedAt", "desc")
         .offset(offset)
@@ -43,29 +46,34 @@ export class KekHistoryDataAccess implements TKekHistoryDataAccess {
     }
   }
 
-  async count(): Promise<number> {
+  async count(options?: TReadOptions): Promise<number> {
     try {
-      const [{ count }] = await this.db(TableName.KmsKekHistory).count<{ count: string | number }[]>("* as count");
+      const [{ count }] = await this.db
+        .reader(options)(TableName.KmsKekHistory)
+        .count<{ count: string | number }[]>("* as count");
       return Number(count);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count KEK history" });
     }
   }
 
-  async findActiveByLabel(kekLabel: string): Promise<KekHistoryEntry | undefined> {
+  async findActiveByLabel(kekLabel: string, options?: TReadOptions): Promise<KekHistoryEntry | undefined> {
     try {
-      const row = (await this.db(TableName.KmsKekHistory).where({ kekLabel }).whereNull("retiredAt").first("*")) as
-        | TKmsKekHistory
-        | undefined;
+      const row = (await this.db
+        .reader(options)(TableName.KmsKekHistory)
+        .where({ kekLabel })
+        .whereNull("retiredAt")
+        .first("*")) as TKmsKekHistory | undefined;
       return row ? toModel(row) : undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find active KEK history by label" });
     }
   }
 
-  async findCurrent(): Promise<KekHistoryEntry | undefined> {
+  async findCurrent(options?: TReadOptions): Promise<KekHistoryEntry | undefined> {
     try {
-      const row = (await this.db(TableName.KmsKekHistory)
+      const row = (await this.db
+        .reader(options)(TableName.KmsKekHistory)
         .whereNull("supersededAt")
         .orderBy("activatedAt", "desc")
         .first("*")) as TKmsKekHistory | undefined;
@@ -78,11 +86,13 @@ export class KekHistoryDataAccess implements TKekHistoryDataAccess {
   async create(entry: KekHistoryEntry): Promise<void> {
     const props = entry.toJSON();
     try {
-      await this.db(TableName.KmsKekHistory).insert({
-        id: props.id,
-        kekLabel: props.kekLabel,
-        activatedAt: props.activatedAt
-      } as never);
+      await this.db
+        .writer()(TableName.KmsKekHistory)
+        .insert({
+          id: props.id,
+          kekLabel: props.kekLabel,
+          activatedAt: props.activatedAt
+        } as never);
     } catch (error) {
       throw new DatabaseError({ error, name: "Create KEK history entry" });
     }
@@ -90,7 +100,7 @@ export class KekHistoryDataAccess implements TKekHistoryDataAccess {
 
   async markSuperseded(id: string, at: Date): Promise<void> {
     try {
-      await this.db(TableName.KmsKekHistory).where({ id }).update({ supersededAt: at });
+      await this.db.writer()(TableName.KmsKekHistory).where({ id }).update({ supersededAt: at });
     } catch (error) {
       throw new DatabaseError({ error, name: "Supersede KEK history entry" });
     }
@@ -98,7 +108,7 @@ export class KekHistoryDataAccess implements TKekHistoryDataAccess {
 
   async markRetired(id: string, at: Date): Promise<void> {
     try {
-      await this.db(TableName.KmsKekHistory).where({ id }).update({ retiredAt: at });
+      await this.db.writer()(TableName.KmsKekHistory).where({ id }).update({ retiredAt: at });
     } catch (error) {
       throw new DatabaseError({ error, name: "Retire KEK history entry" });
     }

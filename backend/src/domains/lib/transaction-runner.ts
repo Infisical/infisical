@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
-import { TDbClient } from "@app/db";
 import { logger } from "@app/lib/logger";
 
-import { PostgresStoreLocks, TStoreLocks } from "./store-locks";
+import { DataAccessDb } from "./data-access-db";
+import { PostgresDataAccessLocks, TDataAccessLocks } from "./data-access-locks";
 
 declare const sealed: unique symbol;
 
@@ -12,14 +12,15 @@ export type TTransaction = {
   afterCommit(fn: () => Promise<void>): void;
 };
 
-export type TRunContext<TStore> = { store: TStore; tx: TTransaction };
+export type TRunContext<TDataAccess> = { dataAccess: TDataAccess; tx: TTransaction };
 
-export type TTransactionRunner<TStore> = {
-  run<T>(work: (ctx: TRunContext<TStore>) => Promise<T>): Promise<T>;
-  within(tx: TTransaction): TTransactionRunner<TStore>;
+export type TTransactionRunner<TDataAccess> = {
+  run<T>(work: (ctx: TRunContext<TDataAccess>) => Promise<T>): Promise<T>;
+  within(tx: TTransaction): TTransactionRunner<TDataAccess>;
 };
 
-export type TBuildStore<TStore> = (trx: Knex, locks: TStoreLocks) => TStore;
+// Inside a transaction db is DataAccessDb.single(trx): every read and write runs on the transaction.
+export type TBuildDataAccess<TDataAccess> = (db: DataAccessDb, locks: TDataAccessLocks) => TDataAccess;
 
 const knexHandles = new WeakMap<object, Knex.Transaction>();
 
@@ -51,29 +52,33 @@ export const runAfterCommitHooks = async (hooks: Array<() => Promise<void>>) => 
   }
 };
 
-export class TransactionRunner<TStore> implements TTransactionRunner<TStore> {
+export class TransactionRunner<TDataAccess> implements TTransactionRunner<TDataAccess> {
   constructor(
-    private readonly db: TDbClient,
-    private readonly buildStore: TBuildStore<TStore>,
+    private readonly db: DataAccessDb,
+    private readonly buildDataAccess: TBuildDataAccess<TDataAccess>,
     private readonly parent?: TTransaction
   ) {}
 
-  within(tx: TTransaction): TransactionRunner<TStore> {
-    return new TransactionRunner(this.db, this.buildStore, tx);
+  within(tx: TTransaction): TransactionRunner<TDataAccess> {
+    return new TransactionRunner(this.db, this.buildDataAccess, tx);
   }
 
-  async run<T>(work: (ctx: TRunContext<TStore>) => Promise<T>): Promise<T> {
+  async run<T>(work: (ctx: TRunContext<TDataAccess>) => Promise<T>): Promise<T> {
     if (this.parent) {
       const trx = unsealTransaction(this.parent);
-      return work({ store: this.buildStore(trx, new PostgresStoreLocks(trx)), tx: this.parent });
+      return work({ dataAccess: this.inTransaction(trx), tx: this.parent });
     }
 
     const hooks: Array<() => Promise<void>> = [];
-    const result = await this.db.transaction(async (trx) => {
+    const result = await this.db.writer().transaction(async (trx) => {
       const tx = sealTransaction(trx, (fn) => hooks.push(fn));
-      return work({ store: this.buildStore(trx, new PostgresStoreLocks(trx)), tx });
+      return work({ dataAccess: this.inTransaction(trx), tx });
     });
     await runAfterCommitHooks(hooks);
     return result;
+  }
+
+  private inTransaction(trx: Knex.Transaction): TDataAccess {
+    return this.buildDataAccess(DataAccessDb.single(trx), new PostgresDataAccessLocks(trx));
   }
 }

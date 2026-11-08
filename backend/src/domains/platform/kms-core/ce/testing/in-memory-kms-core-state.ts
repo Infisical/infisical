@@ -26,10 +26,10 @@ type TTables = {
   projects: Map<string, TInMemoryProject>;
 };
 
-// The tables of an in-memory KMS Core store. Rows are replaced, never changed in place, so a shallow copy of each
+// The tables of KMS Core in memory. Rows are replaced, never changed in place, so a shallow copy of each
 // table is a full snapshot.
 export class InMemoryKmsCoreState {
-  // For consumers' tests: an org or project the store has never seen is created on first read.
+  // For consumers' tests: an org or project it has never seen is created on first read.
   autoCreateScopes = false;
 
   tables: TTables = {

@@ -55,9 +55,6 @@ export type TDecryptWithKmsDTO = { kmsId: string; cipherTextBlob: Buffer };
 export type TEncryptionWithKeyDTO = { key: Buffer; plainText: Buffer };
 export type TDecryptWithKeyDTO = { key: Buffer; cipherTextBlob: Buffer };
 
-// Reads the key on the primary instead of a replica, for a caller that may have just created it.
-export type TKmsReadOptions = { consistency?: "replica" | "primary" };
-
 export type TSignWithKmsDTO = {
   kmsId: string;
   data: Buffer;

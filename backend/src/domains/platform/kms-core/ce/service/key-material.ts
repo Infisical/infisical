@@ -1,3 +1,4 @@
+import { TReadOptions } from "@app/domains/lib/data-access-db";
 import { createSecretValueBlindIndexer } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -6,7 +7,7 @@ import { detectPqcVariantFromDer } from "@app/lib/crypto/pqc/pqc-crypto";
 import { AsymmetricKeyAlgorithm, isPqcKeyAlgorithm, KMS_TO_OPENSSL_NAME, signingService } from "@app/lib/crypto/sign";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
-import { TKmsCoreStore } from "../data-access/kms-core-store";
+import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
 import { KmsCiphertext } from "../model/kms-ciphertext";
 import { KmsKey, KmsKeyUsage, TKmsKeyAlgorithmName } from "../model/kms-key";
 import { TExternalKeyRef, TKmsCoreHooks } from "./kms-core-hooks";
@@ -42,8 +43,8 @@ export const unwrapWithRootKey = (state: TKmsCoreState, wrapped: Buffer) =>
 
 export const notFoundKey = (kmsId: string) => new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
 
-export const requireKey = async (store: TKmsCoreStore, kmsId: string) => {
-  const key = await store.kmsKeys.findById(kmsId);
+export const requireKey = async (dataAccess: TKmsCoreDataAccess, kmsId: string, options?: TReadOptions) => {
+  const key = await dataAccess.kmsKeys.findById(kmsId, options);
   if (!key) throw notFoundKey(kmsId);
   return key;
 };
@@ -177,8 +178,13 @@ const internalEncryptor = (state: TKmsCoreState, key: KmsKey): TAsyncEncryptor =
 };
 
 // Tries the version a v02 blob names first, then the current material, then every archived version newest first.
-// Archived versions load on the first miss, from the store the key was read from.
-const internalDecryptor = (state: TKmsCoreState, store: TKmsCoreStore, key: KmsKey): TAsyncDecryptor => {
+// Archived versions load on the first miss, read the same way the key was.
+const internalDecryptor = (
+  state: TKmsCoreState,
+  dataAccess: TKmsCoreDataAccess,
+  key: KmsKey,
+  options?: TReadOptions
+): TAsyncDecryptor => {
   const internal = key.materialFor(KmsKeyUsage.ENCRYPT_DECRYPT);
   const dataCipher = symmetricCipherService(internal.encryptionAlgorithm as SymmetricKeyAlgorithm);
   const currentVersion = internal.version;
@@ -189,7 +195,7 @@ const internalDecryptor = (state: TKmsCoreState, store: TKmsCoreStore, key: KmsK
   const loadArchived = async () => {
     if (archivedLoaded) return;
     // A database error propagates; it is never treated as a failed decrypt.
-    const archived = await store.kmsKeyVersions.listByInternalKmsId(internal.id);
+    const archived = await dataAccess.kmsKeyVersions.listByInternalKmsId(internal.id, options);
     for (const version of archived) {
       if (!materialByVersion.has(version.version)) {
         materialByVersion.set(version.version, unwrapWithRootKey(state, version.encryptedKey));
@@ -237,11 +243,16 @@ const internalDecryptor = (state: TKmsCoreState, store: TKmsCoreStore, key: KmsK
 };
 
 // The org's data key, which must already exist: an external key's inputs were encrypted with it when it was stored.
-export const existingOrgCipher = async (state: TKmsCoreState, store: TKmsCoreStore, orgId: string) => {
-  const org = await store.scopeKeys.findOrg(orgId);
+export const existingOrgCipher = async (
+  state: TKmsCoreState,
+  dataAccess: TKmsCoreDataAccess,
+  orgId: string,
+  options?: TReadOptions
+) => {
+  const org = await dataAccess.scopeKeys.findOrg(orgId, options);
   if (!org?.kmsKeyId || !org.encryptedDataKey) throw new BadRequestError({ message: "Invalid organization KMS" });
-  const orgKey = await requireKey(store, org.kmsKeyId);
-  const dataKey = await internalDecryptor(state, store, orgKey)({ cipherTextBlob: org.encryptedDataKey });
+  const orgKey = await requireKey(dataAccess, org.kmsKeyId, options);
+  const dataKey = await internalDecryptor(state, dataAccess, orgKey, options)({ cipherTextBlob: org.encryptedDataKey });
   return dataKeyCipherPair(dataKey);
 };
 
@@ -266,24 +277,26 @@ const externalHook = (state: TKmsCoreState) => {
 // The provider call runs when the encryptor is called, after every database read here has returned.
 export const keyEncryptor = async (
   state: TKmsCoreState,
-  store: TKmsCoreStore,
-  key: KmsKey
+  dataAccess: TKmsCoreDataAccess,
+  key: KmsKey,
+  options?: TReadOptions
 ): Promise<TAsyncEncryptor> => {
   if (!key.isExternal) return internalEncryptor(state, key);
   const hook = externalHook(state);
-  const orgCipher = await existingOrgCipher(state, store, key.orgId);
+  const orgCipher = await existingOrgCipher(state, dataAccess, key.orgId, options);
   const ref = externalRef(key);
   return async ({ plainText }) => ({ cipherTextBlob: await hook.encrypt(ref, orgCipher, plainText) });
 };
 
 export const keyDecryptor = async (
   state: TKmsCoreState,
-  store: TKmsCoreStore,
-  key: KmsKey
+  dataAccess: TKmsCoreDataAccess,
+  key: KmsKey,
+  options?: TReadOptions
 ): Promise<TAsyncDecryptor> => {
-  if (!key.isExternal) return internalDecryptor(state, store, key);
+  if (!key.isExternal) return internalDecryptor(state, dataAccess, key, options);
   const hook = externalHook(state);
-  const orgCipher = await existingOrgCipher(state, store, key.orgId);
+  const orgCipher = await existingOrgCipher(state, dataAccess, key.orgId, options);
   const ref = externalRef(key);
   return ({ cipherTextBlob }) => hook.decrypt(ref, orgCipher, cipherTextBlob);
 };

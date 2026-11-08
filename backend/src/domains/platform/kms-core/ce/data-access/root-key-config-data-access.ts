@@ -1,6 +1,5 @@
-import { Knex } from "knex";
-
 import { TableName, TKmsRootConfig } from "@app/db/schemas";
+import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
 import { KMS_ROOT_CONFIG_UUID, RootKeyConfig } from "../model/root-key-config";
@@ -15,11 +14,11 @@ export type TRootKeyConfigPatch = {
 };
 
 export type TRootKeyConfigDataAccess = {
-  findById(id: string): Promise<RootKeyConfig | undefined>;
-  findAll(): Promise<RootKeyConfig[]>;
-  findStaged(): Promise<RootKeyConfig[]>;
+  findById(id: string, options?: TReadOptions): Promise<RootKeyConfig | undefined>;
+  findAll(options?: TReadOptions): Promise<RootKeyConfig[]>;
+  findStaged(options?: TReadOptions): Promise<RootKeyConfig[]>;
   // Newest first.
-  findRetained(): Promise<RootKeyConfig[]>;
+  findRetained(options?: TReadOptions): Promise<RootKeyConfig[]>;
   create(config: RootKeyConfig): Promise<RootKeyConfig>;
   update(id: string, patch: TRootKeyConfigPatch): Promise<void>;
   deleteById(id: string): Promise<boolean>;
@@ -40,31 +39,34 @@ const toModel = (row: TKmsRootConfig) =>
     updatedAt: row.updatedAt
   });
 
-// Reads the primary: a stale read means failing to find the key this pod holds, or promoting against a
-// superseded view.
 export class RootKeyConfigDataAccess implements TRootKeyConfigDataAccess {
-  constructor(private readonly db: Knex) {}
+  constructor(private readonly db: DataAccessDb) {}
 
-  async findById(id: string): Promise<RootKeyConfig | undefined> {
+  async findById(id: string, options?: TReadOptions): Promise<RootKeyConfig | undefined> {
     try {
-      const row = (await this.db(TableName.KmsServerRootConfig).where({ id }).first("*")) as TKmsRootConfig | undefined;
+      const row = (await this.db.reader(options)(TableName.KmsServerRootConfig).where({ id }).first("*")) as
+        | TKmsRootConfig
+        | undefined;
       return row ? toModel(row) : undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find root key config" });
     }
   }
 
-  async findAll(): Promise<RootKeyConfig[]> {
+  async findAll(options?: TReadOptions): Promise<RootKeyConfig[]> {
     try {
-      return ((await this.db(TableName.KmsServerRootConfig).select("*")) as TKmsRootConfig[]).map(toModel);
+      return ((await this.db.reader(options)(TableName.KmsServerRootConfig).select("*")) as TKmsRootConfig[]).map(
+        toModel
+      );
     } catch (error) {
       throw new DatabaseError({ error, name: "Find root key configs" });
     }
   }
 
-  async findStaged(): Promise<RootKeyConfig[]> {
+  async findStaged(options?: TReadOptions): Promise<RootKeyConfig[]> {
     try {
-      const rows = (await this.db(TableName.KmsServerRootConfig)
+      const rows = (await this.db
+        .reader(options)(TableName.KmsServerRootConfig)
         .whereNull("activatedAt")
         .whereNot("id", KMS_ROOT_CONFIG_UUID)
         .select("*")) as TKmsRootConfig[];
@@ -74,9 +76,10 @@ export class RootKeyConfigDataAccess implements TRootKeyConfigDataAccess {
     }
   }
 
-  async findRetained(): Promise<RootKeyConfig[]> {
+  async findRetained(options?: TReadOptions): Promise<RootKeyConfig[]> {
     try {
-      const rows = (await this.db(TableName.KmsServerRootConfig)
+      const rows = (await this.db
+        .reader(options)(TableName.KmsServerRootConfig)
         .whereNotNull("supersededAt")
         .whereNot("id", KMS_ROOT_CONFIG_UUID)
         .select("*")
@@ -90,7 +93,8 @@ export class RootKeyConfigDataAccess implements TRootKeyConfigDataAccess {
   async create(config: RootKeyConfig): Promise<RootKeyConfig> {
     const props = config.toJSON();
     try {
-      const [row] = (await this.db(TableName.KmsServerRootConfig)
+      const [row] = (await this.db
+        .writer()(TableName.KmsServerRootConfig)
         .insert({
           id: props.id,
           encryptedRootKey: props.encryptedRootKey,
@@ -108,7 +112,8 @@ export class RootKeyConfigDataAccess implements TRootKeyConfigDataAccess {
 
   async update(id: string, patch: TRootKeyConfigPatch): Promise<void> {
     try {
-      await this.db(TableName.KmsServerRootConfig)
+      await this.db
+        .writer()(TableName.KmsServerRootConfig)
         .where({ id })
         .update(patch as never);
     } catch (error) {
@@ -118,7 +123,7 @@ export class RootKeyConfigDataAccess implements TRootKeyConfigDataAccess {
 
   async deleteById(id: string): Promise<boolean> {
     try {
-      return (await this.db(TableName.KmsServerRootConfig).where({ id }).delete()) > 0;
+      return (await this.db.writer()(TableName.KmsServerRootConfig).where({ id }).delete()) > 0;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete root key config" });
     }
@@ -126,7 +131,8 @@ export class RootKeyConfigDataAccess implements TRootKeyConfigDataAccess {
 
   async deleteAllStaged(): Promise<void> {
     try {
-      await this.db(TableName.KmsServerRootConfig)
+      await this.db
+        .writer()(TableName.KmsServerRootConfig)
         .whereNull("activatedAt")
         .whereNot("id", KMS_ROOT_CONFIG_UUID)
         .delete();

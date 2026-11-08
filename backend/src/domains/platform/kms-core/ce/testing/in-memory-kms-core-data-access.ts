@@ -1,9 +1,9 @@
-import { TStoreLocks } from "@app/domains/lib/store-locks";
+import { TDataAccessLocks } from "@app/domains/lib/data-access-locks";
 import { InMemoryTransactionRunner } from "@app/domains/lib/testing/in-memory-transaction-runner";
 
+import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
 import { noKmsCoreLocks } from "../data-access/kms-core-locks";
-import { TKmsCoreStore } from "../data-access/kms-core-store";
-import { TKmsCoreStorage } from "../module";
+import { TKmsCoreDataAccessDeps } from "../module";
 import { InMemoryKekHistoryDataAccess } from "./in-memory-kek-history-data-access";
 import { InMemoryKmsCoreLocks } from "./in-memory-kms-core-locks";
 import { InMemoryKmsCoreState } from "./in-memory-kms-core-state";
@@ -13,7 +13,8 @@ import { InMemoryLegacyEncryptionKeyDataAccess } from "./in-memory-legacy-encryp
 import { InMemoryRootKeyConfigDataAccess } from "./in-memory-root-key-config-data-access";
 import { InMemoryScopeKeyDataAccess } from "./in-memory-scope-key-data-access";
 
-const buildStore = (state: InMemoryKmsCoreState, locks?: TStoreLocks): TKmsCoreStore => ({
+// The in-memory data access classes ignore TReadOptions: there is one copy of every row.
+const buildDataAccess = (state: InMemoryKmsCoreState, locks?: TDataAccessLocks): TKmsCoreDataAccess => ({
   kmsKeys: new InMemoryKmsKeyDataAccess(state),
   kmsKeyVersions: new InMemoryKmsKeyVersionDataAccess(state),
   rootKeyConfigs: new InMemoryRootKeyConfigDataAccess(state),
@@ -23,19 +24,17 @@ const buildStore = (state: InMemoryKmsCoreState, locks?: TStoreLocks): TKmsCoreS
   locks: locks ? new InMemoryKmsCoreLocks(locks) : noKmsCoreLocks
 });
 
-// KMS Core's storage in memory: one state behind the runner, the replica and the primary.
-export class InMemoryKmsCoreStore {
+// KMS Core's data access in memory: one state behind the transaction runner and the data access outside it.
+export class InMemoryKmsCoreDataAccess implements TKmsCoreDataAccessDeps {
   readonly state = new InMemoryKmsCoreState();
 
-  readonly storage: TKmsCoreStorage;
+  readonly transactionRunner: TKmsCoreDataAccessDeps["transactionRunner"];
+
+  readonly dataAccess: TKmsCoreDataAccess;
 
   constructor() {
     const { state } = this;
-    const reads = buildStore(state);
-    this.storage = {
-      runner: new InMemoryTransactionRunner(state, (locks) => buildStore(state, locks)),
-      replica: reads,
-      primary: reads
-    };
+    this.transactionRunner = new InMemoryTransactionRunner(state, (locks) => buildDataAccess(state, locks));
+    this.dataAccess = buildDataAccess(state);
   }
 }

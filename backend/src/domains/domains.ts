@@ -8,6 +8,7 @@ import { TQueueServiceFactory } from "@app/queue";
 
 import { AgentVaultModule } from "./agent-vault/agent-vault/ce/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
+import { DataAccessDb } from "./lib/data-access-db";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
 import { KmsCoreModule, TKmsCoreDomain } from "./platform/kms-core/ce/module";
@@ -56,19 +57,16 @@ type TKmsCoreEnvConfig = Pick<
 
 const buildKmsCore = ({
   db,
-  replicaDb,
   envConfig,
   cronJob
 }: {
-  db: TDbClient | Knex;
-  replicaDb?: Knex;
+  db: DataAccessDb;
   envConfig: TKmsCoreEnvConfig;
   cronJob?: Pick<TCronJobFactory, "register">;
 }) => {
-  const kmsCoreEe = new KmsCoreEeModule({ db, replicaDb, hsmConfig: envConfig });
+  const kmsCoreEe = new KmsCoreEeModule({ db, hsmConfig: envConfig });
   const kmsCore = new KmsCoreModule({
     db,
-    replicaDb,
     cronJob,
     env: {
       ENCRYPTION_KEY: envConfig.ENCRYPTION_KEY,
@@ -89,10 +87,10 @@ export const startStandaloneKmsCore = async ({
   db,
   envConfig
 }: {
-  db: TDbClient | Knex;
+  db: Knex;
   envConfig: TKmsCoreEnvConfig;
 }): Promise<TKmsCoreDomain> => {
-  const { kmsCoreEe, kmsCore } = buildKmsCore({ db, replicaDb: db as Knex, envConfig });
+  const { kmsCoreEe, kmsCore } = buildKmsCore({ db: DataAccessDb.single(db), envConfig });
   await kmsCoreEe.start({ hsmEntitled: true });
   await kmsCore.start({ skipRotationState: true });
   return kmsCore.service;
@@ -117,9 +115,10 @@ export const createDomains = (deps: TDomainDeps) => {
 
   // KMS Core depends on no other domain. HSM and external keys plug in from its enterprise edition; boot starts
   // kmsCoreEe (with the instance's HSM entitlement from License) and then kmsCore.
-  const { kmsCoreEe, kmsCore } = buildKmsCore({ db: deps.db, envConfig: deps.envConfig, cronJob: deps.cronJob });
+  const db = DataAccessDb.fromClient(deps.db);
+  const { kmsCoreEe, kmsCore } = buildKmsCore({ db, envConfig: deps.envConfig, cronJob: deps.cronJob });
 
-  const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db, licenseRegistry: license.registry });
+  const organizationsProjects = new OrganizationsProjectsModule({ db, licenseRegistry: license.registry });
   const productDeps = {
     organizationsProjectsDomain: organizationsProjects.service,
     licenseRegistry: license.registry
@@ -127,7 +126,7 @@ export const createDomains = (deps: TDomainDeps) => {
   const secrets = new SecretsModule(productDeps);
   const pam = new PamModule(productDeps);
   const agentVault = new AgentVaultModule(productDeps);
-  const certManager = new CertManagerModule({ db: deps.db, ...productDeps });
+  const certManager = new CertManagerModule({ db, ...productDeps });
 
   return { license, kmsCoreEe, kmsCore, organizationsProjects, secrets, pam, agentVault, certManager };
 };

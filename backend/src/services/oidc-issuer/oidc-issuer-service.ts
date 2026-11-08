@@ -1,4 +1,4 @@
-import { KmsKeyUsage, TKmsCoreDomain, TKmsReadOptions } from "@app/domains/platform/kms-core/ce/module";
+import { KmsKeyUsage, ReadFrom, TKmsCoreDomain, TReadOptions } from "@app/domains/platform/kms-core/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -51,7 +51,7 @@ export const oidcIssuerServiceFactory = ({
   };
 
   // Customers cannot create reserved keys, so the prefix only separates these from the org's other reserved keys
-  const $listKeys = async (orgId: string, options?: TKmsReadOptions) => {
+  const $listKeys = async (orgId: string, options?: TReadOptions) => {
     // Oldest first
     const keys = await kmsCoreDomain.findKeys(
       { orgId, projectId: null, isReserved: true, keyUsage: KmsKeyUsage.SIGN_VERIFY },
@@ -61,7 +61,7 @@ export const oidcIssuerServiceFactory = ({
     return keys.filter(({ name }) => name.startsWith(OIDC_ISSUER_KEY_NAME_PREFIX));
   };
 
-  const $buildJwks = async (keys: { id: string }[], options?: TKmsReadOptions): Promise<TJwks> => {
+  const $buildJwks = async (keys: { id: string }[], options?: TReadOptions): Promise<TJwks> => {
     const jwks = await Promise.all(
       keys.map(({ id }) =>
         kmsCoreDomain
@@ -115,7 +115,7 @@ export const oidcIssuerServiceFactory = ({
 
     try {
       // Read on the primary, so a rotation another request just finished is not missed on a replica
-      const keys = await $listKeys(orgId, { consistency: "primary" });
+      const keys = await $listKeys(orgId, { readFrom: ReadFrom.Primary });
       const { keysToCreate, keyIdsToDelete } = getKeyRotationPlan(keys);
 
       // Sequential, so createdAt orders the new keys
@@ -139,7 +139,7 @@ export const oidcIssuerServiceFactory = ({
 
       const activeKeys = keys.filter(({ id }) => !keyIdsToDelete.includes(id));
       // Built on the primary, so the first fetch after a rotation cannot come from a replica missing the new keys
-      if (keysToCreate) await $cacheJwks(orgId, await $buildJwks(activeKeys, { consistency: "primary" }));
+      if (keysToCreate) await $cacheJwks(orgId, await $buildJwks(activeKeys, { readFrom: ReadFrom.Primary }));
 
       return activeKeys;
     } finally {
@@ -174,8 +174,8 @@ export const oidcIssuerServiceFactory = ({
 
     // Read on the primary, because this request may have just created the key
     const [{ kid }, sign] = await Promise.all([
-      kmsCoreDomain.getPublicKey({ kmsId }, { consistency: "primary" }).then(publicKeyToJwk),
-      kmsCoreDomain.signWithKmsKey({ kmsId }, { consistency: "primary" })
+      kmsCoreDomain.getPublicKey({ kmsId }, { readFrom: ReadFrom.Primary }).then(publicKeyToJwk),
+      kmsCoreDomain.signWithKmsKey({ kmsId }, { readFrom: ReadFrom.Primary })
     ]);
 
     const iat = Math.floor(Date.now() / 1000);

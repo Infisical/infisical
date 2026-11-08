@@ -1,11 +1,11 @@
 import { Knex } from "knex";
 
-export type TStoreLocks = {
+export type TDataAccessLocks = {
   // Held until the transaction that took it ends.
   acquire(key: string): Promise<void>;
 };
 
-export class PostgresStoreLocks implements TStoreLocks {
+export class PostgresDataAccessLocks implements TDataAccessLocks {
   constructor(private readonly trx: Knex) {}
 
   async acquire(key: string): Promise<void> {

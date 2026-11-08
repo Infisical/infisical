@@ -1,7 +1,5 @@
-import type { Knex } from "knex";
-
-import type { TDbClient } from "@app/db";
 import { ProjectType } from "@app/db/schemas";
+import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { TransactionRunner, TTransactionRunner } from "@app/domains/lib/transaction-runner";
 import type { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -9,7 +7,8 @@ import type { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import type { TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
 import { NotFoundError } from "@app/lib/errors";
 
-import { buildKmsCoreReadStore, buildKmsCoreStore, TKmsCoreStore } from "./data-access/kms-core-store";
+import { buildKmsCoreDataAccess, TKmsCoreDataAccess } from "./data-access/kms-core-data-access";
+import { noKmsCoreLocks, PostgresKmsCoreLocks } from "./data-access/kms-core-locks";
 import { TKmsKeyFilter } from "./data-access/kms-key-data-access";
 import { TKmsKeyAttributes, TKmsKeyRecord } from "./model/kms-key";
 import { RootKeyEncryptionStrategy } from "./model/root-key-config";
@@ -30,7 +29,6 @@ import {
   TEncryptWithKmsDataKeyDTO,
   TGenerateKMSDTO,
   TImportKeyMaterialDTO,
-  TKmsReadOptions,
   TListKmsKeysDTO,
   TSignWithKmsDTO,
   TUpdateProjectSecretManagerKmsKeyDTO,
@@ -53,6 +51,8 @@ import {
 } from "./service/root-key-service";
 import { ScopeKeyService } from "./service/scope-key-service";
 
+export { ReadFrom } from "@app/domains/lib/data-access-db";
+export type { TReadOptions } from "@app/domains/lib/data-access-db";
 export { KmsKeyUsage } from "./model/kms-key";
 export type { TKmsKeyAttributes, TKmsKeyRecord } from "./model/kms-key";
 export { RootKeyEncryptionStrategy } from "./model/root-key-config";
@@ -99,7 +99,7 @@ export type TKmsCoreDomain = {
   rotateKmsKey: (kmsId: string) => Promise<{ id: string; version: number }>;
   getKmsById: (kmsId: string) => Promise<{ id: string; name: string; orgId: string; isExternal: boolean }>;
   findKeyById: (kmsId: string) => Promise<TKmsKeyDetails | undefined>;
-  findKeys: (filter: TKmsKeyFilter, options?: TKmsReadOptions) => Promise<TKmsKeyDetails[]>;
+  findKeys: (filter: TKmsKeyFilter, options?: TReadOptions) => Promise<TKmsKeyDetails[]>;
   listProjectKeys: (input: TListKmsKeysDTO) => Promise<{ keys: TKmsKeyDetails[]; totalCount: number }>;
   updateKeyAttributes: (kmsId: string, attributes: TKmsKeyAttributes) => Promise<TKmsKeyDetails>;
   // Null when the key has delete protection.
@@ -114,10 +114,10 @@ export type TKmsCoreDomain = {
   // Cryptography with a KMS key.
   encryptWithKmsKey: (input: { kmsId: string }) => Promise<TAsyncEncryptor>;
   decryptWithKmsKey: (input: { kmsId: string }) => Promise<TAsyncDecryptor>;
-  getPublicKey: (input: { kmsId: string }, options?: TKmsReadOptions) => Promise<Buffer>;
+  getPublicKey: (input: { kmsId: string }, options?: TReadOptions) => Promise<Buffer>;
   signWithKmsKey: (
     input: Pick<TSignWithKmsDTO, "kmsId">,
-    options?: TKmsReadOptions
+    options?: TReadOptions
   ) => Promise<
     (input: Pick<TSignWithKmsDTO, "data" | "signingAlgorithm" | "isDigest">) => Promise<{
       signature: Buffer;
@@ -167,21 +167,20 @@ export type TKmsCoreDomain = {
   fetchGcpKeys: (input: { credential: unknown; gcpRegion: string }) => Promise<{ keys: string[] }>;
 };
 
-export type TKmsCoreStorage = {
-  runner: TTransactionRunner<TKmsCoreStore>;
-  // Reads that tolerate replication lag.
-  replica: TKmsCoreStore;
-  // Reads that must see the latest commit, outside a transaction.
-  primary: TKmsCoreStore;
+export type TKmsCoreDataAccessDeps = {
+  transactionRunner: TTransactionRunner<TKmsCoreDataAccess>;
+  // Outside a transaction. Fetches read the replica unless they pass ReadFrom.Primary.
+  dataAccess: TKmsCoreDataAccess;
 };
 
-export type TKmsCoreDeps = {
-  // The primary. Migrations pass their own connection, so every read stays on it.
-  db: TDbClient | Knex;
-  // Defaults to db.replicaNode(); migrations pass their connection.
-  replicaDb?: Knex;
-  // Replaces db (tests use an in-memory store).
-  storage?: TKmsCoreStorage;
+export type TKmsCoreDeps = (
+  | {
+      // DataAccessDb.fromClient for the server; migrations pass DataAccessDb.single on their own connection.
+      db: DataAccessDb;
+    }
+  // Tests pass in-memory data access instead.
+  | TKmsCoreDataAccessDeps
+) & {
   cronJob?: Pick<TCronJobFactory, "register">;
   env: TKmsCoreEnv;
   originalEnv?: TLegacyKeySnapshot;
@@ -189,14 +188,11 @@ export type TKmsCoreDeps = {
   isFipsEnabled?: () => boolean;
 };
 
-// The server's client routes reads to a replica; a plain Knex (a migration's connection) has no replica.
-export const replicaOf = (db: TDbClient | Knex): Knex =>
-  typeof (db as Partial<TDbClient>).replicaNode === "function" ? (db as TDbClient).replicaNode() : (db as Knex);
-
-const buildStorage = (db: TDbClient | Knex, replicaDb?: Knex): TKmsCoreStorage => ({
-  runner: new TransactionRunner(db as TDbClient, (trx) => buildKmsCoreStore(trx)),
-  primary: buildKmsCoreReadStore(db as Knex),
-  replica: buildKmsCoreReadStore(replicaDb ?? replicaOf(db))
+export const buildKmsCoreDataAccessDeps = (db: DataAccessDb): TKmsCoreDataAccessDeps => ({
+  transactionRunner: new TransactionRunner(db, (trxDb) =>
+    buildKmsCoreDataAccess(trxDb, new PostgresKmsCoreLocks(trxDb.writer()))
+  ),
+  dataAccess: buildKmsCoreDataAccess(db, noKmsCoreLocks)
 });
 
 const ROOT_KEY_CLEANUP_CRON = "kms-root-key-cleanup";
@@ -216,15 +212,14 @@ export class KmsCoreModule {
   private readonly rotation: RootKeyRotationService;
 
   constructor(private readonly deps: TKmsCoreDeps) {
-    const storage = deps.storage ?? buildStorage(deps.db, deps.replicaDb);
+    const { transactionRunner, dataAccess } = "db" in deps ? buildKmsCoreDataAccessDeps(deps.db) : deps;
     const isFipsEnabled = deps.isFipsEnabled ?? (() => crypto.isFipsModeEnabled());
     this.state = { rootKey: new RootKeyHolder(), hooks: deps.hooks };
     const { state } = this;
-    const { runner, replica, primary } = storage;
 
     this.rootKeys = new RootKeyService({
-      runner,
-      primary,
+      transactionRunner,
+      dataAccess,
       state,
       env: deps.env,
       originalEnv: deps.originalEnv,
@@ -232,16 +227,16 @@ export class KmsCoreModule {
     });
     const { rootKeys } = this;
     this.rotation = new RootKeyRotationService({
-      runner,
-      primary,
+      transactionRunner,
+      dataAccess,
       state,
       retentionDays: deps.env.KMS_ROOT_KEY_RETENTION_DAYS,
       currentKekLabel: () => rootKeys.currentKekLabel(),
       isFipsEnabled
     });
-    const kmsKeys = new KmsKeyService({ runner, replica, primary, state });
-    const cryptoService = new KmsCryptoService({ replica, primary, state });
-    const scopeKeys = new ScopeKeyService({ runner, replica, primary, state });
+    const kmsKeys = new KmsKeyService({ transactionRunner, dataAccess, state });
+    const cryptoService = new KmsCryptoService({ dataAccess, state });
+    const scopeKeys = new ScopeKeyService({ transactionRunner, dataAccess, state });
     this.service = this.build(kmsKeys, cryptoService, scopeKeys);
   }
 

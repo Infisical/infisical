@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { pgAdvisoryLockHashText } from "@app/lib/crypto/hashtext";
 
 // Frozen lock ids. Pods of the previous release take these exact ids, so changing the id or the hash (the generic
-// store locks use hashtextextended) would let an old and a new pod create the same key at once during a deploy.
+// data access locks use hashtextextended) would let an old and a new pod create the same key at once during a deploy.
 export const KMS_LOCK_IDS = {
   rootKey: 2025,
   orgKey: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
@@ -52,7 +52,7 @@ export class PostgresKmsCoreLocks implements TKmsCoreLocks {
 const refuseOutsideTransaction = (): Promise<void> =>
   Promise.reject(new Error("KMS Core locks are only available inside a transaction"));
 
-// The store a module reads with outside a transaction. Locks there would be released at once, so they refuse.
+// The locks of the data access a module uses outside a transaction. They would be released at once, so they refuse.
 export const noKmsCoreLocks: TKmsCoreLocks = {
   rootKey: refuseOutsideTransaction,
   orgKey: refuseOutsideTransaction,

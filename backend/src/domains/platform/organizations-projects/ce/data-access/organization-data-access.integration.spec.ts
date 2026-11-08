@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { ProjectType } from "@app/db/schemas";
+import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
 
@@ -12,7 +13,7 @@ describe("OrganizationsProjectsModule organizations for License", () => {
   const build = () => {
     const licenseRegistry = new FakeLicenseRegistry();
     // eslint-disable-next-line no-new
-    new OrganizationsProjectsModule({ db: h.db, licenseRegistry });
+    new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(h.db), licenseRegistry });
     return { organizations: licenseRegistry.organizations! };
   };
 

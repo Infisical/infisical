@@ -8,7 +8,7 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 | Layer | Holds |
 | --- | --- |
 | `ce/model/` | `KmsKey` (`kms_keys` + `internal_kms` + `external_kms`), `KmsKeyVersion`, `RootKeyConfig`, `KekHistoryEntry`, `LegacyEncryptionKey`, `ScopeKey`, and the frozen formats: `KmsCiphertext`, `WrappedKeyPayload`, `ProjectKeyBackup`, `InstanceEncryptionKey` |
-| `ce/data-access/` | One class per model, `KmsCoreLocks` (the frozen lock ids), `buildKmsCoreStore(trx)` and `buildKmsCoreReadStore(db)` |
+| `ce/data-access/` | One class per model, `KmsCoreLocks` (the frozen lock ids), `buildKmsCoreDataAccess(db, locks)` |
 | `ce/service/` | `RootKeyService`, `RootKeyRotationService`, `KmsKeyService`, `KmsCryptoService`, `ScopeKeyService`; `key-material.ts` (helpers they share); `TKmsCoreHooks` |
 | `ee/` | `HsmRootKeyWrapper` over the PKCS#11 client (`hsm-client/`), `ExternalKmsService` over the provider clients (`external-kms-client/`), `KmsCoreEeModule` providing both as hooks |
 
@@ -30,7 +30,8 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 - **Lock ids are frozen** (`KMS_LOCK_IDS` in `data-access/kms-core-locks.ts`): `pg_advisory_xact_lock` with `2025` for
   the root key and `pgAdvisoryLockHashText("kms-org-key:<id>")` (and `kms-org-data-key`, `kms-project-key`,
   `kms-project-data-key`). Pods of the previous release take these exact ids during a rolling deploy; the generic
-  `store.locks.acquire` hashes differently and must not be used here. Take them in the order root key, org,
+  `PostgresDataAccessLocks` hashes differently and must not be used here, which is why `buildKmsCoreDataAccessDeps`
+  hands the transaction runner `PostgresKmsCoreLocks`. Take them in the order root key, org,
   project; key before data key.
 - **The wire format is frozen**: AES-GCM `iv(12)||ct||tag(16)`; internal key blobs end in `v01`, or
   `[u32BE version]v02` once the key has been rotated; data-key and input-key blobs always end in `v01`; wrapped keys are
@@ -40,7 +41,10 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 - **The root key never leaves the domain.** Callers encrypt and decrypt with it (`encryptWithRootKey`), and get a key
   derived from it (`getCookieSigningKey`). The checks on the env key that wraps it (missing `ENCRYPTION_KEY`, its FIPS
   format) run in `RootKeyService.start`, not in `crypto.initialize`.
-- **No cache of key material.** Every cipher pair reads the key columns (replica first, primary after a creation).
+- **No cache of key material.** Every cipher pair reads the key columns: from the replica, or with
+  `ReadFrom.Primary` right after a creation.
+- **Root key state reads `ReadFrom.Primary`** (`RootKeyService`, `RootKeyRotationService`): a lagging replica could
+  miss the key this pod holds, or show a superseded view to promote against.
 - **Licensing stays outside.** KMS Core never calls License. HSM: `domains.ts` boot passes
   `licenseDomain.hasInstanceFeature("hsm")` to `kmsCoreEe.start({ hsmEntitled })`, and `RootKeyService` refuses an HSM
   root config or a switch to HSM through `rootKeyWrapper.assertEntitled()`; migrations start with `hsmEntitled: true`
@@ -50,7 +54,8 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
   the enterprise hook the org data-key cipher on every call (`createExternalKms`, `encrypt`, ...), so `ee/` never holds
   the community module. Without the hook, external keys and an HSM root config fail with a readable error.
 - **Migrations and scripts** use `startStandaloneKmsCore` from `domains.ts`: it runs every query on the connection it is
-  given (a migration's own transaction, so KMS Core's transactions nest as savepoints) and loads only the root key.
+  given (`DataAccessDb.single`, a migration's own transaction, so KMS Core's transactions nest as savepoints) and
+  loads only the root key.
 
 ## Declared exceptions
 
@@ -64,7 +69,7 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 
 ## Tests
 
-`ce/testing/build-kms-core.ts` builds the module over `InMemoryKmsCoreStore`; `build-postgres-kms-core.ts` on an
+`ce/testing/build-kms-core.ts` builds the module over `InMemoryKmsCoreDataAccess`; `build-postgres-kms-core.ts` on an
 integration database (whose template already holds a root key wrapped with `TEST_ENCRYPTION_KEY`). Consumers use
-`FakeKmsCoreDomain`: the real module over the in-memory store, creating orgs and projects the first time a test names
+`FakeKmsCoreDomain`: the real module over the in-memory data access, creating orgs and projects the first time a test names
 them. `ee/testing/FakeExternalKmsProviders` stands in for AWS and GCP.

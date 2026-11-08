@@ -1,11 +1,7 @@
-import type { Knex } from "knex";
-
-import type { TDbClient } from "@app/db";
-import { TransactionRunner } from "@app/domains/lib/transaction-runner";
+import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { logger } from "@app/lib/logger";
 
-import { buildKmsCoreReadStore, buildKmsCoreStore } from "../ce/data-access/kms-core-store";
-import { replicaOf, TKmsCoreHooks } from "../ce/module";
+import { buildKmsCoreDataAccessDeps, TKmsCoreHooks } from "../ce/module";
 import { defaultExternalKmsProviders, TExternalKmsProviders } from "./external-kms-client/external-kms-providers";
 import { createHsmClient } from "./hsm-client/hsm-client";
 import { HsmModule, initializeHsmModule, THsmConfig } from "./hsm-client/hsm-module";
@@ -13,8 +9,7 @@ import { ExternalKmsService } from "./service/external-kms-service";
 import { HsmRootKeyWrapper } from "./service/hsm-root-key-wrapper";
 
 export type TKmsCoreEeDeps = {
-  db: TDbClient | Knex;
-  replicaDb?: Knex;
+  db: DataAccessDb;
   hsmConfig: THsmConfig;
   providers?: TExternalKmsProviders;
 };
@@ -28,9 +23,10 @@ export class KmsCoreEeModule {
   private hsmModule: HsmModule | undefined;
 
   constructor(private readonly deps: TKmsCoreEeDeps) {
+    const { transactionRunner, dataAccess } = buildKmsCoreDataAccessDeps(deps.db);
     const externalKms = new ExternalKmsService({
-      runner: new TransactionRunner(deps.db as TDbClient, (trx) => buildKmsCoreStore(trx)),
-      replica: buildKmsCoreReadStore(deps.replicaDb ?? replicaOf(deps.db)),
+      transactionRunner,
+      dataAccess,
       providers: deps.providers ?? defaultExternalKmsProviders()
     });
 

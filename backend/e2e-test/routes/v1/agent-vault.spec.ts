@@ -48,6 +48,7 @@ import { additionalPrivilegeDALFactory } from "@app/services/additional-privileg
 import { ActorType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { startStandaloneKmsCore } from "@app/domains/domains";
+import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { Meter } from "@app/domains/platform/license/ce/module";
@@ -65,7 +66,7 @@ import { userDALFactory } from "@app/services/user/user-dal";
 // The Agent Vault seat meter, as the License domain counts it.
 const countAgentVaultSeats = (orgId: string) => {
   const licenseRegistry = new FakeLicenseRegistry();
-  const organizationsProjectsDomain = new OrganizationsProjectsModule({ db: testDb, licenseRegistry }).service;
+  const organizationsProjectsDomain = new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(testDb), licenseRegistry }).service;
   // eslint-disable-next-line no-new
   new AgentVaultModule({ organizationsProjectsDomain, licenseRegistry });
   return licenseRegistry.counter(Meter.AgentVaultIdentities.key).count(orgId);

@@ -37,7 +37,7 @@ tables no domain owns yet, tested against Postgres without an in-memory twin.
 | Path | Holds |
 | --- | --- |
 | `domains.ts` | The only wiring file. Builds each module and passes modules and hooks between them |
-| `lib/` | Generic helpers: `TransactionRunner`, `TTransaction`, the `TDomainModule` type, and their in-memory versions under `lib/testing/` |
+| `lib/` | Generic helpers: `TransactionRunner`, `TTransaction`, `DataAccessDb` and `ReadFrom`, the `TDomainModule` type, and their in-memory versions under `lib/testing/` |
 | `platform/` | Domains used by many products: KMS, billing, access control, audit log |
 | `<product-area>/` | A product, such as secrets. Holds one or more domains |
 
@@ -55,7 +55,7 @@ static-secrets/
 │   ├── <system>-client/  # A client for an external system the domain calls
 │   ├── service/      # Use cases: the business logic, built on data access and clients
 │   ├── router/       # HTTP endpoints
-│   └── testing/      # In-memory store, fakes, contract suites
+│   └── testing/      # In-memory data access, fakes, contract suites
 └── ee/               # Same layout as ce/
 ```
 
@@ -63,11 +63,11 @@ static-secrets/
 | --- | --- | --- |
 | `module.ts` | Public domain interface, hook type, and the module class that builds everything. Other domains import only `ce/module.ts` | `TStaticSecretsDomain`, `TStaticSecretsHooks`, `StaticSecretsModule` |
 | `model/` | Classes that represent the domain's data, one per entity or value, each with the rules about that data. A file holds the class and its own props type, nothing else: no request or response types, no contracts other domains implement, no key or queue names, no helper functions. Knows nothing about the database | `KmsKey.create()`, `kmsKey.assertRotatable()`, `Plan.community()` |
-| `data-access/` | One class per entity, plus `build<Domain>Store(tx)` that groups them all on one connection | `KmsKeyDataAccess`, `buildKmsCoreStore(tx)` |
+| `data-access/` | One class per entity, plus `build<Domain>DataAccess(db, locks)` that groups them all on one `DataAccessDb` | `KmsKeyDataAccess`, `buildKmsCoreDataAccess(db, locks)` |
 | `<system>-client/` | A client for an external system, named for it, used by that edition's services. A paid system's client lives in `ee/` and `ce/` reaches it only through the domain's hooks; `ce/` never holds a second client or a stand-in for it | `ee/license-server-client/LicenseServerClient` |
-| `service/` | The business logic: one class per use case group, with its input types, using data access and clients; plain helper functions shared by those classes; the contracts other domains or the EE edition implement (hooks, registrations). Tests sit beside them | `KmsKeyService`, `createKmsKey(store, ...)` |
+| `service/` | The business logic: one class per use case group, with its input types, using data access and clients; plain helper functions shared by those classes; the contracts other domains or the EE edition implement (hooks, registrations). Tests sit beside them | `KmsKeyService`, `createKmsKey(dataAccess, ...)` |
 | `router/` | Fastify routes. Validate input, call a service, shape the response | `registerKmsKeyRouter` |
-| `testing/` | In-memory data access and store, the fake domain for this domain's consumers, data access contract suites | `InMemoryKmsKeyDataAccess`, `FakeKmsCoreDomain` |
+| `testing/` | In-memory data access, the fake domain for this domain's consumers, data access contract suites | `InMemoryKmsKeyDataAccess`, `FakeKmsCoreDomain` |
 
 ## Entities, data access and services
 
@@ -75,7 +75,7 @@ static-secrets/
 | --- | --- | --- | --- |
 | Model | One entity | An entity stored across several tables is still one model | `KmsKey` (tables `kms_keys` and `internal_kms`) |
 | Data access | One model | Owns every table that stores the model. Returns models, never rows | `KmsKeyDataAccess`, `KmsKeyVersionDataAccess` |
-| Store | One domain | All the domain's data access classes, bound to one connection or transaction | `TKmsCoreStore` |
+| Domain data access | One domain | All the domain's data access classes, bound to one `DataAccessDb` (the server's connections, or one transaction) | `TKmsCoreDataAccess` |
 | Service | A group of use cases | Start with one per entity. Split when a group of use cases needs different dependencies | `KmsKeyService` writes a `KmsKey` and a `KmsKeyVersion` in one transaction |
 | Module | One domain | Holds the domain's state, builds its services, exposes `service`, `within(tx)`, `hooks` and `routes` | `KmsCoreModule` |
 
@@ -96,8 +96,8 @@ domain's service.
 | Model | A class: private constructor, static `create()` and `restore()`, and `toJSON()` when the domain returns it as plain data. Never a bare type, constant or function | `KmsKey.create({ ... })` |
 | Data access, service | `class X implements TX`, dependencies in `constructor(deps)` | `class KmsKeyService implements TKmsKeyService` |
 | Data access queries | Methods on the class; query fragments shared by them are private methods, not `$`-prefixed functions or a factory the class wraps | `private activeCertificates(orgId)` |
-| Module | Builds state once, builds services per runner, exposes the public surface | `class KmsCoreModule` |
-| Router, shared helpers | Plain functions | `registerKmsKeyRouter`, `createKmsKey(store, state, input)` |
+| Module | Builds state once, builds services per transaction runner, exposes the public surface | `class KmsCoreModule` |
+| Router, shared helpers | Plain functions | `registerKmsKeyRouter`, `createKmsKey(dataAccess, state, input)` |
 
 ### State and services
 
@@ -106,7 +106,7 @@ A module has two kinds of objects:
 | Kind | Examples | Built |
 | --- | --- | --- |
 | **State**: anything the domain remembers for the life of the process | In-memory root key holder, cache wrappers, HSM or provider clients | Once, in the module constructor |
-| **Services**: stateless classes holding only references to state, their runner and their dependencies | `KmsKeyService`, `ScopeKeyService` | Once for `module.service`, and again for every `module.within(tx)` |
+| **Services**: stateless classes holding only references to state, their transaction runner, their data access and their dependencies | `KmsKeyService`, `ScopeKeyService` | Once for `module.service`, and again for every `module.within(tx)` |
 
 - Service constructors only store references. No I/O, no queries, no client creation, no schema
   compilation. Rebuilding a view per transaction is then negligible: a simulation shaped like a real
@@ -125,18 +125,18 @@ domains").
 // lib/transaction-runner.ts
 export type TTransaction = { readonly [sealed]: true; afterCommit(fn: () => Promise<void>): void };
 
-export class TransactionRunner<TStore> {
-  constructor(db: TDbClient, buildStore: (tx: Knex.Transaction) => TStore, parent?: TTransaction);
-  within(tx: TTransaction): TransactionRunner<TStore>;                       // joins tx instead of opening one
-  run<T>(work: (ctx: { store: TStore; tx: TTransaction }) => Promise<T>): Promise<T>;
+export class TransactionRunner<TDataAccess> {
+  constructor(db: DataAccessDb, buildDataAccess: (db: DataAccessDb, locks: TDataAccessLocks) => TDataAccess, parent?: TTransaction);
+  within(tx: TTransaction): TransactionRunner<TDataAccess>;                  // joins tx instead of opening one
+  run<T>(work: (ctx: { dataAccess: TDataAccess; tx: TTransaction }) => Promise<T>): Promise<T>;
 }
 ```
 
-- `run` opens a transaction, or joins the one the runner was bound to with `within(tx)`, and hands
-  the work two things:
-  - `store`: this domain's data access, pointed at that transaction;
-  - `tx`: the same transaction as a sealed token, for `afterCommit` and for joining another runner of
-    this domain with `within(tx)`. It never goes to another domain (see "Across domains" below).
+- `run` opens a transaction, or joins the one the transaction runner was bound to with `within(tx)`, and
+  hands the work two things:
+  - `dataAccess`: this domain's data access, every read and write on that transaction;
+  - `tx`: the same transaction as a sealed token, for `afterCommit` and for joining another transaction runner
+    of this domain with `within(tx)`. It never goes to another domain (see "Across domains" below).
 - `tx` is not a Knex handle. Nothing outside `data-access/` can run SQL with it; lint bans unsealing it
   anywhere else.
 - `tx.afterCommit(fn)` runs `fn` only if the whole transaction commits. Cache invalidation and other
@@ -147,49 +147,67 @@ export class TransactionRunner<TStore> {
 ```ts
 export class KmsCoreModule {
   private readonly state: TKmsCoreState;
-  private readonly runner: TransactionRunner<TKmsCoreStore>;
+  private readonly transactionRunner: TransactionRunner<TKmsCoreDataAccess>;
+  private readonly dataAccess: TKmsCoreDataAccess;
   readonly service: TKmsCoreDomain;
 
   constructor(deps: TKmsCoreDeps) {
-    this.runner = new TransactionRunner(deps.db, buildKmsCoreStore);
-    this.state = { rootKey: new RootKeyHolder(), cache: new ProjectKeyCache(deps.keyStore) };
-    this.service = this.build(this.runner);
+    this.transactionRunner = new TransactionRunner(deps.db, buildKmsCoreDataAccess);
+    this.dataAccess = buildKmsCoreDataAccess(deps.db, noKmsCoreLocks);
+    this.state = { rootKey: new RootKeyHolder() };
+    this.service = this.build(this.transactionRunner);
   }
 
   within(tx: TTransaction): TKmsCoreDomain {
-    return this.build(this.runner.within(tx));
+    return this.build(this.transactionRunner.within(tx));
   }
 
-  private build(runner: TransactionRunner<TKmsCoreStore>): TKmsCoreDomain {
-    const kmsKeys = new KmsKeyService({ runner, state: this.state });
+  private build(transactionRunner: TransactionRunner<TKmsCoreDataAccess>): TKmsCoreDomain {
+    const kmsKeys = new KmsKeyService({ transactionRunner, dataAccess: this.dataAccess, state: this.state });
     return { generateKmsKey: (input) => kmsKeys.generateKmsKey(input) };   // arrow wrappers keep `this`
   }
 }
 
 export class KmsKeyService implements TKmsKeyService {
-  constructor(private readonly deps: { runner: TransactionRunner<TKmsCoreStore>; state: TKmsCoreState }) {}
+  constructor(private readonly deps: TKmsKeyServiceDeps) {}
 
   generateKmsKey(input: TCreateKmsKeyInput) {
-    return this.deps.runner.run(({ store }) => createKmsKey(store, this.deps.state, input));
+    return this.deps.transactionRunner.run(({ dataAccess }) => createKmsKey(dataAccess, this.deps.state, input));
+  }
+
+  listProjectKeys(query: TKmsKeyPageQuery) {
+    return this.deps.dataAccess.kmsKeys.listProjectKeys(query);                 // a read: no transaction
   }
 }
 
-// shared helper: takes the store, never a runner, so it cannot open a transaction
-export const createKmsKey = async (store: TKmsCoreStore, state: TKmsCoreState, input: TCreateKmsKeyInput) => {
+// shared helper: takes dataAccess, never a transaction runner, so it cannot open a transaction
+export const createKmsKey = async (dataAccess: TKmsCoreDataAccess, state: TKmsCoreState, input: TCreateKmsKeyInput) => {
   const key = KmsKey.create({ ...input, encryptedKeyMaterial: wrapNewKeyMaterial(input, state.rootKey.get()) });
-  await store.kmsKeys.create(key);
+  await dataAccess.kmsKeys.create(key);
   return key;
 };
 ```
 
 | Rule | Why |
 | --- | --- |
-| A public service method calls `this.deps.runner.run(...)` once; only calls to other domains (see below) come before it | One place decides the transaction |
-| Work shared between services goes into a helper that takes `store` | A helper cannot open a second transaction by accident |
+| A public service method that writes calls `this.deps.transactionRunner.run(...)` once; only calls to other domains (see below) come before it | One place decides the transaction |
+| Work shared between services goes into a helper that takes `dataAccess` | A helper cannot open a second transaction by accident |
 | Services in the same domain never call each other's public methods | A public method on another service runs its own `run` and is the usual way to open a second connection by mistake |
 | Data access never opens a transaction. Writes that span tables (`kms_keys` + `internal_kms`) rely on the caller's | The service owns the boundary |
-| Locks exist only on the store handed out by `run` (`store.locks.*`) | A lock outside a transaction does not compile |
-| Models never see a store or a transaction | Rules stay pure and testable |
+| Locks work only on the `dataAccess` handed out by `run` (`dataAccess.locks.*`); outside a transaction they refuse | A lock outside a transaction would be released at once |
+| Models never see data access or a transaction | Rules stay pure and testable |
+
+### Reading from the primary or a replica
+
+Data access classes take a `DataAccessDb` (`lib/data-access-db.ts`), never a Knex client. Every fetch
+method takes `options?: TReadOptions` last and queries `this.db.reader(options)`; every write queries
+`this.db.writer()`. A fetch reads the replica by default, and the caller passes
+`{ readFrom: ReadFrom.Primary }` when it must see a commit that may not have replicated yet (a row it
+just created, or state like the root key where a stale read is wrong). Never pick a connection any other
+way: no `replicaNode()` in data access, and no separate "replica" and "primary" data access objects.
+Inside `run` the option does nothing: the data access is on the transaction. The server passes
+`DataAccessDb.fromClient(db)`; migrations and scripts pass `DataAccessDb.single(conn)` so every query
+stays on their own connection.
 
 ### Across domains
 
@@ -222,12 +240,12 @@ When a call cannot be avoided:
 
 ```ts
 export class SecretService implements TSecretService {
-  constructor(private readonly deps: { runner: TransactionRunner<TSecretsStore>; kmsCore: TKmsCoreDomain }) {}
+  constructor(private readonly deps: TSecretServiceDeps) {}
 
   async createSecret(input: TCreateSecretInput) {
-    const cipher = await this.deps.kmsCore.createCipherPairWithDataKey({ projectId: input.projectId });
-    return this.deps.runner.run(({ store }) =>
-      store.secrets.create(Secret.create({ ...input, encryptedValue: cipher.encrypt(input.value) }))
+    const cipher = await this.deps.kmsCoreDomain.createCipherPairWithDataKey({ projectId: input.projectId });
+    return this.deps.transactionRunner.run(({ dataAccess }) =>
+      dataAccess.secrets.create(Secret.create({ ...input, encryptedValue: cipher.encrypt(input.value) }))
     );
   }
 }
@@ -273,7 +291,7 @@ Paths are inside `ce/` unless the code is a paid feature.
 | A business rule about one entity | `model/` |
 | A query or table write | `data-access/`, its in-memory version in `testing/`, and a case in the contract suite |
 | A use case | `service/` |
-| Logic two services need | A helper in `service/` that takes `store` |
+| Logic two services need | A helper in `service/` that takes `dataAccess` |
 | An endpoint | `router/`, registered in `module.ts` |
 | Something another domain calls | A method on the domain interface in `module.ts` |
 | A step another domain may change | A hook in `module.ts`, with a default |
@@ -291,8 +309,9 @@ Paths are inside `ce/` unless the code is a paid feature.
 | A domain passed as a dependency | `<domain>Domain: T<Domain>Domain`, everywhere it is passed, never a shorter or role name (`license`, `usageMeteringService`). A registry another domain registers into is `<domain>Registry` | `licenseDomain: TLicenseDomain`, `licenseRegistry: TLicenseRegistry` |
 | Dependencies of a module or service | `T<Name>Deps`, a named type beside the class, never inline in the constructor | `TKmsCoreDeps`, `TKmsKeyServiceDeps` |
 | Hook type | `T<Domain>Hooks` | `TStaticSecretsHooks` |
-| Store | `<domain>-store.ts` in `data-access/`, exporting `T<Domain>Store` and `build<Domain>Store` | `kms-core-store.ts` |
-| Transaction argument | `tx` (type `TTransaction`) | `run(({ store, tx }) => ...)` |
+| Domain data access | `<domain>-data-access.ts` in `data-access/`, exporting `T<Domain>DataAccess` and `build<Domain>DataAccess` | `kms-core-data-access.ts` |
+| Transaction runner and data access deps | `transactionRunner` and `dataAccess`, never a shorter name (`runner`, `store`) | `{ transactionRunner, dataAccess }` |
+| Transaction argument | `tx` (type `TTransaction`) | `run(({ dataAccess, tx }) => ...)` |
 | EE module | `<Domain>EeModule`, in `ee/module.ts` | `StaticSecretsEeModule` |
 | Unit test | `<file>.test.ts`, beside the code | `kms-key-service.test.ts` |
 | Integration test | `<file>.integration.spec.ts`, beside the code | `kms-key-data-access.integration.spec.ts` |
@@ -307,13 +326,13 @@ claims something a caller depends on, never to raise a coverage number.
 
 | Layer | Tests | Uses |
 | --- | --- | --- |
-| **Unit** (`*.test.ts`) | Model rules, helpers, service use cases, input matrices | In-memory store and `InMemoryTransactionRunner`; no database, no network |
-| **Integration** (`*.integration.spec.ts`) | What only Postgres can prove: SQL, the data access contract, locks, rollback, joining with `within(tx)`, `afterCommit`, concurrency | The real store on a real Postgres, through the integration harness |
+| **Unit** (`*.test.ts`) | Model rules, helpers, service use cases, input matrices | In-memory data access and `InMemoryTransactionRunner`; no database, no network |
+| **Integration** (`*.integration.spec.ts`) | What only Postgres can prove: SQL, the data access contract, locks, rollback, joining with `within(tx)`, `afterCommit`, concurrency | The real data access on a real Postgres, through the integration harness |
 | Not here | HTTP status codes and response bodies, effects of queues and crons, the full server | `tests/` (blackbox) and `e2e-test/` |
 
 ### Rules for both
 
-- **Outcome, not mechanics.** Assert the state a caller can observe: what is in the store, what the
+- **Outcome, not mechanics.** Assert the state a caller can observe: what is in the tables, what the
   service returned, the error it raised. Do not assert that a fake was called with an argument, unless
   that call is the outcome (a provider was asked to encrypt).
 - **Name the claim.** `describe("<Class>.<method>")`, then `test("should <outcome> [when <condition>]")`,
@@ -335,9 +354,9 @@ claims something a caller depends on, never to raise a coverage number.
 
 ### Unit tests
 
-- Build services directly with in-memory state, an `InMemory<Domain>Store` and an
-  `InMemoryTransactionRunner`. The in-memory runner behaves like a transaction:
-  - it snapshots the store and restores it when the work throws;
+- Build services directly with in-memory state, an `InMemory<Domain>DataAccess` and an
+  `InMemoryTransactionRunner`. The in-memory transaction runner behaves like a transaction:
+  - it snapshots the state and restores it when the work throws;
   - it runs `afterCommit` hooks only on success;
   - it joins when bound with `within(tx)`;
   - its locks are per-key mutexes released when the work finishes.

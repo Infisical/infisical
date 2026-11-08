@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { ProjectType, TableName, TKmsKeys } from "@app/db/schemas";
+import { DataAccessDb, ReadFrom, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
@@ -29,12 +30,13 @@ export type TKmsKeyPageQuery = {
 
 export type TKmsKeyDataAccess = {
   create(key: KmsKey): Promise<KmsKey>;
-  findById(id: string): Promise<KmsKey | undefined>;
-  find(filter: TKmsKeyFilter): Promise<KmsKey[]>;
+  findById(id: string, options?: TReadOptions): Promise<KmsKey | undefined>;
+  find(filter: TKmsKeyFilter, options?: TReadOptions): Promise<KmsKey[]>;
   // Takes the internal_kms row lock a rotation holds, then reads the key.
+  // Always on the primary: a row lock exists only there.
   findByIdForRotation(id: string): Promise<KmsKey | undefined>;
   // Customer keys of a project (not reserved, with internal material), one page and the total.
-  listProjectKeys(query: TKmsKeyPageQuery): Promise<{ keys: KmsKey[]; totalCount: number }>;
+  listProjectKeys(query: TKmsKeyPageQuery, options?: TReadOptions): Promise<{ keys: KmsKey[]; totalCount: number }>;
   saveMaterial(key: KmsKey): Promise<void>;
   saveAttributes(key: KmsKey): Promise<void>;
   saveExternalConfig(key: KmsKey): Promise<void>;
@@ -43,8 +45,10 @@ export type TKmsKeyDataAccess = {
   // Null when the key has delete protection; undefined when it does not exist.
   deleteIfUnprotected(id: string): Promise<KmsKey | null | undefined>;
   deleteByIds(ids: string[]): Promise<number>;
-  countProjectKeysInOrg(orgId: string, projectType: ProjectType): Promise<number>;
+  countProjectKeysInOrg(orgId: string, projectType: ProjectType, options?: TReadOptions): Promise<number>;
 };
+
+const PRIMARY: TReadOptions = { readFrom: ReadFrom.Primary };
 
 type TKmsKeyRow = TKmsKeys & {
   internalKmsId?: string | null;
@@ -94,14 +98,32 @@ const toModel = (row: TKmsKeyRow): KmsKey => {
   return KmsKey.restore(props);
 };
 
+const withMaterial = (db: Knex) =>
+  db(TableName.KmsKey)
+    .leftJoin(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
+    .leftJoin(TableName.ExternalKms, `${TableName.KmsKey}.id`, `${TableName.ExternalKms}.kmsKeyId`)
+    .select(`${TableName.KmsKey}.*`)
+    .select(
+      db.ref("id").withSchema(TableName.InternalKms).as("internalKmsId"),
+      db.ref("encryptedKey").withSchema(TableName.InternalKms).as("internalKmsEncryptedKey"),
+      db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
+      db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion"),
+      db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
+      db.ref("provider").withSchema(TableName.ExternalKms).as("externalKmsProvider"),
+      db.ref("encryptedProviderInputs").withSchema(TableName.ExternalKms).as("externalKmsEncryptedProviderInputs"),
+      db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
+      db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
+    );
+
 // Owns kms_keys, internal_kms and external_kms: one KmsKey is stored across them.
 export class KmsKeyDataAccess implements TKmsKeyDataAccess {
-  constructor(private readonly db: Knex) {}
+  constructor(private readonly db: DataAccessDb) {}
 
   async create(key: KmsKey): Promise<KmsKey> {
     try {
       const props = key.toJSON();
-      await this.db(TableName.KmsKey).insert({
+      const db = this.db.writer();
+      await db(TableName.KmsKey).insert({
         id: props.id,
         name: props.name,
         description: props.description,
@@ -115,7 +137,7 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
         kmipMetadata: props.kmipMetadata as never
       } as never);
       if (props.internal) {
-        await this.db(TableName.InternalKms).insert({
+        await db(TableName.InternalKms).insert({
           id: props.internal.id,
           kmsKeyId: props.id,
           encryptedKey: props.internal.encryptedKey,
@@ -124,27 +146,27 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
         } as never);
       }
       if (props.external) {
-        await this.db(TableName.ExternalKms).insert({
+        await db(TableName.ExternalKms).insert({
           id: props.external.id,
           kmsKeyId: props.id,
           provider: props.external.provider,
           encryptedProviderInputs: props.external.encryptedProviderInputs
         } as never);
       }
-      return (await this.findById(props.id)) as KmsKey;
+      return (await this.findById(props.id, PRIMARY)) as KmsKey;
     } catch (error) {
       throw new DatabaseError({ error, name: "Create KMS key" });
     }
   }
 
-  async findById(id: string): Promise<KmsKey | undefined> {
-    const [key] = await this.find({ id });
+  async findById(id: string, options?: TReadOptions): Promise<KmsKey | undefined> {
+    const [key] = await this.find({ id }, options);
     return key;
   }
 
-  async find(filter: TKmsKeyFilter): Promise<KmsKey[]> {
+  async find(filter: TKmsKeyFilter, options?: TReadOptions): Promise<KmsKey[]> {
     try {
-      const query = this.withMaterial();
+      const query = withMaterial(this.db.reader(options));
       if (filter.id) void query.where(`${TableName.KmsKey}.id`, filter.id);
       if (filter.ids) void query.whereIn(`${TableName.KmsKey}.id`, filter.ids);
       if (filter.orgId) void query.where(`${TableName.KmsKey}.orgId`, filter.orgId);
@@ -162,23 +184,20 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
 
   async findByIdForRotation(id: string): Promise<KmsKey | undefined> {
     try {
-      await this.db(TableName.InternalKms).where({ kmsKeyId: id }).forUpdate().first();
-      return await this.findById(id);
+      await this.db.writer()(TableName.InternalKms).where({ kmsKeyId: id }).forUpdate().first();
+      return await this.findById(id, PRIMARY);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find KMS key for rotation" });
     }
   }
 
-  async listProjectKeys({
-    projectId,
-    offset,
-    limit,
-    orderBy,
-    orderDirection,
-    search
-  }: TKmsKeyPageQuery): Promise<{ keys: KmsKey[]; totalCount: number }> {
+  async listProjectKeys(
+    { projectId, offset, limit, orderBy, orderDirection, search }: TKmsKeyPageQuery,
+    options?: TReadOptions
+  ): Promise<{ keys: KmsKey[]; totalCount: number }> {
     try {
-      const filtered = this.db(TableName.KmsKey)
+      const db = this.db.reader(options);
+      const filtered = db(TableName.KmsKey)
         .where(`${TableName.KmsKey}.projectId`, projectId)
         .where((qb) => {
           if (search) {
@@ -195,11 +214,11 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
         .clone()
         .select(
           `${TableName.KmsKey}.*`,
-          this.db.raw(`count(*) OVER() as total_count`),
-          this.db.ref("id").withSchema(TableName.InternalKms).as("internalKmsId"),
-          this.db.ref("encryptedKey").withSchema(TableName.InternalKms).as("internalKmsEncryptedKey"),
-          this.db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
-          this.db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion")
+          db.raw(`count(*) OVER() as total_count`),
+          db.ref("id").withSchema(TableName.InternalKms).as("internalKmsId"),
+          db.ref("encryptedKey").withSchema(TableName.InternalKms).as("internalKmsEncryptedKey"),
+          db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
+          db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion")
         )
         .orderBy(`${TableName.KmsKey}.${orderBy}`, orderDirection);
       if (limit) void query.limit(limit).offset(offset);
@@ -222,7 +241,8 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
     const { internal } = key;
     if (!internal) return;
     try {
-      await this.db(TableName.InternalKms)
+      await this.db
+        .writer()(TableName.InternalKms)
         .where({ id: internal.id })
         .update({ encryptedKey: internal.encryptedKey, version: internal.version });
     } catch (error) {
@@ -233,7 +253,8 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
   async saveAttributes(key: KmsKey): Promise<void> {
     const props = key.toJSON();
     try {
-      await this.db(TableName.KmsKey)
+      await this.db
+        .writer()(TableName.KmsKey)
         .where({ id: props.id })
         .update({
           name: props.name,
@@ -252,7 +273,8 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
     const { external } = key;
     if (!external) return;
     try {
-      await this.db(TableName.ExternalKms)
+      await this.db
+        .writer()(TableName.ExternalKms)
         .where({ id: external.id })
         .update({ encryptedProviderInputs: external.encryptedProviderInputs });
     } catch (error) {
@@ -261,10 +283,10 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
   }
 
   async deleteById(id: string): Promise<KmsKey | undefined> {
-    const key = await this.findById(id);
+    const key = await this.findById(id, PRIMARY);
     if (!key) return undefined;
     try {
-      await this.db(TableName.KmsKey).where({ id }).delete();
+      await this.db.writer()(TableName.KmsKey).where({ id }).delete();
       return key;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete KMS key" });
@@ -272,10 +294,10 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
   }
 
   async deleteIfUnprotected(id: string): Promise<KmsKey | null | undefined> {
-    const key = await this.findById(id);
+    const key = await this.findById(id, PRIMARY);
     if (!key) return undefined;
     try {
-      const deleted = await this.db(TableName.KmsKey).where({ id, hasDeleteProtection: false }).delete();
+      const deleted = await this.db.writer()(TableName.KmsKey).where({ id, hasDeleteProtection: false }).delete();
       return deleted ? key : null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete KMS key" });
@@ -285,16 +307,17 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
   async deleteByIds(ids: string[]): Promise<number> {
     if (!ids.length) return 0;
     try {
-      return await this.db(TableName.KmsKey).whereIn("id", ids).delete();
+      return await this.db.writer()(TableName.KmsKey).whereIn("id", ids).delete();
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete KMS keys" });
     }
   }
 
   // Reads projects, which no domain owns yet, to count a product's keys for org stats.
-  async countProjectKeysInOrg(orgId: string, projectType: ProjectType): Promise<number> {
+  async countProjectKeysInOrg(orgId: string, projectType: ProjectType, options?: TReadOptions): Promise<number> {
     try {
-      const result = (await this.db(TableName.KmsKey)
+      const result = (await this.db
+        .reader(options)(TableName.KmsKey)
         .join(TableName.Project, `${TableName.KmsKey}.projectId`, `${TableName.Project}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
         .whereNull(`${TableName.Project}.deleteAfter`)
@@ -305,26 +328,5 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
     } catch (error) {
       throw new DatabaseError({ error, name: "Count project KMS keys" });
     }
-  }
-
-  private withMaterial() {
-    return this.db(TableName.KmsKey)
-      .leftJoin(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
-      .leftJoin(TableName.ExternalKms, `${TableName.KmsKey}.id`, `${TableName.ExternalKms}.kmsKeyId`)
-      .select(`${TableName.KmsKey}.*`)
-      .select(
-        this.db.ref("id").withSchema(TableName.InternalKms).as("internalKmsId"),
-        this.db.ref("encryptedKey").withSchema(TableName.InternalKms).as("internalKmsEncryptedKey"),
-        this.db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
-        this.db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion"),
-        this.db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
-        this.db.ref("provider").withSchema(TableName.ExternalKms).as("externalKmsProvider"),
-        this.db
-          .ref("encryptedProviderInputs")
-          .withSchema(TableName.ExternalKms)
-          .as("externalKmsEncryptedProviderInputs"),
-        this.db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
-        this.db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
-      );
   }
 }

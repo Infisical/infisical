@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { Meter } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
@@ -13,9 +14,16 @@ describe("CertManagerModule usage counters", () => {
 
   const build = () => {
     const licenseRegistry = new FakeLicenseRegistry();
-    const organizationsProjectsDomain = new OrganizationsProjectsModule({ db: h.db, licenseRegistry }).service;
+    const organizationsProjectsDomain = new OrganizationsProjectsModule({
+      db: DataAccessDb.fromClient(h.db),
+      licenseRegistry
+    }).service;
     return {
-      module: new CertManagerModule({ db: h.db, organizationsProjectsDomain, licenseRegistry }),
+      module: new CertManagerModule({
+        db: DataAccessDb.fromClient(h.db),
+        organizationsProjectsDomain,
+        licenseRegistry
+      }),
       licenseRegistry
     };
   };

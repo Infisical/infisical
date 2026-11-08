@@ -1,5 +1,5 @@
-import { TDbClient } from "@app/db";
 import { ProjectType } from "@app/db/schemas";
+import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
 
 import { OrganizationDataAccess } from "./data-access/organization-data-access";
@@ -25,7 +25,7 @@ export type TOrganizationsProjectsDomain = {
 };
 
 export type TOrganizationsProjectsDeps = {
-  db: TDbClient;
+  db: DataAccessDb;
   licenseRegistry: TLicenseRegistry;
 };
 

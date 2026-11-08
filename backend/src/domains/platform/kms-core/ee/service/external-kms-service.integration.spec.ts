@@ -1,4 +1,5 @@
 import { TableName } from "@app/db/schemas";
+import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { KmsAwsCredentialType, KmsProviders } from "@app/ee/services/external-kms/providers/model";
 
@@ -32,10 +33,10 @@ describe("External KMS keys on Postgres", () => {
       HSM_LIB_PATH: undefined,
       HSM_KEY_LABEL: undefined
     };
-    const ee = new KmsCoreEeModule({ db: h.db, replicaDb: h.db, hsmConfig, providers: fake.providers });
+    const db = DataAccessDb.fromClient(h.db);
+    const ee = new KmsCoreEeModule({ db, hsmConfig, providers: fake.providers });
     const core = new KmsCoreModule({
-      db: h.db,
-      replicaDb: h.db,
+      db,
       env: testKmsCoreEnv(),
       hooks: ee.hooks,
       isFipsEnabled: () => false

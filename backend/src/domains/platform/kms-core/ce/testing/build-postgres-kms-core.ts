@@ -1,4 +1,5 @@
 import type { TDbClient } from "@app/db";
+import { DataAccessDb } from "@app/domains/lib/data-access-db";
 
 import { KmsCoreModule } from "../module";
 import { TKmsCoreHooks } from "../service/kms-core-hooks";
@@ -12,8 +13,7 @@ export const buildPostgresKmsCore = (
   { env, hooks = {} }: { env?: Partial<TKmsCoreEnv>; hooks?: TKmsCoreHooks } = {}
 ) =>
   new KmsCoreModule({
-    db,
-    replicaDb: db,
+    db: DataAccessDb.fromClient(db),
     env: testKmsCoreEnv(env),
     hooks,
     isFipsEnabled: () => false

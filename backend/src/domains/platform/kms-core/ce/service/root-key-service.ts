@@ -1,3 +1,4 @@
+import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access-db";
 import { TTransactionRunner } from "@app/domains/lib/transaction-runner";
 import { isBase64 } from "@app/lib/base64";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
@@ -7,7 +8,7 @@ import { setLegacyKeyMaterial, TLegacyKeyMaterial, TLegacyKeySnapshot } from "@a
 import { BadRequestError, CryptographyError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { TKmsCoreStore } from "../data-access/kms-core-store";
+import { TKmsCoreDataAccess } from "../data-access/kms-core-data-access";
 import { InstanceEncryptionKey } from "../model/instance-encryption-key";
 import { KekHistoryEntry } from "../model/kek-history-entry";
 import { LegacyEncryptionKey } from "../model/legacy-encryption-key";
@@ -33,10 +34,13 @@ export type TRootKeyStartOptions = {
 
 export type TEncryptionStrategyOption = { enabled: boolean; strategy: RootKeyEncryptionStrategy };
 
+// Root key state is read from the primary outside a transaction: a lagging replica could miss the key this pod
+// holds, or show a superseded view to promote against.
+const PRIMARY: TReadOptions = { readFrom: ReadFrom.Primary };
+
 export type TRootKeyServiceDeps = {
-  runner: TTransactionRunner<TKmsCoreStore>;
-  // The primary, outside a transaction: root key state must never come from a lagging replica.
-  primary: TKmsCoreStore;
+  transactionRunner: TTransactionRunner<TKmsCoreDataAccess>;
+  dataAccess: TKmsCoreDataAccess;
   state: TKmsCoreState;
   env: TKmsCoreEnv;
   // The env as first parsed, before the FIPS relabel replaced ROOT_ENCRYPTION_KEY.
@@ -51,8 +55,9 @@ export class RootKeyService {
   constructor(private readonly deps: TRootKeyServiceDeps) {}
 
   async start({ skipRotationState = false }: TRootKeyStartOptions = {}) {
-    const { primary } = this.deps;
-    const active = await primary.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID).catch(() => undefined);
+    const active = await this.deps.dataAccess.rootKeyConfigs
+      .findById(KMS_ROOT_CONFIG_UUID, PRIMARY)
+      .catch(() => undefined);
     const strategy = active?.strategy ?? null;
     const isHsmConfigured = await this.isHsmConfigured();
 
@@ -93,7 +98,7 @@ export class RootKeyService {
   }
 
   async listEncryptionStrategies(): Promise<{ strategies: TEncryptionStrategyOption[] }> {
-    const active = await this.deps.primary.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
+    const active = await this.deps.dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID, PRIMARY);
     if (!active) throw new NotFoundError({ name: "KmsRootConfig", message: "KMS root configuration not found" });
 
     const strategies: TEncryptionStrategyOption[] = [];
@@ -115,14 +120,14 @@ export class RootKeyService {
   // A fleet-wide cutover, so it is refused while a rotation is staged or retained: a pod holding the retained
   // software copy would otherwise boot without the device.
   async updateEncryptionStrategy(strategy: RootKeyEncryptionStrategy) {
-    const { primary, env } = this.deps;
+    const { env } = this.deps;
     const [staged, retained] = await Promise.all([
-      primary.rootKeyConfigs.findStaged(),
-      primary.rootKeyConfigs.findRetained()
+      this.deps.dataAccess.rootKeyConfigs.findStaged(PRIMARY),
+      this.deps.dataAccess.rootKeyConfigs.findRetained(PRIMARY)
     ]);
     if (staged.length || retained.length) throw new BadRequestError({ message: ROTATION_IN_PROGRESS });
 
-    const active = await primary.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
+    const active = await this.deps.dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID, PRIMARY);
     if (!active) throw new NotFoundError({ message: "KMS root config not found" });
     if (active.strategy === strategy) return;
 
@@ -147,12 +152,12 @@ export class RootKeyService {
     const rootKey = await this.unwrapRootKey(active);
     const encryptedRootKey = await this.wrapRootKey(rootKey, strategy);
 
-    await this.deps.runner.run(async ({ store }) => {
-      await store.locks.rootKey();
+    await this.deps.transactionRunner.run(async ({ dataAccess }) => {
+      await dataAccess.locks.rootKey();
       const [stagedNow, retainedNow, activeNow] = await Promise.all([
-        store.rootKeyConfigs.findStaged(),
-        store.rootKeyConfigs.findRetained(),
-        store.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID)
+        dataAccess.rootKeyConfigs.findStaged(),
+        dataAccess.rootKeyConfigs.findRetained(),
+        dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID)
       ]);
       if (stagedNow.length || retainedNow.length) throw new BadRequestError({ message: ROTATION_IN_PROGRESS });
       if (!activeNow || !activeNow.encryptedRootKey.equals(active.encryptedRootKey)) {
@@ -161,7 +166,7 @@ export class RootKeyService {
             "The active root key changed while this request was in flight, so the encryption strategy was left unchanged. Retry the change."
         });
       }
-      await store.rootKeyConfigs.update(KMS_ROOT_CONFIG_UUID, {
+      await dataAccess.rootKeyConfigs.update(KMS_ROOT_CONFIG_UUID, {
         encryptedRootKey,
         encryptionStrategy: strategy,
         kekLabel: strategy === RootKeyEncryptionStrategy.Software ? this.currentKekLabel() : null
@@ -253,7 +258,7 @@ export class RootKeyService {
   }
 
   private async resolveRootKey(isHsmConfigured: boolean, skipRotationState: boolean): Promise<Buffer> {
-    const rows = await this.deps.primary.rootKeyConfigs.findAll();
+    const rows = await this.deps.dataAccess.rootKeyConfigs.findAll(PRIMARY);
     if (!rows.length) return this.unwrapRootKey(await this.bootstrapRootKey(isHsmConfigured, skipRotationState));
 
     const errors: unknown[] = [];
@@ -275,7 +280,7 @@ export class RootKeyService {
     }
 
     const label = this.currentKekLabel();
-    const history = await this.deps.primary.kekHistory.findPage({ offset: 0, limit: 5 }).catch(() => []);
+    const history = await this.deps.dataAccess.kekHistory.findPage({ offset: 0, limit: 5 }, PRIMARY).catch(() => []);
     const known = history.map((entry) => entry.kekLabel).join(", ");
     logger.error({ err: errors[0] }, "KMS: No stored root key could be decrypted with the configured encryption key");
     throw new InternalServerError({
@@ -289,7 +294,6 @@ export class RootKeyService {
 
   // Rotation bookkeeping for the row that opened: promote it if staged, label it, stamp a retained copy.
   private async recordResolution(row: RootKeyConfig) {
-    const { primary } = this.deps;
     if (row.isStaged) {
       const label = this.currentKekLabel();
       if (await this.promoteRotation(row.id, label)) {
@@ -301,7 +305,7 @@ export class RootKeyService {
     if (!row.kekLabel) {
       const label = this.currentKekLabel();
       if (label) {
-        await primary.rootKeyConfigs
+        await this.deps.dataAccess.rootKeyConfigs
           .update(row.id, { kekLabel: label })
           .catch((err: unknown) => logger.warn({ err }, "KMS: Failed to label a root key row"));
       }
@@ -310,7 +314,7 @@ export class RootKeyService {
     // Only a retained copy is worth stamping: it is evidence a straggler still holds that key, which makes the
     // rotation GC decline to remove it.
     if (row.supersededAt) {
-      await primary.rootKeyConfigs
+      await this.deps.dataAccess.rootKeyConfigs
         .update(row.id, { lastResolvedAt: new Date() })
         .catch((err: unknown) => logger.warn({ err }, "KMS: Failed to record use of a superseded root key"));
       logger.warn(
@@ -335,11 +339,11 @@ export class RootKeyService {
       throw err;
     });
 
-    return this.deps.runner.run(async ({ store }) => {
-      await store.locks.rootKey();
-      const existing = await store.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
+    return this.deps.transactionRunner.run(async ({ dataAccess }) => {
+      await dataAccess.locks.rootKey();
+      const existing = await dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
       if (existing) return existing;
-      return store.rootKeyConfigs.create(
+      return dataAccess.rootKeyConfigs.create(
         RootKeyConfig.bootstrap({ encryptedRootKey, strategy, withRotationState: !skipRotationState })
       );
     });
@@ -347,43 +351,43 @@ export class RootKeyService {
 
   // The moment a rotation takes effect, driven by a booting pod: generating a key changes nothing until it is deployed.
   private promoteRotation(stagedId: string, label: string | null): Promise<boolean> {
-    return this.deps.runner.run(async ({ store }) => {
-      await store.locks.rootKey();
-      const staged = await store.rootKeyConfigs.findById(stagedId);
+    return this.deps.transactionRunner.run(async ({ dataAccess }) => {
+      await dataAccess.locks.rootKey();
+      const staged = await dataAccess.rootKeyConfigs.findById(stagedId);
       // Another pod promoted first.
       if (!staged || staged.activatedAt) return false;
 
-      const active = await store.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
+      const active = await dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
       if (!active) throw new InternalServerError({ message: "KMS root config is missing its active row" });
 
       const now = new Date();
-      const olderRetained = await store.rootKeyConfigs.findRetained();
+      const olderRetained = await dataAccess.rootKeyConfigs.findRetained();
 
       // The grace window, so pods that have not rolled over can still boot. Not a rollback path.
-      await store.rootKeyConfigs.create(active.retainedCopy(now));
-      await store.rootKeyConfigs.update(KMS_ROOT_CONFIG_UUID, {
+      await dataAccess.rootKeyConfigs.create(active.retainedCopy(now));
+      await dataAccess.rootKeyConfigs.update(KMS_ROOT_CONFIG_UUID, {
         encryptedRootKey: staged.encryptedRootKey,
         encryptionStrategy: staged.strategy ?? RootKeyEncryptionStrategy.Software,
         kekLabel: staged.kekLabel ?? label,
         activatedAt: now,
         supersededAt: null
       });
-      await store.rootKeyConfigs.deleteAllStaged();
+      await dataAccess.rootKeyConfigs.deleteAllStaged();
 
       const promotedLabel = staged.kekLabel ?? label;
-      const previous = await store.kekHistory.findCurrent();
-      if (previous) await store.kekHistory.markSuperseded(previous.id, now);
+      const previous = await dataAccess.kekHistory.findCurrent();
+      if (previous) await dataAccess.kekHistory.markSuperseded(previous.id, now);
       if (promotedLabel)
-        await store.kekHistory.create(KekHistoryEntry.create({ kekLabel: promotedLabel, activatedAt: now }));
+        await dataAccess.kekHistory.create(KekHistoryEntry.create({ kekLabel: promotedLabel, activatedAt: now }));
 
       // Exactly one retained key survives a promotion.
       for (const stale of olderRetained) {
         // eslint-disable-next-line no-await-in-loop -- at most a couple of rows
-        await store.rootKeyConfigs.deleteById(stale.id);
+        await dataAccess.rootKeyConfigs.deleteById(stale.id);
         // eslint-disable-next-line no-await-in-loop
-        const entry = stale.kekLabel ? await store.kekHistory.findActiveByLabel(stale.kekLabel) : undefined;
+        const entry = stale.kekLabel ? await dataAccess.kekHistory.findActiveByLabel(stale.kekLabel) : undefined;
         // eslint-disable-next-line no-await-in-loop
-        if (entry) await store.kekHistory.markRetired(entry.id, now);
+        if (entry) await dataAccess.kekHistory.markRetired(entry.id, now);
         logger.info(
           `KMS: Removed a key superseded by an earlier rotation [rootConfigId=${stale.id}] [label=${stale.kekLabel ?? "unknown"}]`
         );
@@ -398,8 +402,8 @@ export class RootKeyService {
 
   // Snapshots the legacy tier's env keys under the root key, which survives an env key rotation.
   private async ensureLegacyKeyMaterial() {
-    const { primary, env, originalEnv } = this.deps;
-    const existing = await primary.legacyEncryptionKeys.find();
+    const { env, originalEnv } = this.deps;
+    const existing = await this.deps.dataAccess.legacyEncryptionKeys.find(PRIMARY);
     if (existing) {
       setLegacyKeyMaterial(this.parseLegacySnapshot(existing.encryptedKeySnapshot));
       return;
@@ -422,14 +426,14 @@ export class RootKeyService {
     const material: TLegacyKeyMaterial = { current, original };
     const encryptedKeySnapshot = wrapWithRootKey(this.deps.state, Buffer.from(JSON.stringify(material), "utf8"));
 
-    await this.deps.runner.run(async ({ store }) => {
-      await store.locks.rootKey();
-      if (await store.legacyEncryptionKeys.find()) return;
-      await store.legacyEncryptionKeys.create(LegacyEncryptionKey.create(encryptedKeySnapshot));
+    await this.deps.transactionRunner.run(async ({ dataAccess }) => {
+      await dataAccess.locks.rootKey();
+      if (await dataAccess.legacyEncryptionKeys.find()) return;
+      await dataAccess.legacyEncryptionKeys.create(LegacyEncryptionKey.create(encryptedKeySnapshot));
     });
 
     // Re-read so every pod lands on the row that won the race, not its own candidate.
-    const seeded = await primary.legacyEncryptionKeys.find();
+    const seeded = await this.deps.dataAccess.legacyEncryptionKeys.find(PRIMARY);
     setLegacyKeyMaterial(seeded ? this.parseLegacySnapshot(seeded.encryptedKeySnapshot) : material);
   }
 
@@ -437,14 +441,14 @@ export class RootKeyService {
   private async ensureKekHistory() {
     const label = this.currentKekLabel();
     if (!label) return;
-    if (await this.deps.primary.kekHistory.findCurrent()) return;
+    if (await this.deps.dataAccess.kekHistory.findCurrent(PRIMARY)) return;
 
-    const active = await this.deps.primary.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID);
-    await this.deps.runner
-      .run(async ({ store }) => {
-        await store.locks.rootKey();
-        if (await store.kekHistory.findCurrent()) return;
-        await store.kekHistory.create(
+    const active = await this.deps.dataAccess.rootKeyConfigs.findById(KMS_ROOT_CONFIG_UUID, PRIMARY);
+    await this.deps.transactionRunner
+      .run(async ({ dataAccess }) => {
+        await dataAccess.locks.rootKey();
+        if (await dataAccess.kekHistory.findCurrent()) return;
+        await dataAccess.kekHistory.create(
           KekHistoryEntry.create({
             kekLabel: label,
             activatedAt: active?.activatedAt ?? active?.createdAt ?? new Date()

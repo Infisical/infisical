@@ -1,14 +1,13 @@
-import { Knex } from "knex";
-
 import { TableName } from "@app/db/schemas";
+import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
 import { ScopeKey, ScopeKind } from "../model/scope-key";
 
 export type TScopeKeyDataAccess = {
-  findOrg(orgId: string): Promise<ScopeKey | undefined>;
+  findOrg(orgId: string, options?: TReadOptions): Promise<ScopeKey | undefined>;
   // A project scheduled for deletion is not found.
-  findProject(projectId: string): Promise<ScopeKey | undefined>;
+  findProject(projectId: string, options?: TReadOptions): Promise<ScopeKey | undefined>;
   // Each set* writes only when the column is still empty and reports whether it did, so a second writer
   // (a pod of the previous release, which takes no lock for the certificate key) never overwrites the first.
   setOrgKmsKeyId(orgId: string, kmsKeyId: string): Promise<boolean>;
@@ -24,17 +23,18 @@ export type TScopeKeyDataAccess = {
   // A restore from backup: unconditional, the caller has already checked the backup belongs to the project.
   setProjectKey(projectId: string, change: { kmsKeyId: string; encryptedDataKey: Buffer }): Promise<void>;
   // Whether any org or project, including one scheduled for deletion, still uses the key.
-  isKeyReferenced(kmsKeyId: string): Promise<boolean>;
+  isKeyReferenced(kmsKeyId: string, options?: TReadOptions): Promise<boolean>;
 };
 
 // The key columns on organizations and projects. Those tables belong to no domain yet; KMS Core writes only these
 // columns.
 export class ScopeKeyDataAccess implements TScopeKeyDataAccess {
-  constructor(private readonly db: Knex) {}
+  constructor(private readonly db: DataAccessDb) {}
 
-  async findOrg(orgId: string): Promise<ScopeKey | undefined> {
+  async findOrg(orgId: string, options?: TReadOptions): Promise<ScopeKey | undefined> {
     try {
-      const row = await this.db(TableName.Organization)
+      const row = await this.db
+        .reader(options)(TableName.Organization)
         .where({ id: orgId })
         .first("id", "kmsDefaultKeyId", "kmsEncryptedDataKey");
       if (!row) return undefined;
@@ -51,9 +51,10 @@ export class ScopeKeyDataAccess implements TScopeKeyDataAccess {
     }
   }
 
-  async findProject(projectId: string): Promise<ScopeKey | undefined> {
+  async findProject(projectId: string, options?: TReadOptions): Promise<ScopeKey | undefined> {
     try {
-      const row = await this.db(TableName.Project)
+      const row = await this.db
+        .reader(options)(TableName.Project)
         .where({ id: projectId })
         .whereNull("deleteAfter")
         .first("id", "orgId", "kmsSecretManagerKeyId", "kmsSecretManagerEncryptedDataKey", "kmsCertificateKeyId");
@@ -100,7 +101,8 @@ export class ScopeKeyDataAccess implements TScopeKeyDataAccess {
     }: { expectedKmsKeyId: string; kmsKeyId: string; encryptedDataKey: Buffer }
   ): Promise<boolean> {
     try {
-      const updated = await this.db(TableName.Project)
+      const updated = await this.db
+        .writer()(TableName.Project)
         .where({ id: projectId, kmsSecretManagerKeyId: expectedKmsKeyId })
         .update({ kmsSecretManagerKeyId: kmsKeyId, kmsSecretManagerEncryptedDataKey: encryptedDataKey });
       return updated > 0;
@@ -114,7 +116,8 @@ export class ScopeKeyDataAccess implements TScopeKeyDataAccess {
     { kmsKeyId, encryptedDataKey }: { kmsKeyId: string; encryptedDataKey: Buffer }
   ) {
     try {
-      await this.db(TableName.Project)
+      await this.db
+        .writer()(TableName.Project)
         .where({ id: projectId })
         .update({ kmsSecretManagerKeyId: kmsKeyId, kmsSecretManagerEncryptedDataKey: encryptedDataKey });
     } catch (error) {
@@ -122,14 +125,18 @@ export class ScopeKeyDataAccess implements TScopeKeyDataAccess {
     }
   }
 
-  async isKeyReferenced(kmsKeyId: string): Promise<boolean> {
+  async isKeyReferenced(kmsKeyId: string, options?: TReadOptions): Promise<boolean> {
     try {
-      const project = await this.db(TableName.Project)
+      const project = await this.db
+        .reader(options)(TableName.Project)
         .where({ kmsSecretManagerKeyId: kmsKeyId })
         .orWhere({ kmsCertificateKeyId: kmsKeyId })
         .first("id");
       if (project) return true;
-      const org = await this.db(TableName.Organization).where({ kmsDefaultKeyId: kmsKeyId }).first("id");
+      const org = await this.db
+        .reader(options)(TableName.Organization)
+        .where({ kmsDefaultKeyId: kmsKeyId })
+        .first("id");
       return Boolean(org);
     } catch (error) {
       throw new DatabaseError({ error, name: "Check KMS key references" });
@@ -143,7 +150,8 @@ export class ScopeKeyDataAccess implements TScopeKeyDataAccess {
     value: string | Buffer
   ): Promise<boolean> {
     try {
-      const updated = await this.db(table)
+      const updated = await this.db
+        .writer()(table)
         .where({ id })
         .whereNull(column)
         .update({ [column]: value } as never);

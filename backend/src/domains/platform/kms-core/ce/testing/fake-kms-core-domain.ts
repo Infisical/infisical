@@ -8,18 +8,18 @@ import { KMS_ROOT_CONFIG_UUID, RootKeyEncryptionStrategy } from "../model/root-k
 import { KmsCoreModule, TKmsCoreDomain } from "../module";
 import { TKmsCoreHooks } from "../service/kms-core-hooks";
 import { testKmsCoreEnv } from "./build-kms-core";
-import { InMemoryKmsCoreStore } from "./in-memory-kms-core-store";
+import { InMemoryKmsCoreDataAccess } from "./in-memory-kms-core-data-access";
 
 type TAsyncMethods = {
   [K in keyof TKmsCoreDomain]: ReturnType<TKmsCoreDomain[K]> extends Promise<unknown> ? K : never;
 }[keyof TKmsCoreDomain];
 
 /**
- * For consumers of KMS Core: the real domain over an in-memory store, with real AES-GCM. Orgs and projects are
- * created the first time a test names them, so a test only passes ids. `store` exposes the tables.
+ * For consumers of KMS Core: the real domain over in-memory data access, with real AES-GCM. Orgs and projects are
+ * created the first time a test names them, so a test only passes ids. `inMemory` exposes the tables.
  */
 export class FakeKmsCoreDomain implements TKmsCoreDomain {
-  readonly store = new InMemoryKmsCoreStore();
+  readonly inMemory = new InMemoryKmsCoreDataAccess();
 
   private readonly rootKey = randomBytes(32);
 
@@ -29,9 +29,9 @@ export class FakeKmsCoreDomain implements TKmsCoreDomain {
 
   constructor({ hooks = {} }: { hooks?: TKmsCoreHooks } = {}) {
     const env = testKmsCoreEnv();
-    this.store.state.autoCreateScopes = true;
+    this.inMemory.state.autoCreateScopes = true;
     const now = new Date();
-    this.store.state.tables.rootKeyConfigs.set(KMS_ROOT_CONFIG_UUID, {
+    this.inMemory.state.tables.rootKeyConfigs.set(KMS_ROOT_CONFIG_UUID, {
       id: KMS_ROOT_CONFIG_UUID,
       encryptedRootKey: symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256).encrypt(
         this.rootKey,
@@ -43,8 +43,8 @@ export class FakeKmsCoreDomain implements TKmsCoreDomain {
       updatedAt: now
     });
     this.module = new KmsCoreModule({
-      db: undefined as never,
-      storage: this.store.storage,
+      transactionRunner: this.inMemory.transactionRunner,
+      dataAccess: this.inMemory.dataAccess,
       env,
       hooks,
       isFipsEnabled: () => false
