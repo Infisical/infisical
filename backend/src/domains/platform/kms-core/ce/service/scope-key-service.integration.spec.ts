@@ -121,7 +121,7 @@ describe("ScopeKeyService on Postgres", () => {
 
     // Action
     let created = false;
-    const pending = kms.getOrgKmsKeyId(tn.org.id).then(() => {
+    const pending = kms.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId: tn.org.id }).then(() => {
       created = true;
     });
     await waitForAdvisoryLockWaiter(lockId);
@@ -192,7 +192,7 @@ describe("ScopeKeyService on Postgres", () => {
     const tn = await h.newTenant();
     const otherTenant = await h.newTenant();
     const kms = await startedKms();
-    const otherKeyId = await kms.getOrgKmsKeyId(otherTenant.org.id);
+    const otherKeyId = await kms.getProjectSecretManagerKmsKeyId(otherTenant.project.id);
     const before = await kms.getProjectSecretManagerKmsKeyId(tn.project.id);
 
     // Action

@@ -1793,7 +1793,8 @@ export const registerRoutes = async (
 
   const orgProductStatsService = orgProductStatsServiceFactory({
     orgProductStatsDAL,
-    keyStore
+    keyStore,
+    kmsCoreDomain
   });
 
   const orgAdminService = orgAdminServiceFactory({

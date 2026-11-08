@@ -13,7 +13,7 @@ import { buildKmsCoreReadStore, buildKmsCoreStore, TKmsCoreStore } from "./data-
 import { TKmsKeyFilter } from "./data-access/kms-key-data-access";
 import { TKmsKeyAttributes, TKmsKeyRecord } from "./model/kms-key";
 import { RootKeyEncryptionStrategy } from "./model/root-key-config";
-import { inputKeyDecryptor, inputKeyEncryptor, TKmsCoreState } from "./service/key-material";
+import { TKmsCoreState } from "./service/key-material";
 import {
   TCreateExternalKmsInput,
   TExternalKmsDetails,
@@ -27,7 +27,6 @@ import {
   TAsyncDecryptor,
   TAsyncEncryptor,
   TCipherPair,
-  TEncryptor,
   TEncryptWithKmsDataKeyDTO,
   TGenerateKMSDTO,
   TImportKeyMaterialDTO,
@@ -98,8 +97,6 @@ export type TKmsCoreDomain = {
   generateKmsKey: (input: TGenerateKMSDTO) => Promise<TKmsKeyRecord>;
   importKeyMaterial: (input: TImportKeyMaterialDTO) => Promise<TKmsKeyRecord>;
   rotateKmsKey: (kmsId: string) => Promise<{ id: string; version: number }>;
-  // Deletes a reserved key a project owned; leaves external, customer and org default keys alone.
-  deleteInternalKms: (kmsId: string, orgId: string) => Promise<void>;
   getKmsById: (kmsId: string) => Promise<{ id: string; name: string; orgId: string; isExternal: boolean }>;
   findKeyById: (kmsId: string) => Promise<TKmsKeyDetails | undefined>;
   findKeys: (filter: TKmsKeyFilter, options?: TKmsReadOptions) => Promise<TKmsKeyDetails[]>;
@@ -114,11 +111,9 @@ export type TKmsCoreDomain = {
     kmsIds: string[];
   }) => Promise<{ kmsId: string; name: string; keyMaterial: Buffer<ArrayBuffer> }[]>;
 
-  // Cryptography with a KMS key or a caller's key.
+  // Cryptography with a KMS key.
   encryptWithKmsKey: (input: { kmsId: string }) => Promise<TAsyncEncryptor>;
   decryptWithKmsKey: (input: { kmsId: string }) => Promise<TAsyncDecryptor>;
-  encryptWithInputKey: (input: { key: Buffer }) => Promise<TEncryptor>;
-  decryptWithInputKey: (input: { key: Buffer }) => Promise<(input: { cipherTextBlob: Buffer }) => Buffer<ArrayBuffer>>;
   getPublicKey: (input: { kmsId: string }, options?: TKmsReadOptions) => Promise<Buffer>;
   signWithKmsKey: (
     input: Pick<TSignWithKmsDTO, "kmsId">,
@@ -145,7 +140,6 @@ export type TKmsCoreDomain = {
   // Org and project keys. Each is created on first use in KMS Core's own short transaction: never call these
   // inside a caller's transaction (see kms-core/AGENTS.md).
   createCipherPairWithDataKey: (context: TEncryptWithKmsDataKeyDTO) => Promise<TCipherPair>;
-  getOrgKmsKeyId: (orgId: string) => Promise<string>;
   getProjectSecretManagerKmsKeyId: (projectId: string) => Promise<string>;
   getProjectCertificateKmsKeyId: (projectId: string) => Promise<string>;
   wrapKey: (input: { projectId: string; label: string; key: Buffer }) => Promise<Buffer<ArrayBuffer>>;
@@ -297,7 +291,6 @@ export class KmsCoreModule {
       generateKmsKey: (input) => kmsKeys.generateKmsKey(input),
       importKeyMaterial: (input) => kmsKeys.importKeyMaterial(input),
       rotateKmsKey: (kmsId) => kmsKeys.rotateKmsKey(kmsId),
-      deleteInternalKms: (kmsId, orgId) => kmsKeys.deleteInternalKms(kmsId, orgId),
       getKmsById: (kmsId) => kmsKeys.getKmsById(kmsId),
       findKeyById: (kmsId) => kmsKeys.findKeyById(kmsId),
       findKeys: (filter, options) => kmsKeys.findKeys(filter, options),
@@ -311,8 +304,6 @@ export class KmsCoreModule {
 
       encryptWithKmsKey: (input) => cryptoService.encryptWithKmsKey(input),
       decryptWithKmsKey: (input) => cryptoService.decryptWithKmsKey(input),
-      encryptWithInputKey: async ({ key }) => inputKeyEncryptor(key),
-      decryptWithInputKey: async ({ key }) => inputKeyDecryptor(key),
       getPublicKey: (input, options) => cryptoService.getPublicKey(input, options),
       signWithKmsKey: (input, options) => cryptoService.signWithKmsKey(input, options),
       verifyWithKmsKey: (input) => cryptoService.verifyWithKmsKey(input),
@@ -320,7 +311,6 @@ export class KmsCoreModule {
       verifyMac: (input) => cryptoService.verifyMac(input),
 
       createCipherPairWithDataKey: (context) => scopeKeys.createCipherPairWithDataKey(context),
-      getOrgKmsKeyId: (orgId) => scopeKeys.getOrgKmsKeyId(orgId),
       getProjectSecretManagerKmsKeyId: (projectId) => scopeKeys.getProjectSecretManagerKmsKeyId(projectId),
       getProjectCertificateKmsKeyId: (projectId) => scopeKeys.getProjectCertificateKmsKeyId(projectId),
       wrapKey: (input) => scopeKeys.wrapKey(input),

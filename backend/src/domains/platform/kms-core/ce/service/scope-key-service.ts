@@ -57,10 +57,6 @@ export class ScopeKeyService {
     return dataKeyCipherPair(dataKey);
   }
 
-  async getOrgKmsKeyId(orgId: string): Promise<string> {
-    return (await this.ensureOrgKmsKeyId(orgId)).kmsKeyId;
-  }
-
   async getProjectSecretManagerKmsKeyId(projectId: string): Promise<string> {
     return (await this.ensureProjectKmsKeyId(projectId)).kmsKeyId;
   }

@@ -1,9 +1,10 @@
 import { InternalServerError } from "@app/lib/errors";
 
-import { KmsDataKey, KmsCiphertextUndecryptableError } from "../module";
+import { KmsCiphertextUndecryptableError, KmsDataKey } from "../module";
 import { buildInMemoryKmsCore } from "../testing/build-kms-core";
 import { kmsWireFormatFixture } from "../testing/kms-wire-format-fixture";
 import { loadFixtureIntoMemory } from "../testing/load-kms-wire-format-fixture";
+import { inputKeyDecryptor } from "./key-material";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -84,9 +85,7 @@ describe("KMS wire format (legacy fixtures)", () => {
       keyBytes: 32
     });
     const rootPlain = kms.decryptWithRootKey()(b64(rootKey.cipherTextBlob));
-    const inputPlain = (await kms.decryptWithInputKey({ key: b64(inputKey.key) }))({
-      cipherTextBlob: b64(inputKey.cipherTextBlob)
-    });
+    const inputPlain = inputKeyDecryptor(b64(inputKey.key))({ cipherTextBlob: b64(inputKey.cipherTextBlob) });
 
     // Assert
     expect(unwrapped).toEqual(b64(wrappedKey.key));

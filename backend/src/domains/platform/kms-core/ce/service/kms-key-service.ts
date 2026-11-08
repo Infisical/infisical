@@ -121,19 +121,6 @@ export class KmsKeyService {
     });
   }
 
-  // A project owns only the reserved key generated for it; anything else is the CMEK API's to delete.
-  async deleteInternalKms(kmsId: string, orgId: string): Promise<void> {
-    await this.deps.runner.run(async ({ store }) => {
-      const key = await store.kmsKeys.findById(kmsId);
-      if (!key || key.isExternal) return;
-      if (key.orgId !== orgId) throw new ForbiddenRequestError({ message: "KMS doesn't belong to organization" });
-      if (!key.isReserved) return;
-      const org = await store.scopeKeys.findOrg(key.orgId);
-      if (org?.kmsKeyId === key.id) return;
-      await store.kmsKeys.deleteById(kmsId);
-    });
-  }
-
   async getKmsById(kmsId: string) {
     const key = await requireKey(this.deps.replica, kmsId);
     return { id: key.id, name: key.name, orgId: key.orgId, isExternal: key.isExternal };

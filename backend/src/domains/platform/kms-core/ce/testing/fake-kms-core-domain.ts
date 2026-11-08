@@ -84,8 +84,6 @@ export class FakeKmsCoreDomain implements TKmsCoreDomain {
 
   rotateKmsKey = this.delegate("rotateKmsKey");
 
-  deleteInternalKms = this.delegate("deleteInternalKms");
-
   getKmsById = this.delegate("getKmsById");
 
   findKeyById = this.delegate("findKeyById");
@@ -110,10 +108,6 @@ export class FakeKmsCoreDomain implements TKmsCoreDomain {
 
   decryptWithKmsKey = this.delegate("decryptWithKmsKey");
 
-  encryptWithInputKey = this.delegate("encryptWithInputKey");
-
-  decryptWithInputKey = this.delegate("decryptWithInputKey");
-
   getPublicKey = this.delegate("getPublicKey");
 
   signWithKmsKey = this.delegate("signWithKmsKey");
@@ -125,8 +119,6 @@ export class FakeKmsCoreDomain implements TKmsCoreDomain {
   verifyMac = this.delegate("verifyMac");
 
   createCipherPairWithDataKey = this.delegate("createCipherPairWithDataKey");
-
-  getOrgKmsKeyId = this.delegate("getOrgKmsKeyId");
 
   getProjectSecretManagerKmsKeyId = this.delegate("getProjectSecretManagerKmsKeyId");
 

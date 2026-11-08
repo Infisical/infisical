@@ -59,22 +59,6 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     }
   };
 
-  const countKmsKeysForOrg = async (orgId: string, tx?: Knex) => {
-    try {
-      const result = (await (tx || db.replicaNode())(TableName.KmsKey)
-        .join(TableName.Project, `${TableName.KmsKey}.projectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .where(`${TableName.Project}.type`, ProjectType.KMS)
-        .count(`${TableName.KmsKey}.id as count`)
-        .first()) as { count: string } | undefined;
-
-      return parseInt(result?.count || "0", 10);
-    } catch (error) {
-      throw new DatabaseError({ error, name: "CountKmsKeysForOrg" });
-    }
-  };
-
   const countDataSourcesForOrg = async (orgId: string, tx?: Knex) => {
     try {
       const result = (await (tx || db.replicaNode())(TableName.SecretScanningDataSource)
@@ -315,7 +299,6 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     countCertificatesForOrg,
     countCertificateAuthoritiesForOrg,
     countSignersForOrg,
-    countKmsKeysForOrg,
     countKmipClientsForOrg,
     countDataSourcesForOrg,
     countSecretScanningResourcesForOrg,
