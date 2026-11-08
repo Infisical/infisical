@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "autofill",
+    title: "Autofill keeps the field",
+    description:
+      "Fields the browser autofills keep their own ground and text color in every theme instead of Chrome's blue fill.",
+    date: "2026-11-07",
+    commit: "7e0192cd9a",
+    page: "input"
+  },
+  {
     id: "mono-rule",
     title: "Mono for machine values",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "c47e88f745",
     page: "row-link"
-  },
-  {
-    id: "trigger-layout",
-    title: "Start-aligned triggers",
-    description:
-      'Picker triggers put the value at the start and the chevron at the end, matching Select, with layout="trigger" on Button.',
-    date: "2026-11-07",
-    commit: "357f910288",
-    page: "button"
   }
 ];
