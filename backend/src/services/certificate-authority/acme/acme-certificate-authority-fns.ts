@@ -877,39 +877,44 @@ export const AcmeCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
+    // Validated before the transaction: checking the connection decrypts it through KMS Core, which takes its own
+    // connection.
+    if (configuration) {
+      const { dnsAppConnectionId, dnsProviderConfig, dnsResolver } = configuration;
+      const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
+
+      if (!appConnection) {
+        throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
+      }
+
+      validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
+
+      if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
+        validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
+      }
+
+      if (dnsResolver) {
+        validateDnsResolver(dnsResolver);
+      }
+
+      const ca = await certificateAuthorityDAL.findById(id);
+
+      if (!ca) {
+        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+      }
+
+      // validates permission to connect
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: dnsAppConnectionId, projectId: ca.projectId },
+        actor
+      );
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { dnsAppConnectionId, directoryUrl, accountEmail, dnsProviderConfig, eabKid, eabHmacKey, dnsResolver } =
           configuration;
-        const appConnection = await appConnectionDAL.findById(dnsAppConnectionId);
-
-        if (!appConnection) {
-          throw new NotFoundError({ message: `App connection with ID '${dnsAppConnectionId}' not found` });
-        }
-
-        validateDnsProviderAppConnection(dnsProviderConfig.provider, dnsAppConnectionId, appConnection.app);
-
-        if (dnsProviderConfig.provider === AcmeDnsProvider.GcpCloudDns) {
-          validateGcpCloudDnsZone(dnsProviderConfig.hostedZoneId);
-        }
-
-        if (dnsResolver) {
-          validateDnsResolver(dnsResolver);
-        }
-
-        const ca = await certificateAuthorityDAL.findById(id);
-
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        // validates permission to connect
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: dnsAppConnectionId, projectId: ca.projectId },
-          actor
-        );
-
         let resolvedEabHmacKey = eabHmacKey;
         if (eabHmacKey === UNCHANGED_CREDENTIAL_SENTINEL || eabHmacKey === undefined) {
           const existingExternalCa = await externalCertificateAuthorityDAL.findOne({ caId: id, type: CaType.ACME }, tx);

@@ -406,25 +406,34 @@ export const secretScanningV2ServiceFactory = ({
             encryptedCredentials = cipherTextBlob;
           }
 
-          return secretScanningV2DAL.dataSources.transaction(async (tx) => {
-            const dataSource = await secretScanningV2DAL.dataSources.create(
-              {
-                encryptedCredentials,
-                externalId,
-                ...payload
-              },
-              tx
-            );
+          const dataSource = await secretScanningV2DAL.dataSources.create({
+            encryptedCredentials,
+            externalId,
+            ...payload
+          });
 
+          // Registered after the data source is stored, not inside a transaction: it calls the provider and may
+          // refresh the connection's token through KMS Core. A failed registration removes the data source again.
+          try {
             await factory.postInitialization({
               payload: payload as TSecretScanningDataSourceInput,
               connection: connection as TSecretScanningDataSourceWithConnection["connection"],
               dataSourceId: dataSource.id,
               credentials
             });
+          } catch (error) {
+            await secretScanningV2DAL.dataSources
+              .deleteById(dataSource.id)
+              .catch((cleanupError) =>
+                logger.error(
+                  cleanupError,
+                  `Failed to remove Secret Scanning Data Source after its setup failed [dataSourceId=${dataSource.id}]`
+                )
+              );
+            throw error;
+          }
 
-            return dataSource;
-          });
+          return dataSource;
         }
       );
 

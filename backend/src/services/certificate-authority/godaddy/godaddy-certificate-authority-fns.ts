@@ -283,30 +283,35 @@ export const GoDaddyCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
+    // Validated before the transaction: checking the connection decrypts it through KMS Core, which takes its own
+    // connection.
+    if (configuration) {
+      const { appConnectionId } = configuration;
+      const appConnection = await appConnectionDAL.findById(appConnectionId);
+      if (!appConnection) {
+        throw new NotFoundError({ message: `GoDaddy app connection with ID '${appConnectionId}' not found` });
+      }
+      if (appConnection.app !== AppConnection.GoDaddy) {
+        throw new BadRequestError({
+          message: `App connection with ID '${appConnectionId}' is not a GoDaddy connection`
+        });
+      }
+
+      const ca = await certificateAuthorityDAL.findById(id);
+      if (!ca) {
+        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+      }
+
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: appConnectionId, projectId: ca.projectId },
+        actor
+      );
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { appConnectionId, productType } = configuration;
-        const appConnection = await appConnectionDAL.findById(appConnectionId);
-        if (!appConnection) {
-          throw new NotFoundError({ message: `GoDaddy app connection with ID '${appConnectionId}' not found` });
-        }
-        if (appConnection.app !== AppConnection.GoDaddy) {
-          throw new BadRequestError({
-            message: `App connection with ID '${appConnectionId}' is not a GoDaddy connection`
-          });
-        }
-
-        const ca = await certificateAuthorityDAL.findById(id);
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: appConnectionId, projectId: ca.projectId },
-          actor
-        );
-
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,

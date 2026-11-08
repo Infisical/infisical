@@ -466,28 +466,32 @@ export const VenafiTppCertificateAuthorityFns = ({
       throw new NotFoundError({ message: `Certificate authority with ID '${id}' not found` });
     }
 
-    const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      if (configuration) {
-        if (configuration.appConnectionId) {
-          const appConnection = await appConnectionDAL.findById(configuration.appConnectionId);
-          if (!appConnection) {
-            throw new NotFoundError({
-              message: `App connection with ID '${configuration.appConnectionId}' not found`
-            });
-          }
-          if (appConnection.app !== AppConnection.VenafiTpp) {
-            throw new BadRequestError({
-              message: `App connection with ID '${configuration.appConnectionId}' is not a Venafi TPP connection`
-            });
-          }
-
-          await appConnectionService.validateAppConnectionUsageById(
-            appConnection.app as AppConnection,
-            { connectionId: configuration.appConnectionId, projectId: ca.projectId },
-            actor
-          );
+    // Validated before the transaction: checking the connection decrypts it through KMS Core, which takes its own
+    // connection.
+    if (configuration) {
+      if (configuration.appConnectionId) {
+        const appConnection = await appConnectionDAL.findById(configuration.appConnectionId);
+        if (!appConnection) {
+          throw new NotFoundError({
+            message: `App connection with ID '${configuration.appConnectionId}' not found`
+          });
+        }
+        if (appConnection.app !== AppConnection.VenafiTpp) {
+          throw new BadRequestError({
+            message: `App connection with ID '${configuration.appConnectionId}' is not a Venafi TPP connection`
+          });
         }
 
+        await appConnectionService.validateAppConnectionUsageById(
+          appConnection.app as AppConnection,
+          { connectionId: configuration.appConnectionId, projectId: ca.projectId },
+          actor
+        );
+      }
+    }
+
+    const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
+      if (configuration) {
         const existingConfig = (ca.externalCa?.configuration as { policyDN?: string } | null) || {};
         await externalCertificateAuthorityDAL.update(
           { caId: id, type: CaType.VENAFI_TPP },

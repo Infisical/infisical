@@ -739,33 +739,38 @@ export const AzureAdCsCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
+    // Validated before the transaction: checking the connection decrypts it through KMS Core, which takes its own
+    // connection.
+    if (configuration) {
+      const { azureAdcsConnectionId } = configuration;
+      const appConnection = await appConnectionDAL.findById(azureAdcsConnectionId);
+
+      if (!appConnection) {
+        throw new NotFoundError({ message: `App connection with ID '${azureAdcsConnectionId}' not found` });
+      }
+
+      if (appConnection.app !== AppConnection.AzureADCS) {
+        throw new BadRequestError({
+          message: `App connection with ID '${azureAdcsConnectionId}' is not an Azure ADCS connection`
+        });
+      }
+
+      const ca = await certificateAuthorityDAL.findById(id);
+
+      if (!ca) {
+        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+      }
+
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: azureAdcsConnectionId, projectId: ca.projectId },
+        actor
+      );
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { azureAdcsConnectionId } = configuration;
-        const appConnection = await appConnectionDAL.findById(azureAdcsConnectionId);
-
-        if (!appConnection) {
-          throw new NotFoundError({ message: `App connection with ID '${azureAdcsConnectionId}' not found` });
-        }
-
-        if (appConnection.app !== AppConnection.AzureADCS) {
-          throw new BadRequestError({
-            message: `App connection with ID '${azureAdcsConnectionId}' is not an Azure ADCS connection`
-          });
-        }
-
-        const ca = await certificateAuthorityDAL.findById(id);
-
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: azureAdcsConnectionId, projectId: ca.projectId },
-          actor
-        );
-
         await externalCertificateAuthorityDAL.update(
           {
             caId: id,
