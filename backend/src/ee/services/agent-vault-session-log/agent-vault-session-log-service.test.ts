@@ -3,8 +3,9 @@ import { createMongoAbility } from "@casl/ability";
 import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { Plan, TPlanProps as TLicensePlan } from "@app/domains/platform/license/ce/module";
+import { TPlanProps as TLicensePlan } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { BadRequestError, DailyQuotaExceededError, InternalServerError } from "@app/lib/errors";
 import { ObjectStorageError, toObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
@@ -143,7 +144,7 @@ type TOverrides = {
 
 const toPlan = ({ hasExternal = true, hasDefault = true, retentionDays = null }: TPlanProps = {}) =>
   ({
-    ...Plan.community().toJSON(),
+    ...testFeatures(),
     agentVaultByoS3: hasExternal,
     agentVaultManagedStorage: hasDefault,
     agentVaultSessionLogRetentionDays: retentionDays

@@ -2,9 +2,9 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { PlanCache } from "../data-access/plan-cache";
-import { TLicenseServerClient } from "../license-server-client/license-server-client";
 import { Meter } from "../model/meter";
 import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
+import { TLicenseHooks } from "./license-hooks";
 import { OrganizationDirectory } from "./organization-directory";
 import { PlanResolver } from "./plan-resolver";
 import { UsageQueue } from "./usage-queue";
@@ -15,7 +15,7 @@ export type TSubscriptionServiceDeps = {
   organizations: OrganizationDirectory;
   planResolver: PlanResolver;
   usageQueue: UsageQueue;
-  licenseServerClient: TLicenseServerClient;
+  hooks: TLicenseHooks;
 };
 
 export class SubscriptionService {
@@ -39,7 +39,7 @@ export class SubscriptionService {
     if (!this.deps.instance.isCloud()) return;
 
     try {
-      await this.deps.licenseServerClient.cancelSubscription(orgId);
+      await this.deps.hooks.cancelSubscription(orgId);
     } catch (error) {
       if (!(error instanceof BadRequestError)) throw error;
       logger.info(`cancelOrgSubscription: no subscription to cancel [orgId=${orgId}]`);

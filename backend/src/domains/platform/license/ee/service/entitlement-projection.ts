@@ -1,9 +1,9 @@
+import { TInstanceFeatures } from "../../ce/model/instance-entitlements";
+import { TPlanNotice } from "../../ce/model/plan";
 import {
   TEntitlementsResponse,
   trialPaymentFailedNoticeSchema
-} from "../../ce/license-server-client/license-server-types";
-import { TInstanceFeatures } from "../../ce/model/instance-entitlements";
-import { TPlanNotice } from "../../ce/model/plan";
+} from "../../ce/service/license-server-types/license-server-types";
 import { FEATURE_MAPPINGS } from "./feature-mapping";
 
 // Unknown notice types are expected (the License Server adds them ahead of us), so they are dropped silently.

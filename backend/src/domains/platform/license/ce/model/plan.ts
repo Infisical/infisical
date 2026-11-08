@@ -123,101 +123,6 @@ export type TPlanProps = {
   secretsFolderRbac: false;
 };
 
-// What an org gets with no license: the community edition.
-const COMMUNITY_PLAN: TPlanProps = {
-  _id: null,
-  slug: null,
-  tier: -1,
-  workspaceLimit: null,
-  workspacesUsed: 0,
-  dynamicSecret: false,
-  memberLimit: null,
-  identityLimit: null,
-  subOrganization: false,
-  environmentLimit: null,
-  environmentsUsed: 0,
-  secretVersioning: true,
-  pitRecovery: false,
-  ipAllowlisting: false,
-  rbac: false,
-  customAlerts: false,
-  auditLogs: false,
-  auditLogsRetentionDays: 0,
-  auditLogStreams: false,
-  auditLogStreamLimit: 3,
-  githubOrgSync: false,
-  samlSSO: false,
-  enforceGoogleSSO: false,
-  hsm: false,
-  oidcSSO: false,
-  secretAccessInsights: false,
-  scim: false,
-  ldap: false,
-  groups: false,
-  status: null,
-  trial_end: null,
-  has_used_trial: true,
-  secretApproval: false,
-  secretRotation: false,
-  externalKms: false,
-  rateLimits: {
-    readLimit: 60,
-    writeLimit: 200,
-    secretsLimit: 40
-  },
-  kmsPqc: false,
-  enforceMfa: false,
-  projectTemplates: false,
-  kmip: false,
-  gateway: false,
-  gatewayPool: false,
-  pamEnterpriseAlerting: false,
-  secretScanning: false,
-  enterpriseSecretSyncs: false,
-  enterpriseAppConnections: false,
-  machineIdentityAuthTemplates: false,
-  eventSubscriptions: false,
-  secretShareExternalBranding: false,
-  honeyTokens: false,
-  honeyTokenLimit: 0,
-  secretsBrokering: true,
-  agentVaultByoS3: false,
-  // Cloud turns it on in withCloudPlanDefaults; self-hosted needs a license that includes it.
-  agentVaultManagedStorage: false,
-  agentVaultSessionLogRetentionDays: 30,
-  secretSyncLimit: null,
-  maxPamAccounts: null,
-  // PKI / Cert Manager
-  pkiAcme: true,
-  pkiEst: false,
-  pkiScep: false,
-  pkiPqc: false,
-  caCrl: true,
-  pkiOcsp: false,
-  pkiAwsKmsSigning: false,
-  pkiEnterpriseCaIntegrations: false,
-  pkiExternalIntermediateCa: false,
-  pkiCrossSignedCa: false,
-  pkiDiscovery: false,
-  pkiEnterpriseAlerting: false,
-  pkiApprovals: false,
-  pkiSyncs: false,
-  pkiLegacyTemplates: false,
-  pkiCodeSigning: false,
-  maxCas: 1,
-  maxInternalCas: null,
-  maxCertificates: null,
-  maxWildcardCertificates: null,
-  maxSansPerCertificate: null,
-  // product gating
-  pam: null,
-  certManager: null,
-  secretsTemporaryAccess: null,
-  enterprisePamAccount: null,
-  crossProjectSecretSharing: false,
-  secretsFolderRbac: false
-};
-
 export type TPlanFeature = keyof typeof Plan.featureNames;
 
 export class Plan {
@@ -278,10 +183,6 @@ export class Plan {
   } as const satisfies Partial<Record<keyof TPlanProps, string>>;
 
   private constructor(private readonly props: TPlanProps) {}
-
-  static community(): Plan {
-    return new Plan(structuredClone(COMMUNITY_PLAN));
-  }
 
   static restore(props: TPlanProps): Plan {
     return new Plan(props);

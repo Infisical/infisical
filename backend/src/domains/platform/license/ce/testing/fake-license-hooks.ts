@@ -1,14 +1,23 @@
 /* eslint-disable class-methods-use-this */
-import { TEntitlementsResponse } from "../license-server-client/license-server-types";
-import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
-import { Plan } from "../model/plan";
-import { TLicenseHooks } from "../service/license-hooks";
-import { FakeLicenseServerClient } from "./fake-license-server-client";
+import { BadRequestError } from "@app/lib/errors";
 
-// The EE steps in memory. A cloud instance by default; plans come from the FakeLicenseServerClient it is
-// given.
+import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
+import { Plan, TPlanProps } from "../model/plan";
+import { TLicenseHooks } from "../service/license-hooks";
+import { TUsageEvent, TUsageSnapshot, UsageReportError } from "../service/license-server-types/usage-reports";
+import { TRootOrg } from "../service/registrations";
+import { FakeLicenseServerBilling } from "./fake-license-server-billing";
+import { enterprisePlan, testFeatures } from "./test-features";
+
+// The EE edition in memory: the instance's license, a plan per root org, the reports the License Server
+// received, and failures to inject. A cloud instance by default.
 export class FakeLicenseHooks implements TLicenseHooks {
-  instance: TInstanceEntitlementsProps = { ...InstanceEntitlements.cloud().toJSON(), instanceType: InstanceType.Cloud };
+  instance: TInstanceEntitlementsProps = {
+    instanceType: InstanceType.Cloud,
+    features: testFeatures(),
+    licenseId: null,
+    customerId: null
+  };
 
   online = false;
 
@@ -16,7 +25,27 @@ export class FakeLicenseHooks implements TLicenseHooks {
 
   refreshFailure: Error | null = null;
 
-  constructor(private readonly licenseServer: FakeLicenseServerClient) {}
+  plans = new Map<string, TPlanProps>();
+
+  fetches: TRootOrg[] = [];
+
+  failNextFetches = 0;
+
+  meteringEnabled = true;
+
+  reporting = true;
+
+  snapshots: { orgId: string; snapshot: TUsageSnapshot }[] = [];
+
+  events: { orgId: string; event: TUsageEvent }[] = [];
+
+  failNextReports: UsageReportError[] = [];
+
+  cancellations: string[] = [];
+
+  cancelFailure: Error | null = null;
+
+  billing = new FakeLicenseServerBilling();
 
   resolveInstanceEntitlements = async () => InstanceEntitlements.restore(this.instance);
 
@@ -28,10 +57,38 @@ export class FakeLicenseHooks implements TLicenseHooks {
 
   hasOnlineLicense = () => this.online;
 
-  planFromEntitlements = (entitlements: TEntitlementsResponse) =>
-    Plan.restore(this.licenseServer.planFor(entitlements));
-
-  fallbackPlan = (instance: InstanceEntitlements) => Plan.restore({ ...instance.plan().toJSON(), slug: null });
-
   isOffline = () => this.offline;
+
+  fetchPlan = async (rootOrg: TRootOrg) => {
+    this.fetches.push(rootOrg);
+    if (this.failNextFetches > 0) {
+      this.failNextFetches -= 1;
+      throw new BadRequestError({ message: "License Server entitlements are unavailable" });
+    }
+    return Plan.restore(this.plans.get(rootOrg.id) ?? enterprisePlan());
+  };
+
+  fallbackPlan = () => Plan.restore({ ...InstanceEntitlements.restore(this.instance).plan().toJSON(), slug: null });
+
+  isMeteringEnabled = () => this.meteringEnabled;
+
+  canReportUsage = () => this.reporting;
+
+  reportSnapshots = async (orgId: string, snapshots: TUsageSnapshot[]) => {
+    const failure = this.failNextReports.shift();
+    if (failure) throw failure;
+    snapshots.forEach((snapshot) => this.snapshots.push({ orgId, snapshot }));
+  };
+
+  reportEvents = async (orgId: string, events: TUsageEvent[]) => {
+    const failure = this.failNextReports.shift();
+    if (failure) throw failure;
+    events.forEach((event) => this.events.push({ orgId, event }));
+    return events.map((e) => ({ event_id: e.event_id, status: "accepted" as const }));
+  };
+
+  cancelSubscription = async (orgId: string) => {
+    if (this.cancelFailure) throw this.cancelFailure;
+    this.cancellations.push(orgId);
+  };
 }

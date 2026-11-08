@@ -27,27 +27,8 @@ export type TInstanceEntitlementsProps = {
 export class InstanceEntitlements {
   private constructor(private readonly props: TInstanceEntitlementsProps) {}
 
-  static community(): InstanceEntitlements {
-    return new InstanceEntitlements({
-      instanceType: InstanceType.OnPrem,
-      features: InstanceEntitlements.communityFeatures(),
-      licenseId: null,
-      customerId: null
-    });
-  }
-
-  // Infisical Cloud: every org's plan comes from the License Server, so the instance's own features are the
-  // community edition's.
-  static cloud(): InstanceEntitlements {
-    return new InstanceEntitlements({ ...InstanceEntitlements.community().props, instanceType: InstanceType.Cloud });
-  }
-
   static restore(props: TInstanceEntitlementsProps): InstanceEntitlements {
     return new InstanceEntitlements(props);
-  }
-
-  static communityFeatures(): TInstanceFeatures {
-    return { ...Plan.community().toJSON(), fips: false, instanceUserManagement: false };
   }
 
   get instanceType(): InstanceType {

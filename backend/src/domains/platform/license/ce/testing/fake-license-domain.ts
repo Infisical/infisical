@@ -1,17 +1,23 @@
 /* eslint-disable class-methods-use-this */
-import { DormantLicenseServerClient } from "../license-server-client/dormant-license-server-client";
-import { InstanceEntitlements, TInstanceEntitlementsProps, TInstanceFeatures } from "../model/instance-entitlements";
+import { InstanceType, TInstanceEntitlementsProps, TInstanceFeatures } from "../model/instance-entitlements";
 import { Plan, TPlanFeature, TPlanProps } from "../model/plan";
 import { SeatUsage } from "../model/seat-usage";
 import { TLicenseDomain } from "../module";
+import { FakeLicenseServerBilling } from "./fake-license-server-billing";
+import { testFeatures } from "./test-features";
 
 // For consumers of the License domain: a plan per org that the test sets, and a record of what was reported.
 export class FakeLicenseDomain implements TLicenseDomain {
-  instance: TInstanceEntitlementsProps = InstanceEntitlements.cloud().toJSON();
+  instance: TInstanceEntitlementsProps = {
+    instanceType: InstanceType.Cloud,
+    features: testFeatures(),
+    licenseId: null,
+    customerId: null
+  };
 
   plans = new Map<string, TPlanProps>();
 
-  defaultPlan: TPlanProps = Plan.community().toJSON();
+  defaultPlan: TPlanProps = testFeatures();
 
   fallbackOrgs = new Set<string>();
 
@@ -25,10 +31,10 @@ export class FakeLicenseDomain implements TLicenseDomain {
 
   cancelled: string[] = [];
 
-  billing = new DormantLicenseServerClient();
+  billing = new FakeLicenseServerBilling();
 
   setPlan(orgId: string, plan: Partial<TPlanProps>) {
-    this.plans.set(orgId, { ...Plan.community().toJSON(), ...plan } as TPlanProps);
+    this.plans.set(orgId, { ...testFeatures(), ...plan } as TPlanProps);
     return this;
   }
 

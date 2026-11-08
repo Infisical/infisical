@@ -7,7 +7,7 @@ import {
   TUsageEventResult,
   TUsageSnapshot,
   UsageReportError
-} from "../../ce/license-server-client/usage-reports";
+} from "../../ce/service/license-server-types/usage-reports";
 import { mintServiceToken } from "./license-server-backends";
 import { readLicenseRequestId } from "./license-server-errors";
 import { createSelfHostedTokenProvider } from "./license-token-provider";

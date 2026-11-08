@@ -1,5 +1,5 @@
-import { TEntitlementsResponse } from "../../ce/license-server-client/license-server-types";
 import { TInstanceFeatures } from "../../ce/model/instance-entitlements";
+import { TEntitlementsResponse } from "../../ce/service/license-server-types/license-server-types";
 
 export enum LicenseType {
   Offline = "offline",

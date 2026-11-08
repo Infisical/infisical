@@ -4,14 +4,20 @@ Answers what an org may use (`getPlan`, `assertFeature`), what the instance's ow
 (`getInstanceEntitlements`), and reports metered usage to the License Server. Owns no tables: its state
 is the plan cache in the key store and the usage queues.
 
+**CE holds the mechanism, EE holds licensing policy.** CE caches plans, queues and sends usage reports, counts
+usage and checks a plan against a feature. EE decides: the free tier's features (`ee/service/default-features.ts`),
+reading and verifying license keys, turning License Server entitlements into a plan, and talking to the License
+Server. EE plugs in through `TLicenseHooks`, which `LicenseModule` requires. Never add defaults or a fallback
+for the hooks to `ce/`: a copy of the free tier in MIT code is a copy anyone may edit into a paid one.
+
 | Layer | Holds |
 | --- | --- |
-| `ce/model/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`: classes only |
+| `ce/model/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`: classes only, with no feature data |
 | `ce/data-access/` | `PlanCache` and `UsageReportMemory`, both in the key store, with their key names |
-| `ce/license-server-client/` | `TLicenseServerClient` (what the domain asks of the License Server), its request and response types, and `DormantLicenseServerClient` for the community edition |
-| `ce/service/` | The business logic (`PlanResolver`, `UsageQueue`, the services), using data access and the client; the contracts others implement (`TLicenseHooks`, `TUsageCounter`, `TLicenseOrganizations`) |
-| `ee/license-server-client/` | `LicenseServerClient`: HTTP backends, tokens and usage posts |
-| `ee/service/` | The EE logic behind `TLicenseHooks`: reading the license key, projecting entitlements into a plan |
+| `ce/service/` | The mechanism (`PlanResolver`, `UsageQueue`, the services), using data access and the hooks; `TLicenseHooks`, and the registrations products implement (`TUsageCounter`, `TLicenseOrganizations`) |
+| `ce/service/license-server-types/` | The License Server's request and response shapes, which `billing` and the hooks expose |
+| `ee/service/` | The policy behind `TLicenseHooks`: default features, the license resolver, entitlement projection |
+| `ee/license-server-client/` | `LicenseServerClient`, the only client: HTTP backends, tokens and usage posts |
 
 - **Cloud plans are cached under the root org.** A sub-org's plan is its root's; `OrganizationDirectory` maps an
   org to its root once per process. Last-known plan, fallback marker and pass-through marker are keyed by the
@@ -41,8 +47,9 @@ is the plan cache in the key store and the usage queues.
   A seat limit is enforced by reading `getSeatUsage` (or `getInstanceSeatUsage` for an instance-wide limit)
   before the caller opens its transaction and checking it with `seatUsage.assertAvailable(...)` inside it.
 - **An offline license never reaches the License Server**: `LicenseServerClient.fromConfig` stays dormant for
-  it. The EE instance resolver imports `getDefaultOnPremFeatures` and `getLicenseKeyConfig` through the exact
-  specifier `./license-fns`: the e2e suite aliases it to `src/ee/services/license/__mocks__/license-fns.ts`.
+  it. EE reads the default features and `getLicenseKeyConfig` only through the exact specifier `./license-fns`:
+  the e2e suite aliases it to `src/ee/services/license/__mocks__/license-fns.ts`.
 - Tests: `ce/testing/build-license.ts` builds the module over an in-memory key store and queue with
-  `FakeLicenseServerClient` and `FakeLicenseHooks`; consumers use `FakeLicenseDomain`; a product domain's test
-  reads what it registered through `FakeLicenseRegistry`.
+  `FakeLicenseHooks`, which also plays the License Server; `testFeatures()` is test data, not the product's
+  defaults. Consumers use `FakeLicenseDomain`; a product domain's test reads what it registered through
+  `FakeLicenseRegistry`.

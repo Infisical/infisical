@@ -44,8 +44,7 @@ export const createDomains = (deps: TDomainDeps) => {
     cronJob: deps.cronJob,
     isProductionMode: deps.envConfig.isProductionMode,
     startLocalRefresh,
-    hooks: licenseEe.hooks,
-    licenseServerClient: licenseEe.licenseServerClient
+    hooks: licenseEe.hooks
   });
 
   const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db, licenseRegistry: license.registry });

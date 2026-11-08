@@ -2,10 +2,14 @@ import { verifyOfflineLicense } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { SELF_HOSTED_LICENSE_ORG_ID, TLicenseServerClient } from "../../ce/license-server-client/license-server-client";
-import { TEntitlementsResponse } from "../../ce/license-server-client/license-server-types";
 import { InstanceEntitlements, InstanceType } from "../../ce/model/instance-entitlements";
 import { Plan } from "../../ce/model/plan";
+import {
+  SELF_HOSTED_LICENSE_ORG_ID,
+  TEntitlementsResponse
+} from "../../ce/service/license-server-types/license-server-types";
+import { TRootOrg } from "../../ce/service/registrations";
+import { LicenseServerClient } from "../license-server-client/license-server-client";
 import { withCloudPlanDefaults } from "./cloud-plan-defaults";
 import { projectV2ToFeatureSet } from "./entitlement-projection";
 // Imported by this exact specifier: the e2e suite aliases "./license-fns" to a permissive mock.
@@ -13,8 +17,7 @@ import { getDefaultOnPremFeatures, getLicenseKeyConfig } from "./license-fns";
 import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./offline-license";
 import { withSelfHostedLicenseBase } from "./self-hosted-license-base";
 
-// Built from getDefaultOnPremFeatures rather than InstanceEntitlements.community(), so the e2e suite's
-// permissive mock reaches it.
+// Read through "./license-fns", so the e2e suite's permissive mock reaches it.
 const community = (): InstanceEntitlements =>
   InstanceEntitlements.restore({
     instanceType: InstanceType.OnPrem,
@@ -59,10 +62,13 @@ const readOfflineLicense = async (licenseKey: string): Promise<InstanceEntitleme
 export const cloudPlanFromEntitlements = (entitlements: TEntitlementsResponse): Plan =>
   Plan.restore(withCloudPlanDefaults(projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements), entitlements));
 
+// Cloud: what an org gets while the License Server cannot be reached.
+export const cloudFallbackPlan = (): Plan => Plan.restore(withCloudPlanDefaults(getDefaultOnPremFeatures(), null));
+
 export type TLicenseResolverDeps = {
   isCloud: boolean;
   licenseKeyConfig: TLicenseKeyConfig;
-  licenseServerClient: TLicenseServerClient;
+  licenseServerClient: LicenseServerClient;
 };
 
 // Works out what the instance is licensed for, and reads a cloud org's plan.
@@ -95,6 +101,15 @@ export class LicenseResolver {
   async refreshInstanceEntitlements(): Promise<InstanceEntitlements | null> {
     if (!this.hasOnlineLicense()) return null;
     return this.readOnlineLicense();
+  }
+
+  // Cloud: a root org's plan. Throws when the License Server cannot be read, so the domain serves the fallback.
+  async fetchPlan(rootOrg: TRootOrg): Promise<Plan> {
+    const entitlements = await this.deps.licenseServerClient.getEntitlements(rootOrg);
+    if (!entitlements) {
+      throw new BadRequestError({ message: "License Server entitlements are unavailable" });
+    }
+    return cloudPlanFromEntitlements(entitlements);
   }
 
   private async readOnlineLicense(): Promise<InstanceEntitlements> {

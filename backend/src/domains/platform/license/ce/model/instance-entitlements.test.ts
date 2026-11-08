@@ -1,10 +1,11 @@
+import { testFeatures } from "../testing/test-features";
 import { InstanceEntitlements, InstanceType } from "./instance-entitlements";
 
 const licensed = (instanceType: InstanceType) =>
   InstanceEntitlements.restore({
     instanceType,
     features: {
-      ...InstanceEntitlements.communityFeatures(),
+      ...testFeatures(),
       slug: "enterprise",
       rbac: true as false,
       fips: true as false
@@ -48,7 +49,12 @@ describe("InstanceEntitlements.isSelfHostedLicensed", () => {
 describe("InstanceEntitlements.withFeatures", () => {
   test("should replace the given features and leave the original unchanged", () => {
     // Setup
-    const instance = InstanceEntitlements.community();
+    const instance = InstanceEntitlements.restore({
+      instanceType: InstanceType.OnPrem,
+      features: testFeatures(),
+      licenseId: null,
+      customerId: null
+    });
 
     // Action
     const overridden = instance.withFeatures({ rbac: true as false });
@@ -61,7 +67,12 @@ describe("InstanceEntitlements.withFeatures", () => {
 describe("InstanceEntitlements.licenseId", () => {
   test("should read unknown when the instance has no offline license", () => {
     // Setup
-    const instance = InstanceEntitlements.community();
+    const instance = InstanceEntitlements.restore({
+      instanceType: InstanceType.OnPrem,
+      features: testFeatures(),
+      licenseId: null,
+      customerId: null
+    });
 
     // Action
     const { licenseId } = instance;

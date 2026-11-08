@@ -1,4 +1,4 @@
-import { TEntitlementOrg, TEntitlementsResponse } from "../../ce/license-server-client/license-server-types";
+import { TEntitlementOrg, TEntitlementsResponse } from "../../ce/service/license-server-types/license-server-types";
 import { TLicenseClientBackend } from "./license-server-backends";
 import { LicenseServerClient } from "./license-server-client";
 

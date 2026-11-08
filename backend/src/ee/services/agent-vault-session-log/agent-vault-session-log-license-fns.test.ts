@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { Plan, TPlanProps as TLicensePlan } from "@app/domains/platform/license/ce/module";
+import { TPlanProps as TLicensePlan } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
 import { getSessionLogEntitlement, getSessionLogRetentionDays } from "./agent-vault-session-log-license-fns";
@@ -12,7 +13,7 @@ describe("getSessionLogEntitlement", () => {
   type TPlanProps = { hasExternal: boolean; hasDefault: boolean; retentionDays?: number | null };
   const toPlan = ({ hasExternal, hasDefault, retentionDays = null }: TPlanProps) =>
     ({
-      ...Plan.community().toJSON(),
+      ...testFeatures(),
       agentVaultByoS3: hasExternal,
       agentVaultManagedStorage: hasDefault,
       agentVaultSessionLogRetentionDays: retentionDays

@@ -2,7 +2,6 @@ import { logger } from "@app/lib/logger";
 
 import { PlanCache } from "../data-access/plan-cache";
 import { UsageReportMemory } from "../data-access/usage-report-memory";
-import { TLicenseServerClient } from "../license-server-client/license-server-client";
 import { Plan } from "../model/plan";
 import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
 import { TLicenseHooks } from "./license-hooks";
@@ -20,7 +19,6 @@ export type TPlanResolverDeps = {
   planCache: PlanCache;
   usageReportMemory: UsageReportMemory;
   organizations: OrganizationDirectory;
-  licenseServerClient: TLicenseServerClient;
   hooks: TLicenseHooks;
   usageQueue: UsageQueue;
 };
@@ -52,7 +50,7 @@ export class PlanResolver {
       return plan;
     } catch (error) {
       logger.error(error, `getPlan: serving the fallback plan [orgId=${orgId}]`);
-      const fallback = this.deps.hooks.fallbackPlan(instance);
+      const fallback = this.deps.hooks.fallbackPlan();
       await this.deps.planCache.writeFallback(cacheKey, fallback);
       return fallback;
     }
@@ -81,11 +79,9 @@ export class PlanResolver {
   private async fetchAndCache(rootOrgId: string): Promise<Plan> {
     const root = await this.deps.organizations.findRootOrg(rootOrgId);
     if (!root) throw new Error(`Organization with ID '${rootOrgId}' not found`);
-    const entitlements = await this.deps.licenseServerClient.getEntitlements(root);
-    if (!entitlements) throw new Error(`License Server entitlements are unavailable [orgId=${root.id}]`);
-    const plan = this.deps.hooks
-      .planFromEntitlements(entitlements)
-      .withWorkspacesUsed(await this.deps.organizations.countWorkspacesUsed(root.id));
+    const plan = (await this.deps.hooks.fetchPlan(root)).withWorkspacesUsed(
+      await this.deps.organizations.countWorkspacesUsed(root.id)
+    );
     await this.deps.planCache.write(root.id, plan);
     return plan;
   }

@@ -1,9 +1,8 @@
 import { TEnvConfig } from "@app/lib/config/env";
 
-import { Plan, TLicenseHooks, TLicenseServerClient } from "../ce/module";
+import { TLicenseHooks } from "../ce/module";
 import { LicenseServerClient } from "./license-server-client/license-server-client";
-import { withCloudPlanDefaults } from "./service/cloud-plan-defaults";
-import { cloudPlanFromEntitlements, getLicenseKeyConfig, LicenseResolver } from "./service/license-resolver";
+import { cloudFallbackPlan, getLicenseKeyConfig, LicenseResolver } from "./service/license-resolver";
 import { LicenseType } from "./service/offline-license";
 
 export type TLicenseEeDeps = {
@@ -18,11 +17,10 @@ export type TLicenseEeDeps = {
   >;
 };
 
-// Reads the instance's license and talks to the License Server.
+// Licensing policy (the free tier, license keys, plans from entitlements) and the License Server, handed to
+// the License domain as its hooks.
 export class LicenseEeModule {
   readonly hooks: TLicenseHooks;
-
-  readonly licenseServerClient: TLicenseServerClient;
 
   constructor({ envConfig }: TLicenseEeDeps) {
     const licenseKeyConfig = getLicenseKeyConfig(envConfig);
@@ -31,14 +29,21 @@ export class LicenseEeModule {
     const licenseServerClient = LicenseServerClient.fromConfig({ envConfig, isOffline });
     const resolver = new LicenseResolver({ isCloud: envConfig.isCloud, licenseKeyConfig, licenseServerClient });
 
-    this.licenseServerClient = licenseServerClient;
     this.hooks = {
       resolveInstanceEntitlements: () => resolver.resolveInstanceEntitlements(),
       refreshInstanceEntitlements: () => resolver.refreshInstanceEntitlements(),
       hasOnlineLicense: () => resolver.hasOnlineLicense(),
-      planFromEntitlements: (entitlements) => cloudPlanFromEntitlements(entitlements),
-      fallbackPlan: (instance) => Plan.restore(withCloudPlanDefaults(instance.features, null)),
-      isOffline: () => isOffline
+      isOffline: () => isOffline,
+      fetchPlan: (rootOrg) => resolver.fetchPlan(rootOrg),
+      fallbackPlan: () => cloudFallbackPlan(),
+      isMeteringEnabled: () => licenseServerClient.isEnabled(),
+      canReportUsage: () => licenseServerClient.canReportUsage(),
+      reportSnapshots: (orgId, snapshots) => licenseServerClient.reportSnapshots(orgId, snapshots),
+      reportEvents: (orgId, events) => licenseServerClient.reportEvents(orgId, events),
+      cancelSubscription: async (orgId) => {
+        await licenseServerClient.cancelSubscription(orgId);
+      },
+      billing: licenseServerClient
     };
   }
 }

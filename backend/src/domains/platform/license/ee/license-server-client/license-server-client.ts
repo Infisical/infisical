@@ -1,7 +1,6 @@
 import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
-import { TLicenseServerClient } from "../../ce/license-server-client/license-server-client";
 import {
   TBuyProductPayload,
   TCancelTrialPayload,
@@ -13,8 +12,8 @@ import {
   TStartTrialPayload,
   TSubscriptionPreviewPayload,
   TUpgradePayload
-} from "../../ce/license-server-client/license-server-types";
-import { TUsageEvent, TUsageEventResult, TUsageSnapshot } from "../../ce/license-server-client/usage-reports";
+} from "../../ce/service/license-server-types/license-server-types";
+import { TUsageEvent, TUsageEventResult, TUsageSnapshot } from "../../ce/service/license-server-types/usage-reports";
 import { licenseServerBackend, licenseServerSelfHostedBackend, TLicenseClientBackend } from "./license-server-backends";
 import { createSelfHostedTokenProvider } from "./license-token-provider";
 import { UsageReporter } from "./usage-reporter";
@@ -84,7 +83,7 @@ const buildBackend = (
 
 // The License Server over HTTP. Dormant when it is not configured, or when the instance runs on an offline
 // license: reads then return nothing and changes are refused.
-export class LicenseServerClient implements TLicenseServerClient {
+export class LicenseServerClient {
   constructor(
     private readonly backend: TLicenseClientBackend | null,
     private readonly usageReporter: UsageReporter | null

@@ -39,7 +39,7 @@ import {
   TUpgradePayload,
   TUpgradeResult,
   upgradeResultSchema
-} from "../../ce/license-server-client/license-server-types";
+} from "../../ce/service/license-server-types/license-server-types";
 import { LICENSE_SERVER_ERROR_NAME, licenseErrorMessage, readLicenseRequestId } from "./license-server-errors";
 import { TLicenseTokenProvider } from "./license-token-provider";
 

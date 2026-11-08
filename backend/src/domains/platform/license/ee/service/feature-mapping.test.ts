@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { InstanceEntitlements } from "../../ce/model/instance-entitlements";
+import { getDefaultOnPremFeatures } from "./default-features";
 import { EXCLUDED_FIELDS, FEATURE_MAPPINGS } from "./feature-mapping";
 
 const topLevelV1Field = (v1Field: string): string => {
@@ -20,7 +20,7 @@ describe("feature mapping completeness", () => {
       }
     }
 
-    const planFields = Object.keys(InstanceEntitlements.communityFeatures());
+    const planFields = Object.keys(getDefaultOnPremFeatures());
     const uncovered = planFields.filter((field) => !EXCLUDED_FIELDS.has(field) && !referenced.has(field));
 
     expect(uncovered).toEqual([]);

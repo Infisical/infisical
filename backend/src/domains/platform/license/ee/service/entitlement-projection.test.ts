@@ -1,7 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { entitlementsResponseSchema, TEntitlementsResponse } from "../../ce/license-server-client/license-server-types";
 import { TInstanceFeatures } from "../../ce/model/instance-entitlements";
+import {
+  entitlementsResponseSchema,
+  TEntitlementsResponse
+} from "../../ce/service/license-server-types/license-server-types";
 import { projectV2ToFeatureSet } from "./entitlement-projection";
 
 const makeBase = (overrides: Partial<Record<keyof TInstanceFeatures, unknown>>): TInstanceFeatures =>
