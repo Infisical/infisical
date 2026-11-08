@@ -3,8 +3,8 @@ import * as x509 from "@peculiar/x509";
 import { randomBytes } from "crypto";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -98,11 +98,8 @@ type TPkiScepServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  license: Pick<TLicenseService, "getPlan" | "getInstanceType">;
-  certManager: Pick<
-    TCertManagerService,
-    "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
-  >;
+  license: TLicenseDomain;
+  certManager: TCertManagerDomain;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;

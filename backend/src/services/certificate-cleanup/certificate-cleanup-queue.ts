@@ -2,7 +2,7 @@
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { ActiveCerts, TLicenseService, WildcardCerts } from "@app/domains/platform/license/ce/module";
+import { ActiveCerts, TLicenseDomain, WildcardCerts } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -36,7 +36,7 @@ type TCertificateCleanupQueueFactoryDep = {
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "find">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };

@@ -2,7 +2,7 @@ import { createMongoAbility, ForbiddenError, MongoAbility, MongoQuery, RawRuleOf
 import { packRules } from "@casl/ability/extra";
 
 import { RESOURCE_SCOPE, ResourceType, TPamAccountTemplates } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolMembershipDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-membership-dal";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -145,7 +145,7 @@ type TPamAccountServiceFactoryDep = {
     | "cleanupAccountResources"
     | "checkGrant"
   >;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
 };
 
 const assertOraclePasswordIsUsable = (accountType: PamAccountType, credentials: unknown) => {

@@ -10,7 +10,7 @@ import {
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -111,7 +111,7 @@ type TApprovalPolicyServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getOrgPermission" | "getResourcePermission"
   >;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;

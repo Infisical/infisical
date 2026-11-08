@@ -14,7 +14,7 @@ import {
 } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
 import {
-  TLicenseService,
+  TLicenseDomain,
   AgentVaultIdentities,
   PamIdentities,
   SecretIdentities
@@ -144,7 +144,7 @@ type TOrgServiceFactoryDep = {
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
-  license: Pick<TLicenseService, "getPlan" | "syncSeats" | "cancelSubscription">;
+  license: TLicenseDomain;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
@@ -154,7 +154,7 @@ type TOrgServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
   honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeOrgHoneyTokens">;

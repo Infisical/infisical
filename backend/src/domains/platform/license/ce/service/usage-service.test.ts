@@ -15,7 +15,7 @@ vi.mock("@app/lib/logger", () => ({
 const snapshotsFor = (hooks: FakeLicenseHooks, dimension: string) =>
   hooks.snapshots.filter((s) => s.snapshot.dimension_key === dimension).map((s) => [s.orgId, s.snapshot.value]);
 
-describe("UsageService.emit", () => {
+describe("UsageQueue.emit", () => {
   test("should queue nothing when metering is disabled", async () => {
     // Setup
     const hooks = new FakeLicenseHooks();
@@ -65,7 +65,7 @@ describe("UsageService.emit", () => {
   });
 });
 
-describe("UsageService worker", () => {
+describe("UsageReportService.handleUsageEvent", () => {
   test("should report the counter's value and record it", async () => {
     // Setup
     const counter = new FakeUsageCounter(UserIdentities).set(ROOT.id, 4);
@@ -195,18 +195,18 @@ describe("UsageService worker", () => {
     // Setup
     const hooks = new FakeLicenseHooks();
     hooks.instance = { ...hooks.instance, instanceType: InstanceType.EnterpriseOnPrem, features: enterprisePlan() };
-    const { registered } = await buildLicense({ hooks });
+    const { registeredCrons } = await buildLicense({ hooks });
     const cloud = await buildLicense();
 
     // Action
-    const enabled = [registered, cloud.registered];
+    const enabled = [registeredCrons, cloud.registeredCrons];
 
     // Assert
     expect(enabled).toEqual([["license-usage-flush:true"], ["license-usage-flush:false"]]);
   });
 });
 
-describe("UsageService.recordMeteringEvents", () => {
+describe("UsageQueue.recordMeteringEvents", () => {
   test("should queue one retried job per dimension and never debounce", async () => {
     // Setup
     const { license, queue } = await buildLicense();
@@ -386,5 +386,17 @@ describe("LicenseModule", () => {
 
     // Assert
     await expect(result).rejects.toThrow("Two usage counters were registered for 'user_identities'");
+  });
+
+  test("should refuse a second organizations registration", async () => {
+    // Setup
+    const { module } = await buildLicense();
+
+    // Action
+    const register = () =>
+      module.registry.registerOrganizations({ findRootOrg: async () => null, countWorkspacesUsed: async () => 0 });
+
+    // Assert
+    expect(register).toThrow("The organizations directory was registered twice");
   });
 });

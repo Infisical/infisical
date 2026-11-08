@@ -1,7 +1,7 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
-import { TLicenseService, InstanceType } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain, InstanceType } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -85,7 +85,7 @@ export type TTelemetryServiceFactoryDep = {
     TKeyStoreFactory,
     "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
   >;
-  license: Pick<TLicenseService, "getInstanceType" | "getPlan" | "getSeatUsage">;
+  license: TLicenseDomain;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };

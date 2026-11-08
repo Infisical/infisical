@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
-import { PamIdentities, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PamIdentities, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
@@ -24,12 +24,12 @@ type TSubOrgServiceFactoryDep = {
     "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById" | "deleteById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
 };
 
 export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;

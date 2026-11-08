@@ -17,7 +17,7 @@ import {
   AgentVaultIdentities,
   PamIdentities,
   SecretIdentities,
-  TLicenseService
+  TLicenseDomain
 } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
@@ -168,7 +168,7 @@ type TScimServiceFactoryDep = {
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  license: Pick<TLicenseService, "getPlan" | "syncSeats">;
+  license: TLicenseDomain;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
@@ -182,7 +182,7 @@ type TScimServiceFactoryDep = {
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   eventEmitter: TEventEmitter;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
 };

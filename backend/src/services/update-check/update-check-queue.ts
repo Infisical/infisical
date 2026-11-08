@@ -1,4 +1,4 @@
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -12,7 +12,7 @@ const GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/Infisical/infisi
 type TUpdateCheckServiceFactoryDep = {
   cronJob: TCronJobFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  license: Pick<TLicenseService, "hasOfflineLicenseKey">;
+  license: TLicenseDomain;
 };
 
 export type TUpdateCheckServiceFactory = ReturnType<typeof updateCheckServiceFactory>;

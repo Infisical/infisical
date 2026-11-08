@@ -4,7 +4,7 @@ import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRo
 import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
 import {
   Plan,
-  TLicenseService,
+  TLicenseDomain,
   AgentVaultIdentities,
   IdentitiesMeter,
   PamIdentities,
@@ -57,10 +57,10 @@ type TIdentityServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  license: Pick<TLicenseService, "getPlan" | "syncSeats" | "within">;
+  license: TLicenseDomain;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,

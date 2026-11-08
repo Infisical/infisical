@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -134,7 +134,7 @@ export const certificateDisplayName = (certificate: {
 }): string => certificate.commonName || splitAltNames(certificate.altNames)[0] || certificate.serialNumber;
 
 export const assertCertManagerAlertChannelTypesAllowed = async (
-  license: Pick<TLicenseService, "getPlan">,
+  license: TLicenseDomain,
   { orgId, channelTypes }: { orgId: string; channelTypes: string[] }
 ) => {
   const gatedType = channelTypes.find((channelType) => channelType !== AlertChannelType.EMAIL);

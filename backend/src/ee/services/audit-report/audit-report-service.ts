@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSubjects
@@ -36,7 +36,7 @@ const MAX_EMAIL_RECIPIENTS = 20;
 
 type TAuditReportServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   auditReportDAL: TAuditReportDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;

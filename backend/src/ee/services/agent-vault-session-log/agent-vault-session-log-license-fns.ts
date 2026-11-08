@@ -1,4 +1,4 @@
-import { TLicenseService, TFeatureSet } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain, TFeatureSet } from "@app/domains/platform/license/ce/module";
 import { logger } from "@app/lib/logger";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
@@ -16,8 +16,6 @@ export const getSessionLogNotOnPlanMessage = (storageType: ObjectStorageType) =>
 
 export type TSessionLogEntitlement = "licensed" | "unlicensed" | "unknown";
 
-export type TSessionLogLicenseService = Pick<TLicenseService, "getPlan" | "isServingFallbackPlan" | "getLastKnownPlan">;
-
 const hasStorageOnPlan = (
   plan: Pick<TFeatureSet, "agentVaultManagedStorage" | "agentVaultByoS3">,
   type: ObjectStorageType
@@ -33,7 +31,7 @@ const fallbackLoggedAt = new Map<string, number>();
 // returned decides, if it's under an hour old. Without one the answer is "unknown", and each caller decides what that
 // means.
 export const getSessionLogEntitlement = async (
-  license: TSessionLogLicenseService,
+  license: TLicenseDomain,
   orgId: string,
   storageType: ObjectStorageType
 ): Promise<{

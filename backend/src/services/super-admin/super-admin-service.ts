@@ -10,7 +10,7 @@ import {
 import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
 import {
   Plan,
-  TLicenseService,
+  TLicenseDomain,
   AgentVaultIdentities,
   IdentitiesMeter,
   PamIdentities,
@@ -113,12 +113,12 @@ type TSuperAdminServiceFactoryDep = {
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  license: Pick<TLicenseService, "getInstanceEntitlements" | "syncSeats" | "within">;
+  license: TLicenseDomain;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   tokenService: TAuthTokenServiceFactory;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
 };
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;

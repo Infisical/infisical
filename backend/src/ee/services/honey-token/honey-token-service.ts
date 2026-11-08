@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrgMembershipRole, SecretType, TableName } from "@app/db/schemas";
 import { THoneyTokens } from "@app/db/schemas/honey-tokens";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
@@ -92,7 +92,7 @@ export type THoneyTokenServiceFactoryDep = {
     "create" | "find" | "countByHoneyTokenId" | "findByHoneyTokenId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;

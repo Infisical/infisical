@@ -148,30 +148,4 @@ describe("InMemoryTransactionRunner.run", () => {
     // Assert
     expect(acquired).toBe(true);
   });
-
-  test("should fail when a second top-level run opens inside an active one", async () => {
-    // Setup
-    const { runner } = newRunner();
-
-    // Action
-    const result = runner.run(async () => runner.run(async () => "nested"));
-
-    // Assert
-    await expect(result).rejects.toThrow("A second top-level transaction was opened inside an active one");
-  });
-
-  test("should allow a run from work the outer run started but did not await, once the outer run has ended", async () => {
-    // Setup
-    const { runner } = newRunner();
-    let later!: () => Promise<string>;
-    await runner.run(async () => {
-      later = () => runner.run(async () => "later");
-    });
-
-    // Action
-    const result = await later();
-
-    // Assert
-    expect(result).toBe("later");
-  });
 });

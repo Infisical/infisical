@@ -2,7 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 
 import { identityServiceFactory } from "./identity-service";
 import { TDeleteIdentityDTO } from "./identity-types";
@@ -65,7 +65,7 @@ const createService = ({
     })
   };
 
-  const license = new FakeLicenseService();
+  const license = new FakeLicenseDomain();
 
   const service = identityServiceFactory({
     identityDAL: identityDAL as never,

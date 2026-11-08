@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import picomatch from "picomatch";
 
 import { ProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretEventActions,
@@ -75,7 +75,7 @@ export const getSSEHeaders = () =>
 type TProjectEventsSSEServiceFactoryDep = {
   projectEventsService: TProjectEventsService;
   permissionService: TPermissionServiceFactory;
-  license: TLicenseService;
+  license: TLicenseDomain;
   keyStore: TKeyStoreFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
 };

@@ -1,4 +1,4 @@
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -15,7 +15,7 @@ type TGetAppConnectionFunc = (
 ) => Promise<TChefConnection>;
 
 // Enterprise check
-export const checkPlan = async (license: Pick<TLicenseService, "getPlan">, orgId: string) => {
+export const checkPlan = async (license: TLicenseDomain, orgId: string) => {
   const plan = await license.getPlan(orgId);
   if (!plan.enterpriseAppConnections)
     throw new BadRequestError({
@@ -26,7 +26,7 @@ export const checkPlan = async (license: Pick<TLicenseService, "getPlan">, orgId
 
 export const chefConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  license: Pick<TLicenseService, "getPlan">,
+  license: TLicenseDomain,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {

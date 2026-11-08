@@ -1,5 +1,5 @@
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -12,11 +12,8 @@ type TQuotaCounts = { total: number; wildcard: number };
 
 export type TCertificateQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  license: Pick<TLicenseService, "getPlan" | "getInstanceType">;
-  certManager: Pick<
-    TCertManagerService,
-    "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
-  >;
+  license: TLicenseDomain;
+  certManager: TCertManagerDomain;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 

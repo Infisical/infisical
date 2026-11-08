@@ -1,6 +1,6 @@
 import RE2 from "re2";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { matchesNormalizedPattern } from "@app/services/certificate-policy/certificate-policy-fns";
@@ -27,7 +27,7 @@ export const validatePqcLicense = async ({
   keyAlgorithm: string;
   projectId: string;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
 }) => {
   if (!isPqcAlgorithm(keyAlgorithm)) return;
   const project = await projectDAL.findById(projectId);
@@ -66,7 +66,7 @@ export const validateCertificateRequestLicense = async ({
   altNames?: string | null;
   projectId: string;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   // When absent the caps are skipped, so an issuance entry point that forgets it is silently uncapped.
   quotaDeps?: TCertificateQuotaDeps;
   // Nothing sets this today: renewal does not route through here. Kept because a refused renewal lets

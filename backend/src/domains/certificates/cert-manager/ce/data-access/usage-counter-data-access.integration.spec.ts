@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { ActiveCerts, InternalCas, WildcardCerts } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
 import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 
 import { CertManagerModule } from "../module";
@@ -10,21 +11,24 @@ import { seedPkiOrgs } from "../testing/pki-fixture";
 describe("CertManagerModule usage counters", () => {
   const h = setupIntegration();
 
-  const build = () =>
-    new CertManagerModule({ db: h.db, organizationsProjects: new OrganizationsProjectsModule({ db: h.db }).service });
+  const build = () => {
+    const license = new FakeLicenseRegistry();
+    const organizationsProjects = new OrganizationsProjectsModule({ db: h.db, license }).service;
+    return { module: new CertManagerModule({ db: h.db, organizationsProjects, license }), license };
+  };
 
-  const count = (module: CertManagerModule, key: string, orgId: string | null) =>
-    module.usageCounters.find((c) => c.feature.key === key)!.count(orgId);
+  const count = ({ license }: ReturnType<typeof build>, key: string, orgId: string | null) =>
+    license.counter(key).count(orgId);
 
   test("should count internal CAs across the root org's tree", async () => {
     // Setup
     const pki = await seedPkiOrgs(h.db, h.factories);
     await pki.internalCa(pki.rootProject.id);
     await pki.internalCa(pki.subProject.id);
-    const module = build();
+    const built = build();
 
     // Action
-    const cas = await count(module, InternalCas.key, pki.root.id);
+    const cas = await count(built, InternalCas.key, pki.root.id);
 
     // Assert
     expect(cas).toBe(2);
@@ -37,10 +41,10 @@ describe("CertManagerModule usage counters", () => {
     await pki.certificate(pki.rootProject.id, "expired.test", { expired: true });
     await pki.certificate(pki.rootProject.id, "revoked.test", { revoked: true });
     await pki.signer(pki.rootProject.id, "signing.test");
-    const module = build();
+    const built = build();
 
     // Action
-    const active = await count(module, ActiveCerts.key, pki.root.id);
+    const active = await count(built, ActiveCerts.key, pki.root.id);
 
     // Assert
     expect(active).toBe(1);
@@ -52,12 +56,12 @@ describe("CertManagerModule usage counters", () => {
     await pki.certificate(pki.rootProject.id, "same.test");
     await pki.certificate(pki.subProject.id, "same.test");
     await pki.certificate(pki.subProject.id, "*.wild.test");
-    const module = build();
+    const built = build();
 
     // Action
     const [active, wildcard] = await Promise.all([
-      count(module, ActiveCerts.key, pki.root.id),
-      count(module, WildcardCerts.key, pki.root.id)
+      count(built, ActiveCerts.key, pki.root.id),
+      count(built, WildcardCerts.key, pki.root.id)
     ]);
 
     // Assert
@@ -68,12 +72,12 @@ describe("CertManagerModule usage counters", () => {
     // Setup
     const pki = await seedPkiOrgs(h.db, h.factories);
     await pki.certificate(pki.rootProject.id, "only.test");
-    const module = build();
+    const built = build();
 
     // Action
     const [unrelated, instance] = await Promise.all([
-      count(module, ActiveCerts.key, randomUUID()),
-      count(module, ActiveCerts.key, null)
+      count(built, ActiveCerts.key, randomUUID()),
+      count(built, ActiveCerts.key, null)
     ]);
 
     // Assert
@@ -86,12 +90,12 @@ describe("CertManagerModule usage counters", () => {
     const pki = await seedPkiOrgs(h.db, h.factories);
     const other = await seedPkiOrgs(h.db, h.factories);
     await pki.certificate(pki.subProject.id, "held.test");
-    const module = build();
+    const built = build();
 
     // Action
     const [inTree, elsewhere] = await Promise.all([
-      module.service.isCertificateQuotaKeyActive(pki.root.id, "held.test"),
-      module.service.isCertificateQuotaKeyActive(other.root.id, "held.test")
+      built.module.service.isCertificateQuotaKeyActive(pki.root.id, "held.test"),
+      built.module.service.isCertificateQuotaKeyActive(other.root.id, "held.test")
     ]);
 
     // Assert
@@ -104,10 +108,10 @@ describe("CertManagerModule usage counters", () => {
     await pki.certificate(pki.rootProject.id, "a.test");
     await pki.certificate(pki.subProject.id, "a.test");
     await pki.certificate(pki.subProject.id, "b.test");
-    const module = build();
+    const built = build();
 
     // Action
-    const rows = await module.service.getActiveCertificateOrgBreakdown(pki.root.id);
+    const rows = await built.module.service.getActiveCertificateOrgBreakdown(pki.root.id);
 
     // Assert
     expect(rows.reduce((sum, r) => sum + r.count, 0)).toBe(2);

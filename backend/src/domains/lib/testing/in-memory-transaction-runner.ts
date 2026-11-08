@@ -1,12 +1,5 @@
 import { TStoreLocks } from "../store-locks";
-import {
-  assertNoActiveRun,
-  runAfterCommitHooks,
-  TRunContext,
-  TTransaction,
-  TTransactionRunner,
-  withActiveRun
-} from "../transaction-runner";
+import { runAfterCommitHooks, TRunContext, TTransaction, TTransactionRunner } from "../transaction-runner";
 import { KeyedMutex } from "./keyed-mutex";
 
 // What the in-memory runner needs from a domain's in-memory store to roll it back.
@@ -26,7 +19,7 @@ type TRunnerShared<TStore> = {
 /**
  * Behaves like TransactionRunner over an in-memory store: it restores the store when the work throws,
  * runs afterCommit hooks only on success, joins when bound with within(tx), gives per-key locks held until
- * the outermost run ends, and fails when a second top-level run opens inside an active one.
+ * the outermost run ends.
  */
 export class InMemoryTransactionRunner<TStore> implements TTransactionRunner<TStore> {
   private readonly shared: TRunnerShared<TStore>;
@@ -54,7 +47,6 @@ export class InMemoryTransactionRunner<TStore> implements TTransactionRunner<TSt
       return work({ store: this.shared.buildStore(this.parent.locks), tx: this.parent });
     }
 
-    assertNoActiveRun();
     const hooks: Array<() => Promise<void>> = [];
     const releases: Array<() => void> = [];
     const locks: TStoreLocks = {
@@ -67,7 +59,7 @@ export class InMemoryTransactionRunner<TStore> implements TTransactionRunner<TSt
 
     let result: T;
     try {
-      result = await withActiveRun(() => work({ store: this.shared.buildStore(locks), tx }));
+      result = await work({ store: this.shared.buildStore(locks), tx });
     } catch (error) {
       this.shared.state.restore(before);
       throw error;

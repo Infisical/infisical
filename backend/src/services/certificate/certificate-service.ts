@@ -3,8 +3,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
-import { TLicenseService, ActiveCerts, WildcardCerts } from "@app/domains/platform/license/ce/module";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseDomain, ActiveCerts, WildcardCerts } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -174,13 +174,10 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
-  license: Pick<TLicenseService, "getPlan" | "getInstanceType">;
-  certManager: Pick<
-    TCertManagerService,
-    "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
-  >;
+  license: TLicenseDomain;
+  certManager: TCertManagerDomain;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import dns from "node:dns/promises";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -26,7 +26,7 @@ type TEmailDomainServiceFactoryDep = {
     "create" | "find" | "findOne" | "findById" | "deleteById" | "updateById" | "transaction"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
 };
 
 export type TEmailDomainServiceFactory = ReturnType<typeof emailDomainServiceFactory>;

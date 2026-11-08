@@ -1,5 +1,5 @@
 import { OrgMembershipRole, TRoles } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
@@ -14,7 +14,7 @@ export const constructGroupOrgMembershipRoleMappings = async ({
 }: {
   mappingsDTO: TExternalGroupOrgMembershipRoleMappingDTO[];
   roleDAL: TRoleDALFactory;
-  license: TLicenseService;
+  license: TLicenseDomain;
   orgId: string;
 }) => {
   const plan = await license.getPlan(orgId);

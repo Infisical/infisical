@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   PAM_FOLDER_RESOURCE_TYPE,
   PamAccessRequestEvent
@@ -116,7 +116,7 @@ const describeTarget = (eventType: PamAccessRequestEvent, target: TPamAccessRequ
 export type TPamFolderAlertProviderDep = {
   pamFolderAlertDAL: TPamFolderAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
 };
 
 export const pamFolderAlertProviderFactory = ({

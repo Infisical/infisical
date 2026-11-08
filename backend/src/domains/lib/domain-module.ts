@@ -1,9 +1,9 @@
 import { TTransaction } from "./transaction-runner";
 
-export type TDomainModule<TService, THooks = unknown> = {
+export type TDomainModule<TDomain, THooks = unknown> = {
   readonly name: string;
-  readonly service: TService;
+  readonly service: TDomain;
   readonly hooks?: THooks;
-  within(tx: TTransaction): TService;
+  within(tx: TTransaction): TDomain;
   routes?: (server: unknown) => Promise<void>;
 };

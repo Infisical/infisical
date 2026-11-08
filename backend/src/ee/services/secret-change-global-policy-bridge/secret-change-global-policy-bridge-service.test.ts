@@ -4,7 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { ProjectVersion } from "@app/db/schemas";
 import { TPlan } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { EnforcementLevel } from "@app/lib/types";
@@ -91,7 +91,7 @@ const buildService = ({
   const findEffectiveProjectSubjectsMembership = vi.fn();
   memberships.forEach((membership) => findEffectiveProjectSubjectsMembership.mockResolvedValueOnce(membership));
 
-  const license = new FakeLicenseService().setPlan(ORG_ID, plan as Partial<TPlan>);
+  const license = new FakeLicenseDomain().setPlan(ORG_ID, plan as Partial<TPlan>);
   vi.spyOn(license, "getPlan");
 
   const deps = {

@@ -10,7 +10,7 @@ import {
 } from "@aws-sdk/client-iam";
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -45,7 +45,7 @@ import { AwsHoneyTokenDecryptedCredentialsSchema, TAwsHoneyTokenDecryptedCredent
 type TConfigProviderDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 

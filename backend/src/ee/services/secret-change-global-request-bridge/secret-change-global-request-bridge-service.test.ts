@@ -2,7 +2,7 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import {
@@ -158,7 +158,7 @@ const buildService = ({
 } = {}) => {
   let requestCounter = 0;
   const hasRole = vi.fn().mockReturnValue(false);
-  const license = new FakeLicenseService().setPlan("org-1", { secretApproval: true as false });
+  const license = new FakeLicenseDomain().setPlan("org-1", { secretApproval: true as false });
   vi.spyOn(license, "getPlan");
   const deps = {
     approvalRequestDAL: {

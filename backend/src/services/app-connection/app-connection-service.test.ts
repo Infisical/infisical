@@ -1,7 +1,7 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   ProjectPermissionAppConnectionActions,
@@ -58,7 +58,7 @@ const buildService = (
       }))
     },
     permissionService,
-    license: new FakeLicenseService()
+    license: new FakeLicenseDomain()
   };
 
   const deps = new Proxy(overrides, {

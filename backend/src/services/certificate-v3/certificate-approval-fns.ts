@@ -3,8 +3,8 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -110,11 +110,8 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  license: Pick<TLicenseService, "getPlan" | "getInstanceType">;
-  certManager: Pick<
-    TCertManagerService,
-    "countActiveCertificateQuota" | "isCertificateQuotaKeyActive" | "resolveRootOrgId"
-  >;
+  license: TLicenseDomain;
+  certManager: TCertManagerDomain;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;

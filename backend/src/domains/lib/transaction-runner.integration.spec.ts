@@ -115,21 +115,6 @@ describe("TransactionRunner", () => {
     expect(inner).toBe(outer);
   });
 
-  test("should fail when a second top-level run opens inside an active one", async () => {
-    // Setup
-    const { runner, values } = await scratchTable();
-
-    // Action
-    const result = runner.run(async ({ store }) => {
-      await store.insert("outer");
-      await runner.run(({ store: s }) => s.insert("nested"));
-    });
-
-    // Assert
-    await expect(result).rejects.toThrow("A second top-level transaction was opened inside an active one");
-    expect(await values()).toEqual([]);
-  });
-
   test("should hold a store lock until the transaction that took it ends", async () => {
     // Setup
     const { runner, values } = await scratchTable();

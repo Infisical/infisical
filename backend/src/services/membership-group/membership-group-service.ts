@@ -9,7 +9,7 @@ import {
   TMembershipRolesInsert
 } from "@app/db/schemas";
 import {
-  TLicenseService,
+  TLicenseDomain,
   AgentVaultIdentities,
   PamIdentities,
   SecretIdentities
@@ -76,13 +76,13 @@ type TMembershipGroupServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;

@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 import handlebars from "handlebars";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { CHEF_SYNC_LIST_OPTION } from "@app/ee/services/secret-sync/chef";
@@ -810,7 +810,7 @@ export const parseSyncErrorMessage = (err: unknown): string => {
 };
 
 export const enterpriseSyncCheck = async (
-  license: Pick<TLicenseService, "getPlan">,
+  license: TLicenseDomain,
   secretSync: SecretSync,
   orgId: string,
   errorMessage: string

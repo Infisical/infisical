@@ -1,6 +1,6 @@
 import { createMongoAbility } from "@casl/ability";
 
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TAlertWithChannels } from "./pki-alert-v2-dal";
@@ -64,7 +64,7 @@ const buildService = () => {
     pkiAlertChannelDAL: {},
     pkiAlertHistoryDAL: {},
     permissionService,
-    license: new FakeLicenseService(),
+    license: new FakeLicenseDomain(),
     smtpService: {},
     kmsService: {
       createCipherPairWithDataKey: vi.fn(async () => ({

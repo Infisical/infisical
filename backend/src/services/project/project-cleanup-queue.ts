@@ -1,5 +1,5 @@
 import { AccessScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -66,7 +66,7 @@ type TProjectCleanupQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
-  license: Pick<TLicenseService, "invalidatePlan">;
+  license: TLicenseDomain;
 };
 
 export type TProjectCleanupQueueFactory = ReturnType<typeof projectCleanupQueueFactory>;

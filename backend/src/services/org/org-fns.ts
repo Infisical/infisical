@@ -1,5 +1,5 @@
 import { AccessScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { BadRequestError } from "@app/lib/errors";
@@ -24,7 +24,7 @@ type TDeleteOrgMemberships = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "deleteByUserIdsInGroupsOwnedByOrgs">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "countActiveAdmins">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
-  license: Pick<TLicenseService, "syncSeats">;
+  license: TLicenseDomain;
   userId?: string;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;

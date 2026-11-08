@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { getConfig } from "@app/lib/config/env";
@@ -86,7 +86,7 @@ const assertNoResource = (resourceId?: string | null) =>
 export type TCertManagerAlertProviderDep = {
   certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   certManagerProjectResolver: Pick<TCertManagerProjectResolverFactory, "getActiveProjectId">;
 };
 

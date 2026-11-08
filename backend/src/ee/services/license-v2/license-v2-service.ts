@@ -1,16 +1,16 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
 import {
-  TLicenseService,
+  TLicenseDomain,
   TCatalogProduct,
   TEntitlementOrg,
   TProductLineItem,
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -59,19 +59,12 @@ type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  organizationsProjects: Pick<
-    TOrganizationsProjectsService,
-    | "countBillableOrgActors"
-    | "getBillableIdentityOwnershipBreakdown"
-    | "resolveRootOrgId"
-    | "countProjectIdentitiesByKind"
-    | "getProjectIdentityBreakdown"
-  >;
-  certManager: Pick<TCertManagerService, "getInternalCaOrgBreakdown" | "getActiveCertificateOrgBreakdown">;
+  organizationsProjects: TOrganizationsProjectsDomain;
+  certManager: TCertManagerDomain;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
   // countUsage seeds a purchase's initial per_resource quantities with the org's present provisioned count,
   // so the previewed and charged figures are truthful. billing is the License Server's billing surface.
-  license: Pick<TLicenseService, "countUsage" | "billing" | "refreshPlan">;
+  license: TLicenseDomain;
 };
 
 export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory>;

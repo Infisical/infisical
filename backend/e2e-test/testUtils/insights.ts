@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 
 import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
 import { TFeatureSet } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -130,9 +131,9 @@ export const buildOrgInsightsGateStubs = () => {
         hasRole: () => false
       })
     } as TInsightsServiceFactoryDep["permissionService"],
-    license: {
+    license: Object.assign(new FakeLicenseDomain(), {
       getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TFeatureSet
-    } as TInsightsServiceFactoryDep["license"],
+    }),
     setCanReadInsights: (canRead: boolean) => {
       canReadInsights = canRead;
     },

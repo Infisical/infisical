@@ -10,7 +10,7 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InstanceType, TPlan } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -79,7 +79,7 @@ vi.mock("@app/lib/logger", () => ({
 
 describe("CertificateV3Service", () => {
   let service: TCertificateV3ServiceFactory;
-  let license: FakeLicenseService;
+  let license: FakeLicenseDomain;
 
   const mockTelemetryService = {
     sendPostHogEvents: vi.fn().mockResolvedValue(undefined)
@@ -204,7 +204,10 @@ describe("CertificateV3Service", () => {
     countActiveCertificateQuota: vi.fn(async () => ({ total: 0, wildcard: 0 })),
     isCertificateQuotaKeyActive: vi.fn((orgId: string | undefined, quotaKey: string) =>
       Promise.resolve(Boolean(orgId && quotaKey && false))
-    )
+    ),
+    getInternalCaOrgBreakdown: vi.fn(async () => []),
+    getActiveCertificateOrgBreakdown: vi.fn(async () => []),
+    getPkiUsageByRootOrg: vi.fn(async () => [])
   };
 
   const mockKeyStore = {
@@ -258,7 +261,7 @@ describe("CertificateV3Service", () => {
     mockKeyStore.getItem.mockResolvedValue(null);
     mockKeyStore.setItemWithExpiry.mockResolvedValue("OK" as const);
     mockKeyStore.deleteItem.mockResolvedValue(1);
-    license = new FakeLicenseService();
+    license = new FakeLicenseDomain();
     license.instance = { ...license.instance, instanceType: InstanceType.OnPrem };
     license.defaultPlan = { ...license.defaultPlan, pkiPqc: true as false };
     vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {

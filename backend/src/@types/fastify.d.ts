@@ -3,7 +3,7 @@ import "fastify";
 import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
@@ -428,7 +428,7 @@ declare module "fastify" {
     pkiInstallation: TPkiInstallationServiceFactory;
     pkiSigner: TSignerServiceFactory;
     secretScanning: TSecretScanningServiceFactory;
-    license: TLicenseService;
+    license: TLicenseDomain;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;

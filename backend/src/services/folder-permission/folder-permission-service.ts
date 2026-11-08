@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 
 import { SecretFolderRole } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCacheFingerprint } from "@app/lib/cache/with-cache";
@@ -58,7 +58,7 @@ type TFolderPermissionServiceFactoryDep = {
     | "hasProjectAccess"
     | "isProjectAdmin"
   >;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 

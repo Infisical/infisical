@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -133,7 +133,7 @@ export type TAddUsersToGroupByUserIds = {
   tx?: Knex;
   shouldFailOnMissingMembers?: boolean;
   // Optional so SSO/SCIM callers can meter the secret-manager identity count when they sync groups.
-  usageMeteringService?: Pick<TLicenseService, "emit">;
+  usageMeteringService?: TLicenseDomain;
 };
 
 export type TAddIdentitiesToGroup = {
@@ -143,7 +143,7 @@ export type TAddIdentitiesToGroup = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "insertMany">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;
-  usageMeteringService?: Pick<TLicenseService, "emit">;
+  usageMeteringService?: TLicenseDomain;
 };
 
 // Structural instead of Pick<TGroupDALFactory>, since group-dal.ts imports this file.
@@ -167,7 +167,7 @@ export type TRemoveUsersFromGroupByUserIds = {
   // Skip the Agent Vault personal value clear and return the group's project ids instead, for a caller that removes
   // the same user from several groups in one transaction and clears once after every group's rows are locked.
   deferPersonalValueClear?: boolean;
-  usageMeteringService?: Pick<TLicenseService, "emit">;
+  usageMeteringService?: TLicenseDomain;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
@@ -191,7 +191,7 @@ export type TRemoveIdentitiesFromGroup = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  usageMeteringService?: Pick<TLicenseService, "emit">;
+  usageMeteringService?: TLicenseDomain;
   eventEmitter: TEventEmitter;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;

@@ -1,6 +1,7 @@
 import { TEntitlementsResponse } from "../../ce/model/license-server-types";
 import { InstanceType } from "../../ce/model/license-types";
-import { getLicenseKeyConfig, licenseResolverFactory } from "./license-resolver";
+import { FakeLicenseServerClient } from "../testing/fake-license-server-client";
+import { getLicenseKeyConfig, LicenseResolver } from "./license-resolver";
 
 vi.mock("@app/lib/logger", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/logger")>()),
@@ -21,29 +22,28 @@ const offlineKey = (license: Record<string, unknown>) =>
 const entitlements = (features: TEntitlementsResponse["features"]) =>
   ({ slug: "enterprise", features, products: [] }) as unknown as TEntitlementsResponse;
 
+type TResolveOptions = {
+  licenseKey?: string;
+  licenseKeyOffline?: string;
+  isCloud?: boolean;
+  onlineEntitlements?: TEntitlementsResponse;
+  onlineFails?: boolean;
+};
+
 const resolve = async ({
   licenseKey = "",
   licenseKeyOffline,
   isCloud = false,
   onlineEntitlements,
   onlineFails = false
-}: {
-  licenseKey?: string;
-  licenseKeyOffline?: string;
-  isCloud?: boolean;
-  onlineEntitlements?: TEntitlementsResponse;
-  onlineFails?: boolean;
-}) => {
-  const resolver = licenseResolverFactory({
+}: TResolveOptions) => {
+  const licenseServerClient = new FakeLicenseServerClient();
+  licenseServerClient.entitlements = onlineEntitlements ?? null;
+  if (onlineFails) licenseServerClient.failure = new Error("License Server unreachable");
+  const resolver = new LicenseResolver({
     isCloud,
     licenseKeyConfig: getLicenseKeyConfig({ LICENSE_KEY: licenseKey, LICENSE_KEY_OFFLINE: licenseKeyOffline }),
-    licenseServer: {
-      getEntitlements: async () => {
-        if (onlineFails) throw new Error("License Server unreachable");
-        return onlineEntitlements ?? null;
-      },
-      refreshEntitlements: async () => undefined
-    }
+    licenseServerClient
   });
   return { resolver, instance: await resolver.resolveInstanceEntitlements() };
 };
@@ -52,7 +52,7 @@ beforeEach(() => {
   verified.value = true;
 });
 
-describe("licenseResolver.resolveInstanceEntitlements", () => {
+describe("LicenseResolver.resolveInstanceEntitlements", () => {
   test("should resolve Cloud when the service key is set, even with a license key", async () => {
     // Setup + Action
     const { instance } = await resolve({ isCloud: true, licenseKey: "online-license-key" });
@@ -187,7 +187,7 @@ describe("licenseResolver.resolveInstanceEntitlements", () => {
   });
 });
 
-describe("licenseResolver.refreshInstanceEntitlements", () => {
+describe("LicenseResolver.refreshInstanceEntitlements", () => {
   test("should read an online license again, and do nothing for an offline one", async () => {
     // Setup
     const online = await resolve({ licenseKey: "online-license-key", onlineEntitlements: entitlements({}) });

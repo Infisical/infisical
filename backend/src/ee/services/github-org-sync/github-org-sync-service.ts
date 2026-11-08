@@ -11,7 +11,7 @@ import {
   AgentVaultIdentities,
   PamIdentities,
   SecretIdentities,
-  TLicenseService
+  TLicenseDomain
 } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
@@ -392,10 +392,10 @@ type TGithubOrgSyncServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany" | "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
   userAliasDAL: Pick<TUserAliasDALFactory, "find">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;

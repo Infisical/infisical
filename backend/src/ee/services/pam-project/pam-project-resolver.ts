@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, ProjectType, TableName } from "@app/db/schemas";
-import { PamIdentities, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { PamIdentities, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -16,7 +16,7 @@ type TResolverDeps = {
   membershipDAL: Pick<TMembershipDALFactory, "create">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
 };
 
 type TOrgAdminRow = {

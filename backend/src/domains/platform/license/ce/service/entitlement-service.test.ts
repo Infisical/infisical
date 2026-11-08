@@ -1,7 +1,7 @@
 import { InstanceType } from "../model/license-types";
 import { UserIdentities } from "../model/metered-features";
 import { LicenseKeys } from "../model/plan-cache-keys";
-import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID } from "../testing/build-license";
+import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID, WORKSPACES_USED } from "../testing/build-license";
 import { enterprisePlan, FakeLicenseHooks } from "../testing/fake-license-hooks";
 import { FakeUsageCounter } from "../testing/fake-usage-counter";
 
@@ -42,7 +42,7 @@ describe("EntitlementService.getPlan", () => {
 
     // Assert
     expect(hooks.planFetches).toEqual([ROOT]);
-    expect(plan.workspacesUsed).toBe(3);
+    expect(plan.workspacesUsed).toBe(WORKSPACES_USED);
     expect(await keyStore.getItem(LicenseKeys.cloudPlan(ROOT.id))).not.toBeNull();
   });
 
@@ -252,12 +252,10 @@ describe("LicenseModule without EE hooks", () => {
       keyStore: new InMemoryKeyStore(),
       queueService: { queue: vi.fn(), start: vi.fn() } as never,
       cronJob: { register: vi.fn() },
-      resolveRootOrg: async () => ROOT,
-      countBillableProjects: async () => 0,
-      counters: [],
       isProductionMode: false,
       startLocalRefresh: vi.fn()
     });
+    module.registry.registerOrganizations({ findRootOrg: async () => ROOT, countWorkspacesUsed: async () => 0 });
     await module.start();
 
     // Action

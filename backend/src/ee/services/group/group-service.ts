@@ -13,7 +13,7 @@ import {
   AgentVaultIdentities,
   PamIdentities,
   SecretIdentities,
-  TLicenseService
+  TLicenseDomain
 } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
@@ -124,9 +124,9 @@ type TGroupServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals" | "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;

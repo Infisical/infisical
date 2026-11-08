@@ -2,7 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -126,7 +126,7 @@ const buildService = (catalog: TSecretsProjectWarning[]) => {
         hasRole: () => false
       })
     } as TInsightsServiceFactoryDep["permissionService"],
-    license: new FakeLicenseService().setPlan(ORG_ID, { secretAccessInsights: true as false }),
+    license: new FakeLicenseDomain().setPlan(ORG_ID, { secretAccessInsights: true as false }),
     keyStore: {
       getItem: async () => null,
       setItemWithExpiry: async () => "OK",
@@ -264,7 +264,7 @@ describe("project access insights audit log store", () => {
         }),
         getOrgPermission: unreachable("permissionService.getOrgPermission")
       } as unknown as TInsightsServiceFactoryDep["permissionService"],
-      license: new FakeLicenseService().setPlan(ORG_ID, { secretAccessInsights: true as false }),
+      license: new FakeLicenseDomain().setPlan(ORG_ID, { secretAccessInsights: true as false }),
       keyStore: {
         getItem: async () => null,
         setItemWithExpiry: async () => "OK",

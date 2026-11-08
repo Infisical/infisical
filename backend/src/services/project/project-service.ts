@@ -19,11 +19,12 @@ import {
 } from "@app/db/schemas";
 import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
 import {
-  TLicenseService,
+  TLicenseDomain,
   AgentVaultIdentities,
   PamIdentities,
   SecretIdentities
 } from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
@@ -154,6 +155,7 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
+  organizationsProjects: TOrganizationsProjectsDomain;
   projectQueue: TProjectQueueFactory;
   secretValueTrackingService: Pick<TSecretValueTrackingServiceFactory, "enableForProject" | "getProjectStatus">;
   userDAL: TUserDALFactory;
@@ -196,7 +198,7 @@ type TProjectServiceFactoryDep = {
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
-  license: Pick<TLicenseService, "getPlan" | "refreshPlan" | "invalidatePlan">;
+  license: TLicenseDomain;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
@@ -217,7 +219,7 @@ type TProjectServiceFactoryDep = {
     TProjectAccessRequestDALFactory,
     "upsertPendingRequest" | "findPendingForRequesterInOrg"
   >;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeProjectHoneyTokens">;
   dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findExpiredByProjectId">;
   dynamicSecretQueueService: Pick<
@@ -244,6 +246,7 @@ const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>
 
 export const projectServiceFactory = ({
   projectDAL,
+  organizationsProjects,
   projectQueue,
   secretValueTrackingService,
   permissionService,
@@ -351,7 +354,10 @@ export const projectServiceFactory = ({
       // Check workspace limit inside the transaction after acquiring the lock
       // We count directly from the database to get the accurate count, not the cached plan value
       if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
-        const currentProjectCount = await projectDAL.countOfBillableOrgProjects(organization.id, tx);
+        const currentProjectCount = await organizationsProjects.countWorkspaces(
+          organization.id,
+          sealKnexTransaction(tx)
+        );
         if (currentProjectCount >= plan.workspaceLimit) {
           throw new BadRequestError({
             message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
@@ -1077,7 +1083,10 @@ export const projectServiceFactory = ({
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateProject(project.orgId)]);
 
           if (plan.workspaceLimit !== null && project.type === ProjectType.SecretManager) {
-            const currentProjectCount = await projectDAL.countOfBillableOrgProjects(project.orgId, tx);
+            const currentProjectCount = await organizationsProjects.countWorkspaces(
+              project.orgId,
+              sealKnexTransaction(tx)
+            );
             if (currentProjectCount >= plan.workspaceLimit) {
               throw new BadRequestError({
                 message:

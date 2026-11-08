@@ -1,5 +1,3 @@
-import { AsyncLocalStorage } from "node:async_hooks";
-
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
@@ -53,28 +51,6 @@ export const runAfterCommitHooks = async (hooks: Array<() => Promise<void>>) => 
   }
 };
 
-// Marks the call chain inside a top-level run, so a second top-level run in it fails instead of quietly
-// taking a second connection. `active` is cleared when the run settles, because work the run started and
-// did not await keeps this context.
-const activeRun = new AsyncLocalStorage<{ active: boolean }>();
-
-export const assertNoActiveRun = () => {
-  if (activeRun.getStore()?.active) {
-    throw new Error(
-      "A second top-level transaction was opened inside an active one. Pass the transaction with within(tx), or call the other domain before or after run."
-    );
-  }
-};
-
-export const withActiveRun = async <T>(work: () => Promise<T>): Promise<T> => {
-  const marker = { active: true };
-  try {
-    return await activeRun.run(marker, work);
-  } finally {
-    marker.active = false;
-  }
-};
-
 export class TransactionRunner<TStore> implements TTransactionRunner<TStore> {
   constructor(
     private readonly db: TDbClient,
@@ -92,14 +68,11 @@ export class TransactionRunner<TStore> implements TTransactionRunner<TStore> {
       return work({ store: this.buildStore(trx, new PostgresStoreLocks(trx)), tx: this.parent });
     }
 
-    assertNoActiveRun();
     const hooks: Array<() => Promise<void>> = [];
-    const result = await withActiveRun(() =>
-      this.db.transaction(async (trx) => {
-        const tx = sealTransaction(trx, (fn) => hooks.push(fn));
-        return work({ store: this.buildStore(trx, new PostgresStoreLocks(trx)), tx });
-      })
-    );
+    const result = await this.db.transaction(async (trx) => {
+      const tx = sealTransaction(trx, (fn) => hooks.push(fn));
+      return work({ store: this.buildStore(trx, new PostgresStoreLocks(trx)), tx });
+    });
     await runAfterCommitHooks(hooks);
     return result;
   }

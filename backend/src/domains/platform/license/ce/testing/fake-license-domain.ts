@@ -2,11 +2,11 @@
 import { getDefaultOnPremFeatures } from "../model/default-features";
 import { InstanceType } from "../model/license-types";
 import { Plan, TInstanceEntitlements, TPlan, TPlanFeature } from "../model/plan";
-import { TLicenseService } from "../module";
+import { TLicenseDomain } from "../module";
 import { dormantBilling } from "../service/dormant-billing";
 
 // For consumers of the License domain: a plan per org that the test sets, and a record of what was reported.
-export class FakeLicenseService implements TLicenseService {
+export class FakeLicenseDomain implements TLicenseDomain {
   instance: TInstanceEntitlements = {
     instanceType: InstanceType.Cloud,
     features: getDefaultOnPremFeatures(),

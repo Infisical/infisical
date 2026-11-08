@@ -11,7 +11,7 @@ import {
 } from "@app/db/schemas";
 import {
   Plan,
-  TLicenseService,
+  TLicenseDomain,
   AgentVaultIdentities,
   IdentitiesMeter,
   PamIdentities,
@@ -73,7 +73,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityDAL: TIdentityV2DALFactory;
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
   permissionService: TPermissionServiceFactory;
-  license: Pick<TLicenseService, "getPlan" | "getSeatUsage" | "syncSeats">;
+  license: TLicenseDomain;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -85,7 +85,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 

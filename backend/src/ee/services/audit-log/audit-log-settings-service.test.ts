@@ -1,7 +1,7 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -143,7 +143,7 @@ const createHarness = ({
   const projectDAL = {
     findById: vi.fn(async (id: string) => ({ id, orgId: "org-1" }))
   };
-  const license = new FakeLicenseService().setPlan("org-1", { auditLogs: planHasAuditLogs as false });
+  const license = new FakeLicenseDomain().setPlan("org-1", { auditLogs: planHasAuditLogs as false });
   license.defaultPlan = { ...license.defaultPlan, auditLogs: true as false };
 
   const service = auditLogSettingsServiceFactory({

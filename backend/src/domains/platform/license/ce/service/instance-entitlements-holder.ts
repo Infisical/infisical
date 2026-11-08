@@ -17,4 +17,8 @@ export class InstanceEntitlementsHolder {
   set(entitlements: TInstanceEntitlements) {
     this.current = entitlements;
   }
+
+  isCloud() {
+    return this.current.instanceType === InstanceType.Cloud;
+  }
 }

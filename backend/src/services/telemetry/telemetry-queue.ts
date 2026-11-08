@@ -1,6 +1,6 @@
 import { PostHog } from "posthog-node";
 
-import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -22,7 +22,7 @@ type TTelemetryQueueServiceFactoryDep = {
   cronJob: TCronJobFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "deleteItem">;
   telemetryDAL: TTelemetryDALFactory;
-  certManager: Pick<TCertManagerService, "getPkiUsageByRootOrg">;
+  certManager: TCertManagerDomain;
   telemetryService: Pick<TTelemetryServiceFactory, "processAggregatedEvents" | "setOrgGroupProperties">;
 };
 

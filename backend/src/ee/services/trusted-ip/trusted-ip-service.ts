@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -16,7 +16,7 @@ import { TTrustedIpServiceFactory } from "./trusted-ip-types";
 type TTrustedIpServiceFactoryDep = {
   trustedIpDAL: TTrustedIpDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 

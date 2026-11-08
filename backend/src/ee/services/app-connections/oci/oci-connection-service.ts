@@ -1,4 +1,4 @@
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
@@ -25,7 +25,7 @@ type TListOCIVaultKeysDTO = {
 };
 
 // Enterprise check
-export const checkPlan = async (license: Pick<TLicenseService, "getPlan">, orgId: string) => {
+export const checkPlan = async (license: TLicenseDomain, orgId: string) => {
   const plan = await license.getPlan(orgId);
   if (!plan.enterpriseAppConnections)
     throw new BadRequestError({
@@ -34,10 +34,7 @@ export const checkPlan = async (license: Pick<TLicenseService, "getPlan">, orgId
     });
 };
 
-export const ociConnectionService = (
-  getAppConnection: TGetAppConnectionFunc,
-  license: Pick<TLicenseService, "getPlan">
-) => {
+export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, license: TLicenseDomain) => {
   const listCompartments = async (connectionId: string, actor: OrgServiceActor) => {
     await checkPlan(license, actor.orgId);
 

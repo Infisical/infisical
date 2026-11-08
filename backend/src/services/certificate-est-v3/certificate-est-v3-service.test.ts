@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -87,7 +87,7 @@ vi.mock("../../ee/services/certificate-est/certificate-est-fns", () => ({
 
 describe("CertificateEstV3Service", () => {
   let service: TCertificateEstV3ServiceFactory;
-  let license: FakeLicenseService;
+  let license: FakeLicenseDomain;
 
   const mockCertificateV3Service = {
     signCertificateFromProfile: vi.fn()
@@ -171,7 +171,7 @@ describe("CertificateEstV3Service", () => {
   const mockPkiApplicationDAL = { findById: vi.fn() };
 
   beforeEach(async () => {
-    license = new FakeLicenseService().setPlan(mockProject.orgId, mockPlan);
+    license = new FakeLicenseDomain().setPlan(mockProject.orgId, mockPlan);
     service = certificateEstV3ServiceFactory({
       certificateV3Service: mockCertificateV3Service,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,

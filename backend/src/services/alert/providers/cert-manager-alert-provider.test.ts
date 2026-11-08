@@ -1,7 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
@@ -101,7 +101,7 @@ const buildProvider = (opts?: {
       hasRole: (role: string) => (opts?.projectRoles ?? []).includes(role)
     }))
   };
-  const license = new FakeLicenseService().setPlan("org-1", {
+  const license = new FakeLicenseDomain().setPlan("org-1", {
     pkiEnterpriseAlerting: (opts?.pkiEnterpriseAlerting ?? false) as false
   });
   const provider = certManagerAlertProviderFactory({

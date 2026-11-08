@@ -1,13 +1,13 @@
 import crypto from "crypto";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TOfflineUsageReportDALFactory } from "./offline-usage-report-dal";
 
 type TOfflineUsageReportServiceFactoryDep = {
   offlineUsageReportDAL: TOfflineUsageReportDALFactory;
-  license: Pick<TLicenseService, "getLicenseId" | "hasOfflineLicenseKey">;
+  license: TLicenseDomain;
 };
 
 export type TOfflineUsageReportServiceFactory = ReturnType<typeof offlineUsageReportServiceFactory>;

@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,
@@ -25,7 +25,7 @@ import { TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-
 export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 

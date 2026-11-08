@@ -48,7 +48,7 @@ edition) with the same layout. Nothing else sits at the domain root.
 ```
 static-secrets/
 ├── ce/
-│   ├── module.ts     # The edition's public surface: service interface, hooks, module class
+│   ├── module.ts     # The edition's public surface: domain interface, hooks, module class
 │   ├── model/        # Entities and their rules
 │   ├── data-access/  # Database reads and writes, grouped into the domain's store
 │   ├── service/      # Use cases, and helpers shared between them
@@ -59,12 +59,12 @@ static-secrets/
 
 | Path | Holds | Example |
 | --- | --- | --- |
-| `module.ts` | Public service interface, hook type, and the module class that builds everything. Other domains import only `ce/module.ts` | `TStaticSecretsService`, `TStaticSecretsHooks`, `StaticSecretsModule` |
+| `module.ts` | Public domain interface, hook type, and the module class that builds everything. Other domains import only `ce/module.ts` | `TStaticSecretsDomain`, `TStaticSecretsHooks`, `StaticSecretsModule` |
 | `model/` | One class per entity. Validates itself, knows nothing about the database | `KmsKey.create()`, `kmsKey.assertRotatable()` |
 | `data-access/` | One class per entity, plus `build<Domain>Store(tx)` that groups them all on one connection | `KmsKeyDataAccess`, `buildKmsCoreStore(tx)` |
 | `service/` | One class per use case group, with its input types; plain helper functions shared by those classes. Tests sit beside them | `KmsKeyService`, `createKmsKey(store, ...)` |
 | `router/` | Fastify routes. Validate input, call a service, shape the response | `registerKmsKeyRouter` |
-| `testing/` | In-memory data access and store, fake services for this domain's consumers, data access contract suites | `InMemoryKmsKeyDataAccess`, `FakeKmsCoreService` |
+| `testing/` | In-memory data access and store, the fake domain for this domain's consumers, data access contract suites | `InMemoryKmsKeyDataAccess`, `FakeKmsCoreDomain` |
 
 ## Entities, data access and services
 
@@ -92,6 +92,7 @@ domain's service.
 | --- | --- | --- |
 | Model | Private constructor, static `create()` and `restore()` | `KmsKey.create({ ... })` |
 | Data access, service | `class X implements TX`, dependencies in `constructor(deps)` | `class KmsKeyService implements TKmsKeyService` |
+| Data access queries | Methods on the class; query fragments shared by them are private methods, not `$`-prefixed functions or a factory the class wraps | `private activeCertificates(orgId)` |
 | Module | Builds state once, builds services per runner, exposes the public surface | `class KmsCoreModule` |
 | Router, shared helpers | Plain functions | `registerKmsKeyRouter`, `createKmsKey(store, state, input)` |
 
@@ -142,7 +143,7 @@ export class TransactionRunner<TStore> {
 export class KmsCoreModule {
   private readonly state: TKmsCoreState;
   private readonly runner: TransactionRunner<TKmsCoreStore>;
-  readonly service: TKmsCoreService;
+  readonly service: TKmsCoreDomain;
 
   constructor(deps: TKmsCoreDeps) {
     this.runner = new TransactionRunner(deps.db, buildKmsCoreStore);
@@ -150,11 +151,11 @@ export class KmsCoreModule {
     this.service = this.build(this.runner);
   }
 
-  within(tx: TTransaction): TKmsCoreService {
+  within(tx: TTransaction): TKmsCoreDomain {
     return this.build(this.runner.within(tx));
   }
 
-  private build(runner: TransactionRunner<TKmsCoreStore>): TKmsCoreService {
+  private build(runner: TransactionRunner<TKmsCoreStore>): TKmsCoreDomain {
     const kmsKeys = new KmsKeyService({ runner, state: this.state });
     return { generateKmsKey: (input) => kmsKeys.generateKmsKey(input) };   // arrow wrappers keep `this`
   }
@@ -203,7 +204,7 @@ together domains that must be able to move independently.
 
 ```ts
 export class SecretService implements TSecretService {
-  constructor(private readonly deps: { runner: TransactionRunner<TSecretsStore>; kmsCore: TKmsCoreService }) {}
+  constructor(private readonly deps: { runner: TransactionRunner<TSecretsStore>; kmsCore: TKmsCoreDomain }) {}
 
   async createSecret(input: TCreateSecretInput) {
     const cipher = await this.deps.kmsCore.createCipherPairWithDataKey({ projectId: input.projectId });
@@ -241,6 +242,7 @@ router → service → data-access → model
 | Other domains import only `ce/module.ts` | The module is the domain's contract; everything else can change freely |
 | `ce/` never imports `ee/`; only `domains.ts` imports `ee/` from outside the domain | Community code reads and builds alone. EE plugs in through hooks |
 | A module that provides hooks is built before the module that takes them | A provider that needs the taker's service is a cycle: move the boundary |
+| A platform domain that needs something from the products built on it exposes a registry (`license.registry.registerUsageCounter`). It is built first, and each product registers into it in its own constructor | The platform domain stays a base every product depends on; taking product modules as constructor arguments would make it depend on all of them |
 | `ce/module.ts` and what it imports reach `@app/queue`, `@app/keystore/keystore` and `@app/lib/cron/*` only with `import type`; `domains.ts` passes their runtime pieces in | Code all over the backend imports values from a module, and those three sit in an import cycle with `@app/lib/crypto`, which breaks any test that loads them first |
 | Lint enforces the import rules above (`.oxlintrc.json`, `no-restricted-imports`) | A broken boundary fails `npm run lint`, not review |
 
@@ -255,7 +257,7 @@ Paths are inside `ce/` unless the code is a paid feature.
 | A use case | `service/` |
 | Logic two services need | A helper in `service/` that takes `store` |
 | An endpoint | `router/`, registered in `module.ts` |
-| Something another domain calls | A method on the service interface in `module.ts` |
+| Something another domain calls | A method on the domain interface in `module.ts` |
 | A step another domain may change | A hook in `module.ts`, with a default |
 | Something the domain must remember across requests | A state holder built in the module constructor |
 | A paid feature | The same layer, in `ee/` instead of `ce/` |
@@ -267,7 +269,8 @@ Paths are inside `ce/` unless the code is a paid feature.
 | --- | --- | --- |
 | Folder | kebab-case noun | `static-secrets` |
 | Module class | `<Domain>Module`, in `ce/module.ts` | `StaticSecretsModule` |
-| Service interface | `T<Domain>Service` | `TStaticSecretsService` |
+| Domain interface (what other code calls) | `T<Domain>Domain`. Inside, a domain has many services; outside, it is one domain | `TStaticSecretsDomain` |
+| Dependencies of a module or service | `T<Name>Deps`, a named type beside the class, never inline in the constructor | `TKmsCoreDeps`, `TKmsKeyServiceDeps` |
 | Hook type | `T<Domain>Hooks` | `TStaticSecretsHooks` |
 | Store | `<domain>-store.ts` in `data-access/`, exporting `T<Domain>Store` and `build<Domain>Store` | `kms-core-store.ts` |
 | Transaction argument | `tx` (type `TTransaction`) | `run(({ store, tx }) => ...)` |
@@ -318,10 +321,8 @@ claims something a caller depends on, never to raise a coverage number.
   - it snapshots the store and restores it when the work throws;
   - it runs `afterCommit` hooks only on success;
   - it joins when bound with `within(tx)`;
-  - its locks are per-key mutexes released when the work finishes;
-  - it fails the test if a second top-level `run` opens while one is active in the same call chain
-    (the "forgot to pass `tx`" mistake).
-- Consumers of a domain use its `Fake<Domain>Service` from `testing/`, never a hand-rolled mock.
+  - its locks are per-key mutexes released when the work finishes.
+- Consumers of a domain use its `Fake<Domain>Domain` from `testing/`, never a hand-rolled mock.
 
 ### Integration tests
 

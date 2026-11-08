@@ -9,7 +9,7 @@ import {
   TMembershipRolesInsert
 } from "@app/db/schemas";
 import {
-  TLicenseService,
+  TLicenseDomain,
   AgentVaultIdentities,
   PamIdentities,
   SecretIdentities
@@ -86,7 +86,7 @@ type TMembershipUserServiceFactoryDep = {
     | "getOrgPermissionByRoles"
     | "getResourcePermission"
   >;
-  license: TLicenseService;
+  license: TLicenseDomain;
   userAliasDAL: TUserAliasDALFactory;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
@@ -103,7 +103,7 @@ type TMembershipUserServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
 };

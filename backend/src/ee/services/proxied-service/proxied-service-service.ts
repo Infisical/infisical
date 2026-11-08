@@ -1,7 +1,7 @@
 import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionProxiedServiceActions,
@@ -46,7 +46,7 @@ type TProxiedServiceServiceFactoryDep = {
   >;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "getSecrets">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findWithMetadata">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;

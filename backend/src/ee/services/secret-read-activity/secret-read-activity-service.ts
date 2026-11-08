@@ -2,7 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { setImmediate } from "node:timers/promises";
 
 import { SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";
@@ -83,7 +83,7 @@ const once = <T>(build: () => T) => {
 
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   secretReadActivityDAL: Pick<
     TSecretReadActivityDALFactory,
     "findLastReads" | "findTrackingStartedAt" | "findAccessSourceDates" | "findAdminActorIds"

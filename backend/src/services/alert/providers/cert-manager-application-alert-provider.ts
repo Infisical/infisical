@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { ResourceType } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -57,7 +57,7 @@ const assertValidApplicationId = (applicationId: string) => {
 export type TCertManagerApplicationAlertProviderDep = {
   certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
 };
 
 export const certManagerApplicationAlertProviderFactory = ({

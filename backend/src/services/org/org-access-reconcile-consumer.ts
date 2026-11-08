@@ -2,7 +2,7 @@ import {
   AgentVaultIdentities,
   PamIdentities,
   SecretIdentities,
-  TLicenseService
+  TLicenseDomain
 } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { chunkArray } from "@app/lib/fn";
@@ -46,7 +46,7 @@ type TOrgAccessReconcileConsumerDep = {
   >;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
 };
 
 type TReconcileScope = {

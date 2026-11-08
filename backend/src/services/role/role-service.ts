@@ -2,7 +2,7 @@ import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
 import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -55,7 +55,7 @@ type TRoleServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
 };
 
 export type TRoleServiceFactory = ReturnType<typeof roleServiceFactory>;

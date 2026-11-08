@@ -1,7 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
@@ -131,7 +131,7 @@ const createService = ({
         decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob
       })
     },
-    license: new FakeLicenseService().setPlan(ORG_ID, {
+    license: new FakeLicenseDomain().setPlan(ORG_ID, {
       machineIdentityAuthTemplates: true as false,
       gateway: true as false,
       gatewayPool: true as false

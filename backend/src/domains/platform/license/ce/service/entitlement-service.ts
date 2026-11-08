@@ -1,62 +1,62 @@
 import { InstanceType, TFeatureSet } from "../model/license-types";
 import { Plan, TInstanceEntitlements, TPlan, TPlanFeature } from "../model/plan";
-import {
-  isCloud,
-  refreshPlanFor,
-  resolvePlan,
-  rootOrgOf,
-  TLicenseContext,
-  TRefreshPlanOptions
-} from "./license-context";
+import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
+import { OrganizationDirectory } from "./organization-directory";
+import { PlanCache } from "./plan-cache";
+import { PlanResolver, TRefreshPlanOptions } from "./plan-resolver";
+
+export type TEntitlementServiceDeps = {
+  instance: InstanceEntitlementsHolder;
+  planCache: PlanCache;
+  organizations: OrganizationDirectory;
+  planResolver: PlanResolver;
+};
 
 export class EntitlementService {
-  constructor(private readonly ctx: TLicenseContext) {}
+  constructor(private readonly deps: TEntitlementServiceDeps) {}
 
   getInstanceEntitlements(): TInstanceEntitlements {
-    return this.ctx.state.instance.get();
+    return this.deps.instance.get();
   }
 
   getInstanceType(): InstanceType {
-    return this.ctx.state.instance.get().instanceType;
+    return this.deps.instance.get().instanceType;
   }
 
   hasInstanceFeature(feature: keyof TFeatureSet): boolean {
-    return Boolean(this.ctx.state.instance.get().features[feature]);
+    return Boolean(this.deps.instance.get().features[feature]);
   }
 
   getLicenseId(): string {
-    return this.ctx.state.instance.get().licenseId ?? "unknown";
+    return this.deps.instance.get().licenseId ?? "unknown";
   }
 
   getPlan(orgId: string): Promise<TPlan> {
-    return resolvePlan(this.ctx, orgId);
+    return this.deps.planResolver.resolve(orgId);
   }
 
   async hasFeature(orgId: string, feature: TPlanFeature): Promise<boolean> {
-    return Plan.restore(await resolvePlan(this.ctx, orgId)).has(feature);
+    return Plan.restore(await this.deps.planResolver.resolve(orgId)).has(feature);
   }
 
   async assertFeature(orgId: string, feature: TPlanFeature): Promise<void> {
-    Plan.restore(await resolvePlan(this.ctx, orgId)).assert(feature);
+    Plan.restore(await this.deps.planResolver.resolve(orgId)).assert(feature);
   }
 
   refreshPlan(orgId: string, opts?: TRefreshPlanOptions): Promise<void> {
-    return refreshPlanFor(this.ctx, orgId, opts);
+    return this.deps.planResolver.refresh(orgId, opts);
   }
 
   async invalidatePlan(orgId: string): Promise<void> {
-    const root = await rootOrgOf(this.ctx, orgId);
-    await this.ctx.state.planCache.invalidate(root?.id ?? orgId);
+    await this.deps.planCache.invalidate(await this.deps.organizations.rootOrgIdOf(orgId));
   }
 
   async isServingFallbackPlan(orgId: string): Promise<boolean> {
-    if (!isCloud(this.ctx)) return false;
-    const root = await rootOrgOf(this.ctx, orgId);
-    return this.ctx.state.planCache.isFallback(root?.id ?? orgId);
+    if (!this.deps.instance.isCloud()) return false;
+    return this.deps.planCache.isFallback(await this.deps.organizations.rootOrgIdOf(orgId));
   }
 
   async getLastKnownPlan(orgId: string) {
-    const root = await rootOrgOf(this.ctx, orgId);
-    return this.ctx.state.planCache.lastKnown(root?.id ?? orgId);
+    return this.deps.planCache.lastKnown(await this.deps.organizations.rootOrgIdOf(orgId));
   }
 }

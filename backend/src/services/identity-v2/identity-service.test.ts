@@ -3,7 +3,7 @@ import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 
 import { identityV2ServiceFactory } from "./identity-service";
 import { TDeleteIdentityV2DTO } from "./identity-types";
@@ -46,7 +46,7 @@ const createService = ({
   tx = TX
 }: { existingIdentity?: Record<string, unknown> | null; projectType?: ProjectType; tx?: Knex } = {}) => {
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
-  const license = new FakeLicenseService();
+  const license = new FakeLicenseDomain();
 
   const identityDAL = {
     findOne: vi.fn().mockResolvedValue(existingIdentity),

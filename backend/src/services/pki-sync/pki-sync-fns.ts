@@ -1,7 +1,7 @@
 import RE2 from "re2";
 import { z, ZodSchema } from "zod";
 
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -108,11 +108,7 @@ const PKI_SYNC_LIST_OPTIONS = {
 };
 
 // Creation path only, never pki-sync-queue, so existing syncs keep running after a downgrade.
-export const assertPkiSyncLicense = async (
-  license: Pick<TLicenseService, "getPlan">,
-  orgId: string,
-  errorMessage?: string
-) => {
+export const assertPkiSyncLicense = async (license: TLicenseDomain, orgId: string, errorMessage?: string) => {
   const plan = await license.getPlan(orgId);
 
   if (!plan.pkiSyncs) {

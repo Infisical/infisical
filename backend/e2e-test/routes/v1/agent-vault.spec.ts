@@ -56,6 +56,8 @@ import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-e
 import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { AgentVaultIdentities } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
 import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -67,10 +69,13 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 // The Agent Vault seat meter, as the License domain counts it.
-const countAgentVaultSeats = (orgId: string) =>
-  new AgentVaultModule({ organizationsProjects: new OrganizationsProjectsModule({ db: testDb }).service }).usageCounters[0].count(
-    orgId
-  );
+const countAgentVaultSeats = (orgId: string) => {
+  const license = new FakeLicenseRegistry();
+  const organizationsProjects = new OrganizationsProjectsModule({ db: testDb, license }).service;
+  // eslint-disable-next-line no-new
+  new AgentVaultModule({ organizationsProjects, license });
+  return license.counter(AgentVaultIdentities.key).count(orgId);
+};
 
 declare const testKeyStore: TKeyStoreFactory;
 

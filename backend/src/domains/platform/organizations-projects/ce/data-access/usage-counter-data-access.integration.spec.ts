@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { ProjectType } from "@app/db/schemas";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { IdentitiesMeter, UserIdentities } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
 
 import { OrganizationsProjectsModule } from "../module";
 import { seedBillableActors } from "../testing/billable-actor-fixture";
@@ -10,16 +11,18 @@ import { seedBillableActors } from "../testing/billable-actor-fixture";
 describe("OrganizationsProjectsModule usage counters", () => {
   const h = setupIntegration();
 
-  const counter = (module: OrganizationsProjectsModule, key: string) =>
-    module.usageCounters.find((c) => c.feature.key === key)!;
+  const build = () => {
+    const license = new FakeLicenseRegistry();
+    return { module: new OrganizationsProjectsModule({ db: h.db, license }), license };
+  };
 
   test("should count only accepted, non-ghost members in a Secret Manager or KMS project or in none, each once", async () => {
     // Setup
     const { rootOrgId } = await seedBillableActors(h.db);
-    const module = new OrganizationsProjectsModule({ db: h.db });
+    const { license } = build();
 
     // Action
-    const users = await counter(module, UserIdentities.key).count(rootOrgId);
+    const users = await license.counter(UserIdentities.key).count(rootOrgId);
 
     // Assert
     expect(users).toBe(5);
@@ -28,10 +31,10 @@ describe("OrganizationsProjectsModule usage counters", () => {
   test("should count members and identities together, a sub-org's identities into its root", async () => {
     // Setup
     const { rootOrgId } = await seedBillableActors(h.db);
-    const module = new OrganizationsProjectsModule({ db: h.db });
+    const { license } = build();
 
     // Action
-    const total = await counter(module, IdentitiesMeter.key).count(rootOrgId);
+    const total = await license.counter(IdentitiesMeter.key).count(rootOrgId);
 
     // Assert
     expect(total).toBe(9);
@@ -40,10 +43,10 @@ describe("OrganizationsProjectsModule usage counters", () => {
   test("should count nothing for an org with no members", async () => {
     // Setup
     await seedBillableActors(h.db);
-    const module = new OrganizationsProjectsModule({ db: h.db });
+    const { license } = build();
 
     // Action
-    const total = await counter(module, IdentitiesMeter.key).count(randomUUID());
+    const total = await license.counter(IdentitiesMeter.key).count(randomUUID());
 
     // Assert
     expect(total).toBe(0);
@@ -53,13 +56,13 @@ describe("OrganizationsProjectsModule usage counters", () => {
     // Setup
     const first = await seedBillableActors(h.db);
     const second = await seedBillableActors(h.db);
-    const module = new OrganizationsProjectsModule({ db: h.db });
+    const { license } = build();
     const perOrg =
-      (await counter(module, IdentitiesMeter.key).count(first.rootOrgId)) +
-      (await counter(module, IdentitiesMeter.key).count(second.rootOrgId));
+      (await license.counter(IdentitiesMeter.key).count(first.rootOrgId)) +
+      (await license.counter(IdentitiesMeter.key).count(second.rootOrgId));
 
     // Action
-    const instance = await counter(module, IdentitiesMeter.key).count(null);
+    const instance = await license.counter(IdentitiesMeter.key).count(null);
 
     // Assert
     expect(instance).toBeGreaterThanOrEqual(perOrg);
@@ -68,7 +71,7 @@ describe("OrganizationsProjectsModule usage counters", () => {
   test("should count a project type's users and identities once each, direct or through a group, skipping deleted projects", async () => {
     // Setup
     const { rootOrgId } = await seedBillableActors(h.db);
-    const module = new OrganizationsProjectsModule({ db: h.db });
+    const { module } = build();
 
     // Action
     const [secretManager, pam, otherOrg] = await Promise.all([
@@ -86,7 +89,7 @@ describe("OrganizationsProjectsModule usage counters", () => {
   test("should attribute billable identities to the org and project that own them", async () => {
     // Setup
     const { rootOrgId, subOrgId } = await seedBillableActors(h.db);
-    const module = new OrganizationsProjectsModule({ db: h.db });
+    const { module } = build();
 
     // Action
     const rows = await module.service.getBillableIdentityOwnershipBreakdown(rootOrgId);
@@ -99,7 +102,7 @@ describe("OrganizationsProjectsModule usage counters", () => {
   test("should resolve a sub-org to its root, and a root to itself", async () => {
     // Setup
     const { rootOrgId, subOrgId } = await seedBillableActors(h.db);
-    const module = new OrganizationsProjectsModule({ db: h.db });
+    const { module } = build();
 
     // Action
     const roots = await Promise.all([

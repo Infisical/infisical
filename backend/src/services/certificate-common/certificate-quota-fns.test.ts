@@ -1,5 +1,5 @@
 import { InstanceType } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 
 import { assertCertificateQuota, TCertificateQuotaDeps } from "./certificate-quota-fns";
 import { buildCertificateQuotaKey } from "./certificate-quota-key";
@@ -22,7 +22,7 @@ const buildDeps = ({
   activeKeys?: string[];
   calls: { counted: (string | undefined)[]; activeChecked: (string | undefined)[] };
 }) => {
-  const license = new FakeLicenseService().setPlan("sub-org", { maxCertificates, maxWildcardCertificates });
+  const license = new FakeLicenseDomain().setPlan("sub-org", { maxCertificates, maxWildcardCertificates });
   license.instance = { ...license.instance, instanceType };
   return {
     projectDAL: { findById: async () => ({ id: "project-1", orgId: "sub-org" }) },

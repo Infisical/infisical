@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
 import {
-  TLicenseService,
+  TLicenseDomain,
   AgentVaultIdentities,
   PamIdentities,
   SecretIdentities
@@ -60,14 +60,14 @@ type TMembershipIdentityServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "deleteByIdentityIdsInGroupsOwnedByOrgs">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
-  usageMeteringService: Pick<TLicenseService, "emit">;
+  usageMeteringService: TLicenseDomain;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,

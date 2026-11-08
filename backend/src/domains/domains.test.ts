@@ -6,29 +6,20 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 describe("createDomains", () => {
-  test("should give the License domain exactly one counter for every metered dimension", () => {
+  test("should register exactly one usage counter for every metered dimension with License", () => {
     // Setup
     const deps = {
       db: {},
       keyStore: {},
       queueService: { queue: vi.fn(), start: vi.fn() },
       cronJob: { register: vi.fn() },
-      envConfig: { isCloud: false, isProductionMode: false },
-      resolveRootOrg: vi.fn(),
-      countBillableProjects: vi.fn()
+      envConfig: { isCloud: false, isProductionMode: false }
     } as unknown as Parameters<typeof createDomains>[0];
 
     // Action
     const domains = createDomains(deps);
 
     // Assert
-    const counted = [
-      domains.organizationsProjects,
-      domains.secrets,
-      domains.pam,
-      domains.agentVault,
-      domains.certManager
-    ].flatMap((module) => module.usageCounters.map((counter) => counter.feature.key));
-    expect(counted.sort()).toEqual(METERED_FEATURES.map((feature) => feature.key).sort());
+    expect(domains.license.usageDimensions().sort()).toEqual(METERED_FEATURES.map((feature) => feature.key).sort());
   });
 });

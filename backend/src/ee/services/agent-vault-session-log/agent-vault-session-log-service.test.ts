@@ -4,7 +4,7 @@ import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { getDefaultOnPremFeatures, TPlan as TLicensePlan } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { BadRequestError, DailyQuotaExceededError, InternalServerError } from "@app/lib/errors";
 import { ObjectStorageError, toObjectStorageError } from "@app/services/object-storage/object-storage-errors";
 import { ObjectStorageErrorReason, ObjectStorageType } from "@app/services/object-storage/object-storage-types";
@@ -159,7 +159,7 @@ const build = (overrides: TOverrides = {}) => {
   });
   const findSession = vi.fn(async () => ("session" in overrides ? overrides.session : liveSession()));
   const streamRange = vi.fn(async () => overrides.feed ?? []);
-  const license = new FakeLicenseService().setPlan("org-1", toPlan(overrides.plan));
+  const license = new FakeLicenseDomain().setPlan("org-1", toPlan(overrides.plan));
   if (overrides.planFallback) license.fallbackOrgs.add("org-1");
   if (overrides.lastKnownPlan) {
     license.lastKnown.set("org-1", {

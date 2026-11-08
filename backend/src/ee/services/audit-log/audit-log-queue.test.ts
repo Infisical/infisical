@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { QueueName } from "@app/queue";
 
 import { auditLogQueueServiceFactory } from "./audit-log-queue";
@@ -92,7 +92,7 @@ const createHarness = async ({ clickhouse = false, streamsEnabled = false, gener
   const projectDAL = {
     findById: vi.fn<(id: string) => Promise<Record<string, unknown> | undefined>>(async () => undefined)
   };
-  const license = new FakeLicenseService();
+  const license = new FakeLicenseDomain();
   license.defaultPlan = { ...license.defaultPlan, auditLogsRetentionDays: 30 };
   const auditLogStreamOutboxService = {
     enqueueForLogs: vi.fn<(logs: unknown[]) => Promise<void>>(async () => undefined)

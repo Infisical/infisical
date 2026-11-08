@@ -1,5 +1,5 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ChefConnectionMethod,
   getChefConnectionListItem,
@@ -1114,7 +1114,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
 };
 
 export const enterpriseAppCheck = async (
-  license: Pick<TLicenseService, "getPlan">,
+  license: TLicenseDomain,
   appConnection: AppConnection,
   orgId: string,
   errorMessage: string

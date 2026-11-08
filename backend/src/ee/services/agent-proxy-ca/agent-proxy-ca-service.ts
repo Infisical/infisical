@@ -1,7 +1,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
@@ -24,7 +24,7 @@ export type TAgentProxyCaServiceFactory = ReturnType<typeof agentProxyCaServiceF
 type TAgentProxyCaServiceFactoryDep = {
   orgAgentProxyConfigDAL: TOrgAgentProxyConfigDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  license: Pick<TLicenseService, "getPlan">;
+  license: TLicenseDomain;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 

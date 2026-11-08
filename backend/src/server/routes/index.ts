@@ -931,12 +931,7 @@ export const registerRoutes = async (
     keyStore,
     queueService,
     cronJob,
-    envConfig,
-    resolveRootOrg: async (orgId) => {
-      const org = await orgDAL.findRootOrgDetails(orgId);
-      return org ? { id: org.id, name: org.name, slug: org.slug } : null;
-    },
-    countBillableProjects: (rootOrgId) => projectDAL.countOfBillableOrgProjects(rootOrgId)
+    envConfig
   });
   const license = domains.license.service;
   const usageMeteringService = license;
@@ -2546,6 +2541,7 @@ export const registerRoutes = async (
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
+    organizationsProjects: domains.organizationsProjects.service,
     projectQueue: projectQueueService,
     secretValueTrackingService,
     userDAL,
