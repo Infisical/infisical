@@ -25,7 +25,6 @@ import {
   TCreatePortalPayload,
   TEntitlementOrg,
   TEntitlementsResponse,
-  TLicenseClientBackend,
   trialCancelResultSchema,
   trialResultSchema,
   trialsResponseSchema,
@@ -40,9 +39,40 @@ import {
   TUpgradePayload,
   TUpgradeResult,
   upgradeResultSchema
-} from "../../../ce/model/license-server-types";
+} from "../../ce/license-server-client/license-server-types";
 import { LICENSE_SERVER_ERROR_NAME, licenseErrorMessage, readLicenseRequestId } from "./license-server-errors";
 import { TLicenseTokenProvider } from "./license-token-provider";
+
+// One License Server deployment: cloud signs requests with the service key, self-hosted with a token
+// exchanged for its license key.
+export type TLicenseClientBackend = {
+  fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
+  // Org-scoped on cloud (the catalog is filtered per calling org). The self-hosted backend ignores the
+  // arg and hits its single-tenant /v1/products.
+  fetchCatalog: (orgId: string) => Promise<TCatalogResponse>;
+  fetchSubscription: (orgId: string) => Promise<TSubscriptionResponse | null>;
+  fetchCloudPlan: (orgId: string) => Promise<TCloudPlanResponse | null>;
+  fetchBillingProfile: (orgId: string) => Promise<TBillingProfileResponse | null>;
+  createPortalSession: (orgId: string, payload: TCreatePortalPayload) => Promise<TSessionResponse>;
+  previewSubscriptionChange: (orgId: string, payload: TSubscriptionPreviewPayload) => Promise<TSubscriptionPreview>;
+  // Buy/add one product; self-selects append vs hosted Checkout server side.
+  buyProduct: (orgId: string, payload: TBuyProductPayload) => Promise<TCheckoutResult>;
+  // Remove one product; removing the last product cancels the subscription.
+  removeProduct: (orgId: string, productId: string) => Promise<TCheckoutResult>;
+  // Move a held product onto a higher plan in place, invoicing only the prorated difference.
+  upgradeProduct: (orgId: string, payload: TUpgradePayload) => Promise<TUpgradeResult>;
+  // Start / change annual commitments across dimensions (all-or-nothing).
+  changeCommitments: (orgId: string, payload: TChangeCommitmentsPayload) => Promise<TCheckoutResult>;
+  // Start a plan-scoped self-serve trial.
+  startTrial: (orgId: string, payload: TStartTrialPayload) => Promise<TTrialResult>;
+  // Cancel an in-progress trial for a product (product → free; the trial never converts).
+  cancelTrial: (orgId: string, payload: TCancelTrialPayload) => Promise<TTrialCancelResult>;
+  confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
+  // The org's trial history, used to tell which products have already used their one-time trial.
+  fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
+  cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
+  resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
+};
 
 // Token-scoped paths for the self-hosted (license-key) backend: the key identifies the license, so
 // no org_id is carried. The global catalog is org-independent and shared by both backends.

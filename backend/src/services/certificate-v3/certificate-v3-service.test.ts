@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { InstanceType, TPlan } from "@app/domains/platform/license/ce/module";
+import { InstanceType, TPlanProps } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -2561,7 +2561,7 @@ describe("CertificateV3Service", () => {
     describe("certificate quota on renewal", () => {
       const AT_CAP = { maxCertificates: 5, maxWildcardCertificates: null };
 
-      const atCap = (plan: Partial<TPlan> = AT_CAP, total = 5, wildcard = 0) => {
+      const atCap = (plan: Partial<TPlanProps> = AT_CAP, total = 5, wildcard = 0) => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
         licenseDomain.defaultPlan = { ...licenseDomain.defaultPlan, ...plan };
         vi.mocked(mockUsageCounterDAL.countActiveCertificateQuota).mockResolvedValue({ total, wildcard });

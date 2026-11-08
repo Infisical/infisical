@@ -14,7 +14,7 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { assertSeatAvailable, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
@@ -830,7 +830,7 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          if (seatUsage) assertSeatAvailable(seatUsage, { identityLimit, via: UserAliasType.SAML });
+          seatUsage?.assertAvailable({ identityLimit, via: UserAliasType.SAML });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 

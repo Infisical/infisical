@@ -1,12 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
-import {
-  TLicenseDomain,
-  AgentVaultIdentities,
-  PamIdentities,
-  SecretIdentities
-} from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -252,9 +247,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
-      licenseDomain.emit(scopeData.orgId, PamIdentities.key);
-      licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(scopeData.orgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(scopeData.orgId, Meter.PamIdentities.key);
+      licenseDomain.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
     }
     return { membership };
   };
@@ -554,9 +549,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
-    licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
-    licenseDomain.emit(scopeData.orgId, PamIdentities.key);
-    licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(scopeData.orgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(scopeData.orgId, Meter.PamIdentities.key);
+    licenseDomain.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
 
     if (needsRevocationBump && externalTx) {
       return {

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
-import { PamIdentities, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
@@ -131,7 +131,7 @@ export const subOrgServiceFactory = ({
       return org;
     });
 
-    licenseDomain.emit(organization.id, PamIdentities.key);
+    licenseDomain.emit(organization.id, Meter.PamIdentities.key);
 
     return {
       organization

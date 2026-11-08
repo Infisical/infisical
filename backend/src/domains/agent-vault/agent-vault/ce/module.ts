@@ -1,5 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
-import { AgentVaultIdentities, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 
 export type TAgentVaultDeps = {
@@ -13,8 +13,7 @@ export class AgentVaultModule {
 
   constructor({ organizationsProjectsDomain, licenseRegistry }: TAgentVaultDeps) {
     licenseRegistry.registerUsageCounter({
-      feature: AgentVaultIdentities,
-      scope: "org",
+      meter: Meter.AgentVaultIdentities,
       count: (orgId) => organizationsProjectsDomain.countProjectIdentities(ProjectType.AgentVault, orgId ?? undefined)
     });
   }

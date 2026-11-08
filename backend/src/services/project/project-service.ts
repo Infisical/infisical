@@ -17,12 +17,7 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
-import {
-  TLicenseDomain,
-  AgentVaultIdentities,
-  PamIdentities,
-  SecretIdentities
-} from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
@@ -832,9 +827,9 @@ export const projectServiceFactory = ({
     // A new project seeds its creator (plus any template members/identities); emit so a new
     // secret-manager or PAM project's seats are metered. Org-scoped (not emitForProject) to avoid racing
     // the just-committed row; the counter filters by project type.
-    licenseDomain.emit(results.orgId, SecretIdentities.key);
-    licenseDomain.emit(results.orgId, PamIdentities.key);
-    licenseDomain.emit(results.orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(results.orgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(results.orgId, Meter.PamIdentities.key);
+    licenseDomain.emit(results.orgId, Meter.AgentVaultIdentities.key);
     return results;
   };
 
@@ -949,9 +944,9 @@ export const projectServiceFactory = ({
       // Cached reads of this project and of the projects it shares with would keep serving its secrets.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
-      licenseDomain.emit(project.orgId, SecretIdentities.key);
-      licenseDomain.emit(project.orgId, PamIdentities.key);
-      licenseDomain.emit(project.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(project.orgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(project.orgId, Meter.PamIdentities.key);
+      licenseDomain.emit(project.orgId, Meter.AgentVaultIdentities.key);
       return { ...softDeletedProject, slug: project.slug, hardDelete: !hasGracePeriod };
     } finally {
       await lock.release();
@@ -1098,9 +1093,9 @@ export const projectServiceFactory = ({
       await licenseDomain.invalidatePlan(project.orgId);
       // Cached reads from before the deletion can hold imports from projects deleted since.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
-      licenseDomain.emit(project.orgId, SecretIdentities.key);
-      licenseDomain.emit(project.orgId, PamIdentities.key);
-      licenseDomain.emit(project.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(project.orgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(project.orgId, Meter.PamIdentities.key);
+      licenseDomain.emit(project.orgId, Meter.AgentVaultIdentities.key);
       return restoredProject;
     } finally {
       await lock.release();

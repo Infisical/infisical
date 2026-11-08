@@ -37,13 +37,15 @@ export type TDomains = ReturnType<typeof createDomains>;
 // License comes first: every product depends on it, and it depends on none. Products plug in what License
 // needs from them (usage counters, root orgs) through license.registry while they are built.
 export const createDomains = (deps: TDomainDeps) => {
+  const licenseEe = new LicenseEeModule({ envConfig: deps.envConfig });
   const license = new LicenseModule({
     keyStore: deps.keyStore,
     queueService: deps.queueService,
     cronJob: deps.cronJob,
     isProductionMode: deps.envConfig.isProductionMode,
     startLocalRefresh,
-    hooks: new LicenseEeModule({ envConfig: deps.envConfig, keyStore: deps.keyStore }).hooks
+    hooks: licenseEe.hooks,
+    licenseServerClient: licenseEe.licenseServerClient
   });
 
   const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db, licenseRegistry: license.registry });

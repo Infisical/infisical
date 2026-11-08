@@ -1,17 +1,17 @@
 import { describe, expect, test } from "vitest";
 
-import { entitlementsResponseSchema, TEntitlementsResponse } from "../../ce/model/license-server-types";
-import { TFeatureSet } from "../../ce/model/license-types";
+import { entitlementsResponseSchema, TEntitlementsResponse } from "../../ce/license-server-client/license-server-types";
+import { TInstanceFeatures } from "../../ce/model/instance-entitlements";
 import { projectV2ToFeatureSet } from "./entitlement-projection";
 
-const makeBase = (overrides: Partial<Record<keyof TFeatureSet, unknown>>): TFeatureSet =>
-  ({ rateLimits: { readLimit: 0, writeLimit: 0, secretsLimit: 0 }, ...overrides }) as TFeatureSet;
+const makeBase = (overrides: Partial<Record<keyof TInstanceFeatures, unknown>>): TInstanceFeatures =>
+  ({ rateLimits: { readLimit: 0, writeLimit: 0, secretsLimit: 0 }, ...overrides }) as TInstanceFeatures;
 
 const makeEntitlements = (features: TEntitlementsResponse["features"]): TEntitlementsResponse =>
   ({ features }) as TEntitlementsResponse;
 
 describe("projectV2ToFeatureSet", () => {
-  test("overlays a present v2 feature onto the base TFeatureSet field", () => {
+  test("overlays a present v2 feature onto the base TInstanceFeatures field", () => {
     const plan = projectV2ToFeatureSet(makeBase({ rbac: false }), makeEntitlements({ rbac: { value: true } }));
     expect(plan.rbac).toBe(true);
   });

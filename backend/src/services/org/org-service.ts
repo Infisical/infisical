@@ -12,12 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
-import {
-  TLicenseDomain,
-  AgentVaultIdentities,
-  PamIdentities,
-  SecretIdentities
-} from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -861,7 +856,7 @@ export const orgServiceFactory = ({
     // transaction syncs seats once that transaction commits.
     if (!trx) await licenseDomain.syncSeats(organization.id);
 
-    licenseDomain.emit(organization.id, PamIdentities.key);
+    licenseDomain.emit(organization.id, Meter.PamIdentities.key);
 
     return organization;
   };
@@ -1439,9 +1434,9 @@ export const orgServiceFactory = ({
     });
 
     // Removing an org member cascades their project + group memberships, changing the identity meters.
-    licenseDomain.emit(orgId, SecretIdentities.key);
-    licenseDomain.emit(orgId, PamIdentities.key);
-    licenseDomain.emit(orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(orgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(orgId, Meter.PamIdentities.key);
+    licenseDomain.emit(orgId, Meter.AgentVaultIdentities.key);
     return deletedMembership;
   };
 
@@ -1493,9 +1488,9 @@ export const orgServiceFactory = ({
     });
 
     // Removing org members cascades their project + group memberships, changing the identity meters.
-    licenseDomain.emit(orgId, SecretIdentities.key);
-    licenseDomain.emit(orgId, PamIdentities.key);
-    licenseDomain.emit(orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(orgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(orgId, Meter.PamIdentities.key);
+    licenseDomain.emit(orgId, Meter.AgentVaultIdentities.key);
     return deletedMemberships;
   };
 

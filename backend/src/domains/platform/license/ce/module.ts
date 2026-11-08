@@ -4,46 +4,50 @@ import type { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { logger } from "@app/lib/logger";
 import type { TQueueServiceFactory } from "@app/queue";
 
-import { getDefaultOnPremFeatures } from "./model/default-features";
-import { TLicenseServerBilling } from "./model/license-server-types";
-import { InstanceType, TFeatureSet, TOrgSeatUsage } from "./model/license-types";
-import { TInstanceEntitlements, TPlan, TPlanFeature } from "./model/plan";
-import { TLicenseOrganizations } from "./model/root-org";
-import { TUsageCounter } from "./model/usage-counter";
-import { UsageQueues } from "./model/usage-queues";
+import { PlanCache } from "./data-access/plan-cache";
+import { UsageReportMemory } from "./data-access/usage-report-memory";
+import { DormantLicenseServerClient } from "./license-server-client/dormant-license-server-client";
+import { TLicenseServerBilling, TLicenseServerClient } from "./license-server-client/license-server-client";
+import {
+  InstanceEntitlements,
+  InstanceType,
+  TInstanceEntitlementsProps,
+  TInstanceFeatures
+} from "./model/instance-entitlements";
+import { Plan, TPlanFeature, TPlanProps } from "./model/plan";
+import { SeatUsage } from "./model/seat-usage";
 import { CounterRegistry } from "./service/counter-registry";
-import { dormantBilling } from "./service/dormant-billing";
 import { EntitlementService } from "./service/entitlement-service";
 import { InstanceEntitlementsHolder } from "./service/instance-entitlements-holder";
 import { TLicenseHooks } from "./service/license-hooks";
 import { OrganizationDirectory } from "./service/organization-directory";
-import { PlanCache } from "./service/plan-cache";
 import { PlanResolver, TRefreshPlanOptions } from "./service/plan-resolver";
+import { TLicenseOrganizations, TUsageCounter } from "./service/registrations";
 import { SubscriptionService } from "./service/subscription-service";
-import { UsageQueue, TMeteringEventInput } from "./service/usage-queue";
+import { TMeteringEventInput, UsageQueue, UsageQueues } from "./service/usage-queue";
 import { UsageReportService } from "./service/usage-report-service";
 import { UsageService } from "./service/usage-service";
 
-export * from "./model/default-features";
-export * from "./model/license-server-types";
-export * from "./model/license-types";
-export * from "./model/metered-features";
+export { DormantLicenseServerClient } from "./license-server-client/dormant-license-server-client";
+export * from "./license-server-client/license-server-client";
+export * from "./license-server-client/license-server-types";
+export * from "./license-server-client/usage-reports";
+export * from "./model/instance-entitlements";
+export * from "./model/meter";
 export * from "./model/plan";
-export * from "./model/seat-limit";
-export type { TLicenseOrganizations, TRootOrg } from "./model/root-org";
-export type { TUsageCounter, TUsageCounterScope } from "./model/usage-counter";
-export * from "./model/usage-report";
+export * from "./model/seat-usage";
 export type { TLicenseHooks } from "./service/license-hooks";
 export type { TRefreshPlanOptions } from "./service/plan-resolver";
+export type { TLicenseOrganizations, TRootOrg, TUsageCounter } from "./service/registrations";
 export type { TMeteringEventInput } from "./service/usage-queue";
 
 export type TLicenseDomain = {
-  getInstanceEntitlements: () => TInstanceEntitlements;
+  getInstanceEntitlements: () => TInstanceEntitlementsProps;
   getInstanceType: () => InstanceType;
-  hasInstanceFeature: (feature: keyof TFeatureSet) => boolean;
+  hasInstanceFeature: (feature: keyof TInstanceFeatures) => boolean;
   // The offline license's id, or "unknown".
   getLicenseId: () => string;
-  getPlan: (orgId: string) => Promise<TPlan>;
+  getPlan: (orgId: string) => Promise<TPlanProps>;
   hasFeature: (orgId: string, feature: TPlanFeature) => Promise<boolean>;
   // Refuses with a message naming the feature when the org's plan does not include it.
   assertFeature: (orgId: string, feature: TPlanFeature) => Promise<void>;
@@ -52,11 +56,11 @@ export type TLicenseDomain = {
   // Drops the cached plan so the next read fetches it, without fetching now.
   invalidatePlan: (orgId: string) => Promise<void>;
   isServingFallbackPlan: (orgId: string) => Promise<boolean>;
-  getLastKnownPlan: (orgId: string) => Promise<{ plan: TPlan; fetchedAt: number } | null>;
+  getLastKnownPlan: (orgId: string) => Promise<{ plan: TPlanProps; fetchedAt: number } | null>;
   // Seats in use for the org's plan: the root org's tree on cloud, the whole instance self-hosted. To enforce
   // a limit while adding a member, read this before the transaction and check it with assertSeatAvailable.
-  getSeatUsage: (orgId: string) => Promise<TOrgSeatUsage>;
-  getInstanceSeatUsage: () => Promise<TOrgSeatUsage>;
+  getSeatUsage: (orgId: string) => Promise<SeatUsage>;
+  getInstanceSeatUsage: () => Promise<SeatUsage>;
   syncSeats: (orgId: string) => Promise<void>;
   cancelSubscription: (orgId: string) => Promise<void>;
   emit: (orgId: string, dimensionKey: string) => void;
@@ -86,24 +90,17 @@ export type TLicenseDeps = {
   // Runs a task on a timer in this process. Supplied by the wiring: the timer module must not load with this one.
   startLocalRefresh: typeof startLocalRefresh;
   hooks?: TLicenseHooks;
+  // The License Server. Without one the domain uses DormantLicenseServerClient.
+  licenseServerClient?: TLicenseServerClient;
 };
 
 const communityHooks: TLicenseHooks = {
-  resolveInstanceEntitlements: async () => ({
-    instanceType: InstanceType.OnPrem,
-    features: getDefaultOnPremFeatures(),
-    licenseId: null,
-    customerId: null
-  }),
+  resolveInstanceEntitlements: async () => InstanceEntitlements.community(),
   refreshInstanceEntitlements: async () => null,
   hasOnlineLicense: () => false,
-  fetchPlan: () => Promise.reject(new Error("No License Server in the community edition")),
-  fallbackPlan: (features) => features,
-  cancelSubscription: async () => undefined,
-  isMeteringEnabled: () => false,
-  usageReporter: null,
-  isOffline: () => false,
-  billing: dormantBilling
+  planFromEntitlements: () => Plan.community(),
+  fallbackPlan: (instance) => instance.plan(),
+  isOffline: () => false
 };
 
 export class LicenseModule {
@@ -118,15 +115,11 @@ export class LicenseModule {
 
   private readonly hooks: TLicenseHooks;
 
+  private readonly licenseServerClient: TLicenseServerClient;
+
   private readonly counters = new CounterRegistry();
 
   private readonly organizations = new OrganizationDirectory();
-
-  private readonly planCache: PlanCache;
-
-  private readonly usageQueue: UsageQueue;
-
-  private readonly planResolver: PlanResolver;
 
   private readonly entitlements: EntitlementService;
 
@@ -134,62 +127,63 @@ export class LicenseModule {
 
   private readonly usage: UsageService;
 
+  private readonly usageQueue: UsageQueue;
+
   private readonly usageReports: UsageReportService;
 
   constructor(private readonly deps: TLicenseDeps) {
     this.hooks = deps.hooks ?? communityHooks;
-    this.planCache = new PlanCache(deps.keyStore);
+    this.licenseServerClient = deps.licenseServerClient ?? new DormantLicenseServerClient();
+    const instance = this.instanceEntitlements;
+    const { licenseServerClient, hooks, counters, organizations } = this;
+    const planCache = new PlanCache(deps.keyStore);
+    const usageReportMemory = new UsageReportMemory(deps.keyStore);
+
     this.usageQueue = new UsageQueue({
       queueService: deps.queueService,
-      hooks: this.hooks,
-      planCache: this.planCache,
-      counters: this.counters
+      licenseServerClient,
+      usageReportMemory,
+      counters
     });
-    this.planResolver = new PlanResolver({
-      instance: this.instanceEntitlements,
-      planCache: this.planCache,
-      organizations: this.organizations,
-      hooks: this.hooks,
-      usageQueue: this.usageQueue
+    const { usageQueue } = this;
+    const planResolver = new PlanResolver({
+      instance,
+      planCache,
+      usageReportMemory,
+      organizations,
+      licenseServerClient,
+      hooks,
+      usageQueue
     });
-    this.entitlements = new EntitlementService({
-      instance: this.instanceEntitlements,
-      planCache: this.planCache,
-      organizations: this.organizations,
-      planResolver: this.planResolver
-    });
+    this.entitlements = new EntitlementService({ instance, planCache, organizations, planResolver });
     this.subscription = new SubscriptionService({
-      instance: this.instanceEntitlements,
-      planCache: this.planCache,
-      organizations: this.organizations,
-      planResolver: this.planResolver,
-      usageQueue: this.usageQueue,
-      hooks: this.hooks
+      instance,
+      planCache,
+      organizations,
+      planResolver,
+      usageQueue,
+      licenseServerClient
     });
+    this.usage = new UsageService({ instance, counters, organizations });
     this.usageReports = new UsageReportService({
-      instance: this.instanceEntitlements,
-      counters: this.counters,
-      organizations: this.organizations,
-      planCache: this.planCache,
-      planResolver: this.planResolver,
-      usageQueue: this.usageQueue,
-      hooks: this.hooks
-    });
-    this.usage = new UsageService({
-      instance: this.instanceEntitlements,
-      counters: this.counters,
-      organizations: this.organizations
+      instance,
+      counters,
+      organizations,
+      usageReportMemory,
+      planResolver,
+      usageQueue,
+      licenseServerClient
     });
     this.registry = {
       registerUsageCounter: (counter) => this.counters.register(counter),
-      registerOrganizations: (organizations) => this.organizations.register(organizations)
+      registerOrganizations: (directory) => this.organizations.register(directory)
     };
     this.service = this.build();
   }
 
-  // The metered dimensions a counter was registered for.
+  // The meters a counter was registered for.
   usageDimensions(): string[] {
-    return this.counters.all().map((counter) => counter.feature.key);
+    return this.counters.all().map((counter) => counter.meter.key);
   }
 
   // Reads the instance's license, then starts the usage workers and the timers. Called once at boot.
@@ -258,7 +252,7 @@ export class LicenseModule {
       emit: (orgId, dimensionKey) => usageQueue.emit(orgId, dimensionKey),
       recordMeteringEvents: (orgId, events) => usageQueue.recordMeteringEvents(orgId, events),
       hasOfflineLicenseKey: () => this.hooks.isOffline(),
-      billing: this.hooks.billing
+      billing: this.licenseServerClient
     };
   }
 }

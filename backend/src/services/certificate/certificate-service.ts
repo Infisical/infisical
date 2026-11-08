@@ -4,7 +4,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
-import { TLicenseDomain, ActiveCerts, WildcardCerts } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -607,8 +607,8 @@ export const certificateServiceFactory = ({
       auditLogInfo
     );
 
-    licenseDomain.emit(actorOrgId, ActiveCerts.key);
-    licenseDomain.emit(actorOrgId, WildcardCerts.key);
+    licenseDomain.emit(actorOrgId, Meter.ActiveCerts.key);
+    licenseDomain.emit(actorOrgId, Meter.WildcardCerts.key);
 
     return {
       deletedCert,
@@ -790,8 +790,8 @@ export const certificateServiceFactory = ({
       });
     }
 
-    licenseDomain.emit(actorOrgId, ActiveCerts.key);
-    licenseDomain.emit(actorOrgId, WildcardCerts.key);
+    licenseDomain.emit(actorOrgId, Meter.ActiveCerts.key);
+    licenseDomain.emit(actorOrgId, Meter.WildcardCerts.key);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -1487,8 +1487,8 @@ export const certificateServiceFactory = ({
 
     if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
-    licenseDomain.emit(actorOrgId, ActiveCerts.key);
-    licenseDomain.emit(actorOrgId, WildcardCerts.key);
+    licenseDomain.emit(actorOrgId, Meter.ActiveCerts.key);
+    licenseDomain.emit(actorOrgId, Meter.WildcardCerts.key);
 
     if (cert.id && cert.applicationId) {
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);

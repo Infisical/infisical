@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { getDefaultOnPremFeatures } from "../../ce/model/default-features";
+import { InstanceEntitlements } from "../../ce/model/instance-entitlements";
 import { EXCLUDED_FIELDS, FEATURE_MAPPINGS } from "./feature-mapping";
 
 const topLevelV1Field = (v1Field: string): string => {
@@ -12,7 +12,7 @@ const topLevelV1Field = (v1Field: string): string => {
 };
 
 describe("feature mapping completeness", () => {
-  test("every v1 TFeatureSet field is excluded or referenced by a mapping", () => {
+  test("every v1 TInstanceFeatures field is excluded or referenced by a mapping", () => {
     const referenced = new Set<string>();
     for (const mapping of FEATURE_MAPPINGS) {
       if (mapping.v1Field) {
@@ -20,7 +20,7 @@ describe("feature mapping completeness", () => {
       }
     }
 
-    const planFields = Object.keys(getDefaultOnPremFeatures());
+    const planFields = Object.keys(InstanceEntitlements.communityFeatures());
     const uncovered = planFields.filter((field) => !EXCLUDED_FIELDS.has(field) && !referenced.has(field));
 
     expect(uncovered).toEqual([]);

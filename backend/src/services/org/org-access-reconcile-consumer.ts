@@ -1,9 +1,4 @@
-import {
-  AgentVaultIdentities,
-  PamIdentities,
-  SecretIdentities,
-  TLicenseDomain
-} from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -136,9 +131,9 @@ export const orgAccessReconcileConsumerFactory = ({
           groupId: scope.groupId
         });
 
-        licenseDomain.emit(orgId, SecretIdentities.key);
-        licenseDomain.emit(orgId, PamIdentities.key);
-        licenseDomain.emit(orgId, AgentVaultIdentities.key);
+        licenseDomain.emit(orgId, Meter.SecretIdentities.key);
+        licenseDomain.emit(orgId, Meter.PamIdentities.key);
+        licenseDomain.emit(orgId, Meter.AgentVaultIdentities.key);
       }
     }
   };

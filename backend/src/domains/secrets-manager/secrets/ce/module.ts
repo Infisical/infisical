@@ -1,5 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
-import { SecretIdentities, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 
 export type TSecretsDeps = {
@@ -13,8 +13,7 @@ export class SecretsModule {
 
   constructor({ organizationsProjectsDomain, licenseRegistry }: TSecretsDeps) {
     licenseRegistry.registerUsageCounter({
-      feature: SecretIdentities,
-      scope: "org",
+      meter: Meter.SecretIdentities,
       count: (orgId) =>
         organizationsProjectsDomain.countProjectIdentities(ProjectType.SecretManager, orgId ?? undefined)
     });

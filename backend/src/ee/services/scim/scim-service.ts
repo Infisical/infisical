@@ -13,12 +13,7 @@ import {
   TOrganizations,
   TUsers
 } from "@app/db/schemas";
-import {
-  AgentVaultIdentities,
-  PamIdentities,
-  SecretIdentities,
-  TLicenseDomain
-} from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -1126,9 +1121,9 @@ export const scimServiceFactory = ({
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
-    licenseDomain.emit(membership.scopeOrgId, SecretIdentities.key);
-    licenseDomain.emit(membership.scopeOrgId, PamIdentities.key);
-    licenseDomain.emit(membership.scopeOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(membership.scopeOrgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(membership.scopeOrgId, Meter.PamIdentities.key);
+    licenseDomain.emit(membership.scopeOrgId, Meter.AgentVaultIdentities.key);
 
     await scimEventsDAL.create({
       orgId,

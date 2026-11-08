@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
-import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/domains/platform/license/ce/module";
+import { Meter } from "@app/domains/platform/license/ce/module";
 import { clearPersonalValuesInProjects } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
@@ -315,9 +315,9 @@ export const addUsersToGroupByUserIds = async ({
     }
 
     // These users may now be in a secret-manager or PAM project through this group.
-    licenseDomain?.emit(group.orgId, SecretIdentities.key);
-    licenseDomain?.emit(group.orgId, PamIdentities.key);
-    licenseDomain?.emit(group.orgId, AgentVaultIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.SecretIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.PamIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return membersToAddToGroupNonPending.concat(membersToAddToGroupPending);
   };
 
@@ -396,9 +396,9 @@ export const addIdentitiesToGroup = async ({
     );
 
     // These identities may now be in a secret-manager or PAM project through this group.
-    licenseDomain?.emit(group.orgId, SecretIdentities.key);
-    licenseDomain?.emit(group.orgId, PamIdentities.key);
-    licenseDomain?.emit(group.orgId, AgentVaultIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.SecretIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.PamIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
@@ -652,9 +652,9 @@ export const removeUsersFromGroupByUserIds = async ({
     });
 
     // These users may have left a secret-manager or PAM project they only reached through this group.
-    licenseDomain?.emit(group.orgId, SecretIdentities.key);
-    licenseDomain?.emit(group.orgId, PamIdentities.key);
-    licenseDomain?.emit(group.orgId, AgentVaultIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.SecretIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.PamIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return {
       users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending),
       sendPamCancellations,
@@ -820,9 +820,9 @@ export const removeIdentitiesFromGroup = async ({
     });
 
     // These identities may have left a secret-manager or PAM project they only reached through this group.
-    licenseDomain?.emit(group.orgId, SecretIdentities.key);
-    licenseDomain?.emit(group.orgId, PamIdentities.key);
-    licenseDomain?.emit(group.orgId, AgentVaultIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.SecretIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.PamIdentities.key);
+    licenseDomain?.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return { identities: identityIdsArray.map((identityId) => ({ id: identityId })), sendPamCancellations };
   });
 };

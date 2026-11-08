@@ -1,5 +1,5 @@
 import { TDbClient } from "@app/db";
-import { ActiveCerts, InternalCas, TLicenseRegistry, WildcardCerts } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 
 import {
@@ -48,18 +48,15 @@ export class CertManagerModule {
 
     // Each counts the whole org tree, so it is reported once, at the root.
     licenseRegistry.registerUsageCounter({
-      feature: InternalCas,
-      scope: "org-tree",
+      meter: Meter.InternalCas,
       count: (orgId) => usage.countInternalCas(orgId ?? undefined)
     });
     licenseRegistry.registerUsageCounter({
-      feature: ActiveCerts,
-      scope: "org-tree",
+      meter: Meter.ActiveCerts,
       count: async (orgId) => (await usage.countActiveCertificateQuotaKeys(orgId ?? undefined)).total
     });
     licenseRegistry.registerUsageCounter({
-      feature: WildcardCerts,
-      scope: "org-tree",
+      meter: Meter.WildcardCerts,
       count: async (orgId) => (await usage.countActiveCertificateQuotaKeys(orgId ?? undefined)).wildcard
     });
   }

@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { getDefaultOnPremFeatures } from "@app/domains/platform/license/ce/module";
+import { Plan } from "@app/domains/platform/license/ce/module";
 import { initializeHsmModule, isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -69,7 +69,7 @@ export const getMigrationEncryptionServices = async ({
     hsmService,
     kmsRootConfigDAL,
     // Migrations run before the license is read, so the instance holds the community entitlements.
-    instanceHasHsm: skipHsmLicenseCheck ? undefined : getDefaultOnPremFeatures().hsm
+    instanceHasHsm: skipHsmLicenseCheck ? undefined : Plan.community().toJSON().hsm
   });
 
   // if the encryption strategy is software - user needs to provide an encryption key

@@ -9,7 +9,7 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { assertSeatAvailable, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -642,7 +642,7 @@ export const ldapConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          if (seatUsage) assertSeatAvailable(seatUsage, { identityLimit, via: UserAliasType.LDAP });
+          seatUsage?.assertAvailable({ identityLimit, via: UserAliasType.LDAP });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
           const membership = await orgDAL.createMembership(

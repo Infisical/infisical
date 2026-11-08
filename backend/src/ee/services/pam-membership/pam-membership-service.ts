@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, RESOURCE_SCOPE, ResourceType, TemporaryPermissionMode } from "@app/db/schemas";
-import { PamIdentities, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
@@ -456,7 +456,7 @@ export const pamMembershipServiceFactory = ({
     });
 
     // A new PAM project member (user/identity/group) changes the pam_identities meter.
-    licenseDomain.emit(dto.actorOrgId, PamIdentities.key);
+    licenseDomain.emit(dto.actorOrgId, Meter.PamIdentities.key);
     return result;
   };
 
@@ -589,7 +589,7 @@ export const pamMembershipServiceFactory = ({
 
     // Only re-meter when project members were actually added.
     if (memberships.length > 0) {
-      licenseDomain.emit(ctx.actorOrgId, PamIdentities.key);
+      licenseDomain.emit(ctx.actorOrgId, Meter.PamIdentities.key);
     }
 
     return { memberships, skipped };
@@ -740,7 +740,7 @@ export const pamMembershipServiceFactory = ({
 
     sendSessionCancellations();
 
-    licenseDomain.emit(dto.actorOrgId, PamIdentities.key);
+    licenseDomain.emit(dto.actorOrgId, Meter.PamIdentities.key);
     return result;
   };
 

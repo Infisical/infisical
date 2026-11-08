@@ -1,4 +1,4 @@
-import type { TMeteredDimensionKey } from "@app/domains/platform/license/ce/module";
+import type { TMeterKey } from "@app/domains/platform/license/ce/module";
 import { OrgServiceActor } from "@app/lib/types";
 
 export type BillingV2SubState = "active" | "trialing" | "past-due" | "suspended" | "no-subscription";
@@ -410,7 +410,7 @@ export const BillingV2BreakdownDimension = {
   InternalCas: "internal_cas",
   ActiveCerts: "active_certs",
   WildcardCerts: "wildcard_certs"
-} as const satisfies Record<string, TMeteredDimensionKey>;
+} as const satisfies Record<string, TMeterKey>;
 
 export type TBillingV2BreakdownDimension =
   (typeof BillingV2BreakdownDimension)[keyof typeof BillingV2BreakdownDimension];

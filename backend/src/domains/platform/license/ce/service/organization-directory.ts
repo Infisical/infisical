@@ -1,4 +1,4 @@
-import { TLicenseOrganizations, TRootOrg } from "../model/root-org";
+import { TLicenseOrganizations, TRootOrg } from "./registrations";
 
 // An org's root never changes, so the mapping is kept for the life of the process. Bounded so a long-lived
 // pod does not grow without limit.

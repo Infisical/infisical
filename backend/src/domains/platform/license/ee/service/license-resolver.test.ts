@@ -1,6 +1,6 @@
-import { TEntitlementsResponse } from "../../ce/model/license-server-types";
-import { InstanceType } from "../../ce/model/license-types";
-import { FakeLicenseServerClient } from "../testing/fake-license-server-client";
+import { TEntitlementsResponse } from "../../ce/license-server-client/license-server-types";
+import { InstanceType } from "../../ce/model/instance-entitlements";
+import { FakeLicenseServerClient } from "../../ce/testing/fake-license-server-client";
 import { getLicenseKeyConfig, LicenseResolver } from "./license-resolver";
 
 vi.mock("@app/lib/logger", async (importOriginal) => ({
@@ -39,7 +39,7 @@ const resolve = async ({
 }: TResolveOptions) => {
   const licenseServerClient = new FakeLicenseServerClient();
   licenseServerClient.entitlements = onlineEntitlements ?? null;
-  if (onlineFails) licenseServerClient.failure = new Error("License Server unreachable");
+  if (onlineFails) licenseServerClient.failNextFetches = 1;
   const resolver = new LicenseResolver({
     isCloud,
     licenseKeyConfig: getLicenseKeyConfig({ LICENSE_KEY: licenseKey, LICENSE_KEY_OFFLINE: licenseKeyOffline }),

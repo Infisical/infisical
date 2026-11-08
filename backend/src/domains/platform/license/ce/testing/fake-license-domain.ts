@@ -1,28 +1,23 @@
 /* eslint-disable class-methods-use-this */
-import { getDefaultOnPremFeatures } from "../model/default-features";
-import { InstanceType } from "../model/license-types";
-import { Plan, TInstanceEntitlements, TPlan, TPlanFeature } from "../model/plan";
+import { DormantLicenseServerClient } from "../license-server-client/dormant-license-server-client";
+import { InstanceEntitlements, TInstanceEntitlementsProps, TInstanceFeatures } from "../model/instance-entitlements";
+import { Plan, TPlanFeature, TPlanProps } from "../model/plan";
+import { SeatUsage } from "../model/seat-usage";
 import { TLicenseDomain } from "../module";
-import { dormantBilling } from "../service/dormant-billing";
 
 // For consumers of the License domain: a plan per org that the test sets, and a record of what was reported.
 export class FakeLicenseDomain implements TLicenseDomain {
-  instance: TInstanceEntitlements = {
-    instanceType: InstanceType.Cloud,
-    features: getDefaultOnPremFeatures(),
-    licenseId: null,
-    customerId: null
-  };
+  instance: TInstanceEntitlementsProps = InstanceEntitlements.cloud().toJSON();
 
-  plans = new Map<string, TPlan>();
+  plans = new Map<string, TPlanProps>();
 
-  defaultPlan: TPlan = getDefaultOnPremFeatures();
+  defaultPlan: TPlanProps = Plan.community().toJSON();
 
   fallbackOrgs = new Set<string>();
 
-  lastKnown = new Map<string, { plan: TPlan; fetchedAt: number }>();
+  lastKnown = new Map<string, { plan: TPlanProps; fetchedAt: number }>();
 
-  seats = new Map<string, { membersUsed: number; identitiesUsed: number }>();
+  seats = new Map<string, SeatUsage>();
 
   emitted: { orgId: string; dimensionKey: string }[] = [];
 
@@ -30,10 +25,10 @@ export class FakeLicenseDomain implements TLicenseDomain {
 
   cancelled: string[] = [];
 
-  billing = dormantBilling;
+  billing = new DormantLicenseServerClient();
 
-  setPlan(orgId: string, plan: Partial<TPlan>) {
-    this.plans.set(orgId, { ...getDefaultOnPremFeatures(), ...plan } as TPlan);
+  setPlan(orgId: string, plan: Partial<TPlanProps>) {
+    this.plans.set(orgId, { ...Plan.community().toJSON(), ...plan } as TPlanProps);
     return this;
   }
 
@@ -41,7 +36,7 @@ export class FakeLicenseDomain implements TLicenseDomain {
 
   getInstanceType = () => this.instance.instanceType;
 
-  hasInstanceFeature = (feature: keyof TInstanceEntitlements["features"]) => Boolean(this.instance.features[feature]);
+  hasInstanceFeature = (feature: keyof TInstanceFeatures) => Boolean(this.instance.features[feature]);
 
   getLicenseId = () => this.instance.licenseId ?? "unknown";
 
@@ -60,9 +55,10 @@ export class FakeLicenseDomain implements TLicenseDomain {
 
   getLastKnownPlan = async (orgId: string) => this.lastKnown.get(orgId) ?? null;
 
-  getSeatUsage = async (orgId: string) => this.seats.get(orgId) ?? { membersUsed: 0, identitiesUsed: 0 };
+  getSeatUsage = async (orgId: string) =>
+    this.seats.get(orgId) ?? SeatUsage.create({ membersUsed: 0, identitiesUsed: 0 });
 
-  instanceSeats = { membersUsed: 0, identitiesUsed: 0 };
+  instanceSeats = SeatUsage.create({ membersUsed: 0, identitiesUsed: 0 });
 
   getInstanceSeatUsage = async () => this.instanceSeats;
 

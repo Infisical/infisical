@@ -2,7 +2,7 @@
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { ActiveCerts, TLicenseDomain, WildcardCerts } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -209,8 +209,8 @@ export const certificateCleanupQueueFactory = ({
     await flushAuditLog();
 
     if (deletedCount > 0 && orgId) {
-      licenseDomain.emit(orgId, ActiveCerts.key);
-      licenseDomain.emit(orgId, WildcardCerts.key);
+      licenseDomain.emit(orgId, Meter.ActiveCerts.key);
+      licenseDomain.emit(orgId, Meter.WildcardCerts.key);
     }
 
     return { deletedCount, errors: errorMessages.length };

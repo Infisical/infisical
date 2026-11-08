@@ -1,8 +1,8 @@
-import { InstanceType } from "../model/license-types";
-import { UserIdentities } from "../model/metered-features";
-import { LicenseKeys } from "../model/plan-cache-keys";
+import { InstanceType } from "../model/instance-entitlements";
+import { Meter } from "../model/meter";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID, WORKSPACES_USED } from "../testing/build-license";
-import { enterprisePlan, FakeLicenseHooks } from "../testing/fake-license-hooks";
+import { FakeLicenseHooks } from "../testing/fake-license-hooks";
+import { enterprisePlan, FakeLicenseServerClient } from "../testing/fake-license-server-client";
 import { FakeUsageCounter } from "../testing/fake-usage-counter";
 
 vi.mock("@app/lib/logger", () => ({
@@ -10,7 +10,8 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 const selfHostedHooks = () => {
-  const hooks = new FakeLicenseHooks();
+  const licenseServer = new FakeLicenseServerClient();
+  const hooks = new FakeLicenseHooks(licenseServer);
   hooks.instance = {
     ...hooks.instance,
     instanceType: InstanceType.EnterpriseOnPremOffline,
@@ -22,33 +23,33 @@ const selfHostedHooks = () => {
 describe("EntitlementService.getPlan", () => {
   test("should return the instance's plan on self-hosted without touching the key store", async () => {
     // Setup
-    const { licenseDomain, keyStore, hooks } = await buildLicense({ hooks: selfHostedHooks() });
+    const { licenseDomain, keyStore, licenseServer } = await buildLicense({ hooks: selfHostedHooks() });
 
     // Action
     const plan = await licenseDomain.getPlan(ROOT.id);
 
     // Assert
     expect(plan.slug).toBe("enterprise");
-    expect(hooks.planFetches).toEqual([]);
-    expect(await keyStore.getItem(LicenseKeys.cloudPlan(ROOT.id))).toBeNull();
+    expect(licenseServer.fetches).toEqual([]);
+    expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBeNull();
   });
 
   test("should fetch for the root org and cache under the root's key on cloud", async () => {
     // Setup
-    const { licenseDomain, keyStore, hooks } = await buildLicense();
+    const { licenseDomain, keyStore, licenseServer } = await buildLicense();
 
     // Action
     const plan = await licenseDomain.getPlan(ROOT.id);
 
     // Assert
-    expect(hooks.planFetches).toEqual([ROOT]);
+    expect(licenseServer.fetches).toEqual([ROOT]);
     expect(plan.workspacesUsed).toBe(WORKSPACES_USED);
-    expect(await keyStore.getItem(LicenseKeys.cloudPlan(ROOT.id))).not.toBeNull();
+    expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).not.toBeNull();
   });
 
   test("should serve a sub-org the root's cached plan without fetching again", async () => {
     // Setup
-    const { licenseDomain, hooks } = await buildLicense();
+    const { licenseDomain, licenseServer } = await buildLicense();
     await licenseDomain.getPlan(ROOT.id);
 
     // Action
@@ -56,14 +57,15 @@ describe("EntitlementService.getPlan", () => {
 
     // Assert
     expect(plan.slug).toBe("enterprise");
-    expect(hooks.planFetches).toHaveLength(1);
+    expect(licenseServer.fetches).toHaveLength(1);
   });
 
   test("should not serve one root org's plan to another", async () => {
     // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.plans.set(OTHER_ROOT.id, { ...enterprisePlan(), slug: "pro" });
-    const { licenseDomain } = await buildLicense({ hooks });
+    const licenseServer = new FakeLicenseServerClient();
+    const hooks = new FakeLicenseHooks(licenseServer);
+    licenseServer.plans.set(OTHER_ROOT.id, { ...enterprisePlan(), slug: "pro" });
+    const { licenseDomain } = await buildLicense({ licenseServer, hooks });
     await licenseDomain.getPlan(ROOT.id);
 
     // Action
@@ -75,9 +77,10 @@ describe("EntitlementService.getPlan", () => {
 
   test("should serve the community defaults with no slug and mark the fallback when the License Server fails", async () => {
     // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.failNextFetches = 1;
-    const { licenseDomain, keyStore } = await buildLicense({ hooks });
+    const licenseServer = new FakeLicenseServerClient();
+    const hooks = new FakeLicenseHooks(licenseServer);
+    licenseServer.failNextFetches = 1;
+    const { licenseDomain, keyStore } = await buildLicense({ licenseServer, hooks });
 
     // Action
     const plan = await licenseDomain.getPlan(ROOT.id);
@@ -85,15 +88,16 @@ describe("EntitlementService.getPlan", () => {
     // Assert
     expect(plan.slug).toBeNull();
     expect(await licenseDomain.isServingFallbackPlan(SUB_ORG_ID)).toBe(true);
-    expect(await keyStore.getItem(LicenseKeys.cloudPlanFallback(ROOT.id))).toBe("1");
+    expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBe("1");
   });
 
   test("should keep serving the cached fallback until it expires, then fetch again", async () => {
     // Setup
     let now = 1_000_000;
-    const hooks = new FakeLicenseHooks();
-    hooks.failNextFetches = 1;
-    const { licenseDomain } = await buildLicense({ hooks, now: () => now });
+    const licenseServer = new FakeLicenseServerClient();
+    const hooks = new FakeLicenseHooks(licenseServer);
+    licenseServer.failNextFetches = 1;
+    const { licenseDomain } = await buildLicense({ licenseServer, hooks, now: () => now });
     await licenseDomain.getPlan(ROOT.id);
 
     // Action
@@ -104,14 +108,15 @@ describe("EntitlementService.getPlan", () => {
     // Assert
     expect(during.slug).toBeNull();
     expect(after.slug).toBe("enterprise");
-    expect(hooks.planFetches).toHaveLength(2);
+    expect(licenseServer.fetches).toHaveLength(2);
   });
 
   test("should clear the fallback and record the last known plan after a successful fetch", async () => {
     // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.failNextFetches = 1;
-    const { licenseDomain } = await buildLicense({ hooks });
+    const licenseServer = new FakeLicenseServerClient();
+    const hooks = new FakeLicenseHooks(licenseServer);
+    licenseServer.failNextFetches = 1;
+    const { licenseDomain } = await buildLicense({ licenseServer, hooks });
     await licenseDomain.getPlan(ROOT.id);
 
     // Action
@@ -124,9 +129,10 @@ describe("EntitlementService.getPlan", () => {
 
   test("should have no last known plan before the License Server ever answered", async () => {
     // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.failNextFetches = 1;
-    const { licenseDomain } = await buildLicense({ hooks });
+    const licenseServer = new FakeLicenseServerClient();
+    const hooks = new FakeLicenseHooks(licenseServer);
+    licenseServer.failNextFetches = 1;
+    const { licenseDomain } = await buildLicense({ licenseServer, hooks });
     await licenseDomain.getPlan(ROOT.id);
 
     // Action
@@ -138,21 +144,21 @@ describe("EntitlementService.getPlan", () => {
 
   test("should serve the fallback for an org that does not exist", async () => {
     // Setup
-    const { licenseDomain, hooks } = await buildLicense();
+    const { licenseDomain, licenseServer } = await buildLicense();
 
     // Action
     const plan = await licenseDomain.getPlan("44444444-4444-4444-8444-444444444444");
 
     // Assert
     expect(plan.slug).toBeNull();
-    expect(hooks.planFetches).toEqual([]);
+    expect(licenseServer.fetches).toEqual([]);
   });
 
   test("should revalidate once in the background when the cache is marked stale, under concurrent reads", async () => {
     // Setup
-    const { licenseDomain, keyStore, hooks } = await buildLicense();
+    const { licenseDomain, keyStore, licenseServer } = await buildLicense();
     await licenseDomain.getPlan(ROOT.id);
-    await keyStore.setItemWithExpiry(LicenseKeys.passThrough(ROOT.id), 180, "1");
+    await keyStore.setItemWithExpiry(`license-cache-passthrough-${ROOT.id}`, 180, "1");
 
     // Action
     await Promise.all([
@@ -165,14 +171,19 @@ describe("EntitlementService.getPlan", () => {
     });
 
     // Assert
-    expect(hooks.planFetches).toHaveLength(2);
+    expect(licenseServer.fetches).toHaveLength(2);
   });
 
   test("should reconcile usage once per interval, and not for a plan with no slug", async () => {
     // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.plans.set(OTHER_ROOT.id, { ...enterprisePlan(), slug: null });
-    const { licenseDomain, queue } = await buildLicense({ hooks, counters: [new FakeUsageCounter(UserIdentities)] });
+    const licenseServer = new FakeLicenseServerClient();
+    const hooks = new FakeLicenseHooks(licenseServer);
+    licenseServer.plans.set(OTHER_ROOT.id, { ...enterprisePlan(), slug: null });
+    const { licenseDomain, queue } = await buildLicense({
+      licenseServer,
+      hooks,
+      counters: [new FakeUsageCounter(Meter.UserIdentities)]
+    });
 
     // Action
     await licenseDomain.getPlan(ROOT.id);
@@ -191,9 +202,10 @@ describe("EntitlementService.getPlan", () => {
 describe("EntitlementService.assertFeature", () => {
   test("should refuse a feature the org's plan lacks, naming it", async () => {
     // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.plans.set(ROOT.id, { ...enterprisePlan(), externalKms: false });
-    const { licenseDomain } = await buildLicense({ hooks });
+    const licenseServer = new FakeLicenseServerClient();
+    const hooks = new FakeLicenseHooks(licenseServer);
+    licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), externalKms: false });
+    const { licenseDomain } = await buildLicense({ licenseServer, hooks });
 
     // Action
     const result = licenseDomain.assertFeature(SUB_ORG_ID, "externalKms");
@@ -208,9 +220,9 @@ describe("EntitlementService.assertFeature", () => {
 describe("EntitlementService.refreshPlan", () => {
   test("should fetch the plan again on cloud", async () => {
     // Setup
-    const { licenseDomain, hooks } = await buildLicense();
+    const { licenseDomain, licenseServer } = await buildLicense();
     await licenseDomain.getPlan(ROOT.id);
-    hooks.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
+    licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
 
     // Action
     await licenseDomain.refreshPlan(SUB_ORG_ID);
@@ -275,9 +287,9 @@ describe("LicenseModule without EE hooks", () => {
 describe("EntitlementService.refreshPlan after a billing change", () => {
   test("should keep serving the cached plan and refresh it in the background once", async () => {
     // Setup
-    const { licenseDomain, hooks } = await buildLicense();
+    const { licenseDomain, licenseServer } = await buildLicense();
     await licenseDomain.getPlan(ROOT.id);
-    hooks.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
+    licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
 
     // Action
     await licenseDomain.refreshPlan(SUB_ORG_ID, { afterBillingChange: { checkout: true } });
@@ -289,17 +301,17 @@ describe("EntitlementService.refreshPlan after a billing change", () => {
     // Assert
     expect(served.slug).toBe("enterprise");
     expect((await licenseDomain.getPlan(ROOT.id)).slug).toBe("pro");
-    expect(hooks.planFetches).toHaveLength(2);
+    expect(licenseServer.fetches).toHaveLength(2);
   });
 
   test("should do nothing on self-hosted", async () => {
     // Setup
-    const { licenseDomain, hooks } = await buildLicense({ hooks: selfHostedHooks() });
+    const { licenseDomain, licenseServer } = await buildLicense({ hooks: selfHostedHooks() });
 
     // Action
     await licenseDomain.refreshPlan(ROOT.id, { afterBillingChange: {} });
 
     // Assert
-    expect(hooks.planFetches).toEqual([]);
+    expect(licenseServer.fetches).toEqual([]);
   });
 });

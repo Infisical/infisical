@@ -1,4 +1,4 @@
-import { TLicenseDomain, TFeatureSet } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain, TPlanProps } from "@app/domains/platform/license/ce/module";
 import { logger } from "@app/lib/logger";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
@@ -17,7 +17,7 @@ export const getSessionLogNotOnPlanMessage = (storageType: ObjectStorageType) =>
 export type TSessionLogEntitlement = "licensed" | "unlicensed" | "unknown";
 
 const hasStorageOnPlan = (
-  plan: Pick<TFeatureSet, "agentVaultManagedStorage" | "agentVaultByoS3">,
+  plan: Pick<TPlanProps, "agentVaultManagedStorage" | "agentVaultByoS3">,
   type: ObjectStorageType
 ) => Boolean(type === ObjectStorageType.Default ? plan.agentVaultManagedStorage : plan.agentVaultByoS3);
 
@@ -36,7 +36,7 @@ export const getSessionLogEntitlement = async (
   storageType: ObjectStorageType
 ): Promise<{
   entitlement: TSessionLogEntitlement;
-  plan: Pick<TFeatureSet, "agentVaultSessionLogRetentionDays"> | null;
+  plan: Pick<TPlanProps, "agentVaultSessionLogRetentionDays"> | null;
 }> => {
   const plan = await licenseDomain.getPlan(orgId);
   const isOnPlan = hasStorageOnPlan(plan, storageType);
@@ -70,5 +70,5 @@ export const getSessionLogEntitlement = async (
 
 // For other plan limits null means no limit, but here it still means the default number of days, so that a plan
 // never keeps logs in default storage forever by accident. Make null mean "keep forever" here if that's ever wanted.
-export const getSessionLogRetentionDays = (plan: Pick<TFeatureSet, "agentVaultSessionLogRetentionDays"> | null) =>
+export const getSessionLogRetentionDays = (plan: Pick<TPlanProps, "agentVaultSessionLogRetentionDays"> | null) =>
   plan?.agentVaultSessionLogRetentionDays ?? AGENT_VAULT_SESSION_LOG_DEFAULT_RETENTION_DAYS;

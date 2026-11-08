@@ -1,5 +1,9 @@
-import { TEntitlementsResponse, trialPaymentFailedNoticeSchema } from "../../ce/model/license-server-types";
-import { TFeatureSet, TPlanNotice } from "../../ce/model/license-types";
+import {
+  TEntitlementsResponse,
+  trialPaymentFailedNoticeSchema
+} from "../../ce/license-server-client/license-server-types";
+import { TInstanceFeatures } from "../../ce/model/instance-entitlements";
+import { TPlanNotice } from "../../ce/model/plan";
 import { FEATURE_MAPPINGS } from "./feature-mapping";
 
 // Unknown notice types are expected (the License Server adds them ahead of us), so they are dropped silently.
@@ -21,12 +25,15 @@ const projectNotices = (rawNotices: unknown[]): TPlanNotice[] =>
     ];
   });
 
-// Builds a plan-shaped TFeatureSet from the License Server entitlement set so getPlan can serve it
+// Builds a plan-shaped TInstanceFeatures from the License Server entitlement set so getPlan can serve it
 // without changing its callers. Starts from the passed base (free-tier defaults) and overlays each
 // mapped feature; a key v2 omits keeps the base value, while a null is written through because that is
 // how v2 says "no limit" (eg unlimited audit log retention). Base is passed in (not
 // imported from license-fns) to avoid a license-service <-> license-fns import cycle.
-export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlementsResponse): TFeatureSet => {
+export const projectV2ToFeatureSet = (
+  base: TInstanceFeatures,
+  entitlements: TEntitlementsResponse
+): TInstanceFeatures => {
   const plan = JSON.parse(JSON.stringify(base)) as Record<string, unknown> & { rateLimits: Record<string, unknown> };
   plan.slug = entitlements?.slug;
   plan.productPlans = (entitlements.products ?? []).map((product) => ({
@@ -56,5 +63,5 @@ export const projectV2ToFeatureSet = (base: TFeatureSet, entitlements: TEntitlem
     }
   });
 
-  return plan as unknown as TFeatureSet;
+  return plan as unknown as TInstanceFeatures;
 };

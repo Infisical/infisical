@@ -1,10 +1,10 @@
-import { ActiveCerts, IdentitiesMeter, InternalCas, WildcardCerts } from "../../ce/model/metered-features";
+import { Meter } from "../../ce/model/meter";
 
 export type TFeatureMapping = {
   // Must match a License Server feature registry key (a separate repo); a wrong key means the feature
   // is never projected onto the plan.
   v2Key: string;
-  // The TFeatureSet field this maps to (drives the completeness test); dotted for nested fields
+  // The TInstanceFeatures field this maps to (drives the completeness test); dotted for nested fields
   // (e.g. "rateLimits.readLimit"). null when the feature has no plan field to write.
   v1Field: string | null;
   // Registry keys a boolean feature was previously sold under; any of them being on turns the feature on.
@@ -17,7 +17,7 @@ const platformMappings: TFeatureMapping[] = [
   {
     // v2's `identities` is a usage meter (reported count); the identity cap is a separate v2 feature
     // (max_identity_limit) mapped below, so the meter itself maps to no v1 field.
-    v2Key: IdentitiesMeter.key,
+    v2Key: Meter.Identities.key,
     v1Field: null
   },
   {
@@ -315,16 +315,16 @@ const certManagerMappings: TFeatureMapping[] = [
   {
     // v2's `internal_cas` is a usage meter; the internal-CA cap is a separate v2 feature
     // (max_internal_cas) mapped below, so the meter itself maps to no v1 field.
-    v2Key: InternalCas.key,
+    v2Key: Meter.InternalCas.key,
     v1Field: null
   },
   {
-    v2Key: ActiveCerts.key,
+    v2Key: Meter.ActiveCerts.key,
     v1Field: null
   },
   {
     // Usage meter only; the cap is max_wildcard_certificates, mapped separately below.
-    v2Key: WildcardCerts.key,
+    v2Key: Meter.WildcardCerts.key,
     v1Field: null
   },
   {
@@ -388,7 +388,7 @@ export const FEATURE_MAPPINGS: TFeatureMapping[] = [
   ...agentVaultMappings
 ];
 
-// v1 TFeatureSet keys intentionally not compared: live usage counters, plan metadata, and v1 fields
+// v1 TInstanceFeatures keys intentionally not compared: live usage counters, plan metadata, and v1 fields
 // with no License Server v2 feature (v2 never returns them, so a mapping would be permanently v2_missing).
 export const EXCLUDED_FIELDS: ReadonlySet<string> = new Set([
   "_id",

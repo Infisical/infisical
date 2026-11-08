@@ -49,9 +49,10 @@ edition) with the same layout. Nothing else sits at the domain root.
 static-secrets/
 ├── ce/
 │   ├── module.ts     # The edition's public surface: domain interface, hooks, module class
-│   ├── model/        # Entities and their rules
-│   ├── data-access/  # Database reads and writes, grouped into the domain's store
-│   ├── service/      # Use cases, and helpers shared between them
+│   ├── model/        # Entities: classes only
+│   ├── data-access/  # Database and key store reads and writes, grouped into the domain's store
+│   ├── <system>-client/  # A client for an external system the domain calls
+│   ├── service/      # Use cases: the business logic, built on data access and clients
 │   ├── router/       # HTTP endpoints
 │   └── testing/      # In-memory store, fakes, contract suites
 └── ee/               # Same layout as ce/
@@ -60,9 +61,10 @@ static-secrets/
 | Path | Holds | Example |
 | --- | --- | --- |
 | `module.ts` | Public domain interface, hook type, and the module class that builds everything. Other domains import only `ce/module.ts` | `TStaticSecretsDomain`, `TStaticSecretsHooks`, `StaticSecretsModule` |
-| `model/` | One class per entity. Validates itself, knows nothing about the database | `KmsKey.create()`, `kmsKey.assertRotatable()` |
+| `model/` | Classes that represent the domain's data, one per entity or value, each with the rules about that data. A file holds the class and its own props type, nothing else: no request or response types, no contracts other domains implement, no key or queue names, no helper functions. Knows nothing about the database | `KmsKey.create()`, `kmsKey.assertRotatable()`, `Plan.community()` |
 | `data-access/` | One class per entity, plus `build<Domain>Store(tx)` that groups them all on one connection | `KmsKeyDataAccess`, `buildKmsCoreStore(tx)` |
-| `service/` | One class per use case group, with its input types; plain helper functions shared by those classes. Tests sit beside them | `KmsKeyService`, `createKmsKey(store, ...)` |
+| `<system>-client/` | A client for an external system, named for it. Holds the client, its contract, and the system's request and response types. A paid system's real client lives in `ee/`; `ce/` holds the contract and a dormant implementation | `license-server-client/`: `TLicenseServerClient`, `LicenseServerClient`, `DormantLicenseServerClient` |
+| `service/` | The business logic: one class per use case group, with its input types, using data access and clients; plain helper functions shared by those classes; the contracts other domains or the EE edition implement (hooks, registrations). Tests sit beside them | `KmsKeyService`, `createKmsKey(store, ...)` |
 | `router/` | Fastify routes. Validate input, call a service, shape the response | `registerKmsKeyRouter` |
 | `testing/` | In-memory data access and store, the fake domain for this domain's consumers, data access contract suites | `InMemoryKmsKeyDataAccess`, `FakeKmsCoreDomain` |
 
@@ -90,7 +92,7 @@ domain's service.
 
 | Piece | Shape | Example |
 | --- | --- | --- |
-| Model | Private constructor, static `create()` and `restore()` | `KmsKey.create({ ... })` |
+| Model | A class: private constructor, static `create()` and `restore()`, and `toJSON()` when the domain returns it as plain data. Never a bare type, constant or function | `KmsKey.create({ ... })` |
 | Data access, service | `class X implements TX`, dependencies in `constructor(deps)` | `class KmsKeyService implements TKmsKeyService` |
 | Data access queries | Methods on the class; query fragments shared by them are private methods, not `$`-prefixed functions or a factory the class wraps | `private activeCertificates(orgId)` |
 | Module | Builds state once, builds services per runner, exposes the public surface | `class KmsCoreModule` |

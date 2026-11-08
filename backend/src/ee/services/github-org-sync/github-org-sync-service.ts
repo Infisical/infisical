@@ -7,12 +7,7 @@ import { Octokit as OctokitRest } from "@octokit/rest";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import {
-  AgentVaultIdentities,
-  PamIdentities,
-  SecretIdentities,
-  TLicenseDomain
-} from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -857,9 +852,9 @@ export const githubOrgSyncServiceFactory = ({
       }
 
       // Group membership changes cascade into the group-expanded project identity meters.
-      licenseDomain.emit(orgId, SecretIdentities.key);
-      licenseDomain.emit(orgId, PamIdentities.key);
-      licenseDomain.emit(orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(orgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(orgId, Meter.PamIdentities.key);
+      licenseDomain.emit(orgId, Meter.AgentVaultIdentities.key);
     }
   };
 
@@ -1316,9 +1311,9 @@ export const githubOrgSyncServiceFactory = ({
 
     if (createdTeams.size || updatedTeams.size) {
       // Team membership changes cascade into the group-expanded project identity meters.
-      licenseDomain.emit(orgPermission.orgId, SecretIdentities.key);
-      licenseDomain.emit(orgPermission.orgId, PamIdentities.key);
-      licenseDomain.emit(orgPermission.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(orgPermission.orgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(orgPermission.orgId, Meter.PamIdentities.key);
+      licenseDomain.emit(orgPermission.orgId, Meter.AgentVaultIdentities.key);
     }
 
     if (unmatchedGithubUsers.size) {

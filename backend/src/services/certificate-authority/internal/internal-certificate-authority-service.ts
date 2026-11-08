@@ -6,7 +6,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
-import { TLicenseDomain, ActiveCerts, WildcardCerts } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -2361,8 +2361,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
-    licenseDomain.emit(projectOrgId, ActiveCerts.key);
-    licenseDomain.emit(projectOrgId, WildcardCerts.key);
+    licenseDomain.emit(projectOrgId, Meter.ActiveCerts.key);
+    licenseDomain.emit(projectOrgId, Meter.WildcardCerts.key);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2859,8 +2859,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(persist);
     }
 
-    licenseDomain.emit(projectOrgId, ActiveCerts.key);
-    licenseDomain.emit(projectOrgId, WildcardCerts.key);
+    licenseDomain.emit(projectOrgId, Meter.ActiveCerts.key);
+    licenseDomain.emit(projectOrgId, Meter.WildcardCerts.key);
 
     return {
       certificate: leafCert,

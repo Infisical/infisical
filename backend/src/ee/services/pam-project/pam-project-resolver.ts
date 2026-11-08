@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, ProjectType, TableName } from "@app/db/schemas";
-import { PamIdentities, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -85,7 +85,7 @@ export const pamProjectResolverFactory = ({
 
     // Bootstrap seeds org admins as project members, which changes the pam_identities meter.
     if (created) {
-      licenseDomain.emit(orgId, PamIdentities.key);
+      licenseDomain.emit(orgId, Meter.PamIdentities.key);
     }
     return projectId;
   };

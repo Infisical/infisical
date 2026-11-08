@@ -1,7 +1,7 @@
 import { NotFoundError } from "@app/lib/errors";
 
-import { TOrgSeatUsage } from "../model/license-types";
-import { IdentitiesMeter, UserIdentities } from "../model/metered-features";
+import { Meter } from "../model/meter";
+import { SeatUsage } from "../model/seat-usage";
 import { CounterRegistry } from "./counter-registry";
 import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
 import { OrganizationDirectory } from "./organization-directory";
@@ -26,7 +26,7 @@ export class UsageService {
 
   // Seats in use: org members, and members plus machine identities. On cloud the root org's whole tree;
   // self-hosted, the whole instance.
-  async getSeatUsage(orgId: string): Promise<TOrgSeatUsage> {
+  async getSeatUsage(orgId: string): Promise<SeatUsage> {
     if (!this.deps.instance.isCloud()) return this.countSeats(null);
     const root = await this.deps.organizations.findRootOrg(orgId);
     if (!root) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
@@ -34,17 +34,17 @@ export class UsageService {
   }
 
   // Seats in use across every org on the instance, which is what an instance-wide identity limit caps.
-  getInstanceSeatUsage(): Promise<TOrgSeatUsage> {
+  getInstanceSeatUsage(): Promise<SeatUsage> {
     return this.countSeats(null);
   }
 
-  private async countSeats(scope: string | null): Promise<TOrgSeatUsage> {
-    const members = this.deps.counters.get(UserIdentities.key);
-    const identities = this.deps.counters.get(IdentitiesMeter.key);
+  private async countSeats(scope: string | null): Promise<SeatUsage> {
+    const members = this.deps.counters.get(Meter.UserIdentities.key);
+    const identities = this.deps.counters.get(Meter.Identities.key);
     const [membersUsed, identitiesUsed] = await Promise.all([
       members ? members.count(scope) : 0,
       identities ? identities.count(scope) : 0
     ]);
-    return { membersUsed, identitiesUsed };
+    return SeatUsage.create({ membersUsed, identitiesUsed });
   }
 }

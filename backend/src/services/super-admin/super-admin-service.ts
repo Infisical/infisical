@@ -7,15 +7,7 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
-import {
-  Plan,
-  TLicenseDomain,
-  AgentVaultIdentities,
-  IdentitiesMeter,
-  PamIdentities,
-  SecretIdentities,
-  UserIdentities
-} from "@app/domains/platform/license/ce/module";
+import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
@@ -751,11 +743,11 @@ export const superAdminServiceFactory = ({
   const emitUserDeletionMeterEvents = (orgMemberships: { scopeOrgId?: string | null }[]) => {
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
     orgIds.forEach((orgId) => {
-      licenseDomain.emit(orgId, IdentitiesMeter.key);
-      licenseDomain.emit(orgId, UserIdentities.key);
-      licenseDomain.emit(orgId, SecretIdentities.key);
-      licenseDomain.emit(orgId, PamIdentities.key);
-      licenseDomain.emit(orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(orgId, Meter.Identities.key);
+      licenseDomain.emit(orgId, Meter.UserIdentities.key);
+      licenseDomain.emit(orgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(orgId, Meter.PamIdentities.key);
+      licenseDomain.emit(orgId, Meter.AgentVaultIdentities.key);
     });
   };
 
@@ -1104,9 +1096,9 @@ export const superAdminServiceFactory = ({
       eventEmitter
     });
 
-    licenseDomain.emit(organizationId, SecretIdentities.key);
-    licenseDomain.emit(organizationId, PamIdentities.key);
-    licenseDomain.emit(organizationId, AgentVaultIdentities.key);
+    licenseDomain.emit(organizationId, Meter.SecretIdentities.key);
+    licenseDomain.emit(organizationId, Meter.PamIdentities.key);
+    licenseDomain.emit(organizationId, Meter.AgentVaultIdentities.key);
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 

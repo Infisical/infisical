@@ -1,14 +1,14 @@
-import { TUsageCounter } from "../model/usage-counter";
+import { TUsageCounter } from "./registrations";
 
-// The usage counters the owning domains registered, one per metered dimension.
+// The usage counters the owning domains registered, one per meter.
 export class CounterRegistry {
   private readonly byKey = new Map<string, TUsageCounter>();
 
   register(counter: TUsageCounter) {
-    if (this.byKey.has(counter.feature.key)) {
-      throw new Error(`Two usage counters were registered for '${counter.feature.key}'`);
+    if (this.byKey.has(counter.meter.key)) {
+      throw new Error(`Two usage counters were registered for '${counter.meter.key}'`);
     }
-    this.byKey.set(counter.feature.key, counter);
+    this.byKey.set(counter.meter.key, counter);
   }
 
   get(key: string) {

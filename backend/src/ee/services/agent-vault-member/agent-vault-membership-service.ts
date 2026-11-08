@@ -9,7 +9,7 @@ import {
   ResourceType,
   TMemberships
 } from "@app/db/schemas";
-import { AgentVaultIdentities, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -524,7 +524,7 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.created.length) licenseDomain.emit(ctx.actorOrgId, AgentVaultIdentities.key);
+    if (written.created.length) licenseDomain.emit(ctx.actorOrgId, Meter.AgentVaultIdentities.key);
     return { members: written.created, skipped: written.skipped };
   };
 
@@ -713,7 +713,7 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.removed.length) licenseDomain.emit(ctx.actorOrgId, AgentVaultIdentities.key);
+    if (written.removed.length) licenseDomain.emit(ctx.actorOrgId, Meter.AgentVaultIdentities.key);
     return { members: written.removed, skipped: written.skipped };
   };
   return {

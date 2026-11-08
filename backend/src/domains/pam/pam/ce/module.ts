@@ -1,5 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
-import { PamIdentities, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 
 export type TPamDeps = {
@@ -13,8 +13,7 @@ export class PamModule {
 
   constructor({ organizationsProjectsDomain, licenseRegistry }: TPamDeps) {
     licenseRegistry.registerUsageCounter({
-      feature: PamIdentities,
-      scope: "org",
+      meter: Meter.PamIdentities,
       count: (orgId) => organizationsProjectsDomain.countProjectIdentities(ProjectType.PAM, orgId ?? undefined)
     });
   }

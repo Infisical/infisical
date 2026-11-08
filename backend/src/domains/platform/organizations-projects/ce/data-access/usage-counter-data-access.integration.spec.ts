@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { ProjectType } from "@app/db/schemas";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
-import { IdentitiesMeter, UserIdentities } from "@app/domains/platform/license/ce/module";
+import { Meter } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
 
 import { OrganizationsProjectsModule } from "../module";
@@ -22,7 +22,7 @@ describe("OrganizationsProjectsModule usage counters", () => {
     const { licenseRegistry } = build();
 
     // Action
-    const users = await licenseRegistry.counter(UserIdentities.key).count(rootOrgId);
+    const users = await licenseRegistry.counter(Meter.UserIdentities.key).count(rootOrgId);
 
     // Assert
     expect(users).toBe(5);
@@ -34,7 +34,7 @@ describe("OrganizationsProjectsModule usage counters", () => {
     const { licenseRegistry } = build();
 
     // Action
-    const total = await licenseRegistry.counter(IdentitiesMeter.key).count(rootOrgId);
+    const total = await licenseRegistry.counter(Meter.Identities.key).count(rootOrgId);
 
     // Assert
     expect(total).toBe(9);
@@ -46,7 +46,7 @@ describe("OrganizationsProjectsModule usage counters", () => {
     const { licenseRegistry } = build();
 
     // Action
-    const total = await licenseRegistry.counter(IdentitiesMeter.key).count(randomUUID());
+    const total = await licenseRegistry.counter(Meter.Identities.key).count(randomUUID());
 
     // Assert
     expect(total).toBe(0);
@@ -58,11 +58,11 @@ describe("OrganizationsProjectsModule usage counters", () => {
     const second = await seedBillableActors(h.db);
     const { licenseRegistry } = build();
     const perOrg =
-      (await licenseRegistry.counter(IdentitiesMeter.key).count(first.rootOrgId)) +
-      (await licenseRegistry.counter(IdentitiesMeter.key).count(second.rootOrgId));
+      (await licenseRegistry.counter(Meter.Identities.key).count(first.rootOrgId)) +
+      (await licenseRegistry.counter(Meter.Identities.key).count(second.rootOrgId));
 
     // Action
-    const instance = await licenseRegistry.counter(IdentitiesMeter.key).count(null);
+    const instance = await licenseRegistry.counter(Meter.Identities.key).count(null);
 
     // Assert
     expect(instance).toBeGreaterThanOrEqual(perOrg);

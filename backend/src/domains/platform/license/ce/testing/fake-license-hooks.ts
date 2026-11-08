@@ -1,96 +1,37 @@
 /* eslint-disable class-methods-use-this */
-import { BadRequestError } from "@app/lib/errors";
-
-import { getDefaultOnPremFeatures } from "../model/default-features";
-import { InstanceType, TFeatureSet } from "../model/license-types";
-import { TInstanceEntitlements, TPlan } from "../model/plan";
-import { TRootOrg } from "../model/root-org";
-import { TUsageEvent, TUsageReporter, TUsageSnapshot, UsageReportError } from "../model/usage-report";
-import { dormantBilling } from "../service/dormant-billing";
+import { TEntitlementsResponse } from "../license-server-client/license-server-types";
+import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
+import { Plan } from "../model/plan";
 import { TLicenseHooks } from "../service/license-hooks";
+import { FakeLicenseServerClient } from "./fake-license-server-client";
 
-export const enterprisePlan = (): TFeatureSet => ({
-  ...getDefaultOnPremFeatures(),
-  slug: "enterprise",
-  rbac: true as false
-});
-
-// A License Server in memory: plans per root org, reports it received, and failures to inject.
+// The EE steps in memory. A cloud instance by default; plans come from the FakeLicenseServerClient it is
+// given.
 export class FakeLicenseHooks implements TLicenseHooks {
-  instance: TInstanceEntitlements = {
-    instanceType: InstanceType.Cloud,
-    features: getDefaultOnPremFeatures(),
-    licenseId: null,
-    customerId: null
-  };
-
-  plans = new Map<string, TPlan>();
-
-  planFetches: TRootOrg[] = [];
-
-  snapshots: { orgId: string; snapshot: TUsageSnapshot }[] = [];
-
-  events: { orgId: string; event: TUsageEvent }[] = [];
-
-  cancellations: string[] = [];
-
-  failNextFetches = 0;
-
-  failNextReports: UsageReportError[] = [];
-
-  cancelFailure: Error | null = null;
-
-  refreshFailure: Error | null = null;
+  instance: TInstanceEntitlementsProps = { ...InstanceEntitlements.cloud().toJSON(), instanceType: InstanceType.Cloud };
 
   online = false;
 
-  meteringEnabled = true;
-
   offline = false;
 
-  billing = dormantBilling;
+  refreshFailure: Error | null = null;
 
-  usageReporter: TUsageReporter | null = {
-    reportSnapshots: async (orgId, snapshots) => {
-      const failure = this.failNextReports.shift();
-      if (failure) throw failure;
-      snapshots.forEach((snapshot) => this.snapshots.push({ orgId, snapshot }));
-    },
-    reportEvents: async (orgId, events) => {
-      const failure = this.failNextReports.shift();
-      if (failure) throw failure;
-      events.forEach((event) => this.events.push({ orgId, event }));
-      return events.map((e) => ({ event_id: e.event_id, status: "accepted" as const }));
-    }
-  };
+  constructor(private readonly licenseServer: FakeLicenseServerClient) {}
 
-  resolveInstanceEntitlements = async () => this.instance;
+  resolveInstanceEntitlements = async () => InstanceEntitlements.restore(this.instance);
 
   refreshInstanceEntitlements = async () => {
     if (!this.online) return null;
     if (this.refreshFailure) throw this.refreshFailure;
-    return this.instance;
+    return InstanceEntitlements.restore(this.instance);
   };
 
   hasOnlineLicense = () => this.online;
 
-  fetchPlan = async (rootOrg: TRootOrg) => {
-    this.planFetches.push(rootOrg);
-    if (this.failNextFetches > 0) {
-      this.failNextFetches -= 1;
-      throw new BadRequestError({ message: "License Server entitlements are unavailable" });
-    }
-    return this.plans.get(rootOrg.id) ?? enterprisePlan();
-  };
+  planFromEntitlements = (entitlements: TEntitlementsResponse) =>
+    Plan.restore(this.licenseServer.planFor(entitlements));
 
-  fallbackPlan = (features: TPlan) => ({ ...features, slug: null });
-
-  cancelSubscription = async (orgId: string) => {
-    if (this.cancelFailure) throw this.cancelFailure;
-    this.cancellations.push(orgId);
-  };
-
-  isMeteringEnabled = () => this.meteringEnabled;
+  fallbackPlan = (instance: InstanceEntitlements) => Plan.restore({ ...instance.plan().toJSON(), slug: null });
 
   isOffline = () => this.offline;
 }

@@ -1,10 +1,10 @@
 import { InMemoryKeyStore } from "@app/domains/lib/testing/in-memory-key-store";
 import { TQueueServiceFactory } from "@app/queue";
 
-import { TLicenseOrganizations, TRootOrg } from "../model/root-org";
-import { TUsageCounter } from "../model/usage-counter";
 import { LicenseModule } from "../module";
+import { TLicenseOrganizations, TRootOrg, TUsageCounter } from "../service/registrations";
 import { FakeLicenseHooks } from "./fake-license-hooks";
+import { FakeLicenseServerClient } from "./fake-license-server-client";
 import { FakeQueue } from "./fake-queue";
 
 export const ROOT: TRootOrg = { id: "11111111-1111-4111-8111-111111111111", name: "Acme", slug: "acme" };
@@ -13,6 +13,7 @@ export const OTHER_ROOT: TRootOrg = { id: "33333333-3333-4333-8333-333333333333"
 export const WORKSPACES_USED = 3;
 
 export type TBuildLicenseOptions = {
+  licenseServer?: FakeLicenseServerClient;
   hooks?: FakeLicenseHooks;
   counters?: TUsageCounter[];
   // The key store's clock, for tests that let entries expire.
@@ -28,7 +29,8 @@ const organizations: TLicenseOrganizations = {
 // A started License module over an in-memory key store and queue, with the organizations above and the
 // given counters registered.
 export const buildLicense = async ({
-  hooks = new FakeLicenseHooks(),
+  licenseServer = new FakeLicenseServerClient(),
+  hooks = new FakeLicenseHooks(licenseServer),
   counters = [],
   now
 }: TBuildLicenseOptions = {}) => {
@@ -41,10 +43,11 @@ export const buildLicense = async ({
     cronJob: { register: (job) => registeredCrons.push(`${job.name}:${String(job.enabled)}`) },
     isProductionMode: false,
     startLocalRefresh: () => ({ stop: () => undefined }) as never,
-    hooks
+    hooks,
+    licenseServerClient: licenseServer
   });
   module.registry.registerOrganizations(organizations);
   counters.forEach((counter) => module.registry.registerUsageCounter(counter));
   await module.start();
-  return { module, licenseDomain: module.service, hooks, keyStore, queue, registeredCrons };
+  return { module, licenseDomain: module.service, licenseServer, hooks, keyStore, queue, registeredCrons };
 };

@@ -1,6 +1,6 @@
 import { TDbClient } from "@app/db";
 import { ProjectType } from "@app/db/schemas";
-import { IdentitiesMeter, TLicenseRegistry, UserIdentities } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
 
 import { OrganizationDataAccess } from "./data-access/organization-data-access";
 import { BillableActorDataAccess, TIdentityOwnershipRow } from "./data-access/usage-counter-data-access";
@@ -54,16 +54,14 @@ export class OrganizationsProjectsModule {
       countWorkspacesUsed: (rootOrgId) => organizations.countWorkspaces(rootOrgId)
     });
     licenseRegistry.registerUsageCounter({
-      feature: IdentitiesMeter,
-      scope: "org",
+      meter: Meter.Identities,
       count: async (orgId) => {
         const { users, identities } = await actors.countBillableOrgActors(orgId);
         return users + identities;
       }
     });
     licenseRegistry.registerUsageCounter({
-      feature: UserIdentities,
-      scope: "org",
+      meter: Meter.UserIdentities,
       count: async (orgId) => (await actors.countBillableOrgActors(orgId)).users
     });
   }

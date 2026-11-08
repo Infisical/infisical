@@ -8,12 +8,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import {
-  TLicenseDomain,
-  AgentVaultIdentities,
-  PamIdentities,
-  SecretIdentities
-} from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -439,9 +434,9 @@ export const membershipUserServiceFactory = ({
 
     // Adding a user to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
-      licenseDomain.emit(scopeData.orgId, PamIdentities.key);
-      licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(scopeData.orgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(scopeData.orgId, Meter.PamIdentities.key);
+      licenseDomain.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
     }
     return { memberships: membershipDoc, signUpTokens };
   };
@@ -676,9 +671,9 @@ export const membershipUserServiceFactory = ({
 
     // Removing a user from a project drops a direct member; removing them from the org cascades their
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
-    licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
-    licenseDomain.emit(scopeData.orgId, PamIdentities.key);
-    licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(scopeData.orgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(scopeData.orgId, Meter.PamIdentities.key);
+    licenseDomain.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
     return { membership: membershipDoc };
   };
 

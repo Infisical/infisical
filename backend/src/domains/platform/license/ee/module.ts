@@ -1,11 +1,10 @@
-import { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { TEnvConfig } from "@app/lib/config/env";
 
-import { LicenseType, TLicenseHooks } from "../ce/module";
-import { withCloudPlanDefaults } from "./model/cloud-plan-defaults";
-import { getLicenseKeyConfig, LicenseResolver } from "./service/license-resolver";
-import { licenseServerClientFactory } from "./service/license-server/license-server-client";
-import { buildUsageReporter } from "./service/usage-reporter";
+import { Plan, TLicenseHooks, TLicenseServerClient } from "../ce/module";
+import { LicenseServerClient } from "./license-server-client/license-server-client";
+import { withCloudPlanDefaults } from "./service/cloud-plan-defaults";
+import { cloudPlanFromEntitlements, getLicenseKeyConfig, LicenseResolver } from "./service/license-resolver";
+import { LicenseType } from "./service/offline-license";
 
 export type TLicenseEeDeps = {
   envConfig: Pick<
@@ -17,34 +16,29 @@ export type TLicenseEeDeps = {
     | "INTERNAL_REGION"
     | "isCloud"
   >;
-  keyStore: TDomainKeyStore;
 };
 
 // Reads the instance's license and talks to the License Server.
 export class LicenseEeModule {
   readonly hooks: TLicenseHooks;
 
-  constructor({ envConfig, keyStore }: TLicenseEeDeps) {
+  readonly licenseServerClient: TLicenseServerClient;
+
+  constructor({ envConfig }: TLicenseEeDeps) {
     const licenseKeyConfig = getLicenseKeyConfig(envConfig);
     // An offline (air-gapped) license must never reach the License Server.
     const isOffline = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
-    const licenseServerClient = licenseServerClientFactory({ envConfig, keyStore, isOffline });
+    const licenseServerClient = LicenseServerClient.fromConfig({ envConfig, isOffline });
     const resolver = new LicenseResolver({ isCloud: envConfig.isCloud, licenseKeyConfig, licenseServerClient });
-    const usageReporter = isOffline ? null : buildUsageReporter(envConfig);
 
+    this.licenseServerClient = licenseServerClient;
     this.hooks = {
       resolveInstanceEntitlements: () => resolver.resolveInstanceEntitlements(),
       refreshInstanceEntitlements: () => resolver.refreshInstanceEntitlements(),
       hasOnlineLicense: () => resolver.hasOnlineLicense(),
-      fetchPlan: (rootOrg) => resolver.fetchPlan(rootOrg),
-      fallbackPlan: (features) => withCloudPlanDefaults(features, null),
-      cancelSubscription: async (orgId) => {
-        await licenseServerClient.cancelSubscription(orgId);
-      },
-      isMeteringEnabled: () => licenseServerClient.isEnabled(),
-      usageReporter,
-      isOffline: () => isOffline,
-      billing: licenseServerClient
+      planFromEntitlements: (entitlements) => cloudPlanFromEntitlements(entitlements),
+      fallbackPlan: (instance) => Plan.restore(withCloudPlanDefaults(instance.features, null)),
+      isOffline: () => isOffline
     };
   }
 }

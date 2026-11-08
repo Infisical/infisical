@@ -56,7 +56,7 @@ import { kmsLegacyEncryptionKeyDALFactory } from "@app/services/kms/kms-legacy-e
 import { kmsServiceFactory, TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
-import { AgentVaultIdentities } from "@app/domains/platform/license/ce/module";
+import { Meter } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
 import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
@@ -74,7 +74,7 @@ const countAgentVaultSeats = (orgId: string) => {
   const organizationsProjectsDomain = new OrganizationsProjectsModule({ db: testDb, licenseRegistry }).service;
   // eslint-disable-next-line no-new
   new AgentVaultModule({ organizationsProjectsDomain, licenseRegistry });
-  return licenseRegistry.counter(AgentVaultIdentities.key).count(orgId);
+  return licenseRegistry.counter(Meter.AgentVaultIdentities.key).count(orgId);
 };
 
 declare const testKeyStore: TKeyStoreFactory;

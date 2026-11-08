@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { setupIntegration } from "@app/domains/lib/testing/integration";
-import { ActiveCerts, InternalCas, WildcardCerts } from "@app/domains/platform/license/ce/module";
+import { Meter } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
 import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 
@@ -31,7 +31,7 @@ describe("CertManagerModule usage counters", () => {
     const built = build();
 
     // Action
-    const cas = await count(built, InternalCas.key, pki.root.id);
+    const cas = await count(built, Meter.InternalCas.key, pki.root.id);
 
     // Assert
     expect(cas).toBe(2);
@@ -47,7 +47,7 @@ describe("CertManagerModule usage counters", () => {
     const built = build();
 
     // Action
-    const active = await count(built, ActiveCerts.key, pki.root.id);
+    const active = await count(built, Meter.ActiveCerts.key, pki.root.id);
 
     // Assert
     expect(active).toBe(1);
@@ -63,8 +63,8 @@ describe("CertManagerModule usage counters", () => {
 
     // Action
     const [active, wildcard] = await Promise.all([
-      count(built, ActiveCerts.key, pki.root.id),
-      count(built, WildcardCerts.key, pki.root.id)
+      count(built, Meter.ActiveCerts.key, pki.root.id),
+      count(built, Meter.WildcardCerts.key, pki.root.id)
     ]);
 
     // Assert
@@ -79,8 +79,8 @@ describe("CertManagerModule usage counters", () => {
 
     // Action
     const [unrelated, instance] = await Promise.all([
-      count(built, ActiveCerts.key, randomUUID()),
-      count(built, ActiveCerts.key, null)
+      count(built, Meter.ActiveCerts.key, randomUUID()),
+      count(built, Meter.ActiveCerts.key, null)
     ]);
 
     // Assert

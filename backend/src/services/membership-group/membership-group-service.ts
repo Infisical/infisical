@@ -8,12 +8,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import {
-  TLicenseDomain,
-  AgentVaultIdentities,
-  PamIdentities,
-  SecretIdentities
-} from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -260,9 +255,9 @@ export const membershipGroupServiceFactory = ({
 
     // Assigning a group to a project brings the group's users + identities into it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
-      licenseDomain.emit(scopeData.orgId, PamIdentities.key);
-      licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(scopeData.orgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(scopeData.orgId, Meter.PamIdentities.key);
+      licenseDomain.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
     }
     return { membership, group };
   };
@@ -705,9 +700,9 @@ export const membershipGroupServiceFactory = ({
 
     // Removing a group from a project drops its users + identities from it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      licenseDomain.emit(existingMembership.scopeOrgId, SecretIdentities.key);
-      licenseDomain.emit(existingMembership.scopeOrgId, PamIdentities.key);
-      licenseDomain.emit(existingMembership.scopeOrgId, AgentVaultIdentities.key);
+      licenseDomain.emit(existingMembership.scopeOrgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(existingMembership.scopeOrgId, Meter.PamIdentities.key);
+      licenseDomain.emit(existingMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
     }
     return { membership: membershipDoc, group };
   };

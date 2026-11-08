@@ -1,11 +1,11 @@
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 
-import { getDefaultOnPremFeatures } from "../../ce/model/default-features";
-import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "../../ce/model/license-types";
+import { InstanceEntitlements, TInstanceFeatures } from "../../ce/model/instance-entitlements";
+import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./offline-license";
 
-// The instance resolver imports both of these through "./license-fns": the e2e suite aliases that specifier
-// to src/ee/services/license/__mocks__/license-fns.ts.
-export { getDefaultOnPremFeatures };
+// The instance resolver imports this and getLicenseKeyConfig through "./license-fns": the e2e suite aliases
+// that specifier to src/ee/services/license/__mocks__/license-fns.ts, which grants every feature.
+export const getDefaultOnPremFeatures = (): TInstanceFeatures => InstanceEntitlements.communityFeatures();
 
 export const isOfflineLicenseKey = (licenseKey: string): boolean => {
   try {

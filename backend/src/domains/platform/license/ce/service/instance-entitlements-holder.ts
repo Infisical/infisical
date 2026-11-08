@@ -1,24 +1,18 @@
-import { getDefaultOnPremFeatures } from "../model/default-features";
-import { InstanceType } from "../model/license-types";
-import { TInstanceEntitlements } from "../model/plan";
+import { InstanceEntitlements } from "../model/instance-entitlements";
 
+// The instance's license, read at boot and replaced by the background sync of an online license.
 export class InstanceEntitlementsHolder {
-  private current: TInstanceEntitlements = {
-    instanceType: InstanceType.OnPrem,
-    features: getDefaultOnPremFeatures(),
-    licenseId: null,
-    customerId: null
-  };
+  private current = InstanceEntitlements.community();
 
-  get(): TInstanceEntitlements {
+  get(): InstanceEntitlements {
     return this.current;
   }
 
-  set(entitlements: TInstanceEntitlements) {
+  set(entitlements: InstanceEntitlements) {
     this.current = entitlements;
   }
 
   isCloud() {
-    return this.current.instanceType === InstanceType.Cloud;
+    return this.current.isCloud();
   }
 }

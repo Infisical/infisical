@@ -1,6 +1,5 @@
-import { TLicenseOrganizations } from "../model/root-org";
-import { TUsageCounter } from "../model/usage-counter";
 import { TLicenseRegistry } from "../module";
+import { TLicenseOrganizations, TUsageCounter } from "../service/registrations";
 
 // Holds what a domain registers with License, so its test can call the counters directly.
 export class FakeLicenseRegistry implements TLicenseRegistry {
@@ -9,10 +8,10 @@ export class FakeLicenseRegistry implements TLicenseRegistry {
   organizations: TLicenseOrganizations | null = null;
 
   registerUsageCounter = (counter: TUsageCounter) => {
-    if (this.counters.has(counter.feature.key)) {
-      throw new Error(`Two usage counters were registered for '${counter.feature.key}'`);
+    if (this.counters.has(counter.meter.key)) {
+      throw new Error(`Two usage counters were registered for '${counter.meter.key}'`);
     }
-    this.counters.set(counter.feature.key, counter);
+    this.counters.set(counter.meter.key, counter);
   };
 
   registerOrganizations = (organizations: TLicenseOrganizations) => {

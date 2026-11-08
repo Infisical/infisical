@@ -18,7 +18,7 @@ import { Certificate } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 
 import { ProjectType } from "@app/db/schemas";
-import { TPlan } from "@app/domains/platform/license/ce/module";
+import { TPlanProps } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initializePqcSupport } from "@app/lib/crypto/pqc";
@@ -161,7 +161,7 @@ const buildDeps = (plan: Record<string, unknown> = { pkiAwsKmsSigning: true }) =
   appConnectionService: { validateAppConnectionUsageById: vi.fn() } as never,
   kmsService: {} as never,
   projectDAL: { findById: vi.fn(async () => ({ id: "project", orgId: "org" })) } as never,
-  licenseDomain: new FakeLicenseDomain().setPlan("org", plan as Partial<TPlan>),
+  licenseDomain: new FakeLicenseDomain().setPlan("org", plan as Partial<TPlanProps>),
   hsmConnectorService: {} as never,
   hsmConnectorDAL: {} as never,
   certificateAuthoritySecretDAL: { findOne: vi.fn() } as never

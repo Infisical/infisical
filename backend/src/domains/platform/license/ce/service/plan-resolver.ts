@@ -1,10 +1,12 @@
 import { logger } from "@app/lib/logger";
 
-import { TPlan } from "../model/plan";
+import { PlanCache } from "../data-access/plan-cache";
+import { UsageReportMemory } from "../data-access/usage-report-memory";
+import { TLicenseServerClient } from "../license-server-client/license-server-client";
+import { Plan } from "../model/plan";
 import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
 import { TLicenseHooks } from "./license-hooks";
 import { OrganizationDirectory } from "./organization-directory";
-import { PlanCache } from "./plan-cache";
 import { UsageQueue } from "./usage-queue";
 
 export type TRefreshPlanOptions = {
@@ -16,7 +18,9 @@ export type TRefreshPlanOptions = {
 export type TPlanResolverDeps = {
   instance: InstanceEntitlementsHolder;
   planCache: PlanCache;
+  usageReportMemory: UsageReportMemory;
   organizations: OrganizationDirectory;
+  licenseServerClient: TLicenseServerClient;
   hooks: TLicenseHooks;
   usageQueue: UsageQueue;
 };
@@ -27,10 +31,10 @@ export class PlanResolver {
   constructor(private readonly deps: TPlanResolverDeps) {}
 
   // An org's plan. Self-hosted orgs get the instance's license. On cloud the root org's plan is cached; when
-  // the License Server cannot be reached the org gets the community defaults until the cache expires.
-  async resolve(orgId: string): Promise<TPlan> {
+  // the License Server cannot be reached the org gets the fallback plan until the cache expires.
+  async resolve(orgId: string): Promise<Plan> {
     const instance = this.deps.instance.get();
-    if (!this.deps.instance.isCloud()) return instance.features;
+    if (!instance.isCloud()) return instance.plan();
 
     let cacheKey = orgId;
     try {
@@ -38,14 +42,17 @@ export class PlanResolver {
       if (!root) throw new Error(`Organization with ID '${orgId}' not found`);
       cacheKey = root.id;
 
-      const cached = await this.deps.planCache.read(root.id, orgId);
+      const [cached, isReconciled] = await Promise.all([
+        this.deps.planCache.read(root.id),
+        this.deps.usageReportMemory.isReconciled(orgId)
+      ]);
       const plan = cached.plan ?? (await this.fetchAndCache(root.id));
       if (cached.plan && cached.passThrough) this.revalidateInBackground(root.id);
-      if (!cached.isReconciled && plan.slug) this.deps.usageQueue.reconcile(orgId);
+      if (!isReconciled && plan.isPaid) this.deps.usageQueue.reconcile(orgId);
       return plan;
     } catch (error) {
       logger.error(error, `getPlan: serving the fallback plan [orgId=${orgId}]`);
-      const fallback = this.deps.hooks.fallbackPlan(instance.features);
+      const fallback = this.deps.hooks.fallbackPlan(instance);
       await this.deps.planCache.writeFallback(cacheKey, fallback);
       return fallback;
     }
@@ -71,13 +78,16 @@ export class PlanResolver {
     if (refreshed) this.deps.instance.set(refreshed);
   }
 
-  private async fetchAndCache(rootOrgId: string): Promise<TPlan> {
+  private async fetchAndCache(rootOrgId: string): Promise<Plan> {
     const root = await this.deps.organizations.findRootOrg(rootOrgId);
     if (!root) throw new Error(`Organization with ID '${rootOrgId}' not found`);
-    const plan = await this.deps.hooks.fetchPlan(root);
-    const withUsage = { ...plan, workspacesUsed: await this.deps.organizations.countWorkspacesUsed(root.id) };
-    await this.deps.planCache.write(root.id, withUsage);
-    return withUsage;
+    const entitlements = await this.deps.licenseServerClient.getEntitlements(root);
+    if (!entitlements) throw new Error(`License Server entitlements are unavailable [orgId=${root.id}]`);
+    const plan = this.deps.hooks
+      .planFromEntitlements(entitlements)
+      .withWorkspacesUsed(await this.deps.organizations.countWorkspacesUsed(root.id));
+    await this.deps.planCache.write(root.id, plan);
+    return plan;
   }
 
   // While the pass-through marker is set (after a billing change), each read serves the cached plan and one

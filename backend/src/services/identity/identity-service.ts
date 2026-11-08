@@ -1,14 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import {
-  Plan,
-  TLicenseDomain,
-  AgentVaultIdentities,
-  IdentitiesMeter,
-  PamIdentities,
-  SecretIdentities
-} from "@app/domains/platform/license/ce/module";
+import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   assertRoleSetBoundary,
@@ -192,7 +185,7 @@ export const identityServiceFactory = ({
       };
     });
     await licenseDomain.syncSeats(orgId);
-    licenseDomain.emit(orgId, IdentitiesMeter.key);
+    licenseDomain.emit(orgId, Meter.Identities.key);
 
     return identity;
   };
@@ -434,22 +427,22 @@ export const identityServiceFactory = ({
       });
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
       await licenseDomain.syncSeats(identityOrgMembership.scopeOrgId);
-      licenseDomain.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
-      licenseDomain.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
-      licenseDomain.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
-      licenseDomain.emit(identityOrgMembership.scopeOrgId, AgentVaultIdentities.key);
+      licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
+      licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
+      licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
     await membershipIdentityService.removeIdentityFromOrg({ identityId: id, orgId: actorOrgId });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
-    licenseDomain.emit(identityOrgMembership.scopeOrgId, IdentitiesMeter.key);
+    licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
     // Deleting the identity cascades its project + group memberships, so the secret-manager and PAM
     // identity meters change too.
-    licenseDomain.emit(identityOrgMembership.scopeOrgId, SecretIdentities.key);
-    licenseDomain.emit(identityOrgMembership.scopeOrgId, PamIdentities.key);
-    licenseDomain.emit(identityOrgMembership.scopeOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
+    licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 

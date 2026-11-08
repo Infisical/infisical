@@ -2,26 +2,29 @@ import { verifyOfflineLicense } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { InstanceType, LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "../../ce/model/license-types";
-import { TInstanceEntitlements, TPlan } from "../../ce/model/plan";
-import { TRootOrg } from "../../ce/model/root-org";
-import { SELF_HOSTED_LICENSE_ORG_ID } from "../../ce/model/usage-report";
-import { withCloudPlanDefaults } from "../model/cloud-plan-defaults";
-import { withSelfHostedLicenseBase } from "../model/self-hosted-license-base";
+import { SELF_HOSTED_LICENSE_ORG_ID, TLicenseServerClient } from "../../ce/license-server-client/license-server-client";
+import { TEntitlementsResponse } from "../../ce/license-server-client/license-server-types";
+import { InstanceEntitlements, InstanceType } from "../../ce/model/instance-entitlements";
+import { Plan } from "../../ce/model/plan";
+import { withCloudPlanDefaults } from "./cloud-plan-defaults";
 import { projectV2ToFeatureSet } from "./entitlement-projection";
 // Imported by this exact specifier: the e2e suite aliases "./license-fns" to a permissive mock.
 import { getDefaultOnPremFeatures, getLicenseKeyConfig } from "./license-fns";
-import { TLicenseServerClient } from "./license-server/license-server-client";
+import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./offline-license";
+import { withSelfHostedLicenseBase } from "./self-hosted-license-base";
 
-const community = (): TInstanceEntitlements => ({
-  instanceType: InstanceType.OnPrem,
-  features: getDefaultOnPremFeatures(),
-  licenseId: null,
-  customerId: null
-});
+// Built from getDefaultOnPremFeatures rather than InstanceEntitlements.community(), so the e2e suite's
+// permissive mock reaches it.
+const community = (): InstanceEntitlements =>
+  InstanceEntitlements.restore({
+    instanceType: InstanceType.OnPrem,
+    features: getDefaultOnPremFeatures(),
+    licenseId: null,
+    customerId: null
+  });
 
 // Verified against the public key in the image; never reaches the License Server.
-const readOfflineLicense = async (licenseKey: string): Promise<TInstanceEntitlements | null> => {
+const readOfflineLicense = async (licenseKey: string): Promise<InstanceEntitlements | null> => {
   const contents = JSON.parse(Buffer.from(licenseKey, "base64").toString("utf8")) as TOfflineLicenseContents;
   if (!(await verifyOfflineLicense(JSON.stringify(contents.license), contents.signature))) {
     logger.warn(`Infisical EE offline license verification failed`);
@@ -44,13 +47,17 @@ const readOfflineLicense = async (licenseKey: string): Promise<TInstanceEntitlem
     features.pamEnterpriseAlerting = true;
   }
 
-  return {
+  return InstanceEntitlements.restore({
     instanceType: InstanceType.EnterpriseOnPremOffline,
     features: { ...features, slug: "enterprise", isOffline: true },
     licenseId: contents.license.licenseId,
     customerId: contents.license.customerId
-  };
+  });
 };
+
+// Cloud: the plan a root org's entitlements grant, over the community defaults.
+export const cloudPlanFromEntitlements = (entitlements: TEntitlementsResponse): Plan =>
+  Plan.restore(withCloudPlanDefaults(projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements), entitlements));
 
 export type TLicenseResolverDeps = {
   isCloud: boolean;
@@ -64,10 +71,10 @@ export class LicenseResolver {
 
   // The service key wins over a license key: it is what makes the instance Infisical Cloud. Anything that
   // fails to resolve leaves the community edition.
-  async resolveInstanceEntitlements(): Promise<TInstanceEntitlements> {
+  async resolveInstanceEntitlements(): Promise<InstanceEntitlements> {
     const { isCloud, licenseKeyConfig } = this.deps;
     try {
-      if (isCloud) return { ...community(), instanceType: InstanceType.Cloud };
+      if (isCloud) return InstanceEntitlements.restore({ ...community().toJSON(), instanceType: InstanceType.Cloud });
       if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online)
         return await this.readOnlineLicense();
       if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline) {
@@ -84,36 +91,23 @@ export class LicenseResolver {
     return !isCloud && licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online;
   }
 
-  // A self-hosted v2 license is single-tenant: the key identifies it, so its reads carry a fixed org id.
-  async refreshInstanceEntitlements(): Promise<TInstanceEntitlements | null> {
+  // Reads an online license again; the License Server answers live, so there is nothing to invalidate first.
+  async refreshInstanceEntitlements(): Promise<InstanceEntitlements | null> {
     if (!this.hasOnlineLicense()) return null;
-    await this.deps.licenseServerClient.refreshEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
     return this.readOnlineLicense();
   }
 
-  async fetchPlan(rootOrg: TRootOrg): Promise<TPlan> {
-    const entitlements = await this.deps.licenseServerClient.getEntitlements({
-      id: rootOrg.id,
-      name: rootOrg.name,
-      slug: rootOrg.slug
-    });
-    if (!entitlements) {
-      throw new BadRequestError({ message: "License Server entitlements are unavailable" });
-    }
-    return withCloudPlanDefaults(projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements), entitlements);
-  }
-
-  private async readOnlineLicense(): Promise<TInstanceEntitlements> {
+  private async readOnlineLicense(): Promise<InstanceEntitlements> {
     const entitlements = await this.deps.licenseServerClient.getEntitlements({ id: SELF_HOSTED_LICENSE_ORG_ID });
     if (!entitlements) {
       throw new BadRequestError({ message: "License Server v2 entitlements are unavailable" });
     }
-    return {
+    return InstanceEntitlements.restore({
       instanceType: InstanceType.EnterpriseOnPrem,
       features: projectV2ToFeatureSet(withSelfHostedLicenseBase(getDefaultOnPremFeatures()), entitlements),
       licenseId: null,
       customerId: null
-    };
+    });
   }
 }
 

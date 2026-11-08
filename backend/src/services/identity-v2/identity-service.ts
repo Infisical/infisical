@@ -9,14 +9,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import {
-  Plan,
-  TLicenseDomain,
-  AgentVaultIdentities,
-  IdentitiesMeter,
-  PamIdentities,
-  SecretIdentities
-} from "@app/domains/platform/license/ce/module";
+import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionIdentityActions,
@@ -323,11 +316,11 @@ export const identityV2ServiceFactory = ({
 
     // A new identity always adds an org membership; a project-scoped one also joins that project, so
     // it counts toward the secret-manager and PAM identity meters too.
-    licenseDomain.emit(dto.permission.orgId, IdentitiesMeter.key);
+    licenseDomain.emit(dto.permission.orgId, Meter.Identities.key);
     if (scopeData.scope === AccessScope.Project) {
-      licenseDomain.emit(dto.permission.orgId, SecretIdentities.key);
-      licenseDomain.emit(dto.permission.orgId, PamIdentities.key);
-      licenseDomain.emit(dto.permission.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(dto.permission.orgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(dto.permission.orgId, Meter.PamIdentities.key);
+      licenseDomain.emit(dto.permission.orgId, Meter.AgentVaultIdentities.key);
     }
 
     return { identity };
@@ -451,10 +444,10 @@ export const identityV2ServiceFactory = ({
     await licenseDomain.syncSeats(scopeData.orgId);
 
     // Deleting the identity cascades its org + project + group memberships, so all meters change.
-    licenseDomain.emit(scopeData.orgId, IdentitiesMeter.key);
-    licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
-    licenseDomain.emit(scopeData.orgId, PamIdentities.key);
-    licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(scopeData.orgId, Meter.Identities.key);
+    licenseDomain.emit(scopeData.orgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(scopeData.orgId, Meter.PamIdentities.key);
+    licenseDomain.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
 
     return { identity: deletedIdentity };
   };

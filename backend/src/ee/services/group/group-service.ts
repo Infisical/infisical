@@ -9,12 +9,7 @@ import {
   TGroups,
   TRoles
 } from "@app/db/schemas";
-import {
-  AgentVaultIdentities,
-  PamIdentities,
-  SecretIdentities,
-  TLicenseDomain
-} from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -532,17 +527,17 @@ export const groupServiceFactory = ({
       sendPamCancellations();
       await membershipGroupService.bumpIdentityRevocationVersions(identityIdsLosingOrgAccess);
       // Removing the group drops its members from any project it was on.
-      licenseDomain.emit(actorOrgId, SecretIdentities.key);
-      licenseDomain.emit(actorOrgId, PamIdentities.key);
-      licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
+      licenseDomain.emit(actorOrgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(actorOrgId, Meter.PamIdentities.key);
+      licenseDomain.emit(actorOrgId, Meter.AgentVaultIdentities.key);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
     const deletedGroup = await deleteOwnedGroup({ groupId: id, actorId, actorOrgId });
     // Deleting the group drops its members from any project it was on.
-    licenseDomain.emit(actorOrgId, SecretIdentities.key);
-    licenseDomain.emit(actorOrgId, PamIdentities.key);
-    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.PamIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { group: deletedGroup, isUnlinked: false };
   };
 
@@ -884,9 +879,9 @@ export const groupServiceFactory = ({
     });
 
     // The user may now be in a secret-manager or PAM project through this group.
-    licenseDomain.emit(actorOrgId, SecretIdentities.key);
-    licenseDomain.emit(actorOrgId, PamIdentities.key);
-    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.PamIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -996,9 +991,9 @@ export const groupServiceFactory = ({
     }
 
     // The identity may now be in a secret-manager or PAM project through this group.
-    licenseDomain.emit(actorOrgId, SecretIdentities.key);
-    licenseDomain.emit(actorOrgId, PamIdentities.key);
-    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.PamIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 
@@ -1092,9 +1087,9 @@ export const groupServiceFactory = ({
     sendPamCancellations();
 
     // The user may have left a secret-manager or PAM project it only reached through this group.
-    licenseDomain.emit(actorOrgId, SecretIdentities.key);
-    licenseDomain.emit(actorOrgId, PamIdentities.key);
-    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.PamIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1186,9 +1181,9 @@ export const groupServiceFactory = ({
     }
 
     // The identity may have left a secret-manager or PAM project it only reached through this group.
-    licenseDomain.emit(actorOrgId, SecretIdentities.key);
-    licenseDomain.emit(actorOrgId, PamIdentities.key);
-    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.PamIdentities.key);
+    licenseDomain.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 

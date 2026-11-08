@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
-import { AgentVaultIdentities, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { NotFoundError } from "@app/lib/errors";
@@ -135,7 +135,7 @@ export const orgAdminServiceFactory = ({
 
     // Agent Vault's project starts empty and admins join through here, so this is where its seat count moves.
     if (project.type === ProjectType.AgentVault) {
-      licenseDomain.emit(project.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(project.orgId, Meter.AgentVaultIdentities.key);
     }
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);

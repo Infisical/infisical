@@ -1,7 +1,7 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
-import { TLicenseDomain, InstanceType } from "@app/domains/platform/license/ce/module";
+import { InstanceType, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";

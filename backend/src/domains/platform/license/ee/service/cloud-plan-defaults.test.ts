@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import { getDefaultOnPremFeatures } from "../../ce/model/default-features";
-import { TEntitlementsResponse } from "../../ce/model/license-server-types";
+import { TEntitlementsResponse } from "../../ce/license-server-client/license-server-types";
+import { InstanceEntitlements } from "../../ce/model/instance-entitlements";
 import { projectV2ToFeatureSet } from "../service/entitlement-projection";
 import { withCloudPlanDefaults } from "./cloud-plan-defaults";
 
@@ -10,7 +10,7 @@ const entitlements = (features: TEntitlementsResponse["features"]) =>
 
 const cloudPlan = (features: TEntitlementsResponse["features"]) => {
   const ent = entitlements(features);
-  return withCloudPlanDefaults(projectV2ToFeatureSet(getDefaultOnPremFeatures(), ent), ent);
+  return withCloudPlanDefaults(projectV2ToFeatureSet(InstanceEntitlements.communityFeatures(), ent), ent);
 };
 
 describe("cloud plan defaults for session log default storage", () => {
@@ -38,6 +38,6 @@ describe("cloud plan defaults for session log default storage", () => {
   });
 
   test("is on in the stand-in plan used while the License Server can't be reached", () => {
-    expect(withCloudPlanDefaults(getDefaultOnPremFeatures(), null).agentVaultManagedStorage).toBe(true);
+    expect(withCloudPlanDefaults(InstanceEntitlements.communityFeatures(), null).agentVaultManagedStorage).toBe(true);
   });
 });

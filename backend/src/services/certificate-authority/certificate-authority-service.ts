@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { TLicenseDomain, InternalCas } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -387,7 +387,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      licenseDomain.emit(actor.orgId, InternalCas.key);
+      licenseDomain.emit(actor.orgId, Meter.InternalCas.key);
 
       const caSecret = await certificateAuthoritySecretDAL.findOne(
         { caId: ca.id },
@@ -963,7 +963,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      licenseDomain.emit(actor.orgId, InternalCas.key);
+      licenseDomain.emit(actor.orgId, Meter.InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,
@@ -1202,7 +1202,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      licenseDomain.emit(actor.orgId, InternalCas.key);
+      licenseDomain.emit(actor.orgId, Meter.InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,

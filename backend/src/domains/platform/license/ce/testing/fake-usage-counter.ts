@@ -1,5 +1,5 @@
-import { TMeteredFeature } from "../model/metered-features";
-import { TUsageCounter, TUsageCounterScope } from "../model/usage-counter";
+import { Meter } from "../model/meter";
+import { TUsageCounter } from "../service/registrations";
 
 // A counter whose value the test sets per org; null is the whole instance.
 export class FakeUsageCounter implements TUsageCounter {
@@ -7,10 +7,7 @@ export class FakeUsageCounter implements TUsageCounter {
 
   countedFor: (string | null)[] = [];
 
-  constructor(
-    readonly feature: TMeteredFeature,
-    readonly scope: TUsageCounterScope = "org"
-  ) {}
+  constructor(readonly meter: Meter) {}
 
   set(orgId: string | null, value: number) {
     this.values.set(orgId, value);

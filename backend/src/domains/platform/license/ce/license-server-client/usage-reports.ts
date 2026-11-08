@@ -1,5 +1,4 @@
-// How usage reaches the License Server. The EE edition supplies a reporter; without one, usage is not
-// reported.
+// The License Server's usage API: what a report carries and how a refusal comes back.
 
 export type TUsageSnapshot = {
   dimension_key: string;
@@ -23,14 +22,6 @@ export type TUsageEventResult = {
   event_id: string;
   status: "accepted" | "deduped";
 };
-
-export type TUsageReporter = {
-  reportSnapshots: (orgId: string, snapshots: TUsageSnapshot[]) => Promise<void>;
-  reportEvents: (orgId: string, events: TUsageEvent[]) => Promise<TUsageEventResult[]>;
-};
-
-// Self-hosted is one license over the whole database, so it reports usage once, under this identity.
-export const SELF_HOSTED_LICENSE_ORG_ID = "self-hosted";
 
 // The license server's per-request cap on usage events.
 export const MAX_USAGE_EVENTS_PER_REQUEST = 1000;

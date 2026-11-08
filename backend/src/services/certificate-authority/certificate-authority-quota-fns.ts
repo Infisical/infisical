@@ -1,4 +1,4 @@
-import { TLicenseDomain, TFeatureSet } from "@app/domains/platform/license/ce/module";
+import { TLicenseDomain, TPlanProps } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -16,7 +16,7 @@ export type TCertificateAuthorityQuotaDeps = {
 // while capping maxCas at 1, so treating null as unlimited would lift that cap.
 //
 // Exported so the quota endpoint reports the same ceiling this module enforces.
-export const resolveEffectiveMaxCas = (plan: Pick<TFeatureSet, "maxCas" | "maxInternalCas">) =>
+export const resolveEffectiveMaxCas = (plan: Pick<TPlanProps, "maxCas" | "maxInternalCas">) =>
   typeof plan.maxCas === "number" && typeof plan.maxInternalCas === "number"
     ? Math.max(plan.maxCas, plan.maxInternalCas)
     : plan.maxCas;

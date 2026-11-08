@@ -2,14 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
-import {
-  AgentVaultIdentities,
-  IdentitiesMeter,
-  PamIdentities,
-  SecretIdentities,
-  UserIdentities,
-  TLicenseDomain
-} from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -781,11 +774,11 @@ export const userServiceFactory = ({
     // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
     orgIds.forEach((orgId) => {
-      licenseDomain.emit(orgId, IdentitiesMeter.key);
-      licenseDomain.emit(orgId, UserIdentities.key);
-      licenseDomain.emit(orgId, SecretIdentities.key);
-      licenseDomain.emit(orgId, PamIdentities.key);
-      licenseDomain.emit(orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(orgId, Meter.Identities.key);
+      licenseDomain.emit(orgId, Meter.UserIdentities.key);
+      licenseDomain.emit(orgId, Meter.SecretIdentities.key);
+      licenseDomain.emit(orgId, Meter.PamIdentities.key);
+      licenseDomain.emit(orgId, Meter.AgentVaultIdentities.key);
     });
 
     try {

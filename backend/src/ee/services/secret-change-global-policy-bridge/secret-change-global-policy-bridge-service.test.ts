@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectVersion } from "@app/db/schemas";
-import { TPlan } from "@app/domains/platform/license/ce/module";
+import { TPlanProps } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -91,7 +91,7 @@ const buildService = ({
   const findEffectiveProjectSubjectsMembership = vi.fn();
   memberships.forEach((membership) => findEffectiveProjectSubjectsMembership.mockResolvedValueOnce(membership));
 
-  const licenseDomain = new FakeLicenseDomain().setPlan(ORG_ID, plan as Partial<TPlan>);
+  const licenseDomain = new FakeLicenseDomain().setPlan(ORG_ID, plan as Partial<TPlanProps>);
   vi.spyOn(licenseDomain, "getPlan");
 
   const deps = {

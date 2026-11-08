@@ -5,7 +5,7 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
-import { assertSeatAvailable, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -411,7 +411,7 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          if (seatUsage) assertSeatAvailable(seatUsage, { identityLimit, via: UserAliasType.OIDC });
+          seatUsage?.assertAvailable({ identityLimit, via: UserAliasType.OIDC });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
