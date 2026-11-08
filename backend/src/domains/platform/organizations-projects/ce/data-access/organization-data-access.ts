@@ -1,6 +1,5 @@
 import { TDbClient } from "@app/db";
 import { ProjectType, TableName } from "@app/db/schemas";
-import { TTransaction, unsealTransaction } from "@app/domains/lib/transaction-runner";
 import { DatabaseError } from "@app/lib/errors";
 
 export type TRootOrgRow = { id: string; name: string; slug: string };
@@ -55,9 +54,9 @@ export class OrganizationDataAccess {
   }
 
   // Live projects that take a workspace slot, in the org and its sub-orgs.
-  async countWorkspaces(orgId: string, tx?: TTransaction): Promise<number> {
+  async countWorkspaces(orgId: string): Promise<number> {
     try {
-      const knex = tx ? unsealTransaction(tx) : this.db.replicaNode();
+      const knex = this.db.replicaNode();
       const row = (await knex(TableName.Project)
         .whereNull("deleteAfter")
         .whereNotIn("type", UNCOUNTED_WORKSPACE_TYPES)

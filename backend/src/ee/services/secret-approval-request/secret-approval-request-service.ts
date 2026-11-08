@@ -151,7 +151,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findById">;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
@@ -200,7 +200,7 @@ export const secretApprovalRequestServiceFactory = ({
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
-  license,
+  licenseDomain,
   projectSlackConfigDAL,
   resourceMetadataDAL,
   projectMicrosoftTeamsConfigDAL,
@@ -665,7 +665,7 @@ export const secretApprovalRequestServiceFactory = ({
     }
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
-    const plan = await license.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actorOrgId);
     if (!plan.secretApproval && status === RequestState.Open) {
       throw new BadRequestError({
         message:

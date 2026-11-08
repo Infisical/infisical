@@ -81,7 +81,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -100,7 +100,7 @@ export const identityOidcAuthServiceFactory = ({
   membershipIdentityDAL,
   keyStore,
   permissionService,
-  license,
+  licenseDomain,
   identityAccessTokenDAL,
   kmsService,
   orgDAL,
@@ -657,7 +657,7 @@ export const identityOidcAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -846,7 +846,7 @@ export const identityOidcAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId

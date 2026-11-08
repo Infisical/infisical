@@ -111,7 +111,7 @@ const createHarness = () => {
 
   const telemetryService = telemetryServiceFactory({
     keyStore: keyStore as never,
-    license: new FakeLicenseDomain(),
+    licenseDomain: new FakeLicenseDomain(),
     orgDAL: { findOrgById: vi.fn() } as never,
     emailDomainDAL: { find: vi.fn(async () => []) } as never
   });

@@ -92,7 +92,7 @@ type TUserServiceFactoryDep = {
   totpConfigDAL: Pick<TTotpConfigDALFactory, "findOne">;
   webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
   mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
-  usageMeteringService: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -113,7 +113,7 @@ export const userServiceFactory = ({
   totpConfigDAL,
   webAuthnCredentialDAL,
   mfaRecoveryCodeService,
-  usageMeteringService,
+  licenseDomain,
   alertChannelRecipientDAL,
   emailDomainDAL,
   pamSessionDAL,
@@ -781,11 +781,11 @@ export const userServiceFactory = ({
     // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
     orgIds.forEach((orgId) => {
-      usageMeteringService.emit(orgId, IdentitiesMeter.key);
-      usageMeteringService.emit(orgId, UserIdentities.key);
-      usageMeteringService.emit(orgId, SecretIdentities.key);
-      usageMeteringService.emit(orgId, PamIdentities.key);
-      usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(orgId, IdentitiesMeter.key);
+      licenseDomain.emit(orgId, UserIdentities.key);
+      licenseDomain.emit(orgId, SecretIdentities.key);
+      licenseDomain.emit(orgId, PamIdentities.key);
+      licenseDomain.emit(orgId, AgentVaultIdentities.key);
     });
 
     try {

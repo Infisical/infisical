@@ -75,7 +75,7 @@ export const getSSEHeaders = () =>
 type TProjectEventsSSEServiceFactoryDep = {
   projectEventsService: TProjectEventsService;
   permissionService: TPermissionServiceFactory;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   keyStore: TKeyStoreFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
 };
@@ -83,7 +83,7 @@ type TProjectEventsSSEServiceFactoryDep = {
 export const projectEventsSSEServiceFactory = ({
   projectEventsService,
   permissionService,
-  license,
+  licenseDomain,
   keyStore,
   projectEnvDAL
 }: TProjectEventsSSEServiceFactoryDep) => {
@@ -312,7 +312,7 @@ export const projectEventsSSEServiceFactory = ({
     // Validate user has permission for all registered events (throws ForbiddenError if not)
     await validateRegisteredPermissions(permissionCache, opts.register, opts.projectId);
 
-    const plan = await license.getPlan(opts.actorOrgId);
+    const plan = await licenseDomain.getPlan(opts.actorOrgId);
     if (!plan.eventSubscriptions) {
       throw new BadRequestError({
         message: "Event subscriptions are not available on your current plan. Please upgrade to access this feature."

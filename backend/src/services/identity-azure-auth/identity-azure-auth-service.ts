@@ -57,7 +57,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -75,7 +75,7 @@ export const identityAzureAuthServiceFactory = ({
   keyStore,
   identityAccessTokenDAL,
   permissionService,
-  license,
+  licenseDomain,
   orgDAL,
   identityAccessTokenService,
   eventEmitter
@@ -299,7 +299,7 @@ export const identityAzureAuthServiceFactory = ({
     );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -407,7 +407,7 @@ export const identityAzureAuthServiceFactory = ({
     );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&

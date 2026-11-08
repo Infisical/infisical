@@ -79,7 +79,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
@@ -111,7 +111,7 @@ export const identityLdapAuthServiceFactory = ({
   identityDAL,
   identityLdapAuthDAL,
   membershipIdentityDAL,
-  license,
+  licenseDomain,
   permissionService,
   kmsService,
   identityAuthTemplateDAL,
@@ -208,7 +208,7 @@ export const identityLdapAuthServiceFactory = ({
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
-    const plan = await license.getPlan(identity.orgId);
+    const plan = await licenseDomain.getPlan(identity.orgId);
     if (!plan.ldap) {
       throw new BadRequestError({
         message:
@@ -403,7 +403,7 @@ export const identityLdapAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
 
     if (!plan.ldap) {
       throw new BadRequestError({
@@ -634,7 +634,7 @@ export const identityLdapAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
 
     if (!plan.ldap) {
       throw new BadRequestError({

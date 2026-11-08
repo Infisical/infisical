@@ -810,13 +810,13 @@ export const parseSyncErrorMessage = (err: unknown): string => {
 };
 
 export const enterpriseSyncCheck = async (
-  license: TLicenseDomain,
+  licenseDomain: TLicenseDomain,
   secretSync: SecretSync,
   orgId: string,
   errorMessage: string
 ) => {
   if (SECRET_SYNC_PLAN_MAP[secretSync] === SecretSyncPlanType.Enterprise) {
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.enterpriseSecretSyncs)
       throw new BadRequestError({
         message: errorMessage

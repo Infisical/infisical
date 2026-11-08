@@ -12,8 +12,8 @@ type TQuotaCounts = { total: number; wildcard: number };
 
 export type TCertificateQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  license: TLicenseDomain;
-  certManager: TCertManagerDomain;
+  licenseDomain: TLicenseDomain;
+  certManagerDomain: TCertManagerDomain;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
@@ -38,7 +38,7 @@ const $getQuotaCounts = async (orgId: string, deps: TCertificateQuotaDeps): Prom
     logger.error(error, `Failed to read certificate quota cache [orgId=${orgId}]`);
   }
 
-  const counts = await deps.certManager.countActiveCertificateQuota(
+  const counts = await deps.certManagerDomain.countActiveCertificateQuota(
     orgId === PKI_INSTANCE_QUOTA_SCOPE ? undefined : orgId
   );
 
@@ -92,7 +92,7 @@ export const assertCertificateQuota = async ({
 }): Promise<{ quotaKey: string; isNewQuotaKey: boolean; quotaOrgId: string; isWildcard: boolean }> => {
   const quotaKey = buildCertificateQuotaKey({ commonName, altNames });
   const isWildcard = certificateHasWildcard({ commonName, altNames });
-  const plan = await deps.license.getPlan(orgId);
+  const plan = await deps.licenseDomain.getPlan(orgId);
   const unlimited = { quotaKey, isNewQuotaKey: false, quotaOrgId: orgId, isWildcard };
 
   const { maxCertificates, maxWildcardCertificates } = plan;
@@ -102,12 +102,12 @@ export const assertCertificateQuota = async ({
   // Correctness, not an optimization: reissuing names already held in the counted scope cannot raise
   // either count, and this is what lets an org sitting at its cap keep renewing. Remove it and its
   // certs expire.
-  const isInstanceWide = isInstanceWidePkiQuota(deps.license);
-  const isAlreadyActive = await deps.certManager.isCertificateQuotaKeyActive(
+  const isInstanceWide = isInstanceWidePkiQuota(deps.licenseDomain);
+  const isAlreadyActive = await deps.certManagerDomain.isCertificateQuotaKeyActive(
     isInstanceWide ? undefined : orgId,
     quotaKey
   );
-  const quotaOrgId = isInstanceWide ? PKI_INSTANCE_QUOTA_SCOPE : await deps.certManager.resolveRootOrgId(orgId);
+  const quotaOrgId = isInstanceWide ? PKI_INSTANCE_QUOTA_SCOPE : await deps.certManagerDomain.resolveRootOrgId(orgId);
   if (isAlreadyActive) return { quotaKey, isNewQuotaKey: false, quotaOrgId, isWildcard };
   const scopeNote = isInstanceWide ? " across this instance" : "";
   const holder = isInstanceWide ? "this instance" : "your organization";

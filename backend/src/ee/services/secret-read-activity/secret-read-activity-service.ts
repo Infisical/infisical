@@ -83,7 +83,7 @@ const once = <T>(build: () => T) => {
 
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   secretReadActivityDAL: Pick<
     TSecretReadActivityDALFactory,
     "findLastReads" | "findTrackingStartedAt" | "findAccessSourceDates" | "findAdminActorIds"
@@ -107,7 +107,7 @@ export type TSecretReadActivityServiceFactory = ReturnType<typeof secretReadActi
 
 export const secretReadActivityServiceFactory = ({
   permissionService,
-  license,
+  licenseDomain,
   secretReadActivityDAL,
   secretReadActivityQueue,
   folderDAL,
@@ -480,7 +480,7 @@ export const secretReadActivityServiceFactory = ({
     { projectId, environment, secretPath, secretName }: TGetSecretReadActivityDTO,
     actor: OrgServiceActor
   ) => {
-    const { permission } = await checkInsightsPermission(permissionService, license, projectId, actor);
+    const { permission } = await checkInsightsPermission(permissionService, licenseDomain, projectId, actor);
 
     // The secret is checked before the reach is built, which decrypts every secret that could reference it.
     const tree = await loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId);
@@ -685,7 +685,7 @@ export const secretReadActivityServiceFactory = ({
     { projectId, offset, limit, search }: TListUnusedAccessDTO,
     actor: OrgServiceActor
   ) => {
-    await checkInsightsPermission(permissionService, license, projectId, actor);
+    await checkInsightsPermission(permissionService, licenseDomain, projectId, actor);
     const { rows, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
     const needle = search?.trim().toLowerCase();
     const matching = needle ? rows.filter((row) => row.name.toLowerCase().includes(needle)) : rows;
@@ -699,7 +699,7 @@ export const secretReadActivityServiceFactory = ({
     { projectId, actorType, actorId }: TGetUnusedAccessActorDTO,
     actor: OrgServiceActor
   ) => {
-    const { permission } = await checkInsightsPermission(permissionService, license, projectId, actor);
+    const { permission } = await checkInsightsPermission(permissionService, licenseDomain, projectId, actor);
     const { rows, details, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
     const unusedAccessActor = rows.find((row) => row.actorType === actorType && row.actorId === actorId);
     if (!unusedAccessActor) {

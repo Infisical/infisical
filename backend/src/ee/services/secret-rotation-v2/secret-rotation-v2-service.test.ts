@@ -124,7 +124,7 @@ const createService = ({
         encryptor: () => ({ cipherTextBlob: Buffer.from("encrypted") })
       }))
     },
-    license: new FakeLicenseDomain().setPlan("org-1", { secretRotation: true as false }),
+    licenseDomain: new FakeLicenseDomain().setPlan("org-1", { secretRotation: true as false }),
     permissionService: {
       getProjectPermission: vi.fn(async () => ({
         permission: createMongoAbility([{ action: "manage", subject: "all" }])

@@ -167,10 +167,9 @@ type TCertificateAuthorityServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
-  usageMeteringService: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
-  license: TLicenseDomain;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
@@ -201,10 +200,9 @@ export const certificateAuthorityServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   keyStore,
-  usageMeteringService,
+  licenseDomain,
   caKeySourceService,
   certificateAuthoritySecretDAL,
-  license,
   pkiAlertV2Queue,
   certificateAlertEventEmitter,
   auditLogService
@@ -340,7 +338,7 @@ export const certificateAuthorityServiceFactory = ({
       subject(ProjectPermissionSub.CertificateAuthorities, { name })
     );
 
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (typeof plan.certManager === "boolean" && !plan.certManager) {
       throw new BadRequestError({
@@ -360,7 +358,7 @@ export const certificateAuthorityServiceFactory = ({
       await assertCertificateAuthorityQuota({
         projectId,
         isInternal: false,
-        deps: { projectDAL, license, certificateAuthorityDAL }
+        deps: { projectDAL, licenseDomain, certificateAuthorityDAL }
       });
     }
 
@@ -389,7 +387,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      usageMeteringService.emit(actor.orgId, InternalCas.key);
+      licenseDomain.emit(actor.orgId, InternalCas.key);
 
       const caSecret = await certificateAuthoritySecretDAL.findOne(
         { caId: ca.id },
@@ -676,8 +674,8 @@ export const certificateAuthorityServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    const plan = await license.getPlan(project.orgId);
-    const countOrgId = isInstanceWidePkiQuota(license) ? null : project.orgId;
+    const plan = await licenseDomain.getPlan(project.orgId);
+    const countOrgId = isInstanceWidePkiQuota(licenseDomain) ? null : project.orgId;
     const [totalUsed, internalUsed] = await Promise.all([
       certificateAuthorityDAL.countCasByOrgId(countOrgId),
       certificateAuthorityDAL.countInternalCasByOrgId(countOrgId)
@@ -965,7 +963,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emit(actor.orgId, InternalCas.key);
+      licenseDomain.emit(actor.orgId, InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,
@@ -1204,7 +1202,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      usageMeteringService.emit(actor.orgId, InternalCas.key);
+      licenseDomain.emit(actor.orgId, InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,

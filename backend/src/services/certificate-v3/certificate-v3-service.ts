@@ -202,8 +202,8 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  license: TLicenseDomain;
-  certManager: TCertManagerDomain;
+  licenseDomain: TLicenseDomain;
+  certManagerDomain: TCertManagerDomain;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
@@ -368,13 +368,13 @@ export const certificateV3ServiceFactory = ({
   pkiApplicationProfileDAL,
   pkiApplicationDAL,
   apiEnrollmentConfigDAL,
-  license,
-  certManager,
+  licenseDomain,
+  certManagerDomain,
   keyStore,
   telemetryService,
   auditLogService
 }: TCertificateV3ServiceFactoryDep) => {
-  const $quotaDeps = { projectDAL, license, certManager, keyStore };
+  const $quotaDeps = { projectDAL, licenseDomain, certManagerDomain, keyStore };
 
   const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
     certificateAlertEventEmitter.emit({ ...input, eventType: CertificateApplicationAlertEvent.Issuance }, tx);
@@ -664,7 +664,7 @@ export const certificateV3ServiceFactory = ({
       altNames: (certificateRequestWithDefaults.altNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      license,
+      licenseDomain,
       quotaDeps: $quotaDeps
     });
 
@@ -1444,7 +1444,7 @@ export const certificateV3ServiceFactory = ({
       altNames: (mappedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      license,
+      licenseDomain,
       quotaDeps: $quotaDeps
     });
 
@@ -1971,7 +1971,7 @@ export const certificateV3ServiceFactory = ({
       altNames: (mappedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      license,
+      licenseDomain,
       quotaDeps: $quotaDeps
     });
 
@@ -2392,7 +2392,7 @@ export const certificateV3ServiceFactory = ({
     pkiApplicationProfileDAL,
     pkiApplicationDAL,
     apiEnrollmentConfigDAL,
-    license,
+    licenseDomain,
     quotaDeps: $quotaDeps,
     recordQuotaUsage: $recordQuotaUsage,
     resolveApplicationIdForProfile: $resolveApplicationIdForProfile,

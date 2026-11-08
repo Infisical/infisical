@@ -12,13 +12,16 @@ describe("CertManagerModule usage counters", () => {
   const h = setupIntegration();
 
   const build = () => {
-    const license = new FakeLicenseRegistry();
-    const organizationsProjects = new OrganizationsProjectsModule({ db: h.db, license }).service;
-    return { module: new CertManagerModule({ db: h.db, organizationsProjects, license }), license };
+    const licenseRegistry = new FakeLicenseRegistry();
+    const organizationsProjectsDomain = new OrganizationsProjectsModule({ db: h.db, licenseRegistry }).service;
+    return {
+      module: new CertManagerModule({ db: h.db, organizationsProjectsDomain, licenseRegistry }),
+      licenseRegistry
+    };
   };
 
-  const count = ({ license }: ReturnType<typeof build>, key: string, orgId: string | null) =>
-    license.counter(key).count(orgId);
+  const count = ({ licenseRegistry }: ReturnType<typeof build>, key: string, orgId: string | null) =>
+    licenseRegistry.counter(key).count(orgId);
 
   test("should count internal CAs across the root org's tree", async () => {
     // Setup

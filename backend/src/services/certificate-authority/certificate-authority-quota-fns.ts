@@ -7,7 +7,7 @@ import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 
 export type TCertificateAuthorityQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "countCasByOrgId" | "countInternalCasByOrgId">;
 };
 
@@ -40,9 +40,9 @@ export const assertCertificateAuthorityQuota = async ({
   const project = await deps.projectDAL.findById(projectId);
   if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-  const plan = await deps.license.getPlan(project.orgId);
+  const plan = await deps.licenseDomain.getPlan(project.orgId);
   const maxCas = resolveEffectiveMaxCas(plan);
-  const isInstanceWide = isInstanceWidePkiQuota(deps.license);
+  const isInstanceWide = isInstanceWidePkiQuota(deps.licenseDomain);
   const countOrgId = isInstanceWide ? null : project.orgId;
   const scopeNote = isInstanceWide ? " across this instance" : "";
 

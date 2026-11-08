@@ -256,7 +256,7 @@ describe("User folder access CRUD", () => {
     let secondGroup: { id: string; name: string; slug: string; orgId: string };
     let removalDeps: Omit<
       Parameters<typeof removeUsersFromGroupByUserIds>[0],
-      "group" | "userIds" | "tx" | "shouldFailOnMissingMembers" | "usageMeteringService"
+      "group" | "userIds" | "tx" | "shouldFailOnMissingMembers" | "licenseDomain"
     >;
 
     const createProjectGroup = async () => {

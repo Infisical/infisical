@@ -16,7 +16,7 @@ type TResolverDeps = {
   membershipDAL: Pick<TMembershipDALFactory, "create">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  usageMeteringService: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 type TOrgAdminRow = {
@@ -33,7 +33,7 @@ export const pamProjectResolverFactory = ({
   membershipDAL,
   membershipRoleDAL,
   keyStore,
-  usageMeteringService
+  licenseDomain
 }: TResolverDeps) => {
   // Newest live PAM project (find() excludes soft-deleted); tx reads the primary for the in-lock re-check.
   const findDefaultProjectId = async (orgId: string, tx?: Knex): Promise<string | null> => {
@@ -85,7 +85,7 @@ export const pamProjectResolverFactory = ({
 
     // Bootstrap seeds org admins as project members, which changes the pam_identities meter.
     if (created) {
-      usageMeteringService.emit(orgId, PamIdentities.key);
+      licenseDomain.emit(orgId, PamIdentities.key);
     }
     return projectId;
   };

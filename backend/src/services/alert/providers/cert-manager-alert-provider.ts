@@ -86,14 +86,14 @@ const assertNoResource = (resourceId?: string | null) =>
 export type TCertManagerAlertProviderDep = {
   certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   certManagerProjectResolver: Pick<TCertManagerProjectResolverFactory, "getActiveProjectId">;
 };
 
 export const certManagerAlertProviderFactory = ({
   certManagerCertificateAlertDAL,
   permissionService,
-  license,
+  licenseDomain,
   certManagerProjectResolver
 }: TCertManagerAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
   IEventAlertProvider<TAlertCertificate> => {
@@ -256,7 +256,7 @@ export const certManagerAlertProviderFactory = ({
     assertPermission,
     assertResourceInScope: async ({ resourceId }) => assertNoResource(resourceId),
     assertConditionInScope,
-    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(license, input),
+    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseDomain, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
     getWebhookSource: getScopeWideAlertWebhookSource,

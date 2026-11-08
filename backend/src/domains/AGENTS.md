@@ -223,7 +223,7 @@ export class SecretService implements TSecretService {
 | Remove your data when the owner tells you it is gone (an event, or a call until the event exists); do not depend on `ON DELETE CASCADE` from another domain's table | A cascade from someone else's table is a write into your tables inside their transaction |
 | No network or HSM calls inside a transaction; make them before `run` | The connection and its locks are held for the whole call |
 | Within one domain, take locks in one order (root key, org, project; key before data key) | Two transactions taking the same locks in different orders deadlock |
-| Use `within(tx)` across domains only for legacy code under `src/services/` that already holds a Knex transaction, while it moves to a domain: wrap it with `sealKnexTransaction(trx)` from `lib/legacy-transaction.ts`, whose `afterCommit` runs once that transaction commits | It is a migration bridge; new domain code never calls another domain through `within(tx)` |
+| Legacy code under `src/services/` holding a Knex transaction does not hand it to a domain either: it reads from the domain before opening the transaction, and calls it after the commit. When that code may run inside a caller's transaction, schedule the call with `sealKnexTransaction(trx).afterCommit(...)` from `lib/legacy-transaction.ts` | A domain read on the caller's connection ties the domain's queries to legacy locks; `within(tx)` across domains is a last resort for a migration, never the default |
 
 If an outcome truly has to be atomic across two domains, the boundary is in the wrong place: raise it in
 review and move the data into one domain rather than sharing a transaction.
@@ -270,6 +270,7 @@ Paths are inside `ce/` unless the code is a paid feature.
 | Folder | kebab-case noun | `static-secrets` |
 | Module class | `<Domain>Module`, in `ce/module.ts` | `StaticSecretsModule` |
 | Domain interface (what other code calls) | `T<Domain>Domain`. Inside, a domain has many services; outside, it is one domain | `TStaticSecretsDomain` |
+| A domain passed as a dependency | `<domain>Domain: T<Domain>Domain`, everywhere it is passed, never a shorter or role name (`license`, `usageMeteringService`). A registry another domain registers into is `<domain>Registry` | `licenseDomain: TLicenseDomain`, `licenseRegistry: TLicenseRegistry` |
 | Dependencies of a module or service | `T<Name>Deps`, a named type beside the class, never inline in the constructor | `TKmsCoreDeps`, `TKmsKeyServiceDeps` |
 | Hook type | `T<Domain>Hooks` | `TStaticSecretsHooks` |
 | Store | `<domain>-store.ts` in `data-access/`, exporting `T<Domain>Store` and `build<Domain>Store` | `kms-core-store.ts` |

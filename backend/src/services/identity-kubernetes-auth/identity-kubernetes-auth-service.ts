@@ -116,7 +116,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
@@ -153,7 +153,7 @@ export const identityKubernetesAuthServiceFactory = ({
   keyStore,
   identityAccessTokenDAL,
   permissionService,
-  license,
+  licenseDomain,
   gatewayV2Service,
   gatewayV2DAL,
   kmsService,
@@ -868,7 +868,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     );
 
-    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -1209,7 +1209,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     );
 
-    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId

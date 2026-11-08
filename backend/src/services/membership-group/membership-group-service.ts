@@ -76,13 +76,12 @@ type TMembershipGroupServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  usageMeteringService: TLicenseDomain;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;
@@ -111,10 +110,9 @@ export const membershipGroupServiceFactory = ({
   orgDAL,
   permissionService,
   groupDAL,
-  license,
+  licenseDomain,
   applicationMembershipCleanupService,
   projectDAL,
-  usageMeteringService,
   alertChannelRecipientDAL,
   additionalPrivilegeDAL,
   identityGroupMembershipDAL,
@@ -168,7 +166,7 @@ export const membershipGroupServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      license,
+      licenseDomain,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -183,7 +181,7 @@ export const membershipGroupServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await license.getPlan(scopeData.orgId);
+      const plan = await licenseDomain.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -262,9 +260,9 @@ export const membershipGroupServiceFactory = ({
 
     // Assigning a group to a project brings the group's users + identities into it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
+      licenseDomain.emit(scopeData.orgId, PamIdentities.key);
+      licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
     }
     return { membership, group };
   };
@@ -278,7 +276,7 @@ export const membershipGroupServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await license.getPlan(scopeData.orgId);
+      const plan = await licenseDomain.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -307,7 +305,7 @@ export const membershipGroupServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      license,
+      licenseDomain,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -707,9 +705,9 @@ export const membershipGroupServiceFactory = ({
 
     // Removing a group from a project drops its users + identities from it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emit(existingMembership.scopeOrgId, SecretIdentities.key);
-      usageMeteringService.emit(existingMembership.scopeOrgId, PamIdentities.key);
-      usageMeteringService.emit(existingMembership.scopeOrgId, AgentVaultIdentities.key);
+      licenseDomain.emit(existingMembership.scopeOrgId, SecretIdentities.key);
+      licenseDomain.emit(existingMembership.scopeOrgId, PamIdentities.key);
+      licenseDomain.emit(existingMembership.scopeOrgId, AgentVaultIdentities.key);
     }
     return { membership: membershipDoc, group };
   };

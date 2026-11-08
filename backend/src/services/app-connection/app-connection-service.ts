@@ -232,7 +232,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
@@ -356,7 +356,7 @@ export const appConnectionServiceFactory = ({
   appConnectionDAL,
   permissionService,
   kmsService,
-  license,
+  licenseDomain,
   gatewayV2Service,
   gatewayPoolService,
   gatewayV2DAL,
@@ -614,7 +614,7 @@ export const appConnectionServiceFactory = ({
     }
 
     if (gatewayId) {
-      const plan = await license.getPlan(actor.orgId);
+      const plan = await licenseDomain.getPlan(actor.orgId);
       if (!plan.gateway) {
         throw new BadRequestError({
           message:
@@ -644,7 +644,7 @@ export const appConnectionServiceFactory = ({
     }
 
     await enterpriseAppCheck(
-      license,
+      licenseDomain,
       app,
       actor.orgId,
       "Failed to create app connection due to plan restriction. Upgrade plan to access enterprise app connections."
@@ -811,7 +811,7 @@ export const appConnectionServiceFactory = ({
       throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
     await enterpriseAppCheck(
-      license,
+      licenseDomain,
       appConnection.app as AppConnection,
       actor.orgId,
       "Failed to update app connection due to plan restriction. Upgrade plan to access enterprise app connections."
@@ -857,7 +857,7 @@ export const appConnectionServiceFactory = ({
       );
 
       if (gatewayId) {
-        const plan = await license.getPlan(actor.orgId);
+        const plan = await licenseDomain.getPlan(actor.orgId);
         if (!plan.gateway) {
           throw new BadRequestError({
             message:
@@ -1312,7 +1312,7 @@ export const appConnectionServiceFactory = ({
       });
 
     await enterpriseAppCheck(
-      license,
+      licenseDomain,
       connectionApp,
       actor.orgId,
       "Failed to connect app due to plan restriction. Upgrade plan to access enterprise app connections."
@@ -1514,7 +1514,7 @@ export const appConnectionServiceFactory = ({
     hcvault: hcVaultConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),
     windmill: windmillConnectionService(connectAppConnectionById),
     teamcity: teamcityConnectionService(connectAppConnectionById),
-    oci: ociConnectionService(connectAppConnectionById, license),
+    oci: ociConnectionService(connectAppConnectionById, licenseDomain),
     onepass: onePassConnectionService(connectAppConnectionById),
     keeper: keeperConnectionService(connectAppConnectionById),
     cloud66: cloud66ConnectionService(connectAppConnectionById),
@@ -1548,7 +1548,7 @@ export const appConnectionServiceFactory = ({
     openai: openaiConnectionService(connectAppConnectionById),
     openRouter: openRouterConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
-    chef: chefConnectionService(connectAppConnectionById, license, gatewayV2Service, gatewayPoolService),
+    chef: chefConnectionService(connectAppConnectionById, licenseDomain, gatewayV2Service, gatewayPoolService),
     octopusDeploy: octopusDeployConnectionService(connectAppConnectionById),
     dbt: dbtConnectionService(connectAppConnectionById),
     circleci: circleciConnectionService(connectAppConnectionById),

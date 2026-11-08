@@ -60,14 +60,13 @@ type TMembershipIdentityServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "deleteByIdentityIdsInGroupsOwnedByOrgs">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
-  usageMeteringService: TLicenseDomain;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForResource">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -90,11 +89,10 @@ export const membershipIdentityServiceFactory = ({
   identityDAL,
   identityMetadataDAL,
   identityGroupMembershipDAL,
-  license,
+  licenseDomain,
   applicationMembershipCleanupService,
   projectDAL,
   keyStore,
-  usageMeteringService,
   alertService,
   identityAccessTokenService,
   eventEmitter,
@@ -142,7 +140,7 @@ export const membershipIdentityServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      license,
+      licenseDomain,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -156,7 +154,7 @@ export const membershipIdentityServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await license.getPlan(scopeData.orgId);
+      const plan = await licenseDomain.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -254,9 +252,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
+      licenseDomain.emit(scopeData.orgId, PamIdentities.key);
+      licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
     }
     return { membership };
   };
@@ -270,7 +268,7 @@ export const membershipIdentityServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await license.getPlan(scopeData.orgId);
+      const plan = await licenseDomain.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -299,7 +297,7 @@ export const membershipIdentityServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      license,
+      licenseDomain,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -556,9 +554,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
-    usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
+    licenseDomain.emit(scopeData.orgId, PamIdentities.key);
+    licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
 
     if (needsRevocationBump && externalTx) {
       return {

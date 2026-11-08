@@ -12,17 +12,17 @@ describe("OrganizationsProjectsModule usage counters", () => {
   const h = setupIntegration();
 
   const build = () => {
-    const license = new FakeLicenseRegistry();
-    return { module: new OrganizationsProjectsModule({ db: h.db, license }), license };
+    const licenseRegistry = new FakeLicenseRegistry();
+    return { module: new OrganizationsProjectsModule({ db: h.db, licenseRegistry }), licenseRegistry };
   };
 
   test("should count only accepted, non-ghost members in a Secret Manager or KMS project or in none, each once", async () => {
     // Setup
     const { rootOrgId } = await seedBillableActors(h.db);
-    const { license } = build();
+    const { licenseRegistry } = build();
 
     // Action
-    const users = await license.counter(UserIdentities.key).count(rootOrgId);
+    const users = await licenseRegistry.counter(UserIdentities.key).count(rootOrgId);
 
     // Assert
     expect(users).toBe(5);
@@ -31,10 +31,10 @@ describe("OrganizationsProjectsModule usage counters", () => {
   test("should count members and identities together, a sub-org's identities into its root", async () => {
     // Setup
     const { rootOrgId } = await seedBillableActors(h.db);
-    const { license } = build();
+    const { licenseRegistry } = build();
 
     // Action
-    const total = await license.counter(IdentitiesMeter.key).count(rootOrgId);
+    const total = await licenseRegistry.counter(IdentitiesMeter.key).count(rootOrgId);
 
     // Assert
     expect(total).toBe(9);
@@ -43,10 +43,10 @@ describe("OrganizationsProjectsModule usage counters", () => {
   test("should count nothing for an org with no members", async () => {
     // Setup
     await seedBillableActors(h.db);
-    const { license } = build();
+    const { licenseRegistry } = build();
 
     // Action
-    const total = await license.counter(IdentitiesMeter.key).count(randomUUID());
+    const total = await licenseRegistry.counter(IdentitiesMeter.key).count(randomUUID());
 
     // Assert
     expect(total).toBe(0);
@@ -56,13 +56,13 @@ describe("OrganizationsProjectsModule usage counters", () => {
     // Setup
     const first = await seedBillableActors(h.db);
     const second = await seedBillableActors(h.db);
-    const { license } = build();
+    const { licenseRegistry } = build();
     const perOrg =
-      (await license.counter(IdentitiesMeter.key).count(first.rootOrgId)) +
-      (await license.counter(IdentitiesMeter.key).count(second.rootOrgId));
+      (await licenseRegistry.counter(IdentitiesMeter.key).count(first.rootOrgId)) +
+      (await licenseRegistry.counter(IdentitiesMeter.key).count(second.rootOrgId));
 
     // Action
-    const instance = await license.counter(IdentitiesMeter.key).count(null);
+    const instance = await licenseRegistry.counter(IdentitiesMeter.key).count(null);
 
     // Assert
     expect(instance).toBeGreaterThanOrEqual(perOrg);

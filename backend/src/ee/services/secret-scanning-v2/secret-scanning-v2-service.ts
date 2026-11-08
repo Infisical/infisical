@@ -83,7 +83,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   secretScanningV2Queue: Pick<
     TSecretScanningV2QueueServiceFactory,
     "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"
@@ -100,7 +100,7 @@ export const secretScanningV2ServiceFactory = ({
   secretScanningV2DAL,
   permissionService,
   appConnectionService,
-  license,
+  licenseDomain,
   secretScanningV2Queue,
   appConnectionDAL,
   kmsService,
@@ -140,7 +140,7 @@ export const secretScanningV2ServiceFactory = ({
     projectId: string,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -195,7 +195,7 @@ export const secretScanningV2ServiceFactory = ({
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -236,7 +236,7 @@ export const secretScanningV2ServiceFactory = ({
     { type, sourceName, projectId }: TFindSecretScanningDataSourceByNameDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -340,7 +340,7 @@ export const secretScanningV2ServiceFactory = ({
       isAutoScanEnabled: isScanNewCommitsEnabled
     };
 
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -454,7 +454,7 @@ export const secretScanningV2ServiceFactory = ({
       isAutoScanEnabled: isScanNewCommitsEnabled
     };
 
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -599,7 +599,7 @@ export const secretScanningV2ServiceFactory = ({
     { type, dataSourceId }: TDeleteSecretScanningDataSourceDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -676,7 +676,7 @@ export const secretScanningV2ServiceFactory = ({
     { type, dataSourceId, resourceId }: TTriggerSecretScanningDataSourceDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -745,7 +745,7 @@ export const secretScanningV2ServiceFactory = ({
     { type, dataSourceId, resourceName }: TAddAllSecretScanningResourcesDTO & { resourceName?: string },
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -987,7 +987,7 @@ export const secretScanningV2ServiceFactory = ({
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -1117,7 +1117,7 @@ export const secretScanningV2ServiceFactory = ({
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -1160,7 +1160,7 @@ export const secretScanningV2ServiceFactory = ({
     { type, dataSourceId, ...filter }: TFindSecretScanningDataSourceByIdDTO & TListSecretScanningResourcesFilter,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -1210,7 +1210,7 @@ export const secretScanningV2ServiceFactory = ({
     { type, dataSourceId }: TFindSecretScanningDataSourceByIdDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -1250,7 +1250,7 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const getSecretScanningUnresolvedFindingsCountByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -1282,7 +1282,7 @@ export const secretScanningV2ServiceFactory = ({
     filter: TListSecretScanningFindingsFilter,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -1313,7 +1313,7 @@ export const secretScanningV2ServiceFactory = ({
     { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -1371,7 +1371,7 @@ export const secretScanningV2ServiceFactory = ({
   };
 
   const findSecretScanningConfigByProjectId = async (projectId: string, actor: OrgServiceActor) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({
@@ -1406,7 +1406,7 @@ export const secretScanningV2ServiceFactory = ({
     { projectId, content }: TUpsertSecretScanningConfigDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretScanning)
       throw new BadRequestError({

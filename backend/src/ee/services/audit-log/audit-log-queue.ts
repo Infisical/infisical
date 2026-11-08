@@ -30,7 +30,7 @@ type TAuditLogQueueServiceFactoryDep = {
   auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "enqueueForLogs">;
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
   clickhouseClient: ClickHouseClient | null;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim" | "acquireLock">;
@@ -76,7 +76,7 @@ export const auditLogQueueServiceFactory = async ({
   auditLogDAL,
   queueService,
   projectDAL,
-  license,
+  licenseDomain,
   auditLogSettingsService,
   auditLogStreamOutboxService,
   clickhouseClient,
@@ -116,7 +116,7 @@ export const auditLogQueueServiceFactory = async ({
       if (!isAuditLogEventEnabled(settings, data.event.type, projectId)) return null;
     }
 
-    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => license.getPlan(orgId));
+    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseDomain.getPlan(orgId));
     if (!plan || !hasAuditLogRetention(plan)) return null;
 
     const createdAt = new Date();

@@ -56,7 +56,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  usageMeteringService: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 } & TClearPersonalValuesDeps;
 
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
@@ -136,7 +136,7 @@ export const agentVaultMembershipServiceFactory = ({
   userAliasDAL,
   orgDAL,
   permissionService,
-  usageMeteringService,
+  licenseDomain,
   agentVaultPersonalValueDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL
@@ -524,7 +524,7 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.created.length) usageMeteringService.emit(ctx.actorOrgId, AgentVaultIdentities.key);
+    if (written.created.length) licenseDomain.emit(ctx.actorOrgId, AgentVaultIdentities.key);
     return { members: written.created, skipped: written.skipped };
   };
 
@@ -713,7 +713,7 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.removed.length) usageMeteringService.emit(ctx.actorOrgId, AgentVaultIdentities.key);
+    if (written.removed.length) licenseDomain.emit(ctx.actorOrgId, AgentVaultIdentities.key);
     return { members: written.removed, skipped: written.skipped };
   };
   return {

@@ -180,7 +180,7 @@ type TCertificateRenewalServiceFactoryDep = {
     "findAllByProfileId" | "findOneByApplicationAndProfile"
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   quotaDeps: TCertificateQuotaDeps;
   recordQuotaUsage: (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => Promise<void>;
   resolveApplicationIdForProfile: TResolveApplicationIdForProfile;
@@ -246,7 +246,7 @@ export const certificateRenewalServiceFactory = ({
   pkiApplicationDAL,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
-  license,
+  licenseDomain,
   quotaDeps,
   recordQuotaUsage,
   resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
@@ -1030,7 +1030,7 @@ export const certificateRenewalServiceFactory = ({
     if (!requested.length) return;
 
     for await (const keyAlgorithm of requested) {
-      await validatePqcLicense({ keyAlgorithm, projectId: originalCert.projectId, projectDAL, license });
+      await validatePqcLicense({ keyAlgorithm, projectId: originalCert.projectId, projectDAL, licenseDomain });
     }
   };
 
@@ -1076,7 +1076,7 @@ export const certificateRenewalServiceFactory = ({
       altNames: renewedAltNames,
       projectId: originalCert.projectId,
       projectDAL,
-      license,
+      licenseDomain,
       quotaDeps
     });
   };

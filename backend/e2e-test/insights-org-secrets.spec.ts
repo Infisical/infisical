@@ -82,12 +82,12 @@ const projectList = Object.values(projects);
 
 const DYNAMIC_SECRET_ID = randomUUID();
 
-const { permissionService, license, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
+const { permissionService, licenseDomain, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
 
 const insightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
   permissionService,
-  license,
+  licenseDomain,
   ...usageInsightsDepStubs,
   insightsDAL: insightsDALFactory(testDb),
   keyStore: passThroughKeyStore
@@ -413,7 +413,7 @@ const dupInsightsService = insightsServiceFactory({
       hasRole: () => false
     })
   } as unknown as TInsightsServiceFactoryDep["permissionService"],
-  license: dupGate.license,
+  licenseDomain: dupGate.licenseDomain,
   orgDAL: { ...usageInsightsDepStubs.orgDAL, findById: orgDALFactory(testDb).findById },
   // No secret here carries an encrypted value, so the decryptor is never invoked.
   kmsService: {

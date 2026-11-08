@@ -5,8 +5,7 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
-import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
-import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { assertSeatAvailable, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -117,7 +116,7 @@ type TOidcConfigServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -143,7 +142,6 @@ type TOidcConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: TLicenseDomain;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -157,7 +155,7 @@ export const oidcConfigServiceFactory = ({
   orgDAL,
   userDAL,
   userAliasDAL,
-  license,
+  licenseDomain,
   additionalPrivilegeDAL,
   permissionService,
   tokenService,
@@ -178,7 +176,6 @@ export const oidcConfigServiceFactory = ({
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService,
   pamAccountDAL,
   pamSessionDAL,
   gatewayV2Service,
@@ -340,7 +337,8 @@ export const oidcConfigServiceFactory = ({
     } else {
       let isNewUser = false;
       let adoptedFromUsername: string | null = null;
-      const identityLimit = Plan.restore(await license.getPlan(orgId)).enforcedIdentityLimit;
+      const identityLimit = Plan.restore(await licenseDomain.getPlan(orgId)).enforcedIdentityLimit;
+      const seatUsage = identityLimit ? await licenseDomain.getSeatUsage(orgId) : null;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -413,11 +411,7 @@ export const oidcConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await license.within(sealKnexTransaction(tx)).assertSeatAvailable({
-            orgId,
-            identityLimit,
-            via: UserAliasType.OIDC
-          });
+          if (seatUsage) assertSeatAvailable(seatUsage, { identityLimit, via: UserAliasType.OIDC });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
@@ -504,7 +498,7 @@ export const oidcConfigServiceFactory = ({
           projectKeyDAL,
           projectDAL,
           projectBotDAL,
-          usageMeteringService
+          licenseDomain
         });
       }
 
@@ -539,7 +533,7 @@ export const oidcConfigServiceFactory = ({
           groupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
-          usageMeteringService,
+          licenseDomain,
           alertChannelRecipientDAL,
           eventEmitter,
           membershipDAL,
@@ -571,7 +565,7 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
-    await license.syncSeats(organization.id);
+    await licenseDomain.syncSeats(organization.id);
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
@@ -670,7 +664,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const plan = await license.getPlan(org.id);
+    const plan = await licenseDomain.getPlan(org.id);
     if (!plan.oidcSSO)
       throw new BadRequestError({
         message:
@@ -800,7 +794,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const plan = await license.getPlan(org.id);
+    const plan = await licenseDomain.getPlan(org.id);
     if (!plan.oidcSSO)
       throw new BadRequestError({
         message:

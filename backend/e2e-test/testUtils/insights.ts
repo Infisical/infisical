@@ -131,7 +131,7 @@ export const buildOrgInsightsGateStubs = () => {
         hasRole: () => false
       })
     } as TInsightsServiceFactoryDep["permissionService"],
-    license: Object.assign(new FakeLicenseDomain(), {
+    licenseDomain: Object.assign(new FakeLicenseDomain(), {
       getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TFeatureSet
     }),
     setCanReadInsights: (canRead: boolean) => {

@@ -56,7 +56,7 @@ type TIdentityOciAuthServiceFactoryDep = {
   identityOciAuthDAL: Pick<TIdentityOciAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
@@ -77,7 +77,7 @@ export const identityOciAuthServiceFactory = ({
   identityOciAuthDAL,
   membershipIdentityDAL,
   keyStore,
-  license,
+  licenseDomain,
   permissionService,
   orgDAL,
   identityAccessTokenService,
@@ -337,7 +337,7 @@ export const identityOciAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -444,7 +444,7 @@ export const identityOciAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await license.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&

@@ -139,7 +139,7 @@ type TSecretServiceFactoryDep = {
     "generateSecretApprovalRequest" | "generateSecretApprovalRequestV2Bridge"
   >;
   secretApprovalRequestCreationFns: Pick<TSecretApprovalRequestCreationFnsFactory, "createSecretApprovalRequest">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "find">;
@@ -168,7 +168,7 @@ export const secretServiceFactory = ({
   secretApprovalRequestCreationFns,
   secretV2BridgeService,
   secretApprovalRequestService,
-  license,
+  licenseDomain,
   reminderService,
   secretVersionV2DAL,
   secretV2BridgeDAL,
@@ -1366,7 +1366,7 @@ export const secretServiceFactory = ({
 
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
     const { environment, secretPath, secretName, projectId, includeAllEntities } = dto;
-    const plan = await license.getPlan(dto.actorOrgId);
+    const plan = await licenseDomain.getPlan(dto.actorOrgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Failed to fetch secret access list due to plan restriction. Upgrade your plan."

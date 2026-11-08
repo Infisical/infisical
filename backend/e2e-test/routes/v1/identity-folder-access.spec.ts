@@ -193,7 +193,7 @@ describe("Identity folder access CRUD", () => {
     let secondGroup: { id: string; name: string; slug: string; orgId: string };
     let removalDeps: Omit<
       Parameters<typeof removeIdentitiesFromGroup>[0],
-      "group" | "identityIds" | "usageMeteringService"
+      "group" | "identityIds" | "licenseDomain"
     >;
 
     const createProjectGroup = async () => {

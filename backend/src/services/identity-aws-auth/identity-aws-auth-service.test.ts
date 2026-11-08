@@ -90,7 +90,7 @@ const makeService = (awsAuth: Partial<TAwsAuthRow> = {}, authMethods: string[] =
     keyStore: { setItemWithExpiryNX: vi.fn().mockResolvedValue(null) } as never,
     identityAccessTokenDAL: {} as never,
     permissionService: {} as never,
-    license: new FakeLicenseDomain().setPlan(ORG_ID, { ipAllowlisting: true as false }),
+    licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, { ipAllowlisting: true as false }),
     identityAccessTokenService: {
       issueIdentityAccessToken,
       invalidateTrustedIpsCache: vi.fn().mockResolvedValue(undefined)

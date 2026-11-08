@@ -40,7 +40,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
@@ -58,7 +58,7 @@ export const certificateEstV3ServiceFactory = ({
   certificateDAL,
   projectDAL,
   kmsService,
-  license,
+  licenseDomain,
   certificateProfileDAL,
   estEnrollmentConfigDAL,
   certificatePolicyDAL,
@@ -229,7 +229,7 @@ export const certificateEstV3ServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await license.getPlan(project.orgId);
+    const plan = await licenseDomain.getPlan(project.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message:
@@ -323,7 +323,7 @@ export const certificateEstV3ServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await license.getPlan(project.orgId);
+    const plan = await licenseDomain.getPlan(project.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message:
@@ -491,7 +491,7 @@ export const certificateEstV3ServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await license.getPlan(project.orgId);
+    const plan = await licenseDomain.getPlan(project.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to perform EST operation - caCerts due to plan restriction. Upgrade to the Enterprise plan."

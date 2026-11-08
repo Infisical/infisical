@@ -98,8 +98,8 @@ type TPkiScepServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  license: TLicenseDomain;
-  certManager: TCertManagerDomain;
+  licenseDomain: TLicenseDomain;
+  certManagerDomain: TCertManagerDomain;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
@@ -131,8 +131,8 @@ export const pkiScepServiceFactory = ({
   kmsService,
   appConnectionDAL,
   keyStore,
-  license,
-  certManager,
+  licenseDomain,
+  certManagerDomain,
   certificatePolicyDAL,
   certificatePolicyService,
   certificateRequestService,
@@ -194,7 +194,7 @@ export const pkiScepServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await license.getPlan(project.orgId);
+    const plan = await licenseDomain.getPlan(project.orgId);
     if (!plan.pkiScep) {
       throw new BadRequestError({
         message: "Failed to perform SCEP operation due to plan restriction. Upgrade to the Enterprise plan."
@@ -965,8 +965,8 @@ export const pkiScepServiceFactory = ({
       altNames: (certRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      license,
-      quotaDeps: { projectDAL, license, certManager, keyStore }
+      licenseDomain,
+      quotaDeps: { projectDAL, licenseDomain, certManagerDomain, keyStore }
     });
 
     const newCertRequest = await certificateRequestService.createCertificateRequest({
@@ -1299,7 +1299,7 @@ export const pkiScepServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await license.getPlan(project.orgId);
+    const plan = await licenseDomain.getPlan(project.orgId);
     if (!plan.pkiScep) {
       throw new BadRequestError({
         message: "Failed to generate SCEP challenge due to plan restriction. Upgrade to the Enterprise plan."

@@ -91,7 +91,7 @@ const makeService = (gcpAuth: Partial<TGcpAuthRow> = {}, authMethods: string[] =
     keyStore: { setItemWithExpiryNX: vi.fn().mockResolvedValue(null) } as never,
     identityAccessTokenDAL: {} as never,
     permissionService: {} as never,
-    license: new FakeLicenseDomain(),
+    licenseDomain: new FakeLicenseDomain(),
     identityAccessTokenService: { issueIdentityAccessToken } as never,
     eventEmitter: { emit: vi.fn() } as never
   });

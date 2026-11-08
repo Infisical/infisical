@@ -68,7 +68,7 @@ type TProjectMembershipServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
@@ -83,7 +83,6 @@ type TProjectMembershipServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships" | "cleanupUsersApplicationMemberships"
   >;
-  usageMeteringService: TLicenseDomain;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
 };
 
@@ -112,7 +111,7 @@ export const projectMembershipServiceFactory = ({
   orgDAL,
   membershipRoleDAL,
   applicationMembershipCleanupService,
-  usageMeteringService,
+  licenseDomain,
   alertChannelRecipientDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
@@ -436,9 +435,9 @@ export const projectMembershipServiceFactory = ({
         }
       });
     }
-    usageMeteringService.emit(project.orgId, SecretIdentities.key);
-    usageMeteringService.emit(project.orgId, PamIdentities.key);
-    usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(project.orgId, SecretIdentities.key);
+    licenseDomain.emit(project.orgId, PamIdentities.key);
+    licenseDomain.emit(project.orgId, AgentVaultIdentities.key);
     return orgMembers;
   };
 
@@ -600,9 +599,9 @@ export const projectMembershipServiceFactory = ({
       ? await performDelete(externalTx)
       : await membershipUserDAL.transaction(performDelete);
 
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, PamIdentities.key);
+    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
     return memberships;
   };
 
@@ -695,9 +694,9 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "Failed to leave project" });
     }
 
-    usageMeteringService.emit(project.orgId, SecretIdentities.key);
-    usageMeteringService.emit(project.orgId, PamIdentities.key);
-    usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(project.orgId, SecretIdentities.key);
+    licenseDomain.emit(project.orgId, PamIdentities.key);
+    licenseDomain.emit(project.orgId, AgentVaultIdentities.key);
     return deletedMembership;
   };
 

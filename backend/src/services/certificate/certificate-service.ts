@@ -174,10 +174,9 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
-  license: TLicenseDomain;
-  certManager: TCertManagerDomain;
+  licenseDomain: TLicenseDomain;
+  certManagerDomain: TCertManagerDomain;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  usageMeteringService: TLicenseDomain;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
 };
@@ -212,10 +211,9 @@ export const certificateServiceFactory = ({
   apiEnrollmentConfigDAL,
   digicertFns,
   certificatePolicyService,
-  license,
-  certManager,
+  licenseDomain,
+  certManagerDomain,
   keyStore,
-  usageMeteringService,
   caKeySourceService,
   internalCertificateAuthorityDAL,
   signerDAL,
@@ -609,8 +607,8 @@ export const certificateServiceFactory = ({
       auditLogInfo
     );
 
-    usageMeteringService.emit(actorOrgId, ActiveCerts.key);
-    usageMeteringService.emit(actorOrgId, WildcardCerts.key);
+    licenseDomain.emit(actorOrgId, ActiveCerts.key);
+    licenseDomain.emit(actorOrgId, WildcardCerts.key);
 
     return {
       deletedCert,
@@ -741,7 +739,7 @@ export const certificateServiceFactory = ({
         keyAlgorithm: ca.internalCa.keyAlgorithm,
         projectId: ca.projectId,
         projectDAL,
-        license
+        licenseDomain
       });
     }
 
@@ -792,8 +790,8 @@ export const certificateServiceFactory = ({
       });
     }
 
-    usageMeteringService.emit(actorOrgId, ActiveCerts.key);
-    usageMeteringService.emit(actorOrgId, WildcardCerts.key);
+    licenseDomain.emit(actorOrgId, ActiveCerts.key);
+    licenseDomain.emit(actorOrgId, WildcardCerts.key);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -1402,7 +1400,7 @@ export const certificateServiceFactory = ({
       projectId,
       commonName,
       altNames,
-      deps: { projectDAL, license, certManager, keyStore }
+      deps: { projectDAL, licenseDomain, certManagerDomain, keyStore }
     });
 
     let renewBeforeDays: number | undefined;
@@ -1489,8 +1487,8 @@ export const certificateServiceFactory = ({
 
     if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
-    usageMeteringService.emit(actorOrgId, ActiveCerts.key);
-    usageMeteringService.emit(actorOrgId, WildcardCerts.key);
+    licenseDomain.emit(actorOrgId, ActiveCerts.key);
+    licenseDomain.emit(actorOrgId, WildcardCerts.key);
 
     if (cert.id && cert.applicationId) {
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);

@@ -2,7 +2,6 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
-import { TTransaction, unsealTransaction } from "@app/domains/lib/transaction-runner";
 import { DatabaseError } from "@app/lib/errors";
 
 // A user/identity occupies a billable seat only when it is (a) an org member, and (b) either a member
@@ -23,17 +22,14 @@ export class BillableActorDataAccess {
   constructor(private readonly db: TDbClient) {}
 
   // Billable users and machine identities. A null orgId counts the whole instance.
-  async countBillableOrgActors(
-    orgId: string | null,
-    tx?: TTransaction
-  ): Promise<{ users: number; identities: number }> {
+  async countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }> {
     try {
-      const knex = this.connection(tx);
+      const knex = this.db.replicaNode();
 
-      const row = (await this.withBillableScopes(orgId, tx)
-        .with("counted_members", this.countedMembersCte(tx))
-        .with("projectless_users", this.projectlessUsersCte(tx))
-        .with("projectless_identities", this.projectlessIdentitiesCte(tx))
+      const row = (await this.withBillableScopes(orgId)
+        .with("counted_members", this.countedMembersCte())
+        .with("projectless_users", this.projectlessUsersCte())
+        .with("projectless_identities", this.projectlessIdentitiesCte())
         .select(
           knex.raw("(select count(*) from counted_members where kind = 'u') as counted_users"),
           knex.raw("(select count(*) from counted_members where kind = 'i') as counted_identities"),
@@ -63,16 +59,13 @@ export class BillableActorDataAccess {
   // membership would count one identity several times; identities.projectId is a single column, so
   // grouping on ownership partitions the billed total exactly once across the tree.
   // orgId null means the whole instance, matching countBillableOrgActors and the meter it feeds.
-  async getBillableIdentityOwnershipBreakdown(
-    orgId: string | null,
-    tx?: TTransaction
-  ): Promise<TIdentityOwnershipRow[]> {
+  async getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnershipRow[]> {
     try {
-      const knex = this.connection(tx);
+      const knex = this.db.replicaNode();
 
-      const rows = (await this.withBillableScopes(orgId, tx)
-        .with("counted_members", this.countedMembersCte(tx))
-        .with("projectless_identities", this.projectlessIdentitiesCte(tx))
+      const rows = (await this.withBillableScopes(orgId)
+        .with("counted_members", this.countedMembersCte())
+        .with("projectless_identities", this.projectlessIdentitiesCte())
         .with("billable_identities", (qb) => {
           void qb
             .select("entityId as id")
@@ -144,15 +137,10 @@ export class BillableActorDataAccess {
     return rows.map((row) => ({ orgId: row.orgId, projectId: row.projectId, count: Number(row.count) }));
   }
 
-  // A seat check inside a caller's transaction must see that transaction's uncommitted rows.
-  private connection(tx?: TTransaction): Knex {
-    return tx ? unsealTransaction(tx) : this.db.replicaNode();
-  }
-
   // The orgs in scope (the org and its sub-orgs, or every org), their live projects, their accepted
   // non-ghost users, and their identities.
-  private withBillableScopes(orgId: string | null, tx?: TTransaction) {
-    const knex = this.connection(tx);
+  private withBillableScopes(orgId: string | null) {
+    const knex = this.db.replicaNode();
     const orgIds = orgId
       ? knex
           .select("id")
@@ -199,8 +187,8 @@ export class BillableActorDataAccess {
 
   // Actors present in at least one counted (SM/KMS) project, direct or via a group. UNION dedupes
   // across the four sources, and kind ('u'/'i') lets the caller split by actor type.
-  private countedMembersCte(tx?: TTransaction) {
-    const knex = this.connection(tx);
+  private countedMembersCte() {
+    const knex = this.db.replicaNode();
     return (qb: Knex.QueryBuilder) => {
       void qb.distinct("kind", "entityId").from(
         knex
@@ -249,8 +237,8 @@ export class BillableActorDataAccess {
   }
 
   // Org users with no project membership at all (direct or via a group) count as present in the org.
-  private projectlessUsersCte(tx?: TTransaction) {
-    const knex = this.connection(tx);
+  private projectlessUsersCte() {
+    const knex = this.db.replicaNode();
     return (qb: Knex.QueryBuilder) => {
       void qb
         .from({ ou: "org_users" })
@@ -274,8 +262,8 @@ export class BillableActorDataAccess {
     };
   }
 
-  private projectlessIdentitiesCte(tx?: TTransaction) {
-    const knex = this.connection(tx);
+  private projectlessIdentitiesCte() {
+    const knex = this.db.replicaNode();
     return (qb: Knex.QueryBuilder) => {
       void qb
         .from({ oi: "org_identities" })

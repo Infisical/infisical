@@ -46,5 +46,5 @@ export const buildLicense = async ({
   module.registry.registerOrganizations(organizations);
   counters.forEach((counter) => module.registry.registerUsageCounter(counter));
   await module.start();
-  return { module, license: module.service, hooks, keyStore, queue, registeredCrons };
+  return { module, licenseDomain: module.service, hooks, keyStore, queue, registeredCrons };
 };

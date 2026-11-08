@@ -151,7 +151,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   folderDAL: Pick<
@@ -249,7 +249,7 @@ export const secretRotationV2ServiceFactory = ({
   permissionService,
   appConnectionService,
   projectBotService,
-  license,
+  licenseDomain,
   kmsService,
   auditLogService,
   secretQueueService,
@@ -390,7 +390,7 @@ export const secretRotationV2ServiceFactory = ({
     { projectId, type }: TListSecretRotationsV2ByProjectId,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -426,7 +426,7 @@ export const secretRotationV2ServiceFactory = ({
   };
 
   const findSecretRotationById = async ({ type, rotationId }: TFindSecretRotationV2ByIdDTO, actor: OrgServiceActor) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -468,7 +468,7 @@ export const secretRotationV2ServiceFactory = ({
     { type, rotationId }: TFindSecretRotationV2ByIdDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -520,7 +520,7 @@ export const secretRotationV2ServiceFactory = ({
     { type, rotationName, secretPath, environment, projectId }: TFindSecretRotationV2ByNameDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -581,7 +581,7 @@ export const secretRotationV2ServiceFactory = ({
     }: TCreateSecretRotationV2DTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -804,7 +804,7 @@ export const secretRotationV2ServiceFactory = ({
   };
 
   const updateSecretRotation = async (dto: TUpdateSecretRotationV2DTO, actor: OrgServiceActor) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -1074,7 +1074,7 @@ export const secretRotationV2ServiceFactory = ({
     { type, rotationId, destinationEnvironment, destinationSecretPath, overwriteDestination }: TMoveSecretRotationV2DTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -1639,7 +1639,7 @@ export const secretRotationV2ServiceFactory = ({
     { rotationId, type, auditLogInfo }: TRotateSecretRotationV2,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -1699,7 +1699,7 @@ export const secretRotationV2ServiceFactory = ({
     { rotationId, type, auditLogInfo }: TCheckSecretRotationV2Credentials,
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -2064,7 +2064,7 @@ export const secretRotationV2ServiceFactory = ({
     },
     actor: OrgServiceActor
   ) => {
-    const plan = await license.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.orgId);
 
     if (!plan.secretRotation)
       throw new BadRequestError({

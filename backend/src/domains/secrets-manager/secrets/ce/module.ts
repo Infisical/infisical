@@ -3,19 +3,20 @@ import { SecretIdentities, TLicenseRegistry } from "@app/domains/platform/licens
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 
 export type TSecretsDeps = {
-  organizationsProjects: TOrganizationsProjectsDomain;
-  license: TLicenseRegistry;
+  organizationsProjectsDomain: TOrganizationsProjectsDomain;
+  licenseRegistry: TLicenseRegistry;
 };
 
 // Holds only its usage counter for now; it grows as Secret Manager moves into a domain.
 export class SecretsModule {
   readonly name = "secrets";
 
-  constructor({ organizationsProjects, license }: TSecretsDeps) {
-    license.registerUsageCounter({
+  constructor({ organizationsProjectsDomain, licenseRegistry }: TSecretsDeps) {
+    licenseRegistry.registerUsageCounter({
       feature: SecretIdentities,
       scope: "org",
-      count: (orgId) => organizationsProjects.countProjectIdentities(ProjectType.SecretManager, orgId ?? undefined)
+      count: (orgId) =>
+        organizationsProjectsDomain.countProjectIdentities(ProjectType.SecretManager, orgId ?? undefined)
     });
   }
 }

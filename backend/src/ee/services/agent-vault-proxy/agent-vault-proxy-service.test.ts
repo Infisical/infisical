@@ -122,7 +122,7 @@ const setup = (
         }) as never
     },
     kmsService: { createCipherPairWithDataKey },
-    license: new FakeLicenseDomain(),
+    licenseDomain: new FakeLicenseDomain(),
     resourceAuthMethodService: {} as never,
     agentVaultOauthService: {
       refreshServiceToken: refreshServiceToken as never,
@@ -416,7 +416,7 @@ describe("resolve for a session on a user's behalf", () => {
         createCipherPairWithDataKey: async () =>
           ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
       },
-      license: new FakeLicenseDomain(),
+      licenseDomain: new FakeLicenseDomain(),
       resourceAuthMethodService: {} as never,
       agentVaultOauthService: {
         refreshServiceToken: vi.fn() as never,

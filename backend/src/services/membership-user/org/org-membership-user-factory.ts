@@ -39,7 +39,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -52,7 +52,7 @@ export const newOrgMembershipUserFactory = ({
   userDAL,
   orgDAL,
   smtpService,
-  license,
+  licenseDomain,
   membershipUserDAL,
   emailDomainDAL,
   oidcConfigDAL,
@@ -128,9 +128,9 @@ export const newOrgMembershipUserFactory = ({
       });
     }
 
-    const identityLimit = Plan.restore(await license.getPlan(dto.permission.orgId)).enforcedIdentityLimit;
+    const identityLimit = Plan.restore(await licenseDomain.getPlan(dto.permission.orgId)).enforcedIdentityLimit;
     if (identityLimit) {
-      const { identitiesUsed } = await license.getSeatUsage(dto.permission.orgId);
+      const { identitiesUsed } = await licenseDomain.getSeatUsage(dto.permission.orgId);
       if (identitiesUsed >= identityLimit) {
         throw new BadRequestError({
           name: "InviteUser",

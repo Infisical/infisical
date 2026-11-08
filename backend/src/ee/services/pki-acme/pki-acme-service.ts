@@ -179,8 +179,8 @@ type TPkiAcmeServiceFactoryDep = {
     "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  license: TLicenseDomain;
-  certManager: TCertManagerDomain;
+  licenseDomain: TLicenseDomain;
+  certManagerDomain: TCertManagerDomain;
   kmsService: Pick<
     TKmsServiceFactory,
     "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
@@ -213,8 +213,8 @@ export const pkiAcmeServiceFactory = ({
   acmeOrderAuthDAL,
   acmeChallengeDAL,
   keyStore,
-  license,
-  certManager,
+  licenseDomain,
+  certManagerDomain,
   kmsService,
   certificateV3Service,
   certificatePolicyService,
@@ -1123,8 +1123,8 @@ export const pkiAcmeServiceFactory = ({
       altNames: (updatedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      license,
-      quotaDeps: { projectDAL, license, certManager, keyStore }
+      licenseDomain,
+      quotaDeps: { projectDAL, licenseDomain, certManagerDomain, keyStore }
     });
 
     const certRequest = await certificateRequestService.createCertificateRequest({

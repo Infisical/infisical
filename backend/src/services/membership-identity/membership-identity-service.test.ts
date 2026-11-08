@@ -56,7 +56,7 @@ const createService = ({
   const revoked = [{ orgId: SUB_ORG_ID, identityId: IDENTITY_ID, projectIds: ["project-1"], resources: [] }];
   const revokeActorsInOrgs = vi.fn().mockResolvedValue({ revoked, sendPamCancellations: () => {} });
   const createAuditLog = vi.fn().mockResolvedValue(undefined);
-  const license = new FakeLicenseDomain();
+  const licenseDomain = new FakeLicenseDomain();
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
@@ -109,13 +109,12 @@ const createService = ({
     } as never,
     identityMetadataDAL: { delete: deleteMetadata },
     identityGroupMembershipDAL: { deleteByIdentityIdsInGroupsOwnedByOrgs },
-    license,
+    licenseDomain,
     applicationMembershipCleanupService: { cleanupActorApplicationMemberships: vi.fn() } as never,
     projectDAL: {
       findById: vi.fn().mockResolvedValue(projectType ? { id: "project-1", type: projectType } : undefined)
     } as never,
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
-    usageMeteringService: license,
     alertService: { deleteAlertsForResource } as never,
     identityAccessTokenService: {
       insertOrgMembershipRevocationMarker,

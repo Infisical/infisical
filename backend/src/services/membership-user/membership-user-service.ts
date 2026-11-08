@@ -86,7 +86,7 @@ type TMembershipUserServiceFactoryDep = {
     | "getOrgPermissionByRoles"
     | "getResourcePermission"
   >;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   userAliasDAL: TUserAliasDALFactory;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
@@ -103,7 +103,6 @@ type TMembershipUserServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
-  usageMeteringService: TLicenseDomain;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
 };
@@ -118,7 +117,7 @@ export const membershipUserServiceFactory = ({
   permissionService,
   orgDAL,
   userAliasDAL,
-  license,
+  licenseDomain,
   smtpService,
   tokenService,
   userGroupMembershipDAL,
@@ -131,14 +130,13 @@ export const membershipUserServiceFactory = ({
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
-  usageMeteringService,
   alertChannelRecipientDAL,
   eventEmitter
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
       permissionService,
-      license,
+      licenseDomain,
       smtpService,
       orgDAL,
       tokenService,
@@ -307,7 +305,7 @@ export const membershipUserServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      license,
+      licenseDomain,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -372,7 +370,7 @@ export const membershipUserServiceFactory = ({
     const customInputRoles = rolesToUse.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await license.getPlan(scopeData.orgId);
+      const plan = await licenseDomain.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -441,9 +439,9 @@ export const membershipUserServiceFactory = ({
 
     // Adding a user to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
-      usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
+      licenseDomain.emit(scopeData.orgId, PamIdentities.key);
+      licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
     }
     return { memberships: membershipDoc, signUpTokens };
   };
@@ -457,7 +455,7 @@ export const membershipUserServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await license.getPlan(scopeData.orgId);
+      const plan = await licenseDomain.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -486,7 +484,7 @@ export const membershipUserServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      license,
+      licenseDomain,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -623,7 +621,7 @@ export const membershipUserServiceFactory = ({
           orgId: dto.permission.orgId,
           orgDAL,
           userAliasDAL,
-          license,
+          licenseDomain,
           userId: dto.permission.id,
           membershipUserDAL,
           userGroupMembershipDAL,
@@ -678,9 +676,9 @@ export const membershipUserServiceFactory = ({
 
     // Removing a user from a project drops a direct member; removing them from the org cascades their
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
-    usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
+    licenseDomain.emit(scopeData.orgId, PamIdentities.key);
+    licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
     return { membership: membershipDoc };
   };
 

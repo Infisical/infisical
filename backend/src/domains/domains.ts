@@ -46,8 +46,11 @@ export const createDomains = (deps: TDomainDeps) => {
     hooks: new LicenseEeModule({ envConfig: deps.envConfig, keyStore: deps.keyStore }).hooks
   });
 
-  const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db, license: license.registry });
-  const productDeps = { organizationsProjects: organizationsProjects.service, license: license.registry };
+  const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db, licenseRegistry: license.registry });
+  const productDeps = {
+    organizationsProjectsDomain: organizationsProjects.service,
+    licenseRegistry: license.registry
+  };
   const secrets = new SecretsModule(productDeps);
   const pam = new PamModule(productDeps);
   const agentVault = new AgentVaultModule(productDeps);

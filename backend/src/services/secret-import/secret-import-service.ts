@@ -63,7 +63,7 @@ type TSecretImportServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -82,7 +82,7 @@ export const secretImportServiceFactory = ({
   projectDAL,
   secretDAL,
   secretQueueService,
-  license,
+  licenseDomain,
   projectBotService,
   secretV2BridgeDAL,
   kmsService
@@ -167,7 +167,7 @@ export const secretImportServiceFactory = ({
     const isCrossProjectImport = sourceProjectId !== projectId;
 
     if (isCrossProjectImport) {
-      const plan = await license.getPlan(actorOrgId);
+      const plan = await licenseDomain.getPlan(actorOrgId);
       const org = await orgDAL.findOrgById(actorOrgId);
       if (!plan.crossProjectSecretSharing || !org?.allowCrossProjectSecretSharing) {
         throw new ForbiddenRequestError({
@@ -211,7 +211,7 @@ export const secretImportServiceFactory = ({
         });
       }
 
-      const plan = await license.getPlan(actorOrgId);
+      const plan = await licenseDomain.getPlan(actorOrgId);
       if (!plan.secretApproval) {
         throw new BadRequestError({
           message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
@@ -608,7 +608,7 @@ export const secretImportServiceFactory = ({
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
 
-    const plan = await license.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."

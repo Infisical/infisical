@@ -12,19 +12,19 @@ const GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/Infisical/infisi
 type TUpdateCheckServiceFactoryDep = {
   cronJob: TCronJobFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 export type TUpdateCheckServiceFactory = ReturnType<typeof updateCheckServiceFactory>;
 
-export const updateCheckServiceFactory = ({ cronJob, keyStore, license }: TUpdateCheckServiceFactoryDep) => {
+export const updateCheckServiceFactory = ({ cronJob, keyStore, licenseDomain }: TUpdateCheckServiceFactoryDep) => {
   const appCfg = getConfig();
 
   const isEnabled = isUpdateCheckEnabled({
     isInfisicalCloud: appCfg.INFISICAL_CLOUD,
     isCloud: appCfg.isCloud,
     isUpdateCheckDisabled: appCfg.DISABLE_UPDATE_CHECK,
-    hasOfflineLicense: license.hasOfflineLicenseKey(),
+    hasOfflineLicense: licenseDomain.hasOfflineLicenseKey(),
     platformVersion: appCfg.INFISICAL_PLATFORM_VERSION
   });
 

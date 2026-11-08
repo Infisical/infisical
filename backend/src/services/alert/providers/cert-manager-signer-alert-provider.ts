@@ -58,14 +58,14 @@ const formatSigners = (signerNames: string[]) =>
 export type TCertManagerSignerAlertProviderDep = {
   certManagerSignerAlertDAL: TCertManagerSignerAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   certManagerProjectResolver: Pick<TCertManagerProjectResolverFactory, "getActiveProjectId">;
 };
 
 export const certManagerSignerAlertProviderFactory = ({
   certManagerSignerAlertDAL,
   permissionService,
-  license,
+  licenseDomain,
   certManagerProjectResolver
 }: TCertManagerSignerAlertProviderDep): IScheduledAlertProvider<TSignerAlertCertificate> => {
   const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TSignerAlertCertificate[]> => {
@@ -224,7 +224,7 @@ export const certManagerSignerAlertProviderFactory = ({
     assertPermission,
     assertResourceInScope: async ({ resourceId }) => assertNoResource(resourceId),
     assertConditionInScope,
-    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(license, input),
+    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseDomain, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
     getWebhookSource: getScopeWideAlertWebhookSource,

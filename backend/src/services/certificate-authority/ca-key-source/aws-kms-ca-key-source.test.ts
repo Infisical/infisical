@@ -161,7 +161,7 @@ const buildDeps = (plan: Record<string, unknown> = { pkiAwsKmsSigning: true }) =
   appConnectionService: { validateAppConnectionUsageById: vi.fn() } as never,
   kmsService: {} as never,
   projectDAL: { findById: vi.fn(async () => ({ id: "project", orgId: "org" })) } as never,
-  license: new FakeLicenseDomain().setPlan("org", plan as Partial<TPlan>),
+  licenseDomain: new FakeLicenseDomain().setPlan("org", plan as Partial<TPlan>),
   hsmConnectorService: {} as never,
   hsmConnectorDAL: {} as never,
   certificateAuthoritySecretDAL: { findOne: vi.fn() } as never

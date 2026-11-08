@@ -65,7 +65,7 @@ const createService = ({
     })
   };
 
-  const license = new FakeLicenseDomain();
+  const licenseDomain = new FakeLicenseDomain();
 
   const service = identityServiceFactory({
     identityDAL: identityDAL as never,
@@ -81,13 +81,12 @@ const createService = ({
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: createMongoAbility([]) }])
     } as never,
-    license,
+    licenseDomain,
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
       findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: "membership-1", scopeOrgId: ORG_ID })
     } as never,
-    usageMeteringService: license,
     alertService: { deleteAlertsForDeletedResource } as never,
     identityAccessTokenService: {
       insertIdentityWideRevocationMarker: vi.fn().mockResolvedValue(undefined),

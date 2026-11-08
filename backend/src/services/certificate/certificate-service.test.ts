@@ -68,7 +68,7 @@ const buildService = () => {
     certificateRequestDAL: { update: vi.fn().mockResolvedValue([]) },
     pkiSyncQueue: {},
     auditLogService: { createAuditLog: vi.fn() },
-    usageMeteringService: { emit: vi.fn() }
+    licenseDomain: { emit: vi.fn() }
   } as unknown as TDeps;
 
   return {

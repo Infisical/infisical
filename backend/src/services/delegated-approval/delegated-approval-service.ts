@@ -38,7 +38,7 @@ type TDelegatedApprovalServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   eventEmitter: TEventEmitter;
 };
 
@@ -58,7 +58,7 @@ export const delegatedApprovalServiceFactory = ({
   approvalPolicyDAL,
   appConnectionDAL,
   appConnectionService,
-  license,
+  licenseDomain,
   eventEmitter
 }: TDelegatedApprovalServiceFactoryDep) => {
   const $assertConnectionMatches = async (
@@ -98,7 +98,7 @@ export const delegatedApprovalServiceFactory = ({
 
   const assertPlanAllowsPolicyEdit = async (type: DelegatedApprovalPolicyType, orgId: string) => {
     await enterpriseAppCheck(
-      license,
+      licenseDomain,
       DELEGATED_APPROVAL_CONNECTION_MAP[type],
       orgId,
       `Failed to update policy: ${DELEGATED_APPROVAL_NAME_MAP[type]} delegated approval is only available on plans with enterprise app connections. Upgrade your plan, or remove the delegated approver to edit this policy.`

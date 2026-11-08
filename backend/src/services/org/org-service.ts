@@ -144,7 +144,7 @@ type TOrgServiceFactoryDep = {
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
@@ -154,7 +154,6 @@ type TOrgServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
-  usageMeteringService: TLicenseDomain;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
   honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeOrgHoneyTokens">;
@@ -178,7 +177,7 @@ export const orgServiceFactory = ({
   projectMembershipDAL,
   orgMembershipDAL,
   tokenService,
-  license,
+  licenseDomain,
   samlConfigDAL,
   oidcConfigDAL,
   ldapConfigDAL,
@@ -193,7 +192,6 @@ export const orgServiceFactory = ({
   projectAccessRevokeService,
   auditLogService,
   certificatePolicyDAL,
-  usageMeteringService,
   pamSessionDAL,
   gatewayV2Service,
   auditLogSettingsService,
@@ -549,7 +547,7 @@ export const orgServiceFactory = ({
       );
     }
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     const currentOrg = await requestMemoize(requestMemoKeys.orgFindOrgById(actorOrgId), () =>
       orgDAL.findOrgById(actorOrgId)
     );
@@ -862,12 +860,12 @@ export const orgServiceFactory = ({
 
     // Seat sync calls the License Server, so it waits for the org to commit, including a caller's transaction.
     if (trx) {
-      sealKnexTransaction(trx).afterCommit(() => license.syncSeats(organization.id));
+      sealKnexTransaction(trx).afterCommit(() => licenseDomain.syncSeats(organization.id));
     } else {
-      await license.syncSeats(organization.id);
+      await licenseDomain.syncSeats(organization.id);
     }
 
-    usageMeteringService.emit(organization.id, PamIdentities.key);
+    licenseDomain.emit(organization.id, PamIdentities.key);
 
     return organization;
   };
@@ -925,7 +923,7 @@ export const orgServiceFactory = ({
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     // if root org null = this is a root org then cancel the subscription.
     if (!org.rootOrgId) {
-      await license.cancelSubscription(orgId);
+      await licenseDomain.cancelSubscription(orgId);
     }
 
     // Outside the transaction: the cleanup runs its own queries per project, and inside it each
@@ -1049,7 +1047,7 @@ export const orgServiceFactory = ({
       const customRole = await roleDAL.findOne({ slug: role, orgId });
       if (!customRole) throw new BadRequestError({ name: "UpdateMembership", message: "Organization role not found" });
 
-      const plan = await license.getPlan(orgId);
+      const plan = await licenseDomain.getPlan(orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message: "Failed to assign custom role due to RBAC restriction. Upgrade plan to assign custom role to member."
@@ -1435,7 +1433,7 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       userAliasDAL,
-      license,
+      licenseDomain,
       userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1445,9 +1443,9 @@ export const orgServiceFactory = ({
     });
 
     // Removing an org member cascades their project + group memberships, changing the identity meters.
-    usageMeteringService.emit(orgId, SecretIdentities.key);
-    usageMeteringService.emit(orgId, PamIdentities.key);
-    usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(orgId, SecretIdentities.key);
+    licenseDomain.emit(orgId, PamIdentities.key);
+    licenseDomain.emit(orgId, AgentVaultIdentities.key);
     return deletedMembership;
   };
 
@@ -1489,7 +1487,7 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       userAliasDAL,
-      license,
+      licenseDomain,
       userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1499,9 +1497,9 @@ export const orgServiceFactory = ({
     });
 
     // Removing org members cascades their project + group memberships, changing the identity meters.
-    usageMeteringService.emit(orgId, SecretIdentities.key);
-    usageMeteringService.emit(orgId, PamIdentities.key);
-    usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(orgId, SecretIdentities.key);
+    licenseDomain.emit(orgId, PamIdentities.key);
+    licenseDomain.emit(orgId, AgentVaultIdentities.key);
     return deletedMemberships;
   };
 

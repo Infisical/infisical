@@ -3,19 +3,19 @@ import { PamIdentities, TLicenseRegistry } from "@app/domains/platform/license/c
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 
 export type TPamDeps = {
-  organizationsProjects: TOrganizationsProjectsDomain;
-  license: TLicenseRegistry;
+  organizationsProjectsDomain: TOrganizationsProjectsDomain;
+  licenseRegistry: TLicenseRegistry;
 };
 
 // Holds only its usage counter for now; it grows as PAM moves into a domain.
 export class PamModule {
   readonly name = "pam";
 
-  constructor({ organizationsProjects, license }: TPamDeps) {
-    license.registerUsageCounter({
+  constructor({ organizationsProjectsDomain, licenseRegistry }: TPamDeps) {
+    licenseRegistry.registerUsageCounter({
       feature: PamIdentities,
       scope: "org",
-      count: (orgId) => organizationsProjects.countProjectIdentities(ProjectType.PAM, orgId ?? undefined)
+      count: (orgId) => organizationsProjectsDomain.countProjectIdentities(ProjectType.PAM, orgId ?? undefined)
     });
   }
 }

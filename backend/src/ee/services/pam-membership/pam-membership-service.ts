@@ -83,7 +83,7 @@ type TPamMembershipServiceFactoryDep = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  usageMeteringService: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 export type TPamMembershipServiceFactory = ReturnType<typeof pamMembershipServiceFactory>;
@@ -128,7 +128,7 @@ export const pamMembershipServiceFactory = ({
   identityDAL,
   permissionService,
   gatewayV2Service,
-  usageMeteringService
+  licenseDomain
 }: TPamMembershipServiceFactoryDep) => {
   // Shared helpers
 
@@ -456,7 +456,7 @@ export const pamMembershipServiceFactory = ({
     });
 
     // A new PAM project member (user/identity/group) changes the pam_identities meter.
-    usageMeteringService.emit(dto.actorOrgId, PamIdentities.key);
+    licenseDomain.emit(dto.actorOrgId, PamIdentities.key);
     return result;
   };
 
@@ -589,7 +589,7 @@ export const pamMembershipServiceFactory = ({
 
     // Only re-meter when project members were actually added.
     if (memberships.length > 0) {
-      usageMeteringService.emit(ctx.actorOrgId, PamIdentities.key);
+      licenseDomain.emit(ctx.actorOrgId, PamIdentities.key);
     }
 
     return { memberships, skipped };
@@ -740,7 +740,7 @@ export const pamMembershipServiceFactory = ({
 
     sendSessionCancellations();
 
-    usageMeteringService.emit(dto.actorOrgId, PamIdentities.key);
+    licenseDomain.emit(dto.actorOrgId, PamIdentities.key);
     return result;
   };
 

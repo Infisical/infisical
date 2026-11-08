@@ -55,7 +55,7 @@ type TRoleServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 export type TRoleServiceFactory = ReturnType<typeof roleServiceFactory>;
@@ -68,7 +68,7 @@ export const roleServiceFactory = ({
   userDAL,
   externalGroupOrgRoleMappingDAL,
   membershipRoleDAL,
-  license
+  licenseDomain
 }: TRoleServiceFactoryDep) => {
   const orgRoleFactory = newOrgRoleFactory({
     permissionService,
@@ -88,7 +88,7 @@ export const roleServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
     await factory.onCreateRoleGuard(dto);
 
-    const plan = await license.getPlan(dto.permission.orgId);
+    const plan = await licenseDomain.getPlan(dto.permission.orgId);
     if (!plan?.rbac) {
       throw new BadRequestError({
         message:
@@ -127,7 +127,7 @@ export const roleServiceFactory = ({
 
     await factory.onUpdateRoleGuard(dto);
 
-    const plan = await license.getPlan(dto.permission.orgId);
+    const plan = await licenseDomain.getPlan(dto.permission.orgId);
     if (!plan?.rbac) {
       throw new BadRequestError({
         message:

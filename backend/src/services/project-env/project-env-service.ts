@@ -29,7 +29,7 @@ type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
   accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
   secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
@@ -41,7 +41,7 @@ export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFacto
 export const projectEnvServiceFactory = ({
   projectEnvDAL,
   permissionService,
-  license,
+  licenseDomain,
   keyStore,
   folderDAL,
   accessApprovalPolicyEnvironmentDAL,
@@ -100,7 +100,7 @@ export const projectEnvServiceFactory = ({
 
       // getProjectPermission above guarantees project existence and org membership,
       // so actorOrgId === project.orgId — no separate project lookup needed.
-      const plan = await license.getPlan(actorOrgId);
+      const plan = await licenseDomain.getPlan(actorOrgId);
       if (plan.environmentLimit !== null && envs.length >= plan.environmentLimit) {
         // case: limit imposed on number of environments allowed
         // case: number of environments used exceeds the number of environments allowed
@@ -205,7 +205,7 @@ export const projectEnvServiceFactory = ({
       const envs = await projectEnvDAL.find({ projectId });
       // getProjectPermission above guarantees project existence and org membership,
       // so actorOrgId === project.orgId — no separate project lookup needed.
-      const plan = await license.getPlan(actorOrgId);
+      const plan = await licenseDomain.getPlan(actorOrgId);
       if (plan.environmentLimit !== null && envs.length > plan.environmentLimit) {
         // case: limit imposed on number of environments allowed
         // case: number of environments used exceeds the number of environments allowed
@@ -418,7 +418,7 @@ export const projectEnvServiceFactory = ({
         const activeEnvs = await projectEnvDAL.find({ projectId }, { tx });
         // getProjectPermission above guarantees project existence and org membership,
         // so actorOrgId === project.orgId — no separate project lookup needed.
-        const plan = await license.getPlan(actorOrgId);
+        const plan = await licenseDomain.getPlan(actorOrgId);
         if (plan.environmentLimit !== null && activeEnvs.length >= plan.environmentLimit) {
           throw new BadRequestError({
             message:

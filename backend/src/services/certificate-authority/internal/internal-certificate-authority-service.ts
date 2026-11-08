@@ -160,9 +160,8 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
-  usageMeteringService: TLicenseDomain;
   caKeySourceService: Pick<
     TCaKeySourceServiceFactory,
     "createKey" | "buildSigner" | "describeKey" | "prepareKeyReleases"
@@ -188,13 +187,12 @@ export const internalCertificateAuthorityServiceFactory = ({
   projectDAL,
   kmsService,
   permissionService,
-  license,
+  licenseDomain,
   caSigningConfigDAL,
-  usageMeteringService,
   caKeySourceService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
-    validatePqcLicense({ keyAlgorithm, projectId, projectDAL, license });
+    validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseDomain });
 
   const $getProjectOrgId = async (projectId: string, tx?: Knex) => {
     const project = await projectDAL.findById(projectId, tx);
@@ -207,7 +205,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    const plan = await license.getPlan(project.orgId);
+    const plan = await licenseDomain.getPlan(project.orgId);
     return plan.caCrl;
   };
 
@@ -215,7 +213,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    const plan = await license.getPlan(project.orgId);
+    const plan = await licenseDomain.getPlan(project.orgId);
     return plan.pkiOcsp;
   };
 
@@ -396,7 +394,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     await assertCertificateAuthorityQuota({
       projectId,
       isInternal: true,
-      deps: { projectDAL, license, certificateAuthorityDAL }
+      deps: { projectDAL, licenseDomain, certificateAuthorityDAL }
     });
 
     // Refused rather than silently dropped, since the caller asked for it explicitly.
@@ -1608,7 +1606,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       const caProject = await projectDAL.findById(ca.projectId);
       if (!caProject) throw new NotFoundError({ message: `Project with ID '${ca.projectId}' not found` });
 
-      const plan = await license.getPlan(caProject.orgId);
+      const plan = await licenseDomain.getPlan(caProject.orgId);
       if (!plan.pkiExternalIntermediateCa) {
         throw new BadRequestError({
           message:
@@ -2363,8 +2361,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
-    usageMeteringService.emit(projectOrgId, ActiveCerts.key);
-    usageMeteringService.emit(projectOrgId, WildcardCerts.key);
+    licenseDomain.emit(projectOrgId, ActiveCerts.key);
+    licenseDomain.emit(projectOrgId, WildcardCerts.key);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2861,8 +2859,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(persist);
     }
 
-    usageMeteringService.emit(projectOrgId, ActiveCerts.key);
-    usageMeteringService.emit(projectOrgId, WildcardCerts.key);
+    licenseDomain.emit(projectOrgId, ActiveCerts.key);
+    licenseDomain.emit(projectOrgId, WildcardCerts.key);
 
     return {
       certificate: leafCert,

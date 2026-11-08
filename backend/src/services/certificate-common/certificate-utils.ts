@@ -22,17 +22,17 @@ export const validatePqcLicense = async ({
   keyAlgorithm,
   projectId,
   projectDAL,
-  license
+  licenseDomain
 }: {
   keyAlgorithm: string;
   projectId: string;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 }) => {
   if (!isPqcAlgorithm(keyAlgorithm)) return;
   const project = await projectDAL.findById(projectId);
   if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-  const plan = await license.getPlan(project.orgId);
+  const plan = await licenseDomain.getPlan(project.orgId);
   if (!plan.pkiPqc) {
     throw new BadRequestError({
       message:
@@ -50,7 +50,7 @@ export const validateCertificateRequestLicense = async ({
   altNames,
   projectId,
   projectDAL,
-  license,
+  licenseDomain,
   quotaDeps,
   isRenewal = false
 }: {
@@ -66,7 +66,7 @@ export const validateCertificateRequestLicense = async ({
   altNames?: string | null;
   projectId: string;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   // When absent the caps are skipped, so an issuance entry point that forgets it is silently uncapped.
   quotaDeps?: TCertificateQuotaDeps;
   // Nothing sets this today: renewal does not route through here. Kept because a refused renewal lets
@@ -87,7 +87,7 @@ export const validateCertificateRequestLicense = async ({
   const project = await projectDAL.findById(projectId);
   if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-  const plan = await license.getPlan(project.orgId);
+  const plan = await licenseDomain.getPlan(project.orgId);
 
   if (pqcAlgorithm && !plan.pkiPqc) {
     throw new BadRequestError({

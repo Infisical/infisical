@@ -24,12 +24,11 @@ type TSubOrgServiceFactoryDep = {
     "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById" | "deleteById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
-  usageMeteringService: TLicenseDomain;
 };
 
 export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
@@ -37,12 +36,11 @@ export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
 export const subOrgServiceFactory = ({
   orgDAL,
   permissionService,
-  license,
+  licenseDomain,
   membershipDAL,
   membershipRoleDAL,
   projectDAL,
-  certificatePolicyDAL,
-  usageMeteringService
+  certificatePolicyDAL
 }: TSubOrgServiceFactoryDep) => {
   const createSubOrg = async ({ name, slug, permission }: TCreateSubOrgDTO) => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
@@ -59,7 +57,7 @@ export const subOrgServiceFactory = ({
       OrgPermissionSubjects.SubOrganization
     );
 
-    const orgLicensePlan = await license.getPlan(permission.rootOrgId);
+    const orgLicensePlan = await licenseDomain.getPlan(permission.rootOrgId);
     if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message: "Sub-organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
@@ -133,7 +131,7 @@ export const subOrgServiceFactory = ({
       return org;
     });
 
-    usageMeteringService.emit(organization.id, PamIdentities.key);
+    licenseDomain.emit(organization.id, PamIdentities.key);
 
     return {
       organization
@@ -241,7 +239,7 @@ export const subOrgServiceFactory = ({
   };
 
   const joinSubOrg = async ({ subOrgId, permission }: TJoinSubOrgDTO) => {
-    const orgLicensePlan = await license.getPlan(permission.rootOrgId);
+    const orgLicensePlan = await licenseDomain.getPlan(permission.rootOrgId);
     if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message:

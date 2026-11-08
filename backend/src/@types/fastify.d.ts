@@ -428,7 +428,7 @@ declare module "fastify" {
     pkiInstallation: TPkiInstallationServiceFactory;
     pkiSigner: TSignerServiceFactory;
     secretScanning: TSecretScanningServiceFactory;
-    license: TLicenseDomain;
+    licenseDomain: TLicenseDomain;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;

@@ -134,13 +134,13 @@ export const certificateDisplayName = (certificate: {
 }): string => certificate.commonName || splitAltNames(certificate.altNames)[0] || certificate.serialNumber;
 
 export const assertCertManagerAlertChannelTypesAllowed = async (
-  license: TLicenseDomain,
+  licenseDomain: TLicenseDomain,
   { orgId, channelTypes }: { orgId: string; channelTypes: string[] }
 ) => {
   const gatedType = channelTypes.find((channelType) => channelType !== AlertChannelType.EMAIL);
   if (!gatedType) return;
 
-  const plan = await license.getPlan(orgId);
+  const plan = await licenseDomain.getPlan(orgId);
   if (!plan.pkiEnterpriseAlerting) {
     throw new BadRequestError({
       message: `Failed to save a ${gatedType} channel due to plan restriction. Upgrade plan to alert on channels other than email, or disable or remove the ${gatedType} channel.`

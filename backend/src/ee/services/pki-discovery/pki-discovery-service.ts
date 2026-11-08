@@ -87,7 +87,7 @@ type TPkiDiscoveryServiceFactoryDep = {
     "findLatestByDiscoveryId" | "findByDiscoveryId" | "countByDiscoveryId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
@@ -103,7 +103,7 @@ export const pkiDiscoveryServiceFactory = ({
   pkiDiscoveryConfigDAL,
   pkiDiscoveryScanHistoryDAL,
   permissionService,
-  license,
+  licenseDomain,
   gatewayV2DAL,
   gatewayPoolDAL,
   gatewayPoolService,
@@ -241,7 +241,7 @@ export const pkiDiscoveryServiceFactory = ({
     );
 
     // Creation only; existing discoveries keep scanning and stay editable.
-    const plan = await license.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actorOrgId);
     if (!plan.pkiDiscovery) {
       throw new BadRequestError({
         message:

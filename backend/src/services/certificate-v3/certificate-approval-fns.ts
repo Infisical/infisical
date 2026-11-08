@@ -110,8 +110,8 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  license: TLicenseDomain;
-  certManager: TCertManagerDomain;
+  licenseDomain: TLicenseDomain;
+  certManagerDomain: TCertManagerDomain;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
@@ -221,8 +221,8 @@ export const certificateApprovalServiceFactory = (
     certificateSecretDAL,
     kmsService,
     projectDAL,
-    license,
-    certManager,
+    licenseDomain,
+    certManagerDomain,
     keyStore,
     certificatePolicyService,
     certificateIssuanceQueue,
@@ -601,7 +601,7 @@ export const certificateApprovalServiceFactory = (
       altNames: (mappedReconstructedRequest.subjectAlternativeNames ?? [])
         .map((san: { value: string }) => san.value)
         .join(","),
-      deps: { projectDAL, license, certManager, keyStore },
+      deps: { projectDAL, licenseDomain, certManagerDomain, keyStore },
       isApprovedRequest: true
     });
 
@@ -759,7 +759,7 @@ export const certificateApprovalServiceFactory = (
       projectId: profile.projectId,
       commonName: certRequest.commonName,
       altNames: (altNames ?? []).map((san) => san.value).join(","),
-      deps: { projectDAL, license, certManager, keyStore },
+      deps: { projectDAL, licenseDomain, certManagerDomain, keyStore },
       isApprovedRequest: true
     });
 
@@ -1268,7 +1268,7 @@ export const certificateApprovalServiceFactory = (
         projectId: targetProfile.projectId,
         commonName: certificateRequestInput.commonName,
         altNames: (altNames ?? []).map((san) => san.value).join(","),
-        deps: { projectDAL, license, certManager, keyStore },
+        deps: { projectDAL, licenseDomain, certManagerDomain, keyStore },
         isApprovedRequest: true
       });
 

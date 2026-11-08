@@ -37,7 +37,7 @@ type TCertificateTemplateServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 export type TCertificateTemplateServiceFactory = ReturnType<typeof certificateTemplateServiceFactory>;
@@ -49,7 +49,7 @@ export const certificateTemplateServiceFactory = ({
   permissionService,
   kmsService,
   projectDAL,
-  license
+  licenseDomain
 }: TCertificateTemplateServiceFactoryDep) => {
   const createCertTemplate = async ({
     caId,
@@ -253,7 +253,7 @@ export const certificateTemplateServiceFactory = ({
     actorOrgId,
     disableBootstrapCertValidation
   }: TCreateEstConfigurationDTO) => {
-    const plan = await license.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actorOrgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to create EST configuration due to plan restriction. Upgrade to the Enterprise plan."
@@ -336,7 +336,7 @@ export const certificateTemplateServiceFactory = ({
     actorOrgId,
     disableBootstrapCertValidation
   }: TUpdateEstConfigurationDTO) => {
-    const plan = await license.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actorOrgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to update EST configuration due to plan restriction. Upgrade to the Enterprise plan."

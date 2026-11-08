@@ -35,14 +35,14 @@ const buildService = () => {
     envConfig: { isCloud: false, SITE_URL: "http://localhost" },
     orgDAL: { findById: vi.fn(async () => ({ id: OTHER_ORG, name: "Other", slug: "other" })) },
     permissionService: { getOrgPermission },
-    organizationsProjects: {
+    organizationsProjectsDomain: {
       countBillableOrgActors: vi.fn(async () => ({ users: 0, identities: 0 })),
       getBillableIdentityOwnershipBreakdown: vi.fn(async () => []),
       resolveRootOrgId: vi.fn(async (id: string) => id),
       countProjectIdentitiesByKind: vi.fn(async () => ({ users: 0, identities: 0 })),
       getProjectIdentityBreakdown: vi.fn(async () => [])
     },
-    certManager: {
+    certManagerDomain: {
       getInternalCaOrgBreakdown: vi.fn(async () => []),
       getActiveCertificateOrgBreakdown: vi.fn(async () => [])
     },
@@ -51,7 +51,7 @@ const buildService = () => {
       findProjectNames: vi.fn(async () => []),
       findAllRootOrgs: vi.fn(async () => ({ orgs: [{ id: ROOT_ORG, name: "Root", slug: "root" }], totalCount: 1 }))
     },
-    license: new FakeLicenseDomain()
+    licenseDomain: new FakeLicenseDomain()
   } as unknown as Parameters<typeof licenseV2ServiceFactory>[0]);
 
   return { service, getOrgPermission };

@@ -45,7 +45,7 @@ type TSecretSharingServiceFactoryDep = {
   userDAL: TUserDALFactory;
   kmsService: TKmsServiceFactory;
   smtpService: TSmtpService;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
@@ -80,7 +80,7 @@ export const secretSharingServiceFactory = ({
   kmsService,
   smtpService,
   userDAL,
-  license
+  licenseDomain
 }: TSecretSharingServiceFactoryDep) => {
   const $validateSharedSecretExpiry = (expiresAt: Date) => {
     if (expiresAt < new Date()) {
@@ -865,7 +865,7 @@ export const secretSharingServiceFactory = ({
       );
     }
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.secretShareExternalBranding) {
       return null;
     }
@@ -910,7 +910,7 @@ export const secretSharingServiceFactory = ({
       );
     }
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.secretShareExternalBranding) {
       return null;
     }

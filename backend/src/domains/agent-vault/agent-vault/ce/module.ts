@@ -3,19 +3,19 @@ import { AgentVaultIdentities, TLicenseRegistry } from "@app/domains/platform/li
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 
 export type TAgentVaultDeps = {
-  organizationsProjects: TOrganizationsProjectsDomain;
-  license: TLicenseRegistry;
+  organizationsProjectsDomain: TOrganizationsProjectsDomain;
+  licenseRegistry: TLicenseRegistry;
 };
 
 // Holds only its usage counter for now; it grows as Agent Vault moves into a domain.
 export class AgentVaultModule {
   readonly name = "agent-vault";
 
-  constructor({ organizationsProjects, license }: TAgentVaultDeps) {
-    license.registerUsageCounter({
+  constructor({ organizationsProjectsDomain, licenseRegistry }: TAgentVaultDeps) {
+    licenseRegistry.registerUsageCounter({
       feature: AgentVaultIdentities,
       scope: "org",
-      count: (orgId) => organizationsProjects.countProjectIdentities(ProjectType.AgentVault, orgId ?? undefined)
+      count: (orgId) => organizationsProjectsDomain.countProjectIdentities(ProjectType.AgentVault, orgId ?? undefined)
     });
   }
 }

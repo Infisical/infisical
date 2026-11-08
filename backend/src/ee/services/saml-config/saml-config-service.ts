@@ -14,8 +14,7 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
-import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { assertSeatAvailable, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
@@ -109,7 +108,7 @@ type TSamlConfigServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -127,7 +126,6 @@ type TSamlConfigServiceFactoryDep = {
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: TLicenseDomain;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
@@ -151,7 +149,7 @@ export const samlConfigServiceFactory = ({
   eventEmitter,
   additionalPrivilegeDAL,
   permissionService,
-  license,
+  licenseDomain,
   tokenService,
   smtpService,
   identityMetadataDAL,
@@ -162,7 +160,6 @@ export const samlConfigServiceFactory = ({
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService,
   keyStore,
   pamAccountDAL,
   pamSessionDAL,
@@ -280,7 +277,7 @@ export const samlConfigServiceFactory = ({
             projectDAL,
             projectBotDAL,
             membershipGroupDAL,
-            usageMeteringService,
+            licenseDomain,
             shouldFailOnMissingMembers: false,
             tx: transaction
           });
@@ -304,7 +301,7 @@ export const samlConfigServiceFactory = ({
               groupDAL,
               projectKeyDAL,
               additionalPrivilegeDAL,
-              usageMeteringService,
+              licenseDomain,
               alertChannelRecipientDAL,
               eventEmitter,
               membershipDAL,
@@ -364,7 +361,7 @@ export const samlConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.samlSSO)
       throw new BadRequestError({
         message:
@@ -442,7 +439,7 @@ export const samlConfigServiceFactory = ({
       actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.samlSSO)
       throw new BadRequestError({
         message:
@@ -697,7 +694,7 @@ export const samlConfigServiceFactory = ({
     const samlConfig = await samlConfigDAL.findOne({ orgId });
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
     const identityLimit = Plan.restore(plan).enforcedIdentityLimit;
 
@@ -786,6 +783,7 @@ export const samlConfigServiceFactory = ({
       });
     } else {
       let isNewUser = false;
+      const seatUsage = identityLimit ? await licenseDomain.getSeatUsage(orgId) : null;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -832,11 +830,7 @@ export const samlConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await license.within(sealKnexTransaction(tx)).assertSeatAvailable({
-            orgId,
-            identityLimit,
-            via: UserAliasType.SAML
-          });
+          if (seatUsage) assertSeatAvailable(seatUsage, { identityLimit, via: UserAliasType.SAML });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
@@ -905,7 +899,7 @@ export const samlConfigServiceFactory = ({
     }
     sendPamCancellations();
 
-    await license.syncSeats(organization.id);
+    await licenseDomain.syncSeats(organization.id);
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 

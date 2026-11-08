@@ -1,5 +1,4 @@
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
-import { TTransaction } from "@app/domains/lib/transaction-runner";
 import type { TCronJobFactory } from "@app/lib/cron/cron-job";
 import type { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { logger } from "@app/lib/logger";
@@ -23,20 +22,20 @@ import { PlanResolver, TRefreshPlanOptions } from "./service/plan-resolver";
 import { SubscriptionService } from "./service/subscription-service";
 import { UsageQueue, TMeteringEventInput } from "./service/usage-queue";
 import { UsageReportService } from "./service/usage-report-service";
-import { TAssertSeatAvailableInput, UsageService } from "./service/usage-service";
+import { UsageService } from "./service/usage-service";
 
 export * from "./model/default-features";
 export * from "./model/license-server-types";
 export * from "./model/license-types";
 export * from "./model/metered-features";
 export * from "./model/plan";
+export * from "./model/seat-limit";
 export type { TLicenseOrganizations, TRootOrg } from "./model/root-org";
 export type { TUsageCounter, TUsageCounterScope } from "./model/usage-counter";
 export * from "./model/usage-report";
 export type { TLicenseHooks } from "./service/license-hooks";
 export type { TRefreshPlanOptions } from "./service/plan-resolver";
 export type { TMeteringEventInput } from "./service/usage-queue";
-export type { TAssertSeatAvailableInput } from "./service/usage-service";
 
 export type TLicenseDomain = {
   getInstanceEntitlements: () => TInstanceEntitlements;
@@ -54,8 +53,10 @@ export type TLicenseDomain = {
   invalidatePlan: (orgId: string) => Promise<void>;
   isServingFallbackPlan: (orgId: string) => Promise<boolean>;
   getLastKnownPlan: (orgId: string) => Promise<{ plan: TPlan; fetchedAt: number } | null>;
+  // Seats in use for the org's plan: the root org's tree on cloud, the whole instance self-hosted. To enforce
+  // a limit while adding a member, read this before the transaction and check it with assertSeatAvailable.
   getSeatUsage: (orgId: string) => Promise<TOrgSeatUsage>;
-  assertSeatAvailable: (input: TAssertSeatAvailableInput) => Promise<void>;
+  getInstanceSeatUsage: () => Promise<TOrgSeatUsage>;
   syncSeats: (orgId: string) => Promise<void>;
   cancelSubscription: (orgId: string) => Promise<void>;
   emit: (orgId: string, dimensionKey: string) => void;
@@ -66,9 +67,6 @@ export type TLicenseDomain = {
   // Whether LICENSE_KEY holds an offline key, whether or not it verifies.
   hasOfflineLicenseKey: () => boolean;
   billing: TLicenseServerBilling;
-  // For code under src/services/ that holds a Knex transaction: seat counts then read on that transaction.
-  // Wrap the transaction with sealKnexTransaction.
-  within: (tx: TTransaction) => TLicenseDomain;
 };
 
 // How the domains License knows nothing about plug into it. Each is called once, while domains.ts builds
@@ -134,6 +132,8 @@ export class LicenseModule {
 
   private readonly subscription: SubscriptionService;
 
+  private readonly usage: UsageService;
+
   private readonly usageReports: UsageReportService;
 
   constructor(private readonly deps: TLicenseDeps) {
@@ -175,16 +175,16 @@ export class LicenseModule {
       usageQueue: this.usageQueue,
       hooks: this.hooks
     });
+    this.usage = new UsageService({
+      instance: this.instanceEntitlements,
+      counters: this.counters,
+      organizations: this.organizations
+    });
     this.registry = {
       registerUsageCounter: (counter) => this.counters.register(counter),
       registerOrganizations: (organizations) => this.organizations.register(organizations)
     };
-    this.service = this.build(this.usageService());
-  }
-
-  // Only seat and usage counts read the database, so they are the only part bound to the transaction.
-  within(tx: TTransaction): TLicenseDomain {
-    return this.build(this.usageService(tx));
+    this.service = this.build();
   }
 
   // The metered dimensions a counter was registered for.
@@ -236,17 +236,8 @@ export class LicenseModule {
     });
   }
 
-  private usageService(tx?: TTransaction) {
-    return new UsageService({
-      instance: this.instanceEntitlements,
-      counters: this.counters,
-      organizations: this.organizations,
-      tx
-    });
-  }
-
-  private build(usage: UsageService): TLicenseDomain {
-    const { entitlements, subscription, usageQueue } = this;
+  private build(): TLicenseDomain {
+    const { entitlements, subscription, usage, usageQueue } = this;
     return {
       getInstanceEntitlements: () => entitlements.getInstanceEntitlements(),
       getInstanceType: () => entitlements.getInstanceType(),
@@ -260,15 +251,14 @@ export class LicenseModule {
       isServingFallbackPlan: (orgId) => entitlements.isServingFallbackPlan(orgId),
       getLastKnownPlan: (orgId) => entitlements.getLastKnownPlan(orgId),
       getSeatUsage: (orgId) => usage.getSeatUsage(orgId),
-      assertSeatAvailable: (input) => usage.assertSeatAvailable(input),
+      getInstanceSeatUsage: () => usage.getInstanceSeatUsage(),
       countUsage: (orgId, dimensionKey) => usage.countUsage(orgId, dimensionKey),
       syncSeats: (orgId) => subscription.syncSeats(orgId),
       cancelSubscription: (orgId) => subscription.cancelSubscription(orgId),
       emit: (orgId, dimensionKey) => usageQueue.emit(orgId, dimensionKey),
       recordMeteringEvents: (orgId, events) => usageQueue.recordMeteringEvents(orgId, events),
       hasOfflineLicenseKey: () => this.hooks.isOffline(),
-      billing: this.hooks.billing,
-      within: (tx) => this.within(tx)
+      billing: this.hooks.billing
     };
   }
 }

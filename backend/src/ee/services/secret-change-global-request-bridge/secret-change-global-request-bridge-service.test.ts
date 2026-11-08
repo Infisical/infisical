@@ -158,8 +158,8 @@ const buildService = ({
 } = {}) => {
   let requestCounter = 0;
   const hasRole = vi.fn().mockReturnValue(false);
-  const license = new FakeLicenseDomain().setPlan("org-1", { secretApproval: true as false });
-  vi.spyOn(license, "getPlan");
+  const licenseDomain = new FakeLicenseDomain().setPlan("org-1", { secretApproval: true as false });
+  vi.spyOn(licenseDomain, "getPlan");
   const deps = {
     approvalRequestDAL: {
       findById: vi.fn().mockResolvedValue(APPROVAL_REQUEST),
@@ -228,7 +228,7 @@ const buildService = ({
         { id: "user-1", email: "alice@example.com", username: "alice", firstName: "Alice", lastName: "Smith" }
       ])
     },
-    license,
+    licenseDomain,
     userGroupMembershipDAL: {
       findGroupMembershipsByUserIdInOrg: vi.fn().mockResolvedValue([]),
       find: vi.fn().mockResolvedValue([])
@@ -567,10 +567,10 @@ describe("secretChangeGlobalRequestBridge reviewSecretChangeRequest", () => {
 
   test("reviews an existing request when the plan lacks secret approvals", async () => {
     const { service, deps } = buildService();
-    deps.license.setPlan("org-1", { secretApproval: false });
+    deps.licenseDomain.setPlan("org-1", { secretApproval: false });
 
     await expect(review(service)).resolves.toMatchObject({ status: ApprovalStatus.APPROVED });
-    expect(deps.license.getPlan).not.toHaveBeenCalled();
+    expect(deps.licenseDomain.getPlan).not.toHaveBeenCalled();
     expect(deps.approvalRequestApprovalsDAL.create).toHaveBeenCalledTimes(1);
   });
 
@@ -890,10 +890,10 @@ describe("secretChangeGlobalRequestBridge mergeSecretChangeRequest", () => {
 
   test("merges an existing request when the plan lacks secret approvals", async () => {
     const { service, deps } = buildService({ requestSteps: [stepWith({ approvals: approvedBy("approver-1") })] });
-    deps.license.setPlan("org-1", { secretApproval: false });
+    deps.licenseDomain.setPlan("org-1", { secretApproval: false });
 
     await expect(merge(service)).resolves.toMatchObject({ isMergedViaBypass: false });
-    expect(deps.license.getPlan).not.toHaveBeenCalled();
+    expect(deps.licenseDomain.getPlan).not.toHaveBeenCalled();
     expect(applySecretApprovalCommitsV2Bridge).toHaveBeenCalledTimes(1);
   });
 
@@ -1005,7 +1005,7 @@ describe("secretChangeGlobalRequestBridge updateSecretChangeRequestStatus", () =
 
     const result = await setStatus(service);
 
-    expect(deps.license.getPlan).toHaveBeenCalledWith("org-1");
+    expect(deps.licenseDomain.getPlan).toHaveBeenCalledWith("org-1");
     expect(deps.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("request-1", OWN_TX);
     expect(deps.secretChangeGlobalRequestBridgeDAL.findOne).toHaveBeenCalledWith(
       { approvalRequestId: "request-1" },
@@ -1087,7 +1087,7 @@ describe("secretChangeGlobalRequestBridge updateSecretChangeRequestStatus", () =
 
   test("closes a request when the plan lacks secret approvals and refuses reopening one", async () => {
     const { service, deps } = buildService();
-    deps.license.setPlan("org-1", { secretApproval: false });
+    deps.licenseDomain.setPlan("org-1", { secretApproval: false });
 
     await expect(setStatus(service, { status: RequestState.Open })).rejects.toThrow("plan restriction");
     expect(deps.approvalRequestDAL.findById).not.toHaveBeenCalled();
@@ -1244,7 +1244,7 @@ describe("secretChangeGlobalRequestBridge getSecretChangeRequestById", () => {
 
     const result = await details(service);
 
-    expect(deps.license.getPlan).not.toHaveBeenCalled();
+    expect(deps.licenseDomain.getPlan).not.toHaveBeenCalled();
     expect(deps.userGroupMembershipDAL.find).toHaveBeenCalledWith({ $in: { groupId: ["group-1"] } });
     expect(deps.membershipUserDAL.find).toHaveBeenCalledWith(
       expect.objectContaining({

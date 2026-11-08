@@ -46,7 +46,7 @@ type TOrgAccessReconcileConsumerDep = {
   >;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  usageMeteringService: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 type TReconcileScope = {
@@ -68,7 +68,7 @@ export const orgAccessReconcileConsumerFactory = ({
   orgDAL,
   projectAccessRevokeService,
   auditLogService,
-  usageMeteringService
+  licenseDomain
 }: TOrgAccessReconcileConsumerDep): IEventConsumer<TOrgMembershipEventPayload> => {
   const eventTypes = new Set<string>(ORG_MEMBERSHIP_EVENTS);
   const subscribesTo = (eventType: string) => eventTypes.has(eventType);
@@ -136,9 +136,9 @@ export const orgAccessReconcileConsumerFactory = ({
           groupId: scope.groupId
         });
 
-        usageMeteringService.emit(orgId, SecretIdentities.key);
-        usageMeteringService.emit(orgId, PamIdentities.key);
-        usageMeteringService.emit(orgId, AgentVaultIdentities.key);
+        licenseDomain.emit(orgId, SecretIdentities.key);
+        licenseDomain.emit(orgId, PamIdentities.key);
+        licenseDomain.emit(orgId, AgentVaultIdentities.key);
       }
     }
   };

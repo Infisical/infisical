@@ -1,5 +1,3 @@
-import { TTransaction } from "@app/domains/lib/transaction-runner";
-
 import { TMeteredFeature } from "./metered-features";
 
 // "org-tree" counts a root org and its sub-orgs as one, reported at the root. "org" is reported at the org
@@ -11,5 +9,5 @@ export type TUsageCounter = {
   feature: TMeteredFeature;
   scope: TUsageCounterScope;
   // A null orgId counts the whole instance: a self-hosted license covers every org in the database.
-  count(orgId: string | null, tx?: TTransaction): Promise<number>;
+  count(orgId: string | null): Promise<number>;
 };

@@ -100,7 +100,7 @@ const createGuard = ({
     userDAL: {} as never,
     smtpService: {} as never,
     userGroupMembershipDAL: {} as never,
-    license: new FakeLicenseDomain(),
+    licenseDomain: new FakeLicenseDomain(),
     emailDomainDAL: {} as never,
     oidcConfigDAL: {} as never,
     samlConfigDAL: {} as never
@@ -319,7 +319,7 @@ describe("onCreateMembershipUserGuard privilege boundary", () => {
           .fn()
           .mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem, authEnforced: false, rootOrgId: null })
       } as never,
-      license: new FakeLicenseDomain(),
+      licenseDomain: new FakeLicenseDomain(),
       membershipUserDAL: { find: vi.fn(), getUserById: vi.fn() } as never,
       tokenService: {} as never,
       userDAL: {} as never,

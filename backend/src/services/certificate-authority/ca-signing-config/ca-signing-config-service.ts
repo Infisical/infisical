@@ -49,7 +49,7 @@ type TCaSigningConfigServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   caAutoRenewalQueue: Pick<
     TCaAutoRenewalQueueFactory,
@@ -64,7 +64,7 @@ export const caSigningConfigServiceFactory = ({
   certificateAuthorityDAL,
   internalCertificateAuthorityDAL,
   permissionService,
-  license,
+  licenseDomain,
   appConnectionService,
   caAutoRenewalQueue
 }: TCaSigningConfigServiceFactoryDep) => {
@@ -175,7 +175,7 @@ export const caSigningConfigServiceFactory = ({
     // An org already signing through a provider can re-save or switch between them; only introducing
     // one is refused. updateSigningConfig takes no type, so it cannot reach this.
     if (isExternalCa && !EXTERNAL_SIGNING_TYPES.includes(existing?.type ?? "")) {
-      const plan = await license.getPlan(actorOrgId);
+      const plan = await licenseDomain.getPlan(actorOrgId);
       if (!plan.pkiEnterpriseCaIntegrations) {
         throw new BadRequestError({
           message:

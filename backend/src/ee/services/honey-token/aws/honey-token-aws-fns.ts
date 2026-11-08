@@ -45,7 +45,7 @@ import { AwsHoneyTokenDecryptedCredentialsSchema, TAwsHoneyTokenDecryptedCredent
 type TConfigProviderDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
@@ -304,7 +304,7 @@ export const parseAwsHoneyTokenDecryptedCredentials = (value: unknown): TAwsHone
 export const honeyTokenAwsConfigProviderFactory = ({
   honeyTokenConfigDAL,
   kmsService,
-  license,
+  licenseDomain,
   appConnectionDAL
 }: TConfigProviderDep) => {
   const upsertConfig = async ({
@@ -312,7 +312,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
     connectionId,
     config
   }: TUpsertAwsHoneyTokenConfigInput): Promise<THoneyTokenConfigRecord> => {
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.honeyTokens) {
       throw new BadRequestError({
         message: "Failed to save honey token configuration due to plan restriction. Upgrade plan to use honey tokens."

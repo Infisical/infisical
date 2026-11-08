@@ -24,7 +24,7 @@ const createService = () =>
         permission: createMongoAbility([{ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Ldap }])
       })
     },
-    license: new FakeLicenseDomain().setPlan("org-id", { ldap: true as false })
+    licenseDomain: new FakeLicenseDomain().setPlan("org-id", { ldap: true as false })
   } as unknown as Parameters<typeof ldapConfigServiceFactory>[0]);
 
 // literal IPs keep the suite hermetic: blockLocalAndPrivateIpAddresses skips the DNS lookup

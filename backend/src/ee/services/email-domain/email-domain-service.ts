@@ -26,7 +26,7 @@ type TEmailDomainServiceFactoryDep = {
     "create" | "find" | "findOne" | "findById" | "deleteById" | "updateById" | "transaction"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 export type TEmailDomainServiceFactory = ReturnType<typeof emailDomainServiceFactory>;
@@ -38,7 +38,7 @@ const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
 export const emailDomainServiceFactory = ({
   emailDomainDAL,
   permissionService,
-  license
+  licenseDomain
 }: TEmailDomainServiceFactoryDep) => {
   const createEmailDomain = async ({
     domain,
@@ -61,7 +61,7 @@ export const emailDomainServiceFactory = ({
       OrgPermissionSubjects.EmailDomains
     );
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
     if (!canEmailDomainVerification) {
       throw new BadRequestError({
@@ -142,7 +142,7 @@ export const emailDomainServiceFactory = ({
       OrgPermissionSubjects.EmailDomains
     );
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
     if (!canEmailDomainVerification) {
       throw new BadRequestError({

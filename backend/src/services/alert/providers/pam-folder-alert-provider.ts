@@ -116,13 +116,13 @@ const describeTarget = (eventType: PamAccessRequestEvent, target: TPamAccessRequ
 export type TPamFolderAlertProviderDep = {
   pamFolderAlertDAL: TPamFolderAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 export const pamFolderAlertProviderFactory = ({
   pamFolderAlertDAL,
   permissionService,
-  license
+  licenseDomain
 }: TPamFolderAlertProviderDep): IEventAlertProvider<TPamAccessRequestTarget> => {
   // The folder's Approvals tab lists every request, while the approval inbox only shows the visitor's own queue.
   const buildViewUrl = async (alert: TAlertContext): Promise<string> =>
@@ -302,7 +302,7 @@ export const pamFolderAlertProviderFactory = ({
     const gatedType = channelTypes.find((channelType) => channelType !== AlertChannelType.EMAIL);
     if (!gatedType) return;
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.pamEnterpriseAlerting) {
       throw new BadRequestError({
         message:

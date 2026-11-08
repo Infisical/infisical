@@ -50,7 +50,7 @@ type TSecretChangeGlobalPolicyBridgeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 export type TSecretChangeGlobalPolicyBridgeServiceFactory = ReturnType<
@@ -70,7 +70,7 @@ export const secretChangeGlobalPolicyBridgeServiceFactory = ({
   projectDAL,
   userDAL,
   permissionService,
-  license
+  licenseDomain
 }: TSecretChangeGlobalPolicyBridgeServiceFactoryDep) => {
   const {
     findSecretChangePolicy,
@@ -153,7 +153,7 @@ export const secretChangeGlobalPolicyBridgeServiceFactory = ({
       });
     }
 
-    const plan = await license.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message:
@@ -267,7 +267,7 @@ export const secretChangeGlobalPolicyBridgeServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
-    const plan = await license.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message:

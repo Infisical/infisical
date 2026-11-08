@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { ProjectType, TableName } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
+import { ProjectType } from "@app/db/schemas";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
 
@@ -11,9 +10,10 @@ describe("OrganizationsProjectsModule organizations for License", () => {
   const h = setupIntegration();
 
   const build = () => {
-    const license = new FakeLicenseRegistry();
-    const module = new OrganizationsProjectsModule({ db: h.db, license });
-    return { module, organizations: license.organizations! };
+    const licenseRegistry = new FakeLicenseRegistry();
+    // eslint-disable-next-line no-new
+    new OrganizationsProjectsModule({ db: h.db, licenseRegistry });
+    return { organizations: licenseRegistry.organizations! };
   };
 
   const orgTree = async () => {
@@ -64,29 +64,5 @@ describe("OrganizationsProjectsModule organizations for License", () => {
 
     // Assert
     expect(used).toBe(2);
-  });
-
-  test("should count a workspace the caller's transaction has written and not committed", async () => {
-    // Setup
-    const { root } = await orgTree();
-    await h.factories.project({ orgId: root.id, type: ProjectType.SecretManager });
-    const { module } = build();
-
-    // Action
-    const counts = await h.db.transaction(async (trx) => {
-      await trx(TableName.Project).insert({
-        name: `p-${randomUUID()}`,
-        slug: `p-${randomUUID()}`,
-        type: ProjectType.SecretManager,
-        orgId: root.id
-      });
-      return {
-        inside: await module.service.countWorkspaces(root.id, sealKnexTransaction(trx)),
-        outside: await module.service.countWorkspaces(root.id)
-      };
-    });
-
-    // Assert
-    expect(counts).toEqual({ inside: 2, outside: 1 });
   });
 });

@@ -124,9 +124,8 @@ type TGroupServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
-  usageMeteringService: TLicenseDomain;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals" | "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
@@ -152,11 +151,10 @@ export const groupServiceFactory = ({
   projectKeyDAL,
   additionalPrivilegeDAL,
   permissionService,
-  license,
+  licenseDomain,
   oidcConfigDAL,
   membershipGroupDAL,
   membershipRoleDAL,
-  usageMeteringService,
   identityAccessTokenService,
   alertChannelRecipientDAL,
   eventEmitter,
@@ -181,7 +179,7 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
 
-    const plan = await license.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actorOrgId);
     if (!plan.groups)
       throw new BadRequestError({
         message: "Failed to create group due to plan restriction. Upgrade plan to create group."
@@ -283,7 +281,7 @@ export const groupServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
 
-    const plan = await license.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actorOrgId);
     if (!plan.groups)
       throw new BadRequestError({
         message: "Failed to update group due to plan restriction Upgrade plan to update group."
@@ -488,7 +486,7 @@ export const groupServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
 
-    const plan = await license.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actorOrgId);
 
     if (!plan.groups)
       throw new BadRequestError({
@@ -534,17 +532,17 @@ export const groupServiceFactory = ({
       sendPamCancellations();
       await membershipGroupService.bumpIdentityRevocationVersions(identityIdsLosingOrgAccess);
       // Removing the group drops its members from any project it was on.
-      usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-      usageMeteringService.emit(actorOrgId, PamIdentities.key);
-      usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
+      licenseDomain.emit(actorOrgId, SecretIdentities.key);
+      licenseDomain.emit(actorOrgId, PamIdentities.key);
+      licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
     const deletedGroup = await deleteOwnedGroup({ groupId: id, actorId, actorOrgId });
     // Deleting the group drops its members from any project it was on.
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, PamIdentities.key);
+    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
     return { group: deletedGroup, isUnlinked: false };
   };
 
@@ -886,9 +884,9 @@ export const groupServiceFactory = ({
     });
 
     // The user may now be in a secret-manager or PAM project through this group.
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, PamIdentities.key);
+    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -998,9 +996,9 @@ export const groupServiceFactory = ({
     }
 
     // The identity may now be in a secret-manager or PAM project through this group.
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, PamIdentities.key);
+    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 
@@ -1094,9 +1092,9 @@ export const groupServiceFactory = ({
     sendPamCancellations();
 
     // The user may have left a secret-manager or PAM project it only reached through this group.
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, PamIdentities.key);
+    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1188,9 +1186,9 @@ export const groupServiceFactory = ({
     }
 
     // The identity may have left a secret-manager or PAM project it only reached through this group.
-    usageMeteringService.emit(actorOrgId, SecretIdentities.key);
-    usageMeteringService.emit(actorOrgId, PamIdentities.key);
-    usageMeteringService.emit(actorOrgId, AgentVaultIdentities.key);
+    licenseDomain.emit(actorOrgId, SecretIdentities.key);
+    licenseDomain.emit(actorOrgId, PamIdentities.key);
+    licenseDomain.emit(actorOrgId, AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 

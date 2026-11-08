@@ -1,6 +1,5 @@
 import { TDbClient } from "@app/db";
 import { ProjectType } from "@app/db/schemas";
-import { TTransaction } from "@app/domains/lib/transaction-runner";
 import { IdentitiesMeter, TLicenseRegistry, UserIdentities } from "@app/domains/platform/license/ce/module";
 
 import { OrganizationDataAccess } from "./data-access/organization-data-access";
@@ -14,9 +13,8 @@ export type TOrganizationsProjectsDomain = {
   countBillableOrgActors: (orgId: string | null) => Promise<{ users: number; identities: number }>;
   getBillableIdentityOwnershipBreakdown: (orgId: string | null) => Promise<TIdentityOwnershipRow[]>;
   resolveRootOrgId: (orgId: string) => Promise<string>;
-  // Live projects that take a workspace slot on a plan, in the org and its sub-orgs. Pass the caller's
-  // transaction to count the projects it has written.
-  countWorkspaces: (orgId: string, tx?: TTransaction) => Promise<number>;
+  // Live projects that take a workspace slot on a plan, in the org and its sub-orgs.
+  countWorkspaces: (orgId: string) => Promise<number>;
   // Users and machine identities in projects of one type, directly or through a group.
   countProjectIdentities: (projectType: ProjectType, orgId?: string) => Promise<number>;
   countProjectIdentitiesByKind: (
@@ -28,7 +26,7 @@ export type TOrganizationsProjectsDomain = {
 
 export type TOrganizationsProjectsDeps = {
   db: TDbClient;
-  license: TLicenseRegistry;
+  licenseRegistry: TLicenseRegistry;
 };
 
 // Holds only usage counting for now; it grows as organizations and projects move into domains.
@@ -37,36 +35,36 @@ export class OrganizationsProjectsModule {
 
   readonly service: TOrganizationsProjectsDomain;
 
-  constructor({ db, license }: TOrganizationsProjectsDeps) {
+  constructor({ db, licenseRegistry }: TOrganizationsProjectsDeps) {
     const actors = new BillableActorDataAccess(db);
     const organizations = new OrganizationDataAccess(db);
     this.service = {
       countBillableOrgActors: (orgId) => actors.countBillableOrgActors(orgId),
       getBillableIdentityOwnershipBreakdown: (orgId) => actors.getBillableIdentityOwnershipBreakdown(orgId),
       resolveRootOrgId: (orgId) => organizations.resolveRootOrgId(orgId),
-      countWorkspaces: (orgId, tx) => organizations.countWorkspaces(orgId, tx),
+      countWorkspaces: (orgId) => organizations.countWorkspaces(orgId),
       countProjectIdentities: (projectType, orgId) => actors.countProjectIdentities(projectType, orgId),
       countProjectIdentitiesByKind: (projectType, orgId) => actors.countProjectIdentitiesByKind(projectType, orgId),
       getProjectIdentityBreakdown: (projectType, orgId) =>
         actors.getProjectIdentityOwnershipBreakdown(projectType, orgId)
     };
 
-    license.registerOrganizations({
+    licenseRegistry.registerOrganizations({
       findRootOrg: (orgId) => organizations.findRootOrg(orgId),
       countWorkspacesUsed: (rootOrgId) => organizations.countWorkspaces(rootOrgId)
     });
-    license.registerUsageCounter({
+    licenseRegistry.registerUsageCounter({
       feature: IdentitiesMeter,
       scope: "org",
-      count: async (orgId, tx) => {
-        const { users, identities } = await actors.countBillableOrgActors(orgId, tx);
+      count: async (orgId) => {
+        const { users, identities } = await actors.countBillableOrgActors(orgId);
         return users + identities;
       }
     });
-    license.registerUsageCounter({
+    licenseRegistry.registerUsageCounter({
       feature: UserIdentities,
       scope: "org",
-      count: async (orgId, tx) => (await actors.countBillableOrgActors(orgId, tx)).users
+      count: async (orgId) => (await actors.countBillableOrgActors(orgId)).users
     });
   }
 }

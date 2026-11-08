@@ -31,21 +31,21 @@ const fallbackLoggedAt = new Map<string, number>();
 // returned decides, if it's under an hour old. Without one the answer is "unknown", and each caller decides what that
 // means.
 export const getSessionLogEntitlement = async (
-  license: TLicenseDomain,
+  licenseDomain: TLicenseDomain,
   orgId: string,
   storageType: ObjectStorageType
 ): Promise<{
   entitlement: TSessionLogEntitlement;
   plan: Pick<TFeatureSet, "agentVaultSessionLogRetentionDays"> | null;
 }> => {
-  const plan = await license.getPlan(orgId);
+  const plan = await licenseDomain.getPlan(orgId);
   const isOnPlan = hasStorageOnPlan(plan, storageType);
   if (isOnPlan && storageType !== ObjectStorageType.Default) return { entitlement: "licensed", plan };
-  if (!(await license.isServingFallbackPlan(orgId))) {
+  if (!(await licenseDomain.isServingFallbackPlan(orgId))) {
     return { entitlement: isOnPlan ? "licensed" : "unlicensed", plan };
   }
 
-  const lastKnown = await license.getLastKnownPlan(orgId);
+  const lastKnown = await licenseDomain.getLastKnownPlan(orgId);
   // Retention comes from the last real plan whenever one is cached, even one too old to decide yes or no. The tag is
   // fixed at upload, so tagging with the stand-in plan's retention would delete a longer plan's logs early.
   let decision: Awaited<ReturnType<typeof getSessionLogEntitlement>> = isOnPlan

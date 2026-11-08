@@ -195,15 +195,15 @@ describe("delegatedApprovalService.retryDispatch", () => {
 
 describe("delegatedApprovalService.assertPlanAllowsPolicyEdit", () => {
   const createPlanService = (enterpriseAppConnections: boolean) => {
-    const license = new FakeLicenseDomain().setPlan("org-1", {
+    const licenseDomain = new FakeLicenseDomain().setPlan("org-1", {
       enterpriseAppConnections: enterpriseAppConnections as false
     });
     // Every other org gets the opposite plan, so the outcome shows whose plan was read.
-    license.defaultPlan = {
-      ...license.defaultPlan,
+    licenseDomain.defaultPlan = {
+      ...licenseDomain.defaultPlan,
       enterpriseAppConnections: !enterpriseAppConnections as false
     };
-    const service = delegatedApprovalServiceFactory({ license } as never);
+    const service = delegatedApprovalServiceFactory({ licenseDomain } as never);
     return { service };
   };
 

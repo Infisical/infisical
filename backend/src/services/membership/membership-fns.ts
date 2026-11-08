@@ -20,14 +20,14 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 // It is ignored when null (no restriction); an explicit boolean enforces it, blocking temporary role
 // assignment when false. No-op for org scope, non-Secret-Management projects, or permanent-only roles.
 export const assertSecretsTemporaryAccessAllowed = async ({
-  license,
+  licenseDomain,
   projectDAL,
   scope,
   projectId,
   orgId,
   roles
 }: {
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   scope: AccessScope;
   projectId?: string;
@@ -48,7 +48,7 @@ export const assertSecretsTemporaryAccessAllowed = async ({
     return;
   }
 
-  const plan = await license.getPlan(orgId);
+  const plan = await licenseDomain.getPlan(orgId);
   if (typeof plan.secretsTemporaryAccess === "boolean" && !plan.secretsTemporaryAccess) {
     throw new BadRequestError({
       message: "Temporary access is not available on your current plan. Please upgrade to continue."

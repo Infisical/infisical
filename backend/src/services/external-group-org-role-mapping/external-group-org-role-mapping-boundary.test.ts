@@ -71,7 +71,7 @@ const createService = ({
       getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
       getOrgPermissionByRoles
     } as never,
-    license: new FakeLicenseDomain().setPlan(ORG_ID, { rbac: true as false }),
+    licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, { rbac: true as false }),
     roleDAL: {
       find: vi
         .fn()

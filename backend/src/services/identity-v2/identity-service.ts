@@ -73,7 +73,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityDAL: TIdentityV2DALFactory;
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
   permissionService: TPermissionServiceFactory;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -85,7 +85,6 @@ type TScopedIdentityV2ServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findActorAccessibleProjectIds" | "findOrgProjectIds" | "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  usageMeteringService: TLicenseDomain;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
@@ -95,7 +94,7 @@ export const identityV2ServiceFactory = ({
   identityDAL,
   identityMembershipV2DAL,
   permissionService,
-  license,
+  licenseDomain,
   membershipIdentityDAL,
   membershipRoleDAL,
   identityMetadataDAL,
@@ -104,7 +103,6 @@ export const identityV2ServiceFactory = ({
   projectDAL,
   orgDAL,
   roleDAL,
-  usageMeteringService,
   alertService
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
@@ -129,10 +127,10 @@ export const identityV2ServiceFactory = ({
 
     await factory.onCreateIdentityGuard(dto);
 
-    const plan = await license.getPlan(dto.permission.orgId);
+    const plan = await licenseDomain.getPlan(dto.permission.orgId);
     const identityLimit = Plan.restore(plan).enforcedIdentityLimit;
     if (identityLimit) {
-      const { identitiesUsed } = await license.getSeatUsage(dto.permission.orgId);
+      const { identitiesUsed } = await licenseDomain.getSeatUsage(dto.permission.orgId);
       if (identitiesUsed >= identityLimit) {
         // limit imposed on number of identities allowed / number of identities used exceeds the number of identities allowed
         throw new BadRequestError({
@@ -321,15 +319,15 @@ export const identityV2ServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await license.syncSeats(dto.permission.orgId);
+    await licenseDomain.syncSeats(dto.permission.orgId);
 
     // A new identity always adds an org membership; a project-scoped one also joins that project, so
     // it counts toward the secret-manager and PAM identity meters too.
-    usageMeteringService.emit(dto.permission.orgId, IdentitiesMeter.key);
+    licenseDomain.emit(dto.permission.orgId, IdentitiesMeter.key);
     if (scopeData.scope === AccessScope.Project) {
-      usageMeteringService.emit(dto.permission.orgId, SecretIdentities.key);
-      usageMeteringService.emit(dto.permission.orgId, PamIdentities.key);
-      usageMeteringService.emit(dto.permission.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(dto.permission.orgId, SecretIdentities.key);
+      licenseDomain.emit(dto.permission.orgId, PamIdentities.key);
+      licenseDomain.emit(dto.permission.orgId, AgentVaultIdentities.key);
     }
 
     return { identity };
@@ -450,13 +448,13 @@ export const identityV2ServiceFactory = ({
     });
     await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
 
-    await license.syncSeats(scopeData.orgId);
+    await licenseDomain.syncSeats(scopeData.orgId);
 
     // Deleting the identity cascades its org + project + group memberships, so all meters change.
-    usageMeteringService.emit(scopeData.orgId, IdentitiesMeter.key);
-    usageMeteringService.emit(scopeData.orgId, SecretIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, PamIdentities.key);
-    usageMeteringService.emit(scopeData.orgId, AgentVaultIdentities.key);
+    licenseDomain.emit(scopeData.orgId, IdentitiesMeter.key);
+    licenseDomain.emit(scopeData.orgId, SecretIdentities.key);
+    licenseDomain.emit(scopeData.orgId, PamIdentities.key);
+    licenseDomain.emit(scopeData.orgId, AgentVaultIdentities.key);
 
     return { identity: deletedIdentity };
   };

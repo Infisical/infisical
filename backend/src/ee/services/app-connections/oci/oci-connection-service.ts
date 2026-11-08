@@ -25,8 +25,8 @@ type TListOCIVaultKeysDTO = {
 };
 
 // Enterprise check
-export const checkPlan = async (license: TLicenseDomain, orgId: string) => {
-  const plan = await license.getPlan(orgId);
+export const checkPlan = async (licenseDomain: TLicenseDomain, orgId: string) => {
+  const plan = await licenseDomain.getPlan(orgId);
   if (!plan.enterpriseAppConnections)
     throw new BadRequestError({
       message:
@@ -34,9 +34,9 @@ export const checkPlan = async (license: TLicenseDomain, orgId: string) => {
     });
 };
 
-export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, license: TLicenseDomain) => {
+export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, licenseDomain: TLicenseDomain) => {
   const listCompartments = async (connectionId: string, actor: OrgServiceActor) => {
-    await checkPlan(license, actor.orgId);
+    await checkPlan(licenseDomain, actor.orgId);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -50,7 +50,7 @@ export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, li
   };
 
   const listVaults = async ({ connectionId, compartmentOcid }: TListOCIVaultsDTO, actor: OrgServiceActor) => {
-    await checkPlan(license, actor.orgId);
+    await checkPlan(licenseDomain, actor.orgId);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -67,7 +67,7 @@ export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, li
     { connectionId, compartmentOcid, vaultOcid }: TListOCIVaultKeysDTO,
     actor: OrgServiceActor
   ) => {
-    await checkPlan(license, actor.orgId);
+    await checkPlan(licenseDomain, actor.orgId);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 

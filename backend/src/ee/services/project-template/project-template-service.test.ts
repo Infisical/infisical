@@ -27,7 +27,7 @@ const actor = {
 
 const createService = () =>
   projectTemplateServiceFactory({
-    license: new FakeLicenseDomain().setPlan(ORG_ID, {
+    licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, {
       projectTemplates: true as false,
       environmentLimit: null
     }),

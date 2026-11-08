@@ -36,7 +36,7 @@ type TCertificateCleanupQueueFactoryDep = {
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "find">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  usageMeteringService: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
@@ -55,7 +55,7 @@ export const certificateCleanupQueueFactory = ({
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  usageMeteringService,
+  licenseDomain,
   auditLogService,
   telemetryService
 }: TCertificateCleanupQueueFactoryDep) => {
@@ -209,8 +209,8 @@ export const certificateCleanupQueueFactory = ({
     await flushAuditLog();
 
     if (deletedCount > 0 && orgId) {
-      usageMeteringService.emit(orgId, ActiveCerts.key);
-      usageMeteringService.emit(orgId, WildcardCerts.key);
+      licenseDomain.emit(orgId, ActiveCerts.key);
+      licenseDomain.emit(orgId, WildcardCerts.key);
     }
 
     return { deletedCount, errors: errorMessages.length };

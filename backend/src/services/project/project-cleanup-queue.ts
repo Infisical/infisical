@@ -66,7 +66,7 @@ type TProjectCleanupQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 export type TProjectCleanupQueueFactory = ReturnType<typeof projectCleanupQueueFactory>;
@@ -82,7 +82,7 @@ export const projectCleanupQueueFactory = ({
   auditLogService,
   queueService,
   cronJob,
-  license
+  licenseDomain
 }: TProjectCleanupQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -235,7 +235,7 @@ export const projectCleanupQueueFactory = ({
       }
 
       await releaseCaKeys();
-      await license.invalidatePlan(project.orgId);
+      await licenseDomain.invalidatePlan(project.orgId);
       await auditLogService.createAuditLog({
         orgId: project.orgId,
         projectId,

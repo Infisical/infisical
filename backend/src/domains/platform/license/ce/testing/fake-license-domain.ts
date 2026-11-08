@@ -62,7 +62,9 @@ export class FakeLicenseDomain implements TLicenseDomain {
 
   getSeatUsage = async (orgId: string) => this.seats.get(orgId) ?? { membersUsed: 0, identitiesUsed: 0 };
 
-  assertSeatAvailable = async () => undefined;
+  instanceSeats = { membersUsed: 0, identitiesUsed: 0 };
+
+  getInstanceSeatUsage = async () => this.instanceSeats;
 
   syncSeats = async (orgId: string) => {
     this.syncedSeats.push(orgId);
@@ -81,6 +83,4 @@ export class FakeLicenseDomain implements TLicenseDomain {
   recordMeteringEvents = () => undefined;
 
   hasOfflineLicenseKey = () => false;
-
-  within = () => this;
 }

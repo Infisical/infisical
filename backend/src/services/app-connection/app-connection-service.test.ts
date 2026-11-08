@@ -58,7 +58,7 @@ const buildService = (
       }))
     },
     permissionService,
-    license: new FakeLicenseDomain()
+    licenseDomain: new FakeLicenseDomain()
   };
 
   const deps = new Proxy(overrides, {

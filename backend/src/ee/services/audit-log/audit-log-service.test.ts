@@ -64,8 +64,8 @@ const createHarness = ({
     pushToLog: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined),
     pushToLogOrThrow: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined)
   };
-  const license = new FakeLicenseDomain();
-  license.defaultPlan = { ...license.defaultPlan, auditLogsRetentionDays: retentionDays };
+  const licenseDomain = new FakeLicenseDomain();
+  licenseDomain.defaultPlan = { ...licenseDomain.defaultPlan, auditLogsRetentionDays: retentionDays };
   const auditLogSettingsService = {
     getEffectiveSettings: vi.fn<(orgId: string, projectId?: string | null) => Promise<TEffectiveAuditLogSettings>>(
       async () => ({
@@ -81,7 +81,7 @@ const createHarness = ({
     permissionService: {} as never,
     auditLogQueue: auditLogQueue as never,
     auditLogSettingsService: auditLogSettingsService as never,
-    license,
+    licenseDomain,
     queueService: queueService as never,
     keyStore: keyStore as never,
     smtpService: {} as never,

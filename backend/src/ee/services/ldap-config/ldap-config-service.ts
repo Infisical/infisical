@@ -9,8 +9,7 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
-import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { assertSeatAvailable, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -124,14 +123,13 @@ type TLdapConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  usageMeteringService: TLicenseDomain;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -160,14 +158,13 @@ export const ldapConfigServiceFactory = ({
   userAliasDAL,
   additionalPrivilegeDAL,
   permissionService,
-  license,
+  licenseDomain,
   tokenService,
   smtpService,
   kmsService,
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService,
   pamAccountDAL,
   pamSessionDAL,
   gatewayV2Service,
@@ -203,7 +200,7 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.ldap)
       throw new BadRequestError({
         message:
@@ -361,7 +358,7 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.ldap)
       throw new BadRequestError({
         message:
@@ -596,7 +593,8 @@ export const ldapConfigServiceFactory = ({
         });
     } else {
       let isNewUser = false;
-      const identityLimit = Plan.restore(await license.getPlan(orgId)).enforcedIdentityLimit;
+      const identityLimit = Plan.restore(await licenseDomain.getPlan(orgId)).enforcedIdentityLimit;
+      const seatUsage = identityLimit ? await licenseDomain.getSeatUsage(orgId) : null;
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -644,11 +642,7 @@ export const ldapConfigServiceFactory = ({
         );
 
         if (!orgMembership) {
-          await license.within(sealKnexTransaction(tx)).assertSeatAvailable({
-            orgId,
-            identityLimit,
-            via: UserAliasType.LDAP
-          });
+          if (seatUsage) assertSeatAvailable(seatUsage, { identityLimit, via: UserAliasType.LDAP });
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
           const membership = await orgDAL.createMembership(
@@ -689,7 +683,7 @@ export const ldapConfigServiceFactory = ({
         });
       }
     }
-    await license.syncSeats(organization.id);
+    await licenseDomain.syncSeats(organization.id);
 
     const pamCancellations: (() => void)[] = [];
     let user = await userDAL.transaction(async (tx) => {
@@ -741,7 +735,7 @@ export const ldapConfigServiceFactory = ({
               projectDAL,
               projectBotDAL,
               membershipGroupDAL,
-              usageMeteringService,
+              licenseDomain,
               tx
             });
           }
@@ -772,7 +766,7 @@ export const ldapConfigServiceFactory = ({
               groupDAL,
               projectKeyDAL,
               additionalPrivilegeDAL,
-              usageMeteringService,
+              licenseDomain,
               alertChannelRecipientDAL,
               eventEmitter,
               membershipDAL,
@@ -959,7 +953,7 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.ldap)
       throw new BadRequestError({
         message: "Failed to create LDAP group map due to plan restriction. Upgrade plan to create LDAP group map."
@@ -1032,7 +1026,7 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.ldap)
       throw new BadRequestError({
         message: "Failed to delete LDAP group map due to plan restriction. Upgrade plan to delete LDAP group map."
@@ -1080,7 +1074,7 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.ldap)
       throw new BadRequestError({
         message: "Failed to test LDAP connection due to plan restriction. Upgrade plan to test the LDAP connection."

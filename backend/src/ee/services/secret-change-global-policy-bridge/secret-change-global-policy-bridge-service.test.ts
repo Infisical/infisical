@@ -91,8 +91,8 @@ const buildService = ({
   const findEffectiveProjectSubjectsMembership = vi.fn();
   memberships.forEach((membership) => findEffectiveProjectSubjectsMembership.mockResolvedValueOnce(membership));
 
-  const license = new FakeLicenseDomain().setPlan(ORG_ID, plan as Partial<TPlan>);
-  vi.spyOn(license, "getPlan");
+  const licenseDomain = new FakeLicenseDomain().setPlan(ORG_ID, plan as Partial<TPlan>);
+  vi.spyOn(licenseDomain, "getPlan");
 
   const deps = {
     approvalPolicyDAL: {
@@ -160,7 +160,7 @@ const buildService = ({
       )
     },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
-    license
+    licenseDomain
   };
 
   const service = secretChangeGlobalPolicyBridgeServiceFactory(
@@ -259,7 +259,7 @@ describe("secretChangeGlobalPolicyBridge createSecretChangePolicy", () => {
     await expect(result).rejects.toBeInstanceOf(BadRequestError);
     await expect(result).rejects.toThrow("upgraded to the latest secrets version");
     expect(deps.projectDAL.findById).toHaveBeenCalledWith(PROJECT_ID);
-    expect(deps.license.getPlan).not.toHaveBeenCalled();
+    expect(deps.licenseDomain.getPlan).not.toHaveBeenCalled();
     expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
   });
 
@@ -768,7 +768,7 @@ describe("secretChangeGlobalPolicyBridge deleteSecretChangePolicy", () => {
 
     const policy = await remove(service);
 
-    expect(deps.license.getPlan).not.toHaveBeenCalled();
+    expect(deps.licenseDomain.getPlan).not.toHaveBeenCalled();
     expect(deps.approvalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith("policy-1", TX);
     expect(deps.approvalRequestDAL.update).toHaveBeenCalledWith(
       { policyId: "policy-1", status: RequestState.Open },

@@ -64,7 +64,7 @@ const buildService = () => {
     pkiAlertChannelDAL: {},
     pkiAlertHistoryDAL: {},
     permissionService,
-    license: new FakeLicenseDomain(),
+    licenseDomain: new FakeLicenseDomain(),
     smtpService: {},
     kmsService: {
       createCipherPairWithDataKey: vi.fn(async () => ({

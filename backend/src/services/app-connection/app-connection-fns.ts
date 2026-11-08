@@ -1114,13 +1114,13 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
 };
 
 export const enterpriseAppCheck = async (
-  license: TLicenseDomain,
+  licenseDomain: TLicenseDomain,
   appConnection: AppConnection,
   orgId: string,
   errorMessage: string
 ) => {
   if (APP_CONNECTION_PLAN_MAP[appConnection] === AppConnectionPlanType.Enterprise) {
-    const plan = await license.getPlan(orgId);
+    const plan = await licenseDomain.getPlan(orgId);
     if (!plan.enterpriseAppConnections)
       throw new BadRequestError({
         message: errorMessage

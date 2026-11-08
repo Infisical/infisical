@@ -24,7 +24,7 @@ type TDeleteOrgMemberships = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "deleteByUserIdsInGroupsOwnedByOrgs">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "countActiveAdmins">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   userId?: string;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -39,7 +39,7 @@ export const deleteOrgMembershipsFn = async ({
   orgId,
   orgDAL,
   userAliasDAL,
-  license,
+  licenseDomain,
   userId,
   membershipUserDAL,
   userGroupMembershipDAL,
@@ -126,7 +126,7 @@ export const deleteOrgMembershipsFn = async ({
   });
 
   // After the commit: seat sync calls the License Server.
-  await license.syncSeats(orgId);
+  await licenseDomain.syncSeats(orgId);
   sendPamCancellations();
   await auditRevokedProjectAccess({ auditLogService, revoked, reason: OrgAccessRemovalCause.RemovedFromOrg });
 

@@ -114,7 +114,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  license: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   gatewayProxyRegistry: TGatewayProxyRegistry;
 };
@@ -180,7 +180,7 @@ export const resourceAuthMethodServiceFactory = ({
   agentVaultProxyDAL,
   identityDAL,
   permissionService,
-  license,
+  licenseDomain,
   orgDAL,
   gatewayProxyRegistry
 }: TResourceAuthMethodServiceFactoryDep) => {
@@ -352,7 +352,7 @@ export const resourceAuthMethodServiceFactory = ({
         OrgPermissionSubjects.GatewayPool
       );
 
-      const plan = await license.getPlan(actor.orgId);
+      const plan = await licenseDomain.getPlan(actor.orgId);
       if (!plan.gatewayPool) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."

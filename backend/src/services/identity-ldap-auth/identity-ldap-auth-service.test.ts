@@ -84,7 +84,7 @@ const createService = ({ identityAuthMethods = [] as string[] }: { identityAuthM
         identity: { id: IDENTITY_ID, orgId: ORG_ID, projectId: null, authMethods: identityAuthMethods }
       })
     },
-    license: new FakeLicenseDomain().setPlan(ORG_ID, {
+    licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, {
       ldap: true as false,
       machineIdentityAuthTemplates: true as false,
       ipAllowlisting: true as false

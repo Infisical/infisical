@@ -26,7 +26,7 @@ type TOrgAdminServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  usageMeteringService: TLicenseDomain;
+  licenseDomain: TLicenseDomain;
 };
 
 export type TOrgAdminServiceFactory = ReturnType<typeof orgAdminServiceFactory>;
@@ -39,7 +39,7 @@ export const orgAdminServiceFactory = ({
   notificationService,
   membershipUserDAL,
   membershipRoleDAL,
-  usageMeteringService,
+  licenseDomain,
   orgDAL
 }: TOrgAdminServiceFactoryDep) => {
   const listOrgProjects = async ({
@@ -135,7 +135,7 @@ export const orgAdminServiceFactory = ({
 
     // Agent Vault's project starts empty and admins join through here, so this is where its seat count moves.
     if (project.type === ProjectType.AgentVault) {
-      usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
+      licenseDomain.emit(project.orgId, AgentVaultIdentities.key);
     }
 
     const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);

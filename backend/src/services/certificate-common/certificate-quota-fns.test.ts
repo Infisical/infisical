@@ -22,12 +22,12 @@ const buildDeps = ({
   activeKeys?: string[];
   calls: { counted: (string | undefined)[]; activeChecked: (string | undefined)[] };
 }) => {
-  const license = new FakeLicenseDomain().setPlan("sub-org", { maxCertificates, maxWildcardCertificates });
-  license.instance = { ...license.instance, instanceType };
+  const licenseDomain = new FakeLicenseDomain().setPlan("sub-org", { maxCertificates, maxWildcardCertificates });
+  licenseDomain.instance = { ...licenseDomain.instance, instanceType };
   return {
     projectDAL: { findById: async () => ({ id: "project-1", orgId: "sub-org" }) },
-    license,
-    certManager: {
+    licenseDomain,
+    certManagerDomain: {
       resolveRootOrgId: async () => "root-org",
       countActiveCertificateQuota: async (orgId?: string) => {
         calls.counted.push(orgId);

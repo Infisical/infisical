@@ -91,7 +91,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const config = await getServerCfg();
       const serverEnvs = getConfig();
 
-      const hasOfflineLicense = server.services.license.hasOfflineLicenseKey();
+      const hasOfflineLicense = server.services.licenseDomain.hasOfflineLicenseKey();
 
       const isSuperAdminUser = req.auth && isSuperAdmin(req.auth);
 
