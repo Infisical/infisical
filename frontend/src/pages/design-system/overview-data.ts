@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "mono-rule",
+    title: "Mono for machine values",
+    description:
+      "Names people choose render in sans; mono is kept for keys, IDs, hashes, hosts and code, with a lint for mono names.",
+    date: "2026-11-07",
+    commit: "1a51d0cb78",
+    page: "text"
+  },
+  {
     id: "quiet-link",
     title: "Quiet links",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "357f910288",
     page: "button"
-  },
-  {
-    id: "header-band",
-    title: "Header band and quiet empty rows",
-    description:
-      "Table headers keep one band edge to edge again, and empty, loading and group rows no longer light up on hover.",
-    date: "2026-11-07",
-    commit: "c23123067c",
-    page: "table"
   }
 ];
