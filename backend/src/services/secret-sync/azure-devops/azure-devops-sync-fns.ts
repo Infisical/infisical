@@ -115,7 +115,7 @@ export const azureDevOpsSyncFactory = ({ kmsService, appConnectionDAL }: TAzureD
     // existing one", so round-tripping a secret variable here does not clear it.
     if (secretSync.syncOptions.disableSecretDeletion) {
       for (const [key, variable] of Object.entries(existingVariables)) {
-        if (!(key in secretMap)) {
+        if (!Object.hasOwn(secretMap, key)) {
           variables[key] = variable;
         }
       }
