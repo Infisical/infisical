@@ -17,9 +17,14 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 - **Never call KMS Core inside a caller's transaction.** It has no `within(tx)`. Fetch ciphers, key ids and key
   material before opening the transaction; delete keys after it commits (`deleteProjectKeys`). A secret write that
   runs inside a caller's transaction takes its ciphers through `TSecretWriteTransaction`
-  (`prepareSecretWriteCiphers` in `secret-v2-bridge-fns.ts`); validation takes the project cipher as an argument.
-  KMS Core reads on its own connection, so it cannot see rows a caller has not committed: a caller that creates a
-  project and encrypts for it commits the project first (see `external-migration-fns/import.ts`).
+  (`prepareSecretWriteCiphers` in `secret-v2-bridge-fns.ts`); validation takes the project cipher as an argument;
+  a folder commit created inside a transaction takes `secretManagerDecryptor` (`createCommit` refuses without it);
+  an approval request built inside one takes `TSecretApprovalCommitTransaction`; certificate issuance writes its
+  rows in `onPersisted` instead of taking a `tx`; app connection rotations are `prepareRotation` before the
+  transaction and `persistRotation` inside it. Notifications (Slack, Teams, email) run after the commit. KMS Core
+  reads on its own connection, so it cannot see rows a caller has not committed: a caller that creates a project
+  and encrypts for it commits the project first (see `external-migration-fns/import.ts`), and deletes the keys it
+  created if it then removes the project.
 - **No network or HSM call inside a KMS Core transaction.** External-key data keys are encrypted with the provider
   before the lock is taken; a key switch re-wraps the data key before its transaction; provider decrypts run after the
   read returns. Root key wrapping (HSM) happens before the bootstrap and strategy-change transactions.

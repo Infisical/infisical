@@ -1085,10 +1085,15 @@ export const accessApprovalRequestServiceFactory = ({
         }
       }
 
-      // Send notification if this was a breakglass approval
-      if (isBreakGlassApprovalAttempt) {
+      return reviewForThisActorProcessing;
+    });
+
+    // After the commit, so no notification or email is sent while the review transaction holds its connection, and
+    // a failed delivery never undoes the review.
+    if (isBreakGlassApprovalAttempt) {
+      try {
         const cfg = getConfig();
-        const actingUser = await userDAL.findById(actorId, tx);
+        const actingUser = await userDAL.findById(actorId);
 
         if (actingUser) {
           const policyApproverUserIds = policy.approvers
@@ -1096,7 +1101,7 @@ export const accessApprovalRequestServiceFactory = ({
             .filter((id): id is string => typeof id === "string");
 
           if (policyApproverUserIds.length > 0) {
-            const approverUsersForEmail = await userDAL.find({ $in: { id: policyApproverUserIds } }, { tx });
+            const approverUsersForEmail = await userDAL.find({ $in: { id: policyApproverUserIds } });
             const recipientEmails = approverUsersForEmail
               .map((appUser) => appUser.email)
               .filter((email): email is string => !!email);
@@ -1135,9 +1140,13 @@ export const accessApprovalRequestServiceFactory = ({
             }
           }
         }
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to notify approvers of a break-glass access approval [requestId=${accessApprovalRequest.id}]`
+        );
       }
-      return reviewForThisActorProcessing;
-    });
+    }
 
     try {
       const reviewed = await accessApprovalRequestDAL.transaction((tx) =>
