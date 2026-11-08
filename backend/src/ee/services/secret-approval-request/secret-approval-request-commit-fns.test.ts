@@ -2,6 +2,7 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TCipherPair } from "@app/domains/platform/kms-core/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -177,18 +178,20 @@ describe("buildSecretApprovalCommits", () => {
         ]
       }),
       undefined,
-      undefined
+      expect.objectContaining({ encryptor })
     );
     expect(scanSecretPolicyViolations).toHaveBeenCalledTimes(1);
   });
 
-  test("threads the caller's transaction into every read and skips secret scanning", async () => {
+  test("threads the caller's transaction and cipher into every read, never calls KMS Core, and skips secret scanning", async () => {
     const stored = [{ id: "secret-1", key: "A", version: 2, tags: [{ id: "tag-9", slug: "old" }] }];
-    const { fns, deps } = buildFns({ stored, tags: [{ id: "tag-9", slug: "old" }] });
+    const { fns, deps, encryptor } = buildFns({ stored, tags: [{ id: "tag-9", slug: "old" }] });
+    const cipher = { encryptor, decryptor: vi.fn() } as unknown as TCipherPair;
 
     await fns.buildSecretApprovalCommits(
       input({
         trx: TX,
+        cipher,
         data: {
           [SecretOperations.Update]: [{ secretKey: "A", secretValue: "new" }],
           [SecretOperations.Delete]: [{ secretKey: "A" }]
@@ -203,7 +206,8 @@ describe("buildSecretApprovalCommits", () => {
     expect(deps.secretV2BridgeDAL.find).toHaveBeenCalledWith(expect.anything(), { tx: TX });
     expect(deps.secretVersionV2BridgeDAL.findLatestVersionMany).toHaveBeenCalledWith("folder-1", ["secret-1"], TX);
     expect(deps.secretTagDAL.findManyTagsById).toHaveBeenCalledWith("project-1", ["tag-9"], TX);
-    expect(deps.secretValidationRuleService.validateSecrets).toHaveBeenCalledWith(expect.anything(), TX, undefined);
+    expect(deps.secretValidationRuleService.validateSecrets).toHaveBeenCalledWith(expect.anything(), TX, cipher);
+    expect(deps.kmsCoreDomain.createCipherPairWithDataKey).not.toHaveBeenCalled();
   });
 
   test("rejects a create whose key already exists", async () => {

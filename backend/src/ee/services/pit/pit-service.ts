@@ -849,7 +849,8 @@ export const pitServiceFactory = ({
               },
               message,
               folderId: targetFolder.id,
-              changes: commitChanges
+              changes: commitChanges,
+              secretManagerDecryptor: ciphers.secretManager.decryptor
             },
             trx
           );
@@ -899,6 +900,7 @@ export const pitServiceFactory = ({
                 })) ?? []
             },
             trx,
+            cipher: ciphers.secretManager,
             skipPostProcessing: true
           });
           approvalSideEffects = {
@@ -1054,7 +1056,8 @@ export const pitServiceFactory = ({
             },
             message,
             folderId: targetFolder.id,
-            changes: commitChanges
+            changes: commitChanges,
+            secretManagerDecryptor: ciphers.secretManager.decryptor
           },
           trx
         );

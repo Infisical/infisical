@@ -560,6 +560,7 @@ export const secretReplicationServiceFactory = ({
                     eventScope: replicationEventScope,
                     secretVersionDAL: secretVersionV2BridgeDAL,
                     folderCommitService,
+                    secretManagerDecryptor,
                     secretDAL: secretV2BridgeDAL,
                     tx,
                     resourceMetadataDAL,

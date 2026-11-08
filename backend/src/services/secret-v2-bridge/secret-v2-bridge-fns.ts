@@ -252,7 +252,8 @@ export const fnSecretBulkUpdate = async ({
   resourceMetadataDAL,
   eventEmitter,
   eventScope,
-  actor
+  actor,
+  secretManagerDecryptor
 }: TFnSecretBulkUpdate) => {
   const userActorId = actor && actor?.type === ActorType.USER ? actor?.actorId : undefined;
   const identityActorId = actor && actor?.type === ActorType.IDENTITY ? actor?.actorId : undefined;
@@ -428,7 +429,8 @@ export const fnSecretBulkUpdate = async ({
           },
           message: "Secret Updated",
           folderId,
-          changes
+          changes,
+          secretManagerDecryptor
         },
         tx
       );
@@ -1025,7 +1027,8 @@ export const fnUpdateSecretLinkedReferences = async ({
           },
           message: "Secret references updated after referenced secret(s) was renamed",
           folderId: updateFolderId,
-          changes
+          changes,
+          secretManagerDecryptor: decryptor
         },
         tx
       );
@@ -1439,7 +1442,8 @@ export const fnUpdateMovedSecretReferences = async ({
           },
           message: "Secret references updated after referenced secret(s) was moved to a new location",
           folderId: updateFolderId,
-          changes
+          changes,
+          secretManagerDecryptor: decryptor
         },
         tx
       );
@@ -1897,7 +1901,8 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         })),
         excludedSecretIds: secretsToApplyAtDestination.map((secret) => secret.id)
       },
-      tx
+      tx,
+      ciphers.secretManager
     );
   } catch (error) {
     if (!(error instanceof SecretValidationError)) throw error;
@@ -2051,6 +2056,7 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
         orgId: actorOrgId,
         resourceMetadataDAL,
         folderCommitService,
+        secretManagerDecryptor,
         secretVersionDAL,
         secretDAL,
         tx,

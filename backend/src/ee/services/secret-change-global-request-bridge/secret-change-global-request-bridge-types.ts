@@ -15,6 +15,7 @@ import {
   TCreateSecretApprovalRequestV2BridgeDTO,
   TCreateSecretApprovalSideEffectsDTO,
   TGenerateSecretApprovalRequestV2BridgeDTO,
+  TSecretApprovalCommitTransaction,
   TMergeSecretApprovalRequestDTO,
   TReviewRequestDTO,
   TSecretApprovalDetailsDTO,
@@ -109,7 +110,7 @@ export type TCountSecretChangeGlobalRequestsDTO = { projectId: string; userId?: 
 
 export type TSecretChangeGlobalRequestBridgeMethods = {
   generateSecretChangeRequest: (
-    dto: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }
+    dto: TGenerateSecretApprovalRequestV2BridgeDTO & TSecretApprovalCommitTransaction & { skipPostProcessing?: boolean }
   ) => Promise<TSecretChangeRequest>;
   createSecretChangeRequest: (dto: TCreateSecretApprovalRequestV2BridgeDTO, tx?: Knex) => Promise<TSecretChangeRequest>;
   createSecretChangeRequestSideEffects: (dto: TCreateSecretApprovalSideEffectsDTO) => Promise<void>;

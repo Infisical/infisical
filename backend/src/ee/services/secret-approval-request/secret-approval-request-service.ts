@@ -94,6 +94,7 @@ import {
   TCreateSecretApprovalSideEffectsDTO,
   TGenerateSecretApprovalRequestDTO,
   TGenerateSecretApprovalRequestV2BridgeDTO,
+  TSecretApprovalCommitTransaction,
   TListApprovalsDTO,
   TMergeSecretApprovalRequestDTO,
   TReviewRequestDTO,
@@ -1741,7 +1742,7 @@ export const secretApprovalRequestServiceFactory = ({
   };
 
   const generateSecretApprovalRequestV2Bridge = async (
-    dto: TGenerateSecretApprovalRequestV2BridgeDTO & { trx?: Knex; skipPostProcessing?: boolean }
+    dto: TGenerateSecretApprovalRequestV2BridgeDTO & TSecretApprovalCommitTransaction & { skipPostProcessing?: boolean }
   ) => {
     if (await secretChangeGlobalPolicyBridgeService.findSecretChangePolicy(dto.policy.id, dto.trx)) {
       return secretChangeGlobalRequestBridgeService.generateSecretChangeRequest(dto);

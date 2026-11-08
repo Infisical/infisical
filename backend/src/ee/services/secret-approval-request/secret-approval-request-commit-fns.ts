@@ -28,7 +28,10 @@ import {
   ProjectPermissionSub
 } from "../permission/project-permission";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
-import { TGenerateSecretApprovalRequestV2BridgeDTO } from "./secret-approval-request-types";
+import {
+  TGenerateSecretApprovalRequestV2BridgeDTO,
+  TSecretApprovalCommitTransaction
+} from "./secret-approval-request-types";
 
 type TSecretApprovalRequestCommitFnsFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -44,7 +47,8 @@ type TSecretApprovalRequestCommitFnsFactoryDep = {
 export type TBuildSecretApprovalCommitsDTO = Omit<
   TGenerateSecretApprovalRequestV2BridgeDTO,
   "policy" | "commitMessage"
-> & { trx?: Knex };
+> &
+  TSecretApprovalCommitTransaction;
 
 export type TSecretApprovalCommit = Omit<TSecretApprovalRequestsSecretsV2Insert, "requestId" | "secretChangeId">;
 
@@ -127,7 +131,8 @@ export const secretApprovalRequestCommitFnsFactory = ({
     environment,
     folder: providedFolder,
     updateMode = SecretUpdateMode.FailOnNotFound,
-    trx: providedTx
+    trx: providedTx,
+    cipher: providedCipher
   }: TBuildSecretApprovalCommitsDTO) => {
     if (actor === ActorType.SERVICE)
       throw new BadRequestError({ message: "Cannot use service token over protected branches" });
@@ -168,10 +173,10 @@ export const secretApprovalRequestCommitFnsFactory = ({
     const commitTagIds: Record<string, string[]> = {};
     const existingTagIds: Record<string, string[]> = {};
 
-    const { encryptor: secretManagerEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
+    const cipher =
+      providedCipher ??
+      (await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }));
+    const { encryptor: secretManagerEncryptor } = cipher;
 
     const project = await projectDAL.findById(projectId, providedTx);
 
@@ -511,7 +516,8 @@ export const secretApprovalRequestCommitFnsFactory = ({
           secrets: secretsToValidate
         },
         permission,
-        providedTx
+        providedTx,
+        cipher
       );
     }
 

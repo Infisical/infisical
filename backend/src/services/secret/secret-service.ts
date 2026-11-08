@@ -29,6 +29,7 @@ import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secre
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { TSecretApprovalCommitTransaction } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { getConfig } from "@app/lib/config/env";
 import { buildSecretBlindIndexFromName, SymmetricKeySize } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -2291,7 +2292,7 @@ export const secretServiceFactory = ({
           actorOrgId,
           actorAuthMethod,
           folder,
-          trx: tx,
+          ...((tx && ciphers ? { trx: tx, cipher: ciphers.secretManager } : {}) as TSecretApprovalCommitTransaction),
           skipPostProcessing,
           data: {
             [SecretOperations.Create]: inputSecrets.map((el) => ({

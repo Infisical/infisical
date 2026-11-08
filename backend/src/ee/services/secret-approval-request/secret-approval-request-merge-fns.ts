@@ -501,6 +501,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
           orgId: actorOrgId,
           actor: { actorId, type: actor },
           tx,
+          secretManagerDecryptor,
           inputSecrets: updates.map((el, idx) => {
             const encryptedValue =
               !el.secret?.isRotatedSecret && el.encryptedValue !== null && el.encryptedValue !== undefined

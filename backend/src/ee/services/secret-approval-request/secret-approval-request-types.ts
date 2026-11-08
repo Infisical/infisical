@@ -9,6 +9,7 @@ import {
   TSecretApprovalRequestsSecretsV2Insert,
   TSecretFolders
 } from "@app/db/schemas";
+import { TCipherPair } from "@app/domains/platform/kms-core/ce/module";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
@@ -75,6 +76,12 @@ export type TGenerateSecretApprovalRequestDTO = {
     [SecretOperations.Delete]?: { secretName: string }[];
   };
 } & TProjectPermission;
+
+// A caller that builds the request inside its own transaction fetches the project cipher before opening it:
+// KMS Core is never called inside a transaction.
+export type TSecretApprovalCommitTransaction =
+  | { trx: Knex; cipher: TCipherPair }
+  | { trx?: undefined; cipher?: undefined };
 
 export type TGenerateSecretApprovalRequestV2BridgeDTO = {
   environment: string;

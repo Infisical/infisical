@@ -818,6 +818,7 @@ export const secretV2BridgeServiceFactory = ({
         orgId: actorOrgId,
         resourceMetadataDAL,
         folderCommitService,
+        secretManagerDecryptor,
         inputSecrets: [
           {
             filter: { id: secretId },
@@ -2843,6 +2844,7 @@ export const secretV2BridgeServiceFactory = ({
           eventScope: { projectId, environment, secretPath },
           orgId: actorOrgId,
           folderCommitService,
+          secretManagerDecryptor,
           tx,
           commitChanges,
           inputSecrets: inputSecretsForUpdate,

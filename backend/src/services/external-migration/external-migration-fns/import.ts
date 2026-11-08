@@ -386,14 +386,29 @@ export const importDataIntoInfisicalFn = async ({
     }
     await $importIntoProjects();
   } catch (error) {
-    await projectDAL
-      .delete({ $in: { id: createdProjectIds } })
-      .catch((cleanupError) =>
-        logger.error(
-          cleanupError,
-          `Failed to remove projects after a failed import [projectIds=${createdProjectIds.join(",")}]`
-        )
+    const deletedProjects = await projectDAL.delete({ $in: { id: createdProjectIds } }).catch((cleanupError) => {
+      logger.error(
+        cleanupError,
+        `Failed to remove projects after a failed import [projectIds=${createdProjectIds.join(",")}]`
       );
+      return [];
+    });
+    // The keys were created for the projects before the import started; they are reserved keys with no project
+    // reference, so nothing cascades to them. Deleted only after the projects are gone, since KMS Core skips a
+    // key that is still referenced.
+    const kmsKeyIds = deletedProjects.flatMap((project) =>
+      [project.kmsSecretManagerKeyId, project.kmsCertificateKeyId].filter((id): id is string => Boolean(id))
+    );
+    if (kmsKeyIds.length) {
+      await kmsCoreDomain
+        .deleteProjectKeys({ orgId: actorOrgId, kmsKeyIds })
+        .catch((cleanupError) =>
+          logger.error(
+            cleanupError,
+            `Failed to remove KMS keys after a failed import [projectIds=${createdProjectIds.join(",")}]`
+          )
+        );
+    }
     throw error;
   }
 

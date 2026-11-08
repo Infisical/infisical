@@ -860,6 +860,12 @@ export const secretRotationV2ServiceFactory = ({
 
     let secretsMappingUpdated = false;
 
+    // Fetched before the transaction: KMS Core is never called inside one.
+    const mappingSecretManager =
+      payload.secretsMapping && !isEqual(payload.secretsMapping, secretsMapping)
+        ? await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId })
+        : undefined;
+
     try {
       const updatedSecretRotation = await secretRotationV2DAL.transaction(async (tx) => {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretRotationV2Creation(folder.id)]);
@@ -895,6 +901,7 @@ export const secretRotationV2ServiceFactory = ({
             secretVersionTagDAL: secretVersionTagV2BridgeDAL,
             secretTagDAL,
             folderCommitService,
+            secretManagerDecryptor: mappingSecretManager!.decryptor,
             resourceMetadataDAL,
             actor: {
               type: actor.type,
@@ -1424,7 +1431,7 @@ export const secretRotationV2ServiceFactory = ({
 
           // Resolved before the transaction opens, so a slow external KMS does not hold a connection
           // while it answers.
-          const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+          const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId
           });
@@ -1463,6 +1470,7 @@ export const secretRotationV2ServiceFactory = ({
               secretVersionDAL: secretVersionV2BridgeDAL,
               secretVersionTagDAL: secretVersionTagV2BridgeDAL,
               folderCommitService,
+              secretManagerDecryptor: decryptor,
               actor: {
                 type: ActorType.PLATFORM
               },
@@ -2180,7 +2188,7 @@ export const secretRotationV2ServiceFactory = ({
 
         // Resolved before the transaction opens, so a slow external KMS does not hold a connection
         // while it answers.
-        const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+        const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId
         });
@@ -2198,6 +2206,7 @@ export const secretRotationV2ServiceFactory = ({
             folderId,
             orgId: connection.orgId,
             tx,
+            secretManagerDecryptor: decryptor,
             inputSecrets: [
               {
                 filter: {

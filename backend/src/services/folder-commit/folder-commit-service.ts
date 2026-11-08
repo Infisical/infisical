@@ -37,6 +37,7 @@ import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { secretModifiedEvents } from "../secret-v2-bridge/secret-events";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretWriteCiphers } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TFolderCommitDALFactory } from "./folder-commit-dal";
@@ -59,6 +60,8 @@ export enum ResourceType {
   FOLDER = "folder"
 }
 
+export type TSecretDecryptor = (data: { cipherTextBlob: Buffer }) => Buffer;
+
 export type TCommitResourceChangeDTO = {
   type: string;
   secretVersionId?: string;
@@ -79,6 +82,9 @@ type TCreateCommitDTO = {
   folderId: string;
   changes: TCommitResourceChangeDTO[];
   omitIgnoreFilter?: boolean;
+  // Compares updated secret versions. Required when the commit is created inside a transaction and changes
+  // include secret updates: KMS Core cannot be called while the transaction holds its connection.
+  secretManagerDecryptor?: TSecretDecryptor;
 };
 
 type TCommitChangeDTO = {
@@ -466,6 +472,37 @@ export const folderCommitServiceFactory = ({
     return Object.values(folderState);
   };
 
+  // KMS Core takes its own connection, so it is never called while a transaction is open: a caller inside one
+  // passes the decryptor it fetched beforehand. Outside a transaction it is fetched once, on first use.
+  const $secretManagerDecryptorGetter = ({
+    projectId,
+    decryptor,
+    tx,
+    caller
+  }: {
+    projectId: string;
+    decryptor?: TSecretDecryptor;
+    tx?: Knex;
+    caller: string;
+  }) => {
+    let pending: Promise<TSecretDecryptor> | undefined = decryptor ? Promise.resolve(decryptor) : undefined;
+    return () => {
+      if (!pending) {
+        if (tx) {
+          return Promise.reject(
+            new Error(
+              `${caller} compares secret versions inside a transaction but was given no secretManagerDecryptor; fetch it before opening the transaction`
+            )
+          );
+        }
+        pending = kmsCoreDomain
+          .createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId })
+          .then(({ decryptor: fetched }) => fetched);
+      }
+      return pending;
+    };
+  };
+
   /**
    * Compares folder states between two commits and returns the differences
    */
@@ -473,11 +510,13 @@ export const folderCommitServiceFactory = ({
     currentCommitId,
     targetCommitId,
     defaultOperation = "create",
+    secretManagerDecryptor,
     tx
   }: {
     currentCommitId?: string;
     targetCommitId: string;
     defaultOperation?: "create" | "update" | "delete";
+    secretManagerDecryptor?: TSecretDecryptor;
     tx?: Knex;
   }): Promise<ResourceChange[]> => {
     const targetCommit = await folderCommitDAL.findById(targetCommitId, tx);
@@ -659,9 +698,11 @@ export const folderCommitServiceFactory = ({
 
     const removeNoChangeUpdate: string[] = [];
 
-    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId: project.id
+    const getDecryptor = $secretManagerDecryptorGetter({
+      projectId: project.id,
+      decryptor: secretManagerDecryptor,
+      tx,
+      caller: "compareFolderStates"
     });
 
     await Promise.all(
@@ -695,19 +736,16 @@ export const folderCommitServiceFactory = ({
               projectId: project.id,
               secretVersions: [change.secretVersion, change.fromVersion]
             });
+            const decryptor = await getDecryptor();
             const versionsShaped = versions.map((el) => ({
               secretKey: el.key,
-              secretComment: el.encryptedComment
-                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-                : "",
+              secretComment: el.encryptedComment ? decryptor({ cipherTextBlob: el.encryptedComment }).toString() : "",
               skipMultilineEncoding: el.skipMultilineEncoding,
               secretReminderRepeatDays: el.reminderRepeatDays,
               tags: el.tags,
               metadata: el.metadata,
               secretReminderNote: el.reminderNote,
-              secretValue: el.encryptedValue
-                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString()
-                : ""
+              secretValue: el.encryptedValue ? decryptor({ cipherTextBlob: el.encryptedValue }).toString() : ""
             }));
             const uniqueVersions = versionsShaped.filter(
               (item, index, arr) =>
@@ -842,12 +880,8 @@ export const folderCommitServiceFactory = ({
   const compareSecretVersions = async (
     version1: TSecretVersionsV2 & { tags: { id: string }[] },
     version2: TSecretVersionsV2 & { tags: { id: string }[] },
-    projectId: string
+    secretManagerDecryptor: TSecretDecryptor
   ) => {
-    const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId
-    });
     const objectsEqual = (o1: unknown, o2: unknown): boolean => {
       if (typeof o1 !== "object" || o1 === null || typeof o2 !== "object" || o2 === null) {
         return o1 === o2;
@@ -905,13 +939,20 @@ export const folderCommitServiceFactory = ({
       folderId?: string;
     }[],
     projectId: string,
+    secretManagerDecryptor: TSecretDecryptor | undefined,
     tx?: Knex
   ) => {
+    const getDecryptor = $secretManagerDecryptorGetter({
+      projectId,
+      decryptor: secretManagerDecryptor,
+      tx,
+      caller: "createCommit"
+    });
     let filteredChanges = [...changes];
     for (const change of changes) {
       if (change.type === ChangeType.ADD && change.isUpdate && change.secretVersionId) {
         const secretVersions = await secretVersionV2BridgeDAL.findByIdAndPreviousVersion(change.secretVersionId, tx);
-        const comparison = await compareSecretVersions(secretVersions[0], secretVersions[1], projectId);
+        const comparison = await compareSecretVersions(secretVersions[0], secretVersions[1], await getDecryptor());
         if (comparison) {
           filteredChanges = filteredChanges.filter(
             (filteredChange) => filteredChange.secretVersionId !== change.secretVersionId
@@ -952,7 +993,7 @@ export const folderCommitServiceFactory = ({
           return;
         }
 
-        changes = await filterIgnoredChanges(data.changes, project.id, tx);
+        changes = await filterIgnoredChanges(data.changes, project.id, data.secretManagerDecryptor, tx);
         if (changes.length === 0) {
           return;
         }
@@ -1023,21 +1064,25 @@ export const folderCommitServiceFactory = ({
 
   // A rollback recomputes the digests from the restored value instead of copying them from the version
   // row, so the secret version table (which is very large) never needed a digest migration.
-  const $buildBlindIndexRepairer = async (projectId: string, tx?: Knex): Promise<TBlindIndexRepairer> => {
-    const project = await projectDAL.findById(projectId, tx);
-    if (!project) return (version) => version;
+  const $blindIndexRepairer =
+    ({ secretManager, blindIndexer }: TSecretWriteCiphers): TBlindIndexRepairer =>
+    async (version) => {
+      if (!version.encryptedValue) return version;
 
-    const [{ decryptor }, blindIndexer] = await Promise.all([
+      const value = secretManager.decryptor({ cipherTextBlob: version.encryptedValue });
+      return { ...version, ...(await blindIndexer.generateBlindIndexes(value)) };
+    };
+
+  // Never inside a transaction: it reaches KMS Core, which takes its own connection.
+  const $fetchSecretWriteCiphers = async (projectId: string): Promise<TSecretWriteCiphers | undefined> => {
+    const project = await projectDAL.findById(projectId);
+    if (!project) return undefined;
+
+    const [secretManager, blindIndexer] = await Promise.all([
       kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }),
       createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsCoreDomain })
     ]);
-
-    return async (version) => {
-      if (!version.encryptedValue) return version;
-
-      const value = decryptor({ cipherTextBlob: version.encryptedValue });
-      return { ...version, ...(await blindIndexer.generateBlindIndexes(value)) };
-    };
+    return { secretManager, blindIndexer };
   };
 
   /**
@@ -1582,25 +1627,27 @@ export const folderCommitServiceFactory = ({
   /**
    * Apply folder state differences with transaction handling
    */
-  const applyFolderStateDifferences = async (params: {
-    differences: ResourceChange[];
-    actorInfo: ActorInfo;
-    folderId: string;
-    projectId: string;
-    reconstructNewFolders: boolean;
-    reconstructUpToCommit?: string;
-    tx?: Knex;
-  }): Promise<StateChangeResult> => {
-    // Resolved here, before any transaction is opened, because it reaches the KMS: an org on an
-    // external provider would otherwise put a network call between BEGIN and COMMIT.
-    const repairBlindIndexes = await $buildBlindIndexRepairer(params.projectId, params.tx);
-
-    // If a transaction was provided, use it directly
+  const applyFolderStateDifferences = async (
+    params: {
+      differences: ResourceChange[];
+      actorInfo: ActorInfo;
+      folderId: string;
+      projectId: string;
+      reconstructNewFolders: boolean;
+      reconstructUpToCommit?: string;
+    } & ({ tx: Knex; ciphers: TSecretWriteCiphers } | { tx?: undefined; ciphers?: undefined })
+  ): Promise<StateChangeResult> => {
     if (params.tx) {
-      return applyFolderStateDifferencesFn({ ...params, repairBlindIndexes, step: 0 });
+      return applyFolderStateDifferencesFn({
+        ...params,
+        repairBlindIndexes: $blindIndexRepairer(params.ciphers),
+        step: 0
+      });
     }
 
-    // Otherwise, start a new transaction
+    // Fetched before the transaction: KMS Core is never called inside one.
+    const ciphers = await $fetchSecretWriteCiphers(params.projectId);
+    const repairBlindIndexes: TBlindIndexRepairer = ciphers ? $blindIndexRepairer(ciphers) : async (version) => version;
     return folderCommitDAL.transaction((newTx) =>
       applyFolderStateDifferencesFn({ ...params, repairBlindIndexes, tx: newTx, step: 0 })
     );
@@ -2169,6 +2216,10 @@ export const folderCommitServiceFactory = ({
     message?: string
   ): Promise<{ affectedFolderIds: string[] }> => {
     const affectedFolderIds: string[] = [];
+    // Fetched before the transaction: KMS Core is never called inside one.
+    const ciphers = await $fetchSecretWriteCiphers(projectId);
+    if (!ciphers) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
     await folderCommitDAL.transaction(async (tx) => {
       const targetCommit = await folderCommitDAL.findById(targetCommitId, tx);
       if (!targetCommit) {
@@ -2226,6 +2277,7 @@ export const folderCommitServiceFactory = ({
             const diff = await compareFolderStates({
               currentCommitId: id,
               targetCommitId: previousCommit.id,
+              secretManagerDecryptor: ciphers.secretManager.decryptor,
               tx
             });
             if (diff?.length > 0) {
@@ -2271,7 +2323,8 @@ export const folderCommitServiceFactory = ({
             projectId,
             reconstructNewFolders: true,
             reconstructUpToCommit: targetCommit.commitId.toString(),
-            tx
+            tx,
+            ciphers
           });
           affectedFolderIds.push(folder.id);
         }

@@ -21,7 +21,11 @@ import {
 } from "@app/services/secret/secret-types";
 
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
-import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import {
+  TCommitResourceChangeDTO,
+  TFolderCommitServiceFactory,
+  TSecretDecryptor
+} from "../folder-commit/folder-commit-service";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
@@ -259,6 +263,8 @@ export type TFnSecretBulkUpdate = {
   };
   tx?: Knex;
   commitChanges?: TCommitResourceChangeDTO[];
+  // The commit compares updated secret versions; fetched before the caller's transaction.
+  secretManagerDecryptor: TSecretDecryptor;
 };
 
 export type TFnSecretBulkDelete = {
