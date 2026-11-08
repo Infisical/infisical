@@ -35,7 +35,7 @@ export const sealTransaction = (
 // Lint allows this only in data-access/, so nothing else can run SQL on another domain's transaction.
 export const unsealTransaction = (tx: TTransaction): Knex.Transaction => {
   const trx = knexHandles.get(tx);
-  if (!trx) throw new Error("Not a transaction issued by a TransactionRunner or sealKnexTransaction");
+  if (!trx) throw new Error("Not a transaction issued by a TransactionRunner");
   return trx;
 };
 

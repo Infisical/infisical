@@ -1786,7 +1786,8 @@ export const registerRoutes = async (
     loginService,
     emailDomainDAL,
     signupOnboardingResponseDAL,
-    emailDispatchGuard
+    emailDispatchGuard,
+    licenseDomain
   });
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({
@@ -3338,6 +3339,7 @@ export const registerRoutes = async (
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
+    licenseDomain,
     eventEmitter: eventOutboxService,
     projectEnvService,
     projectDAL,

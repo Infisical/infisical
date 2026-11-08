@@ -12,7 +12,6 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
 import {
   TLicenseDomain,
   AgentVaultIdentities,
@@ -858,12 +857,9 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    // Seat sync calls the License Server, so it waits for the org to commit, including a caller's transaction.
-    if (trx) {
-      sealKnexTransaction(trx).afterCommit(() => licenseDomain.syncSeats(organization.id));
-    } else {
-      await licenseDomain.syncSeats(organization.id);
-    }
+    // Seat sync calls the License Server, so it waits for the org to commit. A caller that passed its own
+    // transaction syncs seats once that transaction commits.
+    if (!trx) await licenseDomain.syncSeats(organization.id);
 
     licenseDomain.emit(organization.id, PamIdentities.key);
 

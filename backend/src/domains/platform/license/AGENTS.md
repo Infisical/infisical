@@ -13,8 +13,8 @@ is the plan cache in the key store and the usage queues.
   `InstanceType`), and `@app/queue`, `@app/keystore/keystore` and `@app/lib/cron/*` sit in an import cycle
   with `@app/lib/crypto`. Reference them with `import type` only; runtime pieces such as the timer are
   passed in by `domains.ts`.
-- **Seat sync runs after the commit.** `syncSeats` calls the License Server and never throws. Code that may
-  run inside a caller's Knex transaction schedules it with `sealKnexTransaction(trx).afterCommit(...)`.
+- **Seat sync runs after the commit.** `syncSeats` calls the License Server and never throws. Code that runs
+  inside a caller's transaction (org create, project create) leaves the call to that caller, after its commit.
 - **Cancellation runs before the org is deleted.** Any 4xx means there is nothing to cancel; anything
   else is thrown so the delete stops.
 - **License is built first and knows no product.** Products plug in through `LicenseModule.registry`

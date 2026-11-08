@@ -36,7 +36,7 @@ tables no domain owns yet, tested against Postgres without an in-memory twin.
 | Path | Holds |
 | --- | --- |
 | `domains.ts` | The only wiring file. Builds each module and passes modules and hooks between them |
-| `lib/` | Generic helpers: `TransactionRunner`, `TTransaction`, `sealKnexTransaction`, the `TDomainModule` type, and their in-memory versions under `lib/testing/` |
+| `lib/` | Generic helpers: `TransactionRunner`, `TTransaction`, the `TDomainModule` type, and their in-memory versions under `lib/testing/` |
 | `platform/` | Domains used by many products: KMS, billing, access control, audit log |
 | `<product-area>/` | A product, such as secrets. Holds one or more domains |
 
@@ -223,7 +223,7 @@ export class SecretService implements TSecretService {
 | Remove your data when the owner tells you it is gone (an event, or a call until the event exists); do not depend on `ON DELETE CASCADE` from another domain's table | A cascade from someone else's table is a write into your tables inside their transaction |
 | No network or HSM calls inside a transaction; make them before `run` | The connection and its locks are held for the whole call |
 | Within one domain, take locks in one order (root key, org, project; key before data key) | Two transactions taking the same locks in different orders deadlock |
-| Legacy code under `src/services/` holding a Knex transaction does not hand it to a domain either: it reads from the domain before opening the transaction, and calls it after the commit. When that code may run inside a caller's transaction, schedule the call with `sealKnexTransaction(trx).afterCommit(...)` from `lib/legacy-transaction.ts` | A domain read on the caller's connection ties the domain's queries to legacy locks; `within(tx)` across domains is a last resort for a migration, never the default |
+| Legacy code under `src/services/` holding a Knex transaction never hands it to a domain: it reads from the domain before opening the transaction, and calls it after the commit. When that code runs inside a caller's transaction, the caller makes the call after its own commit | A domain query on the caller's connection runs under the caller's locks, and a hook on a nested Knex transaction fires when the savepoint is released, before the real commit |
 
 If an outcome truly has to be atomic across two domains, the boundary is in the wrong place: raise it in
 review and move the data into one domain rather than sharing a transaction.

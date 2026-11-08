@@ -17,7 +17,6 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
-import { sealKnexTransaction } from "@app/domains/lib/legacy-transaction";
 import {
   TLicenseDomain,
   AgentVaultIdentities,
@@ -802,10 +801,6 @@ export const projectServiceFactory = ({
         );
       }
 
-      // The plan carries the project count, so a capped org's cached plan is refreshed once the project commits.
-      if (plan.workspaceLimit) {
-        sealKnexTransaction(tx).afterCommit(() => licenseDomain.refreshPlan(organization.id));
-      }
       return {
         ...project,
         environments: envs,
@@ -831,7 +826,9 @@ export const projectServiceFactory = ({
       };
     });
 
-    await licenseDomain.invalidatePlan(actorOrgId);
+    // The plan carries the project count, so it is dropped once the project commits. A caller that passed its own
+    // transaction does this after that transaction commits.
+    if (!trx) await licenseDomain.invalidatePlan(actorOrgId);
     // A new project seeds its creator (plus any template members/identities); emit so a new
     // secret-manager or PAM project's seats are metered. Org-scoped (not emitForProject) to avoid racing
     // the just-committed row; the counter filters by project type.

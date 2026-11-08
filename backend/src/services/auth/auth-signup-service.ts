@@ -1,4 +1,5 @@
 import { AccessScope, OrgMembershipStatus, TSignupOnboardingResponsesUpdate } from "@app/db/schemas";
+import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain } from "@app/ee/services/email-domain/email-domain-fns";
 import { getConfig } from "@app/lib/config/env";
@@ -44,6 +45,7 @@ type TAuthSignupDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   signupOnboardingResponseDAL: Pick<TSignupOnboardingResponseDALFactory, "upsert">;
   emailDispatchGuard: TEmailDispatchGuardFactory;
+  licenseDomain: TLicenseDomain;
 };
 
 const DUMMY_USER_ID = "00000000-0000-0000-0000-000000000000";
@@ -60,6 +62,7 @@ const signupTrafficAttributes = (email: string) => ({
 
 export type TAuthSignupFactory = ReturnType<typeof authSignupServiceFactory>;
 export const authSignupServiceFactory = ({
+  licenseDomain,
   authDAL,
   userDAL,
   userAliasDAL,
@@ -317,6 +320,8 @@ export const authSignupServiceFactory = ({
       });
       user = updatedUser;
       authMethod = AuthMethod.EMAIL;
+      // createOrganization ran inside the transaction above, so the seat sync waits for its commit.
+      if (organizationId) await licenseDomain.syncSeats(organizationId);
     } else {
       // Alias verification
       const userAlias =

@@ -3,7 +3,6 @@ import { randomBytes } from "node:crypto";
 import { Knex } from "knex";
 import { onTestFinished } from "vitest";
 
-import { sealKnexTransaction } from "./legacy-transaction";
 import { TStoreLocks } from "./store-locks";
 import { setupIntegration } from "./testing/integration";
 import { TransactionRunner } from "./transaction-runner";
@@ -144,69 +143,5 @@ describe("TransactionRunner", () => {
 
     // Assert
     expect(await values()).toEqual(["first", "second saw first"]);
-  });
-});
-
-describe("sealKnexTransaction", () => {
-  const h = setupIntegration();
-
-  const scratch = async () => {
-    const table = `it_legacy_${randomBytes(4).toString("hex")}`;
-    await h.db.schema.createTable(table, (t) => t.string("value"));
-    onTestFinished(() => h.db.schema.dropTableIfExists(table));
-    const runner = new TransactionRunner(h.db, (trx) => ({
-      insert: async (value: string) => {
-        await trx(table).insert({ value });
-      }
-    }));
-    const values = async () => (await h.db(table).select("value")).map((r: { value: string }) => r.value).sort();
-    return { runner, values, table };
-  };
-
-  test("should join a legacy transaction and roll back with it", async () => {
-    // Setup
-    const { runner, values, table } = await scratch();
-
-    // Action
-    const result = h.db.transaction(async (trx) => {
-      await trx(table).insert({ value: "legacy" });
-      await runner.within(sealKnexTransaction(trx)).run(({ store }) => store.insert("domain"));
-      throw new Error("legacy fails");
-    });
-
-    // Assert
-    await expect(result).rejects.toThrow("legacy fails");
-    expect(await values()).toEqual([]);
-  });
-
-  test("should run afterCommit once the legacy transaction commits, and never when it rolls back", async () => {
-    // Setup
-    const { values } = await scratch();
-    const seen: string[] = [];
-    let committed!: () => void;
-    const hookRan = new Promise<void>((resolve) => {
-      committed = resolve;
-    });
-
-    // Action
-    await h.db.transaction(async (trx) => {
-      sealKnexTransaction(trx).afterCommit(async () => {
-        seen.push("committed");
-        committed();
-      });
-    });
-    await h.db
-      .transaction(async (trx) => {
-        sealKnexTransaction(trx).afterCommit(async () => {
-          seen.push("rolled back");
-        });
-        throw new Error("boom");
-      })
-      .catch(() => undefined);
-    await hookRan;
-
-    // Assert
-    expect(seen).toEqual(["committed"]);
-    expect(await values()).toEqual([]);
   });
 });
