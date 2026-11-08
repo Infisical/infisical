@@ -63,12 +63,20 @@ import { useV4Adapter } from "../../../data/adapters";
 import { useRequestBreadth } from "../bridge/scopes";
 import { useValueLoader } from "../bridge/values";
 import { valueKey } from "../bridge/view-model";
-import { readableValue, type Resource, type Scope, type Secret } from "../secrets-model";
+import {
+  readableValue,
+  type Resource,
+  type Scope,
+  type Secret,
+  selectionKey
+} from "../secrets-model";
 import { environmentLabel } from "./flows/shared";
 import {
   ActionButton,
+  ChildSelectCell,
+  ChildSelectHead,
   type EnvironmentStatus,
-  ExpandToggle,
+  ExpandCell,
   type KindOverlay,
   NEXT_PHASE,
   PendingBadge,
@@ -963,7 +971,7 @@ export function SecretRow({
         >
           <SelectCell
             kind="secret"
-            rowKey={rowKey}
+            keys={[selectionKey(first)]}
             label={name}
             ctx={ctx}
             selectable
@@ -1058,21 +1066,8 @@ export function SecretRow({
           data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
           className={styles.row}
           data-expanded={expanded || undefined}
-          onClick={() => setExpanded(!expanded)}
         >
-          <SelectCell
-            kind="secret"
-            rowKey={rowKey}
-            label={name}
-            ctx={ctx}
-            selectable
-            pinned={expanded}
-            alternate={
-              expanded ? (
-                <ExpandToggle expanded label={name} onToggle={() => setExpanded(false)} />
-              ) : undefined
-            }
-          />
+          <ExpandCell expanded={expanded} label={name} onToggle={() => setExpanded(!expanded)} />
           <TableCell className={styles.nameCell}>
             <div className={styles.nameLine}>
               <span className={styles.truncate} title={name}>
@@ -1113,7 +1108,7 @@ export function SecretRow({
             <Table className={styles.nestedTable}>
               <TableHeader>
                 <TableRow>
-                  <TableHead selection divider={false} />
+                  <ChildSelectHead resources={entries} label={name} ctx={ctx} />
                   <TableHead className={styles.envName}>Environment</TableHead>
                   <TableHead>Value</TableHead>
                   <TableHead className={styles.revealHead}>
@@ -1135,7 +1130,11 @@ export function SecretRow({
                   const imported = handlers.importedFrom(environment.value, name);
                   const cells = (
                     <>
-                      <TableCell selection divider={false} />
+                      <ChildSelectCell
+                        resource={secret}
+                        label={`${name} in ${environment.label}`}
+                        ctx={ctx}
+                      />
                       <TableCell
                         className={styles.envName}
                         data-override-rule={secret?.override !== undefined || undefined}

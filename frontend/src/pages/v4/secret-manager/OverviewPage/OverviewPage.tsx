@@ -95,6 +95,7 @@ import {
   type ResourceApplyOptions,
   resourceKey,
   type ResourceKind,
+  selectionKey,
   scopeMatches,
   type Secret,
   setEnvironmentOptions
@@ -121,7 +122,12 @@ import {
   ImportSecretsSheet
 } from "./secrets/import-secrets/import-secrets-sheet";
 import { SecretDropzone } from "./secrets/import-secrets/secret-dropzone";
-import { NEXT_PHASE, ROW_ACTION_SLOTS, type RowContext } from "./secrets/overview-cells";
+import {
+  NEXT_PHASE,
+  ROW_ACTION_SLOTS,
+  type RowContext,
+  selectableKinds
+} from "./secrets/overview-cells";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
 import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
@@ -171,7 +177,6 @@ const sortOptions: { value: string; label: string; field: SortField; direction: 
     { value: "createdAt-desc", label: "Created (new)", field: "createdAt", direction: "desc" },
     { value: "createdAt-asc", label: "Created (old)", field: "createdAt", direction: "asc" }
   ];
-const selectableKinds: ResourceKind[] = ["secret", "folder", "rotation"];
 
 const ROUTE = v4Path("/organizations/$orgId/projects/secret-management/$projectId/overview");
 const filterRowTypes: Record<ResourceKind, string> = {
@@ -721,13 +726,10 @@ export const OverviewPage = () => {
   }, [recent, ordered]);
   const isFiltered = Boolean(query.trim() || types.length || tags.length);
   const tagOptions = tagList.map((tag) => tag.slug).sort();
-  const selectableOnPage = windowRows
-    .filter(
-      ([, entries]) =>
-        selectableKinds.includes(entries[0].kind) && (single || entries[0].kind !== "rotation")
-    )
-    .map(([key]) => key);
-  const selectedEntries = scoped.filter((resource) => selected.includes(resourceKey(resource)));
+  const selectableOnPage = windowRows.flatMap(([, entries]) =>
+    selectableKinds.includes(entries[0].kind) ? entries.map(selectionKey) : []
+  );
+  const selectedEntries = scoped.filter((resource) => selected.includes(selectionKey(resource)));
   const report = (message: string) => setNotice(message);
   const stage = (shownResource: Secret | Of<"folder">, next: Secret | Of<"folder">) => {
     setPending((current) => stagePending(current, shownResource, next, resources));
@@ -793,9 +795,11 @@ export const OverviewPage = () => {
           ? [...current.filter((entry) => entry !== key), key]
           : current.filter((entry) => entry !== key)
       ),
-    onToggleSelect: (key) =>
+    onToggleSelect: (keys) =>
       setSelected(
-        selected.includes(key) ? selected.filter((entry) => entry !== key) : [...selected, key]
+        keys.every((key) => selected.includes(key))
+          ? selected.filter((entry) => !keys.includes(entry))
+          : [...new Set([...selected, ...keys])]
       ),
     report,
     onAction: setRowAction,
