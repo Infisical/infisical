@@ -57,6 +57,7 @@ import {
   ChildSelectCell,
   ChildSelectHead,
   ExpandCell,
+  KindIcon,
   PendingBadge,
   PendingMenuItems,
   presenceOf,
@@ -638,6 +639,7 @@ export function KindRow({
         data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
         className={styles.row}
         data-expanded={expanded || undefined}
+        onClick={() => setExpanded(!expanded)}
       >
         <ExpandCell
           expanded={expanded}
@@ -646,6 +648,9 @@ export function KindRow({
         />
         <TableCell className={styles.nameCell}>
           <div className={styles.nameLine}>
+            <span className={styles.nameKind}>
+              <KindIcon kind={kind} />
+            </span>
             <span className={styles.truncate}>{first.name}</span>
             {!expanded && <span className={styles.push}>{spec.flag?.(entries)}</span>}
           </div>
@@ -961,6 +966,7 @@ export function ImportRow({
           data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
           className={styles.row}
           data-expanded={expanded || undefined}
+          onClick={() => setExpanded(!expanded)}
         >
           <ExpandCell
             expanded={expanded}
@@ -969,6 +975,9 @@ export function ImportRow({
           />
           <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
             <div className={styles.nameLine}>
+              <span className={styles.nameKind}>
+                <KindIcon kind="import" />
+              </span>
               {label}
               {first.revoked && (
                 <span className={styles.push}>

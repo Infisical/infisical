@@ -1918,7 +1918,6 @@ export const OverviewPage = () => {
                   total={selectableOnPage.length}
                   onSelectAll={() => setSelected(selectableOnPage)}
                   onClear={() => setSelected([])}
-                  noun="resources"
                   actions={[
                     {
                       label: "Add tags",

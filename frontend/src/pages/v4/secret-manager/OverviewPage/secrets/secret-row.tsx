@@ -77,6 +77,7 @@ import {
   ChildSelectHead,
   type EnvironmentStatus,
   ExpandCell,
+  KindIcon,
   type KindOverlay,
   NEXT_PHASE,
   PendingBadge,
@@ -1066,10 +1067,14 @@ export function SecretRow({
           data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
           className={styles.row}
           data-expanded={expanded || undefined}
+          onClick={() => setExpanded(!expanded)}
         >
           <ExpandCell expanded={expanded} label={name} onToggle={() => setExpanded(!expanded)} />
           <TableCell className={styles.nameCell}>
             <div className={styles.nameLine}>
+              <span className={styles.nameKind}>
+                <KindIcon kind="secret" />
+              </span>
               <span className={styles.truncate} title={name}>
                 {name}
               </span>
