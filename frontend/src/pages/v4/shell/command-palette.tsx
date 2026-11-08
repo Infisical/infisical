@@ -156,7 +156,6 @@ export const CommandPalette = ({
           id: `project-entity:${entry.id}`,
           label: entry.name,
           kind: "project" as const,
-          mono: true,
           description: productOf(entry.type).label,
           onSelect: () => go(projectHome(entry.type, entry.id))
         })),

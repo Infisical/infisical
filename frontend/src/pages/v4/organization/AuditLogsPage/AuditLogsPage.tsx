@@ -120,7 +120,7 @@ const makeColumns = (onOpen: (log: AuditLog) => void): DataTableColumn<AuditLog>
     width: 264,
     maxWidth: 264,
     text: (row) => actorName(row.actor),
-    render: (row) => <MiddleTruncate mono={isMachine(row.actor)} text={actorName(row.actor)} />
+    render: (row) => <MiddleTruncate text={actorName(row.actor)} />
   },
   {
     id: "event",

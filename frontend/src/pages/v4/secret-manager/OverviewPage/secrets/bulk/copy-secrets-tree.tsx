@@ -246,11 +246,14 @@ function Folder({
                       />
                     )}
                     {isReadOnly ? (
-                      <span className={styles.treeName}>{secret.name}</span>
+                      <span className={styles.treeName} data-mono>
+                        {secret.name}
+                      </span>
                     ) : (
                       <label
                         htmlFor={secretId}
                         className={styles.treeName}
+                        data-mono
                         data-disabled={!isSelectable || undefined}
                       >
                         {secret.name}

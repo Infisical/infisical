@@ -205,7 +205,7 @@ export const NewConnection = () => {
                 error={nameError}
                 wide
               >
-                <Input mono value={name} onChange={(event) => setName(event.target.value)} />
+                <Input value={name} onChange={(event) => setName(event.target.value)} />
               </Field>
               <Field label="Description" optional wide>
                 <Textarea

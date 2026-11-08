@@ -83,7 +83,6 @@ export const ProjectsPage = () => {
             variant="outline"
             icon={productOf(demoProject.type).icon}
             title={demoProject.name}
-            mono
             description={`Continue in ${productOf(demoProject.type).label}`}
             actions={<Icon name="chev-right" size={16} />}
           >

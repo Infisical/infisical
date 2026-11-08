@@ -7,14 +7,6 @@
   "decorative-effect": {
     "src/components/v4/ui/chart.tsx": 1
   },
-  "mono-named-entity": {
-    "src/pages/v4/access/org/identity-detail.tsx": 1,
-    "src/pages/v4/access/project/identity-detail.tsx": 1,
-    "src/pages/v4/organization/ProjectsPage/ProjectsPage.tsx": 1,
-    "src/pages/v4/secret-manager/OverviewPage/OverviewPage.tsx": 1,
-    "src/pages/v4/shell/command-palette.tsx": 1,
-    "src/pages/v4/shell/V4Shell.tsx": 2
-  },
   "raw-color": {
     "src/components/v4/ui/helpers.module.css": 1
   }

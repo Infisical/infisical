@@ -443,7 +443,6 @@ export const ProjectIdentityDetail = () => {
         {backLink}
         <PageHeader
           title={identity.name}
-          mono
           actions={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

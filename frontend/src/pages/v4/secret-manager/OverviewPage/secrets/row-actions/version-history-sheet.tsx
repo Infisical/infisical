@@ -282,7 +282,9 @@ export function VersionHistorySheet({
           <SheetTitle>Version history</SheetTitle>
         </SheetHeader>
         <SheetSubheader className={styles.subject}>
-          <span className={styles.subjectName}>{secret.name}</span>
+          <span className={styles.subjectName} data-mono>
+            {secret.name}
+          </span>
           <Badge tone="outline">{environmentLabel}</Badge>
         </SheetSubheader>
         <SheetBody>
