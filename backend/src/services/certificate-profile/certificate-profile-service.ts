@@ -642,6 +642,21 @@ export const certificateProfileServiceFactory = ({
       };
     }
 
+    let precomputedEstConfig: { hashedPassphrase: string; encryptedCaChain: Buffer | null } | undefined;
+    if (enrollmentType === EnrollmentType.EST && data.estConfig) {
+      const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, getConfig().SALT_ROUNDS);
+      let encryptedCaChain: Buffer | null = null;
+      if (!data.estConfig.disableBootstrapCaValidation && data.estConfig.caChain) {
+        ({ encryptedCaChain } = await validateAndEncryptPemCaChain(data.estConfig.caChain, projectId, kmsCoreDomain));
+      }
+      precomputedEstConfig = { hashedPassphrase, encryptedCaChain };
+    }
+
+    const precomputedAcmeEabSecret =
+      enrollmentType === EnrollmentType.ACME && data.acmeConfig
+        ? (await generateAndEncryptAcmeEabSecret(projectId, kmsCoreDomain)).encryptedEabSecret
+        : undefined;
+
     // Create enrollment configs and profile
     const profile = await certificateProfileDAL.transaction(async (tx) => {
       let estConfigId: string | null = null;
@@ -649,26 +664,12 @@ export const certificateProfileServiceFactory = ({
       let acmeConfigId: string | null = null;
       let scepConfigId: string | null = null;
 
-      if (enrollmentType === EnrollmentType.EST && data.estConfig) {
-        const appCfg = getConfig();
-        // Hash the passphrase
-        const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, appCfg.SALT_ROUNDS);
-
-        let encryptedCaChainBuffer: Buffer | null = null;
-        if (!data.estConfig.disableBootstrapCaValidation && data.estConfig.caChain) {
-          const { encryptedCaChain } = await validateAndEncryptPemCaChain(
-            data.estConfig.caChain,
-            projectId,
-            kmsCoreDomain
-          );
-          encryptedCaChainBuffer = encryptedCaChain;
-        }
-
+      if (enrollmentType === EnrollmentType.EST && data.estConfig && precomputedEstConfig) {
         const estConfig = await estEnrollmentConfigDAL.create(
           {
             disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation,
-            hashedPassphrase,
-            encryptedCaChain: encryptedCaChainBuffer
+            hashedPassphrase: precomputedEstConfig.hashedPassphrase,
+            encryptedCaChain: precomputedEstConfig.encryptedCaChain
           },
           tx
         );
@@ -682,13 +683,12 @@ export const certificateProfileServiceFactory = ({
           tx
         );
         apiConfigId = apiConfig.id;
-      } else if (enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
-        const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsCoreDomain);
+      } else if (enrollmentType === EnrollmentType.ACME && data.acmeConfig && precomputedAcmeEabSecret) {
         const acmeConfig = await acmeEnrollmentConfigDAL.create(
           {
             skipDnsOwnershipVerification: data.acmeConfig.skipDnsOwnershipVerification ?? false,
             skipEabBinding: data.acmeConfig.skipEabBinding ?? false,
-            encryptedEabSecret
+            encryptedEabSecret: precomputedAcmeEabSecret
           },
           tx
         );
@@ -884,32 +884,29 @@ export const certificateProfileServiceFactory = ({
 
     const { estConfig, apiConfig, acmeConfig, scepConfig, ...profileUpdateData } = updatedData;
 
+    let estUpdateData:
+      | { disableBootstrapCaValidation: boolean; hashedPassphrase?: string; encryptedCaChain?: Buffer }
+      | undefined;
+    if (estConfig && existingProfile.estConfigId) {
+      estUpdateData = { disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation ?? false };
+      if (estConfig.passphrase) {
+        estUpdateData.hashedPassphrase = await crypto
+          .hashing()
+          .createHash(estConfig.passphrase, getConfig().SALT_ROUNDS);
+      }
+      if (estConfig.caChain) {
+        const { encryptedCaChain } = await validateAndEncryptPemCaChain(
+          estConfig.caChain,
+          existingProfile.projectId,
+          kmsCoreDomain
+        );
+        estUpdateData.encryptedCaChain = encryptedCaChain;
+      }
+    }
+
     const updatedProfile = await certificateProfileDAL.transaction(async (tx) => {
-      if (estConfig && existingProfile.estConfigId) {
-        const updateData: {
-          disableBootstrapCaValidation: boolean;
-          hashedPassphrase?: string;
-          encryptedCaChain?: Buffer;
-        } = {
-          disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation ?? false
-        };
-
-        if (estConfig.passphrase) {
-          updateData.hashedPassphrase = await crypto
-            .hashing()
-            .createHash(estConfig.passphrase, getConfig().SALT_ROUNDS);
-        }
-
-        if (estConfig.caChain) {
-          const { encryptedCaChain } = await validateAndEncryptPemCaChain(
-            estConfig.caChain,
-            existingProfile.projectId,
-            kmsCoreDomain
-          );
-          updateData.encryptedCaChain = encryptedCaChain;
-        }
-
-        await estEnrollmentConfigDAL.updateById(existingProfile.estConfigId, updateData, tx);
+      if (estUpdateData && existingProfile.estConfigId) {
+        await estEnrollmentConfigDAL.updateById(existingProfile.estConfigId, estUpdateData, tx);
       }
 
       if (apiConfig && existingProfile.apiConfigId) {

@@ -4637,7 +4637,6 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateBodyDAL,
     certificateSecretDAL,
-    projectDAL,
     kmsCoreDomain,
     certificateIssuanceQueue,
     cronJob,

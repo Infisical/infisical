@@ -508,6 +508,10 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       });
     }
 
+    const newEabSecret = junction.acmeConfigId
+      ? undefined
+      : (await generateAndEncryptAcmeEabSecret(projectId, kmsCoreDomain)).encryptedEabSecret;
+
     return pkiApplicationProfileDAL.transaction(async (tx) => {
       let { acmeConfigId } = junction;
       if (acmeConfigId) {
@@ -520,12 +524,11 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           tx
         );
       } else {
-        const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsCoreDomain);
         const created = await acmeEnrollmentConfigDAL.create(
           {
             skipDnsOwnershipVerification: config.skipDnsOwnershipVerification ?? false,
             skipEabBinding: config.skipEabBinding ?? false,
-            encryptedEabSecret,
+            encryptedEabSecret: newEabSecret as Buffer,
             applicationProfileId: junction.id
           },
           tx

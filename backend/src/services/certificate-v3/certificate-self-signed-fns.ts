@@ -5,7 +5,6 @@ import { TCertificateDALFactory } from "@app/services/certificate/certificate-da
 import { extractCertificateFields } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import {
   CertExtendedKeyUsageType,
@@ -20,160 +19,44 @@ import {
 } from "../certificate-common/certificate-utils";
 import { TSubjectRule } from "../certificate-policy/certificate-policy-types";
 
-const createSelfSignedCertificateRecord = async ({
-  selfSignedResult,
-  certificateRequest,
-  profile,
-  originalCert,
-  customExtensions,
-  certificateDAL,
-  tx,
-  isRenewal = false
-}: {
+type TSelfSignedCertificateRequest = {
+  commonName?: string;
+  organization?: string;
+  organizationalUnit?: string;
+  country?: string;
+  state?: string;
+  locality?: string;
+  domainComponents?: string[];
+  keyUsages?: CertKeyUsageType[];
+  extendedKeyUsages?: CertExtendedKeyUsageType[];
+  altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
+  validity: { ttl: string };
+  notBefore?: Date;
+  notAfter?: Date;
+};
+
+type TEffectiveAlgorithms = {
+  signatureAlgorithm: CertSignatureAlgorithm;
+  keyAlgorithm: CertKeyAlgorithm;
+};
+
+export type TPreparedSelfSignedCertificate = {
   selfSignedResult: Awaited<ReturnType<typeof generateSelfSignedCertificate>>;
-  customExtensions?: TResolvedCustomExtension[];
-  certificateRequest: {
-    commonName?: string;
-    keyUsages?: CertKeyUsageType[];
-    extendedKeyUsages?: CertExtendedKeyUsageType[];
-  };
-  profile?: { id: string; projectId: string } | null;
-  originalCert?: {
-    id: string;
-    friendlyName?: string | null;
-    commonName?: string | null;
-    projectId: string;
-  };
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "updateById">;
-  tx: Parameters<TCertificateDALFactory["create"]>[1];
-  isRenewal?: boolean;
-}) => {
-  const subjectCommonName =
-    (selfSignedResult.certificateSubject.common_name as string) ||
-    certificateRequest.commonName ||
-    originalCert?.commonName ||
-    "";
-
-  const altNamesList = selfSignedResult.subjectAlternativeNames.map((san) => san.value).join(",");
-
-  const projectId = originalCert?.projectId || profile?.projectId;
-  if (!projectId) {
-    throw new BadRequestError({ message: "Project ID is required for certificate creation" });
-  }
-
-  const baseRecord = {
-    serialNumber: selfSignedResult.serialNumber,
-    friendlyName: originalCert?.friendlyName || subjectCommonName,
-    commonName: subjectCommonName,
-    altNames: altNamesList,
-    status: CertStatus.ACTIVE,
-    notBefore: selfSignedResult.notBefore,
-    notAfter: selfSignedResult.notAfter,
-    projectId,
-    keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
-    extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
-    profileId: profile?.id || null
-  };
-
-  const renewalRecord =
-    isRenewal && originalCert
-      ? {
-          renewedFromCertificateId: originalCert.id
-        }
-      : {};
-
-  const parsedFields = extractCertificateFields(selfSignedResult.certificate, customExtensions);
-
-  return certificateDAL.create(
-    {
-      ...baseRecord,
-      ...renewalRecord,
-      ...parsedFields
-    },
-    tx
-  );
+  encryptedCertificate: Buffer;
+  encryptedPrivateKey: Buffer;
 };
 
-const createEncryptedCertificateData = async ({
-  certificateId,
-  certificate,
-  privateKey,
-  projectId,
-  certificateBodyDAL,
-  certificateSecretDAL,
-  kmsCoreDomain,
-  tx
-}: {
-  certificateId: string;
-  certificate: Buffer;
-  privateKey: Buffer;
-  projectId: string;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
-  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
-  kmsCoreDomain: TKmsCoreDomain;
-  projectDAL: TProjectDALFactory;
-  tx: Parameters<TCertificateBodyDALFactory["create"]>[1];
-}) => {
-  const certificateManagerKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
-
-  const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateManagerKeyId });
-
-  const encryptedCertificate = await kmsEncryptor({
-    plainText: certificate
-  });
-
-  await certificateBodyDAL.create(
-    {
-      certId: certificateId,
-      encryptedCertificate: encryptedCertificate.cipherTextBlob
-    },
-    tx
-  );
-
-  const encryptedPrivateKey = await kmsEncryptor({
-    plainText: privateKey
-  });
-
-  await certificateSecretDAL.create(
-    {
-      certId: certificateId,
-      encryptedPrivateKey: encryptedPrivateKey.cipherTextBlob
-    },
-    tx
-  );
-};
-
-export const processSelfSignedCertificate = async ({
+// Generates and encrypts the certificate before the caller opens its transaction: KMS Core is never called inside one.
+export const prepareSelfSignedCertificate = async ({
   certificateRequest,
   policy,
-  profile,
-  originalCert,
+  projectId,
   effectiveAlgorithms,
-  certificateDAL,
-  certificateBodyDAL,
-  certificateSecretDAL,
   kmsCoreDomain,
-  projectDAL,
-  tx,
-  isRenewal = false,
   existingKeyPair,
   customExtensions
 }: {
-  certificateRequest: {
-    commonName?: string;
-    organization?: string;
-    organizationalUnit?: string;
-    country?: string;
-    state?: string;
-    locality?: string;
-    domainComponents?: string[];
-    keyUsages?: CertKeyUsageType[];
-    extendedKeyUsages?: CertExtendedKeyUsageType[];
-    altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
-    validity: { ttl: string };
-    notBefore?: Date;
-    notAfter?: Date;
-  };
+  certificateRequest: TSelfSignedCertificateRequest;
   policy?: {
     subject?: TSubjectRule[];
     sans?: Array<{
@@ -183,32 +66,12 @@ export const processSelfSignedCertificate = async ({
       denied?: string[];
     }>;
   } | null;
-  profile?: { id: string; projectId: string } | null;
-  originalCert?: {
-    id: string;
-    friendlyName?: string | null;
-    commonName?: string | null;
-    projectId: string;
-  };
-  effectiveAlgorithms: {
-    signatureAlgorithm: CertSignatureAlgorithm;
-    keyAlgorithm: CertKeyAlgorithm;
-  };
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "updateById">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
-  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
+  projectId: string;
+  effectiveAlgorithms: TEffectiveAlgorithms;
   kmsCoreDomain: TKmsCoreDomain;
-  projectDAL: TProjectDALFactory;
-  tx: Parameters<TCertificateDALFactory["create"]>[1];
-  isRenewal?: boolean;
   existingKeyPair?: CryptoKeyPair;
   customExtensions?: TResolvedCustomExtension[];
-}) => {
-  const projectId = originalCert?.projectId || profile?.projectId;
-  if (!projectId) {
-    throw new BadRequestError({ message: "Project ID is required for certificate creation" });
-  }
-
+}): Promise<TPreparedSelfSignedCertificate> => {
   const selfSignedResult = await generateSelfSignedCertificate({
     certificateRequest,
     policy,
@@ -218,40 +81,85 @@ export const processSelfSignedCertificate = async ({
     customExtensions
   });
 
-  const certificateData = await createSelfSignedCertificateRecord({
-    selfSignedResult,
-    certificateRequest,
-    profile,
-    originalCert,
-    customExtensions,
-    certificateDAL,
-    tx,
-    isRenewal
-  });
+  const certificateManagerKeyId = await kmsCoreDomain.getProjectCertificateKmsKeyId(projectId);
+  const kmsEncryptor = await kmsCoreDomain.encryptWithKmsKey({ kmsId: certificateManagerKeyId });
+  const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({ plainText: selfSignedResult.certificate });
+  const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({ plainText: selfSignedResult.privateKey });
 
-  await certificateDAL.updateById(
-    certificateData.id,
+  return { selfSignedResult, encryptedCertificate, encryptedPrivateKey };
+};
+
+export const persistSelfSignedCertificate = async ({
+  prepared,
+  certificateRequest,
+  profile,
+  originalCert,
+  effectiveAlgorithms,
+  customExtensions,
+  certificateDAL,
+  certificateBodyDAL,
+  certificateSecretDAL,
+  tx,
+  isRenewal = false
+}: {
+  prepared: TPreparedSelfSignedCertificate;
+  certificateRequest: Pick<TSelfSignedCertificateRequest, "commonName" | "keyUsages" | "extendedKeyUsages">;
+  profile?: { id: string; projectId: string } | null;
+  originalCert?: {
+    id: string;
+    friendlyName?: string | null;
+    commonName?: string | null;
+    projectId: string;
+  };
+  effectiveAlgorithms: TEffectiveAlgorithms;
+  customExtensions?: TResolvedCustomExtension[];
+  certificateDAL: Pick<TCertificateDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
+  tx: Parameters<TCertificateDALFactory["create"]>[1];
+  isRenewal?: boolean;
+}) => {
+  const { selfSignedResult } = prepared;
+  const projectId = originalCert?.projectId || profile?.projectId;
+  if (!projectId) {
+    throw new BadRequestError({ message: "Project ID is required for certificate creation" });
+  }
+
+  const subjectCommonName =
+    (selfSignedResult.certificateSubject.common_name as string) ||
+    certificateRequest.commonName ||
+    originalCert?.commonName ||
+    "";
+
+  const certificateData = await certificateDAL.create(
     {
+      serialNumber: selfSignedResult.serialNumber,
+      friendlyName: originalCert?.friendlyName || subjectCommonName,
+      commonName: subjectCommonName,
+      altNames: selfSignedResult.subjectAlternativeNames.map((san) => san.value).join(","),
+      status: CertStatus.ACTIVE,
+      notBefore: selfSignedResult.notBefore,
+      notAfter: selfSignedResult.notAfter,
+      projectId,
+      keyUsages: convertKeyUsageArrayToLegacy(certificateRequest.keyUsages) || [],
+      extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequest.extendedKeyUsages) || [],
+      profileId: profile?.id || null,
+      ...(isRenewal && originalCert ? { renewedFromCertificateId: originalCert.id } : {}),
+      ...extractCertificateFields(selfSignedResult.certificate, customExtensions),
       signatureAlgorithm: effectiveAlgorithms.signatureAlgorithm,
       keyAlgorithm: effectiveAlgorithms.keyAlgorithm
     },
     tx
   );
 
-  await createEncryptedCertificateData({
-    certificateId: certificateData.id,
-    certificate: selfSignedResult.certificate,
-    privateKey: selfSignedResult.privateKey,
-    projectId,
-    certificateBodyDAL,
-    certificateSecretDAL,
-    kmsCoreDomain,
-    projectDAL,
+  await certificateBodyDAL.create(
+    { certId: certificateData.id, encryptedCertificate: prepared.encryptedCertificate },
     tx
-  });
+  );
+  await certificateSecretDAL.create(
+    { certId: certificateData.id, encryptedPrivateKey: prepared.encryptedPrivateKey },
+    tx
+  );
 
-  return {
-    selfSignedResult,
-    certificateData
-  };
+  return { selfSignedResult, certificateData };
 };

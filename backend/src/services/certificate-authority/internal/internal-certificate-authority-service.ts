@@ -1767,8 +1767,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId,
-    tx
+    actorOrgId
   }: {
     caId: string;
     parentCaId: string;
@@ -1779,12 +1778,11 @@ export const internalCertificateAuthorityServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actor: ActorType;
     actorOrgId: string;
-    tx?: Knex.Transaction;
   }) => {
-    const intermediateCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+    const intermediateCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!intermediateCa.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const parentCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(parentCaId, tx);
+    const parentCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(parentCaId);
     if (!parentCa.internalCa) throw new NotFoundError({ message: `Parent CA with ID '${parentCaId}' not found` });
 
     if (intermediateCa.projectId !== parentCa.projectId) {
@@ -1875,7 +1873,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
-    const updatedCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+    const updatedCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!updatedCa.internalCa?.activeCaCertId) {
       throw new Error("Failed to get certificate ID after import");
     }
@@ -1922,7 +1920,6 @@ export const internalCertificateAuthorityServiceFactory = ({
     locality,
     ou,
     domainComponents,
-    tx,
     onPersisted
   }: TIssueCertFromCaDTO): Promise<TIssueCertFromCaResponse> => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
@@ -1979,7 +1976,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
-    const projectOrgId = !internal && actorOrgId ? actorOrgId : await $getProjectOrgId(ca.projectId, tx);
+    const projectOrgId = !internal && actorOrgId ? actorOrgId : await $getProjectOrgId(ca.projectId);
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
@@ -2329,12 +2326,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       return cert;
     };
 
-    let cert;
-    if (tx) {
-      cert = await executeIssueCertOperations(tx);
-    } else {
-      cert = await certificateDAL.transaction(executeIssueCertOperations);
-    }
+    const cert = await certificateDAL.transaction(executeIssueCertOperations);
 
     licenseDomain.emit(projectOrgId, Meter.ActiveCerts.key);
     licenseDomain.emit(projectOrgId, Meter.WildcardCerts.key);
@@ -2378,16 +2370,15 @@ export const internalCertificateAuthorityServiceFactory = ({
       basicConstraints,
       pathLength,
       subjectOverride,
-      customExtensions,
-      tx
+      customExtensions
     } = dto;
 
     let collectionId = pkiCollectionId;
 
     if (caId) {
-      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     } else if (certificateTemplateId) {
-      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId, tx);
+      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
       if (!certificateTemplate) {
         throw new NotFoundError({
           message: `Certificate template with ID '${certificateTemplateId}' not found`
@@ -2395,7 +2386,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
 
       collectionId = certificateTemplate.pkiCollectionId as string;
-      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId, tx);
+      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
     }
 
     if (!ca) {
@@ -2429,7 +2420,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
-    const projectOrgId = dto.isInternal ? await $getProjectOrgId(ca.projectId, tx) : dto.actorOrgId;
+    const projectOrgId = dto.isInternal ? await $getProjectOrgId(ca.projectId) : dto.actorOrgId;
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
@@ -2446,7 +2437,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     // check PKI collection
     if (pkiCollectionId) {
-      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId, tx);
+      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
       if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${pkiCollectionId}' not found` });
       if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
@@ -2823,12 +2814,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       return newCert;
     };
 
-    let cert;
-    if (tx) {
-      cert = await persist(tx);
-    } else {
-      cert = await certificateDAL.transaction(persist);
-    }
+    const cert = await certificateDAL.transaction(persist);
 
     licenseDomain.emit(projectOrgId, Meter.ActiveCerts.key);
     licenseDomain.emit(projectOrgId, Meter.WildcardCerts.key);

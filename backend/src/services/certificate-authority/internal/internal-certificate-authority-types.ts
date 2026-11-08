@@ -250,7 +250,7 @@ type TIssueCertFromCaBaseDTO = {
   ou?: string;
   domainComponents?: string[];
   customExtensions?: TResolvedCustomExtension[];
-  tx?: Knex;
+  // Runs inside the transaction that writes the certificate rows; throwing rolls the certificate back.
   onPersisted?: (cert: TCertificates, tx: Knex) => Promise<void>;
 };
 
@@ -289,7 +289,6 @@ export type TSignCertFromCaDTO =
       pathLength?: number | null;
       subjectOverride?: string;
       customExtensions?: TResolvedCustomExtension[];
-      tx?: Knex;
       /**
        * Runs inside the same transaction that writes the certificate rows, after they are created
        * but before it commits. Use this to record caller-side bookkeeping (profile linkage,
@@ -321,7 +320,6 @@ export type TSignCertFromCaDTO =
       pathLength?: number | null;
       subjectOverride?: string;
       customExtensions?: TResolvedCustomExtension[];
-      tx?: Knex;
       /** See the `onPersisted` note on the internal variant above. */
       onPersisted?: (cert: TCertificates, tx: Knex) => Promise<void>;
     } & Omit<TProjectPermission, "projectId">);

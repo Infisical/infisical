@@ -359,8 +359,7 @@ export const executeAcmeOrder = async (
     isCancelled?: () => Promise<boolean>;
     abortSignal?: AbortSignal;
   },
-  deps: TOrderCertificateDeps,
-  tx?: Knex
+  deps: TOrderCertificateDeps
 ) => {
   const reportProgress = async (message: string) => {
     if (!onProgress) return;
@@ -386,7 +385,7 @@ export const executeAcmeOrder = async (
 
   const powerDnsDeps: TPowerDnsProviderDeps = { gatewayV2Service, gatewayPoolService, keyStore };
 
-  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
+  const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
   if (!ca.externalCa || ca.externalCa.type !== CaType.ACME) {
     throw new BadRequestError({ message: "CA is not an ACME CA" });
   }
@@ -685,7 +684,7 @@ export const executeAcmeOrder = async (
 
   const parsedFields = extractExternallyIssuedCertificateFields(certObj);
 
-  return (tx || certificateDAL).transaction(async (innerTx: Knex) => {
+  return certificateDAL.transaction(async (innerTx: Knex) => {
     const cert = await certificateDAL.create(
       {
         ...parsedFields,

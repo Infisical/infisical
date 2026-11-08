@@ -26,7 +26,6 @@ import {
 } from "../certificate/certificate-types";
 import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { THsmConnectorServiceActor } from "../hsm-connector/hsm-connector-types";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TSignerDALFactory } from "./signer-dal";
 import { CertKeySource, HsmKeyAlgorithm, SignerIssuanceJobStatus, SignerStatus } from "./signer-enums";
 import { formatSignerIssuanceErrorReason, isTerminalIssuanceError } from "./signer-issuance-errors";
@@ -84,7 +83,6 @@ type TSignerIssuanceServiceDeps = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create" | "updateById">;
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsCoreDomain: TKmsCoreDomain;
   certificateIssuanceQueue: Pick<
     TCertificateIssuanceQueueFactory,
@@ -120,7 +118,6 @@ export const signerIssuanceServiceFactory = ({
   certificateAuthorityDAL,
   certificateBodyDAL,
   certificateSecretDAL,
-  projectDAL,
   kmsCoreDomain,
   certificateIssuanceQueue,
   cronJob,
@@ -468,7 +465,7 @@ export const signerIssuanceServiceFactory = ({
     projectId: string
   ): Promise<void> => {
     try {
-      await verifyCodeSigningEku({ certificateBodyDAL, projectDAL, kmsCoreDomain }, { certificateId, projectId });
+      await verifyCodeSigningEku({ certificateBodyDAL, kmsCoreDomain }, { certificateId, projectId });
     } catch (ekuErr) {
       const reason = formatSignerIssuanceErrorReason(ekuErr, "Issued certificate failed code-signing EKU verification");
       await markJobFailed(job, reason);

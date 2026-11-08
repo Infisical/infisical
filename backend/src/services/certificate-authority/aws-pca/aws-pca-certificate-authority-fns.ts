@@ -456,45 +456,50 @@ export const AwsPcaCertificateAuthorityFns = ({
     actor: OrgServiceActor;
     name?: string;
   }) => {
+    // Validated before the transaction: the connection decrypt reaches KMS Core and the describe call reaches AWS.
+    if (configuration) {
+      const { appConnectionId, certificateAuthorityArn, region } = configuration;
+
+      const appConnection = await appConnectionDAL.findById(appConnectionId);
+      if (!appConnection) {
+        throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
+      }
+
+      if (appConnection.app !== AppConnection.AWS) {
+        throw new BadRequestError({
+          message: `App connection with ID '${appConnectionId}' is not an AWS connection`
+        });
+      }
+
+      const ca = await certificateAuthorityDAL.findById(id);
+      if (!ca) {
+        throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
+      }
+
+      await appConnectionService.validateAppConnectionUsageById(
+        appConnection.app as AppConnection,
+        { connectionId: appConnectionId, projectId: ca.projectId },
+        actor
+      );
+
+      // Verify the new CA exists and is ACTIVE in AWS
+      const pcaClient = await createPcaClient({ appConnectionId, region, appConnectionDAL, kmsCoreDomain });
+      const describeResult = await pcaClient.send(
+        new DescribeCertificateAuthorityCommand({
+          CertificateAuthorityArn: certificateAuthorityArn
+        })
+      );
+
+      if (describeResult.CertificateAuthority?.Status !== CertificateAuthorityStatus.ACTIVE) {
+        throw new BadRequestError({
+          message: `AWS Private CA '${certificateAuthorityArn}' is not ACTIVE (current status: ${describeResult.CertificateAuthority?.Status || "unknown"})`
+        });
+      }
+    }
+
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { appConnectionId, certificateAuthorityArn, region } = configuration;
-
-        const appConnection = await appConnectionDAL.findById(appConnectionId);
-        if (!appConnection) {
-          throw new NotFoundError({ message: `App connection with ID '${appConnectionId}' not found` });
-        }
-
-        if (appConnection.app !== AppConnection.AWS) {
-          throw new BadRequestError({
-            message: `App connection with ID '${appConnectionId}' is not an AWS connection`
-          });
-        }
-
-        const ca = await certificateAuthorityDAL.findById(id);
-        if (!ca) {
-          throw new NotFoundError({ message: `Could not find Certificate Authority with ID "${id}"` });
-        }
-
-        await appConnectionService.validateAppConnectionUsageById(
-          appConnection.app as AppConnection,
-          { connectionId: appConnectionId, projectId: ca.projectId },
-          actor
-        );
-
-        // Verify the new CA exists and is ACTIVE in AWS
-        const pcaClient = await createPcaClient({ appConnectionId, region, appConnectionDAL, kmsCoreDomain });
-        const describeResult = await pcaClient.send(
-          new DescribeCertificateAuthorityCommand({
-            CertificateAuthorityArn: certificateAuthorityArn
-          })
-        );
-
-        if (describeResult.CertificateAuthority?.Status !== CertificateAuthorityStatus.ACTIVE) {
-          throw new BadRequestError({
-            message: `AWS Private CA '${certificateAuthorityArn}' is not ACTIVE (current status: ${describeResult.CertificateAuthority?.Status || "unknown"})`
-          });
-        }
 
         await externalCertificateAuthorityDAL.update(
           {
@@ -808,6 +813,10 @@ export const AwsPcaCertificateAuthorityFns = ({
       plainText: Buffer.from(certificateChainPem)
     });
 
+    const encryptedPrivateKey = skLeaf
+      ? (await kmsEncryptor({ plainText: Buffer.from(skLeaf) })).cipherTextBlob
+      : undefined;
+
     if (isCancelled && (await isCancelled())) {
       throw new CertificateRequestCancelledError();
     }
@@ -851,11 +860,7 @@ export const AwsPcaCertificateAuthorityFns = ({
         tx
       );
 
-      if (skLeaf) {
-        const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-          plainText: Buffer.from(skLeaf)
-        });
-
+      if (encryptedPrivateKey) {
         await certificateSecretDAL.create(
           {
             certId: cert.id,

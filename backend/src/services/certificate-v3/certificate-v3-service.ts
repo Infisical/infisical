@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
 import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
@@ -126,7 +126,7 @@ import {
   insertMetadataForCertificateRequest
 } from "../resource-metadata/resource-metadata-fns";
 import { certificateRenewalServiceFactory } from "./certificate-renewal-service";
-import { processSelfSignedCertificate } from "./certificate-self-signed-fns";
+import { persistSelfSignedCertificate, prepareSelfSignedCertificate } from "./certificate-self-signed-fns";
 import { applyProfileDefaults, resolveEffectiveTtl } from "./certificate-v3-fns";
 import {
   TCertificateIssuanceResponse,
@@ -707,6 +707,7 @@ export const certificateV3ServiceFactory = ({
         flowDefaultTtl: ""
       });
 
+      let notifyApprovers = async () => {};
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
         // Explicitly set createdAt to ensure millisecond precision matches when used in composite FK references
         // (resource_metadata references the partitioned certificate_requests table via [id, createdAt]).
@@ -787,7 +788,7 @@ export const certificateV3ServiceFactory = ({
 
         const expiresAt = approvalPolicy.maxRequestTtl ? new Date(Date.now() + ms(approvalPolicy.maxRequestTtl)) : null;
 
-        const { request: approvalRequest } = await approvalPolicyService.createRequestFromPolicy({
+        const { request: approvalRequest, notify } = await approvalPolicyService.createRequestFromPolicy({
           projectId: profile.projectId,
           organizationId: actorOrgId,
           policy: { ...approvalPolicy, steps: policySteps },
@@ -809,8 +810,10 @@ export const certificateV3ServiceFactory = ({
           tx
         );
 
+        notifyApprovers = notify;
         return { certRequestId: certRequest.id, approvalRequestId: approvalRequest.id };
       });
+      await notifyApprovers();
 
       logger.info(
         {
@@ -904,23 +907,36 @@ export const certificateV3ServiceFactory = ({
         flowDefaultTtl: ""
       });
 
-      const result = await certificateDAL.transaction(async (tx) => {
-        const effectiveAlgorithms = getEffectiveAlgorithms(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
+      const effectiveAlgorithms = getEffectiveAlgorithms(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
+      const preparedSelfSigned = await prepareSelfSignedCertificate({
+        certificateRequest: {
+          ...certificateRequestWithDefaults,
+          validity: { ttl: resolvedTtl }
+        },
+        policy,
+        projectId: profile.projectId,
+        customExtensions: resolvedCustomExtensions,
+        effectiveAlgorithms,
+        kmsCoreDomain
+      });
+      const effectiveApiConfig = await resolveEffectiveApiConfig({
+        applicationId,
+        profileId: profile.id,
+        profileApiConfig: profile.apiConfig,
+        pkiApplicationProfileDAL,
+        apiEnrollmentConfigDAL
+      });
 
-        const processResult = await processSelfSignedCertificate({
-          certificateRequest: {
-            ...certificateRequestWithDefaults,
-            validity: { ttl: resolvedTtl }
-          },
-          policy,
+      const result = await certificateDAL.transaction(async (tx) => {
+        const processResult = await persistSelfSignedCertificate({
+          prepared: preparedSelfSigned,
+          certificateRequest: certificateRequestWithDefaults,
           profile,
           customExtensions: resolvedCustomExtensions,
           effectiveAlgorithms,
           certificateDAL,
           certificateBodyDAL,
           certificateSecretDAL,
-          kmsCoreDomain,
-          projectDAL,
           tx
         });
 
@@ -971,13 +987,6 @@ export const certificateV3ServiceFactory = ({
           });
         }
 
-        const effectiveApiConfig = await resolveEffectiveApiConfig({
-          applicationId,
-          profileId: profile.id,
-          profileApiConfig: profile.apiConfig,
-          pkiApplicationProfileDAL,
-          apiEnrollmentConfigDAL
-        });
         const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
           { apiConfig: effectiveApiConfig },
           resolvedTtl,
@@ -1123,69 +1132,22 @@ export const certificateV3ServiceFactory = ({
       ? { isCA: true, pathLength: policy.basicConstraints?.maxPathLength }
       : undefined;
 
-    const {
-      certificate,
-      certificateChain,
-      issuingCaCertificate,
-      privateKey,
-      serialNumber,
-      cert,
-      certificateRequestId
-    } = await certificateDAL.transaction(async (tx) => {
-      const baseCertParams = {
-        caId: ca.id,
-        friendlyName: certificateSubject.common_name || "Certificate",
-        commonName: certificateSubject.common_name || "",
-        altNames: subjectAlternativeNames,
-        altNameEntries: certificateRequestWithDefaults.altNames,
-        basicConstraints: caBasicConstraints,
-        pathLength: certificateRequestWithDefaults.basicConstraints?.pathLength,
-        ttl: resolveEffectiveTtl({
-          requestTtl: certificateRequest.validity.ttl,
-          profileDefaultTtlDays: profile.defaults?.ttlDays,
-          policyMaxValidity: policy?.validity?.max,
-          flowDefaultTtl: ""
-        }),
-        keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || [],
-        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || [],
-        notBefore: normalizeDateForApi(certificateRequest.notBefore),
-        notAfter: normalizeDateForApi(certificateRequest.notAfter),
-        signatureAlgorithm: effectiveSignatureAlgorithm,
-        keyAlgorithm: effectiveKeyAlgorithm,
-        isFromProfile: true,
-        organization: certificateRequestWithDefaults.organization,
-        ou: certificateRequestWithDefaults.organizationalUnit,
-        country: certificateRequestWithDefaults.country,
-        state: certificateRequestWithDefaults.state,
-        locality: certificateRequestWithDefaults.locality,
-        domainComponents: certificateRequestWithDefaults.domainComponents,
-        customExtensions: resolvedCustomExtensions,
-        tx
-      };
+    const effectiveTtl = resolveEffectiveTtl({
+      requestTtl: certificateRequest.validity.ttl,
+      profileDefaultTtlDays: profile.defaults?.ttlDays,
+      policyMaxValidity: policy?.validity?.max,
+      flowDefaultTtl: ""
+    });
+    const effectiveApiConfig = await resolveEffectiveApiConfig({
+      applicationId,
+      profileId: profile.id,
+      profileApiConfig: profile.apiConfig,
+      pkiApplicationProfileDAL,
+      apiEnrollmentConfigDAL
+    });
 
-      const certResult = await internalCaService.issueCertFromCa({
-        ...baseCertParams,
-        internal: true as const
-      });
-
-      const certificateRecord = await certificateDAL.findById(certResult.certificateId, tx);
-      if (!certificateRecord) {
-        throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
-      }
-      const effectiveTtl = resolveEffectiveTtl({
-        requestTtl: certificateRequest.validity.ttl,
-        profileDefaultTtlDays: profile.defaults?.ttlDays,
-        policyMaxValidity: policy?.validity?.max,
-        flowDefaultTtl: ""
-      });
-
-      const effectiveApiConfig = await resolveEffectiveApiConfig({
-        applicationId,
-        profileId: profile.id,
-        profileApiConfig: profile.apiConfig,
-        pkiApplicationProfileDAL,
-        apiEnrollmentConfigDAL
-      });
+    const $recordInternalCaIssuance = async (certificateRecord: TCertificates, tx: Knex): Promise<string> => {
+      const certResult = { certificateId: certificateRecord.id };
       const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
         { apiConfig: effectiveApiConfig },
         effectiveTtl,
@@ -1262,8 +1224,44 @@ export const certificateV3ServiceFactory = ({
         tx
       );
 
-      return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
-    });
+      return certRequestResult.id;
+    };
+
+    const persisted: { cert?: TCertificates; certificateRequestId?: string } = {};
+    const { certificate, certificateChain, issuingCaCertificate, privateKey, serialNumber } =
+      await internalCaService.issueCertFromCa({
+        caId: ca.id,
+        friendlyName: certificateSubject.common_name || "Certificate",
+        commonName: certificateSubject.common_name || "",
+        altNames: subjectAlternativeNames,
+        altNameEntries: certificateRequestWithDefaults.altNames,
+        basicConstraints: caBasicConstraints,
+        pathLength: certificateRequestWithDefaults.basicConstraints?.pathLength,
+        ttl: effectiveTtl,
+        keyUsages: convertKeyUsageArrayToLegacy(certificateRequestWithDefaults.keyUsages) || [],
+        extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(certificateRequestWithDefaults.extendedKeyUsages) || [],
+        notBefore: normalizeDateForApi(certificateRequest.notBefore),
+        notAfter: normalizeDateForApi(certificateRequest.notAfter),
+        signatureAlgorithm: effectiveSignatureAlgorithm,
+        keyAlgorithm: effectiveKeyAlgorithm,
+        isFromProfile: true,
+        organization: certificateRequestWithDefaults.organization,
+        ou: certificateRequestWithDefaults.organizationalUnit,
+        country: certificateRequestWithDefaults.country,
+        state: certificateRequestWithDefaults.state,
+        locality: certificateRequestWithDefaults.locality,
+        domainComponents: certificateRequestWithDefaults.domainComponents,
+        customExtensions: resolvedCustomExtensions,
+        internal: true as const,
+        onPersisted: async (certificateRecord, tx) => {
+          persisted.cert = certificateRecord;
+          persisted.certificateRequestId = await $recordInternalCaIssuance(certificateRecord, tx);
+        }
+      });
+    const { cert, certificateRequestId } = persisted;
+    if (!cert || !certificateRequestId) {
+      throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
+    }
 
     let finalCertificateChain = bufferToString(certificateChain);
     if (removeRootsFromChain) {
@@ -1508,6 +1506,7 @@ export const certificateV3ServiceFactory = ({
       const policySteps = await approvalPolicyDAL.findStepsByPolicyId(approvalPolicy.id);
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, enrollmentType);
 
+      let notifyApprovers = async () => {};
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
         // Explicitly set createdAt to ensure millisecond precision matches when used in composite FK references
         const certRequestCreatedAt = new Date();
@@ -1583,7 +1582,7 @@ export const certificateV3ServiceFactory = ({
 
         const expiresAt = approvalPolicy.maxRequestTtl ? new Date(Date.now() + ms(approvalPolicy.maxRequestTtl)) : null;
 
-        const { request: approvalRequest } = await approvalPolicyService.createRequestFromPolicy({
+        const { request: approvalRequest, notify } = await approvalPolicyService.createRequestFromPolicy({
           projectId: profile.projectId,
           organizationId: actorOrgId,
           policy: { ...approvalPolicy, steps: policySteps },
@@ -1605,8 +1604,10 @@ export const certificateV3ServiceFactory = ({
           tx
         );
 
+        notifyApprovers = notify;
         return { certRequestId: certRequest.id, approvalRequestId: approvalRequest.id };
       });
+      await notifyApprovers();
 
       logger.info(
         {
@@ -2030,6 +2031,7 @@ export const certificateV3ServiceFactory = ({
       const policySteps = await approvalPolicyDAL.findStepsByPolicyId(approvalPolicy.id);
       const { requesterName, requesterEmail } = await resolveRequesterInfo(actor, actorId, EnrollmentType.API);
 
+      let notifyApprovers = async () => {};
       const { certRequestId, approvalRequestId } = await certificateRequestDAL.transaction(async (tx) => {
         // Explicitly set createdAt to ensure millisecond precision matches when used in composite FK references
         const certRequestCreatedAt = new Date();
@@ -2112,7 +2114,7 @@ export const certificateV3ServiceFactory = ({
 
         const expiresAt = approvalPolicy.maxRequestTtl ? new Date(Date.now() + ms(approvalPolicy.maxRequestTtl)) : null;
 
-        const { request: approvalRequest } = await approvalPolicyService.createRequestFromPolicy({
+        const { request: approvalRequest, notify } = await approvalPolicyService.createRequestFromPolicy({
           projectId: profile.projectId,
           organizationId: actorOrgId,
           policy: { ...approvalPolicy, steps: policySteps },
@@ -2134,8 +2136,10 @@ export const certificateV3ServiceFactory = ({
           tx
         );
 
+        notifyApprovers = notify;
         return { certRequestId: certRequest.id, approvalRequestId: approvalRequest.id };
       });
+      await notifyApprovers();
 
       logger.info(
         {

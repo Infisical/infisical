@@ -1109,17 +1109,21 @@ export const approvalPolicyServiceFactory = ({
         : (request, trx) => $emitEvent({ event: ApprovalNotificationEvent.Requested, request }, trx)
     );
 
-    if (!skipApproverNotification) {
+    const notify = async () => {
+      if (skipApproverNotification) return;
       await $notify({
         event: ApprovalNotificationEvent.Requested,
         request: requestWithSteps,
         approvers: requestWithSteps.steps[0]?.approvers ?? []
       });
-    }
-
-    return {
-      request: requestWithSteps
     };
+
+    // A caller holding a transaction runs notify after it commits: the notification reaches KMS Core and chat, email
+    // and in-app delivery, and must never announce a request that is then rolled back.
+    if (tx) return { request: requestWithSteps, notify };
+
+    await notify();
+    return { request: requestWithSteps, notify: async () => {} };
   };
 
   // Inputs a rule requires to be unused whose record an earlier approved request on this policy already linked

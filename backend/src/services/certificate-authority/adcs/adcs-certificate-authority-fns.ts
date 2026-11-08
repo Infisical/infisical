@@ -544,6 +544,10 @@ export const ADCSCertificateAuthorityFns = ({
       plainText: Buffer.from(certificateChainPem)
     });
 
+    const encryptedPrivateKey = skLeaf
+      ? (await kmsEncryptor({ plainText: Buffer.from(skLeaf) })).cipherTextBlob
+      : undefined;
+
     if (isCancelled && (await isCancelled())) {
       throw new CertificateRequestCancelledError();
     }
@@ -588,10 +592,7 @@ export const ADCSCertificateAuthorityFns = ({
         tx
       );
 
-      if (skLeaf) {
-        const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-          plainText: Buffer.from(skLeaf)
-        });
+      if (encryptedPrivateKey) {
         await certificateSecretDAL.create(
           {
             certId: cert.id,

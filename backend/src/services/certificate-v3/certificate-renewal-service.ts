@@ -124,7 +124,7 @@ import {
   resolveRenewalUsages,
   validateRenewalEligibility
 } from "./certificate-renewal-fns";
-import { processSelfSignedCertificate } from "./certificate-self-signed-fns";
+import { persistSelfSignedCertificate, prepareSelfSignedCertificate } from "./certificate-self-signed-fns";
 import {
   CertificateRenewalKeySource,
   TCertificateIssuanceResponse,
@@ -865,6 +865,152 @@ export const certificateRenewalServiceFactory = ({
     }
   };
 
+  // Generates and encrypts outside any transaction, then one short transaction persists the certificate and
+  // re-locks the original through $linkRenewedCertificate.
+  const $completeSelfSignedRenewal = async ({
+    keySource,
+    certificateSecret,
+    ca,
+    profile,
+    policy,
+    originalCert,
+    certificateRequest,
+    renewalAltNames,
+    renewalBasicConstraints,
+    resolvedCustomExtensions,
+    effectiveSignatureAlgorithm,
+    effectiveKeyAlgorithm,
+    ttl,
+    finalRenewBeforeDays,
+    actorCtx,
+    removeRootsFromChain
+  }: {
+    keySource: CertificateRenewalKeySource;
+    certificateSecret: { encryptedPrivateKey: Buffer } | undefined;
+    ca?: TCertificateAuthorityWithAssociatedCa | null;
+    profile: TCertificateProfileWithConfigs;
+    policy: Awaited<ReturnType<TCertificatePolicyServiceFactory["getPolicyById"]>>;
+    originalCert: TCertificates;
+    certificateRequest: TCertificateRequest;
+    renewalAltNames: { type: CertSubjectAlternativeNameType; value: string }[];
+    renewalBasicConstraints: { isCA: boolean; pathLength?: number } | undefined;
+    resolvedCustomExtensions?: TResolvedCustomExtension[];
+    effectiveSignatureAlgorithm: CertSignatureAlgorithm;
+    effectiveKeyAlgorithm: CertKeyAlgorithm;
+    ttl: string;
+    finalRenewBeforeDays: number | undefined;
+    actorCtx: TRenewalActor;
+    removeRootsFromChain?: boolean;
+  }): Promise<TCertificateIssuanceResponse> => {
+    const existingKeyPair =
+      keySource === CertificateRenewalKeySource.Reuse && certificateSecret
+        ? await importKeyPairFromPem({
+            privateKeyPem: await $decryptCertificatePrivateKey({
+              projectId: originalCert.projectId,
+              encryptedPrivateKey: certificateSecret.encryptedPrivateKey
+            }),
+            keyAlgorithm: effectiveKeyAlgorithm
+          })
+        : undefined;
+
+    const effectiveAlgorithms = {
+      signatureAlgorithm: effectiveSignatureAlgorithm,
+      keyAlgorithm: effectiveKeyAlgorithm
+    };
+    const renewalRequest = {
+      ...certificateRequest,
+      altNames: renewalAltNames,
+      validity: certificateRequest.validity ?? { ttl }
+    };
+    const prepared = await prepareSelfSignedCertificate({
+      certificateRequest: renewalRequest,
+      policy,
+      projectId: originalCert.projectId,
+      effectiveAlgorithms,
+      kmsCoreDomain,
+      existingKeyPair,
+      customExtensions: resolvedCustomExtensions
+    });
+
+    const { newCert, certRequestResult } = await certificateDAL.transaction(async (tx) => {
+      const { certificateData } = await persistSelfSignedCertificate({
+        prepared,
+        certificateRequest: renewalRequest,
+        profile,
+        originalCert,
+        effectiveAlgorithms,
+        customExtensions: resolvedCustomExtensions,
+        certificateDAL,
+        certificateBodyDAL,
+        certificateSecretDAL,
+        tx,
+        isRenewal: true
+      });
+
+      const createdRequest = await certificateRequestService.createCertificateRequest({
+        internal: true,
+        customExtensions: resolvedCustomExtensions,
+        ...actorCtx,
+        projectId: originalCert.projectId,
+        tx,
+        caId: ca?.id || originalCert.caId || undefined,
+        profileId: originalCert.profileId || undefined,
+        applicationId: originalCert.applicationId ?? undefined,
+        commonName: certificateRequest.commonName,
+        altNames: renewalAltNames,
+        keyUsages: certificateRequest.keyUsages,
+        extendedKeyUsages: certificateRequest.extendedKeyUsages,
+        notBefore: new Date(certificateData.notBefore),
+        notAfter: new Date(certificateData.notAfter),
+        keyAlgorithm: effectiveKeyAlgorithm,
+        signatureAlgorithm: effectiveSignatureAlgorithm,
+        metadata: `Renewed from certificate ID: ${originalCert.id}`,
+        status: CertificateRequestStatus.ISSUED,
+        certificateId: certificateData.id,
+        ttl,
+        enrollmentType: EnrollmentType.API,
+        organization: certificateRequest.organization,
+        organizationalUnit: certificateRequest.organizationalUnit,
+        country: certificateRequest.country,
+        state: certificateRequest.state,
+        locality: certificateRequest.locality,
+        domainComponents: certificateRequest.domainComponents,
+        ...(renewalBasicConstraints && { basicConstraints: renewalBasicConstraints })
+      });
+
+      await $linkRenewedCertificate(
+        {
+          newCert: certificateData,
+          originalCert,
+          finalRenewBeforeDays,
+          isRenewalLinkPreset: true,
+          certificateRequestId: createdRequest.id,
+          certificateRequestCreatedAt: createdRequest.createdAt,
+          orgId: actorCtx.actorOrgId
+        },
+        tx
+      );
+
+      return { newCert: certificateData, certRequestResult: createdRequest };
+    });
+
+    const certificate = prepared.selfSignedResult.certificate.toString("utf8");
+    return $finalizeRenewal({
+      newCertificateId: newCert.id,
+      originalCert,
+      profile: profile ?? null,
+      certificate,
+      issuingCaCertificate: "",
+      certificateChain: certificate,
+      serialNumber: prepared.selfSignedResult.serialNumber,
+      certificateRequestId: certRequestResult?.id || "",
+      commonName: newCert.commonName || "",
+      fallbackProfileName: "Self-signed Certificate",
+      removeRootsFromChain,
+      ...actorCtx
+    });
+  };
+
   const $completeInternalCaRenewal = async ({
     ca,
     profile,
@@ -1222,20 +1368,6 @@ export const certificateRenewalServiceFactory = ({
         const notBefore = new Date();
         const notAfter = new Date(Date.now() + ms(ttl));
 
-        const effectiveApiConfig = await resolveEffectiveApiConfig({
-          applicationId: originalCert.applicationId ?? undefined,
-          profileId: profile.id,
-          profileApiConfig: profile.apiConfig,
-          pkiApplicationProfileDAL,
-          apiEnrollmentConfigDAL
-        });
-        const finalRenewBeforeDays = resolveRenewedCertificateRenewBeforeDays({
-          apiConfig: effectiveApiConfig,
-          previousRenewBeforeDays: originalCert.renewBeforeDays,
-          ttl,
-          notAfter
-        });
-
         const { signatureAlgorithm: effectiveSignatureAlgorithm, keyAlgorithm: effectiveKeyAlgorithm } =
           getEffectiveAlgorithms(
             certificateRequest.signatureAlgorithm as CertSignatureAlgorithm,
@@ -1271,7 +1403,6 @@ export const certificateRenewalServiceFactory = ({
             ttl,
             notBefore,
             notAfter,
-            finalRenewBeforeDays,
             effectiveKeyAlgorithm,
             effectiveSignatureAlgorithm
           };
@@ -1300,7 +1431,6 @@ export const certificateRenewalServiceFactory = ({
               ttl,
               notBefore,
               notAfter,
-              finalRenewBeforeDays,
               effectiveSignatureAlgorithm,
               effectiveKeyAlgorithm
             };
@@ -1325,96 +1455,22 @@ export const certificateRenewalServiceFactory = ({
           });
         }
 
-        const existingKeyPair =
-          keySource === CertificateRenewalKeySource.Reuse && certificateSecret
-            ? await importKeyPairFromPem({
-                privateKeyPem: await $decryptCertificatePrivateKey({
-                  projectId: originalCert.projectId,
-                  encryptedPrivateKey: certificateSecret.encryptedPrivateKey
-                }),
-                keyAlgorithm: effectiveKeyAlgorithm
-              })
-            : undefined;
-
-        const selfSignedRenewalResult = await processSelfSignedCertificate({
-          certificateRequest: { ...certificateRequest, altNames: renewalAltNames },
-          policy,
-          profile,
-          originalCert,
-          customExtensions: resolvedCustomExtensions,
-          effectiveAlgorithms: {
-            signatureAlgorithm: effectiveSignatureAlgorithm,
-            keyAlgorithm: effectiveKeyAlgorithm
-          },
-          certificateDAL,
-          certificateBodyDAL,
-          certificateSecretDAL,
-          kmsCoreDomain,
-          projectDAL,
-          tx,
-          isRenewal: true,
-          existingKeyPair
-        });
-
-        const certificate = selfSignedRenewalResult.selfSignedResult.certificate.toString("utf8");
-        const { serialNumber } = selfSignedRenewalResult.selfSignedResult;
-        const newCert = selfSignedRenewalResult.certificateData;
-
-        const certRequestResult = await certificateRequestService.createCertificateRequest({
-          internal: true,
-          customExtensions: resolvedCustomExtensions,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId,
-          projectId: originalCert.projectId,
-          tx,
-          caId: ca?.id || originalCert.caId || undefined,
-          profileId: originalCert.profileId || undefined,
-          applicationId: originalCert.applicationId ?? undefined,
-          commonName: certificateRequest.commonName,
-          altNames: renewalAltNames,
-          keyUsages: certificateRequest.keyUsages,
-          extendedKeyUsages: certificateRequest.extendedKeyUsages,
-          notBefore: new Date(newCert.notBefore),
-          notAfter: new Date(newCert.notAfter),
-          keyAlgorithm: effectiveKeyAlgorithm,
-          signatureAlgorithm: effectiveSignatureAlgorithm,
-          metadata: `Renewed from certificate ID: ${originalCert.id}`,
-          status: CertificateRequestStatus.ISSUED,
-          certificateId: newCert.id,
-          ttl,
-          enrollmentType: EnrollmentType.API,
-          organization: certificateRequest.organization,
-          organizationalUnit: certificateRequest.organizationalUnit,
-          country: certificateRequest.country,
-          state: certificateRequest.state,
-          locality: certificateRequest.locality,
-          domainComponents: certificateRequest.domainComponents,
-          ...(renewalBasicConstraints && { basicConstraints: renewalBasicConstraints })
-        });
-
-        await $linkRenewedCertificate(
-          {
-            newCert,
-            originalCert,
-            finalRenewBeforeDays,
-            isRenewalLinkPreset: true,
-            certificateRequestId: certRequestResult.id,
-            certificateRequestCreatedAt: certRequestResult.createdAt,
-            orgId: actorOrgId
-          },
-          tx
-        );
-
         return {
           renewalMode: CertificateRenewalMode.SelfSigned as const,
-          certificate,
-          serialNumber,
-          newCert,
-          originalCert,
+          keySource,
+          certificateSecret,
+          ca,
           profile,
-          certRequestResult
+          policy,
+          originalCert,
+          certificateRequest,
+          renewalAltNames,
+          renewalBasicConstraints,
+          resolvedCustomExtensions,
+          effectiveSignatureAlgorithm,
+          effectiveKeyAlgorithm,
+          ttl,
+          notAfter
         };
       });
 
@@ -1430,9 +1486,35 @@ export const certificateRenewalServiceFactory = ({
 
     await recordQuotaUsage(quotaUsage);
 
+    // Read after the renewal transaction: it takes its own connection.
+    const $resolveFinalRenewBeforeDays = async ({
+      originalCert,
+      profile,
+      ttl,
+      notAfter
+    }: {
+      originalCert: TCertificates;
+      profile: { id: string; apiConfig?: Parameters<typeof resolveEffectiveApiConfig>[0]["profileApiConfig"] };
+      ttl: string;
+      notAfter: Date;
+    }) =>
+      resolveRenewedCertificateRenewBeforeDays({
+        apiConfig: await resolveEffectiveApiConfig({
+          applicationId: originalCert.applicationId ?? undefined,
+          profileId: profile.id,
+          profileApiConfig: profile.apiConfig,
+          pkiApplicationProfileDAL,
+          apiEnrollmentConfigDAL
+        }),
+        previousRenewBeforeDays: originalCert.renewBeforeDays,
+        ttl,
+        notAfter
+      });
+
     if (renewalResult.renewalMode === CertificateRenewalMode.KeyPreserving) {
       const response = await $completeKeyPreservingRenewal({
         ...renewalResult,
+        finalRenewBeforeDays: await $resolveFinalRenewBeforeDays(renewalResult),
         actor,
         actorId,
         actorAuthMethod,
@@ -1448,7 +1530,12 @@ export const certificateRenewalServiceFactory = ({
     }
 
     if (renewalResult.renewalMode === CertificateRenewalMode.InternalCa) {
-      const response = await $completeInternalCaRenewal({ ...renewalResult, actorCtx, removeRootsFromChain });
+      const response = await $completeInternalCaRenewal({
+        ...renewalResult,
+        finalRenewBeforeDays: await $resolveFinalRenewBeforeDays(renewalResult),
+        actorCtx,
+        removeRootsFromChain
+      });
       return {
         ...response,
         changedAttributes,
@@ -1555,21 +1642,11 @@ export const certificateRenewalServiceFactory = ({
       };
     }
 
-    const response = await $finalizeRenewal({
-      newCertificateId: renewalResult.newCert.id,
-      originalCert: renewalResult.originalCert,
-      profile: renewalResult.profile ?? null,
-      certificate: renewalResult.certificate,
-      issuingCaCertificate: "",
-      certificateChain: renewalResult.certificate,
-      serialNumber: renewalResult.serialNumber,
-      certificateRequestId: renewalResult.certRequestResult?.id || "",
-      commonName: renewalResult.newCert.commonName || "",
-      fallbackProfileName: "Self-signed Certificate",
-      removeRootsFromChain,
-      actor,
-      actorId,
-      actorOrgId
+    const response = await $completeSelfSignedRenewal({
+      ...renewalResult,
+      finalRenewBeforeDays: await $resolveFinalRenewBeforeDays(renewalResult),
+      actorCtx,
+      removeRootsFromChain
     });
     return { ...response, changedAttributes };
   };
