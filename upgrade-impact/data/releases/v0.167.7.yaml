@@ -1,0 +1,138 @@
+version: v0.167.7
+releasedAt: 2026-11-07T12:49:14-07:00
+sourceTag: v0.167.7
+previousTag: v0.167.6
+impactLevel: medium
+summary: Agent Vault project routing changes and several startup migrations can
+  affect upgrades. Standalone images also refresh bundled OpenSSL and apt
+  packages.
+requiresDbMigration: true
+breakingChanges:
+  - title: Agent Vault project routing
+    description: Agent Vault now supports multiple projects per organization. Older
+      Agent Vault links are not redirected, and API routes now resolve by
+      project with stricter projectId handling.
+    action: Update any self-hosted Agent Vault automation, bookmarks, or
+      integrations that rely on old projectless routes or old URLs.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261105120000_agent-vault-first-project.ts
+        path: backend/src/db/migrations/20261105120000_agent-vault-first-project.ts
+        description: Marks original Agent Vault project for fallback
+      - type: pr
+        ref: "#9160"
+        url: https://github.com/Infisical/infisical/pull/9160
+        description: Old links not redirected; projectId routing changed
+dbSchemaChanges:
+  - title: Agent Vault first project migration
+    description: A startup migration adds isAgentVaultOriginal and renames the
+      original Agent Vault project to My first project for fallback routing.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261105120000_agent-vault-first-project.ts
+        path: backend/src/db/migrations/20261105120000_agent-vault-first-project.ts
+        description: Adds fallback column and renames project
+  - title: Identity group membership cleanup
+    description: A startup migration deletes orphaned identity-to-group memberships
+      that previously preserved unintended organization access after identity
+      removal.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261102120000_remove-orphaned-identity-group-memberships.ts
+        path: backend/src/db/migrations/20261102120000_remove-orphaned-identity-group-memberships.ts
+        description: Deletes orphaned identity group memberships
+  - title: Honey token config migration
+    description: A startup migration adds a non-null config JSON column to honey
+      tokens and backfills existing rows as organization-managed.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261022120000_honey-token-config.ts
+        path: backend/src/db/migrations/20261022120000_honey-token-config.ts
+        description: Adds config column and backfills rows
+  - title: Honey token folder retention
+    description: A startup migration changes honey token folder deletion behavior
+      from cascade delete to SET NULL so cleanup can revoke leaked IAM users
+      first.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261023120000_honey-token-folder-project-set-null.ts
+        path: backend/src/db/migrations/20261023120000_honey-token-folder-project-set-null.ts
+        description: Changes folder foreign key to SET NULL
+  - title: PKI cross-signed certificates
+    description: A startup migration creates storage for internal CA cross-signed
+      certificates.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261030143512_ca-cross-signed-certs.ts
+        path: backend/src/db/migrations/20261030143512_ca-cross-signed-certs.ts
+        description: Creates cross-signed certificate table
+  - title: Agent Vault inline services
+    description: A startup migration creates session inline service storage,
+      including encrypted secret payloads and cleanup indexes.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261030180530_agent-vault-session-inline-services.ts
+        path: backend/src/db/migrations/20261030180530_agent-vault-session-inline-services.ts
+        description: Creates inline services table
+  - title: Agent Vault personal OAuth config
+    description: A startup migration adds oauthConfig to Agent Vault personal values
+      for OAuth-backed credentials.
+    action: No manual action required; Infisical runs this migration during startup.
+    confidence: high
+    evidence:
+      - type: file
+        ref: backend/src/db/migrations/20261105120000_agent-vault-personal-value-oauth-config.ts
+        path: backend/src/db/migrations/20261105120000_agent-vault-personal-value-oauth-config.ts
+        description: Adds oauthConfig column
+configChanges: []
+deploymentNotes:
+  - title: Standalone image package refresh
+    description: Standalone and FIPS standalone images now bundle newer PQC OpenSSL
+      and apt packages. Operators with custom image rebuilds should rebuild from
+      the updated Dockerfiles.
+    action: Rebuild and redeploy custom standalone images based on Infisical
+      Dockerfiles.
+    confidence: medium
+    evidence:
+      - type: file
+        ref: Dockerfile.standalone-infisical
+        path: Dockerfile.standalone-infisical
+        description: Builds OpenSSL 3.5.9 and upgrades apt
+      - type: file
+        ref: Dockerfile.fips.standalone-infisical
+        path: Dockerfile.fips.standalone-infisical
+        description: Builds OpenSSL 3.5.9 and upgrades apt
+  - title: Session log storage setup
+    description: Default Agent Vault session log storage requires complete S3
+      environment variables on every instance. Partial configuration prevents
+      startup.
+    action: If enabling default session log storage, set the full required S3
+      variables on every instance before restart.
+    confidence: high
+    evidence:
+      - type: file
+        ref: docs/self-hosting/guides/session-log-storage.mdx
+        path: docs/self-hosting/guides/session-log-storage.mdx
+        description: Partial S3 config prevents startup
+knownIssues: []
+generatedBy:
+  generator: "@infisical/upgrade-impact"
+  generatorVersion: "1"
+  model: gpt-5.4
+  generatedAt: 2026-11-08T20:19:02.283Z
+  sourceRange:
+    from: v0.167.6
+    to: v0.167.7
