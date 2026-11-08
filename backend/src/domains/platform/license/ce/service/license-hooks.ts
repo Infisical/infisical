@@ -2,7 +2,6 @@ import { InstanceEntitlements } from "../model/instance-entitlements";
 import { Plan } from "../model/plan";
 import { TLicenseServerBilling } from "./license-server-types/license-server-types";
 import { TUsageEvent, TUsageEventResult, TUsageSnapshot } from "./license-server-types/usage-reports";
-import { TRootOrg } from "./registrations";
 
 // Licensing policy and the License Server, supplied by the EE edition. CE holds the mechanism (caching,
 // queues, counting, gating) and asks these for every licensing decision; there is no community fallback, so
@@ -17,7 +16,7 @@ export type TLicenseHooks = {
   // Whether LICENSE_KEY holds an offline key, whether or not it verifies.
   isOffline: () => boolean;
   // Cloud: a root org's plan from the License Server. Throws when it cannot be read.
-  fetchPlan: (rootOrg: TRootOrg) => Promise<Plan>;
+  fetchPlan: (rootOrgId: string) => Promise<Plan>;
   // Cloud: what an org gets while the License Server cannot be reached.
   fallbackPlan: () => Plan;
   // False when no License Server is configured, so usage is not queued.

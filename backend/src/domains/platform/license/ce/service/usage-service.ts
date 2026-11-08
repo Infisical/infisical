@@ -41,9 +41,9 @@ export class UsageService {
   // self-hosted, the whole instance.
   async getSeatUsage(orgId: string): Promise<SeatUsage> {
     if (!this.deps.instance.isCloud()) return this.countSeats(null);
-    const root = await this.deps.organizations.findRootOrg(orgId);
-    if (!root) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
-    return this.countSeats(root.id);
+    const rootOrgId = await this.deps.organizations.findRootOrgId(orgId);
+    if (!rootOrgId) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    return this.countSeats(rootOrgId);
   }
 
   // Seats in use across every org on the instance, which is what an instance-wide identity limit caps.

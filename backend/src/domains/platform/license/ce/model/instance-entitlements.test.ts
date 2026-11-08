@@ -26,7 +26,6 @@ describe("InstanceEntitlements.plan", () => {
     expect(plan.rbac).toBe(true);
     expect(plan.fips).toBe(true);
   });
-
 });
 
 describe("InstanceEntitlements.isSelfHostedLicensed", () => {

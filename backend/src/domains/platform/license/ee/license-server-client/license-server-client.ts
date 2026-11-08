@@ -193,8 +193,7 @@ export class LicenseServerClient {
   }
 
   // Entitlements are not cached here: the domain caches the plan it projects from them. Returns null when the
-  // License Server cannot be read, so the caller falls back. The org's name and slug ride along, keeping the
-  // License Server's copy current.
+  // License Server cannot be read, so the caller falls back.
   async getEntitlements(org: TEntitlementOrg): Promise<TEntitlementsResponse | null> {
     if (!this.backend) return null;
     try {

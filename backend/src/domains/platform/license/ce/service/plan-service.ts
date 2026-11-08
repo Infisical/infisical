@@ -81,16 +81,16 @@ export class PlanService {
 
     let cacheKey = orgId;
     try {
-      const root = await this.deps.organizations.findRootOrg(orgId);
-      if (!root) throw new Error(`Organization with ID '${orgId}' not found`);
-      cacheKey = root.id;
+      const rootOrgId = await this.deps.organizations.findRootOrgId(orgId);
+      if (!rootOrgId) throw new Error(`Organization with ID '${orgId}' not found`);
+      cacheKey = rootOrgId;
 
       const [cached, isReconciled] = await Promise.all([
-        this.deps.planCache.read(root.id),
+        this.deps.planCache.read(rootOrgId),
         this.deps.usageReportMemory.isReconciled(orgId)
       ]);
-      const plan = cached.plan ?? (await this.fetchAndCache(root.id));
-      if (cached.plan && cached.passThrough) this.revalidateInBackground(root.id);
+      const plan = cached.plan ?? (await this.fetchAndCache(rootOrgId));
+      if (cached.plan && cached.passThrough) this.revalidateInBackground(rootOrgId);
       if (!isReconciled && plan.isPaid) this.deps.usageQueue.reconcile(orgId);
       return plan;
     } catch (error) {
@@ -149,12 +149,10 @@ export class PlanService {
   }
 
   private async fetchAndCache(rootOrgId: string): Promise<Plan> {
-    const root = await this.deps.organizations.findRootOrg(rootOrgId);
-    if (!root) throw new Error(`Organization with ID '${rootOrgId}' not found`);
-    const plan = (await this.deps.hooks.fetchPlan(root)).withWorkspacesUsed(
-      await this.deps.organizations.countWorkspacesUsed(root.id)
+    const plan = (await this.deps.hooks.fetchPlan(rootOrgId)).withWorkspacesUsed(
+      await this.deps.organizations.countWorkspacesUsed(rootOrgId)
     );
-    await this.deps.planCache.write(root.id, plan);
+    await this.deps.planCache.write(rootOrgId, plan);
     return plan;
   }
 

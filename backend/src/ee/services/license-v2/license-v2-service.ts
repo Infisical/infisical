@@ -846,10 +846,7 @@ export const licenseV2ServiceFactory = ({
       logger.error(error, `billing-v2: failed to read billing profile [orgId=${orgId}]`);
     }
 
-    const entitlements = await buildEntitlements(
-      { id: orgId, name: organization.name, slug: organization.slug },
-      subscription
-    );
+    const entitlements = await buildEntitlements({ id: orgId }, subscription);
     // Org-wide monthly on-demand overage (dollars), summed once for the summary's on-demand note.
     const onDemandAmount = Object.values(entitlements).reduce(
       (sum, entitlement) => sum + (entitlement.onDemandAmount ?? 0),

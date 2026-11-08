@@ -5,10 +5,11 @@ Answers what an org may use (`getPlan`, `assertFeature`), what the instance's ow
 is the plan cache in the key store and the usage queues.
 
 **CE holds the mechanism, EE holds licensing policy.** CE caches plans, queues and sends usage reports, counts
-usage and checks a plan against a feature. EE decides: the free tier's features (`ee/service/default-features.ts`),
-reading and verifying license keys, turning License Server entitlements into a plan, and talking to the License
-Server. EE plugs in through `TLicenseHooks`, which `LicenseModule` requires. Never add defaults or a fallback
-for the hooks to `ce/`: a copy of the free tier in MIT code is a copy anyone may edit into a paid one.
+usage and checks a plan against a feature. EE decides: the free tier's features (`getDefaultOnPremFeatures` in
+`ee/service/license-fns.ts`), reading and verifying license keys, turning License Server entitlements into a
+plan, and talking to the License Server. EE plugs in through `TLicenseHooks`, which `LicenseModule` requires.
+Never add defaults or a fallback for the hooks to `ce/`: a copy of the free tier in MIT code is a copy anyone
+may edit into a paid one.
 
 | Layer | Holds |
 | --- | --- |

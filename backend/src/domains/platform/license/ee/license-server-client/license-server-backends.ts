@@ -186,12 +186,6 @@ export const licenseServerBackend = (
 ): TLicenseClientBackend => ({
   fetchEntitlements: async (org: TEntitlementOrg): Promise<TEntitlementsResponse> => {
     const url = new URL(orgScoped(org.id, "/entitlements"), serverUrl);
-    if (org.name) {
-      url.searchParams.set("org_name", org.name);
-    }
-    if (org.slug) {
-      url.searchParams.set("org_slug", org.slug);
-    }
     if (region) {
       url.searchParams.set("region", region);
     }

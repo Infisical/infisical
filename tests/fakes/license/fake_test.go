@@ -88,18 +88,6 @@ func TestLicenseFake_Usage(t *testing.T) {
 		require.Len(t, org.State(t).UsageEvents, 1)
 	})
 
-	t.Run("should record the organization name and slug when entitlements are read", func(t *testing.T) {
-		// Setup
-		s := newStack(t)
-		org := license.Open(t, s.admin, "33333333-3333-3333-3333-333333333333")
-
-		// Action
-		code, _ := s.call(t, http.MethodGet, "/v1/organizations/33333333-3333-3333-3333-333333333333/entitlements?org_name=Acme&org_slug=acme", "", nil)
-
-		// Assert
-		require.Equal(t, http.StatusOK, code)
-		require.Equal(t, []license.EntitlementFetch{{OrgName: "Acme", OrgSlug: "acme"}}, org.State(t).EntitlementFetches)
-	})
 }
 
 func TestLicenseFake_SelfHosted(t *testing.T) {

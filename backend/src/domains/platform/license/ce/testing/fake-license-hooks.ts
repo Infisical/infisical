@@ -5,7 +5,6 @@ import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "
 import { Plan, TPlanProps } from "../model/plan";
 import { TLicenseHooks } from "../service/license-hooks";
 import { TUsageEvent, TUsageSnapshot, UsageReportError } from "../service/license-server-types/usage-reports";
-import { TRootOrg } from "../service/registrations";
 import { FakeLicenseServerBilling } from "./fake-license-server-billing";
 import { enterprisePlan, testFeatures } from "./test-features";
 
@@ -27,7 +26,7 @@ export class FakeLicenseHooks implements TLicenseHooks {
 
   plans = new Map<string, TPlanProps>();
 
-  fetches: TRootOrg[] = [];
+  fetches: string[] = [];
 
   failNextFetches = 0;
 
@@ -59,13 +58,13 @@ export class FakeLicenseHooks implements TLicenseHooks {
 
   isOffline = () => this.offline;
 
-  fetchPlan = async (rootOrg: TRootOrg) => {
-    this.fetches.push(rootOrg);
+  fetchPlan = async (rootOrgId: string) => {
+    this.fetches.push(rootOrgId);
     if (this.failNextFetches > 0) {
       this.failNextFetches -= 1;
       throw new BadRequestError({ message: "License Server entitlements are unavailable" });
     }
-    return Plan.restore(this.plans.get(rootOrg.id) ?? enterprisePlan());
+    return Plan.restore(this.plans.get(rootOrgId) ?? enterprisePlan());
   };
 
   fallbackPlan = () => Plan.restore({ ...InstanceEntitlements.restore(this.instance).plan().toJSON(), slug: null });

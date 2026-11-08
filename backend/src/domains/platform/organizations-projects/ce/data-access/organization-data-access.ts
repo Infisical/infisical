@@ -2,8 +2,6 @@ import { TDbClient } from "@app/db";
 import { ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
-export type TRootOrgRow = { id: string; name: string; slug: string };
-
 // Project types that do not take a workspace slot on a plan.
 const UNCOUNTED_WORKSPACE_TYPES = [
   ProjectType.CertificateManager,
@@ -20,37 +18,23 @@ const UNCOUNTED_WORKSPACE_TYPES = [
 export class OrganizationDataAccess {
   constructor(private readonly db: TDbClient) {}
 
-  // The root org itself, or the root a sub-org belongs to.
-  async findRootOrg(orgId: string): Promise<TRootOrgRow | null> {
-    try {
-      const row = (await this.db
-        .replicaNode()(TableName.Organization)
-        .where(
-          "id",
-          this.db
-            .replicaNode()(TableName.Organization)
-            .select(this.db.raw(`COALESCE("rootOrgId", "id")`))
-            .where("id", orgId)
-        )
-        .select("id", "name", "slug")
-        .first()) as TRootOrgRow | undefined;
-      return row ?? null;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find root org" });
-    }
-  }
-
-  async resolveRootOrgId(orgId: string): Promise<string> {
+  // The org's root: itself for a root org, the root a sub-org belongs to. Null when the org does not exist.
+  async findRootOrgId(orgId: string): Promise<string | null> {
     try {
       const row = (await this.db
         .replicaNode()(TableName.Organization)
         .where("id", orgId)
         .select(this.db.raw(`COALESCE("rootOrgId", "id") as "rootOrgId"`))
         .first()) as { rootOrgId?: string } | undefined;
-      return row?.rootOrgId ?? orgId;
+      return row?.rootOrgId ?? null;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Resolve root org id" });
+      throw new DatabaseError({ error, name: "Find root org id" });
     }
+  }
+
+  // The org's root, or the org itself when it does not exist.
+  async resolveRootOrgId(orgId: string): Promise<string> {
+    return (await this.findRootOrgId(orgId)) ?? orgId;
   }
 
   // Live projects that take a workspace slot, in the org and its sub-orgs.

@@ -210,7 +210,7 @@ describe("LicenseModule", () => {
 
     // Action
     const register = () =>
-      module.registry.registerOrganizations({ findRootOrg: async () => null, countWorkspacesUsed: async () => 0 });
+      module.registry.registerOrganizations({ findRootOrgId: async () => null, countWorkspacesUsed: async () => 0 });
 
     // Assert
     expect(register).toThrow("The organizations directory was registered twice");

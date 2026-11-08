@@ -46,7 +46,7 @@ describe("PlanService.getPlan", () => {
     const plan = await licenseDomain.getPlan(ROOT.id);
 
     // Assert
-    expect(hooks.fetches).toEqual([ROOT]);
+    expect(hooks.fetches).toEqual([ROOT.id]);
     expect(plan.workspacesUsed).toBe(WORKSPACES_USED);
     expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).not.toBeNull();
   });

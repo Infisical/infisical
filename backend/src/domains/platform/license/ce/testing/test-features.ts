@@ -1,7 +1,7 @@
 import { TInstanceFeatures } from "../model/instance-entitlements";
 
 // A full feature set with nothing paid switched on, for tests. Test data only: the product's defaults are EE
-// (ee/service/default-features.ts) and nothing outside tests reads this.
+// (getDefaultOnPremFeatures in ee/service/license-fns.ts) and nothing outside tests reads this.
 export const testFeatures = (): TInstanceFeatures => ({
   _id: null,
   slug: null,

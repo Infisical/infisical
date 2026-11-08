@@ -34,7 +34,7 @@ export class LicenseEeModule {
       refreshInstanceEntitlements: () => resolver.refreshInstanceEntitlements(),
       hasOnlineLicense: () => resolver.hasOnlineLicense(),
       isOffline: () => isOffline,
-      fetchPlan: (rootOrg) => resolver.fetchPlan(rootOrg),
+      fetchPlan: (rootOrgId) => resolver.fetchPlan(rootOrgId),
       fallbackPlan: () => cloudFallbackPlan(),
       isMeteringEnabled: () => licenseServerClient.isEnabled(),
       canReportUsage: () => licenseServerClient.canReportUsage(),

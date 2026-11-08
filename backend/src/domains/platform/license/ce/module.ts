@@ -27,7 +27,7 @@ export type { TLicenseHooks } from "./service/license-hooks";
 export * from "./service/license-server-types/license-server-types";
 export * from "./service/license-server-types/usage-reports";
 export type { TRefreshPlanOptions } from "./service/plan-service";
-export type { TLicenseOrganizations, TRootOrg, TUsageCounter } from "./service/registrations";
+export type { TLicenseOrganizations, TUsageCounter } from "./service/registrations";
 export type { TMeteringEventInput } from "./service/usage-queue";
 
 export type TLicenseDomain = {
@@ -47,7 +47,7 @@ export type TLicenseDomain = {
   isServingFallbackPlan: (orgId: string) => Promise<boolean>;
   getLastKnownPlan: (orgId: string) => Promise<{ plan: TPlanProps; fetchedAt: number } | null>;
   // Seats in use for the org's plan: the root org's tree on cloud, the whole instance self-hosted. To enforce
-  // a limit while adding a member, read this before the transaction and check it with assertSeatAvailable.
+  // a limit while adding a member, read this before the transaction and check it with seatUsage.assertAvailable.
   getSeatUsage: (orgId: string) => Promise<SeatUsage>;
   getInstanceSeatUsage: () => Promise<SeatUsage>;
   syncSeats: (orgId: string) => Promise<void>;

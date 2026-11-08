@@ -8,7 +8,6 @@ import {
   SELF_HOSTED_LICENSE_ORG_ID,
   TEntitlementsResponse
 } from "../../ce/service/license-server-types/license-server-types";
-import { TRootOrg } from "../../ce/service/registrations";
 import { LicenseServerClient } from "../license-server-client/license-server-client";
 import { projectV2ToFeatureSet, withCloudPlanDefaults, withSelfHostedLicenseBase } from "./entitlement-projection";
 // Imported by this exact specifier: the e2e suite aliases "./license-fns" to a permissive mock.
@@ -102,8 +101,8 @@ export class LicenseResolver {
   }
 
   // Cloud: a root org's plan. Throws when the License Server cannot be read, so the domain serves the fallback.
-  async fetchPlan(rootOrg: TRootOrg): Promise<Plan> {
-    const entitlements = await this.deps.licenseServerClient.getEntitlements(rootOrg);
+  async fetchPlan(rootOrgId: string): Promise<Plan> {
+    const entitlements = await this.deps.licenseServerClient.getEntitlements({ id: rootOrgId });
     if (!entitlements) {
       throw new BadRequestError({ message: "License Server entitlements are unavailable" });
     }

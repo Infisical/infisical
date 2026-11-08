@@ -49,18 +49,6 @@ describe("LicenseServerClient.getEntitlements", () => {
     expect(result).toBeNull();
   });
 
-  test("should send the org's name and slug so the License Server's copy stays current", async () => {
-    // Setup
-    const { backend, asked } = stubBackend();
-    const client = new LicenseServerClient(backend, null);
-
-    // Action
-    await client.getEntitlements({ id: ORG_ID, name: "Acme Corp", slug: "acme" });
-
-    // Assert
-    expect(asked).toEqual([{ id: ORG_ID, name: "Acme Corp", slug: "acme" }]);
-  });
-
   test("should return null and refuse changes when no License Server is configured", async () => {
     // Setup
     const client = new LicenseServerClient(null, null);

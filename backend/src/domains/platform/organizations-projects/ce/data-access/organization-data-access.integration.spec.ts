@@ -22,17 +22,16 @@ describe("OrganizationsProjectsModule organizations for License", () => {
     return { root, sub };
   };
 
-  test("should find a sub-org's root, and a root org itself, with its name and slug", async () => {
+  test("should find a sub-org's root, and a root org itself", async () => {
     // Setup
     const { root, sub } = await orgTree();
     const { organizations } = build();
 
     // Action
-    const found = await Promise.all([organizations.findRootOrg(sub.id), organizations.findRootOrg(root.id)]);
+    const found = await Promise.all([organizations.findRootOrgId(sub.id), organizations.findRootOrgId(root.id)]);
 
     // Assert
-    const expected = { id: root.id, name: root.name, slug: root.slug };
-    expect(found).toEqual([expected, expected]);
+    expect(found).toEqual([root.id, root.id]);
   });
 
   test("should find no root for an org that does not exist", async () => {
@@ -40,7 +39,7 @@ describe("OrganizationsProjectsModule organizations for License", () => {
     const { organizations } = build();
 
     // Action
-    const found = await organizations.findRootOrg(randomUUID());
+    const found = await organizations.findRootOrgId(randomUUID());
 
     // Assert
     expect(found).toBeNull();

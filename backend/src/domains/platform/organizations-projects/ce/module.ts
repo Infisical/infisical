@@ -50,7 +50,7 @@ export class OrganizationsProjectsModule {
     };
 
     licenseRegistry.registerOrganizations({
-      findRootOrg: (orgId) => organizations.findRootOrg(orgId),
+      findRootOrgId: (orgId) => organizations.findRootOrgId(orgId),
       countWorkspacesUsed: (rootOrgId) => organizations.countWorkspaces(rootOrgId)
     });
     licenseRegistry.registerUsageCounter({

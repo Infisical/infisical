@@ -123,20 +123,4 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		require.Equal(t, before, len(root.State(t).EntitlementFetches))
 	})
 
-	t.Run("should send the organization's name and slug with the entitlements read", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
-
-		// Action
-		fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), true)
-
-		// Assert
-		fetches := root.State(t).EntitlementFetches
-		require.NotEmpty(t, fetches)
-		require.Equal(t, tn.OrgSlug, fetches[len(fetches)-1].OrgSlug)
-		require.Equal(t, orgOf(t, tn).Name, fetches[len(fetches)-1].OrgName)
-	})
 }

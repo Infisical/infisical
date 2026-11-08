@@ -400,8 +400,8 @@ export type TBillingV2SubscriptionLifecycleDTO = {
   actor: OrgServiceActor;
 };
 
-// The metered dimensions the usage breakdown can explain. Values are license-server dimension keys and
-// must match the descriptors in services/license-client/features.ts
+// The metered dimensions the usage breakdown can explain. Values are License Server dimension keys and
+// must match the License domain's meters (Meter in domains/platform/license/ce/model/meter.ts).
 export const BillingV2BreakdownDimension = {
   Identities: "identities",
   UserIdentities: "user_identities",

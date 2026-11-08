@@ -824,9 +824,8 @@ export const projectServiceFactory = ({
     // The plan carries the project count, so it is dropped once the project commits. A caller that passed its own
     // transaction does this after that transaction commits.
     if (!trx) await licenseDomain.invalidatePlan(actorOrgId);
-    // A new project seeds its creator (plus any template members/identities); emit so a new
-    // secret-manager or PAM project's seats are metered. Org-scoped (not emitForProject) to avoid racing
-    // the just-committed row; the counter filters by project type.
+    // A new project seeds its creator (plus any template members/identities); emit so a new secret-manager,
+    // PAM or Agent Vault project's seats are metered. The counters filter by project type.
     licenseDomain.emit(results.orgId, Meter.SecretIdentities.key);
     licenseDomain.emit(results.orgId, Meter.PamIdentities.key);
     licenseDomain.emit(results.orgId, Meter.AgentVaultIdentities.key);
@@ -1033,7 +1032,6 @@ export const projectServiceFactory = ({
 
       let restoredProject: TProjects;
       try {
-        // Read before the transaction: a plan cache miss queries on its own connection.
         const plan = await licenseDomain.getPlan(project.orgId);
 
         // A deleted project's honey tokens and syncs don't count toward their limits, so restoring it can
