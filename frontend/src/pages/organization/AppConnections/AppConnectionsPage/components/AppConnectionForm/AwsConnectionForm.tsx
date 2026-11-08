@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info } from "lucide-react";
@@ -30,6 +31,7 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
+import { AwsLaunchStack, TAwsProvisioningMetadata } from "./AwsLaunchStack";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -37,9 +39,10 @@ import {
 
 type Props = {
   appConnection?: TAwsConnection;
-  onSubmit: (formData: FormData) => Promise<void>;
+  onSubmit: (formData: FormData & { configuration?: Record<string, unknown> }) => Promise<void>;
   projectType?: ProjectType;
   projectId?: string | null;
+  defaultUseCases?: string[];
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
@@ -99,8 +102,15 @@ const ProjectExternalIdHint = ({ projectId }: { projectId: string }) => {
   );
 };
 
-export const AwsConnectionForm = ({ appConnection, onSubmit, projectType, projectId }: Props) => {
+export const AwsConnectionForm = ({
+  appConnection,
+  onSubmit,
+  projectType,
+  projectId,
+  defaultUseCases
+}: Props) => {
   const isUpdate = Boolean(appConnection);
+  const [provisioning, setProvisioning] = useState<TAwsProvisioningMetadata | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -116,13 +126,23 @@ export const AwsConnectionForm = ({ appConnection, onSubmit, projectType, projec
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form
+        onSubmit={handleSubmit((formData) => {
+          if (provisioning && formData.method === AwsConnectionMethod.AssumeRole) {
+            const { roleName, ...metadata } = provisioning;
+            if (formData.credentials.roleArn.endsWith(`:role/${roleName}`)) {
+              return onSubmit({ ...formData, configuration: { provisioning: metadata } });
+            }
+          }
+          return onSubmit(formData);
+        })}
+      >
         {!isUpdate && <GenericAppConnectionsFields />}
         <Controller
           name="method"
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <Field className="mb-4">
+            <Field className="mb-2">
               <FieldLabel>
                 Method
                 <Tooltip>
@@ -155,6 +175,13 @@ export const AwsConnectionForm = ({ appConnection, onSubmit, projectType, projec
         />
         {selectedMethod === AwsConnectionMethod.AssumeRole ? (
           <>
+            {!isUpdate && (
+              <AwsLaunchStack
+                projectId={projectId}
+                defaultUseCases={defaultUseCases}
+                onLaunch={setProvisioning}
+              />
+            )}
             <Controller
               name="credentials.roleArn"
               control={control}
@@ -165,6 +192,7 @@ export const AwsConnectionForm = ({ appConnection, onSubmit, projectType, projec
                   <SecretInput
                     aria-describedby={error ? "app-connection-aws-role-arn-error" : undefined}
                     id="app-connection-aws-role-arn"
+                    placeholder="arn:aws:iam::123456789012:role/infisical-app-connection"
                     isError={Boolean(error)}
                     value={value}
                     onChange={(e) => onChange(e.target.value)}

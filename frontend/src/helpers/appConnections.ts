@@ -971,7 +971,10 @@ export const AWS_REGIONS = [
   { name: "Middle East (UAE)", slug: "me-central-1" },
   { name: "South America (Sao Paulo)", slug: "sa-east-1" },
   { name: "AWS GovCloud (US-East)", slug: "us-gov-east-1" },
-  { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" }
+  { name: "AWS GovCloud (US-West)", slug: "us-gov-west-1" },
+  { name: "China (Beijing)", slug: "cn-north-1" },
+  { name: "China (Ningxia)", slug: "cn-northwest-1" },
+  { name: "Europe (Germany) - European Sovereign Cloud", slug: "eusc-de-east-1" }
 ];
 
 export const CSRF_TOKEN_STORAGE_KEY = "latestCSRFToken";

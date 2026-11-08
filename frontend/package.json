@@ -14,6 +14,7 @@
     "lint": "oxlint --type-aware --report-unused-disable-directives-severity=error --max-warnings 0 src && oxfmt --check 'src/**/*.{ts,tsx}'",
     "lint:fix": "oxlint --type-aware --report-unused-disable-directives-severity=error --fix --max-warnings 0 src && oxfmt 'src/**/*.{ts,tsx}'",
     "test": "vitest run -c vitest.config.mts",
+    "generate:aws-policies": "node scripts/generate-aws-use-case-policies.mjs",
     "type:check": "tsc --noEmit --project ./tsconfig.app.json",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"

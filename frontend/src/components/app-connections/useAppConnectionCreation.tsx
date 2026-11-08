@@ -25,6 +25,7 @@ import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppCon
 
 type Props = {
   apps: AppConnection[];
+  useCases?: string[];
   onCreated: (connection: TAppConnection) => void;
   onOpen?: VoidFunction;
   onClose?: VoidFunction;
@@ -52,6 +53,7 @@ const CreationLifecycle = ({
 
 export const useAppConnectionCreation = <TOption,>({
   apps,
+  useCases,
   onCreated,
   onOpen,
   onClose
@@ -121,6 +123,7 @@ export const useAppConnectionCreation = <TOption,>({
             layout="dialog"
             projectId={currentProject.id}
             projectType={currentProject.type}
+            useCases={useCases}
             onDirtyChange={setIsDirty}
             onPendingChange={setIsPending}
             onComplete={(connection) => {
