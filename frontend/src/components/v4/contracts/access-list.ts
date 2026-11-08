@@ -20,7 +20,7 @@ export const accessListDefinition = {
   ],
   accessibility: [
     "The List's select-all and row checkboxes are named for the member; the bulk bar is a named toolbar with a count status.",
-    "Machine and agent names are set in mono."
+    "Machine and agent names are names people chose, so they stay in the sans like a person's name; the kind shows in the media and badge (rule/mono-machine-values)."
   ],
   limitations: ["The host owns the members and persists revokes and restores."],
   examples: [

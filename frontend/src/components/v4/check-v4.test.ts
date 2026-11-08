@@ -320,6 +320,19 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [example, '<Button disabled>Save</Button>\n<Tooltip content="Help" />']
     ]
   },
+  "mono-named-entity": {
+    bad: [
+      [example, '<PageHeader title={project.name} mono description="Overview" />'],
+      [example, "const crumb = { label: project?.name ?? projectId, mono: true, href };"],
+      [example, "options.map((entry) => ({ value: entry.id, label: entry.name, mono: true }))"]
+    ],
+    good: [
+      [example, "<PageHeader title={secret.key} mono />"],
+      [example, '<Input mono value={environment.slug} aria-label="Environment slug" />'],
+      [example, "const crumb = { label: project?.name ?? projectId, href };"],
+      [example, "options.map((entry) => ({ value: entry.id, label: entry.key, mono: true }))"]
+    ]
+  },
   "trigger-start-aligned": {
     bad: [
       [

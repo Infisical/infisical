@@ -403,6 +403,7 @@ export const baselineForms = [
       "Associate a label using Field or explicit htmlFor/id; use readOnly when the value must remain selectable."
     ],
     limitations: [
+      "mono is for a field that holds a machine value: a secret key, slug, ID, host, path, env var name, code or a typed confirmation of one. A name field (project, environment, role, connection or identity name) stays in the sans even when the name is restricted to slug characters (rule/mono-machine-values).",
       "Input keeps native input types and callbacks; formatting, validation and persistence belong to the host. Use Textarea for multiple lines."
     ],
     examples: [

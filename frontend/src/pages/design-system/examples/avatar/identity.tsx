@@ -6,8 +6,8 @@ export default function Example() {
   return (
     <ExampleStack>
       <Identity name="Alex Kim" description="Workspace administrator" />
-      <Identity name="deploy-production" kind="machine" mono />
-      <Identity name="rotation-agent" kind="agent" mono description="Read access to staging" />
+      <Identity name="deploy-production" kind="machine" />
+      <Identity name="rotation-agent" kind="agent" description="Read access to staging" />
     </ExampleStack>
   );
 }

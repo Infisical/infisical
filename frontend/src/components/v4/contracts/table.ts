@@ -89,6 +89,7 @@ export const tableDefinition = {
     "Selection with groups has no group checkbox: header select-all covers the eligible rows of every group and every child row, and its mixed state counts them the same way. A group header is never selected."
   ],
   limitations: [
+    "DataTable's primary column is in the sans row-title role, because it usually names a resource someone chose. A column opts into mono with mono for machine values such as secret keys, key IDs, hashes or hosts (rule/mono-machine-values).",
     "The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.",
     "Grouped rows: DataTable never reorders rows, so the host sorts within each group and keeps the groups in their own order; a sort never moves a row across groups. With getRowChildren the host sorts the parents and each parent's children separately, and children always follow their parent. Paginate the rows first and group the page, so a group cut by a page boundary repeats its header on the next page.",
     "Grouped rows render every row: virtual is ignored with groups. getRowChildren works with virtual, since its rows stay one flat list.",

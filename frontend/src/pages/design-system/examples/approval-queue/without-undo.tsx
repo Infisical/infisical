@@ -21,11 +21,7 @@ const initial: ApprovalRequest[] = [
   {
     id: "export",
     object: "audit-export",
-    title: (
-      <>
-        <code>audit-export</code> access approved
-      </>
-    ),
+    title: <>audit-export access approved</>,
     description: "Read access to audit logs for 1 day, approved by you. Approvals here are final.",
     age: "1h",
     href: "#approval-queue",

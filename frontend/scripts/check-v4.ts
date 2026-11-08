@@ -181,6 +181,92 @@ export const chevronTriggersWithoutLayout = (text: string) => {
   return [...found].map(([index, match]) => ({ index, text: match }));
 };
 
+const enclosingObject = (text: string, at: number): [number, number] | null => {
+  let depth = 0;
+  let start = -1;
+  for (let index = at; index >= 0; index -= 1) {
+    if (text[index] === "}") depth += 1;
+    else if (text[index] === "{") {
+      if (depth === 0) {
+        start = index;
+        break;
+      }
+      depth -= 1;
+    }
+  }
+  if (start < 0) return null;
+  depth = 0;
+  for (let index = start; index < text.length; index += 1) {
+    if (text[index] === "{") depth += 1;
+    else if (text[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return [start, index + 1];
+    }
+  }
+  return null;
+};
+const namedValue = /\.name\b/;
+const namedProperty = /\b(?:title|label|text)\s*:\s*([^,]*)/g;
+
+const tagAttributes = (tag: string) => {
+  const flags = new Set<string>();
+  const values = new Map<string, string>();
+  let depth = 0;
+  let name = "";
+  let valueStart = -1;
+  let word = "";
+  for (let index = 0; index < tag.length; index += 1) {
+    const char = tag[index];
+    if (depth === 0 && (char === '"' || char === "'")) {
+      const end = tag.indexOf(char, index + 1);
+      if (word.endsWith("=")) values.set(word.slice(0, -1), tag.slice(index + 1, end));
+      word = "";
+      index = end;
+    } else if (char === "{") {
+      if (depth === 0) {
+        name = word.endsWith("=") ? word.slice(0, -1) : "";
+        valueStart = index + 1;
+      }
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        if (name) values.set(name, tag.slice(valueStart, index));
+        word = "";
+      }
+    } else if (depth === 0) {
+      if (/[\s/>]/.test(char)) {
+        if (word && !word.endsWith("=")) flags.add(word);
+        word = "";
+      } else word += char;
+    }
+  }
+  return { flags, values };
+};
+
+/** mono set on a JSX element or option object whose title, label or text is an entity's .name: names people chose stay in the sans. */
+export const monoOnNamedEntity = (text: string) => {
+  const found = new Map<number, string>();
+  [...text.matchAll(/<([A-Z]\w*)(?=[\s>])/g)].forEach((open) => {
+    const at = open.index ?? 0;
+    const { flags, values } = tagAttributes(
+      text.slice(at + open[0].length, jsxTagEnd(text, at) + 1)
+    );
+    if (!flags.has("mono") && values.get("mono")?.trim() !== "true") return;
+    if (["title", "label", "text"].some((key) => namedValue.test(values.get(key) ?? "")))
+      found.set(at, text.slice(at, text.indexOf("\n", at)).trim());
+  });
+  [...text.matchAll(/\bmono\s*:\s*true\b/g)].forEach((match) => {
+    const span = enclosingObject(text, match.index ?? 0);
+    if (!span) return;
+    const object = text.slice(span[0], span[1]);
+    if (/<[A-Za-z]/.test(object)) return;
+    if ([...object.matchAll(namedProperty)].some((property) => namedValue.test(property[1])))
+      found.set(match.index ?? 0, object.split("\n")[0].trim() || match[0]);
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
+};
+
 const framedParents = /<(Card|List|ApprovalQueue|DataTable|CodeBlock)(?=[\s>/])/g;
 const framedChildren = /<(Card|List|ApprovalQueue)(?=[\s>/])/g;
 const variantValue = /\svariant=(?:"(\w+)"|\{\s*["'`](\w+)["'`]\s*\})/;
@@ -732,6 +818,14 @@ export const v4Checks: readonly V4Check[] = [
       'A Button that opens a menu, popover or picker with a chevron uses layout="trigger": its label sits at the start and truncates and the chevron sits at the end, like SelectTrigger. Pass layout="trigger" and drop iconRight="chev-down" (the layout draws the chevron).',
     appliesTo: isAuthored,
     source: chevronTriggersWithoutLayout
+  },
+  {
+    id: "mono-named-entity",
+    rule: "mono-machine-values",
+    message:
+      "Mono is for machine values a person copies or compares character by character (secret keys, IDs, hashes, hosts, env var names, code). A name someone chose, such as a project, organization, environment, role, group, identity, folder or key name, stays in the sans: drop mono here.",
+    appliesTo: isAuthored,
+    source: monoOnNamedEntity
   },
   {
     id: "nested-frame",

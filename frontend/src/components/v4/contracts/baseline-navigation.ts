@@ -37,6 +37,7 @@ export const baselineNavigation = [
       "A switcher crumb with a page has two tab stops in reading order, the name and then the chevron, and both draw the ink focus outline. The chevron carries the popup attributes, and its name joins switcher.label and the crumb's text, such as Switch project payments-api. A switcher crumb without a page, or the current one, is one tab stop: the segment button carries aria-haspopup and aria-expanded, draws the ink focus outline around the whole segment and takes the same name, such as Switch environment Production."
     ],
     limitations: [
+      "A crumb's mono is for a machine value such as a secret key or path segment shown as code. Project, organization, environment and folder crumbs, and the options of a crumb's Switcher, are names and stay in the sans (rule/mono-machine-values).",
       "The owner supplies real destinations and switching callbacks; collapse does not implement routing."
     ],
     examples: [
@@ -823,6 +824,7 @@ export const baselineNavigation = [
       "Arrow keys move through commands and skip disabled ones. Escape leaves a nested page before it closes the menu. Mod+Enter opens an enabled link that is not pending in a new tab."
     ],
     limitations: [
+      "An item's mono is for a machine value such as a secret key; project, environment and other named entities stay in the sans (rule/mono-machine-values).",
       "Async action IDs stay disabled and busy until settlement. Actual dialog close resets query/page and notifies onQueryChange('', undefined); inline panels retain their query. Remote search, shortcut bindings shown on items and persistence remain host-owned."
     ],
     examples: [

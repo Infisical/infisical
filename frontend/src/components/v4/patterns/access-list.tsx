@@ -129,9 +129,7 @@ export const AccessList = ({
               onClick={() => onOpen?.(member.id)}
               current={member.id === current}
               selectable={!member.owner}
-              title={
-                member.kind && member.kind !== "person" ? <code>{member.name}</code> : member.name
-              }
+              title={member.name}
               badge={<Badge>{member.role}</Badge>}
               description={member.via}
               meta={member.lastUsed}

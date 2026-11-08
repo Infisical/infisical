@@ -36,6 +36,8 @@ export interface DataTableColumn<Row> {
   toggle?: DataTableToggle<Row>;
   text?: (row: Row) => string;
   primary?: boolean;
+  /** Sets the column in mono, for machine values compared character by character: secret keys, key IDs, hashes, hosts. Names people chose stay in the sans. */
+  mono?: boolean;
   sortable?: boolean;
   width?: number;
   minWidth?: number;
@@ -381,6 +383,7 @@ export function DataTable<Row>({
             ) : (
               <div
                 className={column.primary ? styles.tablePrimary : styles.tableValue}
+                data-mono={column.mono || undefined}
                 data-depth={depth > 0 && column.id === indentColumn ? depth : undefined}
                 style={{ maxWidth: column.maxWidth }}
                 title={column.text?.(row)}

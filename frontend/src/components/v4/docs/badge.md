@@ -103,6 +103,7 @@ Exports: Badge, badgeVariants, Count. Source TypeScript defines the API.
 
 ## Limits
 
+- mono is for a machine value in a Badge, such as a key ID, a version hash or a key=value metadata pair; a role, environment or status name stays in the sans (rule/mono-machine-values).
 - Badge and Count display caller-supplied values; they do not fetch or calculate status.
 
 ## Declared example coverage

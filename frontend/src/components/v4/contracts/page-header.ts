@@ -23,7 +23,10 @@ export const pageHeaderDefinition = {
     "The title is the page's one h1.",
     "A long folder path collapses its middle into a named button that expands in place."
   ],
-  limitations: ["The host provides the tab panels and routes; the header only places them."],
+  limitations: [
+    "mono sets the title in mono only when the object is a machine value, such as a secret key or a host. A project, identity, role, group or folder title stays in the sans (rule/mono-machine-values).",
+    "The host provides the tab panels and routes; the header only places them."
+  ],
   examples: [
     {
       id: "default",

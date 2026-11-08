@@ -1173,12 +1173,20 @@ tbody > .nativeTableRow[data-loading] {
   margin: calc(-1 * var(--v4-focus-clearance));
 }
 .tablePrimary {
+  font-family: var(--v4-type-row-title-font-family);
+  font-size: var(--v4-type-row-title-font-size);
+  line-height: var(--v4-type-row-title-line-height);
+  font-weight: var(--v4-type-row-title-font-weight);
+  letter-spacing: var(--v4-type-row-title-letter-spacing);
+  color: var(--v4-ink);
+}
+.tableValue[data-mono],
+.tablePrimary[data-mono] {
   font-family: var(--v4-type-mono-font-family);
   font-size: var(--v4-type-mono-font-size);
   line-height: var(--v4-type-mono-line-height);
   font-weight: var(--v4-type-mono-font-weight);
   letter-spacing: var(--v4-type-mono-letter-spacing);
-  color: var(--v4-ink);
 }
 
 .treeRow > button {

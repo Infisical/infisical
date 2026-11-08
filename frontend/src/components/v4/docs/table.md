@@ -329,6 +329,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 
 ## Limits
 
+- DataTable's primary column is in the sans row-title role, because it usually names a resource someone chose. A column opts into mono with mono for machine values such as secret keys, key IDs, hashes or hosts (rule/mono-machine-values).
 - The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.
 - Grouped rows: DataTable never reorders rows, so the host sorts within each group and keeps the groups in their own order; a sort never moves a row across groups. With getRowChildren the host sorts the parents and each parent's children separately, and children always follow their parent. Paginate the rows first and group the page, so a group cut by a page boundary repeats its header on the next page.
 - Grouped rows render every row: virtual is ignored with groups. getRowChildren works with virtual, since its rows stay one flat list.
@@ -591,7 +592,7 @@ import {
 
 type Secret = { id: string; key: string; production: string; staging: string };
 const columns: DataTableColumn<Secret>[] = [
-  { id: "key", header: "Key", primary: true, grow: true, render: (row) => row.key },
+  { id: "key", header: "Key", primary: true, mono: true, grow: true, render: (row) => row.key },
   { id: "production", header: "Production", width: 160, render: (row) => row.production },
   { id: "staging", header: "Staging", width: 160, render: (row) => row.staging }
 ];
@@ -798,6 +799,7 @@ const columns: DataTableColumn<Row>[] = [
     id: "key",
     header: "Key",
     primary: true,
+    mono: true,
     sortable: true,
     text: (row) => row.key,
     render: (row) => row.key

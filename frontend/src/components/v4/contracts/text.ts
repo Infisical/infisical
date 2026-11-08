@@ -20,6 +20,7 @@ export const textDefinition = {
     "StatusText renders a span whose icon is hidden from assistive technology; its words carry the whole state, so they must make sense on their own."
   ],
   limitations: [
+    "Meta defaults to mono for short machine values and aligned numbers (IDs, versions, counts); pass mono={false} for a date, a label or a name (rule/mono-machine-values).",
     "Do not use a visually styled paragraph in place of a semantic section heading.",
     "StatusText has no dot, brand mark or icon-only form. Use Badge for a categorical label that needs a chip."
   ],

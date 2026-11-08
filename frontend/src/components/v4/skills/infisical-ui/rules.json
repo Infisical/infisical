@@ -1123,6 +1123,19 @@
       "exceptions": "The check reads Tooltip content props and TooltipContent bodies in the same file. A long or copyable value with no interactive element is reviewed by hand."
     },
     {
+      "id": "mono-machine-values",
+      "title": "Mono is for machine values, names stay in the sans",
+      "instruction": "Set Geist Mono only on machine-readable values a person copies or compares character by character: secret keys, IDs and UUIDs, hashes, fingerprints, serials, IPs and hosts, paths, env var names, code and CLI snippets and key IDs, and optionally tabular numbers whose digits must align. Names people chose stay in the Archivo sans: project, organization, environment display name, role, group, identity (person, machine or agent), user, folder, KMS key, certificate common name and app connection names, and every crumb, switcher option, title and label built from them. A slug is an identifier the CLI, API and URLs use, so it takes mono where it is shown or edited as the slug (a slug field, a slug column, an inline code reference), but never stands in for the display name, even when the two match. Never set a font family on html, body, V4Scope, AppShell or a theme, and set mono in a page only through a primitive's mono prop or the mono type role tokens on a machine value; DataTable primary is sans and a column opts into mono with mono.",
+      "good": "The top bar's project crumb and switcher options and the project's PageHeader title in the sans, beside a secret key column with mono and an environment slug Input with mono.",
+      "avoid": "A project, identity or folder name passed with mono to a crumb, Switcher option, PageHeader or Item, or a page stylesheet that sets a name class in the mono family.",
+      "detect": {
+        "by": "lint",
+        "check": "mono-named-entity"
+      },
+      "category": "Visual",
+      "exceptions": "The check reads mono on a JSX element or option object whose title, label or text reads an entity's .name. It cannot see a name passed through a local variable, mono set by a page stylesheet class, a conditional mono expression or a DataTable column whose render reads a name; those are reviewed by hand."
+    },
+    {
       "id": "trigger-start-aligned",
       "title": "Triggers start-align their value",
       "instruction": "Every trigger that shows a value and a chevron (Select, Combobox, MultiSelect, and a Button that opens a menu, popover or picker) puts its label at the start, truncates it, and puts the chevron at the end. A Button acting as that trigger passes layout=\"trigger\", which draws the chevron and takes SelectTrigger's insets; never center the value or add a chevron to a plain Button.",

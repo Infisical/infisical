@@ -57,7 +57,7 @@ export const activityLogDefinition = {
       {
         id: "activity-log-voice",
         when: "An event is written.",
-        do: "Start with the actor and use the past tense, with keys and machine names in mono.",
+        do: "Start with the actor and use the past tense, with secret keys and other machine values in mono and names, machine identities included, in the sans.",
         avoid: "Write passive events such as Secret was updated.",
         reason: "People scan the log for who did something.",
         evidence: ["src/pages/design-system/examples/activity-log/default.tsx"],

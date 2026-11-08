@@ -100,6 +100,7 @@ Exports: TopBar, AppShell, AppInset, PageGutter. Source TypeScript defines the A
 
 ## Limits
 
+- Crumbs and Switcher options built from a project, organization, environment or folder name stay in the sans: those are names people chose, not machine values (rule/mono-machine-values).
 - Between size-shell-collapse and size-shell-rail the band keeps every crumb and truncates labels; it does not swap the organization name for a glyph or drop leading crumbs.
 - The gutter grows past 40px only when the card is wider than the page measure plus the gutters.
 
@@ -147,9 +148,9 @@ const organizations = [
   { value: "globex", label: "Globex", group: "Other organizations" }
 ];
 const projects = [
-  { value: "payments", label: "payments-api", mono: true },
-  { value: "platform", label: "platform-core-services-and-shared-infrastructure", mono: true },
-  { value: "web", label: "web-dashboard", mono: true }
+  { value: "payments", label: "payments-api" },
+  { value: "platform", label: "platform-core-services-and-shared-infrastructure" },
+  { value: "web", label: "web-dashboard" }
 ];
 const environments = [
   { value: "dev", label: "Development" },
@@ -183,7 +184,6 @@ const Bar = ({ defaultProject = "payments" }: { defaultProject?: string }) => {
         },
         {
           label: labelOf(projects, project),
-          mono: true,
           href: "#top-bar",
           switcher: {
             label: "Switch project",
