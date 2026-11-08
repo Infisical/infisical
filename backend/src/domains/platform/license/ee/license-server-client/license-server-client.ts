@@ -13,10 +13,21 @@ import {
   TSubscriptionPreviewPayload,
   TUpgradePayload
 } from "../../ce/service/license-server-types/license-server-types";
-import { TUsageEvent, TUsageEventResult, TUsageSnapshot } from "../../ce/service/license-server-types/usage-reports";
-import { licenseServerBackend, licenseServerSelfHostedBackend, TLicenseClientBackend } from "./license-server-backends";
+import {
+  MAX_USAGE_EVENTS_PER_REQUEST,
+  TUsageEvent,
+  TUsageEventResult,
+  TUsageSnapshot,
+  UsageReportError
+} from "../../ce/service/license-server-types/usage-reports";
+import {
+  licenseServerBackend,
+  licenseServerSelfHostedBackend,
+  mintServiceToken,
+  readLicenseRequestId,
+  TLicenseClientBackend
+} from "./license-server-backends";
 import { createSelfHostedTokenProvider } from "./license-token-provider";
-import { UsageReporter } from "./usage-reporter";
 
 export type TLicenseServerClientConfig = {
   envConfig: Pick<
@@ -81,17 +92,94 @@ const buildBackend = (
   return licenseServerBackend(serverUrl, signingKey.replace(/\\n/g, "\n"), envConfig.INTERNAL_REGION);
 };
 
+// Where usage goes and how each post authenticates. getBearerToken is called per request so cloud can mint a
+// fresh short-lived JWT each time, while self-hosted exchanges its license key for a cached JWT.
+type TUsageEndpoint = { serverUrl: string; getBearerToken: () => Promise<string> };
+
+// Returns null when the license server is unconfigured, which keeps usage reporting inert. A
+// self-hosted license exchanges its key for a short-lived JWT at the token endpoint and reports with
+// that bearer; cloud mints a short-lived RS256 service JWT signed with the service key (the same scheme
+// the rest of the license client uses). The raw key/signing key is never sent as the bearer.
+const buildUsageEndpoint = (envConfig: TLicenseServerClientConfig["envConfig"]): TUsageEndpoint | null => {
+  // One host serves both the self-hosted token endpoint and the usage API.
+  const serverUrl = envConfig.LICENSE_SERVER_URL;
+  if (!serverUrl) {
+    logger.warn("usage-reporter: LICENSE_SERVER_URL is not set; usage reporting disabled");
+    return null;
+  }
+
+  // Don't forward the bearer to a non-HTTPS or malformed destination.
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(serverUrl);
+  } catch {
+    logger.warn("usage-reporter: license server URL is not a valid URL; usage reporting disabled");
+    return null;
+  }
+  if (parsedUrl.protocol !== "https:" && process.env.NODE_ENV !== "development") {
+    logger.warn("usage-reporter: license server URL must use https; usage reporting disabled");
+    return null;
+  }
+
+  // Self-hosted (any license key format): exchange the key for a short-lived JWT at the token endpoint
+  // and use that. Cloud sets no LICENSE_KEY, so it falls through to the service-JWT path below.
+  const licenseKey = envConfig.LICENSE_KEY;
+  if (licenseKey) {
+    const tokenProvider = createSelfHostedTokenProvider(licenseKey, { serverUrl });
+    return { serverUrl, getBearerToken: () => tokenProvider.getToken() };
+  }
+
+  // Cloud: mint a fresh service JWT per request signed with the service key (an RSA private key).
+  const serviceKey = envConfig.LICENSE_SERVER_V2_SERVICE_KEY;
+  if (!serviceKey) {
+    logger.warn(
+      "usage-reporter: enabled but LICENSE_SERVER_V2_SERVICE_KEY (cloud) is not set; usage reporting disabled"
+    );
+    return null;
+  }
+  return { serverUrl, getBearerToken: () => Promise.resolve(mintServiceToken(serviceKey)) };
+};
+
+// Throws UsageReportError with the server's status and message, so a caller can tell a final refusal
+// (404 "license not found", 422 "not priced") from a failure worth retrying.
+const postUsage = async (
+  endpoint: TUsageEndpoint,
+  orgId: string,
+  resource: "usage-snapshots" | "usage-events",
+  body: unknown
+) => {
+  const url = new URL(`/v1/organizations/${encodeURIComponent(orgId)}/${resource}`, endpoint.serverUrl);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await endpoint.getBearerToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    redirect: "manual"
+  });
+
+  if (!res.ok) {
+    let serverMessage = "";
+    try {
+      const errBody = (await res.json()) as { message?: string; error?: string };
+      serverMessage = errBody?.message ?? errBody?.error ?? "";
+    } catch {
+      // non-JSON body; leave the message empty
+    }
+    throw new UsageReportError(res.status, serverMessage, readLicenseRequestId(res));
+  }
+  return res;
+};
+
 // The License Server over HTTP. Dormant when it is not configured, or when the instance runs on an offline
 // license: reads then return nothing and changes are refused.
 export class LicenseServerClient {
   constructor(
     private readonly backend: TLicenseClientBackend | null,
-    private readonly usageReporter: UsageReporter | null
+    private readonly usageEndpoint: TUsageEndpoint | null
   ) {}
 
   static fromConfig({ envConfig, isOffline }: TLicenseServerClientConfig): LicenseServerClient {
     if (isOffline) return new LicenseServerClient(null, null);
-    return new LicenseServerClient(buildBackend(envConfig, isOffline), UsageReporter.fromConfig(envConfig));
+    return new LicenseServerClient(buildBackend(envConfig, isOffline), buildUsageEndpoint(envConfig));
   }
 
   // False when no license server is reachable (unlicensed self-hosted, or an offline license), so callers can
@@ -101,7 +189,7 @@ export class LicenseServerClient {
   }
 
   canReportUsage(): boolean {
-    return this.usageReporter !== null;
+    return this.usageEndpoint !== null;
   }
 
   // Entitlements are not cached here: the domain caches the plan it projects from them. Returns null when the
@@ -183,13 +271,25 @@ export class LicenseServerClient {
   }
 
   async reportSnapshots(orgId: string, snapshots: TUsageSnapshot[]): Promise<void> {
-    if (!this.usageReporter) return;
-    await this.usageReporter.reportSnapshots(orgId, snapshots);
+    if (!this.usageEndpoint || !snapshots.length) return;
+    await postUsage(this.usageEndpoint, orgId, "usage-snapshots", { snapshots });
   }
 
+  // The server accepts or rejects each request as a whole, so a chunk that fails stops the rest; chunks
+  // already sent are safe to resend because of event_id dedup.
   async reportEvents(orgId: string, events: TUsageEvent[]): Promise<TUsageEventResult[]> {
-    if (!this.usageReporter) return [];
-    return this.usageReporter.reportEvents(orgId, events);
+    const endpoint = this.usageEndpoint;
+    if (!endpoint) return [];
+    const results: TUsageEventResult[] = [];
+    for (let i = 0; i < events.length; i += MAX_USAGE_EVENTS_PER_REQUEST) {
+      const chunk = events.slice(i, i + MAX_USAGE_EVENTS_PER_REQUEST);
+      // eslint-disable-next-line no-await-in-loop
+      const body = (await (await postUsage(endpoint, orgId, "usage-events", { events: chunk })).json()) as {
+        results?: TUsageEventResult[];
+      };
+      results.push(...(body.results ?? []));
+    }
+    return results;
   }
 
   private configured(): TLicenseClientBackend {

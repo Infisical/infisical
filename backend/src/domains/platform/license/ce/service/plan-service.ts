@@ -1,8 +1,11 @@
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { PlanCache } from "../data-access/plan-cache";
 import { UsageReportMemory } from "../data-access/usage-report-memory";
-import { Plan } from "../model/plan";
+import { InstanceType, TInstanceEntitlementsProps, TInstanceFeatures } from "../model/instance-entitlements";
+import { Meter } from "../model/meter";
+import { Plan, TPlanFeature, TPlanProps } from "../model/plan";
 import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
 import { TLicenseHooks } from "./license-hooks";
 import { OrganizationDirectory } from "./organization-directory";
@@ -14,7 +17,7 @@ export type TRefreshPlanOptions = {
   afterBillingChange?: { checkout?: boolean };
 };
 
-export type TPlanResolverDeps = {
+export type TPlanServiceDeps = {
   instance: InstanceEntitlementsHolder;
   planCache: PlanCache;
   usageReportMemory: UsageReportMemory;
@@ -23,10 +26,52 @@ export type TPlanResolverDeps = {
   usageQueue: UsageQueue;
 };
 
-// Reads and refreshes plans. Shared by the services that need an org's plan, so the cache rules live in one
-// place.
-export class PlanResolver {
-  constructor(private readonly deps: TPlanResolverDeps) {}
+// What the instance and each org are licensed for: reading and caching plans, refreshing them, and the
+// subscription changes that move a plan (seat sync, cancellation).
+export class PlanService {
+  constructor(private readonly deps: TPlanServiceDeps) {}
+
+  getInstanceEntitlements(): TInstanceEntitlementsProps {
+    return this.deps.instance.get().toJSON();
+  }
+
+  getInstanceType(): InstanceType {
+    return this.deps.instance.get().instanceType;
+  }
+
+  hasInstanceFeature(feature: keyof TInstanceFeatures): boolean {
+    return this.deps.instance.get().has(feature);
+  }
+
+  getLicenseId(): string {
+    return this.deps.instance.get().licenseId;
+  }
+
+  async getPlan(orgId: string): Promise<TPlanProps> {
+    return (await this.resolve(orgId)).toJSON();
+  }
+
+  async hasFeature(orgId: string, feature: TPlanFeature): Promise<boolean> {
+    return (await this.resolve(orgId)).has(feature);
+  }
+
+  async assertFeature(orgId: string, feature: TPlanFeature): Promise<void> {
+    (await this.resolve(orgId)).assert(feature);
+  }
+
+  async invalidatePlan(orgId: string): Promise<void> {
+    await this.deps.planCache.invalidate(await this.deps.organizations.rootOrgIdOf(orgId));
+  }
+
+  async isServingFallbackPlan(orgId: string): Promise<boolean> {
+    if (!this.deps.instance.isCloud()) return false;
+    return this.deps.planCache.isFallback(await this.deps.organizations.rootOrgIdOf(orgId));
+  }
+
+  async getLastKnownPlan(orgId: string): Promise<{ plan: TPlanProps; fetchedAt: number } | null> {
+    const lastKnown = await this.deps.planCache.lastKnown(await this.deps.organizations.rootOrgIdOf(orgId));
+    return lastKnown ? { plan: lastKnown.plan.toJSON(), fetchedAt: lastKnown.fetchedAt } : null;
+  }
 
   // An org's plan. Self-hosted orgs get the instance's license. On cloud the root org's plan is cached; when
   // the License Server cannot be reached the org gets the fallback plan until the cache expires.
@@ -56,7 +101,8 @@ export class PlanResolver {
     }
   }
 
-  async refresh(orgId: string, opts: TRefreshPlanOptions = {}): Promise<void> {
+  // Fetches the plan again now; after a billing change, refreshes it in the background instead.
+  async refreshPlan(orgId: string, opts: TRefreshPlanOptions = {}): Promise<void> {
     if (opts.afterBillingChange) {
       if (!this.deps.instance.isCloud()) return;
       const rootOrgId = await this.deps.organizations.rootOrgIdOf(orgId);
@@ -74,6 +120,32 @@ export class PlanResolver {
     }
     const refreshed = await this.deps.hooks.refreshInstanceEntitlements();
     if (refreshed) this.deps.instance.set(refreshed);
+  }
+
+  // Call after the change to the org's members commits. Reports the new seat count and refreshes the plan,
+  // which carries it. A failure is logged rather than thrown, since the change it follows has committed.
+  async syncSeats(orgId: string): Promise<void> {
+    try {
+      const rootOrgId = await this.deps.organizations.rootOrgIdOf(orgId);
+      this.deps.usageQueue.emit(rootOrgId, Meter.UserIdentities.key);
+      await this.refreshPlan(rootOrgId);
+    } catch (error) {
+      logger.error(error, `syncSeats: failed to sync seats [orgId=${orgId}]`);
+    }
+  }
+
+  // Cloud only. An org with no subscription answers 4xx (a BadRequestError), which counts as cancelled; any
+  // other failure is thrown so the caller can stop before deleting the org.
+  async cancelSubscription(orgId: string): Promise<void> {
+    if (!this.deps.instance.isCloud()) return;
+
+    try {
+      await this.deps.hooks.cancelSubscription(orgId);
+    } catch (error) {
+      if (!(error instanceof BadRequestError)) throw error;
+      logger.info(`cancelOrgSubscription: no subscription to cancel [orgId=${orgId}]`);
+    }
+    await this.deps.planCache.invalidate(orgId);
   }
 
   private async fetchAndCache(rootOrgId: string): Promise<Plan> {

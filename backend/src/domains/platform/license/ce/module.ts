@@ -10,16 +10,13 @@ import { InstanceType, TInstanceEntitlementsProps, TInstanceFeatures } from "./m
 import { TPlanFeature, TPlanProps } from "./model/plan";
 import { SeatUsage } from "./model/seat-usage";
 import { CounterRegistry } from "./service/counter-registry";
-import { EntitlementService } from "./service/entitlement-service";
 import { InstanceEntitlementsHolder } from "./service/instance-entitlements-holder";
 import { TLicenseHooks } from "./service/license-hooks";
 import { TLicenseServerBilling } from "./service/license-server-types/license-server-types";
 import { OrganizationDirectory } from "./service/organization-directory";
-import { PlanResolver, TRefreshPlanOptions } from "./service/plan-resolver";
+import { PlanService, TRefreshPlanOptions } from "./service/plan-service";
 import { TLicenseOrganizations, TUsageCounter } from "./service/registrations";
-import { SubscriptionService } from "./service/subscription-service";
 import { TMeteringEventInput, UsageQueue, UsageQueues } from "./service/usage-queue";
-import { UsageReportService } from "./service/usage-report-service";
 import { UsageService } from "./service/usage-service";
 
 export * from "./model/instance-entitlements";
@@ -29,7 +26,7 @@ export * from "./model/seat-usage";
 export type { TLicenseHooks } from "./service/license-hooks";
 export * from "./service/license-server-types/license-server-types";
 export * from "./service/license-server-types/usage-reports";
-export type { TRefreshPlanOptions } from "./service/plan-resolver";
+export type { TRefreshPlanOptions } from "./service/plan-service";
 export type { TLicenseOrganizations, TRootOrg, TUsageCounter } from "./service/registrations";
 export type { TMeteringEventInput } from "./service/usage-queue";
 
@@ -101,15 +98,11 @@ export class LicenseModule {
 
   private readonly organizations = new OrganizationDirectory();
 
-  private readonly entitlements: EntitlementService;
-
-  private readonly subscription: SubscriptionService;
+  private readonly plans: PlanService;
 
   private readonly usage: UsageService;
 
   private readonly usageQueue: UsageQueue;
-
-  private readonly usageReports: UsageReportService;
 
   constructor(private readonly deps: TLicenseDeps) {
     this.hooks = deps.hooks;
@@ -118,39 +111,17 @@ export class LicenseModule {
     const planCache = new PlanCache(deps.keyStore);
     const usageReportMemory = new UsageReportMemory(deps.keyStore);
 
-    this.usageQueue = new UsageQueue({
-      queueService: deps.queueService,
-      hooks,
-      usageReportMemory,
-      counters
-    });
+    this.usageQueue = new UsageQueue({ queueService: deps.queueService, hooks, usageReportMemory, counters });
     const { usageQueue } = this;
-    const planResolver = new PlanResolver({
-      instance,
-      planCache,
-      usageReportMemory,
-      organizations,
-      hooks,
-      usageQueue
-    });
-    this.entitlements = new EntitlementService({ instance, planCache, organizations, planResolver });
-    this.subscription = new SubscriptionService({
-      instance,
-      planCache,
-      organizations,
-      planResolver,
-      usageQueue,
-      hooks
-    });
-    this.usage = new UsageService({ instance, counters, organizations });
-    this.usageReports = new UsageReportService({
+    this.plans = new PlanService({ instance, planCache, usageReportMemory, organizations, hooks, usageQueue });
+    this.usage = new UsageService({
       instance,
       counters,
       organizations,
       usageReportMemory,
-      planResolver,
       usageQueue,
-      hooks
+      hooks,
+      planService: this.plans
     });
     this.registry = {
       registerUsageCounter: (counter) => this.counters.register(counter),
@@ -171,13 +142,13 @@ export class LicenseModule {
 
     this.deps.queueService.start(
       UsageQueues.usageEvent,
-      (job) => this.usageReports.handleUsageEvent(job.data.orgId, job.data.dimensionKey, new Date(job.timestamp)),
+      (job) => this.usage.handleUsageEvent(job.data.orgId, job.data.dimensionKey, new Date(job.timestamp)),
       // Counts are DB-heavy, so a backlog is rate-shaped instead of bursting the read replica.
       { concurrency: 5, limiter: { max: 50, duration: 1000 } }
     );
     this.deps.queueService.start(
       UsageQueues.meteringEvent,
-      (job) => this.usageReports.handleMeteringEvents(job.data.orgId, job.data.events),
+      (job) => this.usage.handleMeteringEvents(job.data.orgId, job.data.events),
       { concurrency: 5 }
     );
 
@@ -186,7 +157,7 @@ export class LicenseModule {
       pattern: "0 0 * * *",
       runHashTtlS: 60 * 60,
       enabled: !this.instanceEntitlements.isCloud() && !this.hooks.isOffline(),
-      handler: async () => this.usageReports.flushInstanceUsage()
+      handler: async () => this.usage.flushInstanceUsage()
     });
   }
 
@@ -209,24 +180,24 @@ export class LicenseModule {
   }
 
   private build(): TLicenseDomain {
-    const { entitlements, subscription, usage, usageQueue } = this;
+    const { plans, usage, usageQueue } = this;
     return {
-      getInstanceEntitlements: () => entitlements.getInstanceEntitlements(),
-      getInstanceType: () => entitlements.getInstanceType(),
-      hasInstanceFeature: (feature) => entitlements.hasInstanceFeature(feature),
-      getLicenseId: () => entitlements.getLicenseId(),
-      getPlan: (orgId) => entitlements.getPlan(orgId),
-      hasFeature: (orgId, feature) => entitlements.hasFeature(orgId, feature),
-      assertFeature: (orgId, feature) => entitlements.assertFeature(orgId, feature),
-      refreshPlan: (orgId, opts) => entitlements.refreshPlan(orgId, opts),
-      invalidatePlan: (orgId) => entitlements.invalidatePlan(orgId),
-      isServingFallbackPlan: (orgId) => entitlements.isServingFallbackPlan(orgId),
-      getLastKnownPlan: (orgId) => entitlements.getLastKnownPlan(orgId),
+      getInstanceEntitlements: () => plans.getInstanceEntitlements(),
+      getInstanceType: () => plans.getInstanceType(),
+      hasInstanceFeature: (feature) => plans.hasInstanceFeature(feature),
+      getLicenseId: () => plans.getLicenseId(),
+      getPlan: (orgId) => plans.getPlan(orgId),
+      hasFeature: (orgId, feature) => plans.hasFeature(orgId, feature),
+      assertFeature: (orgId, feature) => plans.assertFeature(orgId, feature),
+      refreshPlan: (orgId, opts) => plans.refreshPlan(orgId, opts),
+      invalidatePlan: (orgId) => plans.invalidatePlan(orgId),
+      isServingFallbackPlan: (orgId) => plans.isServingFallbackPlan(orgId),
+      getLastKnownPlan: (orgId) => plans.getLastKnownPlan(orgId),
       getSeatUsage: (orgId) => usage.getSeatUsage(orgId),
       getInstanceSeatUsage: () => usage.getInstanceSeatUsage(),
       countUsage: (orgId, dimensionKey) => usage.countUsage(orgId, dimensionKey),
-      syncSeats: (orgId) => subscription.syncSeats(orgId),
-      cancelSubscription: (orgId) => subscription.cancelSubscription(orgId),
+      syncSeats: (orgId) => plans.syncSeats(orgId),
+      cancelSubscription: (orgId) => plans.cancelSubscription(orgId),
       emit: (orgId, dimensionKey) => usageQueue.emit(orgId, dimensionKey),
       recordMeteringEvents: (orgId, events) => usageQueue.recordMeteringEvents(orgId, events),
       hasOfflineLicenseKey: () => this.hooks.isOffline(),

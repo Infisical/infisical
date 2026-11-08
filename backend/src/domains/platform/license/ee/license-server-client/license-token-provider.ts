@@ -1,6 +1,6 @@
 import { logger } from "@app/lib/logger";
 
-import { licenseErrorMessage, readLicenseRequestId } from "./license-server-errors";
+import { licenseErrorMessage, readLicenseRequestId } from "./license-server-backends";
 
 export type TLicenseTokenProvider = {
   // Exchanges the license key for a JWT (cached until near expiry) and returns it as a bearer.

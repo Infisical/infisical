@@ -1,6 +1,3 @@
-import { InternalServerError } from "@app/lib/errors";
-import { QueueName } from "@app/queue";
-
 import { InstanceType } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID } from "../testing/build-license";
@@ -16,57 +13,7 @@ vi.mock("@app/lib/logger", () => ({
 const snapshotsFor = (hooks: FakeLicenseHooks, dimension: string) =>
   hooks.snapshots.filter((s) => s.snapshot.dimension_key === dimension).map((s) => [s.orgId, s.snapshot.value]);
 
-describe("UsageQueue.emit", () => {
-  test("should queue nothing when metering is disabled", async () => {
-    // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.meteringEnabled = false;
-    const { licenseDomain, queue } = await buildLicense({ hooks });
-
-    // Action
-    licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
-    await queue.drain();
-
-    // Assert
-    expect(queue.jobs).toEqual([]);
-    expect(hooks.snapshots).toEqual([]);
-  });
-
-  test("should replace a waiting event for the same org and dimension", async () => {
-    // Setup
-    const { licenseDomain, queue } = await buildLicense();
-
-    // Action
-    licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
-    licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
-    licenseDomain.emit(ROOT.id, Meter.Identities.key);
-    await new Promise((resolve) => {
-      setImmediate(resolve);
-    });
-
-    // Assert
-    expect(queue.jobs.map((j) => (j.data as { dimensionKey: string }).dimensionKey)).toEqual([
-      Meter.UserIdentities.key,
-      Meter.Identities.key
-    ]);
-  });
-
-  test("should queue a usage event that is retried with backoff", async () => {
-    // Setup
-    const { licenseDomain, queue } = await buildLicense();
-
-    // Action
-    licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
-    await new Promise((resolve) => {
-      setImmediate(resolve);
-    });
-
-    // Assert
-    expect(queue.jobs[0].opts).toMatchObject({ delay: 5000, attempts: 5, backoff: { type: "exponential" } });
-  });
-});
-
-describe("UsageReportService.handleUsageEvent", () => {
+describe("UsageService.handleUsageEvent", () => {
   test("should report the counter's value and record it", async () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
@@ -207,46 +154,6 @@ describe("UsageReportService.handleUsageEvent", () => {
   });
 });
 
-describe("UsageQueue.recordMeteringEvents", () => {
-  test("should queue one retried job per dimension and never debounce", async () => {
-    // Setup
-    const { licenseDomain, queue } = await buildLicense();
-    const at = new Date("2026-01-01T00:00:00Z");
-
-    // Action
-    licenseDomain.recordMeteringEvents(ROOT.id, [
-      { eventId: "e1", dimensionKey: "a", quantity: 1, occurredAt: at },
-      { eventId: "e2", dimensionKey: "b", quantity: 1, occurredAt: at },
-      { eventId: "e3", dimensionKey: "a", quantity: 1, occurredAt: at }
-    ]);
-    await new Promise((resolve) => {
-      setImmediate(resolve);
-    });
-
-    // Assert
-    expect(queue.jobs.map((j) => j.queue)).toEqual([QueueName.MeteringEvent, QueueName.MeteringEvent]);
-    expect(queue.jobs[0].opts).toMatchObject({ attempts: 10 });
-    expect((queue.jobs[0].data as { events: unknown[] }).events).toHaveLength(2);
-  });
-
-  test("should report events at the triggering org on cloud, and drop a batch the server refuses with a 422", async () => {
-    // Setup
-    const hooks = new FakeLicenseHooks();
-    const { licenseDomain, queue } = await buildLicense({ hooks });
-    const at = new Date("2026-01-01T00:00:00Z");
-    licenseDomain.recordMeteringEvents(ROOT.id, [{ eventId: "e1", dimensionKey: "a", quantity: 1, occurredAt: at }]);
-    await queue.drain();
-    hooks.failNextReports.push(new UsageReportError(422, "not metered"));
-    licenseDomain.recordMeteringEvents(ROOT.id, [{ eventId: "e2", dimensionKey: "a", quantity: 1, occurredAt: at }]);
-
-    // Action
-    await queue.drain();
-
-    // Assert
-    expect(hooks.events.map((e) => [e.orgId, e.event.event_id])).toEqual([[ROOT.id, "e1"]]);
-  });
-});
-
 describe("UsageService.getSeatUsage", () => {
   test("should count the root org's tree on cloud", async () => {
     // Setup
@@ -282,98 +189,6 @@ describe("UsageService.getSeatUsage", () => {
 
     // Assert
     await expect(result).rejects.toThrow("not found");
-  });
-});
-
-describe("SubscriptionService.syncSeats", () => {
-  test("should report the root's member count and refresh its plan", async () => {
-    // Setup
-    const members = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 6);
-    const { licenseDomain, queue, hooks } = await buildLicense({ counters: [members] });
-    await licenseDomain.getPlan(ROOT.id);
-    hooks.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
-
-    // Action
-    await licenseDomain.syncSeats(SUB_ORG_ID);
-    await queue.drain();
-
-    // Assert
-    expect(snapshotsFor(hooks, Meter.UserIdentities.key)).toEqual([[ROOT.id, 6]]);
-    expect((await licenseDomain.getPlan(ROOT.id)).slug).toBe("pro");
-  });
-
-  test("should not throw when the refresh fails on an online self-hosted license", async () => {
-    // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.instance = { ...hooks.instance, instanceType: InstanceType.EnterpriseOnPrem, features: enterprisePlan() };
-    hooks.online = true;
-    hooks.refreshFailure = new Error("License Server unreachable");
-    const { licenseDomain } = await buildLicense({ hooks });
-
-    // Action
-    const result = licenseDomain.syncSeats(ROOT.id);
-
-    // Assert
-    await expect(result).resolves.toBeUndefined();
-  });
-});
-
-describe("SubscriptionService.cancelSubscription", () => {
-  test("should cancel on cloud and drop the cached plan", async () => {
-    // Setup
-    const { licenseDomain, hooks } = await buildLicense();
-    await licenseDomain.getPlan(ROOT.id);
-
-    // Action
-    await licenseDomain.cancelSubscription(ROOT.id);
-
-    // Assert
-    expect(hooks.cancellations).toEqual([ROOT.id]);
-    await licenseDomain.getPlan(ROOT.id);
-    expect(hooks.fetches).toHaveLength(2);
-  });
-
-  test("should do nothing on self-hosted", async () => {
-    // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.instance = { ...hooks.instance, instanceType: InstanceType.EnterpriseOnPrem };
-    const { licenseDomain } = await buildLicense({ hooks });
-
-    // Action
-    await licenseDomain.cancelSubscription(ROOT.id);
-
-    // Assert
-    expect(hooks.cancellations).toEqual([]);
-  });
-
-  test("should treat a 4xx as nothing to cancel", async () => {
-    // Setup
-    const { BadRequestError } = await import("@app/lib/errors");
-    const hooks = new FakeLicenseHooks();
-    hooks.cancelFailure = new BadRequestError({ message: "no subscription" });
-    const { licenseDomain } = await buildLicense({ hooks });
-
-    // Action
-    const result = licenseDomain.cancelSubscription(ROOT.id);
-
-    // Assert
-    await expect(result).resolves.toBeUndefined();
-  });
-
-  test("should throw any other failure and keep the cached plan", async () => {
-    // Setup
-    const hooks = new FakeLicenseHooks();
-    const { licenseDomain } = await buildLicense({ hooks });
-    await licenseDomain.getPlan(ROOT.id);
-    hooks.cancelFailure = new InternalServerError({ message: "License Server failed" });
-
-    // Action
-    const result = licenseDomain.cancelSubscription(ROOT.id);
-
-    // Assert
-    await expect(result).rejects.toThrow("License Server failed");
-    await licenseDomain.getPlan(ROOT.id);
-    expect(hooks.fetches).toHaveLength(1);
   });
 });
 

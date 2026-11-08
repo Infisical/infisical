@@ -10,12 +10,10 @@ import {
 } from "../../ce/service/license-server-types/license-server-types";
 import { TRootOrg } from "../../ce/service/registrations";
 import { LicenseServerClient } from "../license-server-client/license-server-client";
-import { withCloudPlanDefaults } from "./cloud-plan-defaults";
-import { projectV2ToFeatureSet } from "./entitlement-projection";
+import { projectV2ToFeatureSet, withCloudPlanDefaults, withSelfHostedLicenseBase } from "./entitlement-projection";
 // Imported by this exact specifier: the e2e suite aliases "./license-fns" to a permissive mock.
 import { getDefaultOnPremFeatures, getLicenseKeyConfig } from "./license-fns";
 import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./offline-license";
-import { withSelfHostedLicenseBase } from "./self-hosted-license-base";
 
 // Read through "./license-fns", so the e2e suite's permissive mock reaches it.
 const community = (): InstanceEntitlements =>

@@ -1,3 +1,5 @@
+import { InternalServerError } from "@app/lib/errors";
+
 import { InstanceType } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID, WORKSPACES_USED } from "../testing/build-license";
@@ -9,6 +11,9 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
+const snapshotsFor = (hooks: FakeLicenseHooks, dimension: string) =>
+  hooks.snapshots.filter((s) => s.snapshot.dimension_key === dimension).map((s) => [s.orgId, s.snapshot.value]);
+
 const selfHostedHooks = () => {
   const hooks = new FakeLicenseHooks();
   hooks.instance = {
@@ -19,7 +24,7 @@ const selfHostedHooks = () => {
   return hooks;
 };
 
-describe("EntitlementService.getPlan", () => {
+describe("PlanService.getPlan", () => {
   test("should return the instance's plan on self-hosted without touching the key store", async () => {
     // Setup
     const { licenseDomain, keyStore, hooks } = await buildLicense({ hooks: selfHostedHooks() });
@@ -191,7 +196,7 @@ describe("EntitlementService.getPlan", () => {
   });
 });
 
-describe("EntitlementService.assertFeature", () => {
+describe("PlanService.assertFeature", () => {
   test("should refuse a feature the org's plan lacks, naming it", async () => {
     // Setup
     const hooks = new FakeLicenseHooks();
@@ -208,7 +213,7 @@ describe("EntitlementService.assertFeature", () => {
   });
 });
 
-describe("EntitlementService.refreshPlan", () => {
+describe("PlanService.refreshPlan", () => {
   test("should fetch the plan again on cloud", async () => {
     // Setup
     const { licenseDomain, hooks } = await buildLicense();
@@ -250,7 +255,7 @@ describe("EntitlementService.refreshPlan", () => {
   });
 });
 
-describe("EntitlementService.refreshPlan after a billing change", () => {
+describe("PlanService.refreshPlan after a billing change", () => {
   test("should keep serving the cached plan and refresh it in the background once", async () => {
     // Setup
     const { licenseDomain, hooks } = await buildLicense();
@@ -279,5 +284,97 @@ describe("EntitlementService.refreshPlan after a billing change", () => {
 
     // Assert
     expect(hooks.fetches).toEqual([]);
+  });
+});
+
+describe("PlanService.syncSeats", () => {
+  test("should report the root's member count and refresh its plan", async () => {
+    // Setup
+    const members = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 6);
+    const { licenseDomain, queue, hooks } = await buildLicense({ counters: [members] });
+    await licenseDomain.getPlan(ROOT.id);
+    hooks.plans.set(ROOT.id, { ...enterprisePlan(), slug: "pro" });
+
+    // Action
+    await licenseDomain.syncSeats(SUB_ORG_ID);
+    await queue.drain();
+
+    // Assert
+    expect(snapshotsFor(hooks, Meter.UserIdentities.key)).toEqual([[ROOT.id, 6]]);
+    expect((await licenseDomain.getPlan(ROOT.id)).slug).toBe("pro");
+  });
+
+  test("should not throw when the refresh fails on an online self-hosted license", async () => {
+    // Setup
+    const hooks = new FakeLicenseHooks();
+    hooks.instance = { ...hooks.instance, instanceType: InstanceType.EnterpriseOnPrem, features: enterprisePlan() };
+    hooks.online = true;
+    hooks.refreshFailure = new Error("License Server unreachable");
+    const { licenseDomain } = await buildLicense({ hooks });
+
+    // Action
+    const result = licenseDomain.syncSeats(ROOT.id);
+
+    // Assert
+    await expect(result).resolves.toBeUndefined();
+  });
+});
+
+describe("PlanService.cancelSubscription", () => {
+  test("should cancel on cloud and drop the cached plan", async () => {
+    // Setup
+    const { licenseDomain, hooks } = await buildLicense();
+    await licenseDomain.getPlan(ROOT.id);
+
+    // Action
+    await licenseDomain.cancelSubscription(ROOT.id);
+
+    // Assert
+    expect(hooks.cancellations).toEqual([ROOT.id]);
+    await licenseDomain.getPlan(ROOT.id);
+    expect(hooks.fetches).toHaveLength(2);
+  });
+
+  test("should do nothing on self-hosted", async () => {
+    // Setup
+    const hooks = new FakeLicenseHooks();
+    hooks.instance = { ...hooks.instance, instanceType: InstanceType.EnterpriseOnPrem };
+    const { licenseDomain } = await buildLicense({ hooks });
+
+    // Action
+    await licenseDomain.cancelSubscription(ROOT.id);
+
+    // Assert
+    expect(hooks.cancellations).toEqual([]);
+  });
+
+  test("should treat a 4xx as nothing to cancel", async () => {
+    // Setup
+    const { BadRequestError } = await import("@app/lib/errors");
+    const hooks = new FakeLicenseHooks();
+    hooks.cancelFailure = new BadRequestError({ message: "no subscription" });
+    const { licenseDomain } = await buildLicense({ hooks });
+
+    // Action
+    const result = licenseDomain.cancelSubscription(ROOT.id);
+
+    // Assert
+    await expect(result).resolves.toBeUndefined();
+  });
+
+  test("should throw any other failure and keep the cached plan", async () => {
+    // Setup
+    const hooks = new FakeLicenseHooks();
+    const { licenseDomain } = await buildLicense({ hooks });
+    await licenseDomain.getPlan(ROOT.id);
+    hooks.cancelFailure = new InternalServerError({ message: "License Server failed" });
+
+    // Action
+    const result = licenseDomain.cancelSubscription(ROOT.id);
+
+    // Assert
+    await expect(result).rejects.toThrow("License Server failed");
+    await licenseDomain.getPlan(ROOT.id);
+    expect(hooks.fetches).toHaveLength(1);
   });
 });
