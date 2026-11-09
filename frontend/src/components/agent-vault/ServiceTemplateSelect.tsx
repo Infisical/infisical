@@ -40,7 +40,7 @@ const NATIVE_SECTION_DESCRIPTION =
 const TYPE_FILTERS: { value: TTypeFilter; label: string }[] = [
   { value: "all", label: "All Types" },
   { value: AgentVaultServiceType.Mcp, label: "MCP Servers" },
-  { value: "native", label: "Databases and Other Protocols" },
+  { value: "native", label: "Databases and More" },
   { value: AgentVaultServiceType.Http, label: "HTTP APIs" }
 ];
 

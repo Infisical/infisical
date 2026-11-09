@@ -1,16 +1,20 @@
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
+import { InfoIcon, PlusIcon } from "lucide-react";
 
 import {
+  Button,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FieldTitle,
   Input,
   TextArea,
-  Toggle
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { AgentVaultServiceType } from "@app/hooks/api/agentVault";
 
@@ -34,6 +38,12 @@ export const NativeDetailsFields = () => {
   const serviceType = watch("serviceType");
   const tlsEnabled = watch("tlsEnabled");
   const showsDatabase = hasDatabase(serviceType);
+  const tlsCa = watch("tlsCa");
+  const [isCaOpen, setIsCaOpen] = useState(false);
+  // Once it holds a certificate authority the box stays open, so clearing it doesn't snap it shut mid-edit.
+  useEffect(() => {
+    if (tlsCa.trim()) setIsCaOpen(true);
+  }, [tlsCa]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -51,10 +61,7 @@ export const NativeDetailsFields = () => {
                 maxLength={MAX_NATIVE_SERVICE_NAME_LENGTH}
                 isError={Boolean(fieldState.error)}
               />
-              <FieldDescription>
-                Use lowercase letters, numbers, and hyphens. The agent connects to the service by
-                this name.
-              </FieldDescription>
+              <FieldDescription>The agent connects by this name.</FieldDescription>
               <FieldError>{fieldState.error?.message}</FieldError>
             </FieldContent>
           </Field>
@@ -81,9 +88,6 @@ export const NativeDetailsFields = () => {
                   spellCheck={false}
                   isError={Boolean(fieldState.error)}
                 />
-                <FieldDescription>
-                  The host name or IP address the proxy connects to.
-                </FieldDescription>
                 <FieldError>{fieldState.error?.message}</FieldError>
               </FieldContent>
             </Field>
@@ -128,7 +132,7 @@ export const NativeDetailsFields = () => {
                 />
                 <FieldDescription>
                   {serviceType === AgentVaultServiceType.Mysql
-                    ? "The database the agent starts in. The account's grants decide which other databases it can switch to."
+                    ? "The database the agent starts in."
                     : "The only database the agent can connect to through this service."}
                 </FieldDescription>
                 <FieldError>{fieldState.error?.message}</FieldError>
@@ -139,22 +143,26 @@ export const NativeDetailsFields = () => {
       )}
 
       {showsDatabase && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4 rounded-md border border-border p-4">
           <Controller
             control={control}
             name="tlsEnabled"
             render={({ field }) => (
-              <Field orientation="horizontal" className="rounded-md border border-border p-4">
-                <FieldContent>
-                  <FieldTitle>Use TLS</FieldTitle>
-                  <FieldDescription>
-                    Encrypt the connection from the proxy to the database.{" "}
-                    {TLS_OFF_DESCRIPTIONS[serviceType]}
-                  </FieldDescription>
-                </FieldContent>
+              <Field orientation="horizontal">
+                <FieldLabel htmlFor={`${baseId}-tls-enabled`}>
+                  Use TLS
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      Encrypts the connection from the proxy to the database.{" "}
+                      {TLS_OFF_DESCRIPTIONS[serviceType]}
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
                 <Toggle
                   id={`${baseId}-tls-enabled`}
-                  aria-label="Use TLS"
                   variant="av"
                   checked={field.value}
                   onCheckedChange={field.onChange}
@@ -167,19 +175,22 @@ export const NativeDetailsFields = () => {
               control={control}
               name="tlsVerify"
               render={({ field }) => (
-                <Field orientation="horizontal" className="rounded-md border border-border p-4">
-                  <FieldContent>
-                    <FieldTitle>Verify Certificate</FieldTitle>
-                    <FieldDescription>
-                      Check that the server&apos;s certificate is valid for the host and signed by a
-                      publicly trusted authority, or by the certificate authority below when you add
-                      one. Turn this off only for a server with a self-signed certificate you
-                      can&apos;t add below.
-                    </FieldDescription>
-                  </FieldContent>
+                <Field orientation="horizontal">
+                  <FieldLabel htmlFor={`${baseId}-tls-verify`}>
+                    Verify Certificate
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        Checks that the server&apos;s certificate is valid for the host and signed
+                        by a publicly trusted authority, or by the certificate authority you add.
+                        Turn it off only for a self-signed certificate you can&apos;t add.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
                   <Toggle
                     id={`${baseId}-tls-verify`}
-                    aria-label="Verify Certificate"
                     variant="av"
                     checked={field.value}
                     onCheckedChange={field.onChange}
@@ -192,29 +203,47 @@ export const NativeDetailsFields = () => {
             <Controller
               control={control}
               name="tlsCa"
-              render={({ field, fieldState }) => (
-                <Field>
-                  <FieldLabel htmlFor={`${baseId}-tls-ca`}>
-                    Certificate Authority (optional)
-                  </FieldLabel>
-                  <FieldContent>
-                    <TextArea
-                      {...field}
-                      id={`${baseId}-tls-ca`}
-                      rows={4}
-                      className="font-mono"
-                      placeholder="-----BEGIN CERTIFICATE-----"
-                      spellCheck={false}
-                      isError={Boolean(fieldState.error)}
-                    />
-                    <FieldDescription>
-                      The PEM certificate of the authority that signed the server&apos;s
-                      certificate, for a server whose certificate isn&apos;t publicly trusted.
-                    </FieldDescription>
-                    <FieldError>{fieldState.error?.message}</FieldError>
-                  </FieldContent>
-                </Field>
-              )}
+              render={({ field, fieldState }) =>
+                isCaOpen || tlsCa.trim() || fieldState.error ? (
+                  <Field>
+                    <FieldLabel htmlFor={`${baseId}-tls-ca`}>
+                      Certificate Authority (optional)
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          The PEM certificate of the authority that signed the server&apos;s
+                          certificate, for a server whose certificate isn&apos;t publicly trusted.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <TextArea
+                        {...field}
+                        id={`${baseId}-tls-ca`}
+                        rows={4}
+                        className="font-mono"
+                        placeholder="-----BEGIN CERTIFICATE-----"
+                        spellCheck={false}
+                        isError={Boolean(fieldState.error)}
+                      />
+                      <FieldError>{fieldState.error?.message}</FieldError>
+                    </FieldContent>
+                  </Field>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    className="self-start"
+                    onClick={() => setIsCaOpen(true)}
+                  >
+                    <PlusIcon />
+                    Add Certificate Authority
+                  </Button>
+                )
+              }
             />
           )}
         </div>

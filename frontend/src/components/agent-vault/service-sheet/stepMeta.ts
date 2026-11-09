@@ -147,11 +147,7 @@ export const nativeServiceSteps = (serviceType: TAgentVaultNativeServiceType): S
       title: "Credential",
       subtitle: copy.credential,
       rightLabel: "CREDENTIAL",
-      rightDescription: copy.credentialRight,
-      rightTip:
-        serviceType === AgentVaultServiceType.Ssh
-          ? "To use a global variable in the username or password, type {{ and pick it from the list. An SSH key can't use variables yet."
-          : "To use a global variable in the username or password, type {{ and pick it from the list. The proxy puts the variable's value in its place."
+      rightDescription: copy.credentialRight
     },
     REVIEW_STEP
   ];
