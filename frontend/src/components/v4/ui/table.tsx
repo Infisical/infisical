@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { keyboardModality } from "../lib/input-modality";
 import { cn } from "../lib/utils";
-import { Button } from "./button";
+import { Button, buttonVariants } from "./button";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "./context-menu";
 import {
   DropdownMenu,
@@ -18,6 +18,7 @@ import { Icon, type IconName } from "./icon";
 import { Skeleton } from "./skeleton";
 import { Tooltip, TooltipScope } from "./tooltip";
 
+import geometry from "./button-geometry.module.css";
 import styles from "./data.module.css";
 
 function Table({
@@ -423,12 +424,46 @@ function RowActionButton({ action, label }: { action: RowAction; label: string }
   );
 }
 
+const ROW_REST_MS = 120;
+const menuOpenKeys = new Set(["Enter", " ", "ArrowDown"]);
+const groupButtons = (node: HTMLElement | null) =>
+  Array.from(node?.querySelectorAll("button") ?? []);
+
+function IdleRowButton({
+  disabledReason,
+  children,
+  ...props
+}: React.ComponentProps<"button"> & { disabledReason?: string }) {
+  return (
+    <button
+      type="button"
+      data-slot="button"
+      data-variant="ghost"
+      data-size="icon-row"
+      data-v4-button=""
+      data-disabled-reason={disabledReason ? "" : undefined}
+      aria-disabled={disabledReason || props.disabled ? true : undefined}
+      // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria-description is a global ARIA 1.3 attribute; Button sets it the same way.
+      aria-description={disabledReason}
+      className={cn(buttonVariants({ variant: "ghost", size: "icon-row" }), geometry.iconOnly)}
+      {...props}
+    >
+      <span data-press="">{children}</span>
+    </button>
+  );
+}
+
 function RowActions({
   label,
   inline = [],
   menu,
   menuLabel = "More actions",
   menuDisabledReason,
+  lazy = false,
+  open,
+  defaultOpen,
+  onOpenChange,
+  onMenuCloseAutoFocus,
   className,
   ref,
   ...props
@@ -438,14 +473,137 @@ function RowActions({
   menu?: React.ReactNode;
   menuLabel?: string;
   menuDisabledReason?: string;
+  /** Renders plain buttons with the same DOM, classes and names, and no tooltips or menu, until the row is hovered or something in it takes focus, then swaps in the real parts in place. A press while idle still runs the action or opens the menu. For long tables. */
+  lazy?: boolean;
+  /** The More menu's open state, for opening it from outside the row actions. */
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** The More menu's close focus handler: preventDefault keeps focus where a menu item moved it. */
+  onMenuCloseAutoFocus?: (event: Event) => void;
 }) {
+  const [live, setLive] = React.useState(!lazy || Boolean(open || defaultOpen));
+  const [openOnMount, setOpenOnMount] = React.useState(false);
+  const group = React.useRef<HTMLDivElement | null>(null);
+  const restoreFocus = React.useRef(-1);
+  if (!live && (!lazy || open)) setLive(true);
+  const setGroup = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      group.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref]
+  );
+  React.useEffect(() => {
+    const node = group.current;
+    if (live || !node) return undefined;
+    const row = node.closest("tr") ?? node;
+    let rest: ReturnType<typeof setTimeout> | undefined;
+    const wake = () => setLive(true);
+    const settle = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      clearTimeout(rest);
+      rest = setTimeout(wake, ROW_REST_MS);
+    };
+    const leave = () => clearTimeout(rest);
+    const enterActions = (event: PointerEvent) => {
+      if (event.pointerType !== "touch") wake();
+    };
+    const focus = (event: FocusEvent) => {
+      restoreFocus.current = groupButtons(node).indexOf(event.target as HTMLButtonElement);
+      wake();
+    };
+    row.addEventListener("pointerenter", settle);
+    row.addEventListener("pointermove", settle);
+    row.addEventListener("pointerleave", leave);
+    row.addEventListener("focusin", focus);
+    node.addEventListener("pointerenter", enterActions);
+    return () => {
+      clearTimeout(rest);
+      row.removeEventListener("pointerenter", settle);
+      row.removeEventListener("pointermove", settle);
+      row.removeEventListener("pointerleave", leave);
+      row.removeEventListener("focusin", focus);
+      node.removeEventListener("pointerenter", enterActions);
+    };
+  }, [live]);
+  React.useLayoutEffect(() => {
+    const index = restoreFocus.current;
+    restoreFocus.current = -1;
+    const button = live && index >= 0 ? groupButtons(group.current)[index] : undefined;
+    if (button) queueMicrotask(() => button.focus({ preventScroll: true }));
+  }, [live]);
+
+  if (!live) {
+    const openMenu = () => {
+      setOpenOnMount(true);
+      setLive(true);
+      onOpenChange?.(true);
+    };
+    return (
+      <TableRowActions ref={setGroup} className={className} {...props}>
+        {inline.map((action) => (
+          <span key={action.label} className={styles.tableRowActionSlot}>
+            <IdleRowButton
+              disabledReason={action.disabledReason}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={(event) => {
+                stop(event);
+                restoreFocus.current = groupButtons(group.current).indexOf(event.currentTarget);
+                setLive(true);
+                if (!action.disabledReason) action.onSelect();
+              }}
+            >
+              <Icon
+                name={typeof action.icon === "string" ? action.icon : undefined}
+                icon={typeof action.icon === "string" ? undefined : action.icon}
+              />
+              <span className="sr-only">{`${action.label} for ${label}`}</span>
+            </IdleRowButton>
+          </span>
+        ))}
+        {menu !== undefined && (
+          <span className={styles.tableRowActionSlot}>
+            <IdleRowButton
+              data-slot="dropdown-menu-trigger"
+              disabled={Boolean(menuDisabledReason)}
+              data-disabled={menuDisabledReason ? "" : undefined}
+              aria-haspopup="menu"
+              aria-expanded={false}
+              aria-description={menuDisabledReason}
+              onClick={stop}
+              onPointerDown={(event) => {
+                if (event.button !== 0 || event.ctrlKey) return;
+                event.preventDefault();
+                openMenu();
+              }}
+              onKeyDown={(event) => {
+                if (!menuOpenKeys.has(event.key)) return;
+                event.preventDefault();
+                restoreFocus.current = groupButtons(group.current).indexOf(event.currentTarget);
+                openMenu();
+              }}
+            >
+              <Icon name="more" data-button-icon="" />
+              <span className="sr-only">{`${menuLabel} for ${label}`}</span>
+            </IdleRowButton>
+          </span>
+        )}
+      </TableRowActions>
+    );
+  }
   return (
-    <TableRowActions ref={ref} className={className} {...props}>
+    <TableRowActions ref={setGroup} className={className} {...props}>
       {inline.map((action) => (
         <RowActionButton key={action.label} action={action} label={label} />
       ))}
       {menu !== undefined && (
-        <DropdownMenu>
+        <DropdownMenu
+          open={open}
+          defaultOpen={defaultOpen || openOnMount}
+          onOpenChange={onOpenChange}
+        >
           <Tooltip content={menuDisabledReason ?? menuLabel}>
             <span className={styles.tableRowActionSlot}>
               <DropdownMenuTrigger asChild disabled={Boolean(menuDisabledReason)}>
@@ -462,7 +620,9 @@ function RowActions({
               </DropdownMenuTrigger>
             </span>
           </Tooltip>
-          <DropdownMenuContent align="end">{menu}</DropdownMenuContent>
+          <DropdownMenuContent align="end" onCloseAutoFocus={onMenuCloseAutoFocus}>
+            {menu}
+          </DropdownMenuContent>
         </DropdownMenu>
       )}
     </TableRowActions>
