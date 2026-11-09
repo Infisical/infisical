@@ -38,6 +38,21 @@ export const AWS_USE_CASE_GROUPS = [
   }
 ] as const;
 
+export const getAwsUpdateStackHint = ({
+  recordedUseCases,
+  neededUseCases,
+  canEdit
+}: {
+  recordedUseCases?: string[] | null;
+  neededUseCases: string[];
+  canEdit: boolean;
+}) => {
+  if (!recordedUseCases) return { show: false, missingUseCases: [] };
+
+  const missingUseCases = neededUseCases.filter((id) => !recordedUseCases.includes(id));
+  return { show: canEdit && missingUseCases.length > 0, missingUseCases };
+};
+
 export const AGENT_VAULT_SESSION_LOGS_USE_CASES = ["agent-vault-session-logs"];
 
 export const AWS_SECRET_SYNC_USE_CASES: Partial<Record<SecretSync, string[]>> = {
