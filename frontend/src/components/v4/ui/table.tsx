@@ -476,6 +476,14 @@ const editableTarget = (target: EventTarget) =>
     target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')
   );
 
+function MountSignal({ onChange }: { onChange: (mounted: boolean) => void }) {
+  React.useEffect(() => {
+    onChange(true);
+    return () => onChange(false);
+  }, [onChange]);
+  return null;
+}
+
 /**
  * Opens a row's actions as a right-click menu on the whole row: the inline actions first, then the
  * More menu items after a separator, from the same nodes RowActions renders. Shift+F10 and the Menu key
@@ -495,6 +503,7 @@ function RowContextMenu({
   children: React.ReactElement<React.ComponentProps<"tr">>;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [present, setPresent] = React.useState(false);
   const row = React.useRef<HTMLTableRowElement>(null);
   const showMenu = menu !== undefined && !menuDisabledReason;
   const rowProps = children.props as Record<string, unknown>;
@@ -502,7 +511,12 @@ function RowContextMenu({
   if (nonData || (!inline.length && !showMenu)) return children;
   const { onContextMenuCapture, tabIndex } = children.props;
   return (
-    <ContextMenu onOpenChange={setOpen}>
+    <ContextMenu
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setPresent(true);
+      }}
+    >
       <ContextMenuTrigger ref={row} asChild className="select-text">
         {React.cloneElement(children, {
           tabIndex: tabIndex ?? -1,
@@ -513,30 +527,33 @@ function RowContextMenu({
           }
         } as React.ComponentProps<"tr">)}
       </ContextMenuTrigger>
-      <ContextMenuContent
-        aria-label={`Actions for ${label}`}
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          row.current?.focus({ preventScroll: true });
-        }}
-      >
-        {inline.map((action) => (
-          <DropdownMenuItem
-            key={action.label}
-            disabled={Boolean(action.disabledReason)}
-            description={action.disabledReason}
-            onSelect={action.onSelect}
-          >
-            <Icon
-              name={typeof action.icon === "string" ? action.icon : undefined}
-              icon={typeof action.icon === "string" ? undefined : action.icon}
-            />
-            {action.label}
-          </DropdownMenuItem>
-        ))}
-        {inline.length > 0 && showMenu && <DropdownMenuSeparator />}
-        {showMenu && menu}
-      </ContextMenuContent>
+      {present && (
+        <ContextMenuContent
+          aria-label={`Actions for ${label}`}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            row.current?.focus({ preventScroll: true });
+          }}
+        >
+          {inline.map((action) => (
+            <DropdownMenuItem
+              key={action.label}
+              disabled={Boolean(action.disabledReason)}
+              description={action.disabledReason}
+              onSelect={action.onSelect}
+            >
+              <Icon
+                name={typeof action.icon === "string" ? action.icon : undefined}
+                icon={typeof action.icon === "string" ? undefined : action.icon}
+              />
+              {action.label}
+            </DropdownMenuItem>
+          ))}
+          {inline.length > 0 && showMenu && <DropdownMenuSeparator />}
+          {showMenu && menu}
+          <MountSignal onChange={setPresent} />
+        </ContextMenuContent>
+      )}
     </ContextMenu>
   );
 }
