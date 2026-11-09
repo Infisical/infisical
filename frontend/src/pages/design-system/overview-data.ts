@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "row-actions-lazy-default",
+    title: "Lazy row actions by default",
+    description:
+      "DataTable row actions stay plain buttons until a row is hovered or focused, so large tables carry no idle menus.",
+    date: "2026-11-07",
+    commit: "4544b9cd6f",
+    page: "table"
+  },
+  {
     id: "has-rest",
     title: "No :has() in v4",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "7e0192cd9a",
     page: "input"
-  },
-  {
-    id: "mono-rule",
-    title: "Mono for machine values",
-    description:
-      "Names people choose render in sans; mono is kept for keys, IDs, hashes, hosts and code, with a lint for mono names.",
-    date: "2026-11-07",
-    commit: "1a51d0cb78",
-    page: "text"
   }
 ];
