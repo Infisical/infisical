@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "list-whole-rows",
+    title: "Lists end on a whole row",
+    description:
+      "Multi-select, combobox and command lists size to whole rows, so the last visible option is never cut.",
+    date: "2026-11-07",
+    commit: "dfbd72f4c0",
+    page: "multi-select"
+  },
+  {
     id: "bulk-action-reason",
     title: "Blocked bulk actions explain why",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "a3f075ef64",
     page: "table"
-  },
-  {
-    id: "context-menu-release",
-    title: "Safer context menus",
-    description:
-      "Releasing the right button that opened a context menu can no longer pick the item that lands under the cursor.",
-    date: "2026-11-07",
-    commit: "a843510f1d",
-    page: "context-menu"
   }
 ];
