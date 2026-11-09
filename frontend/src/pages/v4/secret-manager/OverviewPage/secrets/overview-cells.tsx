@@ -413,13 +413,22 @@ export function PendingBadge({ type }: { type?: PendingType }) {
   );
 }
 
-export function PendingMenuItems({ id, ctx }: { id: string; ctx: RowContext }) {
+export function PendingMenuItems({
+  id,
+  ctx,
+  saveBlock
+}: {
+  id: string;
+  ctx: RowContext;
+  saveBlock?: string;
+}) {
   if (!ctx.pending?.[id]) return null;
+  const block = ctx.writeBlock ?? saveBlock;
   return (
     <>
       <DropdownMenuItem
-        disabled={Boolean(ctx.writeBlock)}
-        description={ctx.writeBlock}
+        disabled={Boolean(block)}
+        description={block}
         onSelect={() => ctx.onSavePending?.(id)}
       >
         <Icon icon={SaveIcon} />
