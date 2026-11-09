@@ -32,6 +32,10 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
   Item,
   Label,
@@ -223,6 +227,16 @@ const BreakdownPanel = ({
 
   const total = data.scopedCount;
   if (isIdentity && total === 0) return null;
+  if (total === 0) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>No {subject} yet</EmptyTitle>
+          <EmptyDescription>Where they&apos;re used will show up here.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
 
   const rootScopes = data.scopes.filter((scope) => scope.isRoot);
   const subOrgScopes = data.scopes.filter((scope) => !scope.isRoot);
@@ -459,8 +473,10 @@ const EntitlementsSection = ({
                 <span className="text-xs leading-4 text-accent">{dimDisplayLabel(dim)}</span>
                 <span className="flex items-baseline gap-1 text-sm tabular-nums">
                   {dim.used.toLocaleString()}
-                  {allowance !== null && (
-                    <span className="text-xs text-muted">/ {allowance.toLocaleString()}</span>
+                  {(allowance !== null || isEnterprise) && (
+                    <span className="text-xs text-muted">
+                      / {allowance === null ? "Unlimited" : allowance.toLocaleString()}
+                    </span>
                   )}
                 </span>
                 <UsageBar dim={dim} className="h-[3px]" />
@@ -469,7 +485,9 @@ const EntitlementsSection = ({
                 )}
               </>
             );
-            const body = <span className="flex w-full min-w-0 flex-col gap-1.5">{content}</span>;
+            const body = (
+              <span className="flex w-full min-w-0 flex-col gap-1.5 text-left">{content}</span>
+            );
             if (!canBreakDown(dim)) {
               return (
                 <Item key={dim.key} size="xs">
