@@ -27,7 +27,13 @@ function InputOTP({
     <OTPInput
       ref={ref}
       data-slot="input-otp"
-      containerClassName={cn(controlStyles.otp, containerClassName)}
+      containerClassName={cn(
+        controlStyles.otp,
+        (props["aria-invalid"] === true || props["aria-invalid"] === "true") &&
+          controlStyles.otpInvalid,
+        props.disabled && controlStyles.otpDisabled,
+        containerClassName
+      )}
       spellCheck={false}
       value={current}
       onChange={setCurrent}

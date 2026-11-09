@@ -444,6 +444,7 @@ export function DataTable<Row>({
       ref={attachScroll}
       data-scroll-fade="x"
       data-has-start-pin={leading || undefined}
+      data-frame-foot={Boolean((height && more) || pagination) || undefined}
       className={cn(!embedded && frame.frame, styles.tableScroll, containerClassName)}
       data-virtual={windowed || undefined}
       style={tableStyle}

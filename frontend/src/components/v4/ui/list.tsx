@@ -340,6 +340,7 @@ export function List({
         <div
           className={cn(styles.listShell, framed && frame.frame)}
           data-slot="list"
+          data-frame-head={(framed && Boolean(title || headerCount || action)) || undefined}
           data-variant={variant}
           data-embedded={embedded || undefined}
           data-size={size}

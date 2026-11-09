@@ -7,6 +7,7 @@ import { type OptionCreateHandler, useOptionCreation } from "../lib/use-option-c
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Icon } from "./icon";
+import { useMenuInset } from "./menu-inset";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./popover";
 
 import controlStyles from "./controls.module.css";
@@ -130,6 +131,7 @@ export function MultiSelect({
   const [active, setActive] = React.useState("");
   const prefix = React.useRef({ value: "", at: 0 });
   const list = React.useRef<HTMLDivElement>(null);
+  const listInset = useMenuInset(list);
   const search = React.useRef<HTMLInputElement>(null);
   const apply = (values: string[]) => {
     if (disabled) return;
@@ -395,7 +397,7 @@ export function MultiSelect({
           </span>
         )}
         <div
-          ref={list}
+          ref={listInset}
           id={listId}
           role="listbox"
           aria-label={label}

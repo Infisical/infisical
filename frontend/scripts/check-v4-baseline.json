@@ -7,6 +7,15 @@
   "decorative-effect": {
     "src/components/v4/ui/chart.tsx": 1
   },
+  "has-selector": {
+    "src/pages/v4/secret-manager/OverviewPage/secrets/import-secrets/import-secrets.module.css": 1,
+    "src/pages/v4/secret-manager/OverviewPage/secrets/overview.module.css": 2,
+    "src/pages/v4/secret-manager/OverviewPage/secrets/row-actions/row-actions.module.css": 1,
+    "src/pages/v4/secret-manager/OverviewPage/secrets/secret-sync/secret-sync.module.css": 1
+  },
+  "logical-inline-unscoped": {
+    "src/components/v4/ui/data.module.css": 2
+  },
   "raw-color": {
     "src/components/v4/ui/helpers.module.css": 1
   }

@@ -183,7 +183,7 @@
   transition-duration: var(--v4-duration-fast);
   transition-timing-function: var(--v4-ease-fade);
 }
-.snippet:has(> .input:focus-visible) {
+.snippet[data-input-focus] {
   border-color: var(--v4-ink);
   box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring);
 }
@@ -248,7 +248,7 @@
   overflow-wrap: anywhere;
 }
 @media (max-width: 480px) {
-  .header:has(.actions) .identity {
+  .header[data-has-actions] .identity {
     grid-column: 1 / -1;
   }
   .header .actions {
@@ -257,6 +257,6 @@
   }
 }
 
-.header:has(.actions) {
+.header[data-has-actions] {
   grid-template-columns: minmax(0, 1fr) auto auto;
 }

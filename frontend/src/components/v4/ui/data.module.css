@@ -1036,18 +1036,6 @@ tbody > .nativeTableRow[data-loading] {
   z-index: 3;
   border: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
-.tableScroll tbody > tr:first-child > td:first-child {
-  border-start-start-radius: var(--v4-frame-inner-radius);
-}
-.tableScroll tbody > tr:first-child > td:last-child {
-  border-start-end-radius: var(--v4-frame-inner-radius);
-}
-.tableScroll tbody > tr:last-child > td:first-child {
-  border-end-start-radius: var(--v4-frame-inner-radius);
-}
-.tableScroll tbody > tr:last-child > td:last-child {
-  border-end-end-radius: var(--v4-frame-inner-radius);
-}
 .tableScroll thead {
   position: sticky;
   top: 0;

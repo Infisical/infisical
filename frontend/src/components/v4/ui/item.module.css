@@ -84,7 +84,7 @@
   gap: var(--v4-space-8);
   max-width: 100%;
 }
-.main:has(> .below) {
+.main[data-actions-below] {
   row-gap: var(--v4-space-actions-gap);
 }
 .below {

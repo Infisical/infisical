@@ -1,6 +1,7 @@
 import * as React from "react";
 import { createLink } from "@tanstack/react-router";
 
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { FrameScope, useInFrame } from "../lib/frame-context";
 import {
   StretchedLinkContext,
@@ -14,6 +15,19 @@ import frameStyles from "./frame.module.css";
 import linkStyles from "./row-link.module.css";
 
 const FramedContext = React.createContext(false);
+
+const cardFlags = {
+  "data-has-slots":
+    ':scope > :is([data-slot="card-header"], [data-slot="card-content"], [data-slot="card-footer"])',
+  "data-frame-head": `:scope > .${frameStyles.frameHead}`,
+  "data-frame-foot": `:scope > .${frameStyles.frameFoot}`
+};
+const cardWatch = {
+  subtree: false,
+  marks: {
+    "data-before-footer": `:scope > .${controlStyles.cardBody}:has(+ .${controlStyles.cardFooter}:not([data-placement="frame"]))`
+  }
+};
 
 function Card({
   className,
@@ -46,9 +60,10 @@ function Card({
   const inFrame = useInFrame("Card", requestedVariant);
   const variant = inFrame ? "plain" : requestedVariant;
   const [hasLink, reportLink] = useStretchedLinkHost();
+  const cardRef = useDescendantFlags(cardFlags, cardWatch, ref);
   return (
     <div
-      ref={ref}
+      ref={cardRef}
       data-slot="card"
       data-stretched-link={hasLink || undefined}
       data-size={size}

@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 
+import { useDescendantFlags } from "@app/components/v4/lib/descendant-flags";
 import { AnimatedCollapse } from "@app/components/v4/ui/animated-collapse";
 import { Icon } from "@app/components/v4/ui/icon";
 
@@ -26,12 +27,19 @@ export const DocSection = ({ title, children }: { title: string; children: React
   </section>
 );
 
-export const PreviewFrame = ({ children, label }: { children: ReactNode; label?: string }) => (
-  <div>
-    {label && <h2 className="mb-3 text-sm font-medium">{label}</h2>}
-    <div className={`${presentation.frame} ${previewFrame.host}`}>{children}</div>
-  </div>
-);
+const hostFlags = { "data-holds-table": '[data-slot="data-table"], [role="grid"]' };
+
+export const PreviewFrame = ({ children, label }: { children: ReactNode; label?: string }) => {
+  const hostRef = useDescendantFlags<HTMLDivElement>(hostFlags);
+  return (
+    <div>
+      {label && <h2 className="mb-3 text-sm font-medium">{label}</h2>}
+      <div ref={hostRef} className={`${presentation.frame} ${previewFrame.host}`}>
+        {children}
+      </div>
+    </div>
+  );
+};
 
 export const DocDisclosure = ({
   title,

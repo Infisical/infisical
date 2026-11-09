@@ -2,11 +2,13 @@
 
 import * as React from "react";
 
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { useFieldControlAttributes } from "../lib/field-context";
 import { getInvisibleCharacterSummary } from "../lib/invisible-characters";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
+import { fieldBoxFlags, fieldBoxWatch } from "./input";
 
 import geometry from "./button-geometry.module.css";
 import controlStyles from "./controls.module.css";
@@ -40,10 +42,14 @@ export function SecretInput({
   const warningId = React.useId();
   const invisible = React.useMemo(() => getInvisibleCharacterSummary(value), [value]);
   const masked = !focused && value !== "";
+  const boxRef = useDescendantFlags<HTMLSpanElement>(fieldBoxFlags, fieldBoxWatch);
   const labelled = Boolean(props["aria-label"] || field.id || field["aria-labelledby"]);
   return (
     <span
+      ref={boxRef}
       data-slot="secret-input"
+      data-field-box=""
+      data-trailing={invisible.length > 0 || undefined}
       data-size="sm"
       data-multiline={multiline || undefined}
       data-masked={masked || undefined}

@@ -91,10 +91,10 @@
     var(--v4-nested-action-height, var(--v4-action-requested-height))
   );
 }
-.inputGroup > [data-slot="input-group-addon"][data-align="inline-start"]:has([data-v4-button]) {
+.inputGroup > [data-slot="input-group-addon"][data-align="inline-start"][data-has-button] {
   padding-inline-start: var(--v4-space-control-slot-inset);
 }
-.inputGroup > [data-slot="input-group-addon"][data-align="inline-end"]:has([data-v4-button]) {
+.inputGroup > [data-slot="input-group-addon"][data-align="inline-end"][data-has-button] {
   padding-inline-end: var(--v4-space-control-slot-inset);
 }
 .badged[data-v4-button] {
