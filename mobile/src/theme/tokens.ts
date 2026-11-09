@@ -6,6 +6,8 @@ const light = {
   paper: "#f4f3ee",
   tint: "#f1f0ea",
   rowDone: "#f6f5f1",
+  rowDoneCard: "rgba(241, 240, 234, 0.5)",
+  rowDoneDivided: "rgba(1, 1, 1, 0.04)",
   select: "#eeede6",
   lineSoft: "#e6e5e0",
   line: "#d8d8d4",
@@ -46,6 +48,8 @@ const dark: typeof light = {
   paper: "#161616",
   tint: "#1c1c1c",
   rowDone: "#101010",
+  rowDoneCard: "rgba(28, 28, 28, 0.5)",
+  rowDoneDivided: "rgba(241, 240, 234, 0.06)",
   select: "#262626",
   lineSoft: "#1e2022",
   line: "#2f3234",
@@ -97,7 +101,8 @@ export const type = {
   body: { fontFamily: font.sans, fontSize: 15, lineHeight: 21 },
   bodySm: { fontFamily: font.sans, fontSize: 13, lineHeight: 18 },
   label: { fontFamily: font.sansMedium, fontSize: 13, lineHeight: 18 },
-  eyebrow: { fontFamily: font.monoMedium, fontSize: 11, lineHeight: 14, letterSpacing: 0.6, textTransform: "uppercase" as const },
+  eyebrow: { fontFamily: font.sansMedium, fontSize: 11, lineHeight: 16, letterSpacing: 0.66, textTransform: "uppercase" as const },
+  rowTitle: { fontFamily: font.sansMedium, fontSize: 14, lineHeight: 20 },
   mono: { fontFamily: font.mono, fontSize: 14, lineHeight: 20 },
   monoSm: { fontFamily: font.mono, fontSize: 12, lineHeight: 16 }
 };

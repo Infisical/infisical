@@ -2,7 +2,8 @@ import { ScrollView, StyleSheet, View } from "react-native";
 
 import { useStore } from "../data/store";
 import { space } from "../theme/tokens";
-import { Eyebrow, Frame, Text } from "../ui/primitives";
+import { List, ListSection } from "../ui/List";
+import { Text } from "../ui/primitives";
 import { RequestRow } from "./RequestRow";
 
 export const HistoryScreen = ({ onOpen }: { onOpen: (id: string) => void }) => {
@@ -24,27 +25,20 @@ export const HistoryScreen = ({ onOpen }: { onOpen: (id: string) => void }) => {
           Decisions on requests you could approve.
         </Text>
       </View>
-      {groups.map((group) => (
-        <View key={group.label} style={{ gap: space[8] }}>
-          <Eyebrow>{group.label}</Eyebrow>
-          <Frame>
-            {group.items.map((request, index) => (
-              <RequestRow
-                key={request.id}
-                request={request}
-                showActions={false}
-                isLast={index === group.items.length - 1}
-                onOpen={() => onOpen(request.id)}
-              />
+      <List variant="divided" label="Decided requests">
+        {groups.map((group) => (
+          <ListSection key={group.label} label={group.label} meta={String(group.items.length)}>
+            {group.items.map((request) => (
+              <RequestRow key={request.id} request={request} showActions={false} onOpen={() => onOpen(request.id)} />
             ))}
-          </Frame>
-        </View>
-      ))}
+          </ListSection>
+        ))}
+      </List>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  content: { padding: space[16], gap: space[20], paddingBottom: space[40] },
-  header: { gap: space[4], paddingTop: space[8] }
+  content: { padding: space[16], gap: space[12], paddingBottom: space[40] },
+  header: { gap: space[4], paddingTop: space[8], paddingBottom: space[4] }
 });

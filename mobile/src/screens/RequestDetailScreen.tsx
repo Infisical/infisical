@@ -7,23 +7,10 @@ import { useStore } from "../data/store";
 import { ApprovalStep } from "../data/types";
 import { font, space, usePalette } from "../theme/tokens";
 import { Icon } from "../ui/Icon";
+import { DataList, List, ListRow } from "../ui/List";
 import { Badge, Button, Eyebrow, Frame, StatusText, Text } from "../ui/primitives";
 import { confirmWithDevice, decisionHaptic } from "./decide";
 import { statusMeta } from "./RequestRow";
-
-const Fact = ({ label, value, mono, isLast }: { label: string; value: string; mono?: boolean; isLast?: boolean }) => {
-  const palette = usePalette();
-  return (
-    <View style={[styles.fact, !isLast && { borderBottomWidth: 1, borderBottomColor: palette.lineSoft }]}>
-      <Text variant="bodySm" color="muted" style={styles.factLabel}>
-        {label}
-      </Text>
-      <Text variant={mono ? "mono" : "body"} style={styles.factValue}>
-        {value}
-      </Text>
-    </View>
-  );
-};
 
 const stepStatus = (step: ApprovalStep) => {
   if (step.status === "approved") return { icon: "check-c" as const, label: `Approved by ${step.decidedBy}`, tone: "ok" as const };
@@ -92,37 +79,33 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
         <View style={{ gap: space[8] }}>
           <Eyebrow>Details</Eyebrow>
           <Frame>
-            <Fact label="Requested by" value={`${request.requesterName}\n${request.requesterEmail}`} />
-            <Fact label="Resource" value={request.resource} mono />
-            <Fact label="Location" value={request.location} mono />
-            <Fact label="Access" value={summary(request)} />
-            <Fact label="Policy" value={request.policyName} />
-            <Fact label="Request expires" value={resolved ? "Closed" : timeLeft(request.expiresAt)} isLast />
+            <DataList
+              items={[
+                { term: "Requested by", value: `${request.requesterName}\n${request.requesterEmail}` },
+                { term: "Resource", value: request.resource, mono: true },
+                { term: "Location", value: request.location, mono: true },
+                { term: "Access", value: summary(request), half: true },
+                { term: "Request expires", value: resolved ? "Closed" : timeLeft(request.expiresAt), half: true },
+                { term: "Policy", value: request.policyName }
+              ]}
+            />
           </Frame>
         </View>
 
-        <View style={{ gap: space[8] }}>
-          <Eyebrow>Approval steps</Eyebrow>
-          <Frame>
-            {request.steps.map((step, index) => (
-              <View
-                key={step.name}
-                style={[styles.step, index < request.steps.length - 1 && { borderBottomWidth: 1, borderBottomColor: palette.lineSoft }]}
-              >
-                <Text variant="monoSm" color="muted">
-                  {String(index + 1).padStart(2, "0")}
-                </Text>
-                <View style={{ flex: 1, gap: space[4] }}>
-                  <Text variant="label">{step.name}</Text>
-                  <Text variant="bodySm" color="muted">
-                    {step.approvers.join(", ")}
-                  </Text>
-                  <StatusText {...stepStatus(step)} />
-                </View>
-              </View>
-            ))}
-          </Frame>
-        </View>
+        <List variant="divided" label="Approval steps" title="Approval steps" count={`${request.steps.length} ${request.steps.length === 1 ? "step" : "steps"}`}>
+          {request.steps.map((step, index) => (
+            <ListRow
+              key={step.name}
+              label={step.name}
+              resolved={step.status === "approved" || step.status === "rejected"}
+              title={<Text variant="rowTitle">{step.name}</Text>}
+              meta={String(index + 1).padStart(2, "0")}
+              description={step.approvers.join(", ")}
+            >
+              <StatusText {...stepStatus(step)} />
+            </ListRow>
+          ))}
+        </List>
 
         {request.decision?.comment && (
           <Frame>
@@ -197,10 +180,6 @@ const styles = StyleSheet.create({
   eyebrowLine: { flexDirection: "row", alignItems: "center", gap: space[6] },
   badges: { flexDirection: "row", gap: space[6] },
   reason: { padding: space[16], gap: space[6] },
-  fact: { flexDirection: "row", paddingHorizontal: space[16], paddingVertical: space[12], gap: space[12] },
-  factLabel: { width: 112, paddingTop: 2 },
-  factValue: { flex: 1 },
-  step: { flexDirection: "row", gap: space[12], padding: space[16] },
   footer: { borderTopWidth: 1, paddingHorizontal: space[16], paddingTop: space[12], gap: space[10] },
   footerButtons: { flexDirection: "row", gap: space[12] },
   input: { height: 44, borderWidth: 1, paddingHorizontal: space[10], fontFamily: font.sans, fontSize: 15 },
