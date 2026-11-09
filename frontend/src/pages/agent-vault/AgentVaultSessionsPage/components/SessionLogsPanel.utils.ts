@@ -260,3 +260,35 @@ export const groupRepeatedMcpCalls = (calls: TAgentVaultSessionLogMcpCall[]) =>
 // A truncated batch held at least one call past the recorded ones, so the count is a floor.
 export const mcpMoreCallsLabel = (shown: number, truncated: boolean) =>
   truncated ? `${shown + 1}+ more` : `+${shown} more`;
+
+// Safari before 26.2 never fires scrollend, so a scroll cut short there would never end without this.
+export const RETURN_TO_TOP_FALLBACK_MS = 1500;
+
+// Ends a smooth scroll to the top once it gets there, finishes, the reader takes over, or the fallback passes.
+// Returns a stop that ends it early, which is safe to call more than once.
+export const watchReturnToTop = (
+  scroller: EventTarget & { scrollTop: number },
+  onEnd: () => void
+) => {
+  const listening = new AbortController();
+  let fallback: ReturnType<typeof setTimeout> | undefined;
+  const stop = () => {
+    if (listening.signal.aborted) return;
+    listening.abort();
+    clearTimeout(fallback);
+    onEnd();
+  };
+  const { signal } = listening;
+  scroller.addEventListener(
+    "scroll",
+    () => {
+      if (scroller.scrollTop < 1) stop();
+    },
+    { passive: true, signal }
+  );
+  scroller.addEventListener("scrollend", stop, { signal });
+  scroller.addEventListener("wheel", stop, { passive: true, signal });
+  scroller.addEventListener("touchstart", stop, { passive: true, signal });
+  fallback = setTimeout(stop, RETURN_TO_TOP_FALLBACK_MS);
+  return stop;
+};

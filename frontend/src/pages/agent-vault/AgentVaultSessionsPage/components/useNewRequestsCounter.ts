@@ -3,7 +3,11 @@ import type { VirtualItem } from "@tanstack/react-virtual";
 
 import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
 
-import { countSessionLogArrivals, followSessionLogRowAnchor } from "./SessionLogsPanel.utils";
+import {
+  countSessionLogArrivals,
+  followSessionLogRowAnchor,
+  watchReturnToTop
+} from "./SessionLogsPanel.utils";
 
 type Params = {
   scrollRef: RefObject<HTMLDivElement | null>;
@@ -29,19 +33,21 @@ export const useNewRequestsCounter = ({
 
   const shownBefore = useRef(visible);
   const measuredBefore = useRef(measuredRows);
-  const isReturningToTop = useRef(false);
+  const returning = useRef<{ scroller: HTMLDivElement; stop: () => void } | null>(null);
   // Only arrivals stamped since the last change count, so rows a filter change reveals aren't new.
   const countedAt = useRef(Date.now());
   useLayoutEffect(() => {
     const before = measuredBefore.current;
     measuredBefore.current = measuredRows;
+    const scroller = scrollRef.current;
+    // An empty result replaces the list, and the scroll to the top was waiting on the old one's events.
+    if (returning.current && returning.current.scroller !== scroller) returning.current.stop();
     if (shownBefore.current === visible) return;
     shownBefore.current = visible;
     const since = countedAt.current;
     countedAt.current = Date.now();
-    const scroller = scrollRef.current;
     // Correcting for rows that land during the smooth scroll to the top would stop it short.
-    if (!scroller || scroller.scrollTop === 0 || isReturningToTop.current) return;
+    if (!scroller || scroller.scrollTop === 0 || returning.current) return;
     // The scroll offset still describes the previous rows here, since overflow anchoring is off.
     const moved = followSessionLogRowAnchor(before, measuredRows, scroller.scrollTop);
     if (!moved) return;
@@ -65,24 +71,12 @@ export const useNewRequestsCounter = ({
     const scroller = scrollRef.current;
     setNewRequests((prev) => ({ ...prev, count: 0 }));
     if (!scroller || scroller.scrollTop < 1) return;
-    isReturningToTop.current = true;
-    const listening = new AbortController();
-    const stopReturning = () => {
-      isReturningToTop.current = false;
-      listening.abort();
-    };
-    const { signal } = listening;
-    scroller.addEventListener(
-      "scroll",
-      () => {
-        if (scroller.scrollTop < 1) stopReturning();
-      },
-      { passive: true, signal }
-    );
-    scroller.addEventListener("scrollend", stopReturning, { signal });
-    // The reader can take over before the smooth scroll reaches the top.
-    scroller.addEventListener("wheel", stopReturning, { passive: true, signal });
-    scroller.addEventListener("touchstart", stopReturning, { passive: true, signal });
+    returning.current?.stop();
+    const run = { scroller, stop: () => {} };
+    run.stop = watchReturnToTop(scroller, () => {
+      if (returning.current === run) returning.current = null;
+    });
+    returning.current = run;
     scroller.scrollTo({ top: 0, behavior: "smooth" });
   };
 

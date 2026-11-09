@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   AgentVaultServiceType,
@@ -14,7 +14,9 @@ import {
   matchesSessionLogSearch,
   nativeSessionLogSections,
   nativeSessionLogSummary,
-  sessionLogMethodLabel
+  RETURN_TO_TOP_FALLBACK_MS,
+  sessionLogMethodLabel,
+  watchReturnToTop
 } from "./SessionLogsPanel.utils";
 
 const record = (
@@ -220,5 +222,56 @@ describe("countSessionLogArrivals", () => {
     arrivals.set(sessionLogRecordKey(second), 50);
     expect(countSessionLogArrivals(records, arrivals, 100)).toBe(1);
     expect(countSessionLogArrivals(records, arrivals, 300)).toBe(0);
+  });
+});
+
+describe("watchReturnToTop", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const scrolledDown = () => Object.assign(new EventTarget(), { scrollTop: 800 });
+
+  it("ends once the scroll reaches the top, and only then", () => {
+    const scroller = scrolledDown();
+    const onEnd = vi.fn();
+    watchReturnToTop(scroller, onEnd);
+    scroller.scrollTop = 300;
+    scroller.dispatchEvent(new Event("scroll"));
+    expect(onEnd).not.toHaveBeenCalled();
+    scroller.scrollTop = 0;
+    scroller.dispatchEvent(new Event("scroll"));
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["scrollend", "wheel", "touchstart"])("ends on %s", (type) => {
+    const scroller = scrolledDown();
+    const onEnd = vi.fn();
+    watchReturnToTop(scroller, onEnd);
+    scroller.dispatchEvent(new Event(type));
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("ends after the fallback when the browser never says the scroll ended", () => {
+    const onEnd = vi.fn();
+    watchReturnToTop(scrolledDown(), onEnd);
+    vi.advanceTimersByTime(RETURN_TO_TOP_FALLBACK_MS - 1);
+    expect(onEnd).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops listening once stopped, so nothing ends it a second time", () => {
+    const scroller = scrolledDown();
+    const onEnd = vi.fn();
+    const stop = watchReturnToTop(scroller, onEnd);
+    stop();
+    stop();
+    scroller.dispatchEvent(new Event("scrollend"));
+    vi.advanceTimersByTime(RETURN_TO_TOP_FALLBACK_MS);
+    expect(onEnd).toHaveBeenCalledTimes(1);
   });
 });
