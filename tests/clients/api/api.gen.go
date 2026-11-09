@@ -5739,6 +5739,21 @@ func (e ListAwsAppConnections200JSONResponseBodyAppConnections0App) Valid() bool
 	}
 }
 
+// Defines values for ListAwsAppConnections200JSONResponseBodyAppConnections0ConfigurationProvisioningLaunchMethod.
+const (
+	ListAwsAppConnections200JSONResponseBodyAppConnections0ConfigurationProvisioningLaunchMethodLaunchStack ListAwsAppConnections200JSONResponseBodyAppConnections0ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the ListAwsAppConnections200JSONResponseBodyAppConnections0ConfigurationProvisioningLaunchMethod enum.
+func (e ListAwsAppConnections200JSONResponseBodyAppConnections0ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case ListAwsAppConnections200JSONResponseBodyAppConnections0ConfigurationProvisioningLaunchMethodLaunchStack:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListAwsAppConnections200JSONResponseBodyAppConnections0Method.
 const (
 	ListAwsAppConnections200JSONResponseBodyAppConnections0MethodAssumeRole ListAwsAppConnections200JSONResponseBodyAppConnections0Method = "assume-role"
@@ -5781,6 +5796,21 @@ const (
 func (e ListAwsAppConnections200JSONResponseBodyAppConnections1App) Valid() bool {
 	switch e {
 	case ListAwsAppConnections200JSONResponseBodyAppConnections1AppAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAwsAppConnections200JSONResponseBodyAppConnections1ConfigurationProvisioningLaunchMethod.
+const (
+	ListAwsAppConnections200JSONResponseBodyAppConnections1ConfigurationProvisioningLaunchMethodLaunchStack ListAwsAppConnections200JSONResponseBodyAppConnections1ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the ListAwsAppConnections200JSONResponseBodyAppConnections1ConfigurationProvisioningLaunchMethod enum.
+func (e ListAwsAppConnections200JSONResponseBodyAppConnections1ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case ListAwsAppConnections200JSONResponseBodyAppConnections1ConfigurationProvisioningLaunchMethodLaunchStack:
 		return true
 	default:
 		return false
@@ -5910,6 +5940,21 @@ func (e ListAwsAppConnections500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod.
+const (
+	CreateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethodLaunchStack CreateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod enum.
+func (e CreateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case CreateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethodLaunchStack:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateAwsAppConnectionJSONBodyIsAutoRotationEnabled.
 const (
 	CreateAwsAppConnectionJSONBodyIsAutoRotationEnabledFalse CreateAwsAppConnectionJSONBodyIsAutoRotationEnabled = false
@@ -5985,6 +6030,21 @@ func (e CreateAwsAppConnection200JSONResponseBodyAppConnection0App) Valid() bool
 	}
 }
 
+// Defines values for CreateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod.
+const (
+	CreateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethodLaunchStack CreateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod enum.
+func (e CreateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case CreateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethodLaunchStack:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateAwsAppConnection200JSONResponseBodyAppConnection0Method.
 const (
 	CreateAwsAppConnection200JSONResponseBodyAppConnection0MethodAssumeRole CreateAwsAppConnection200JSONResponseBodyAppConnection0Method = "assume-role"
@@ -6027,6 +6087,21 @@ const (
 func (e CreateAwsAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
 	switch e {
 	case CreateAwsAppConnection200JSONResponseBodyAppConnection1AppAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod.
+const (
+	CreateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethodLaunchStack CreateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the CreateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod enum.
+func (e CreateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case CreateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethodLaunchStack:
 		return true
 	default:
 		return false
@@ -6171,6 +6246,21 @@ func (e GetAwsAppConnectionByName200JSONResponseBodyAppConnection0App) Valid() b
 	}
 }
 
+// Defines values for GetAwsAppConnectionByName200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod.
+const (
+	GetAwsAppConnectionByName200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethodLaunchStack GetAwsAppConnectionByName200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsAppConnectionByName200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod enum.
+func (e GetAwsAppConnectionByName200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case GetAwsAppConnectionByName200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethodLaunchStack:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetAwsAppConnectionByName200JSONResponseBodyAppConnection0Method.
 const (
 	GetAwsAppConnectionByName200JSONResponseBodyAppConnection0MethodAssumeRole GetAwsAppConnectionByName200JSONResponseBodyAppConnection0Method = "assume-role"
@@ -6213,6 +6303,21 @@ const (
 func (e GetAwsAppConnectionByName200JSONResponseBodyAppConnection1App) Valid() bool {
 	switch e {
 	case GetAwsAppConnectionByName200JSONResponseBodyAppConnection1AppAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsAppConnectionByName200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod.
+const (
+	GetAwsAppConnectionByName200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethodLaunchStack GetAwsAppConnectionByName200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsAppConnectionByName200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod enum.
+func (e GetAwsAppConnectionByName200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case GetAwsAppConnectionByName200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethodLaunchStack:
 		return true
 	default:
 		return false
@@ -6342,6 +6447,111 @@ func (e GetAwsAppConnectionByName500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind.
+const (
+	CloudformationLaunch GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind = "cloudformation-launch"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind enum.
+func (e GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind) Valid() bool {
+	switch e {
+	case CloudformationLaunch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsProvisioningTemplate400JSONResponseBodyStatusCode.
+const (
+	GetAwsProvisioningTemplate400JSONResponseBodyStatusCodeN400 GetAwsProvisioningTemplate400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetAwsProvisioningTemplate400JSONResponseBodyStatusCode enum.
+func (e GetAwsProvisioningTemplate400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsProvisioningTemplate400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsProvisioningTemplate401JSONResponseBodyStatusCode.
+const (
+	GetAwsProvisioningTemplate401JSONResponseBodyStatusCodeN401 GetAwsProvisioningTemplate401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetAwsProvisioningTemplate401JSONResponseBodyStatusCode enum.
+func (e GetAwsProvisioningTemplate401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsProvisioningTemplate401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsProvisioningTemplate403JSONResponseBodyStatusCode.
+const (
+	GetAwsProvisioningTemplate403JSONResponseBodyStatusCodeN403 GetAwsProvisioningTemplate403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetAwsProvisioningTemplate403JSONResponseBodyStatusCode enum.
+func (e GetAwsProvisioningTemplate403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsProvisioningTemplate403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsProvisioningTemplate404JSONResponseBodyStatusCode.
+const (
+	GetAwsProvisioningTemplate404JSONResponseBodyStatusCodeN404 GetAwsProvisioningTemplate404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetAwsProvisioningTemplate404JSONResponseBodyStatusCode enum.
+func (e GetAwsProvisioningTemplate404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsProvisioningTemplate404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsProvisioningTemplate422JSONResponseBodyStatusCode.
+const (
+	GetAwsProvisioningTemplate422JSONResponseBodyStatusCodeN422 GetAwsProvisioningTemplate422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetAwsProvisioningTemplate422JSONResponseBodyStatusCode enum.
+func (e GetAwsProvisioningTemplate422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsProvisioningTemplate422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsProvisioningTemplate500JSONResponseBodyStatusCode.
+const (
+	GetAwsProvisioningTemplate500JSONResponseBodyStatusCodeN500 GetAwsProvisioningTemplate500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetAwsProvisioningTemplate500JSONResponseBodyStatusCode enum.
+func (e GetAwsProvisioningTemplate500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsProvisioningTemplate500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeleteAwsAppConnection200JSONResponseBodyAppConnection0App.
 const (
 	DeleteAwsAppConnection200JSONResponseBodyAppConnection0AppAws DeleteAwsAppConnection200JSONResponseBodyAppConnection0App = "aws"
@@ -6351,6 +6561,21 @@ const (
 func (e DeleteAwsAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
 	switch e {
 	case DeleteAwsAppConnection200JSONResponseBodyAppConnection0AppAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod.
+const (
+	DeleteAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethodLaunchStack DeleteAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod enum.
+func (e DeleteAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case DeleteAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethodLaunchStack:
 		return true
 	default:
 		return false
@@ -6399,6 +6624,21 @@ const (
 func (e DeleteAwsAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
 	switch e {
 	case DeleteAwsAppConnection200JSONResponseBodyAppConnection1AppAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod.
+const (
+	DeleteAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethodLaunchStack DeleteAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod enum.
+func (e DeleteAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case DeleteAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethodLaunchStack:
 		return true
 	default:
 		return false
@@ -6543,6 +6783,21 @@ func (e GetAwsAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
 	}
 }
 
+// Defines values for GetAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod.
+const (
+	GetAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethodLaunchStack GetAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod enum.
+func (e GetAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case GetAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethodLaunchStack:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetAwsAppConnection200JSONResponseBodyAppConnection0Method.
 const (
 	GetAwsAppConnection200JSONResponseBodyAppConnection0MethodAssumeRole GetAwsAppConnection200JSONResponseBodyAppConnection0Method = "assume-role"
@@ -6585,6 +6840,21 @@ const (
 func (e GetAwsAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
 	switch e {
 	case GetAwsAppConnection200JSONResponseBodyAppConnection1AppAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod.
+const (
+	GetAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethodLaunchStack GetAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod enum.
+func (e GetAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case GetAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethodLaunchStack:
 		return true
 	default:
 		return false
@@ -6759,6 +7029,21 @@ func (e UpdateAwsAppConnection200JSONResponseBodyAppConnection0App) Valid() bool
 	}
 }
 
+// Defines values for UpdateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod.
+const (
+	UpdateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethodLaunchStack UpdateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod enum.
+func (e UpdateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case UpdateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethodLaunchStack:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateAwsAppConnection200JSONResponseBodyAppConnection0Method.
 const (
 	UpdateAwsAppConnection200JSONResponseBodyAppConnection0MethodAssumeRole UpdateAwsAppConnection200JSONResponseBodyAppConnection0Method = "assume-role"
@@ -6801,6 +7086,21 @@ const (
 func (e UpdateAwsAppConnection200JSONResponseBodyAppConnection1App) Valid() bool {
 	switch e {
 	case UpdateAwsAppConnection200JSONResponseBodyAppConnection1AppAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod.
+const (
+	UpdateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethodLaunchStack UpdateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod enum.
+func (e UpdateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case UpdateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethodLaunchStack:
 		return true
 	default:
 		return false
@@ -24792,6 +25092,36 @@ func (e DeepSearchSecrets200JSONResponseBodySecretRotations29Type) Valid() bool 
 	}
 }
 
+// Defines values for DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionAppClickhouse DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeepSearchSecrets200JSONResponseBodySecretRotations30Type.
+const (
+	DeepSearchSecrets200JSONResponseBodySecretRotations30TypeClickhouseCredentials DeepSearchSecrets200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the DeepSearchSecrets200JSONResponseBodySecretRotations30Type enum.
+func (e DeepSearchSecrets200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case DeepSearchSecrets200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeepSearchSecrets400JSONResponseBodyStatusCode.
 const (
 	DeepSearchSecrets400JSONResponseBodyStatusCodeN400 DeepSearchSecrets400JSONResponseBodyStatusCode = 400
@@ -24909,6 +25239,24 @@ func (e ListProjectSecretsDetailsJSONBodyOrderDirection) Valid() bool {
 	case ListProjectSecretsDetailsJSONBodyOrderDirectionAsc:
 		return true
 	case ListProjectSecretsDetailsJSONBodyOrderDirectionDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy.
+const (
+	ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByInstance     ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy = "instance"
+	ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByOrganization ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy enum.
+func (e ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByInstance:
+		return true
+	case ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -26721,6 +27069,36 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type) Valid
 	}
 }
 
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionAppClickhouse ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type.
+const (
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations30TypeClickhouseCredentials ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type enum.
+func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListProjectSecretsDetails400JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsDetails400JSONResponseBodyStatusCodeN400 ListProjectSecretsDetails400JSONResponseBodyStatusCode = 400
@@ -26844,6 +27222,24 @@ func (e ListProjectSecretsOverviewJSONBodyOrderDirection) Valid() bool {
 	case ListProjectSecretsOverviewJSONBodyOrderDirectionAsc:
 		return true
 	case ListProjectSecretsOverviewJSONBodyOrderDirectionDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy.
+const (
+	ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByInstance     ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy = "instance"
+	ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByOrganization ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy enum.
+func (e ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByInstance:
+		return true
+	case ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -28656,6 +29052,36 @@ func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type) Vali
 	}
 }
 
+// Defines values for ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp.
+const (
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionAppClickhouse ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp = "clickhouse"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp enum.
+func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionAppClickhouse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type.
+const (
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations30TypeClickhouseCredentials ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type = "clickhouse-credentials"
+)
+
+// Valid indicates whether the value is a known member of the ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type enum.
+func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type) Valid() bool {
+	switch e {
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations30TypeClickhouseCredentials:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListProjectSecretsOverview400JSONResponseBodyStatusCode.
 const (
 	ListProjectSecretsOverview400JSONResponseBodyStatusCodeN400 ListProjectSecretsOverview400JSONResponseBodyStatusCode = 400
@@ -29003,13 +29429,13 @@ func (e CreateDynamicSecretJSONBodyProvider0Type) Valid() bool {
 
 // Defines values for CreateDynamicSecretJSONBodyProvider1Type.
 const (
-	Clickhouse CreateDynamicSecretJSONBodyProvider1Type = "clickhouse"
+	CreateDynamicSecretJSONBodyProvider1TypeClickhouse CreateDynamicSecretJSONBodyProvider1Type = "clickhouse"
 )
 
 // Valid indicates whether the value is a known member of the CreateDynamicSecretJSONBodyProvider1Type enum.
 func (e CreateDynamicSecretJSONBodyProvider1Type) Valid() bool {
 	switch e {
-	case Clickhouse:
+	case CreateDynamicSecretJSONBodyProvider1TypeClickhouse:
 		return true
 	default:
 		return false
@@ -34938,6 +35364,24 @@ func (e AddUserToGroup500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateHoneyTokenJSONBodyConfigManagedBy.
+const (
+	CreateHoneyTokenJSONBodyConfigManagedByInstance     CreateHoneyTokenJSONBodyConfigManagedBy = "instance"
+	CreateHoneyTokenJSONBodyConfigManagedByOrganization CreateHoneyTokenJSONBodyConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the CreateHoneyTokenJSONBodyConfigManagedBy enum.
+func (e CreateHoneyTokenJSONBodyConfigManagedBy) Valid() bool {
+	switch e {
+	case CreateHoneyTokenJSONBodyConfigManagedByInstance:
+		return true
+	case CreateHoneyTokenJSONBodyConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateHoneyTokenJSONBodyType.
 const (
 	CreateHoneyTokenJSONBodyTypeAws CreateHoneyTokenJSONBodyType = "aws"
@@ -34947,6 +35391,24 @@ const (
 func (e CreateHoneyTokenJSONBodyType) Valid() bool {
 	switch e {
 	case CreateHoneyTokenJSONBodyTypeAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -35493,6 +35955,24 @@ func (e GetHoneyTokenLimits500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetHoneyToken400JSONResponseBodyStatusCode.
 const (
 	GetHoneyToken400JSONResponseBodyStatusCodeN400 GetHoneyToken400JSONResponseBodyStatusCode = 400
@@ -35577,6 +36057,24 @@ const (
 func (e GetHoneyToken500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case GetHoneyToken500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy.
+const (
+	UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance     UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "instance"
+	UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy = "organization"
+)
+
+// Valid indicates whether the value is a known member of the UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy enum.
+func (e UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy) Valid() bool {
+	switch e {
+	case UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByInstance:
+		return true
+	case UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedByOrganization:
 		return true
 	default:
 		return false
@@ -96172,8 +96670,27 @@ type ListAwsAppConnectionsParams struct {
 
 // ListAwsAppConnections200JSONResponseBodyAppConnections0 defines parameters for ListAwsAppConnections.
 type ListAwsAppConnections200JSONResponseBodyAppConnections0 struct {
-	App         ListAwsAppConnections200JSONResponseBodyAppConnections0App `json:"app"`
-	CreatedAt   time.Time                                                  `json:"createdAt"`
+	App           ListAwsAppConnections200JSONResponseBodyAppConnections0App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod ListAwsAppConnections200JSONResponseBodyAppConnections0ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		// StsEndpoint An optional custom endpoint URL for the AWS STS API to use when connecting with AWS.
 		StsEndpoint *string `json:"stsEndpoint,omitempty"`
@@ -96226,6 +96743,9 @@ type ListAwsAppConnections200JSONResponseBodyAppConnections0 struct {
 // ListAwsAppConnections200JSONResponseBodyAppConnections0App defines parameters for ListAwsAppConnections.
 type ListAwsAppConnections200JSONResponseBodyAppConnections0App string
 
+// ListAwsAppConnections200JSONResponseBodyAppConnections0ConfigurationProvisioningLaunchMethod defines parameters for ListAwsAppConnections.
+type ListAwsAppConnections200JSONResponseBodyAppConnections0ConfigurationProvisioningLaunchMethod string
+
 // ListAwsAppConnections200JSONResponseBodyAppConnections0Method defines parameters for ListAwsAppConnections.
 type ListAwsAppConnections200JSONResponseBodyAppConnections0Method string
 
@@ -96234,8 +96754,27 @@ type ListAwsAppConnections200JSONResponseBodyAppConnections0RotationRotationStat
 
 // ListAwsAppConnections200JSONResponseBodyAppConnections1 defines parameters for ListAwsAppConnections.
 type ListAwsAppConnections200JSONResponseBodyAppConnections1 struct {
-	App         ListAwsAppConnections200JSONResponseBodyAppConnections1App `json:"app"`
-	CreatedAt   time.Time                                                  `json:"createdAt"`
+	App           ListAwsAppConnections200JSONResponseBodyAppConnections1App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod ListAwsAppConnections200JSONResponseBodyAppConnections1ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		AccessKeyId string `json:"accessKeyId"`
 	} `json:"credentials"`
@@ -96287,6 +96826,9 @@ type ListAwsAppConnections200JSONResponseBodyAppConnections1 struct {
 // ListAwsAppConnections200JSONResponseBodyAppConnections1App defines parameters for ListAwsAppConnections.
 type ListAwsAppConnections200JSONResponseBodyAppConnections1App string
 
+// ListAwsAppConnections200JSONResponseBodyAppConnections1ConfigurationProvisioningLaunchMethod defines parameters for ListAwsAppConnections.
+type ListAwsAppConnections200JSONResponseBodyAppConnections1ConfigurationProvisioningLaunchMethod string
+
 // ListAwsAppConnections200JSONResponseBodyAppConnections1Method defines parameters for ListAwsAppConnections.
 type ListAwsAppConnections200JSONResponseBodyAppConnections1Method string
 
@@ -96318,6 +96860,26 @@ type ListAwsAppConnections500JSONResponseBodyStatusCode float32
 
 // CreateAwsAppConnectionJSONBody defines parameters for CreateAwsAppConnection.
 type CreateAwsAppConnectionJSONBody struct {
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod CreateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+
 	// Description An optional description for the AWS Connection.
 	Description *string `json:"description,omitempty"`
 
@@ -96343,6 +96905,9 @@ type CreateAwsAppConnectionJSONBody struct {
 	Rotation *CreateAwsAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
 	union    json.RawMessage
 }
+
+// CreateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod defines parameters for CreateAwsAppConnection.
+type CreateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod string
 
 // CreateAwsAppConnectionJSONBodyGatewayId0 defines parameters for CreateAwsAppConnection.
 type CreateAwsAppConnectionJSONBodyGatewayId0 = interface{}
@@ -96417,8 +96982,27 @@ type CreateAwsAppConnectionJSONBody1Method string
 
 // CreateAwsAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateAwsAppConnection.
 type CreateAwsAppConnection200JSONResponseBodyAppConnection0 struct {
-	App         CreateAwsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
-	CreatedAt   time.Time                                                  `json:"createdAt"`
+	App           CreateAwsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod CreateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		// StsEndpoint An optional custom endpoint URL for the AWS STS API to use when connecting with AWS.
 		StsEndpoint *string `json:"stsEndpoint,omitempty"`
@@ -96471,6 +97055,9 @@ type CreateAwsAppConnection200JSONResponseBodyAppConnection0 struct {
 // CreateAwsAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateAwsAppConnection.
 type CreateAwsAppConnection200JSONResponseBodyAppConnection0App string
 
+// CreateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod defines parameters for CreateAwsAppConnection.
+type CreateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod string
+
 // CreateAwsAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateAwsAppConnection.
 type CreateAwsAppConnection200JSONResponseBodyAppConnection0Method string
 
@@ -96479,8 +97066,27 @@ type CreateAwsAppConnection200JSONResponseBodyAppConnection0RotationRotationStat
 
 // CreateAwsAppConnection200JSONResponseBodyAppConnection1 defines parameters for CreateAwsAppConnection.
 type CreateAwsAppConnection200JSONResponseBodyAppConnection1 struct {
-	App         CreateAwsAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
-	CreatedAt   time.Time                                                  `json:"createdAt"`
+	App           CreateAwsAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod CreateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		AccessKeyId string `json:"accessKeyId"`
 	} `json:"credentials"`
@@ -96532,6 +97138,9 @@ type CreateAwsAppConnection200JSONResponseBodyAppConnection1 struct {
 // CreateAwsAppConnection200JSONResponseBodyAppConnection1App defines parameters for CreateAwsAppConnection.
 type CreateAwsAppConnection200JSONResponseBodyAppConnection1App string
 
+// CreateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod defines parameters for CreateAwsAppConnection.
+type CreateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod string
+
 // CreateAwsAppConnection200JSONResponseBodyAppConnection1Method defines parameters for CreateAwsAppConnection.
 type CreateAwsAppConnection200JSONResponseBodyAppConnection1Method string
 
@@ -96569,8 +97178,27 @@ type GetAwsAppConnectionByNameParams struct {
 
 // GetAwsAppConnectionByName200JSONResponseBodyAppConnection0 defines parameters for GetAwsAppConnectionByName.
 type GetAwsAppConnectionByName200JSONResponseBodyAppConnection0 struct {
-	App         GetAwsAppConnectionByName200JSONResponseBodyAppConnection0App `json:"app"`
-	CreatedAt   time.Time                                                     `json:"createdAt"`
+	App           GetAwsAppConnectionByName200JSONResponseBodyAppConnection0App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod GetAwsAppConnectionByName200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		// StsEndpoint An optional custom endpoint URL for the AWS STS API to use when connecting with AWS.
 		StsEndpoint *string `json:"stsEndpoint,omitempty"`
@@ -96623,6 +97251,9 @@ type GetAwsAppConnectionByName200JSONResponseBodyAppConnection0 struct {
 // GetAwsAppConnectionByName200JSONResponseBodyAppConnection0App defines parameters for GetAwsAppConnectionByName.
 type GetAwsAppConnectionByName200JSONResponseBodyAppConnection0App string
 
+// GetAwsAppConnectionByName200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod defines parameters for GetAwsAppConnectionByName.
+type GetAwsAppConnectionByName200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod string
+
 // GetAwsAppConnectionByName200JSONResponseBodyAppConnection0Method defines parameters for GetAwsAppConnectionByName.
 type GetAwsAppConnectionByName200JSONResponseBodyAppConnection0Method string
 
@@ -96631,8 +97262,27 @@ type GetAwsAppConnectionByName200JSONResponseBodyAppConnection0RotationRotationS
 
 // GetAwsAppConnectionByName200JSONResponseBodyAppConnection1 defines parameters for GetAwsAppConnectionByName.
 type GetAwsAppConnectionByName200JSONResponseBodyAppConnection1 struct {
-	App         GetAwsAppConnectionByName200JSONResponseBodyAppConnection1App `json:"app"`
-	CreatedAt   time.Time                                                     `json:"createdAt"`
+	App           GetAwsAppConnectionByName200JSONResponseBodyAppConnection1App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod GetAwsAppConnectionByName200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		AccessKeyId string `json:"accessKeyId"`
 	} `json:"credentials"`
@@ -96684,6 +97334,9 @@ type GetAwsAppConnectionByName200JSONResponseBodyAppConnection1 struct {
 // GetAwsAppConnectionByName200JSONResponseBodyAppConnection1App defines parameters for GetAwsAppConnectionByName.
 type GetAwsAppConnectionByName200JSONResponseBodyAppConnection1App string
 
+// GetAwsAppConnectionByName200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod defines parameters for GetAwsAppConnectionByName.
+type GetAwsAppConnectionByName200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod string
+
 // GetAwsAppConnectionByName200JSONResponseBodyAppConnection1Method defines parameters for GetAwsAppConnectionByName.
 type GetAwsAppConnectionByName200JSONResponseBodyAppConnection1Method string
 
@@ -96713,10 +97366,78 @@ type GetAwsAppConnectionByName422JSONResponseBodyStatusCode float32
 // GetAwsAppConnectionByName500JSONResponseBodyStatusCode defines parameters for GetAwsAppConnectionByName.
 type GetAwsAppConnectionByName500JSONResponseBodyStatusCode float32
 
+// GetAwsProvisioningTemplateParams defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplateParams struct {
+	ProjectId *openapi_types.UUID `form:"projectId,omitempty" json:"projectId,omitempty"`
+	Partition *string             `form:"partition,omitempty" json:"partition,omitempty"`
+	Region    *string             `form:"region,omitempty" json:"region,omitempty"`
+	UseCases  *string             `form:"useCases,omitempty" json:"useCases,omitempty"`
+	RoleName  *string             `form:"roleName,omitempty" json:"roleName,omitempty"`
+	StackName *string             `form:"stackName,omitempty" json:"stackName,omitempty"`
+}
+
+// GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 struct {
+	Kind            GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind `json:"kind"`
+	LaunchUrl       string                                                                 `json:"launchUrl"`
+	OutputKey       string                                                                 `json:"outputKey"`
+	Parameters      map[string]string                                                      `json:"parameters"`
+	Partition       string                                                                 `json:"partition"`
+	Region          string                                                                 `json:"region"`
+	StackName       string                                                                 `json:"stackName"`
+	TemplateUrl     string                                                                 `json:"templateUrl"`
+	TemplateVersion string                                                                 `json:"templateVersion"`
+}
+
+// GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind string
+
+// GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate struct {
+	union json.RawMessage
+}
+
+// GetAwsProvisioningTemplate400JSONResponseBodyStatusCode defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate400JSONResponseBodyStatusCode float32
+
+// GetAwsProvisioningTemplate401JSONResponseBodyStatusCode defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate401JSONResponseBodyStatusCode float32
+
+// GetAwsProvisioningTemplate403JSONResponseBodyStatusCode defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate403JSONResponseBodyStatusCode float32
+
+// GetAwsProvisioningTemplate404JSONResponseBodyStatusCode defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate404JSONResponseBodyStatusCode float32
+
+// GetAwsProvisioningTemplate422JSONResponseBodyStatusCode defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate422JSONResponseBodyStatusCode float32
+
+// GetAwsProvisioningTemplate500JSONResponseBodyStatusCode defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate500JSONResponseBodyStatusCode float32
+
 // DeleteAwsAppConnection200JSONResponseBodyAppConnection0 defines parameters for DeleteAwsAppConnection.
 type DeleteAwsAppConnection200JSONResponseBodyAppConnection0 struct {
-	App         DeleteAwsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
-	CreatedAt   time.Time                                                  `json:"createdAt"`
+	App           DeleteAwsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod DeleteAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		// StsEndpoint An optional custom endpoint URL for the AWS STS API to use when connecting with AWS.
 		StsEndpoint *string `json:"stsEndpoint,omitempty"`
@@ -96769,6 +97490,9 @@ type DeleteAwsAppConnection200JSONResponseBodyAppConnection0 struct {
 // DeleteAwsAppConnection200JSONResponseBodyAppConnection0App defines parameters for DeleteAwsAppConnection.
 type DeleteAwsAppConnection200JSONResponseBodyAppConnection0App string
 
+// DeleteAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod defines parameters for DeleteAwsAppConnection.
+type DeleteAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod string
+
 // DeleteAwsAppConnection200JSONResponseBodyAppConnection0Method defines parameters for DeleteAwsAppConnection.
 type DeleteAwsAppConnection200JSONResponseBodyAppConnection0Method string
 
@@ -96777,8 +97501,27 @@ type DeleteAwsAppConnection200JSONResponseBodyAppConnection0RotationRotationStat
 
 // DeleteAwsAppConnection200JSONResponseBodyAppConnection1 defines parameters for DeleteAwsAppConnection.
 type DeleteAwsAppConnection200JSONResponseBodyAppConnection1 struct {
-	App         DeleteAwsAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
-	CreatedAt   time.Time                                                  `json:"createdAt"`
+	App           DeleteAwsAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod DeleteAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		AccessKeyId string `json:"accessKeyId"`
 	} `json:"credentials"`
@@ -96830,6 +97573,9 @@ type DeleteAwsAppConnection200JSONResponseBodyAppConnection1 struct {
 // DeleteAwsAppConnection200JSONResponseBodyAppConnection1App defines parameters for DeleteAwsAppConnection.
 type DeleteAwsAppConnection200JSONResponseBodyAppConnection1App string
 
+// DeleteAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod defines parameters for DeleteAwsAppConnection.
+type DeleteAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod string
+
 // DeleteAwsAppConnection200JSONResponseBodyAppConnection1Method defines parameters for DeleteAwsAppConnection.
 type DeleteAwsAppConnection200JSONResponseBodyAppConnection1Method string
 
@@ -96861,8 +97607,27 @@ type DeleteAwsAppConnection500JSONResponseBodyStatusCode float32
 
 // GetAwsAppConnection200JSONResponseBodyAppConnection0 defines parameters for GetAwsAppConnection.
 type GetAwsAppConnection200JSONResponseBodyAppConnection0 struct {
-	App         GetAwsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
-	CreatedAt   time.Time                                               `json:"createdAt"`
+	App           GetAwsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod GetAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		// StsEndpoint An optional custom endpoint URL for the AWS STS API to use when connecting with AWS.
 		StsEndpoint *string `json:"stsEndpoint,omitempty"`
@@ -96915,6 +97680,9 @@ type GetAwsAppConnection200JSONResponseBodyAppConnection0 struct {
 // GetAwsAppConnection200JSONResponseBodyAppConnection0App defines parameters for GetAwsAppConnection.
 type GetAwsAppConnection200JSONResponseBodyAppConnection0App string
 
+// GetAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod defines parameters for GetAwsAppConnection.
+type GetAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod string
+
 // GetAwsAppConnection200JSONResponseBodyAppConnection0Method defines parameters for GetAwsAppConnection.
 type GetAwsAppConnection200JSONResponseBodyAppConnection0Method string
 
@@ -96923,8 +97691,27 @@ type GetAwsAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus 
 
 // GetAwsAppConnection200JSONResponseBodyAppConnection1 defines parameters for GetAwsAppConnection.
 type GetAwsAppConnection200JSONResponseBodyAppConnection1 struct {
-	App         GetAwsAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
-	CreatedAt   time.Time                                               `json:"createdAt"`
+	App           GetAwsAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod GetAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		AccessKeyId string `json:"accessKeyId"`
 	} `json:"credentials"`
@@ -96975,6 +97762,9 @@ type GetAwsAppConnection200JSONResponseBodyAppConnection1 struct {
 
 // GetAwsAppConnection200JSONResponseBodyAppConnection1App defines parameters for GetAwsAppConnection.
 type GetAwsAppConnection200JSONResponseBodyAppConnection1App string
+
+// GetAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod defines parameters for GetAwsAppConnection.
+type GetAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod string
 
 // GetAwsAppConnection200JSONResponseBodyAppConnection1Method defines parameters for GetAwsAppConnection.
 type GetAwsAppConnection200JSONResponseBodyAppConnection1Method string
@@ -97092,8 +97882,27 @@ type UpdateAwsAppConnectionJSONBody_Rotation struct {
 
 // UpdateAwsAppConnection200JSONResponseBodyAppConnection0 defines parameters for UpdateAwsAppConnection.
 type UpdateAwsAppConnection200JSONResponseBodyAppConnection0 struct {
-	App         UpdateAwsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
-	CreatedAt   time.Time                                                  `json:"createdAt"`
+	App           UpdateAwsAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod UpdateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		// StsEndpoint An optional custom endpoint URL for the AWS STS API to use when connecting with AWS.
 		StsEndpoint *string `json:"stsEndpoint,omitempty"`
@@ -97146,6 +97955,9 @@ type UpdateAwsAppConnection200JSONResponseBodyAppConnection0 struct {
 // UpdateAwsAppConnection200JSONResponseBodyAppConnection0App defines parameters for UpdateAwsAppConnection.
 type UpdateAwsAppConnection200JSONResponseBodyAppConnection0App string
 
+// UpdateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod defines parameters for UpdateAwsAppConnection.
+type UpdateAwsAppConnection200JSONResponseBodyAppConnection0ConfigurationProvisioningLaunchMethod string
+
 // UpdateAwsAppConnection200JSONResponseBodyAppConnection0Method defines parameters for UpdateAwsAppConnection.
 type UpdateAwsAppConnection200JSONResponseBodyAppConnection0Method string
 
@@ -97154,8 +97966,27 @@ type UpdateAwsAppConnection200JSONResponseBodyAppConnection0RotationRotationStat
 
 // UpdateAwsAppConnection200JSONResponseBodyAppConnection1 defines parameters for UpdateAwsAppConnection.
 type UpdateAwsAppConnection200JSONResponseBodyAppConnection1 struct {
-	App         UpdateAwsAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
-	CreatedAt   time.Time                                                  `json:"createdAt"`
+	App           UpdateAwsAppConnection200JSONResponseBodyAppConnection1App `json:"app"`
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod UpdateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Credentials struct {
 		AccessKeyId string `json:"accessKeyId"`
 	} `json:"credentials"`
@@ -97206,6 +98037,9 @@ type UpdateAwsAppConnection200JSONResponseBodyAppConnection1 struct {
 
 // UpdateAwsAppConnection200JSONResponseBodyAppConnection1App defines parameters for UpdateAwsAppConnection.
 type UpdateAwsAppConnection200JSONResponseBodyAppConnection1App string
+
+// UpdateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod defines parameters for UpdateAwsAppConnection.
+type UpdateAwsAppConnection200JSONResponseBodyAppConnection1ConfigurationProvisioningLaunchMethod string
 
 // UpdateAwsAppConnection200JSONResponseBodyAppConnection1Method defines parameters for UpdateAwsAppConnection.
 type UpdateAwsAppConnection200JSONResponseBodyAppConnection1Method string
@@ -102892,7 +103726,7 @@ type UpdateKubernetesAuthJSONBody struct {
 	// TokenReviewMode The mode to use for token review. Must be one of: 'api', 'gateway'. If gateway is selected, the gateway must be deployed in Kubernetes, and the gateway must have the system:auth-delegator ClusterRole binding.
 	TokenReviewMode *UpdateKubernetesAuthJSONBodyTokenReviewMode `json:"tokenReviewMode,omitempty"`
 
-	// TokenReviewerJwt Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding.
+	// TokenReviewerJwt Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token replaces the stored one and is used to validate service account tokens during authentication. Omit it, or send an empty string, to keep the stored JWT. Set it to null to remove the stored JWT; the client's own JWT is then used instead, which requires the client to have the system:auth-delegator ClusterRole binding. A stored JWT cannot be read back, so it must be supplied again when changing the host, gateway, gateway pool, CA certificate, or TLS verification.
 	TokenReviewerJwt *string `json:"tokenReviewerJwt,omitempty"`
 
 	// VerifyTlsCertificate Whether to verify the Kubernetes API server's TLS certificate against the configured CA certificate. When true, caCert is required. When false, the connection is still over HTTPS but the API server's certificate is not verified, and the resulting effective CA must be empty. If omitted while supplying a non-empty caCert in the same update, the toggle is auto-promoted to true; otherwise the stored value is preserved.
@@ -107140,6 +107974,67 @@ type DeepSearchSecrets200JSONResponseBodySecretRotations29ConnectionApp string
 // DeepSearchSecrets200JSONResponseBodySecretRotations29Type defines parameters for DeepSearchSecrets.
 type DeepSearchSecrets200JSONResponseBodySecretRotations29Type string
 
+// DeepSearchSecrets200JSONResponseBodySecretRotations30 defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                 `json:"id"`
+		Name string                                                             `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      DeepSearchSecrets200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                 `json:"updatedAt"`
+}
+
+// DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30ConnectionApp string
+
+// DeepSearchSecrets200JSONResponseBodySecretRotations30Type defines parameters for DeepSearchSecrets.
+type DeepSearchSecrets200JSONResponseBodySecretRotations30Type string
+
 // DeepSearchSecrets200JSONResponseBody_SecretRotations_Item defines parameters for DeepSearchSecrets.
 type DeepSearchSecrets200JSONResponseBody_SecretRotations_Item struct {
 	union json.RawMessage
@@ -107219,6 +108114,9 @@ type ListProjectSecretsDetailsJSONBodyOrderBy string
 
 // ListProjectSecretsDetailsJSONBodyOrderDirection defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetailsJSONBodyOrderDirection string
+
+// ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy string
 
 // ListProjectSecretsDetails200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBodySecretRotations0 struct {
@@ -109312,6 +110210,67 @@ type ListProjectSecretsDetails200JSONResponseBodySecretRotations29ConnectionApp 
 // ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBodySecretRotations29Type string
 
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30 defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                         `json:"id"`
+		Name string                                                                     `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                         `json:"updatedAt"`
+}
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30ConnectionApp string
+
+// ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type defines parameters for ListProjectSecretsDetails.
+type ListProjectSecretsDetails200JSONResponseBodySecretRotations30Type string
+
 // ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item struct {
 	Secrets []*struct {
@@ -109443,6 +110402,9 @@ type ListProjectSecretsOverviewJSONBodyOrderBy string
 
 // ListProjectSecretsOverviewJSONBodyOrderDirection defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverviewJSONBodyOrderDirection string
+
+// ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy string
 
 // ListProjectSecretsOverview200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBodySecretRotations0 struct {
@@ -111535,6 +112497,67 @@ type ListProjectSecretsOverview200JSONResponseBodySecretRotations29ConnectionApp
 
 // ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBodySecretRotations29Type string
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30 defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30 struct {
+	ActiveIndex *float32 `json:"activeIndex,omitempty"`
+	Connection  struct {
+		App  ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp `json:"app"`
+		Id   openapi_types.UUID                                                          `json:"id"`
+		Name string                                                                      `json:"name"`
+	} `json:"connection"`
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+	CreatedAt    time.Time          `json:"createdAt"`
+	Description  *string            `json:"description,omitempty"`
+	Environment  struct {
+		Id   openapi_types.UUID `json:"id"`
+		Name string             `json:"name"`
+		Slug string             `json:"slug"`
+	} `json:"environment"`
+	Folder struct {
+		Id   string `json:"id"`
+		Path string `json:"path"`
+	} `json:"folder"`
+	FolderId                openapi_types.UUID `json:"folderId"`
+	Id                      openapi_types.UUID `json:"id"`
+	IsAutoRotationEnabled   *bool              `json:"isAutoRotationEnabled,omitempty"`
+	IsLastRotationManual    *bool              `json:"isLastRotationManual,omitempty"`
+	LastRotatedAt           time.Time          `json:"lastRotatedAt"`
+	LastRotationAttemptedAt time.Time          `json:"lastRotationAttemptedAt"`
+	LastRotationJobId       *string            `json:"lastRotationJobId,omitempty"`
+	LastRotationMessage     *string            `json:"lastRotationMessage,omitempty"`
+	Name                    string             `json:"name"`
+	NextRotationAt          *time.Time         `json:"nextRotationAt,omitempty"`
+	Parameters              struct {
+		// Username1 The username of the first login to rotate passwords for. This user must already exists in your database.
+		Username1 string `json:"username1"`
+
+		// Username2 The username of the second login to rotate passwords for. This user must already exists in your database.
+		Username2 string `json:"username2"`
+	} `json:"parameters"`
+	ProjectId   string `json:"projectId"`
+	RotateAtUtc struct {
+		Hours   float32 `json:"hours"`
+		Minutes float32 `json:"minutes"`
+	} `json:"rotateAtUtc"`
+	RotationInterval float32 `json:"rotationInterval"`
+	RotationStatus   string  `json:"rotationStatus"`
+	SecretsMapping   struct {
+		// Password The name of the secret that the generated password will be mapped to.
+		Password string `json:"password"`
+
+		// Username The name of the secret that the active username will be mapped to.
+		Username string `json:"username"`
+	} `json:"secretsMapping"`
+	Type      ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type `json:"type"`
+	UpdatedAt time.Time                                                          `json:"updatedAt"`
+}
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30ConnectionApp string
+
+// ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type defines parameters for ListProjectSecretsOverview.
+type ListProjectSecretsOverview200JSONResponseBodySecretRotations30Type string
 
 // ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item struct {
@@ -114609,6 +115632,11 @@ type AddUserToGroup500JSONResponseBodyStatusCode float32
 
 // CreateHoneyTokenJSONBody defines parameters for CreateHoneyToken.
 type CreateHoneyTokenJSONBody struct {
+	// Config Settings that depend on the honey token's type.
+	Config *struct {
+		// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+		ManagedBy *CreateHoneyTokenJSONBodyConfigManagedBy `json:"managedBy,omitempty"`
+	} `json:"config,omitempty"`
 	Description    *string                      `json:"description,omitempty"`
 	Environment    string                       `json:"environment"`
 	Name           string                       `json:"name"`
@@ -114618,8 +115646,14 @@ type CreateHoneyTokenJSONBody struct {
 	Type           CreateHoneyTokenJSONBodyType `json:"type"`
 }
 
+// CreateHoneyTokenJSONBodyConfigManagedBy defines parameters for CreateHoneyToken.
+type CreateHoneyTokenJSONBodyConfigManagedBy string
+
 // CreateHoneyTokenJSONBodyType defines parameters for CreateHoneyToken.
 type CreateHoneyTokenJSONBodyType string
+
+// CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for CreateHoneyToken.
+type CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // CreateHoneyToken400JSONResponseBodyStatusCode defines parameters for CreateHoneyToken.
 type CreateHoneyToken400JSONResponseBodyStatusCode float32
@@ -114744,6 +115778,9 @@ type GetHoneyTokenLimits422JSONResponseBodyStatusCode float32
 // GetHoneyTokenLimits500JSONResponseBodyStatusCode defines parameters for GetHoneyTokenLimits.
 type GetHoneyTokenLimits500JSONResponseBodyStatusCode float32
 
+// GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for GetHoneyToken.
+type GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
+
 // GetHoneyToken400JSONResponseBodyStatusCode defines parameters for GetHoneyToken.
 type GetHoneyToken400JSONResponseBodyStatusCode float32
 
@@ -114768,6 +115805,9 @@ type UpdateHoneyTokenJSONBody struct {
 	Name           *string            `json:"name,omitempty"`
 	SecretsMapping *map[string]string `json:"secretsMapping,omitempty"`
 }
+
+// UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy defines parameters for UpdateHoneyToken.
+type UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy string
 
 // UpdateHoneyToken400JSONResponseBodyStatusCode defines parameters for UpdateHoneyToken.
 type UpdateHoneyToken400JSONResponseBodyStatusCode float32
@@ -116090,12 +117130,11 @@ type GetInsightsSummary500JSONResponseBodyStatusCode float32
 
 // InviteUsersToOrganizationJSONBody defines parameters for InviteUsersToOrganization.
 type InviteUsersToOrganizationJSONBody struct {
-	GrantAgentVaultAccess *bool                 `json:"grantAgentVaultAccess,omitempty"`
-	GrantPamAccess        *bool                 `json:"grantPamAccess,omitempty"`
-	InviteeEmails         []openapi_types.Email `json:"inviteeEmails"`
-	OrganizationId        string                `json:"organizationId"`
-	OrganizationRoleSlug  *string               `json:"organizationRoleSlug,omitempty"`
-	ProjectIds            *[]string             `json:"projectIds,omitempty"`
+	GrantPamAccess       *bool                 `json:"grantPamAccess,omitempty"`
+	InviteeEmails        []openapi_types.Email `json:"inviteeEmails"`
+	OrganizationId       string                `json:"organizationId"`
+	OrganizationRoleSlug *string               `json:"organizationRoleSlug,omitempty"`
+	ProjectIds           *[]string             `json:"projectIds,omitempty"`
 }
 
 // InviteUsersToOrganization400JSONResponseBodyStatusCode defines parameters for InviteUsersToOrganization.
@@ -136911,6 +137950,13 @@ func (t CreateAwsAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
 		}
 	}
 
+	if t.Configuration != nil {
+		object["configuration"], err = json.Marshal(t.Configuration)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'configuration': %w", err)
+		}
+	}
+
 	if t.Description != nil {
 		object["description"], err = json.Marshal(t.Description)
 		if err != nil {
@@ -136977,6 +138023,13 @@ func (t *CreateAwsAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
 	err = json.Unmarshal(b, &object)
 	if err != nil {
 		return err
+	}
+
+	if raw, found := object["configuration"]; found {
+		err = json.Unmarshal(raw, &t.Configuration)
+		if err != nil {
+			return fmt.Errorf("error reading 'configuration': %w", err)
+		}
 	}
 
 	if raw, found := object["description"]; found {
@@ -137344,6 +138397,42 @@ func (t GetAwsAppConnectionByName200JSONResponseBody_AppConnection) MarshalJSON(
 }
 
 func (t *GetAwsAppConnectionByName200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 returns the union data inside the GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate as a GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0
+func (t GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) AsGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0() (GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0, error) {
+	var body GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 overwrites any union data inside the GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate as the provided GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0
+func (t *GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) FromGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0(v GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 performs a merge with any union data inside the GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate, using the provided GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0
+func (t *GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) MergeGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0(v GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -144004,6 +145093,32 @@ func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) MergeDeepSea
 	return err
 }
 
+// AsDeepSearchSecrets200JSONResponseBodySecretRotations30 returns the union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item as a DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) AsDeepSearchSecrets200JSONResponseBodySecretRotations30() (DeepSearchSecrets200JSONResponseBodySecretRotations30, error) {
+	var body DeepSearchSecrets200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromDeepSearchSecrets200JSONResponseBodySecretRotations30 overwrites any union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item as the provided DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) FromDeepSearchSecrets200JSONResponseBodySecretRotations30(v DeepSearchSecrets200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeDeepSearchSecrets200JSONResponseBodySecretRotations30 performs a merge with any union data inside the DeepSearchSecrets200JSONResponseBody_SecretRotations_Item, using the provided DeepSearchSecrets200JSONResponseBodySecretRotations30
+func (t *DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) MergeDeepSearchSecrets200JSONResponseBodySecretRotations30(v DeepSearchSecrets200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t DeepSearchSecrets200JSONResponseBody_SecretRotations_Item) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -144846,6 +145961,32 @@ func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) From
 
 // MergeListProjectSecretsDetails200JSONResponseBodySecretRotations29 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations29
 func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations29(v ListProjectSecretsDetails200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsDetails200JSONResponseBodySecretRotations30 returns the union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsDetails200JSONResponseBodySecretRotations30() (ListProjectSecretsDetails200JSONResponseBodySecretRotations30, error) {
+	var body ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsDetails200JSONResponseBodySecretRotations30 overwrites any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsDetails200JSONResponseBodySecretRotations30(v ListProjectSecretsDetails200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsDetails200JSONResponseBodySecretRotations30 performs a merge with any union data inside the ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsDetails200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsDetails200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsDetails200JSONResponseBodySecretRotations30(v ListProjectSecretsDetails200JSONResponseBodySecretRotations30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -145732,6 +146873,32 @@ func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) Fro
 
 // MergeListProjectSecretsOverview200JSONResponseBodySecretRotations29 performs a merge with any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations29
 func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsOverview200JSONResponseBodySecretRotations29(v ListProjectSecretsOverview200JSONResponseBodySecretRotations29) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsListProjectSecretsOverview200JSONResponseBodySecretRotations30 returns the union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item as a ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) AsListProjectSecretsOverview200JSONResponseBodySecretRotations30() (ListProjectSecretsOverview200JSONResponseBodySecretRotations30, error) {
+	var body ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListProjectSecretsOverview200JSONResponseBodySecretRotations30 overwrites any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item as the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) FromListProjectSecretsOverview200JSONResponseBodySecretRotations30(v ListProjectSecretsOverview200JSONResponseBodySecretRotations30) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListProjectSecretsOverview200JSONResponseBodySecretRotations30 performs a merge with any union data inside the ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item, using the provided ListProjectSecretsOverview200JSONResponseBodySecretRotations30
+func (t *ListProjectSecretsOverview200JSONResponseBody_SecretRotations_Item) MergeListProjectSecretsOverview200JSONResponseBodySecretRotations30(v ListProjectSecretsOverview200JSONResponseBodySecretRotations30) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -163019,6 +164186,9 @@ type ClientInterface interface {
 	// Get the specified AWS Connection by name.
 	GetAwsAppConnectionByName(ctx context.Context, connectionName string, params *GetAwsAppConnectionByNameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetAwsProvisioningTemplate performs a GET /api/v1/app-connections/aws/provisioning-template (the `GetAwsProvisioningTemplate` operationId) request.
+	GetAwsProvisioningTemplate(ctx context.Context, params *GetAwsProvisioningTemplateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteAwsAppConnection performs a DELETE /api/v1/app-connections/aws/{connectionId} (the `DeleteAwsAppConnection` operationId) request.
 	//
 	// Delete the specified AWS Connection.
@@ -168777,6 +169947,19 @@ func (c *Client) CreateAwsAppConnection(ctx context.Context, body CreateAwsAppCo
 // Get the specified AWS Connection by name.
 func (c *Client) GetAwsAppConnectionByName(ctx context.Context, connectionName string, params *GetAwsAppConnectionByNameParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetAwsAppConnectionByNameRequest(c.Server, connectionName, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAwsProvisioningTemplate performs a GET /api/v1/app-connections/aws/provisioning-template (the `GetAwsProvisioningTemplate` operationId) request.
+func (c *Client) GetAwsProvisioningTemplate(ctx context.Context, params *GetAwsProvisioningTemplateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAwsProvisioningTemplateRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -185893,6 +187076,120 @@ func NewGetAwsAppConnectionByNameRequest(server string, connectionName string, p
 		if params.ProjectId != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", *params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetAwsProvisioningTemplateRequest constructs an http.Request for the GetAwsProvisioningTemplate method
+func NewGetAwsProvisioningTemplateRequest(server string, params *GetAwsProvisioningTemplateParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/aws/provisioning-template")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ProjectId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", *params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Partition != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "partition", *params.Partition, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Region != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "region", *params.Region, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.UseCases != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "useCases", *params.UseCases, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.RoleName != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "roleName", *params.RoleName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.StackName != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "stackName", *params.StackName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -218070,6 +219367,11 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	GetAwsAppConnectionByNameWithResponse(ctx context.Context, connectionName string, params *GetAwsAppConnectionByNameParams, reqEditors ...RequestEditorFn) (*GetAwsAppConnectionByNameResponse, error)
 
+	// GetAwsProvisioningTemplateWithResponse performs a GET /api/v1/app-connections/aws/provisioning-template (the `GetAwsProvisioningTemplate` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetAwsProvisioningTemplateWithResponse(ctx context.Context, params *GetAwsProvisioningTemplateParams, reqEditors ...RequestEditorFn) (*GetAwsProvisioningTemplateResponse, error)
+
 	// DeleteAwsAppConnectionWithResponse performs a DELETE /api/v1/app-connections/aws/{connectionId} (the `DeleteAwsAppConnection` operationId) request.
 	//
 	// Delete the specified AWS Connection.
@@ -233914,6 +235216,157 @@ func (r GetAwsAppConnectionByNameResponse) ContentType() string {
 	return ""
 }
 
+type GetAwsProvisioningTemplateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ProvisioningTemplate *GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate `json:"provisioningTemplate"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetAwsProvisioningTemplate400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetAwsProvisioningTemplate401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                             `json:"details,omitempty"`
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetAwsProvisioningTemplate403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetAwsProvisioningTemplate404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                  `json:"error"`
+		Message    interface{}                                             `json:"message,omitempty"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetAwsProvisioningTemplate422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                  `json:"error"`
+		Message    string                                                  `json:"message"`
+		ReqId      string                                                  `json:"reqId"`
+		StatusCode GetAwsProvisioningTemplate500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAwsProvisioningTemplateResponse) GetJSON200() *struct {
+	ProvisioningTemplate *GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate `json:"provisioningTemplate"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetAwsProvisioningTemplateResponse) GetJSON400() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetAwsProvisioningTemplate400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAwsProvisioningTemplateResponse) GetJSON401() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetAwsProvisioningTemplate401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAwsProvisioningTemplateResponse) GetJSON403() *struct {
+	Details    interface{}                                             `json:"details,omitempty"`
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetAwsProvisioningTemplate403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAwsProvisioningTemplateResponse) GetJSON404() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetAwsProvisioningTemplate404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetAwsProvisioningTemplateResponse) GetJSON422() *struct {
+	Error      string                                                  `json:"error"`
+	Message    interface{}                                             `json:"message,omitempty"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetAwsProvisioningTemplate422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetAwsProvisioningTemplateResponse) GetJSON500() *struct {
+	Error      string                                                  `json:"error"`
+	Message    string                                                  `json:"message"`
+	ReqId      string                                                  `json:"reqId"`
+	StatusCode GetAwsProvisioningTemplate500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAwsProvisioningTemplateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAwsProvisioningTemplateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAwsProvisioningTemplateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAwsProvisioningTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DeleteAwsAppConnectionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -244344,16 +245797,19 @@ type DeleteKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -244413,16 +245869,19 @@ type DeleteKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -244533,26 +245992,31 @@ type GetKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -244604,26 +246068,31 @@ type GetKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -244726,26 +246195,31 @@ type UpdateKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -244797,26 +246271,31 @@ type UpdateKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -244919,26 +246398,31 @@ type AttachKubernetesAuthResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		IdentityKubernetesAuth struct {
-			AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-			AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-			AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-			AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-			AllowedAudience                   string              `json:"allowedAudience"`
-			AllowedNames                      string              `json:"allowedNames"`
-			AllowedNamespaces                 string              `json:"allowedNamespaces"`
-			CaCert                            string              `json:"caCert"`
-			CreatedAt                         time.Time           `json:"createdAt"`
-			GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-			GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+			AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+			AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+			AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+			AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+			AllowedAudience         string              `json:"allowedAudience"`
+			AllowedNames            string              `json:"allowedNames"`
+			AllowedNamespaces       string              `json:"allowedNamespaces"`
+			CaCert                  string              `json:"caCert"`
+			CreatedAt               time.Time           `json:"createdAt"`
+			GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+			GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+			// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+			HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 			Id                                openapi_types.UUID  `json:"id"`
 			IdentityId                        openapi_types.UUID  `json:"identityId"`
 			IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 			KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 			TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 			TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-			TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-			UpdatedAt                         time.Time           `json:"updatedAt"`
-			VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+			// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+			TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+			UpdatedAt            time.Time `json:"updatedAt"`
+			VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 		} `json:"identityKubernetesAuth"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -244990,26 +246474,31 @@ type AttachKubernetesAuthResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r AttachKubernetesAuthResponse) GetJSON200() *struct {
 	IdentityKubernetesAuth struct {
-		AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-		AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-		AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-		AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-		AllowedAudience                   string              `json:"allowedAudience"`
-		AllowedNames                      string              `json:"allowedNames"`
-		AllowedNamespaces                 string              `json:"allowedNamespaces"`
-		CaCert                            string              `json:"caCert"`
-		CreatedAt                         time.Time           `json:"createdAt"`
-		GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-		GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+		AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+		AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+		AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+		AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+		AllowedAudience         string              `json:"allowedAudience"`
+		AllowedNames            string              `json:"allowedNames"`
+		AllowedNamespaces       string              `json:"allowedNamespaces"`
+		CaCert                  string              `json:"caCert"`
+		CreatedAt               time.Time           `json:"createdAt"`
+		GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+		GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+		// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+		HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 		Id                                openapi_types.UUID  `json:"id"`
 		IdentityId                        openapi_types.UUID  `json:"identityId"`
 		IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 		KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 		TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 		TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-		TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-		UpdatedAt                         time.Time           `json:"updatedAt"`
-		VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+		// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+		TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+		UpdatedAt            time.Time `json:"updatedAt"`
+		VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 	} `json:"identityKubernetesAuth"`
 } {
 	return r.JSON200
@@ -256006,6 +257495,10 @@ type ListProjectSecretsDetailsResponse struct {
 			Version            *float32            `json:"version,omitempty"`
 		} `json:"folders,omitempty"`
 		HoneyTokens *[]struct {
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment struct {
@@ -256250,6 +257743,10 @@ func (r ListProjectSecretsDetailsResponse) GetJSON200() *struct {
 		Version            *float32            `json:"version,omitempty"`
 	} `json:"folders,omitempty"`
 	HoneyTokens *[]struct {
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment struct {
@@ -256547,6 +258044,10 @@ type ListProjectSecretsOverviewResponse struct {
 			Version            *float32            `json:"version,omitempty"`
 		} `json:"folders,omitempty"`
 		HoneyTokens *[]struct {
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment struct {
@@ -256798,6 +258299,10 @@ func (r ListProjectSecretsOverviewResponse) GetJSON200() *struct {
 		Version            *float32            `json:"version,omitempty"`
 	} `json:"folders,omitempty"`
 	HoneyTokens *[]struct {
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment struct {
@@ -265879,6 +267384,11 @@ type CreateHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt      time.Time          `json:"createdAt"`
 			Description    *string            `json:"description,omitempty"`
 			Id             openapi_types.UUID `json:"id"`
@@ -265943,6 +267453,11 @@ type CreateHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt      time.Time          `json:"createdAt"`
 		Description    *string            `json:"description,omitempty"`
 		Id             openapi_types.UUID `json:"id"`
@@ -266861,6 +268376,11 @@ type GetHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt   time.Time `json:"createdAt"`
 			Description *string   `json:"description,omitempty"`
 			Environment *struct {
@@ -266931,6 +268451,11 @@ type GetHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt   time.Time `json:"createdAt"`
 		Description *string   `json:"description,omitempty"`
 		Environment *struct {
@@ -267052,6 +268577,11 @@ type UpdateHoneyTokenResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		HoneyToken struct {
+			// Config Settings that depend on the honey token's type.
+			Config struct {
+				// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+				ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+			} `json:"config"`
 			CreatedAt      time.Time          `json:"createdAt"`
 			Description    *string            `json:"description,omitempty"`
 			Id             openapi_types.UUID `json:"id"`
@@ -267112,6 +268642,11 @@ type UpdateHoneyTokenResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateHoneyTokenResponse) GetJSON200() *struct {
 	HoneyToken struct {
+		// Config Settings that depend on the honey token's type.
+		Config struct {
+			// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+			ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+		} `json:"config"`
 		CreatedAt      time.Time          `json:"createdAt"`
 		Description    *string            `json:"description,omitempty"`
 		Id             openapi_types.UUID `json:"id"`
@@ -272043,9 +273578,8 @@ type InviteUsersToOrganizationResponse struct {
 			Link  string `json:"link"`
 		} `json:"completeInviteLinks,omitempty"`
 		GrantFailures *struct {
-			AgentVaultAccess bool     `json:"agentVaultAccess"`
-			PamAccess        bool     `json:"pamAccess"`
-			ProjectIds       []string `json:"projectIds"`
+			PamAccess  bool     `json:"pamAccess"`
+			ProjectIds []string `json:"projectIds"`
 		} `json:"grantFailures,omitempty"`
 		Message string `json:"message"`
 	}
@@ -272102,9 +273636,8 @@ func (r InviteUsersToOrganizationResponse) GetJSON200() *struct {
 		Link  string `json:"link"`
 	} `json:"completeInviteLinks,omitempty"`
 	GrantFailures *struct {
-		AgentVaultAccess bool     `json:"agentVaultAccess"`
-		PamAccess        bool     `json:"pamAccess"`
-		ProjectIds       []string `json:"projectIds"`
+		PamAccess  bool     `json:"pamAccess"`
+		ProjectIds []string `json:"projectIds"`
 	} `json:"grantFailures,omitempty"`
 	Message string `json:"message"`
 } {
@@ -287022,7 +288555,6 @@ type GetOrganizationByIdResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Organization struct {
-			AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 			AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 			AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 			AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -287108,7 +288640,6 @@ type GetOrganizationByIdResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r GetOrganizationByIdResponse) GetJSON200() *struct {
 	Organization struct {
-		AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 		AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 		AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 		AuthEnforced                          *bool               `json:"authEnforced,omitempty"`
@@ -360834,6 +362365,17 @@ func (c *ClientWithResponses) GetAwsAppConnectionByNameWithResponse(ctx context.
 	return ParseGetAwsAppConnectionByNameResponse(rsp)
 }
 
+// GetAwsProvisioningTemplateWithResponse performs a GET /api/v1/app-connections/aws/provisioning-template (the `GetAwsProvisioningTemplate` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetAwsProvisioningTemplateWithResponse(ctx context.Context, params *GetAwsProvisioningTemplateParams, reqEditors ...RequestEditorFn) (*GetAwsProvisioningTemplateResponse, error) {
+	rsp, err := c.GetAwsProvisioningTemplate(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAwsProvisioningTemplateResponse(rsp)
+}
+
 // DeleteAwsAppConnectionWithResponse performs a DELETE /api/v1/app-connections/aws/{connectionId} (the `DeleteAwsAppConnection` operationId) request.
 //
 // Delete the specified AWS Connection.
@@ -379173,6 +380715,108 @@ func ParseGetAwsAppConnectionByNameResponse(rsp *http.Response) (*GetAwsAppConne
 	return response, nil
 }
 
+// ParseGetAwsProvisioningTemplateResponse parses an HTTP response from a GetAwsProvisioningTemplateWithResponse call
+func ParseGetAwsProvisioningTemplateResponse(rsp *http.Response) (*GetAwsProvisioningTemplateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAwsProvisioningTemplateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ProvisioningTemplate *GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate `json:"provisioningTemplate"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetAwsProvisioningTemplate400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetAwsProvisioningTemplate401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                             `json:"details,omitempty"`
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetAwsProvisioningTemplate403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetAwsProvisioningTemplate404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    interface{}                                             `json:"message,omitempty"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetAwsProvisioningTemplate422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                  `json:"error"`
+			Message    string                                                  `json:"message"`
+			ReqId      string                                                  `json:"reqId"`
+			StatusCode GetAwsProvisioningTemplate500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseDeleteAwsAppConnectionResponse parses an HTTP response from a DeleteAwsAppConnectionWithResponse call
 func ParseDeleteAwsAppConnectionResponse(rsp *http.Response) (*DeleteAwsAppConnectionResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -386045,16 +387689,19 @@ func ParseDeleteKubernetesAuthResponse(rsp *http.Response) (*DeleteKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
@@ -386166,26 +387813,31 @@ func ParseGetKubernetesAuthResponse(rsp *http.Response) (*GetKubernetesAuthRespo
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -386289,26 +387941,31 @@ func ParseUpdateKubernetesAuthResponse(rsp *http.Response) (*UpdateKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -386412,26 +388069,31 @@ func ParseAttachKubernetesAuthResponse(rsp *http.Response) (*AttachKubernetesAut
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			IdentityKubernetesAuth struct {
-				AccessTokenMaxTTL                 *float32            `json:"accessTokenMaxTTL,omitempty"`
-				AccessTokenNumUsesLimit           *float32            `json:"accessTokenNumUsesLimit,omitempty"`
-				AccessTokenTTL                    *float32            `json:"accessTokenTTL,omitempty"`
-				AccessTokenTrustedIps             interface{}         `json:"accessTokenTrustedIps,omitempty"`
-				AllowedAudience                   string              `json:"allowedAudience"`
-				AllowedNames                      string              `json:"allowedNames"`
-				AllowedNamespaces                 string              `json:"allowedNamespaces"`
-				CaCert                            string              `json:"caCert"`
-				CreatedAt                         time.Time           `json:"createdAt"`
-				GatewayId                         *openapi_types.UUID `json:"gatewayId,omitempty"`
-				GatewayPoolId                     *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+				AccessTokenMaxTTL       *float32            `json:"accessTokenMaxTTL,omitempty"`
+				AccessTokenNumUsesLimit *float32            `json:"accessTokenNumUsesLimit,omitempty"`
+				AccessTokenTTL          *float32            `json:"accessTokenTTL,omitempty"`
+				AccessTokenTrustedIps   interface{}         `json:"accessTokenTrustedIps,omitempty"`
+				AllowedAudience         string              `json:"allowedAudience"`
+				AllowedNames            string              `json:"allowedNames"`
+				AllowedNamespaces       string              `json:"allowedNamespaces"`
+				CaCert                  string              `json:"caCert"`
+				CreatedAt               time.Time           `json:"createdAt"`
+				GatewayId               *openapi_types.UUID `json:"gatewayId,omitempty"`
+				GatewayPoolId           *openapi_types.UUID `json:"gatewayPoolId,omitempty"`
+
+				// HasTokenReviewerJwt Whether a token reviewer JWT is stored.
+				HasTokenReviewerJwt               *bool               `json:"hasTokenReviewerJwt,omitempty"`
 				Id                                openapi_types.UUID  `json:"id"`
 				IdentityId                        openapi_types.UUID  `json:"identityId"`
 				IsTokenReviewerJwtTemplateSourced *bool               `json:"isTokenReviewerJwtTemplateSourced,omitempty"`
 				KubernetesHost                    *string             `json:"kubernetesHost,omitempty"`
 				TemplateId                        *openapi_types.UUID `json:"templateId,omitempty"`
 				TokenReviewMode                   *string             `json:"tokenReviewMode,omitempty"`
-				TokenReviewerJwt                  *string             `json:"tokenReviewerJwt,omitempty"`
-				UpdatedAt                         time.Time           `json:"updatedAt"`
-				VerifyTlsCertificate              *bool               `json:"verifyTlsCertificate,omitempty"`
+
+				// TokenReviewerJwt Always empty. The token reviewer JWT is write-only; use hasTokenReviewerJwt to check whether one is stored.
+				TokenReviewerJwt     *string   `json:"tokenReviewerJwt,omitempty"`
+				UpdatedAt            time.Time `json:"updatedAt"`
+				VerifyTlsCertificate *bool     `json:"verifyTlsCertificate,omitempty"`
 			} `json:"identityKubernetesAuth"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -393616,6 +395278,10 @@ func ParseListProjectSecretsDetailsResponse(rsp *http.Response) (*ListProjectSec
 				Version            *float32            `json:"version,omitempty"`
 			} `json:"folders,omitempty"`
 			HoneyTokens *[]struct {
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy ListProjectSecretsDetails200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment struct {
@@ -393914,6 +395580,10 @@ func ParseListProjectSecretsOverviewResponse(rsp *http.Response) (*ListProjectSe
 				Version            *float32            `json:"version,omitempty"`
 			} `json:"folders,omitempty"`
 			HoneyTokens *[]struct {
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy ListProjectSecretsOverview200JSONResponseBodyHoneyTokensConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment struct {
@@ -399912,6 +401582,11 @@ func ParseCreateHoneyTokenResponse(rsp *http.Response) (*CreateHoneyTokenRespons
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy CreateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt      time.Time          `json:"createdAt"`
 				Description    *string            `json:"description,omitempty"`
 				Id             openapi_types.UUID `json:"id"`
@@ -400562,6 +402237,11 @@ func ParseGetHoneyTokenResponse(rsp *http.Response) (*GetHoneyTokenResponse, err
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy GetHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt   time.Time `json:"createdAt"`
 				Description *string   `json:"description,omitempty"`
 				Environment *struct {
@@ -400684,6 +402364,11 @@ func ParseUpdateHoneyTokenResponse(rsp *http.Response) (*UpdateHoneyTokenRespons
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			HoneyToken struct {
+				// Config Settings that depend on the honey token's type.
+				Config struct {
+					// ManagedBy Who manages the AWS account that holds the decoy credentials. `instance` uses the AWS account set up for this Infisical instance (Infisical's own account on Infisical Cloud) and needs no organization setup. `organization` uses the AWS account your organization connected in Organization Settings. Defaults to `organization` when creating.
+					ManagedBy UpdateHoneyToken200JSONResponseBodyHoneyTokenConfigManagedBy `json:"managedBy"`
+				} `json:"config"`
 				CreatedAt      time.Time          `json:"createdAt"`
 				Description    *string            `json:"description,omitempty"`
 				Id             openapi_types.UUID `json:"id"`
@@ -403950,9 +405635,8 @@ func ParseInviteUsersToOrganizationResponse(rsp *http.Response) (*InviteUsersToO
 				Link  string `json:"link"`
 			} `json:"completeInviteLinks,omitempty"`
 			GrantFailures *struct {
-				AgentVaultAccess bool     `json:"agentVaultAccess"`
-				PamAccess        bool     `json:"pamAccess"`
-				ProjectIds       []string `json:"projectIds"`
+				PamAccess  bool     `json:"pamAccess"`
+				ProjectIds []string `json:"projectIds"`
 			} `json:"grantFailures,omitempty"`
 			Message string `json:"message"`
 		}
@@ -413794,7 +415478,6 @@ func ParseGetOrganizationByIdResponse(rsp *http.Response) (*GetOrganizationByIdR
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Organization struct {
-				AgentVaultProjectId                   *string             `json:"agentVaultProjectId"`
 				AllowCrossProjectSecretSharing        *bool               `json:"allowCrossProjectSecretSharing,omitempty"`
 				AllowSecretSharingOutsideOrganization *bool               `json:"allowSecretSharingOutsideOrganization,omitempty"`
 				AuthEnforced                          *bool               `json:"authEnforced,omitempty"`

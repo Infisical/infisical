@@ -211,6 +211,7 @@ output-options:
     - getAwsAppConnection
     - getAwsAppConnectionByName
     - getAwsHoneyTokenConfig
+    - getAwsProvisioningTemplate
     - getAwsParameterStoreSecretSync
     - getAwsParameterStoreSecretSyncByName
     - getAwsSecretsManagerSecretSync
