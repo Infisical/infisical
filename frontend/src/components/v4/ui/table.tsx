@@ -202,6 +202,7 @@ function TableCell({
   pinOffset,
   className,
   style,
+  children,
   ref,
   ...props
 }: React.ComponentProps<"td"> & SelectionProps & PinProps) {
@@ -215,7 +216,9 @@ function TableCell({
       className={cn(styles.nativeTableCell, selection && styles.tableSelectionCell, className)}
       style={pinStyle(pinOffset, style)}
       {...props}
-    />
+    >
+      {pin === "viewport" ? <div className={styles.viewportContent}>{children}</div> : children}
+    </td>
   );
 }
 TableCell.displayName = "TableCell";
