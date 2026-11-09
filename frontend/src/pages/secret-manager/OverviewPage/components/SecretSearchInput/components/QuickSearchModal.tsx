@@ -518,7 +518,9 @@ const Content = ({
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>No secrets match these conditions.</EmptyTitle>
-            <EmptyDescription>Try removing a condition or switching ALL to ANY.</EmptyDescription>
+            <EmptyDescription>
+              {`Try removing a condition or switching ALL to ANY. Search checks up to ${metadataData?.searchLimit ?? 100} candidates per metadata query, so results may be incomplete.`}
+            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       );
@@ -820,7 +822,7 @@ const Content = ({
                   <div className="flex items-center gap-3">
                     <ResourceCount secretCount={metadataResultCount} />
                     <span className="text-xs text-accent">
-                      {`Search checks up to ${metadataData?.searchLimit ?? 100} candidates. Narrow your filters to see the rest.`}
+                      {`Checks up to ${metadataData?.searchLimit ?? 100} candidates per metadata query. Narrow your filters to see the rest.`}
                     </span>
                   </div>
                 }
