@@ -1,0 +1,21 @@
+{/*
+Bare <Step> elements for the part of Launch Stack that's the same at organization and project level,
+so integrations/app-connections/aws.mdx can place them inside each view's <Steps>. The labels match
+AwsLaunchStack.tsx and AwsConnectionForm.tsx in the frontend.
+*/}
+
+<Step>
+    Set **Method** to **Assume Role (Recommended)**. Under **Use cases**, select the integrations you'll use the connection with. If you opened the form from an integration, Infisical already selects the use case for that integration.
+</Step>
+<Step>
+    Leave **Partition** as **AWS Commercial** and choose the **Stack region** where AWS creates the stack. Launch Stack doesn't support the other partitions. If you use one of them, create the role with [Manual role creation](#manual-role-creation).
+</Step>
+<Step>
+    Select **Launch Stack in AWS**. The AWS CloudFormation console opens in a new tab with the stack filled in. Enter the values the stack requests for the use cases you selected, such as a bucket name or hosted zone ID. Then, acknowledge that CloudFormation creates IAM resources, and select **Create stack**.
+</Step>
+<Step>
+    When the stack status is `CREATE_COMPLETE`, open the stack's **Outputs** tab and copy the `RoleArn` value.
+</Step>
+<Step>
+    In Infisical, paste the value into **Role ARN**, then select **Connect to AWS**.
+</Step>
