@@ -111,7 +111,7 @@ export const SecretSyncSourceFolderTree = ({
               <Button
                 variant="ghost"
                 size="xs"
-                className="ml-auto text-muted"
+                className="ml-auto"
                 onClick={() => setIsReviewOpen((prev) => !prev)}
                 aria-expanded={isReviewOpen}
               >
