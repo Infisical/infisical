@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "shared-tooltips",
+    title: "One tooltip per table",
+    description:
+      "Tooltips inside a table share a single instance, so large tables mount faster with the same hover and keyboard behavior.",
+    date: "2026-11-07",
+    commit: "9f6084dc3e",
+    page: "tooltip"
+  },
+  {
     id: "list-whole-rows",
     title: "Lists end on a whole row",
     description:
@@ -210,15 +219,6 @@ export const recentChanges: {
       "Navigation, pagination, sheet rows, context menus, facts density, inline actions, toolbars, bulk bars and tables in cards each have one rule.",
     date: "2026-11-07",
     commit: "c2b9967476",
-    page: "table"
-  },
-  {
-    id: "row-ring-width",
-    title: "Row rings keep column widths",
-    description:
-      "A focused table row no longer narrows its columns, and the error details panel drops its repeated label.",
-    date: "2026-11-07",
-    commit: "a3f075ef64",
     page: "table"
   }
 ];
