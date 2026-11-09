@@ -16,7 +16,7 @@ import {
 } from "./dropdown-menu";
 import { Icon, type IconName } from "./icon";
 import { Skeleton } from "./skeleton";
-import { Tooltip } from "./tooltip";
+import { Tooltip, TooltipScope } from "./tooltip";
 
 import styles from "./data.module.css";
 
@@ -24,6 +24,7 @@ function Table({
   className,
   containerClassName,
   containerRef,
+  children,
   ref,
   ...props
 }: React.ComponentProps<"table"> & {
@@ -44,7 +45,9 @@ function Table({
         data-slot="table"
         className={cn("w-full caption-bottom", styles.nativeTable, className)}
         {...props}
-      />
+      >
+        <TooltipScope>{children}</TooltipScope>
+      </table>
     </div>
   );
 }
@@ -149,6 +152,18 @@ function TableRow({
 }
 TableRow.displayName = "TableRow";
 
+type PinStyle = React.CSSProperties & { "--v4-pin-offset"?: string };
+
+type PinProps = {
+  /** start sticks the cell to the inline start while the table scrolls sideways; viewport keeps a full-width cell's content inside the visible width. */
+  pin?: "start" | "viewport";
+  /** Inline-start offset of a start-pinned cell, as a CSS length: the width of the pinned columns before it. A cell after a pinned selection cell gets size-row without it. */
+  pinOffset?: string;
+};
+
+const pinStyle = (pinOffset: string | undefined, style: React.CSSProperties | undefined) =>
+  pinOffset === undefined ? style : ({ "--v4-pin-offset": pinOffset, ...style } as PinStyle);
+
 type SelectionProps = {
   /** Draws the selection column: size-row wide, a centered Checkbox and a persistent line-soft divider on its right. */
   selection?: boolean;
@@ -159,16 +174,21 @@ type SelectionProps = {
 function TableHead({
   selection,
   divider = true,
+  pin,
+  pinOffset,
   className,
+  style,
   ref,
   ...props
-}: React.ComponentProps<"th"> & SelectionProps) {
+}: React.ComponentProps<"th"> & SelectionProps & PinProps) {
   return (
     <th
       ref={ref}
       data-slot={selection ? "table-selection" : "table-head"}
       data-divider={selection && !divider ? "false" : undefined}
+      data-pin={pin}
       className={cn(styles.nativeTableHead, selection && styles.tableSelectionCell, className)}
+      style={pinStyle(pinOffset, style)}
       {...props}
     />
   );
@@ -178,17 +198,22 @@ TableHead.displayName = "TableHead";
 function TableCell({
   selection,
   divider = true,
+  pin,
+  pinOffset,
   className,
+  style,
   ref,
   ...props
-}: React.ComponentProps<"td"> & SelectionProps) {
+}: React.ComponentProps<"td"> & SelectionProps & PinProps) {
   return (
     <td
       ref={ref}
       data-slot={selection ? "table-selection" : "table-cell"}
       data-divider={selection && !divider ? "false" : undefined}
       data-row-interactive={selection || undefined}
+      data-pin={pin}
       className={cn(styles.nativeTableCell, selection && styles.tableSelectionCell, className)}
+      style={pinStyle(pinOffset, style)}
       {...props}
     />
   );
@@ -283,7 +308,7 @@ export type TableLoadingColumn = {
   primary?: boolean;
   /** The column holds row actions: one glyph-sized bar in the actions tail. */
   actions?: boolean;
-  pin?: boolean;
+  pin?: boolean | "start";
   maxWidth?: React.CSSProperties["maxWidth"];
   style?: React.CSSProperties;
 };
@@ -307,10 +332,11 @@ function TableLoadingRows({
 }) {
   const cells: readonly TableLoadingColumn[] =
     typeof columns === "number" ? Array.from({ length: columns }, () => ({})) : columns;
+  const leading = cells.some((column) => column.pin === "start");
   return Array.from({ length: Math.max(1, Math.floor(rows)) }, (_, index) => (
     <TableRow key={`loading-${index}`} aria-hidden={index > 0 || !label || undefined} data-loading>
       {selectable && (
-        <TableCell selection>
+        <TableCell selection pin={leading ? "start" : undefined}>
           <div className={styles.tableSelection}>
             <Skeleton width="var(--v4-size-icon)" height="var(--v4-size-icon)" />
           </div>

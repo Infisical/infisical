@@ -917,6 +917,7 @@ button.rowTitle::after {
 /* A table row draws the same ring from its cells: a box on the tr itself becomes an extra column in table layout. Zero specificity keeps pinned cells sticky. */
 :where(.nativeTableRow[data-focus-ring]) > :where(td, th) {
   position: relative;
+  isolation: isolate;
 }
 .nativeTableRow[data-focus-ring] > :is(td, th)::after {
   content: "";
@@ -1050,7 +1051,7 @@ tbody > .nativeTableRow[data-loading] {
 .tableScroll thead {
   position: sticky;
   top: 0;
-  z-index: 4;
+  z-index: 5;
   background: var(--v4-tint);
 }
 .tableShell[data-embedded] thead,
@@ -1121,7 +1122,7 @@ tbody > .nativeTableRow[data-loading] {
     inset calc(-1 * var(--v4-size-control-border)) 0 0 var(--v4-line-soft),
     var(--v4-frame-pad) 0 0 var(--v4-tint);
 }
-.tableScroll th[data-pin="true"] {
+.tableScroll th:is([data-pin="true"], [data-pin="start"]) {
   background: var(--v4-tint);
 }
 .tableSort {
@@ -1312,7 +1313,7 @@ tbody > .nativeTableRow[data-loading] {
         :has(+ .nativeTableRow [data-focused])
       )
   )
-  > td:not(:has(> *)),
+  > td:not(:has(> *), [data-pin], .tableActions),
 :where(
     tbody:has([data-focused])
       > .nativeTableRow:not(
@@ -1399,9 +1400,57 @@ td.tableActions {
   background-color: var(--v4-tint);
 }
 td.tableActions,
-.tableScroll td[data-pin="true"] {
+.tableScroll td[data-pin="true"],
+:is(td, th)[data-pin="start"] {
   background-color: var(--v4-table-row-ground);
   background-image: var(--v4-table-row-layers);
+}
+/* Pinned cells stack over scrolled cells, and pinned header cells over pinned body cells, inside the table's 4 to 6 range. */
+td:is([data-pin="true"], [data-pin="start"], .tableActions) {
+  z-index: 4;
+}
+th[data-pin="start"] {
+  z-index: 6;
+}
+:is(td, th)[data-pin="start"] {
+  position: sticky;
+  inset-inline-start: var(--v4-pin-offset, 0px);
+}
+.tableSelectionCell[data-pin="start"] {
+  min-width: var(--v4-size-row);
+}
+.tableSelectionCell[data-pin="start"] ~ [data-pin="start"] {
+  --v4-pin-offset: var(--v4-size-row);
+}
+/* The last leading pinned cell draws its edge only once the table has scrolled sideways, from the scroll-edge watcher's data-scroll-start-x. */
+:is([data-scroll-start-x] > table, [data-scroll-start-x] > .nativeTableContainer > table)
+  > *
+  > tr
+  > [data-pin="start"]:not(.tableSelectionCell, :has(~ [data-pin="start"])) {
+  box-shadow: inset calc(-1 * var(--v4-size-control-border)) 0 0 var(--v4-line-soft);
+}
+/* Leading pinned cells are the start edge, so the start fade would only wash them out. */
+:is(.tableScroll, .nativeTableContainer)[data-scroll-fade][data-scroll-start-x]:has(
+    > table > * > tr > [data-pin="start"],
+    > .nativeTableContainer > table > * > tr > [data-pin="start"]
+  ) {
+  --v4-fade-x-start: 0px;
+}
+/* A full-width cell keeps its content in the scroll container's visible width, sized from the container, so a nested table never scrolls out of view. */
+:is(.tableScroll, .nativeTableContainer):has(
+  > table > tbody > tr > [data-pin="viewport"],
+  > .nativeTableContainer > table > tbody > tr > [data-pin="viewport"]
+) {
+  container-type: inline-size;
+}
+td[data-pin="viewport"] {
+  padding: 0;
+}
+td[data-pin="viewport"] > * {
+  position: sticky;
+  inset-inline-start: 0;
+  box-sizing: border-box;
+  width: 100cqi;
 }
 th.tableSelectionCell,
 td.tableSelectionCell {

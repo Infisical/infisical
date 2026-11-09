@@ -16,13 +16,15 @@ export const floatingActionBarDefinition = {
   behavior: [
     "The bar shows while count is above zero and keeps the last count while it leaves. It enters and leaves on the motion springs; reduced motion jumps.",
     "Select all appears while fewer than total are selected.",
+    "An action with disabledReason is blocked the way Button disabledReason blocks it: it stays visible and focusable with aria-disabled, click and Enter do nothing, and the reason shows in the pass-through tooltip on hover and keyboard focus. In the More menu the item is disabled and the reason is its description, as RowActions does. Use disabled alone only when the reason is already on screen.",
     "moreActions always sit in the More menu. Under 400px wide, Select all hides and the noun after the count moves to screen readers only.",
     "The bar is fixed to the window: centered horizontally, space-action-bar-offset (24px) above the bottom edge and size-action-bar (48px) tall. It may cross the sidebar. It portals into the V4Scope overlay container, so it takes the scope's theme, and sits at z-index 40: above page content and sticky table headers, below dialogs, sheets, popovers, menus and toasts on the z-50 overlay layer. Inside a framed V4Scope (portalContainer) it is fixed to that frame instead.",
     "While it shows, the page's scroll area (AppInset) gains bottom padding of size-action-bar plus space-action-bar-offset, so the last rows and the pagination can scroll clear of the bar. A short page that already fits becomes scrollable by that much."
   ],
   accessibility: [
     "The bar is a named toolbar: Left and Right move between its buttons, Home and End jump, and Escape clears the selection.",
-    "The count is a status. When the bar leaves with focus inside it, focus returns to where it came from."
+    "The count is a status. When the bar leaves with focus inside it, focus returns to where it came from.",
+    "A blocked action keeps its tab stop and arrow-key stop in the toolbar and carries its reason as aria-description, so screen readers announce why it is unavailable."
   ],
   limitations: [
     "Labeled actions do not yet move into More by measured width; keep two or three labeled actions and put the rest in moreActions."
@@ -33,6 +35,12 @@ export const floatingActionBarDefinition = {
       title: "Bulk actions over a list",
       module: "./examples/floating-action-bar/default.tsx",
       states: ["default", "controlled", "keyboard"]
+    },
+    {
+      id: "disabled-reason",
+      title: "Action blocked with a reason",
+      module: "./examples/floating-action-bar/disabled-reason.tsx",
+      states: ["disabled", "keyboard"]
     }
   ],
   coverage: [
