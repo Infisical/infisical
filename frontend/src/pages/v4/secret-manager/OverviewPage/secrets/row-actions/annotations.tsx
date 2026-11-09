@@ -196,7 +196,11 @@ export function MetadataForm({
           </SmallText>
         )}
         {entries.map((entry, index) => (
-          <div key={entry.id} className={styles.metadataRow}>
+          <div
+            key={entry.id}
+            className={styles.metadataRow}
+            data-invalid={errors.includes(entry.id) || undefined}
+          >
             <div className={styles.grow}>
               {index === 0 && <span className={styles.columnLabel}>Key</span>}
               <Input

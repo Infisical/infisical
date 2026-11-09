@@ -591,7 +591,12 @@ function InitialSyncFields() {
                 const { title, description } = behaviorCopy(key, destinationName);
                 const id = `initial-sync-${key}`;
                 return (
-                  <label key={key} htmlFor={id} className={styles.choice}>
+                  <label
+                    key={key}
+                    htmlFor={id}
+                    className={styles.choice}
+                    data-checked={field.value === key || undefined}
+                  >
                     <span className={styles.choiceText}>
                       <span className={styles.choiceTitle}>{title}</span>
                       <span className={styles.choiceDescription}>{description}</span>

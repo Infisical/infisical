@@ -196,6 +196,7 @@ function ImportSecretsContent({
   const initialParsedSecrets = request.parsed;
   const [parsedSecrets, setParsedSecrets] = useState<TParsedEnv | null>(null);
   const [importMethod, setImportMethod] = useState(request.step);
+  const [inputFocusVisible, setInputFocusVisible] = useState(false);
   const [pasteValue, setPasteValue] = useState("");
   const [pasteError, setPasteError] = useState<string>();
   const [isDragActive, setIsDragActive] = useState(false);
@@ -645,6 +646,7 @@ function ImportSecretsContent({
             <div
               className={styles.dropzone}
               data-dragging={isDragActive || undefined}
+              data-focus-visible={inputFocusVisible || undefined}
               onDragEnter={(event) => {
                 event.preventDefault();
                 setIsDragActive(true);
@@ -682,6 +684,10 @@ function ImportSecretsContent({
                 type="file"
                 aria-label="Choose file to upload"
                 className={styles.dropzoneInput}
+                onFocus={(event) =>
+                  setInputFocusVisible(event.currentTarget.matches(":focus-visible"))
+                }
+                onBlur={() => setInputFocusVisible(false)}
                 accept=".txt,.env,.yml,.yaml,.json,.csv,.pfx,.pem,.crt"
                 onChange={(event) => {
                   const { currentTarget } = event;
