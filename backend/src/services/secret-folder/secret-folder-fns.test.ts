@@ -2,17 +2,24 @@ import { Knex } from "knex";
 import { vi } from "vitest";
 
 import { TSecretFolders } from "@app/db/schemas";
+import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { ActorType } from "../auth/auth-type";
+import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import {
   assertFolderRenameAllowed,
   buildChildrenMap,
   buildFolderIdMap,
   buildFolderPath,
   checkFolderHasRbacPolicies,
+  findFoldersWithContent,
+  findPolicyProtectedFolder,
   resolveClosestFolder,
-  resolvePathToFolder
+  resolvePathToFolder,
+  TFolderContent
 } from "./secret-folder-fns";
 
 const makeFolder = (id: string, name: string, parentId: string | null, envId: string = "env-1"): TSecretFolders => ({
@@ -385,29 +392,214 @@ describe("checkFolderHasRbacPolicies", () => {
   });
 });
 
+describe("findFoldersWithContent", () => {
+  const tx = {} as Knex;
+
+  const makeDeps = (secretFolderIds: string[], importFolderIds: string[]) => {
+    const findByFolderIds = vi.fn().mockResolvedValue(secretFolderIds.map((folderId) => ({ folderId })));
+    const findFolderIdsWithImports = vi.fn().mockResolvedValue(importFolderIds);
+    return {
+      deps: {
+        secretV2BridgeDAL: { findByFolderIds } as unknown as Pick<TSecretV2BridgeDALFactory, "findByFolderIds">,
+        secretImportDAL: { findFolderIdsWithImports } as unknown as Pick<
+          TSecretImportDALFactory,
+          "findFolderIdsWithImports"
+        >
+      },
+      findByFolderIds,
+      findFolderIdsWithImports
+    };
+  };
+
+  test("collects the folders holding secrets and the folders holding imports, in the transaction", async () => {
+    const { deps, findByFolderIds, findFolderIdsWithImports } = makeDeps(["a-id", "a-id"], ["b-id"]);
+
+    const content = await findFoldersWithContent(["a-id", "b-id", "c-id"], deps, tx);
+
+    expect(content.secretFolderIds).toEqual(new Set(["a-id"]));
+    expect(content.importFolderIds).toEqual(new Set(["b-id"]));
+    expect(findByFolderIds).toHaveBeenCalledWith({ folderIds: ["a-id", "b-id", "c-id"], tx });
+    expect(findFolderIdsWithImports).toHaveBeenCalledWith(["a-id", "b-id", "c-id"], tx);
+  });
+
+  test("returns empty sets without querying for no folders", async () => {
+    const { deps, findByFolderIds, findFolderIdsWithImports } = makeDeps(["a-id"], ["b-id"]);
+
+    const content = await findFoldersWithContent([], deps, tx);
+
+    expect(content.secretFolderIds.size).toBe(0);
+    expect(content.importFolderIds.size).toBe(0);
+    expect(findByFolderIds).not.toHaveBeenCalled();
+    expect(findFolderIdsWithImports).not.toHaveBeenCalled();
+  });
+});
+
+describe("findPolicyProtectedFolder", () => {
+  const tx = {} as Knex;
+  const folders = [
+    { id: "app-id", path: "/app" },
+    { id: "api-id", path: "/app/api" },
+    { id: "web-id", path: "/app/web" }
+  ];
+  const guard = { name: "prod-guard", bypassForMachineIdentities: false };
+  const identityBypass = { name: "bot-guard", bypassForMachineIdentities: true };
+
+  const makeContent = ({ secrets = [], imports = [] }: { secrets?: string[]; imports?: string[] }): TFolderContent => ({
+    secretFolderIds: new Set(secrets),
+    importFolderIds: new Set(imports)
+  });
+
+  const makeService = (policies: [string, { name: string; bypassForMachineIdentities: boolean }][]) => {
+    const getSecretApprovalPolicyByPaths = vi.fn().mockResolvedValue(new Map(policies));
+    return {
+      deps: {
+        secretApprovalPolicyService: { getSecretApprovalPolicyByPaths } as unknown as Pick<
+          TSecretApprovalPolicyServiceFactory,
+          "getSecretApprovalPolicyByPaths"
+        >
+      },
+      getSecretApprovalPolicyByPaths
+    };
+  };
+
+  const find = (
+    content: TFolderContent,
+    deps: ReturnType<typeof makeService>["deps"],
+    actor: ActorType = ActorType.USER
+  ) => findPolicyProtectedFolder({ folders, content, projectId: "project-1", environment: "dev", actor }, deps, tx);
+
+  test("returns null without a policy lookup when no folder holds secrets or imports", async () => {
+    const { deps, getSecretApprovalPolicyByPaths } = makeService([["/app", guard]]);
+
+    await expect(find(makeContent({}), deps)).resolves.toBeNull();
+    expect(getSecretApprovalPolicyByPaths).not.toHaveBeenCalled();
+  });
+
+  test("looks up only the folders with content, once, in the transaction", async () => {
+    const { deps, getSecretApprovalPolicyByPaths } = makeService([]);
+
+    await expect(find(makeContent({ secrets: ["web-id"], imports: ["api-id"] }), deps)).resolves.toBeNull();
+    expect(getSecretApprovalPolicyByPaths).toHaveBeenCalledTimes(1);
+    expect(getSecretApprovalPolicyByPaths).toHaveBeenCalledWith("project-1", "dev", ["/app/api", "/app/web"], tx);
+  });
+
+  test("reports the first protected folder in input order", async () => {
+    const { deps } = makeService([
+      ["/app/api", guard],
+      ["/app/web", guard]
+    ]);
+
+    await expect(find(makeContent({ secrets: ["web-id", "api-id"] }), deps)).resolves.toEqual({
+      path: "/app/api",
+      policyName: "prod-guard",
+      protects: "secret"
+    });
+  });
+
+  test("reports a secret import when the folder holds only imports", async () => {
+    const { deps } = makeService([["/app/api", guard]]);
+
+    await expect(find(makeContent({ imports: ["api-id"] }), deps)).resolves.toEqual({
+      path: "/app/api",
+      policyName: "prod-guard",
+      protects: "secret_import"
+    });
+  });
+
+  test("reports a secret when the folder holds both secrets and imports", async () => {
+    const { deps } = makeService([["/app/api", guard]]);
+
+    await expect(find(makeContent({ secrets: ["api-id"], imports: ["api-id"] }), deps)).resolves.toMatchObject({
+      protects: "secret"
+    });
+  });
+
+  test("lets a machine identity through a policy that bypasses identities, but not a user", async () => {
+    const { deps } = makeService([["/app", identityBypass]]);
+    const content = makeContent({ secrets: ["app-id"] });
+
+    await expect(find(content, deps, ActorType.IDENTITY)).resolves.toBeNull();
+    await expect(find(content, deps, ActorType.USER)).resolves.toMatchObject({ policyName: "bot-guard" });
+  });
+
+  test("skips a bypassed folder and reports the next one the policy applies to", async () => {
+    const { deps } = makeService([
+      ["/app", identityBypass],
+      ["/app/api", guard]
+    ]);
+
+    await expect(find(makeContent({ secrets: ["app-id", "api-id"] }), deps, ActorType.IDENTITY)).resolves.toMatchObject(
+      { path: "/app/api", policyName: "prod-guard" }
+    );
+  });
+});
+
 describe("assertFolderRenameAllowed", () => {
-  const covered = {
-    blockingType: "secret_approval_policy" as const,
-    blockingPath: "/app/api",
-    blockingAbsPath: "/app/api",
-    policyName: "prod-guard"
+  const thrown = (fn: () => void) => {
+    try {
+      fn();
+    } catch (error) {
+      return error;
+    }
+    throw new Error("expected the rename to be refused");
   };
 
   test("refuses a rename when a change policy covers a secret in the tree", () => {
-    expect(() => assertFolderRenameAllowed(covered)).toThrow(BadRequestError);
+    const error = thrown(() =>
+      assertFolderRenameAllowed({ path: "/app/api", policyName: "prod-guard", protects: "secret" }, "source")
+    );
 
-    try {
-      assertFolderRenameAllowed(covered);
-    } catch (error) {
-      expect(error).toMatchObject({
-        name: "RenameFolderProtectedByPolicy",
-        message:
-          'You cannot rename the selected folder because it contains one or more secrets that are protected by the change policy "prod-guard" at folder path "/app/api". Please remove the secrets at folder path "/app/api" and try again.'
-      });
-    }
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toMatchObject({
+      name: "RenameFolderProtectedByPolicy",
+      message:
+        'You cannot rename the selected folder because it contains one or more secrets that are protected by the change policy "prod-guard" at folder path "/app/api". Please remove the secrets at folder path "/app/api" and try again.'
+    });
   });
 
-  test("allows a rename when no secret is covered", () => {
-    expect(assertFolderRenameAllowed(null)).toBeUndefined();
+  test("refuses a rename when a change policy covers a secret import in the tree", () => {
+    const error = thrown(() =>
+      assertFolderRenameAllowed({ path: "/app/api", policyName: "prod-guard", protects: "secret_import" }, "source")
+    );
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toMatchObject({
+      name: "RenameFolderImportProtectedByPolicy",
+      message:
+        'You cannot rename the selected folder because it contains one or more secret imports that are protected by the change policy "prod-guard" at folder path "/app/api". Please remove the secret imports at folder path "/app/api" and try again.'
+    });
+  });
+
+  test("refuses a rename that would move secrets under a protected path", () => {
+    const error = thrown(() =>
+      assertFolderRenameAllowed({ path: "/prod", policyName: "prod-guard", protects: "secret" }, "destination")
+    );
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toMatchObject({
+      name: "RenameFolderIntoProtectedPath",
+      message:
+        'You cannot rename the selected folder because its secrets would move to folder path "/prod", which is protected by the change policy "prod-guard". Choose a different name and try again.'
+    });
+  });
+
+  test("refuses a rename that would move secret imports under a protected path", () => {
+    const error = thrown(() =>
+      assertFolderRenameAllowed(
+        { path: "/prod/api", policyName: "prod-guard", protects: "secret_import" },
+        "destination"
+      )
+    );
+
+    expect(error).toMatchObject({
+      name: "RenameFolderIntoProtectedPath",
+      message:
+        'You cannot rename the selected folder because its secret imports would move to folder path "/prod/api", which is protected by the change policy "prod-guard". Choose a different name and try again.'
+    });
+  });
+
+  test("allows a rename when nothing is protected on either side", () => {
+    expect(assertFolderRenameAllowed(null, "source")).toBeUndefined();
+    expect(assertFolderRenameAllowed(null, "destination")).toBeUndefined();
   });
 });

@@ -192,4 +192,102 @@ func TestFolder_Update(t *testing.T) {
 		require.ElementsMatch(t, []string{"app", "web"}, folderNames(t, proj, "dev", "/"))
 		require.Equal(t, []string{"API_KEY"}, secretKeys(t, proj, "dev", "/app"))
 	})
+
+	t.Run("should refuse a rename when a policy protects a secret import in a subfolder and keep the folder", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
+		secretmanager.CreateFolder(t, proj, "dev", "/app/api")
+		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "dev", Path: "/"}, secretmanager.IntoPath("/app/api"))
+		guard := secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/app/api"}, reviewer)
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretFolderWithResponse(t.Context(), folderID.String(), api.UpdateSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/"), Name: "service",
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			fmt.Sprintf(`You cannot rename the selected folder because it contains one or more secret imports that are protected by the change policy %q at folder path "/app/api". Please remove the secret imports at folder path "/app/api" and try again.`, guard),
+			res.JSON400.Message)
+		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
+		imports, err := tn.Admin.API.ListSecretImportsWithResponse(t.Context(), &api.ListSecretImportsParams{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/app/api"),
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, imports.JSON200, "listing imports of dev:/app/api returned %d: %s", imports.StatusCode(), imports.Body)
+		require.Len(t, imports.JSON200.SecretImports, 1)
+	})
+
+	t.Run("should refuse a rename that would move secrets under a protected path and keep the folder", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/staging"))
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "value", secretmanager.WithPath("/staging"))
+		guard := secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/prod"}, reviewer)
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretFolderWithResponse(t.Context(), folderID.String(), api.UpdateSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/"), Name: "prod",
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			fmt.Sprintf(`You cannot rename the selected folder because its secrets would move to folder path "/prod", which is protected by the change policy %q. Choose a different name and try again.`, guard),
+			res.JSON400.Message)
+		require.Equal(t, []string{"staging"}, folderNames(t, proj, "dev", "/"))
+		require.Equal(t, []string{"API_KEY"}, secretKeys(t, proj, "dev", "/staging"))
+	})
+
+	t.Run("should let a machine identity rename a protected folder when the policy bypasses identities", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		identity := proj.NewMachineIdentity(t, fixture.WithRoles("member"))
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "value", secretmanager.WithPath("/app"))
+		var approver api.CreateSecretApprovalPolicyJSONBody_Approvers_Item
+		require.NoError(t, approver.FromCreateSecretApprovalPolicyJSONBodyApprovers1(api.CreateSecretApprovalPolicyJSONBodyApprovers1{
+			Type: api.CreateSecretApprovalPolicyJSONBodyApprovers1TypeUser,
+			Id:   new(reviewer.ID.String()),
+		}))
+		policy, err := tn.Admin.API.CreateSecretApprovalPolicyWithResponse(t.Context(), api.CreateSecretApprovalPolicyJSONRequestBody{
+			ProjectId:                  proj.ID,
+			Name:                       new("identity-bypass"),
+			Environment:                new("dev"),
+			SecretPath:                 "/app",
+			Approvals:                  new(float32(1)),
+			Approvers:                  []api.CreateSecretApprovalPolicyJSONBody_Approvers_Item{approver},
+			BypassForMachineIdentities: new(true),
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, policy.JSON200, "creating the policy returned %d: %s", policy.StatusCode(), policy.Body)
+
+		// Action
+		res, err := identity.API.UpdateSecretFolderWithResponse(t.Context(), folderID.String(), api.UpdateSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/"), Name: "service",
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "renaming returned %d: %s", res.StatusCode(), res.Body)
+		require.Equal(t, "/service", res.JSON200.Folder.Path)
+		require.Equal(t, []string{"service"}, folderNames(t, proj, "dev", "/"))
+		require.Equal(t, []string{"API_KEY"}, secretKeys(t, proj, "dev", "/service"))
+	})
 }

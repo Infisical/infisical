@@ -10,7 +10,6 @@ import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
@@ -27,10 +26,13 @@ import {
   assertFolderMoveAllowed,
   assertFolderRenameAllowed,
   buildFolderPath,
+  buildToAbsPath,
   canActorReadBlock,
   checkFolderHasRbacPolicies,
   checkFolderMoveBlock,
-  checkFolderPolicyBlock,
+  checkFolderMovePolicyBlock,
+  findFoldersWithContent,
+  findPolicyProtectedFolder,
   TFolderMoveAccessScope
 } from "@app/services/secret-folder/secret-folder-fns";
 import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
@@ -119,7 +121,7 @@ type TSecretFolderServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findImportByFolderIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findFolderIdsWithImports" | "findImportByFolderIds">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   reminderService: Pick<TReminderServiceFactory, "moveReminders" | "copyReminders">;
@@ -348,41 +350,48 @@ export const secretFolderServiceFactory = ({
     }
   };
 
-  const assertRenameLeavesNoProtectedSecrets = async ({
+  const $assertFolderRenameAllowed = async ({
     projectId,
     environment,
     folderId,
+    oldPath,
+    newPath,
+    actor,
     tx
   }: {
     projectId: string;
     environment: string;
     folderId: string;
+    oldPath: string;
+    newPath: string;
+    actor: ActorType;
     tx: Knex;
   }) => {
-    const [targetFolder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
-    if (!targetFolder) {
-      throw new NotFoundError({ message: `Target folder path not found` });
-    }
-
     const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folderId] }, tx);
-    const secrets = await secretV2BridgeDAL.findByFolderIds({
-      folderIds: subtree.map((candidate) => candidate.id),
+    const content = await findFoldersWithContent(
+      subtree.map((folder) => folder.id),
+      { secretV2BridgeDAL, secretImportDAL },
       tx
-    });
-    if (!secrets.length) return;
+    );
 
-    const folderIdsWithSecrets = new Set(secrets.map((secret) => secret.folderId));
-    const block = await checkFolderPolicyBlock(
-      {
-        subtree: subtree.filter((candidate) => folderIdsWithSecrets.has(candidate.id)),
-        projectId,
-        environment,
-        rootFolderPath: targetFolder.path
-      },
+    const rootAt = (rootFolderPath: string) => {
+      const toAbsPath = buildToAbsPath(rootFolderPath);
+      return subtree.map((folder) => ({ id: folder.id, path: toAbsPath(folder.path) }));
+    };
+
+    const source = await findPolicyProtectedFolder(
+      { folders: rootAt(oldPath), content, projectId, environment, actor },
       { secretApprovalPolicyService },
       tx
     );
-    assertFolderRenameAllowed(block);
+    assertFolderRenameAllowed(source, "source");
+
+    const destination = await findPolicyProtectedFolder(
+      { folders: rootAt(newPath), content, projectId, environment, actor },
+      { secretApprovalPolicyService },
+      tx
+    );
+    assertFolderRenameAllowed(destination, "destination");
   };
 
   const updateManyFolders = async ({
@@ -477,10 +486,13 @@ export const secretFolderServiceFactory = ({
               });
             }
 
-            await assertRenameLeavesNoProtectedSecrets({
+            await $assertFolderRenameAllowed({
               projectId: projectId as string,
               environment,
               folderId: folder.id,
+              oldPath: path.posix.join(parentFolder.path, folder.name),
+              newPath: path.posix.join(parentFolder.path, name),
+              actor,
               tx
             });
           }
@@ -629,15 +641,6 @@ export const secretFolderServiceFactory = ({
     }
 
     const { newFolder, newFolderPath, oldFolderPath } = await folderDAL.transaction(async (tx) => {
-      if (rename) {
-        await assertRenameLeavesNoProtectedSecrets({
-          projectId,
-          environment,
-          folderId: folder.id,
-          tx
-        });
-      }
-
       // Read the old folder path BEFORE the update to capture the original name in the path.
       // This must be done inside the transaction to ensure read-after-write consistency
       // when using read replicas, but before the UPDATE to get the old state.
@@ -645,6 +648,18 @@ export const secretFolderServiceFactory = ({
       if (!oldFolderWithPath) {
         throw new NotFoundError({
           message: `Failed to retrieve path for folder with ID '${folder.id}'`
+        });
+      }
+
+      if (rename) {
+        await $assertFolderRenameAllowed({
+          projectId,
+          environment,
+          folderId: folder.id,
+          oldPath: oldFolderWithPath.path,
+          newPath: path.posix.join(parentFolder.path, name),
+          actor,
+          tx
         });
       }
 
@@ -732,7 +747,7 @@ export const secretFolderServiceFactory = ({
     parentId: string;
     idOrName: string;
     actor: ActorType;
-    tx?: Knex;
+    tx: Knex;
   }) => {
     let targetFolder = await folderDAL
       .findOne(
@@ -819,43 +834,30 @@ export const secretFolderServiceFactory = ({
       });
     }
 
-    const folderIds = folderPolicyPaths.map((p) => p.id);
-    // get secrets under the given folders
-    const secrets = await secretV2BridgeDAL.findByFolderIds({
-      folderIds,
+    const content = await findFoldersWithContent(
+      folderPolicyPaths.map((p) => p.id),
+      { secretV2BridgeDAL, secretImportDAL },
       tx
-    });
-    const secretImports = await secretImportDAL.findByFolderIds(folderIds, tx);
+    );
+    const protectedFolder = await findPolicyProtectedFolder(
+      { folders: folderPolicyPaths, content, projectId, environment: env.slug, actor },
+      { secretApprovalPolicyService },
+      tx
+    );
+    if (!protectedFolder) return;
 
-    for await (const folderPolicyPath of folderPolicyPaths) {
-      const folderHasSecrets = secrets.some((s) => s.folderId === folderPolicyPath.id);
-      const folderHasSecretImports = secretImports.some(
-        (secretImport) => secretImport.folderId === folderPolicyPath.id
-      );
-      // eslint-disable-next-line no-continue
-      if (!folderHasSecrets && !folderHasSecretImports) continue;
-
-      const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
-        projectId,
-        env.slug,
-        folderPolicyPath.path,
-        tx
-      );
-
-      if (shouldApplyPolicy(policy, actor)) {
-        if (folderHasSecrets) {
-          throw new BadRequestError({
-            message: `You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "${policy.name}" at folder path "${folderPolicyPath.path}". Please remove the secrets at folder path "${folderPolicyPath.path}" and try again.`,
-            name: "DeleteFolderProtectedByPolicy"
-          });
-        }
-
-        throw new BadRequestError({
-          message: `You cannot delete the selected folder because it contains one or more secret imports that are protected by the change policy "${policy.name}" at folder path "${folderPolicyPath.path}". Please remove the secret imports at folder path "${folderPolicyPath.path}" and try again.`,
-          name: "DeleteFolderImportProtectedByPolicy"
-        });
-      }
+    const { path: protectedPath, policyName } = protectedFolder;
+    if (protectedFolder.protects === "secret") {
+      throw new BadRequestError({
+        message: `You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "${policyName}" at folder path "${protectedPath}". Please remove the secrets at folder path "${protectedPath}" and try again.`,
+        name: "DeleteFolderProtectedByPolicy"
+      });
     }
+
+    throw new BadRequestError({
+      message: `You cannot delete the selected folder because it contains one or more secret imports that are protected by the change policy "${policyName}" at folder path "${protectedPath}". Please remove the secret imports at folder path "${protectedPath}" and try again.`,
+      name: "DeleteFolderImportProtectedByPolicy"
+    });
   };
 
   const deleteFolder = async ({
@@ -1778,16 +1780,18 @@ export const secretFolderServiceFactory = ({
       folderMoveBlockDeps,
       tx
     );
-    const sourcePolicyBlock = await checkFolderPolicyBlock(
+    const sourcePolicyBlock = await checkFolderMovePolicyBlock(
       { subtree, projectId, environment: sourceEnvironment, rootFolderPath: sourceFolderPath },
-      folderMoveBlockDeps
+      folderMoveBlockDeps,
+      tx
     );
     const sourceBlock = secretTypeBlock ?? sourcePolicyBlock;
 
     const destinationBlock = destination
-      ? await checkFolderPolicyBlock(
+      ? await checkFolderMovePolicyBlock(
           { subtree, projectId, environment: destination.environment, rootFolderPath: destination.path },
-          folderMoveBlockDeps
+          folderMoveBlockDeps,
+          tx
         )
       : null;
 

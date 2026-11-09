@@ -12,12 +12,15 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { ActorType } from "../auth/auth-type";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
+import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TFolderMoveBlockingType } from "./secret-folder-types";
 
 export const buildFolderPath = (
@@ -243,14 +246,15 @@ export const checkFolderMoveBlock = async (
   return null;
 };
 
-type TCheckFolderPolicyBlockDeps = {
+type TCheckFolderMovePolicyBlockDeps = {
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicyByPaths">;
 };
 
 // checks whether any folder in the subtree (re-rooted at `rootFolderPath` in `environment`) is governed by a
-// secret approval policy, returning the first blocked path in subtree order (or null). a move checks its source
-// and its destination; a rename checks the folder's current paths.
-export const checkFolderPolicyBlock = async (
+// secret approval policy, returning the first blocked path in subtree order (or null). used for both the source
+// paths and the destination paths of a move. pass `accessScope` to limit reporting to paths the actor may read;
+// omit it (the move path) to always detect a block and gate only the resulting message.
+export const checkFolderMovePolicyBlock = async (
   {
     subtree,
     projectId,
@@ -262,7 +266,7 @@ export const checkFolderPolicyBlock = async (
     environment: string;
     rootFolderPath: string;
   },
-  { secretApprovalPolicyService }: TCheckFolderPolicyBlockDeps,
+  { secretApprovalPolicyService }: TCheckFolderMovePolicyBlockDeps,
   tx?: Knex
 ): Promise<TFolderMoveBlock | null> => {
   const toAbsPath = buildToAbsPath(rootFolderPath);
@@ -363,11 +367,110 @@ export const assertFolderMoveAllowed = (
   });
 };
 
-export const assertFolderRenameAllowed = (block: TFolderMoveBlock | null) => {
-  if (!block) return;
+export type TFolderContent = {
+  secretFolderIds: Set<string>;
+  importFolderIds: Set<string>;
+};
+
+export const findFoldersWithContent = async (
+  folderIds: string[],
+  {
+    secretV2BridgeDAL,
+    secretImportDAL
+  }: {
+    secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds">;
+    secretImportDAL: Pick<TSecretImportDALFactory, "findFolderIdsWithImports">;
+  },
+  tx: Knex
+): Promise<TFolderContent> => {
+  if (!folderIds.length) return { secretFolderIds: new Set(), importFolderIds: new Set() };
+
+  const secrets = await secretV2BridgeDAL.findByFolderIds({ folderIds, tx });
+  const importFolderIds = await secretImportDAL.findFolderIdsWithImports(folderIds, tx);
+
+  return {
+    secretFolderIds: new Set(secrets.map((secret) => secret.folderId)),
+    importFolderIds: new Set(importFolderIds)
+  };
+};
+
+export type TPolicyProtectedFolder = {
+  path: string;
+  policyName: string;
+  protects: "secret" | "secret_import";
+};
+
+// returns the first folder, in `folders` order, that holds secrets or secret imports governed by a change
+// policy that applies to `actor`. `folders` carries absolute paths.
+export const findPolicyProtectedFolder = async (
+  {
+    folders,
+    content,
+    projectId,
+    environment,
+    actor
+  }: {
+    folders: { id: string; path: string }[];
+    content: TFolderContent;
+    projectId: string;
+    environment: string;
+    actor: ActorType;
+  },
+  {
+    secretApprovalPolicyService
+  }: { secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicyByPaths"> },
+  tx: Knex
+): Promise<TPolicyProtectedFolder | null> => {
+  const candidates = folders.filter(
+    (folder) => content.secretFolderIds.has(folder.id) || content.importFolderIds.has(folder.id)
+  );
+  if (!candidates.length) return null;
+
+  const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
+    projectId,
+    environment,
+    candidates.map((folder) => folder.path),
+    tx
+  );
+
+  for (const folder of candidates) {
+    const policy = policyByPath.get(folder.path);
+    if (shouldApplyPolicy(policy, actor)) {
+      return {
+        path: folder.path,
+        policyName: policy.name,
+        protects: content.secretFolderIds.has(folder.id) ? "secret" : "secret_import"
+      };
+    }
+  }
+
+  return null;
+};
+
+export const assertFolderRenameAllowed = (
+  protectedFolder: TPolicyProtectedFolder | null,
+  scope: "source" | "destination"
+) => {
+  if (!protectedFolder) return;
+
+  const { path, policyName, protects } = protectedFolder;
+
+  if (scope === "destination") {
+    throw new BadRequestError({
+      message: `You cannot rename the selected folder because its ${protects === "secret" ? "secrets" : "secret imports"} would move to folder path "${path}", which is protected by the change policy "${policyName}". Choose a different name and try again.`,
+      name: "RenameFolderIntoProtectedPath"
+    });
+  }
+
+  if (protects === "secret") {
+    throw new BadRequestError({
+      message: `You cannot rename the selected folder because it contains one or more secrets that are protected by the change policy "${policyName}" at folder path "${path}". Please remove the secrets at folder path "${path}" and try again.`,
+      name: "RenameFolderProtectedByPolicy"
+    });
+  }
 
   throw new BadRequestError({
-    message: `You cannot rename the selected folder because it contains one or more secrets that are protected by the change policy "${block.policyName}" at folder path "${block.blockingPath}". Please remove the secrets at folder path "${block.blockingPath}" and try again.`,
-    name: "RenameFolderProtectedByPolicy"
+    message: `You cannot rename the selected folder because it contains one or more secret imports that are protected by the change policy "${policyName}" at folder path "${path}". Please remove the secret imports at folder path "${path}" and try again.`,
+    name: "RenameFolderImportProtectedByPolicy"
   });
 };
