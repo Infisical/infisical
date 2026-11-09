@@ -31,7 +31,8 @@ export const AwsParameterStoreSyncDestinationSchema = BaseSecretSyncSchema(
       .array()
       .max(50)
       .optional(),
-    syncSecretMetadataAsTags: z.boolean().optional()
+    syncSecretMetadataAsTags: z.boolean().optional(),
+    preserveFolderStructure: z.boolean().optional()
   })
 ).merge(
   z.object({

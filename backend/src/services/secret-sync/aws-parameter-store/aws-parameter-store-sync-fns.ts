@@ -24,7 +24,7 @@ import handlebars from "handlebars";
 import { isAwsError } from "@app/lib/aws/error";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
-import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { matchesSchema, preservesFolderStructure } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
@@ -36,6 +36,7 @@ type TAWSParameterStoreTagsRecord = Record<string, Record<string, string>>;
 
 const MAX_RETRIES = 10;
 const BATCH_SIZE = 10;
+const MAX_HIERARCHY_LEVELS = 15;
 
 const getSSM = async (secretSync: TAwsParameterStoreSyncWithCredentials) => {
   const { destinationConfig, connection } = secretSync;
@@ -79,11 +80,29 @@ const getFullPath = ({ path, keySchema, environment }: { path: string; keySchema
   return `${path}${pathSegments.join("/")}/`;
 };
 
+// A parameter's key is its name relative to the sync's path. AWS drops the leading "/" from a name
+// one level below the root, so under "/" a top-level name has no prefix to remove.
+const getParameterKey = (name: string, path: string) => (name.startsWith(path) ? name.substring(path.length) : name);
+
+// Each level of a sync's folders becomes a level of the parameter's path, and folders can be nested
+// after the sync is saved, so check every name before writing any rather than failing partway.
+const assertWithinHierarchyLimit = (path: string, secretMap: TSecretMap) => {
+  const tooDeep = Object.keys(secretMap).find((key) => `${path}${key}`.split("/").length - 1 > MAX_HIERARCHY_LEVELS);
+
+  if (tooDeep) {
+    throw new SecretSyncError({
+      message: `"${path}${tooDeep}" is more than ${MAX_HIERARCHY_LEVELS} levels deep, which is the most AWS Parameter Store allows. Move the secret to a shallower folder, shorten the Parameter Store path, or turn off preserving folder structure.`,
+      shouldRetry: false
+    });
+  }
+};
+
 const getParametersByPath = async (
   ssm: SSMClient,
   path: string,
   keySchema: string | undefined,
-  environment: string
+  environment: string,
+  recursive = false
 ): Promise<TAWSParameterStoreRecord> => {
   const awsParameterStoreSecretsRecord: TAWSParameterStoreRecord = {};
   let hasNext = true;
@@ -98,7 +117,7 @@ const getParametersByPath = async (
       const parameters = await ssm.send(
         new GetParametersByPathCommand({
           Path: fullPath,
-          Recursive: false,
+          Recursive: recursive,
           WithDecryption: true,
           MaxResults: BATCH_SIZE,
           NextToken: nextToken
@@ -110,9 +129,7 @@ const getParametersByPath = async (
       if (parameters.Parameters) {
         parameters.Parameters.forEach((parameter) => {
           if (parameter.Name) {
-            // no leading slash if path is '/'
-            const secKey = fullPath.length > 1 ? parameter.Name.substring(path.length) : parameter.Name;
-            awsParameterStoreSecretsRecord[secKey] = parameter;
+            awsParameterStoreSecretsRecord[getParameterKey(parameter.Name, path)] = parameter;
           }
         });
       }
@@ -139,7 +156,8 @@ const getParameterMetadataByPath = async (
   ssm: SSMClient,
   path: string,
   keySchema: string | undefined,
-  environment: string
+  environment: string,
+  recursive = false
 ): Promise<TAWSParameterStoreMetadataRecord> => {
   const awsParameterStoreMetadataRecord: TAWSParameterStoreMetadataRecord = {};
   let hasNext = true;
@@ -158,7 +176,7 @@ const getParameterMetadataByPath = async (
           ParameterFilters: [
             {
               Key: "Path",
-              Option: "OneLevel",
+              Option: recursive ? "Recursive" : "OneLevel",
               Values: [fullPath]
             }
           ]
@@ -170,9 +188,7 @@ const getParameterMetadataByPath = async (
       if (parameters.Parameters) {
         parameters.Parameters.forEach((parameter) => {
           if (parameter.Name) {
-            // no leading slash if path is '/'
-            const secKey = fullPath.length > 1 ? parameter.Name.substring(path.length) : parameter.Name;
-            awsParameterStoreMetadataRecord[secKey] = parameter;
+            awsParameterStoreMetadataRecord[getParameterKey(parameter.Name, path)] = parameter;
           }
         });
       }
@@ -355,28 +371,37 @@ const deleteParametersBatch = async (
 
 export const AwsParameterStoreSyncFns = {
   syncSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
-    const secretMap = payload.flatten();
     const { destinationConfig, syncOptions, environment } = secretSync;
+    const preserveFolderStructure = preservesFolderStructure(syncOptions);
+    const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
+
+    if (preserveFolderStructure) assertWithinHierarchyLimit(destinationConfig.path, secretMap);
 
     const ssm = await getSSM(secretSync);
 
+    // A sync that preserves folder structure owns every level below its path, so it reads them all:
+    // that's how the parameters of a folder deleted in Infisical get found and deleted here.
     const awsParameterStoreSecretsRecord = await getParametersByPath(
       ssm,
       destinationConfig.path,
       syncOptions.keySchema,
-      environment!.slug
+      environment!.slug,
+      preserveFolderStructure
     );
 
     const awsParameterStoreMetadataRecord = await getParameterMetadataByPath(
       ssm,
       destinationConfig.path,
       syncOptions.keySchema,
-      environment!.slug
+      environment!.slug,
+      preserveFolderStructure
     );
 
+    // Tags are only read back for the parameters this sync writes. The listing can hold many more,
+    // every level below the path when folders are preserved, and each costs a call.
     const { shouldManageTags, awsParameterStoreTagsRecord } = await getParameterStoreTagsRecord(
       ssm,
-      awsParameterStoreSecretsRecord,
+      Object.fromEntries(Object.entries(awsParameterStoreSecretsRecord).filter(([key]) => key in secretMap)),
       Boolean(syncOptions.tags?.length || syncOptions.syncSecretMetadataAsTags)
     );
 
@@ -468,7 +493,7 @@ export const AwsParameterStoreSyncFns = {
       const [key, parameter] = entry;
 
       // eslint-disable-next-line no-continue
-      if (!matchesSchema(key, environment?.slug || "", syncOptions.keySchema)) continue;
+      if (!matchesSchema(key, environment?.slug || "", syncOptions.keySchema, { preserveFolderStructure })) continue;
 
       if (!(key in secretMap) || !secretMap[key].value) {
         parametersToDelete.push(parameter);
@@ -497,8 +522,9 @@ export const AwsParameterStoreSyncFns = {
     );
   },
   removeSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
-    const secretMap = payload.flatten();
     const { destinationConfig, syncOptions, environment } = secretSync;
+    const preserveFolderStructure = preservesFolderStructure(syncOptions);
+    const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
 
     const ssm = await getSSM(secretSync);
 
@@ -506,7 +532,8 @@ export const AwsParameterStoreSyncFns = {
       ssm,
       destinationConfig.path,
       syncOptions.keySchema,
-      environment!.slug
+      environment!.slug,
+      preserveFolderStructure
     );
 
     const parametersToDelete: Parameter[] = [];

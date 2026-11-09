@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { Info, TriangleAlert } from "lucide-react";
+import { Info } from "lucide-react";
 
 import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Code,
   Combobox,
   Field,
   FieldContent,
@@ -33,8 +34,8 @@ import {
 
 import { AzureEntraIdScimSyncSourceFields } from "./AzureEntraIdScimSyncSourceFields";
 import { TSecretSyncForm } from "./schemas";
-
-const MAX_DISPLAYED_CONFLICTS = 5;
+import { SecretSyncRecursiveConflictsAlert } from "./SecretSyncRecursiveConflictsAlert";
+import { SecretSyncSourceFolderTree } from "./SecretSyncSourceFolderTree";
 
 const DefaultSecretSyncSourceFields = () => {
   const { control, watch, setValue, setError, clearErrors } = useFormContext<TSecretSyncForm>();
@@ -50,7 +51,11 @@ const DefaultSecretSyncSourceFields = () => {
 
   const { syncOption } = useSecretSyncOption(destination);
 
-  const { conflicts, isChecking } = useRecursiveConflictsCheck({
+  // Only these destinations choose how folders map in the Destination step, so only they preview
+  // the folder tree here and leave duplicate names to that step.
+  const supportsFolderStructure = Boolean(syncOption?.supportsPreserveFolderStructure);
+
+  const { conflicts, secrets, isChecking } = useRecursiveConflictsCheck({
     destination,
     projectId: currentProject.id,
     environment: selectedEnvironment?.slug,
@@ -132,19 +137,35 @@ const DefaultSecretSyncSourceFields = () => {
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field>
             <Field orientation="horizontal">
-              <FieldContent>
-                <Label htmlFor="includeAllSubFolders">Include secrets from all subfolders</Label>
-                <FieldDescription>
-                  Also sync secrets from every folder beneath this path, however deep. Secret names
-                  must be unique across all of them.
-                </FieldDescription>
-              </FieldContent>
+              {supportsFolderStructure ? (
+                <FieldContent>
+                  <Label htmlFor="includeAllSubFolders">Include nested folders</Label>
+                  <FieldDescription>
+                    When enabled, every folder under <Code>{selectedSecretPath || "/"}</Code> is
+                    included, however deep. How folders map to the destination is chosen in the next
+                    step. Turn off to sync only the secrets directly at this path.
+                  </FieldDescription>
+                </FieldContent>
+              ) : (
+                <FieldContent>
+                  <Label htmlFor="includeAllSubFolders">Include secrets from all subfolders</Label>
+                  <FieldDescription>
+                    Also sync secrets from every folder beneath this path, however deep. Secret
+                    names must be unique across all of them.
+                  </FieldDescription>
+                </FieldContent>
+              )}
               <Toggle
                 id="includeAllSubFolders"
                 variant="project"
                 checked={Boolean(value)}
                 onCheckedChange={(checked) => {
                   onChange(checked);
+
+                  // Without subfolders there are no folders to keep, and the API refuses the option.
+                  if (!checked && supportsFolderStructure) {
+                    setValue("syncOptions.preserveFolderStructure", false);
+                  }
 
                   // There is no single folder to import a subtree back into, so the backend rejects
                   // the combination. Move the user off it here rather than failing them on save.
@@ -168,7 +189,15 @@ const DefaultSecretSyncSourceFields = () => {
                 </AlertDescription>
               </Alert>
             )}
-            {isChecking && (
+            {Boolean(value) && supportsFolderStructure && (
+              <SecretSyncSourceFolderTree
+                secretPath={selectedSecretPath}
+                secrets={secrets}
+                conflicts={conflicts}
+                isLoading={isChecking}
+              />
+            )}
+            {isChecking && !supportsFolderStructure && (
               <div className="flex items-center gap-2">
                 <Spinner size="xs" />
                 <p className="text-xs text-label">
@@ -176,40 +205,11 @@ const DefaultSecretSyncSourceFields = () => {
                 </p>
               </div>
             )}
-            {!isChecking && conflicts.length > 0 && (
-              <Alert variant="danger">
-                <TriangleAlert />
-                <AlertTitle>
-                  {conflicts.length === 1
-                    ? "1 secret name conflicts across folders"
-                    : `${conflicts.length} secret names conflict across folders`}
-                </AlertTitle>
-                <AlertDescription>
-                  <p>
-                    This destination stores secrets in a single flat list, so each name can be used
-                    only once. Rename or move one secret in each pair, or point the sync at a
-                    narrower secret path.
-                  </p>
-                  <ul className="mt-1 space-y-2">
-                    {conflicts.slice(0, MAX_DISPLAYED_CONFLICTS).map((conflict) => (
-                      <li key={conflict.key}>
-                        <span className="font-mono font-semibold">&quot;{conflict.key}&quot;</span>{" "}
-                        is used in {conflict.paths.length} folders:
-                        <ul className="mt-0.5 list-inside list-disc">
-                          {conflict.paths.map((path) => (
-                            <li key={path} className="font-mono">
-                              {path}
-                            </li>
-                          ))}
-                        </ul>
-                      </li>
-                    ))}
-                  </ul>
-                  {conflicts.length > MAX_DISPLAYED_CONFLICTS && (
-                    <p>and {conflicts.length - MAX_DISPLAYED_CONFLICTS} more</p>
-                  )}
-                </AlertDescription>
-              </Alert>
+            {!isChecking && conflicts.length > 0 && !supportsFolderStructure && (
+              <SecretSyncRecursiveConflictsAlert
+                conflicts={conflicts}
+                description="This destination stores secrets in a single flat list, so each name can be used only once. Rename or move one secret in each pair, or point the sync at a narrower secret path."
+              />
             )}
           </Field>
         )}

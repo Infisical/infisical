@@ -25,7 +25,9 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
     TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
   >();
 
-  const [{ keyId, tags, syncSecretMetadataAsTags }] = watch(["syncOptions"]);
+  const [{ keyId, tags, syncSecretMetadataAsTags, preserveFolderStructure }] = watch([
+    "syncOptions"
+  ]);
 
   return (
     <>
@@ -73,6 +75,14 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
       {syncSecretMetadataAsTags && (
         <Detail>
           <DetailLabel>Sync Secret Metadata as Resource Tags</DetailLabel>
+          <DetailValue>
+            <Badge variant="success">Enabled</Badge>
+          </DetailValue>
+        </Detail>
+      )}
+      {preserveFolderStructure && (
+        <Detail>
+          <DetailLabel>Mirror Folder Structure</DetailLabel>
           <DetailValue>
             <Badge variant="success">Enabled</Badge>
           </DetailValue>

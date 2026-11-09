@@ -27,6 +27,7 @@ description: "Learn how to configure an AWS Parameter Store Sync for Infisical."
 
             - **Environment**: The project environment to retrieve secrets from.
             - **Secret Path**: The folder path to retrieve secrets from.
+            - **Include nested folders**: When enabled, also syncs [secrets from every folder under the secret path](/integrations/secret-syncs/overview#include-all-subfolders)
 
         <Tip>
             If you need to sync secrets from multiple folder locations, check out [secret imports](/documentation/platform/secret-reference#secret-imports).
@@ -38,6 +39,11 @@ description: "Learn how to configure an AWS Parameter Store Sync for Infisical."
             - **AWS Connection**: The AWS Connection to authenticate with.
             - **Region**: The AWS region to deploy secrets to.
             - **Path**: The AWS Parameter Store path to deploy secrets to.
+            - **Mirror folder structure**: If you turned on **Include nested folders**, keeps each secret's folder in its parameter path so that secrets with the same name in different folders don't collide (for example, `/backend/api/API_KEY` synced from `/backend` to `/prod/` becomes `/prod/api/API_KEY`)
+
+            <Warning>
+                With **Mirror folder structure** on, Infisical deletes any parameter below the path, at any depth, that has no matching secret in Infisical. To keep parameters you manage outside Infisical, turn on **Disable Secret Deletion**. If you turn **Mirror folder structure** off later, Infisical leaves the nested parameters in place, and you'll need to delete them in AWS.
+            </Warning>
 
         5. Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
         ![Configure Options](/images/secret-syncs/aws-parameter-store/aws-parameter-store-options.png)
@@ -160,5 +166,7 @@ description: "Learn how to configure an AWS Parameter Store Sync for Infisical."
 <AccordionGroup>
     <Accordion title="What's the relationship between 'path' and 'key schema'?">
         The path is required and will be prepended to the key schema. For example, if you have a path of `/demo/path/` and a key schema of `INFISICAL_{{secretKey}}`, then the result will be `/demo/path/INFISICAL_{{secretKey}}`.
+
+        If you turn on **Mirror folder structure**, the secret's folder goes between the path and the key schema, as in `/demo/path/api/INFISICAL_{{secretKey}}`. The key schema then can't contain `/`, because the folders already form the rest of the path.
     </Accordion>
 </AccordionGroup>

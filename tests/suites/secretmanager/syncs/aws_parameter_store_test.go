@@ -2,6 +2,7 @@ package syncs_test
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/fakes/aws"
@@ -175,5 +176,100 @@ func TestAwsParameterStoreSync_SyncSecrets(t *testing.T) {
 		require.NotNil(t, got, "the parameter was not written")
 		require.Equal(t, map[string]string{"team": "core"}, got.Tags)
 		require.Equal(t, "SecureString", got.Type)
+	})
+}
+
+func TestAwsParameterStoreSync_PreserveFolderStructure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("should write each secret under its folder's path below the sync's path", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/api/payments")
+		secretmanager.CreateSecret(t, proj, "dev", "A", "1", secretmanager.WithPath("/backend"))
+		secretmanager.CreateSecret(t, proj, "dev", "B", "2", secretmanager.WithPath("/backend/api"))
+		secretmanager.CreateSecret(t, proj, "dev", "C", "3", secretmanager.WithPath("/backend/api/payments"))
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		require.Equal(t, map[string]string{"/app/A": "1", "/app/api/B": "2", "/app/api/payments/C": "3"}, parameterValues(t, cp))
+	})
+
+	t.Run("should accept and keep apart the same key held by two folders", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `Flattened, the two would share one name and the create is refused. Kept in
+			their folders, they land at two different paths.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		duplicateUnder(t, proj, "/backend", "DB_URL")
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		require.Equal(t, map[string]string{
+			"/app/DB_URL":       "value-for-/backend",
+			"/app/child/DB_URL": "value-for-/backend/child",
+		}, parameterValues(t, cp))
+	})
+
+	t.Run("should delete parameters at any depth below the path that Infisical no longer holds", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `This is how a folder deleted in Infisical leaves the destination: its
+			parameters sit below the path, where a flattened sync never looks.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		cp.Seed(t, aws.SeedParameter("/app/gone/deeper/STALE", "old"), aws.SeedParameter("/elsewhere/OTHER", "theirs"))
+		secretmanager.CreateFolder(t, proj, "dev", "/backend/api")
+		secretmanager.CreateSecret(t, proj, "dev", "KEEP", "v", secretmanager.WithPath("/backend/api"))
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		require.Equal(t, map[string]string{"/app/api/KEEP": "v", "/elsewhere/OTHER": "theirs"}, parameterValues(t, cp))
+	})
+
+	t.Run("should delete every parameter it wrote, including both copies of a shared key, when its secrets are removed", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		cp.Seed(t, aws.SeedParameter("/elsewhere/OTHER", "theirs"))
+		duplicateUnder(t, proj, "/backend", "DB_URL")
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+		s.trigger(t)
+
+		// Action
+		got := s.removeSecrets(t)
+
+		// Assert
+		require.Equalf(t, "succeeded", got.status, "the remove failed: %s", got.message)
+		require.Equal(t, map[string]string{"/elsewhere/OTHER": "theirs"}, parameterValues(t, cp))
+	})
+
+	t.Run("should refuse and create nothing when preserving folder structure without subfolders", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj, conn, _ := setupAWS(t)
+		dest := parameterStorePath("/app/")
+
+		// Action
+		status, body := createAWSSync(t, proj, conn, dest, preserveFolders())
+
+		// Assert
+		require.Equal(t, http.StatusUnprocessableEntity, status)
+		require.Contains(t, message(body), "Preserving folder structure only applies to a sync that includes subfolders")
+		require.Zero(t, awsSyncCount(t, proj, dest))
 	})
 }

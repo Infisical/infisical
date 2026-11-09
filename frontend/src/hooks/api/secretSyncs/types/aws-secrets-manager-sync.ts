@@ -23,6 +23,7 @@ export type TAwsSecretsManagerSync = TRootSecretSync & {
     keyId?: string;
     tags?: { key: string; value?: string }[];
     syncSecretMetadataAsTags?: boolean;
+    preserveFolderStructure?: boolean;
   };
 };
 export enum AwsSecretsManagerSyncMappingBehavior {

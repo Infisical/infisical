@@ -1,9 +1,4 @@
-import {
-  createSecretSyncPayload,
-  dedupeEntriesByDestinationKey,
-  findFlattenConflicts,
-  TSecretPayload
-} from "./secret-sync-payload";
+import { createSecretSyncPayload, findFlattenConflicts, TSecretPayload } from "./secret-sync-payload";
 
 const secret = (key: string, path: string, value = "v"): TSecretPayload => ({ key, path, value });
 
@@ -113,25 +108,25 @@ describe("createSecretSyncPayload", () => {
     ]);
   });
 
-  test("dedupeConflicts() returns a payload whose flatten() no longer throws", () => {
+  test("tolerateConflicts() returns a payload whose flatten() no longer throws", () => {
     const payload = createSecretSyncPayload([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
       environment: "dev"
     });
 
     expect(() => payload.flatten()).toThrow(/"DB_URL" in \/backend and \/backend\/api/);
 
-    const deduped = payload.dedupeConflicts();
+    const deduped = payload.tolerateConflicts();
 
     expect(() => deduped.flatten()).not.toThrow();
     expect(Object.keys(deduped.flatten())).toEqual(["DB_URL"]);
   });
 
-  test("dedupeConflicts() leaves a payload with no conflicts unchanged", () => {
+  test("tolerateConflicts() leaves a payload with no conflicts unchanged", () => {
     const payload = createSecretSyncPayload([secret("DB_URL", "/"), secret("API_KEY", "/api")], {
       environment: "dev"
     });
 
-    expect(payload.dedupeConflicts().secrets).toHaveLength(2);
+    expect(payload.tolerateConflicts().secrets).toHaveLength(2);
   });
 });
 
@@ -172,37 +167,80 @@ describe("findFlattenConflicts", () => {
   });
 });
 
-describe("dedupeEntriesByDestinationKey", () => {
-  test("keeps one entry per destination key when two folders share a name", () => {
-    const deduped = dedupeEntriesByDestinationKey([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
-      environment: "dev"
-    });
+describe("tolerateConflicts", () => {
+  test("flatten() keeps the first secret for a name used in two folders", () => {
+    const payload = createSecretSyncPayload(
+      [secret("DB_URL", "/backend", "one"), secret("DB_URL", "/backend/api", "two")],
+      { environment: "dev" }
+    ).tolerateConflicts();
 
-    expect(deduped).toHaveLength(1);
-  });
-
-  test("leaves distinct names untouched", () => {
-    const deduped = dedupeEntriesByDestinationKey([secret("DB_URL", "/"), secret("API_KEY", "/api")], {
-      environment: "dev"
-    });
-
-    expect(deduped.map((entry) => entry.key).sort()).toEqual(["API_KEY", "DB_URL"]);
+    expect(payload.flatten().DB_URL.value).toBe("one");
   });
 
   test("dedupes by the schema-applied destination key, not the raw name", () => {
-    const deduped = dedupeEntriesByDestinationKey([secret("DB_URL", "/"), secret("dev_DB_URL", "/api")], {
+    const payload = createSecretSyncPayload([secret("DB_URL", "/"), secret("dev_DB_URL", "/api")], {
       environment: "dev",
       keySchema: "{{secretKey}}"
-    });
+    }).tolerateConflicts();
 
-    expect(deduped).toHaveLength(2);
+    expect(Object.keys(payload.flatten()).sort()).toEqual(["DB_URL", "dev_DB_URL"]);
   });
 
-  test("the deduped result never conflicts when flattened", () => {
-    const entries = [secret("DB_URL", "/backend", "one"), secret("DB_URL", "/backend/api", "two")];
-    const deduped = dedupeEntriesByDestinationKey(entries, { environment: "dev" });
-    const payload = createSecretSyncPayload(deduped, { environment: "dev" });
+  test("keeps every secret, so mirror() still names a same-named secret in each folder", () => {
+    const payload = createSecretSyncPayload([secret("DB_URL", "/backend"), secret("DB_URL", "/backend/api")], {
+      environment: "dev",
+      sourcePath: "/backend"
+    }).tolerateConflicts();
 
-    expect(() => payload.flatten()).not.toThrow();
+    expect(payload.secrets).toHaveLength(2);
+    expect(Object.keys(payload.mirror()).sort()).toEqual(["DB_URL", "api/DB_URL"]);
+  });
+});
+
+describe("mirror", () => {
+  test("keys each secret by its folder relative to the source path", () => {
+    const payload = createSecretSyncPayload(
+      [secret("A", "/backend"), secret("B", "/backend/api"), secret("C", "/backend/api/payments")],
+      { environment: "dev", sourcePath: "/backend" }
+    );
+
+    expect(Object.keys(payload.mirror()).sort()).toEqual(["A", "api/B", "api/payments/C"]);
+  });
+
+  test("keeps same-named secrets in different folders apart instead of throwing", () => {
+    const payload = createSecretSyncPayload(
+      [secret("DB_URL", "/backend", "one"), secret("DB_URL", "/backend/api", "two")],
+      { environment: "dev", sourcePath: "/backend" }
+    );
+
+    const map = payload.mirror();
+
+    expect(map.DB_URL.value).toBe("one");
+    expect(map["api/DB_URL"].value).toBe("two");
+  });
+
+  test("applies the key schema to the last segment only", () => {
+    const payload = createSecretSyncPayload([secret("DB_URL", "/backend/api")], {
+      environment: "dev",
+      keySchema: "{{environment}}_{{secretKey}}",
+      sourcePath: "/backend"
+    });
+
+    expect(Object.keys(payload.mirror())).toEqual(["api/dev_DB_URL"]);
+  });
+
+  test("keeps every folder when the source path is the root", () => {
+    const payload = createSecretSyncPayload([secret("A", "/"), secret("B", "/api/payments")], { environment: "dev" });
+
+    expect(Object.keys(payload.mirror()).sort()).toEqual(["A", "api/payments/B"]);
+  });
+
+  test("ignores a trailing slash on the source path", () => {
+    const payload = createSecretSyncPayload([secret("B", "/backend/api")], {
+      environment: "dev",
+      sourcePath: "/backend/"
+    });
+
+    expect(Object.keys(payload.mirror())).toEqual(["api/B"]);
   });
 });

@@ -55,8 +55,9 @@ func manyToOne(secretName string) awsDestination {
 
 type awsSyncConfig struct {
 	syncConfig
-	initial string
-	tags    map[string]string
+	initial         string
+	tags            map[string]string
+	preserveFolders bool
 }
 
 // awsOption is either a shared syncOption or one only AWS syncs take.
@@ -71,6 +72,12 @@ func (o awsOnly) applyAWS(c *awsSyncConfig) { o(c) }
 // initialSync sets what the first run does with secrets already at the destination.
 func initialSync(behavior string) awsOption {
 	return awsOnly(func(c *awsSyncConfig) { c.initial = behavior })
+}
+
+// preserveFolders keeps each secret's folder, relative to the source path, in its
+// destination name.
+func preserveFolders() awsOption {
+	return awsOnly(func(c *awsSyncConfig) { c.preserveFolders = true })
 }
 
 func withTag(key, value string) awsOption {
@@ -90,6 +97,21 @@ type awsSync struct {
 
 func newAWSSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection, dest awsDestination, opts ...awsOption) *awsSync {
 	tt.Helper()
+	status, body := createAWSSync(tt, p, conn, dest, opts...)
+	require.Equalf(tt, http.StatusOK, status, "creating a sync: %s", apierr.Body(body))
+
+	var out struct {
+		SecretSync struct {
+			ID uuid.UUID `json:"id"`
+		} `json:"secretSync"`
+	}
+	require.NoError(tt, json.Unmarshal(body, &out))
+	return &awsSync{ID: out.SecretSync.ID, proj: p, dest: dest}
+}
+
+// createAWSSync is newAWSSync for a test about whether the create is accepted.
+func createAWSSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection, dest awsDestination, opts ...awsOption) (int, []byte) {
+	tt.Helper()
 	cfg := awsSyncConfig{
 		syncConfig: syncConfig{environment: "dev", secretPath: "/", name: "sync-" + id.Short()},
 		initial:    "overwrite-destination",
@@ -107,6 +129,9 @@ func newAWSSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection, 
 	}
 	if cfg.includeSubFolders {
 		options["includeAllSubFolders"] = true
+	}
+	if cfg.preserveFolders {
+		options["preserveFolderStructure"] = true
 	}
 	if len(cfg.tags) > 0 {
 		tags := []map[string]string{}
@@ -142,15 +167,28 @@ func newAWSSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection, 
 		require.NoError(tt, cErr, "creating a sync")
 		status, body = res.StatusCode(), res.Body
 	}
-	require.Equalf(tt, http.StatusOK, status, "creating a sync: %s", apierr.Body(body))
+	return status, body
+}
 
-	var out struct {
-		SecretSync struct {
-			ID uuid.UUID `json:"id"`
-		} `json:"secretSync"`
+// awsSyncCount is how many syncs to the destination's service the project holds.
+func awsSyncCount(tt *testing.T, p *fixture.Project, dest awsDestination) int {
+	tt.Helper()
+	client := p.Tenant().Admin.API
+	var body []byte
+	if dest.parameterStore {
+		res, err := client.ListAwsParameterStoreSecretSyncsWithResponse(tt.Context(), &api.ListAwsParameterStoreSecretSyncsParams{ProjectId: p.ID})
+		require.NoError(tt, err, "listing syncs")
+		body = res.Body
+	} else {
+		res, err := client.ListAwsSecretsManagerSecretSyncsWithResponse(tt.Context(), &api.ListAwsSecretsManagerSecretSyncsParams{ProjectId: p.ID})
+		require.NoError(tt, err, "listing syncs")
+		body = res.Body
 	}
-	require.NoError(tt, json.Unmarshal(body, &out))
-	return &awsSync{ID: out.SecretSync.ID, proj: p, dest: dest}
+	var out struct {
+		SecretSyncs []json.RawMessage `json:"secretSyncs"`
+	}
+	require.NoErrorf(tt, json.Unmarshal(body, &out), "listing syncs: %s", apierr.Body(body))
+	return len(out.SecretSyncs)
 }
 
 type awsSyncView struct {
@@ -158,6 +196,8 @@ type awsSyncView struct {
 	LastSyncMessage   *string `json:"lastSyncMessage"`
 	ImportStatus      *string `json:"importStatus"`
 	LastImportMessage *string `json:"lastImportMessage"`
+	RemoveStatus      *string `json:"removeStatus"`
+	LastRemoveMessage *string `json:"lastRemoveMessage"`
 }
 
 func (s *awsSync) view(ctx context.Context) (awsSyncView, error) {
@@ -248,6 +288,32 @@ func (s *awsSync) importSecrets(tt *testing.T, behavior string) outcome {
 	})
 	require.Equalf(tt, http.StatusOK, status, "importing secrets: %s", apierr.Body(body))
 	return s.await(tt, "the import to finish", func(v awsSyncView) (*string, *string) { return v.ImportStatus, v.LastImportMessage })
+}
+
+// removeSecrets deletes what the sync wrote to the destination and returns how it ended.
+func (s *awsSync) removeSecrets(tt *testing.T) outcome {
+	tt.Helper()
+	client := s.proj.Tenant().Admin.API
+	var status int
+	var body []byte
+	whenIdle(tt, "removing synced secrets", func(ctx context.Context) (int, []byte, error) {
+		if s.dest.parameterStore {
+			res, err := client.RemoveAwsParameterStoreSecretSyncSecretsWithResponse(ctx, s.ID)
+			if err != nil {
+				return 0, nil, err
+			}
+			status, body = res.StatusCode(), res.Body
+		} else {
+			res, err := client.RemoveAwsSecretsManagerSecretSyncSecretsWithResponse(ctx, s.ID)
+			if err != nil {
+				return 0, nil, err
+			}
+			status, body = res.StatusCode(), res.Body
+		}
+		return status, body, nil
+	})
+	require.Equalf(tt, http.StatusOK, status, "removing synced secrets: %s", apierr.Body(body))
+	return s.await(tt, "the remove to finish", func(v awsSyncView) (*string, *string) { return v.RemoveStatus, v.LastRemoveMessage })
 }
 
 func (s *awsSync) await(tt *testing.T, what string, read func(awsSyncView) (status, message *string)) outcome {

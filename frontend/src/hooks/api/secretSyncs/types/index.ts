@@ -60,6 +60,7 @@ export type TSecretSyncOption = {
   canImportSecrets: boolean;
   supportsKeySchema?: boolean;
   supportsDisableSecretDeletion?: boolean;
+  supportsPreserveFolderStructure?: boolean;
   canRemoveSecretsOnDeletion?: boolean;
   enterprise?: boolean;
 };

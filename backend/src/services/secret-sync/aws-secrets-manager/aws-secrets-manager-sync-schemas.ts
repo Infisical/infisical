@@ -6,6 +6,7 @@ import { AppConnection, AWSRegion } from "@app/services/app-connection/app-conne
 import { AwsSecretsManagerSyncMappingBehavior } from "@app/services/secret-sync/aws-secrets-manager/aws-secrets-manager-sync-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
+  addPreserveFolderStructureIssues,
   BaseSecretSyncSchema,
   GenericCreateSecretSyncFieldsSchema,
   GenericUpdateSecretSyncFieldsSchema
@@ -112,10 +113,17 @@ export const AwsSecretsManagerSyncOptionsSchema = z.object({
   syncSecretMetadataAsTags: z
     .boolean()
     .optional()
-    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_SECRETS_MANAGER.syncSecretMetadataAsTags)
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_SECRETS_MANAGER.syncSecretMetadataAsTags),
+  preserveFolderStructure: z
+    .boolean()
+    .optional()
+    .describe(SecretSyncs.ADDITIONAL_SYNC_OPTIONS.AWS_SECRETS_MANAGER.preserveFolderStructure)
 });
 
 const AwsSecretsManagerSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
+
+const PRESERVE_FOLDER_STRUCTURE_MANY_TO_ONE_MESSAGE =
+  'Preserving folder structure is not supported with "Many-to-One" mapping behavior, because every secret is written into a single AWS secret. Switch to "One-to-One" mapping behavior, or turn off preserving folder structure.';
 
 export const AwsSecretsManagerSyncSchema = BaseSecretSyncSchema(
   SecretSync.AWSSecretsManager,
@@ -146,6 +154,18 @@ export const CreateAwsSecretsManagerSyncSchema = GenericCreateSecretSyncFieldsSc
         message: 'Syncing secret metadata is not supported with "Many-to-One" mapping behavior.'
       });
     }
+
+    if (
+      sync.destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.ManyToOne &&
+      sync.syncOptions.preserveFolderStructure
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: PRESERVE_FOLDER_STRUCTURE_MANY_TO_ONE_MESSAGE
+      });
+    }
+
+    addPreserveFolderStructureIssues(sync.syncOptions, ctx);
   });
 
 export const UpdateAwsSecretsManagerSyncSchema = GenericUpdateSecretSyncFieldsSchema(
@@ -166,6 +186,18 @@ export const UpdateAwsSecretsManagerSyncSchema = GenericUpdateSecretSyncFieldsSc
         message: 'Syncing secret metadata is not supported with "Many-to-One" mapping behavior.'
       });
     }
+
+    if (
+      sync.destinationConfig?.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.ManyToOne &&
+      sync.syncOptions?.preserveFolderStructure
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: PRESERVE_FOLDER_STRUCTURE_MANY_TO_ONE_MESSAGE
+      });
+    }
+
+    addPreserveFolderStructureIssues(sync.syncOptions, ctx);
   });
 
 export const AwsSecretsManagerSyncListItemSchema = z
@@ -174,6 +206,7 @@ export const AwsSecretsManagerSyncListItemSchema = z
     connection: z.literal(AppConnection.AWS),
     destination: z.literal(SecretSync.AWSSecretsManager),
     canImportSecrets: z.literal(true),
-    canRemoveSecretsOnDeletion: z.literal(true)
+    canRemoveSecretsOnDeletion: z.literal(true),
+    supportsPreserveFolderStructure: z.literal(true)
   })
   .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AWSSecretsManager] }));

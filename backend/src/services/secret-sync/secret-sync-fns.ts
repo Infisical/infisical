@@ -232,9 +232,25 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, sche
   return strippedMap;
 };
 
+// Only destinations whose schema accepts preserveFolderStructure can store it; every other
+// destination's schema strips it.
+export const preservesFolderStructure = (syncOptions?: {
+  includeAllSubFolders?: boolean;
+  preserveFolderStructure?: boolean;
+}) => Boolean(syncOptions?.includeAllSubFolders && syncOptions?.preserveFolderStructure);
+
 // Checks if a key matches a schema
-export const matchesSchema = (key: string, environment: string, schema?: string): boolean => {
+export const matchesSchema = (
+  key: string,
+  environment: string,
+  schema?: string,
+  { preserveFolderStructure = false }: { preserveFolderStructure?: boolean } = {}
+): boolean => {
   if (!schema) return true;
+
+  // With folders preserved, the key schema only names the last path segment (see mirror() in
+  // secret-sync-payload.ts); the folders before it are not part of the schema.
+  if (preserveFolderStructure) return matchesSchema(key.substring(key.lastIndexOf("/") + 1), environment, schema);
 
   const compiledSchemaPattern = handlebars.compile(schema)({
     secretKey: "{{secretKey}}", // Keep secretKey

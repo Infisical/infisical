@@ -20,6 +20,34 @@ const SUBFOLDER_SYNC_REFINEMENT = {
 const isSubFolderCombinationAllowed = (options: { includeAllSubFolders?: unknown; initialSyncBehavior?: unknown }) =>
   !options.includeAllSubFolders || options.initialSyncBehavior === SecretSyncInitialSyncBehavior.OverwriteDestination;
 
+// For destinations that can keep a sync's folders as path segments. Without subfolders there are no
+// folders to keep, and a key schema containing "/" would add a second set of path segments to the
+// same name, so neither combination is accepted.
+export const addPreserveFolderStructureIssues = (
+  syncOptions: { includeAllSubFolders?: boolean; keySchema?: string; preserveFolderStructure?: boolean } | undefined,
+  ctx: z.RefinementCtx
+) => {
+  if (!syncOptions?.preserveFolderStructure) return;
+
+  if (!syncOptions.includeAllSubFolders) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["syncOptions", "preserveFolderStructure"],
+      message:
+        "Preserving folder structure only applies to a sync that includes subfolders. Turn on subfolders, or turn off preserving folder structure."
+    });
+  }
+
+  if (syncOptions.keySchema?.includes("/")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["syncOptions", "keySchema"],
+      message:
+        'A key schema cannot contain "/" when the sync preserves folder structure, because the folders already form the path. Remove the "/" from the key schema, or turn off preserving folder structure.'
+    });
+  }
+};
+
 // Shared by BaseSyncOptionsSchema and the recursive-conflicts preview route: both compile this
 // string as a Handlebars template (getKeyWithSchema in secret-sync-payload.ts), so both need the
 // same guard against a syntactically invalid one reaching handlebars.compile() uncaught.

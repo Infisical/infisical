@@ -298,10 +298,10 @@ describe("buildSyncPayload cross-folder duplicates", () => {
   });
 
   // A sync whose secrets collide across folders would otherwise be stuck: it fails to sync, and
-  // until dedupeConflicts() existed, it also failed to remove, which is the only way to delete it.
-  test("dedupeConflicts() lets the remove path complete despite the same duplicate", async () => {
+  // until tolerateConflicts() existed, it also failed to remove, which is the only way to delete it.
+  test("tolerateConflicts() lets the remove path complete despite the same duplicate", async () => {
     const payload = await buildSyncPayload(args, dedupeDeps);
-    const deduped = payload.dedupeConflicts();
+    const deduped = payload.tolerateConflicts();
 
     expect(() => deduped.flatten()).not.toThrow();
     expect(Object.keys(deduped.flatten())).toEqual(["DB_URL"]);

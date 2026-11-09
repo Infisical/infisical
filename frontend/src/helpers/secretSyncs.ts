@@ -337,6 +337,13 @@ export const SECRET_SYNC_MAP: Record<
   }
 };
 
+export const applySecretSyncKeySchema = (
+  schema: string | undefined,
+  key: string,
+  environment: string
+) =>
+  schema ? schema.replaceAll("{{secretKey}}", key).replaceAll("{{environment}}", environment) : key;
+
 export const POPULAR_SECRET_SYNCS: SecretSync[] = [
   SecretSync.AWSParameterStore,
   SecretSync.GCPSecretManager,

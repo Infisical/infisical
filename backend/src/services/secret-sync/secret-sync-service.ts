@@ -32,7 +32,8 @@ import {
   enterpriseSyncCheck,
   listSecretSyncOptions,
   preSaveTransformDestinationConfig,
-  preSaveTransformSyncOptions
+  preSaveTransformSyncOptions,
+  preservesFolderStructure
 } from "@app/services/secret-sync/secret-sync-fns";
 import { buildSyncPayload, getSyncedFolders } from "@app/services/secret-sync/secret-sync-recursive-fns";
 import {
@@ -265,8 +266,9 @@ export const secretSyncServiceFactory = ({
   // Flattening a subtree onto a destination that holds one flat list can produce two secrets with
   // the same destination key. flatten() is what detects that, and the job runs it on every sync, so
   // calling it here means a user reads the same sentence at save time and when the sync later drifts
-  // into the same state. Callers only call this for a sync that includes subfolders — one that does
-  // not covers a single folder, where flatten() can never find a conflict.
+  // into the same state. Callers only call this for a sync that includes subfolders and flattens
+  // them: one without subfolders covers a single folder, where flatten() can never find a conflict,
+  // and one that preserves folder structure never flattens.
   const $assertSyncedSecretsAreFlattenable = async ({
     projectId,
     actorOrgId,
@@ -304,7 +306,9 @@ export const secretSyncServiceFactory = ({
   // step, before a provider or destination is even chosen: the check is destination-agnostic
   // (flatten() never uses the destination or the source folder path to build a key), so nothing
   // downstream can change the answer. Returns every conflict, untruncated, unlike the
-  // BadRequestError $assertSyncedSecretsAreFlattenable throws at create/update time.
+  // BadRequestError $assertSyncedSecretsAreFlattenable throws at create/update time. Also lists
+  // each synced secret's name and folder, never its value, so the form can preview where secrets
+  // will land; $assertCanReadSyncedFolders below has already checked the actor can describe them.
   const findRecursiveConflicts = async (
     { projectId, environment, secretPath, keySchema }: TFindRecursiveSyncConflictsDTO,
     actor: OrgServiceActor
@@ -359,7 +363,12 @@ export const secretSyncServiceFactory = ({
       keySchema
     });
 
-    return { conflicts: payload.findConflicts() };
+    return {
+      conflicts: payload.findConflicts(),
+      secrets: payload.secrets
+        .map(({ key, path }) => ({ key, path }))
+        .sort((a, b) => a.path.localeCompare(b.path) || a.key.localeCompare(b.key))
+    };
   };
 
   const listSecretSyncsByProjectId = async (
@@ -677,7 +686,7 @@ export const secretSyncServiceFactory = ({
     // sync including subfolders must flatten its whole subtree to one namespace. Check that it can
     // here, so
     // the sync doesn't get created only to fail immediately on its first run.
-    if (includeAllSubFolders) {
+    if (includeAllSubFolders && !preservesFolderStructure(requestedSyncOptions)) {
       await $assertSyncedSecretsAreFlattenable({
         projectId,
         actorOrgId: actor.orgId,
@@ -911,9 +920,8 @@ export const secretSyncServiceFactory = ({
     // so the gate cannot authorize one sync while the row ends up describing another.
     const updatedSyncOptions = resolvedSyncOptions ?? (secretSync.syncOptions as Record<string, unknown> | undefined);
 
-    const { includeAllSubFolders: requestedSubFolders, keySchema } = (updatedSyncOptions ?? {}) as NonNullable<
-      TSecretSync["syncOptions"]
-    >;
+    const resolvedOptions = (updatedSyncOptions ?? {}) as NonNullable<TSecretSync["syncOptions"]>;
+    const { includeAllSubFolders: requestedSubFolders, keySchema } = resolvedOptions;
     const includeAllSubFolders = Boolean(requestedSubFolders);
 
     // Every update to a sync that includes subfolders re-authorizes the whole subtree, because an
@@ -937,7 +945,7 @@ export const secretSyncServiceFactory = ({
         includeAllSubFolders
       });
 
-      if (includeAllSubFolders) {
+      if (includeAllSubFolders && !preservesFolderStructure(resolvedOptions)) {
         await $assertSyncedSecretsAreFlattenable({
           projectId: secretSync.projectId,
           actorOrgId: actor.orgId,
