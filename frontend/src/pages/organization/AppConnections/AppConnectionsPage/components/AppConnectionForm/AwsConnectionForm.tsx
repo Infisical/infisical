@@ -192,6 +192,7 @@ export const AwsConnectionForm = ({
             )}
             {appConnection && stackProvisioning && (
               <AwsUpdateStack
+                projectId={projectId}
                 connectionId={appConnection.id}
                 provisioning={stackProvisioning}
                 preselectedUseCases={preselectedUseCases}

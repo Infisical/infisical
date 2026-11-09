@@ -20,6 +20,7 @@ import {
   FieldLabel,
   Skeleton
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 import { AWS_USE_CASE_GROUPS } from "@app/helpers/awsUseCases";
 import { useScopeVariant } from "@app/hooks";
@@ -34,11 +35,13 @@ import {
   useGetAwsConnectionProvisioningTemplate
 } from "@app/hooks/api/appConnections/aws";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 import { AwsPartition, MANUAL_DOCS_URL, PARTITION_REGIONS } from "./AwsLaunchStack";
 import { AwsUseCasesSheet } from "./AwsUseCasesSheet";
 
 type Props = {
+  projectId?: string | null;
   connectionId: string;
   provisioning: TAwsConnectionProvisioning;
   preselectedUseCases?: string[];
@@ -77,17 +80,29 @@ const UpdateStackFallback = () => (
 );
 
 const UpdateStackSteps = ({
+  projectId,
   template,
+  useCaseCount,
   isPending,
   onMarkAsUpdated
 }: {
+  projectId?: string | null;
   template: TAwsUpdateProvisioningTemplate;
+  useCaseCount: number;
   isPending: boolean;
   onMarkAsUpdated: () => void;
 }) => {
+  const { currentOrg } = useOrganization();
   const scopeVariant = useScopeVariant();
   const regionName = AWS_REGIONS.find(({ slug }) => slug === template.region)?.name;
   const toggles = Object.entries(template.parameters).sort(([a], [b]) => a.localeCompare(b));
+
+  const handleOpenStack = () => {
+    analytics.captureForOrganization(AnalyticsEvent.AwsUpdateStackClicked, currentOrg.id, {
+      scope: projectId ? "project" : "org",
+      useCaseCount
+    });
+  };
 
   const steps: ReactNode[] = [
     <>
@@ -99,6 +114,7 @@ const UpdateStackSteps = ({
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1 underline"
+        onClick={handleOpenStack}
       >
         Open stack in AWS
         <ExternalLinkIcon className="size-3" />
@@ -184,7 +200,12 @@ const UpdateStackSteps = ({
   );
 };
 
-export const AwsUpdateStack = ({ connectionId, provisioning, preselectedUseCases }: Props) => {
+export const AwsUpdateStack = ({
+  projectId,
+  connectionId,
+  provisioning,
+  preselectedUseCases
+}: Props) => {
   const queryClient = useQueryClient();
   const updateAppConnection = useUpdateAppConnection();
   const [recorded, setRecorded] = useState(provisioning);
@@ -281,7 +302,9 @@ export const AwsUpdateStack = ({ connectionId, provisioning, preselectedUseCases
 
     return (
       <UpdateStackSteps
+        projectId={projectId}
         template={template}
+        useCaseCount={useCases.length}
         isPending={updateAppConnection.isPending}
         onMarkAsUpdated={handleMarkAsUpdated}
       />
