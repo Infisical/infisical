@@ -5,11 +5,28 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { Button } from "@app/components/v4/ui/button";
 
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { FieldControlContext, useFieldControlAttributes } from "../lib/field-context";
 import { cn } from "../lib/utils";
+import { fieldBoxFlags, fieldBoxWatch } from "./input";
 
 import geometry from "./button-geometry.module.css";
 import controlStyles from "./controls.module.css";
+
+const groupFlags = {
+  ...fieldBoxFlags,
+  "data-stacked": 'textarea, :scope > [data-align^="block-"]',
+  "data-addon-start": ':scope > [data-align="inline-start"]',
+  "data-addon-end": ':scope > [data-align="inline-end"]'
+};
+const groupWatch = {
+  ...fieldBoxWatch,
+  attributes: [...fieldBoxWatch.attributes, "data-align"],
+  marks: {
+    "data-has-button": ':scope > [data-slot="input-group-addon"]:has([data-v4-button])',
+    "data-has-kbd": ':scope > [data-slot="input-group-addon"]:has(> kbd)'
+  }
+};
 
 function InputGroup({
   className,
@@ -24,11 +41,13 @@ function InputGroup({
   ref?: React.Ref<React.ComponentRef<"div">>;
 }) {
   const field = React.useContext(FieldControlContext);
+  const groupRef = useDescendantFlags(groupFlags, groupWatch, ref);
   return (
     <FieldControlContext value={{ ...field, "aria-invalid": invalid || field["aria-invalid"] }}>
       <div
-        ref={ref}
+        ref={groupRef}
         data-slot="input-group"
+        data-field-box=""
         data-size={size}
         data-invalid={invalid || undefined}
         role="group"
@@ -51,12 +70,10 @@ const inputGroupAddonVariants = cva(
   {
     variants: {
       align: {
-        "inline-start": "order-first pl-2 has-[>kbd]:ml-[-0.15rem]",
-        "inline-end": "order-last pr-2 has-[>kbd]:mr-[-0.15rem]",
-        "block-start":
-          "order-first w-full justify-start px-2.5 pt-2 group-has-[>input]/input-group:pt-2 [.border-b]:pb-2",
-        "block-end":
-          "order-last w-full justify-start px-2.5 pb-2 group-has-[>input]/input-group:pb-2 [.border-t]:pt-2"
+        "inline-start": "order-first pl-2 data-[has-kbd]:ml-[-0.15rem]",
+        "inline-end": "order-last pr-2 data-[has-kbd]:mr-[-0.15rem]",
+        "block-start": "order-first w-full justify-start px-2.5 pt-2 [.border-b]:pb-2",
+        "block-end": "order-last w-full justify-start px-2.5 pb-2 [.border-t]:pt-2"
       }
     },
     defaultVariants: {

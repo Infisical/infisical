@@ -7,10 +7,10 @@
   border: 0;
   border-radius: 0;
 }
-.frame:has(> .frameHead) {
+.frame[data-frame-head] {
   padding-top: 0;
 }
-.frame:has(> .frameFoot) {
+.frame[data-frame-foot] {
   padding-bottom: 0;
 }
 .frameFoot.frameFoot {

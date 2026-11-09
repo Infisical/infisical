@@ -1361,6 +1361,30 @@
       },
       "category": "Interaction",
       "exceptions": "An inline status beside text keeps Spinner with a label, and a Button keeps its own loading state. A Suspense fallback written across several lines is not linted, so review those by hand."
+    },
+    {
+      "id": "no-has-selectors",
+      "title": "Select on state the component sets, not :has()",
+      "instruction": "Never write a :has() selector or a Tailwind has-*, group-has-* or peer-has-* variant. Chrome re-checks :has() on DOM changes far from the element, so one cell update in a 100-row table relayouts the whole page. Set a data attribute from what the component knows (a prop, a context report from a child, or useDescendantFlags in lib/descendant-flags.ts for slotted children) and select on that.",
+      "good": "TableBody sets data-has-focus from its rows' context reports, and the dim rule selects tbody[data-has-focus].",
+      "avoid": "tbody:has([data-focused]) > tr, or has-[>[data-slot=field]]:border on a label.",
+      "detect": {
+        "by": "lint",
+        "check": "has-selector"
+      },
+      "category": "Interaction"
+    },
+    {
+      "id": "scoped-logical-inline",
+      "title": "Scope rules that set inline logical insets",
+      "instruction": "A rule that sets inset-inline or a logical corner radius needs a class or attribute in its subject. The build lowers those properties into :lang() selectors for older browsers, and a subject left with only :lang() is matched against every element on every style recalc.",
+      "good": ".viewportContent { inset-inline-start: 0 } on a classed wrapper.",
+      "avoid": "td[data-pin=\"viewport\"] > * { inset-inline-start: 0 }",
+      "detect": {
+        "by": "lint",
+        "check": "logical-inline-unscoped"
+      },
+      "category": "Interaction"
     }
   ]
 }

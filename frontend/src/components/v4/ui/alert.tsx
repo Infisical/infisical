@@ -1,10 +1,18 @@
 import * as React from "react";
 
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Icon, type IconName } from "./icon";
 
 import helperStyles from "./helpers.module.css";
+
+const alertFlags = {
+  "data-has-icon": ":scope > svg",
+  "data-has-title": `:scope > .${helperStyles.alertTitle}`,
+  "data-has-action": ':scope > [data-slot="alert-action"]'
+};
+const alertWatch = { subtree: false };
 
 function Alert({
   className,
@@ -23,9 +31,10 @@ function Alert({
   actions?: React.ReactNode;
   onDismiss?: () => void;
 } & { ref?: React.Ref<React.ComponentRef<"div">> }) {
+  const alertRef = useDescendantFlags(alertFlags, alertWatch, ref);
   return (
     <div
-      ref={ref}
+      ref={alertRef}
       data-slot="alert"
       data-variant={variant ?? "default"}
       role={tone === "bad" ? "alert" : "status"}

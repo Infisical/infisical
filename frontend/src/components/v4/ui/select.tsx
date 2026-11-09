@@ -7,6 +7,7 @@ import { useFieldControlAttributes } from "../lib/field-context";
 import { ListHighlight } from "../lib/list-highlight";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
+import { useMenuInset } from "./menu-inset";
 
 import controlStyles from "./controls.module.css";
 import menu from "./menu.module.css";
@@ -180,6 +181,7 @@ function SelectContent({
 }: Omit<React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>, "position"> & {
   ref?: React.Ref<React.ComponentRef<typeof SelectPrimitive.Content>>;
 }) {
+  const inset = useMenuInset<HTMLDivElement>();
   return (
     <SelectPrimitive.Portal container={useV4PortalContainer()}>
       <SelectPrimitive.Content
@@ -195,7 +197,7 @@ function SelectContent({
         {...props}
       >
         <SelectScrollUpButton />
-        <SelectPrimitive.Viewport className={menu.inset} data-scroll-fade="y">
+        <SelectPrimitive.Viewport ref={inset} className={menu.inset} data-scroll-fade="y">
           {children}
           <ListHighlight />
         </SelectPrimitive.Viewport>

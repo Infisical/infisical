@@ -104,6 +104,7 @@ function SheetContent({
       <SheetPrimitive.Content
         ref={escape.ref}
         data-slot="sheet-content"
+        data-has-close={showCloseButton || undefined}
         data-scroll-fade={sections ? undefined : "y"}
         data-sections={sections ? "" : undefined}
         data-side={side}
@@ -128,7 +129,11 @@ function SheetContent({
                     <div data-slot="sheet-head">{sections.pinned}</div>
                   )}
                   {sections.scroll.length > 0 && (
-                    <div data-slot="sheet-scroll" data-scroll-fade="y">
+                    <div
+                      data-slot="sheet-scroll"
+                      data-scroll-fade="y"
+                      data-before-footer={sections.footer.length > 0 || undefined}
+                    >
                       {sections.scroll}
                     </div>
                   )}

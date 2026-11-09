@@ -18,7 +18,7 @@
   box-shadow: var(--v4-shadow-pop);
   white-space: nowrap;
 }
-:global([data-slot="app-inset"]):has(.reserve) {
+:global([data-slot="app-inset"])[data-action-bar-reserve] {
   padding-bottom: calc(var(--v4-size-action-bar) + var(--v4-space-action-bar-offset));
 }
 .count {

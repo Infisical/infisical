@@ -8,6 +8,7 @@ import { MenuKindContext } from "../lib/menu-kind";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 import { menuRowContent, menuShortcutContent } from "./menu-content";
+import { useMenuInset } from "./menu-inset";
 
 import menu from "./menu.module.css";
 
@@ -109,10 +110,11 @@ function ContextMenuContent({
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
   const pressedSinceOpen = React.useContext(PressedSinceOpenContext);
+  const insetRef = useMenuInset(ref);
   return (
     <ContextMenuPrimitive.Portal container={useV4PortalContainer()}>
       <ContextMenuPrimitive.Content
-        ref={ref}
+        ref={insetRef}
         data-slot="context-menu-content"
         collisionPadding={collisionPadding}
         collisionBoundary={useV4CollisionBoundary()}
@@ -197,10 +199,11 @@ function ContextMenuSubContent({
   ref,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.SubContent>) {
+  const insetRef = useMenuInset(ref);
   return (
     <ContextMenuPrimitive.Portal container={useV4PortalContainer()}>
       <ContextMenuPrimitive.SubContent
-        ref={ref}
+        ref={insetRef}
         data-slot="context-menu-sub-content"
         collisionPadding={collisionPadding}
         collisionBoundary={useV4CollisionBoundary()}

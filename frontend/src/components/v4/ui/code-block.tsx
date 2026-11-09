@@ -53,7 +53,7 @@ export const CodeBlock = ({
     >
       <FrameScope framed>
         {(label || actions || copyable) && (
-          <div className={styles.header}>
+          <div className={styles.header} data-has-actions={Boolean(actions) || undefined}>
             <div className={styles.identity}>
               {icon && <Icon name={icon} />}
               {label && (

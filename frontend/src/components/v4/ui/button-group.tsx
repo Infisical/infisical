@@ -4,19 +4,20 @@ import { Slot } from "radix-ui";
 
 import { Separator } from "@app/components/v4/ui/separator";
 
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { cn } from "../lib/utils";
 
 import controlStyles from "./controls.module.css";
 
 const buttonGroupVariants = cva(
-  "group/button-group flex w-fit items-stretch *:focus-visible:relative *:focus-visible:z-10 has-[>[data-slot=button-group]]:gap-2 has-[select[aria-hidden=true]:last-child]:[&>[data-slot=select-trigger]:last-of-type]:rounded-r-lg [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1",
+  "group/button-group flex w-fit items-stretch *:focus-visible:relative *:focus-visible:z-10 data-[has-group]:gap-2 [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1",
   {
     variants: {
       orientation: {
         horizontal:
-          "[&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0 [&>*:not(:last-child)]:rounded-r-none [&>[data-slot]:not(:has(~[data-slot]))]:rounded-r-lg!",
+          "[&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0 [&>*:not(:last-child)]:rounded-r-none",
         vertical:
-          "flex-col [&>*:not(:first-child)]:rounded-t-none [&>*:not(:first-child)]:border-t-0 [&>*:not(:last-child)]:rounded-b-none [&>[data-slot]:not(:has(~[data-slot]))]:rounded-b-lg!"
+          "flex-col [&>*:not(:first-child)]:rounded-t-none [&>*:not(:first-child)]:border-t-0 [&>*:not(:last-child)]:rounded-b-none"
       }
     },
     defaultVariants: {
@@ -24,6 +25,14 @@ const buttonGroupVariants = cva(
     }
   }
 );
+
+const groupFlags = { "data-has-group": ':scope > [data-slot="button-group"]' };
+const groupWatch = {
+  subtree: false,
+  marks: {
+    "data-between-outlines": `:scope > [data-variant="outline"] + .${controlStyles.groupSeparator}:has(+ [data-variant="outline"])`
+  }
+};
 
 function ButtonGroup({
   className,
@@ -40,6 +49,7 @@ function ButtonGroup({
     label?: string;
   } & { ref?: React.Ref<React.ComponentRef<"div">> }) {
   const group = React.useRef<HTMLDivElement | null>(null);
+  const markRef = useDescendantFlags<HTMLDivElement>(groupFlags, groupWatch);
   const controls = () =>
     Array.from(
       group.current?.querySelectorAll<HTMLElement>(
@@ -59,6 +69,7 @@ function ButtonGroup({
     <div
       ref={(node) => {
         group.current = node;
+        markRef(node);
         if (typeof ref === "function") ref(node);
         else if (ref) {
           const forwarded = ref;

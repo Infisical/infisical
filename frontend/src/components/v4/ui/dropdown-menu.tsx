@@ -9,6 +9,7 @@ import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Icon } from "./icon";
 import { menuRowContent, menuShortcutContent } from "./menu-content";
+import { useMenuInset } from "./menu-inset";
 
 import menu from "./menu.module.css";
 
@@ -64,10 +65,11 @@ function DropdownMenuContent({
   ref,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  const insetRef = useMenuInset(ref);
   return (
     <DropdownMenuPrimitive.Portal container={useV4PortalContainer()}>
       <DropdownMenuPrimitive.Content
-        ref={ref}
+        ref={insetRef}
         data-slot="dropdown-menu-content"
         collisionPadding={collisionPadding}
         collisionBoundary={useV4CollisionBoundary()}
@@ -309,10 +311,11 @@ function DropdownMenuSubContent({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
   const Primitive = useMenuPrimitive();
+  const insetRef = useMenuInset(ref);
   return (
     <Primitive.Portal container={useV4PortalContainer()}>
       <Primitive.SubContent
-        ref={ref}
+        ref={insetRef}
         data-slot="dropdown-menu-sub-content"
         collisionPadding={collisionPadding}
         collisionBoundary={useV4CollisionBoundary()}

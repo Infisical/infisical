@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { useDiscardChangesGuard } from "../hooks/use-discard-changes-guard";
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { useFieldControlAttributes } from "../lib/field-context";
 import { type OptionCreateHandler, useOptionCreation } from "../lib/use-option-creation";
 import { cn } from "../lib/utils";
@@ -24,6 +25,7 @@ import {
   DialogTitle
 } from "./dialog";
 import { Icon } from "./icon";
+import { fieldBoxFlags, fieldBoxWatch } from "./input";
 import { MultiSelect } from "./multi-select";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Spinner } from "./spinner";
@@ -146,6 +148,7 @@ export function Combobox({
   const [open, setOpen] = React.useState(props.defaultOpen ?? false);
   const closeOnFocusOutside = props.closeOnFocusOutside ?? !props.defaultOpen;
   const fieldRef = React.useRef<HTMLDivElement>(null);
+  const fieldBoxRef = useDescendantFlags(fieldBoxFlags, fieldBoxWatch, fieldRef);
   const refocus = React.useRef<string | null | undefined>(undefined);
   React.useLayoutEffect(() => {
     if (refocus.current === undefined) return;
@@ -229,7 +232,12 @@ export function Combobox({
   };
   if (props.multiple)
     return (
-      <div ref={fieldRef} className={cn(controlStyles.field, styles.multiCombobox)} data-size="sm">
+      <div
+        ref={fieldBoxRef}
+        className={cn(controlStyles.field, styles.multiCombobox)}
+        data-size="sm"
+        data-field-box=""
+      >
         {selected.map((value) => (
           <span key={value} className={styles.chip} data-locked={isLocked(value) || undefined}>
             <span>{options.find((option) => option.value === value)?.label ?? value}</span>

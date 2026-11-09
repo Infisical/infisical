@@ -13,6 +13,7 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { ListHighlight } from "../lib/list-highlight";
 import { cn } from "../lib/utils";
 import { menuShortcutContent } from "./menu-content";
+import { useMenuInset } from "./menu-inset";
 import { ScrollBar } from "./scroll-area";
 
 import controlStyles from "./controls.module.css";
@@ -107,6 +108,7 @@ function CommandList({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
   const { maxHeight, ...listStyle } = style ?? {};
+  const insetRef = useMenuInset(ref);
   return (
     <ScrollAreaPrimitive.Root
       data-slot="command-scroll"
@@ -115,7 +117,7 @@ function CommandList({
     >
       <ScrollAreaPrimitive.Viewport data-scroll-fade="y" className={menu.viewport}>
         <CommandPrimitive.List
-          ref={ref}
+          ref={insetRef}
           data-slot="command-list"
           className={cn(menu.inset, className)}
           style={style ? listStyle : undefined}

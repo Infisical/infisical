@@ -157,7 +157,11 @@ function AlertDialogContent({
               {sections ? (
                 <>
                   {sections.scroll.length > 0 && (
-                    <div data-slot="alert-dialog-scroll" data-scroll-fade="y">
+                    <div
+                      data-slot="alert-dialog-scroll"
+                      data-scroll-fade="y"
+                      data-before-footer={sections.footer.length > 0 || undefined}
+                    >
                       {sections.scroll}
                     </div>
                   )}
