@@ -59,7 +59,7 @@ TLS applies only to the connection between the proxy and the database. The conne
 
 - **Use TLS** (on by default): The proxy connects to the database over TLS
 - **Verify Certificate** (on by default): The proxy checks the database's certificate, against the system's trusted certificate authorities or the CA certificate you add
-- **CA Certificate (optional, under Add CA Certificate):** The PEM certificate of the authority that signed the database's certificate, for a database with a private certificate (such as `global-bundle.pem` for AWS RDS). Only used while **Verify Certificate** is on
+- **CA Certificate (optional):** The PEM certificate of the authority that signed the database's certificate, for a database with a private certificate (such as `global-bundle.pem` for AWS RDS). Only used while **Verify Certificate** is on
 
 If you turn **Use TLS** off, a PostgreSQL service still uses TLS when the database offers it, without checking the certificate, and a MySQL service connects without TLS.
 

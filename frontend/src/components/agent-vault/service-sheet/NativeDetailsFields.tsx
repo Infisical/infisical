@@ -1,9 +1,8 @@
-import { useEffect, useId, useState } from "react";
+import { useId } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { InfoIcon, PlusIcon } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 
 import {
-  Button,
   Field,
   FieldContent,
   FieldDescription,
@@ -39,12 +38,6 @@ export const NativeDetailsFields = () => {
   const tlsEnabled = watch("tlsEnabled");
   const tlsVerify = watch("tlsVerify");
   const showsDatabase = hasDatabase(serviceType);
-  const tlsCa = watch("tlsCa");
-  const [isCaOpen, setIsCaOpen] = useState(false);
-  // Once it holds a certificate authority the box stays open, so clearing it doesn't snap it shut mid-edit.
-  useEffect(() => {
-    if (tlsCa.trim()) setIsCaOpen(true);
-  }, [tlsCa]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -205,48 +198,27 @@ export const NativeDetailsFields = () => {
             <Controller
               control={control}
               name="tlsCa"
-              render={({ field, fieldState }) =>
-                isCaOpen || tlsCa.trim() || fieldState.error ? (
-                  <Field>
-                    <FieldLabel htmlFor={`${baseId}-tls-ca`}>
-                      CA Certificate (optional)
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <InfoIcon />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          The certificate of the authority that signed the database&apos;s
-                          certificate, for one that isn&apos;t publicly trusted, such as
-                          global-bundle.pem for AWS RDS.
-                        </TooltipContent>
-                      </Tooltip>
-                    </FieldLabel>
-                    <FieldContent>
-                      <TextArea
-                        {...field}
-                        id={`${baseId}-tls-ca`}
-                        rows={4}
-                        className="font-mono"
-                        placeholder="-----BEGIN CERTIFICATE-----"
-                        spellCheck={false}
-                        isError={Boolean(fieldState.error)}
-                      />
-                      <FieldError>{fieldState.error?.message}</FieldError>
-                    </FieldContent>
-                  </Field>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    className="self-start"
-                    onClick={() => setIsCaOpen(true)}
-                  >
-                    <PlusIcon />
-                    Add CA Certificate
-                  </Button>
-                )
-              }
+              render={({ field, fieldState }) => (
+                <Field>
+                  <FieldLabel htmlFor={`${baseId}-tls-ca`}>CA Certificate (optional)</FieldLabel>
+                  <FieldContent>
+                    <TextArea
+                      {...field}
+                      id={`${baseId}-tls-ca`}
+                      rows={3}
+                      className="font-mono"
+                      placeholder="-----BEGIN CERTIFICATE-----"
+                      spellCheck={false}
+                      isError={Boolean(fieldState.error)}
+                    />
+                    <FieldDescription>
+                      Needed only if your database&apos;s certificate isn&apos;t publicly trusted,
+                      as with AWS RDS or Cloud SQL.
+                    </FieldDescription>
+                    <FieldError>{fieldState.error?.message}</FieldError>
+                  </FieldContent>
+                </Field>
+              )}
             />
           )}
         </div>
