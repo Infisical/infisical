@@ -25,11 +25,12 @@ import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import {
   assertFolderMoveAllowed,
+  assertFolderRenameAllowed,
   buildFolderPath,
   canActorReadBlock,
   checkFolderHasRbacPolicies,
   checkFolderMoveBlock,
-  checkFolderMovePolicyBlock,
+  checkFolderPolicyBlock,
   TFolderMoveAccessScope
 } from "@app/services/secret-folder/secret-folder-fns";
 import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
@@ -347,6 +348,43 @@ export const secretFolderServiceFactory = ({
     }
   };
 
+  const assertRenameLeavesNoProtectedSecrets = async ({
+    projectId,
+    environment,
+    folderId,
+    tx
+  }: {
+    projectId: string;
+    environment: string;
+    folderId: string;
+    tx: Knex;
+  }) => {
+    const [targetFolder] = await folderDAL.findSecretPathByFolderIds(projectId, [folderId], tx);
+    if (!targetFolder) {
+      throw new NotFoundError({ message: `Target folder path not found` });
+    }
+
+    const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folderId] }, tx);
+    const secrets = await secretV2BridgeDAL.findByFolderIds({
+      folderIds: subtree.map((candidate) => candidate.id),
+      tx
+    });
+    if (!secrets.length) return;
+
+    const folderIdsWithSecrets = new Set(secrets.map((secret) => secret.folderId));
+    const block = await checkFolderPolicyBlock(
+      {
+        subtree: subtree.filter((candidate) => folderIdsWithSecrets.has(candidate.id)),
+        projectId,
+        environment,
+        rootFolderPath: targetFolder.path
+      },
+      { secretApprovalPolicyService },
+      tx
+    );
+    assertFolderRenameAllowed(block);
+  };
+
   const updateManyFolders = async ({
     actor,
     actorId,
@@ -438,6 +476,13 @@ export const secretFolderServiceFactory = ({
                 name: "Batch update folder"
               });
             }
+
+            await assertRenameLeavesNoProtectedSecrets({
+              projectId: projectId as string,
+              environment,
+              folderId: folder.id,
+              tx
+            });
           }
 
           const [doc] = await folderDAL.update(
@@ -566,7 +611,8 @@ export const secretFolderServiceFactory = ({
       .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
 
     if (!folder) throw new NotFoundError({ message: `Folder with ID '${id}' not found`, name: "UpdateFolder" });
-    if (name !== folder.name) {
+    const rename = name !== folder.name;
+    if (rename) {
       // ensure that new folder name is unique
       const folderToCheck = await folderDAL.findOne({
         name,
@@ -583,6 +629,15 @@ export const secretFolderServiceFactory = ({
     }
 
     const { newFolder, newFolderPath, oldFolderPath } = await folderDAL.transaction(async (tx) => {
+      if (rename) {
+        await assertRenameLeavesNoProtectedSecrets({
+          projectId,
+          environment,
+          folderId: folder.id,
+          tx
+        });
+      }
+
       // Read the old folder path BEFORE the update to capture the original name in the path.
       // This must be done inside the transaction to ensure read-after-write consistency
       // when using read replicas, but before the UPDATE to get the old state.
@@ -1723,14 +1778,14 @@ export const secretFolderServiceFactory = ({
       folderMoveBlockDeps,
       tx
     );
-    const sourcePolicyBlock = await checkFolderMovePolicyBlock(
+    const sourcePolicyBlock = await checkFolderPolicyBlock(
       { subtree, projectId, environment: sourceEnvironment, rootFolderPath: sourceFolderPath },
       folderMoveBlockDeps
     );
     const sourceBlock = secretTypeBlock ?? sourcePolicyBlock;
 
     const destinationBlock = destination
-      ? await checkFolderMovePolicyBlock(
+      ? await checkFolderPolicyBlock(
           { subtree, projectId, environment: destination.environment, rootFolderPath: destination.path },
           folderMoveBlockDeps
         )

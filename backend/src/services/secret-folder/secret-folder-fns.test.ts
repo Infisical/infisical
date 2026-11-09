@@ -2,9 +2,11 @@ import { Knex } from "knex";
 import { vi } from "vitest";
 
 import { TSecretFolders } from "@app/db/schemas";
+import { BadRequestError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import {
+  assertFolderRenameAllowed,
   buildChildrenMap,
   buildFolderIdMap,
   buildFolderPath,
@@ -380,5 +382,32 @@ describe("checkFolderHasRbacPolicies", () => {
 
     expect(find).toHaveBeenCalledTimes(1);
     expect(find).toHaveBeenCalledWith({ $in: { folderId: ["root-id", "a-id", "b-id"] } }, { limit: 1, tx });
+  });
+});
+
+describe("assertFolderRenameAllowed", () => {
+  const covered = {
+    blockingType: "secret_approval_policy" as const,
+    blockingPath: "/app/api",
+    blockingAbsPath: "/app/api",
+    policyName: "prod-guard"
+  };
+
+  test("refuses a rename when a change policy covers a secret in the tree", () => {
+    expect(() => assertFolderRenameAllowed(covered)).toThrow(BadRequestError);
+
+    try {
+      assertFolderRenameAllowed(covered);
+    } catch (error) {
+      expect(error).toMatchObject({
+        name: "RenameFolderProtectedByPolicy",
+        message:
+          'You cannot rename the selected folder because it contains one or more secrets that are protected by the change policy "prod-guard" at folder path "/app/api". Please remove the secrets at folder path "/app/api" and try again.'
+      });
+    }
+  });
+
+  test("allows a rename when no secret is covered", () => {
+    expect(assertFolderRenameAllowed(null)).toBeUndefined();
   });
 });

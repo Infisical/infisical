@@ -243,15 +243,14 @@ export const checkFolderMoveBlock = async (
   return null;
 };
 
-type TCheckFolderMovePolicyBlockDeps = {
+type TCheckFolderPolicyBlockDeps = {
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicyByPaths">;
 };
 
 // checks whether any folder in the subtree (re-rooted at `rootFolderPath` in `environment`) is governed by a
-// secret approval policy, returning the first blocked path in subtree order (or null). used for both the source
-// paths and the destination paths of a move. pass `accessScope` to limit reporting to paths the actor may read;
-// omit it (the move path) to always detect a block and gate only the resulting message.
-export const checkFolderMovePolicyBlock = async (
+// secret approval policy, returning the first blocked path in subtree order (or null). a move checks its source
+// and its destination; a rename checks the folder's current paths.
+export const checkFolderPolicyBlock = async (
   {
     subtree,
     projectId,
@@ -263,7 +262,7 @@ export const checkFolderMovePolicyBlock = async (
     environment: string;
     rootFolderPath: string;
   },
-  { secretApprovalPolicyService }: TCheckFolderMovePolicyBlockDeps,
+  { secretApprovalPolicyService }: TCheckFolderPolicyBlockDeps,
   tx?: Knex
 ): Promise<TFolderMoveBlock | null> => {
   const toAbsPath = buildToAbsPath(rootFolderPath);
@@ -361,5 +360,14 @@ export const assertFolderMoveAllowed = (
   }
   throw new BadRequestError({
     message: `Cannot move folder '${folderName}'. It contains resources that cannot be moved. Only folders that contain exclusively static secrets can be moved.`
+  });
+};
+
+export const assertFolderRenameAllowed = (block: TFolderMoveBlock | null) => {
+  if (!block) return;
+
+  throw new BadRequestError({
+    message: `You cannot rename the selected folder because it contains one or more secrets that are protected by the change policy "${block.policyName}" at folder path "${block.blockingPath}". Please remove the secrets at folder path "${block.blockingPath}" and try again.`,
+    name: "RenameFolderProtectedByPolicy"
   });
 };
