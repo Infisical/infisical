@@ -51,7 +51,7 @@ export type RowContext = {
   expanded: string[];
   onExpand: (key: string, open: boolean) => void;
   onToggleSelect: (keys: string[]) => void;
-  report: (message: string) => void;
+  report: (message: string, tone: "ok" | "bad") => void;
   onAction: (action: RowAction) => void;
   pending?: Record<string, PendingType>;
   selectionDisabled?: boolean;

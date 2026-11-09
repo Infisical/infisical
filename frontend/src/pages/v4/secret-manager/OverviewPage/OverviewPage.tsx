@@ -238,7 +238,6 @@ export const OverviewPage = () => {
   const [editingFolder, setEditingFolder] = useState<Of<"folder">>();
   const [deletingFolder, setDeletingFolder] = useState<Of<"folder">>();
   const [deleting, setDeleting] = useState<Editable[]>();
-  const [notice, setNotice] = useState("");
   const [flow, setFlow] = useState<{
     kind: ResourceKind;
     session: number;
@@ -659,7 +658,6 @@ export const OverviewPage = () => {
   const resetView = () => {
     setPage(1);
     setSelected([]);
-    setNotice("");
     setRecent([]);
   };
   const [shownPath, setShownPath] = useState(path);
@@ -771,7 +769,8 @@ export const OverviewPage = () => {
     selectableKinds.includes(entries[0].kind) ? entries.map(selectionKey) : []
   );
   const selectedEntries = scoped.filter((resource) => selected.includes(selectionKey(resource)));
-  const report = (message: string) => setNotice(message);
+  const report = (message: string, tone: "ok" | "bad") =>
+    pushToast({ tone, title: message.replace(/\.$/, "") });
   const stage = (shownResource: Secret | Of<"folder">, next: Secret | Of<"folder">) => {
     setPending((current) => stagePending(current, shownResource, next, resources));
     setSelected([]);
@@ -801,7 +800,6 @@ export const OverviewPage = () => {
         (response) => {
           setPending((current) => current.filter((change) => !changes.includes(change)));
           setReviewOpen(false);
-          setNotice("");
           pushToast(
             response.approval
               ? {
@@ -909,7 +907,6 @@ export const OverviewPage = () => {
       ],
       feedback
     );
-    setNotice("");
     setRecent([
       ...new Set(
         created
@@ -1004,7 +1001,6 @@ export const OverviewPage = () => {
           : "Successfully renamed folder across environments"
       }
     );
-    setNotice("");
   };
   const remove = (selectedTargets: Editable[], title?: string) => {
     const targets = selectedTargets.map(
@@ -1032,7 +1028,6 @@ export const OverviewPage = () => {
         title: title ?? `Deleted ${[...new Set(targets.map((target) => target.name))].join(", ")}`
       }
     );
-    setNotice("");
     setDeleting(undefined);
     setSelected([]);
   };
@@ -1102,7 +1097,7 @@ export const OverviewPage = () => {
     try {
       if (action === "clipboard") {
         await navigator.clipboard.writeText(text);
-        setNotice("Secrets copied to clipboard. They are ready to paste.");
+        pushToast({ tone: "ok", title: "Secrets copied to clipboard. They are ready to paste" });
         return;
       }
       const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
@@ -1111,9 +1106,9 @@ export const OverviewPage = () => {
       link.download = `${environment}.env`;
       link.click();
       URL.revokeObjectURL(url);
-      setNotice(`Downloaded ${environment}.env.`);
+      pushToast({ tone: "ok", title: `Downloaded ${environment}.env` });
     } catch {
-      setNotice("Failed to export secrets. Please try again later.");
+      pushToast({ tone: "bad", title: "Failed to export secrets. Please try again later" });
     }
   };
   const exportBlock = (() => {
@@ -1244,7 +1239,6 @@ export const OverviewPage = () => {
           }),
         feedback
       );
-      setNotice("");
     },
     onNavigate: (environment, nextPath, key) => {
       navigate(nextPath);
@@ -1546,9 +1540,9 @@ export const OverviewPage = () => {
           onSelect={async () => {
             try {
               await navigator.clipboard.writeText(environment.value);
-              setNotice("Environment slug copied to clipboard.");
+              pushToast({ tone: "ok", title: "Environment slug copied to clipboard" });
             } catch {
-              setNotice("Failed to copy the environment slug.");
+              pushToast({ tone: "bad", title: "Failed to copy the environment slug" });
             }
           }}
         >
@@ -1989,15 +1983,9 @@ export const OverviewPage = () => {
                       </Table>
                     )}
                   </div>
-                  {(totalCount > 0 || notice) && (
+                  {totalCount > 0 && (
                     <div className={styles.footer}>
-                      {notice ? (
-                        <p role="status" className={styles.notice}>
-                          {notice}
-                        </p>
-                      ) : (
-                        <ResourceCount counts={totals} />
-                      )}
+                      <ResourceCount counts={totals} />
                       {!unavailableState && totalCount > 0 && (
                         <div className={styles.pagination}>
                           <Pagination
@@ -2182,7 +2170,6 @@ export const OverviewPage = () => {
                 options?: ResourceApplyOptions
               ) => {
                 setResources(update, feedback, options);
-                setNotice("");
               },
               onToast: (tone: "ok" | "bad" | "neutral", feedback: FlowFeedback) =>
                 pushToast({ tone, ...feedback })

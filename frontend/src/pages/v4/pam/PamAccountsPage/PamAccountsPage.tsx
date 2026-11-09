@@ -30,6 +30,7 @@ import {
 } from "@app/hooks/api/pam";
 import { useDebounce } from "@app/hooks/useDebounce";
 
+import { toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
@@ -276,7 +277,6 @@ export const PamAccountsPage = () => {
   const { orgId } = useParams({ from: route });
   const pam = useV4Adapter("pam");
   const [searchInput, setSearchInput] = useState("");
-  const [notice, setNotice] = useState("");
 
   const { data: capabilities } = pam.useAccessCapabilities();
   const { data: folders = [], isPending: isLoadingFolders } = pam.useFolders({
@@ -323,7 +323,10 @@ export const PamAccountsPage = () => {
 
   const copyId = (row: Row) => {
     navigator.clipboard.writeText(row.id);
-    setNotice(`${row.kind === "folder" ? "Folder" : "Account"} ID copied to clipboard`);
+    toast({
+      tone: "ok",
+      title: `${row.kind === "folder" ? "Folder" : "Account"} ID copied to clipboard`
+    });
   };
 
   const columns: DataTableColumn<Row>[] = [
@@ -501,7 +504,6 @@ export const PamAccountsPage = () => {
                 <AccountMenu row={row} onCopy={copyId} />
               )
           }}
-          footer={notice || undefined}
           empty={empty}
         />
       </Stack>

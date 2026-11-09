@@ -44,6 +44,7 @@ import type {
   TSecretScanningFinding
 } from "@app/hooks/api/secretScanningV2/types";
 
+import { toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
@@ -123,7 +124,6 @@ const Findings = ({ projectId }: { projectId: string }) => {
   const [pageSize, setPageSize] = useState(20);
   const [selected, setSelected] = useState<string[]>([]);
   const [opened, setOpened] = useState<TSecretScanningFinding | null>(null);
-  const [notice, setNotice] = useState("");
   const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>({
     columnId: "detected",
     direction: "desc"
@@ -160,9 +160,10 @@ const Findings = ({ projectId }: { projectId: string }) => {
       current && ids.includes(current.id) ? { ...current, status: next } : current
     );
     setSelected([]);
-    setNotice(
-      `${ids.length} ${ids.length === 1 ? "finding" : "findings"} set to ${statusOf(next).label.toLowerCase()}`
-    );
+    toast({
+      tone: "ok",
+      title: `${ids.length} ${ids.length === 1 ? "finding" : "findings"} set to ${statusOf(next).label.toLowerCase()}`
+    });
   };
   const refilter = (change: Partial<typeof search>) => {
     navigate({ search: (prev) => ({ ...prev, ...change }), replace: true });
@@ -301,7 +302,7 @@ const Findings = ({ projectId }: { projectId: string }) => {
           )}
         </div>
         <Meta mono={false} role="status">
-          {notice || (dataSource ? "" : "Choose a data source to filter by repository")}
+          {dataSource ? "" : "Choose a data source to filter by repository"}
         </Meta>
       </Inline>
       <DataTable

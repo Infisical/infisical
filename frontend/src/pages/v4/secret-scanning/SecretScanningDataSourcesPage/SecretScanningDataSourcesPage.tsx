@@ -49,6 +49,7 @@ import {
 } from "@app/hooks/api/secretScanningV2/enums";
 import type { TSecretScanningDataSourceWithDetails } from "@app/hooks/api/secretScanningV2/types";
 
+import { toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
@@ -277,7 +278,6 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
   const [pageSize, setPageSize] = useState(20);
   const [editing, setEditing] = useState<TSecretScanningDataSourceWithDetails>();
   const [deleting, setDeleting] = useState<TSecretScanningDataSourceWithDetails>();
-  const [notice, setNotice] = useState("");
 
   const typeFilter = (filters.find((filter) => filter.field === "type")?.values ??
     []) as SecretScanningDataSource[];
@@ -454,7 +454,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
                 <DropdownMenuItem
                   onSelect={() => {
                     navigator.clipboard.writeText(row.id);
-                    setNotice("Data source ID copied to clipboard");
+                    toast({ tone: "ok", title: "Data source ID copied to clipboard" });
                   }}
                 >
                   Copy data source ID
@@ -466,7 +466,6 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
               </>
             )
           }}
-          footer={notice || undefined}
           empty={
             isFiltered && dataSources.length ? (
               <EmptyState
@@ -512,7 +511,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
         <EditDataSourceSheet
           dataSource={editing}
           onClose={() => setEditing(undefined)}
-          onSaved={setNotice}
+          onSaved={(title) => toast({ tone: "ok", title })}
         />
         <AlertDialog
           open={Boolean(deleting)}
@@ -536,9 +535,10 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
                     type: deleting.type,
                     projectId: deleting.projectId
                   });
-                  setNotice(
-                    `Deleted ${SECRET_SCANNING_DATA_SOURCE_MAP[deleting.type].name} data source ${deleting.name}`
-                  );
+                  toast({
+                    tone: "ok",
+                    title: `Deleted ${SECRET_SCANNING_DATA_SOURCE_MAP[deleting.type].name} data source ${deleting.name}`
+                  });
                   setDeleting(undefined);
                 }}
               >
