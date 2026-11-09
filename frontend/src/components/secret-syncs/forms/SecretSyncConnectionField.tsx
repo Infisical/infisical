@@ -20,6 +20,7 @@ import {
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { AWS_SECRET_SYNC_USE_CASES } from "@app/helpers/awsUseCases";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/helpers/secretSyncs";
 import { usePopUp } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
@@ -150,6 +151,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
         }}
         projectType={currentProject.type}
         projectId={currentProject.id}
+        useCases={AWS_SECRET_SYNC_USE_CASES[destination]}
         app={app}
         onComplete={(connection) => {
           if (connection) {

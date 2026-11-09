@@ -61,6 +61,7 @@ import {
   isAgentVaultSessionLogStorageOnPlan
 } from "@app/helpers/agentVaultSessionLogs";
 import { APP_CONNECTION_MAP, AWS_REGIONS } from "@app/helpers/appConnections";
+import { AGENT_VAULT_SESSION_LOGS_USE_CASES } from "@app/helpers/awsUseCases";
 import { useDiscardChangesGuard, usePopUp } from "@app/hooks";
 import {
   useGetAgentVaultSessionLogSettings,
@@ -612,6 +613,7 @@ export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentia
         projectType={currentProject.type}
         projectId={currentProject.id}
         app={AppConnection.AWS}
+        useCases={AGENT_VAULT_SESSION_LOGS_USE_CASES}
         onComplete={(connection) => {
           if (connection) {
             setValue("appConnectionId", connection.id, { shouldValidate: true, shouldDirty: true });

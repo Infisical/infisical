@@ -43,6 +43,7 @@ import {
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { AGENT_VAULT_SESSION_LOGS_USE_CASES } from "@app/helpers/awsUseCases";
 import { usePopUp } from "@app/hooks";
 import { useGetAgentVaultSessionLogSettings } from "@app/hooks/api/agentVault";
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
@@ -262,6 +263,7 @@ export const SessionLogConnectionsSheet = ({ isOpen, onOpenChange }: Props) => {
           projectId={currentProject.id}
           projectType={currentProject.type}
           app={AppConnection.AWS}
+          useCases={AGENT_VAULT_SESSION_LOGS_USE_CASES}
         />
         <EditAppConnectionDetailsModal
           isOpen={popUp.editDetails.isOpen}
