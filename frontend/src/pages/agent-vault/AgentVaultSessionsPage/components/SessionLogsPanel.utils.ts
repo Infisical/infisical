@@ -227,9 +227,9 @@ export const nativeSessionLogSections = (
     ] as { label: string; value?: string; isError?: boolean }[]
   ).filter((section): section is TNativeSessionLogSection => Boolean(section.value));
 
-// A row with only a note already shows all of it as its summary, so it has nothing to expand.
+// A note can run past its column, such as why a connection was refused or failed, so a row with one expands to it.
 export const hasNativeSessionLogDetails = (native?: TAgentVaultSessionLogNativeDetail) =>
-  native !== undefined && nativeSessionLogSections(native).length > 0;
+  native !== undefined && (nativeSessionLogSections(native).length > 0 || Boolean(native.note));
 
 export const sessionLogMcpCalls = (
   record: TAgentVaultSessionLogRecord

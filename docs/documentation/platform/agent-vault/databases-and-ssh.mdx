@@ -165,6 +165,7 @@ The proxy records each statement, SSH command, and file transfer in the [session
 - **SSH errors aren't shown:** The agent doesn't see what a command writes to standard error, and the session log doesn't record it or the command's exit code
 - **Password logins only use SSH's password method:** An SSH server that only allows keyboard-interactive logins rejects a password, so use an [SSH key](#ssh-key) instead
 - **Database logins:** PostgreSQL services log in with a plain-text, MD5, or SCRAM-SHA-256 password, and MySQL services with the `mysql_native_password`, `caching_sha2_password`, `sha256_password`, or `ed25519` method
+- **MySQL clients need `mysql_native_password`:** The proxy offers the agent's MySQL client only the `mysql_native_password` login method, so MySQL 8 and MariaDB clients work, and newer clients built without it (such as the current Homebrew `mysql`) can't log in
 - **No SOCKS5-only proxies:** `connect` uses the proxy's HTTP port, so it doesn't work with a proxy whose HTTP port the agent can't reach, such as a proxy set up for [E2B](/documentation/platform/agent-vault/guides/e2b)
 
 ## Troubleshooting
@@ -184,9 +185,12 @@ The proxy records each statement, SSH command, and file transfer in the [session
 
     - The service's **Host** and **Port** are reachable from the proxy's machine
     - The account's username and password, or key, are correct
-    - The TLS settings match the database, for example **Verify Certificate** is off or **Certificate Authority (optional)** is set for a database with a private certificate
+    - The TLS settings match the database, for example **Verify Certificate** is off or **CA Certificate (optional)** is set for a database with a private certificate
 
-    The proxy's own log names the service and the error.
+    The session's log shows the failed connection as an **Error** row with the reason, and so does the proxy's own log.
+  </Accordion>
+  <Accordion title="The MySQL client says it can't load mysql_native_password">
+    The client was built without the `mysql_native_password` login method, which the proxy needs. Use a MySQL 8 or MariaDB client.
   </Accordion>
   <Accordion title="The agent's connection closes after a service changes">
     The proxy closes open connections to a service when you remove the service or change its host, port, database, or TLS settings, and when the session ends. A new password or key applies to new connections, and open connections stay open.

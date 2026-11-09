@@ -127,9 +127,9 @@ describe("nativeSessionLogSections", () => {
     ]);
   });
 
-  it("leaves a row with only a note, or nothing, unexpandable", () => {
+  it("expands a row with a note, and leaves one with nothing to show unexpandable", () => {
     expect(hasNativeSessionLogDetails(undefined)).toBe(false);
-    expect(hasNativeSessionLogDetails({ note: "Forwarded channel" })).toBe(false);
+    expect(hasNativeSessionLogDetails({ note: "Forwarded channel" })).toBe(true);
     expect(hasNativeSessionLogDetails({ shell: true })).toBe(false);
     expect(hasNativeSessionLogDetails({ shell: true, output: "$ ls" })).toBe(true);
   });

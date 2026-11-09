@@ -335,11 +335,17 @@ export const SessionLogRow = ({
       {presentation.label}
     </Badge>
   );
+  // Several database or SSH services can share a server, so their rows lead with the service and keep the address
+  // for hover. An HTTP row's host is what it reached, so it leads with that.
+  const showsServiceName = isNative && Boolean(record.service);
+  const address = record.host.includes(":") ? `[${record.host}]` : record.host;
+  const hostLabel = showsServiceName ? record.service : record.host;
+  const hostHover = showsServiceName ? `${address}:${record.port}` : record.service;
   const host = (
     <span className="flex w-fit max-w-full items-center gap-2 text-sm">
       <ServiceIcon hostPattern={record.host} serviceType={record.serviceType} />
-      <span className="truncate" title={record.service ? undefined : record.host}>
-        {record.host}
+      <span className="truncate" title={hostHover ? undefined : record.host}>
+        {hostLabel}
       </span>
     </span>
   );
@@ -371,10 +377,10 @@ export const SessionLogRow = ({
           {sessionLogMethodLabel(record)}
         </TableCell>
         <TableCell>
-          {record.service ? (
+          {hostHover ? (
             <Tooltip>
               <TooltipTrigger asChild>{host}</TooltipTrigger>
-              <TooltipContent>{record.service}</TooltipContent>
+              <TooltipContent>{hostHover}</TooltipContent>
             </Tooltip>
           ) : (
             host
