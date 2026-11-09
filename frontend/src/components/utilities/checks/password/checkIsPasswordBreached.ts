@@ -96,8 +96,8 @@ export const checkPasswordBreachStatus = async (
       }) from the Pwnd Passwords API`
     );
     return "unavailable";
-  } catch (err: any) {
-    console.error("An unexpected error has occurred:", err.message);
+  } catch (err) {
+    console.error("An unexpected error has occurred:", err instanceof Error ? err.message : err);
     return "unavailable";
   } finally {
     // Clear the UTF-8 encoded password from memory

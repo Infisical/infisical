@@ -13,6 +13,10 @@ import { WebSocketServerMessageSchema, WsMessageType } from "./web-access-types"
 
 import "@xterm/xterm/css/xterm.css";
 
+type XtermWithCore = {
+  _core: { _renderService: { dimensions: { css: { cell: { width: number } } } } };
+};
+
 type UseWebAccessSessionOptions = {
   accountId: string;
   accountType: string;
@@ -143,7 +147,8 @@ export const useWebAccessSession = ({
       if (longestLine <= terminal.cols) return;
 
       // eslint-disable-next-line no-underscore-dangle
-      const cellWidth = (terminal as any)._core._renderService.dimensions.css.cell.width as number;
+      const cellWidth = (terminal as unknown as XtermWithCore)._core._renderService.dimensions.css
+        .cell.width;
       if (!cellWidth) return;
 
       const MAX_COLS = 10000;

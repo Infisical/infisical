@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { useState } from "react";
-import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
+import { Control, Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CopyIcon,
@@ -103,7 +103,7 @@ const ProviderMultiSelect = <T extends string>({
 }: {
   label: string;
   options: TProviderOption<T>[];
-  control: any;
+  control: Control<TRuleForm>;
   error?: string;
 }) => {
   return (

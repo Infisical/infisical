@@ -87,7 +87,7 @@ export type OrgUser = {
   role: "owner" | "admin" | "member" | "no-access" | "custom";
   customRoleSlug?: string;
   status: "invited" | "accepted" | "verified" | "completed";
-  deniedPermissions: any[];
+  deniedPermissions: unknown[];
   roleId: string;
   isActive: boolean;
   lastLoginAuthMethod?: AuthMethod;
@@ -190,7 +190,7 @@ export type TWorkspaceUser = {
       }
   )[];
   status: "invited" | "accepted" | "verified" | "completed";
-  deniedPermissions: any[];
+  deniedPermissions: unknown[];
 };
 
 export type AddUserToWsDTONonE2EE = {

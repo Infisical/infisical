@@ -60,7 +60,7 @@ export type TAuditLogDateFilterFormData = z.infer<typeof auditLogDateFilterFormS
 
 export type SetValueType = (
   name: keyof TAuditLogFilterFormData,
-  value: any,
+  value: unknown,
   options?: {
     shouldValidate?: boolean;
     shouldDirty?: boolean;

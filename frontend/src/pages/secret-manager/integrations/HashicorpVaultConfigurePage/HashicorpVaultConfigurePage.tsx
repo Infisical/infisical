@@ -58,7 +58,7 @@ const generateFormSchema = (availableEnvironmentNames: string[]) => {
       .refine((val) => isValidPath(val), {
         message: "Vault secret path has to be a valid path"
       }),
-    selectedSourceEnvironment: z.enum(availableEnvironmentNames as any as [string, ...string[]])
+    selectedSourceEnvironment: z.enum(availableEnvironmentNames as [string, ...string[]])
   });
 };
 

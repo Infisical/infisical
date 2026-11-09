@@ -201,7 +201,7 @@ export const NorthflankConfigurePage = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {integrationAuthSecretGroups.length > 0 ? (
-                    integrationAuthSecretGroups.map((secretGroup: any) => (
+                    integrationAuthSecretGroups.map((secretGroup) => (
                       <SelectItem
                         value={secretGroup.groupId}
                         key={`target-secret-group-${secretGroup.groupId}`}

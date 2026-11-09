@@ -3,6 +3,7 @@ import { RegistrationResponseJSON, startRegistration } from "@simplewebauthn/bro
 
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
+import { getErrorMessage, hasErrorName } from "@app/helpers/errors";
 import { getMfaStepUpChallenge, TMfaStepUpChallenge } from "@app/helpers/mfaSession";
 
 import { useVerifyRegistration } from "./mutations";
@@ -49,7 +50,7 @@ export const useRegisterPasskey = ({ onStepUpRequired }: Options) => {
       }
       createNotification({ text: "Passkey registered", type: "success" });
       return true;
-    } catch (error: any) {
+    } catch (error) {
       const stepUpChallenge = getMfaStepUpChallenge(error);
       if (stepUpChallenge) {
         onStepUpRequired(stepUpChallenge);
@@ -57,12 +58,11 @@ export const useRegisterPasskey = ({ onStepUpRequired }: Options) => {
       }
 
       let text = "Failed to register passkey";
-      if (error.name === "NotAllowedError")
+      if (hasErrorName(error, "NotAllowedError"))
         text = "Passkey registration was cancelled or timed out";
-      else if (error.name === "InvalidStateError")
+      else if (hasErrorName(error, "InvalidStateError"))
         text = "This passkey has already been registered";
-      else if (error?.response?.data?.message) text = error.response.data.message;
-      else if (error.message) text = error.message;
+      else text = getErrorMessage(error) || text;
       createNotification({ text, type: "error" });
       return false;
     } finally {

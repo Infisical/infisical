@@ -334,7 +334,7 @@ export const IdentityLdapAuthForm = ({
   const userAccess = watch("userAccess");
 
   // Helper function to determine scope based on existing data
-  const determineScope = (authData: any) => {
+  const determineScope = (authData: { templateId?: string | null }) => {
     // If templateId exists in the data, it's template scope
     if (authData.templateId) {
       return "template";
