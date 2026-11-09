@@ -1,3 +1,5 @@
+import { isAxiosError } from "axios";
+
 import { SecretType } from "@app/hooks/api/secrets/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 
@@ -57,9 +59,7 @@ export const useResourceApply = ({
   const createImport = adapter.useCreateSecretImport();
   const deleteImport = adapter.useDeleteSecretImport();
   const resyncImport = adapter.useResyncSecretImport();
-
-  const tagIds = (slugs: string[]) =>
-    slugs.flatMap((slug) => tags.filter((tag) => tag.slug === slug).map((tag) => tag.id));
+  const createTag = adapter.useCreateTag();
 
   return async (
     before: readonly Resource[],
@@ -84,6 +84,33 @@ export const useResourceApply = ({
     );
     if (createdSecrets.some((secret) => valueOf(secret) === undefined))
       throw new Error("Load all selected secret values before creating secrets.");
+    const secretChanges = changed.filter(
+      (pair): pair is readonly [Secret, Secret] =>
+        pair[0].kind === "secret" && !pair[0].managedBy && !pair[0].honeyToken
+    );
+
+    const missingTags = [
+      ...new Set(
+        [...createdSecrets, ...secretChanges.map(([, to]) => to)].flatMap((secret) =>
+          secret.tags.filter((slug) => !tags.some((tag) => tag.slug === slug))
+        )
+      )
+    ];
+    const createdTags = await Promise.all(
+      missingTags.map((slug) =>
+        createTag
+          .mutateAsync({ projectId, tagSlug: slug, tagColor: "" })
+          .catch((error: unknown) => {
+            const reason = isAxiosError<{ message?: string }>(error)
+              ? error.response?.data?.message
+              : undefined;
+            throw new Error(`Could not create the tag ${slug}.${reason ? ` ${reason}` : ""}`);
+          })
+      )
+    );
+    const knownTags = [...tags, ...createdTags];
+    const tagIds = (slugs: string[]) =>
+      slugs.flatMap((slug) => knownTags.filter((tag) => tag.slug === slug).map((tag) => tag.id));
 
     const folderMoves = changed
       .filter(
@@ -267,10 +294,6 @@ export const useResourceApply = ({
       )
     );
 
-    const secretChanges = changed.filter(
-      (pair): pair is readonly [Secret, Secret] =>
-        pair[0].kind === "secret" && !pair[0].managedBy && !pair[0].honeyToken
-    );
     await Promise.all(
       secretChanges.map(async ([from, to]) => {
         const scope = {
