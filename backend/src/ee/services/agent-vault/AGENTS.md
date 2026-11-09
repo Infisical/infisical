@@ -710,7 +710,9 @@ code exchange and refresh; the proxy only ever receives the access token.
 - **Non-conforming servers are supported through fallbacks**, each recorded in `compatibility`. A fallback may
   relax what a server must advertise, never a check that stops mix-up or token theft: the issuer must match (a
   trailing slash aside), the protected resource must be the server's own origin, and `iss` is checked whenever it
-  arrives.
+  arrives. Parameters added to every request for a known provider are not fallbacks and are not recorded:
+  `buildAuthorizeUrl` sends Google (`accounts.google.com`) `access_type=offline` and `prompt=consent`, since Google
+  ignores `offline_access` and issues a refresh token only for those.
 - **Every scope is an RFC 6749 scope-token** (`isOauthScopeToken`): the proxy's reports are refused otherwise, and
   scopes from metadata, challenges and token responses that aren't are dropped. A space would split the `scope`
   parameter and a NUL fails the jsonb write. A granted `scope` splits on spaces only, since a comma is legal inside a
