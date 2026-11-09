@@ -118,6 +118,8 @@ If the proxy can't use the key, such as a key with a passphrase or a certificate
 
 To close the ports, stop the command with Ctrl+C.
 
+The ports accept connections from any user on the machine. On a shared machine, run the agent in its own container or VM.
+
 ### Pick a local port
 
 By default, each service gets a free port, which changes each time `connect` starts. To use the same port every time, name one service and pass `--port`:
@@ -142,6 +144,8 @@ Pass the session token and the proxy's address:
 ```bash
 infisical agent-vault connect analytics --session-token <session-token> --proxy <proxy-host>:17323
 ```
+
+Other users on the machine can see a token passed as a flag in the process list, such as with `ps`. Prefer setting the token in `INFISICAL_AGENT_VAULT_SESSION_TOKEN` over passing `--session-token`.
 
 Before it sends the session token to the proxy, `connect` checks the proxy's certificate authority against the fingerprints Infisical lists for the session's proxies:
 

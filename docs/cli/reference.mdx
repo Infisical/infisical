@@ -305,7 +305,7 @@ Before the agent starts, the command installs the [skills](/documentation/platfo
     { name: "--ca-fingerprint", value: "<string>", type: "string", description: "The SHA256 fingerprint of the proxy's certificate authority, from the **Certificate Authority** column on the **Proxies** page. The command trusts the proxy only if it serves this certificate authority, and checks nothing else. Accepted with or without the `SHA256:` prefix and colons." },
     { name: "--port", value: "<int>", type: "int", description: "The local port to open. Works only with one named service. Without it, the command picks a free port." },
     { name: "--proxy", value: "<string>", type: "string", description: "The Agent Vault proxy's address as `host:port`, such as `10.0.1.5:17323`. A leading `http://` or `https://` is dropped. Required unless `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` is set." },
-    { name: "--session-token", value: "<string>", type: "string", description: "The session token. Can also be set with `INFISICAL_AGENT_VAULT_SESSION_TOKEN`." },
+    { name: "--session-token", value: "<string>", type: "string", description: "The session token. Can also be set with `INFISICAL_AGENT_VAULT_SESSION_TOKEN`. Prefer the variable, because other users on the machine can read anything on a command line." },
   ]}
   env={[
     { name: "INFISICAL_AGENT_VAULT_CA_FILE", description: "The proxy's certificate authority file that `infisical agent-vault run` wrote. The command trusts the proxy if it serves a certificate authority in this file." },
