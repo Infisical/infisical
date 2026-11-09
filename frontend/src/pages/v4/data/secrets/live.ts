@@ -22,7 +22,7 @@ import {
   useUpdateSecretV3
 } from "@app/hooks/api/secrets/mutations";
 import { useGetSecretReferences, useGetSecretReferenceTree } from "@app/hooks/api/secrets/queries";
-import { useGetWsTags } from "@app/hooks/api/tags/queries";
+import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 
 import { useProjectById } from "../projectQuery";
 import type { SecretsAdapter } from "./contract";
@@ -33,6 +33,7 @@ export const secretsLive: SecretsAdapter = {
   useProject: useProjectById,
   useCreateEnvironment: useCreateWsEnvironment,
   useTags: useGetWsTags,
+  useCreateTag: useCreateWsTag,
   useOverview: useGetProjectSecretsOverview,
   useSecretValue: useGetSecretValue,
   useSecretReferenceTree: useGetSecretReferenceTree,

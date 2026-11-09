@@ -141,9 +141,11 @@ function ContextMenuItem({
   inset,
   variant = "default",
   children,
+  description,
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Item> & {
+  description?: React.ReactNode;
   inset?: boolean;
   variant?: "default" | "destructive";
 } & { ref?: React.Ref<React.ComponentRef<typeof ContextMenuPrimitive.Item>> }) {
@@ -156,7 +158,7 @@ function ContextMenuItem({
       className={cn(menu.row, className)}
       {...props}
     >
-      {menuRowContent(children)}
+      {menuRowContent(children, description)}
     </ContextMenuPrimitive.Item>
   );
 }
@@ -227,6 +229,7 @@ ContextMenuSubContent.displayName = "ContextMenuSubContent";
 function ContextMenuCheckboxItem({
   className,
   children,
+  description,
   checked,
   inset,
   onSelect,
@@ -234,6 +237,7 @@ function ContextMenuCheckboxItem({
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.CheckboxItem> & {
+  description?: React.ReactNode;
   closeOnSelect?: boolean;
 } & {
   inset?: boolean;
@@ -256,7 +260,7 @@ function ContextMenuCheckboxItem({
           <Icon name="check" />
         </ContextMenuPrimitive.ItemIndicator>
       </span>
-      {menuRowContent(children)}
+      {menuRowContent(children, description)}
     </ContextMenuPrimitive.CheckboxItem>
   );
 }
@@ -265,12 +269,14 @@ ContextMenuCheckboxItem.displayName = "ContextMenuCheckboxItem";
 function ContextMenuRadioItem({
   className,
   children,
+  description,
   inset,
   onSelect,
   closeOnSelect = false,
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.RadioItem> & {
+  description?: React.ReactNode;
   closeOnSelect?: boolean;
 } & {
   inset?: boolean;
@@ -292,7 +298,7 @@ function ContextMenuRadioItem({
           <Icon name="check" />
         </ContextMenuPrimitive.ItemIndicator>
       </span>
-      {menuRowContent(children)}
+      {menuRowContent(children, description)}
     </ContextMenuPrimitive.RadioItem>
   );
 }

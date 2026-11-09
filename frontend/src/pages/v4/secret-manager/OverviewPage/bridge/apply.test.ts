@@ -19,7 +19,8 @@ const mutations = vi.hoisted(() => ({
   useMoveFolder: { mutateAsync: vi.fn() },
   useCreateSecretImport: { mutateAsync: vi.fn() },
   useDeleteSecretImport: { mutateAsync: vi.fn() },
-  useResyncSecretImport: { mutateAsync: vi.fn() }
+  useResyncSecretImport: { mutateAsync: vi.fn() },
+  useCreateTag: { mutateAsync: vi.fn() }
 }));
 
 vi.mock("../../../data/adapters", () => ({
