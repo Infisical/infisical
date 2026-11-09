@@ -439,8 +439,8 @@ To run an agent such as Claude Code, start the sandbox from an E2B template that
     SANDBOX_ENV = {
         # Claude Code won't start without a key; the proxy replaces this one.
         "ANTHROPIC_API_KEY": "agent-vault",
-        # Skips Claude Code's update checks and telemetry. If the proxy only allows
-        # access bundle hosts, it blocks them.
+        # Skips Claude Code's update checks and telemetry, which a proxy set to
+        # Service hosts only blocks.
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
         "DISABLE_AUTOUPDATER": "1",
     }
@@ -450,8 +450,8 @@ To run an agent such as Claude Code, start the sandbox from an E2B template that
     const SANDBOX_ENV: Record<string, string> = {
       // Claude Code won't start without a key; the proxy replaces this one.
       ANTHROPIC_API_KEY: "agent-vault",
-      // Skips Claude Code's update checks and telemetry. If the proxy only allows
-      // access bundle hosts, it blocks them.
+      // Skips Claude Code's update checks and telemetry, which a proxy set to
+      // Service hosts only blocks.
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
       DISABLE_AUTOUPDATER: "1",
     };

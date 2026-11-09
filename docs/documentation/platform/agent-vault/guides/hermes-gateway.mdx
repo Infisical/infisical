@@ -388,7 +388,7 @@ Hermes writes the gateway's logs to `~/.hermes/logs/gateway.log`. On Linux, you 
     This could be for a few reasons:
 
     - The session was revoked or has expired (check the **Sessions** page in Infisical, and [replace the session](#revoke-or-replace-the-session) if needed)
-    - Under the proxy's [strict traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), no service in the bundle covers the host Hermes called (add a service that does, or use a pass-through service)
+    - The proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) is **Service hosts only**, and no service in the bundle covers the host Hermes called (add a service that does, or use a pass-through service)
     - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths))
   </Accordion>
   <Accordion title="Requests to Telegram fail with a 502">
