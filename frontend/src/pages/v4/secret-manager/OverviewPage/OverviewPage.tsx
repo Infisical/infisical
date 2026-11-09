@@ -1,4 +1,4 @@
-import { type ReactNode, startTransition, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ChevronsDownUpIcon,
@@ -729,17 +729,6 @@ export const OverviewPage = () => {
   const selectableOnPage = windowRows.flatMap(([, entries]) =>
     selectableKinds.includes(entries[0].kind) ? entries.map(selectionKey) : []
   );
-  const expandSelected = (keys: string[]) => {
-    if (single) return;
-    const picked = new Set(keys);
-    const opening = windowRows
-      .filter(
-        ([, entries]) =>
-          entries[0].kind !== "folder" && entries.some((entry) => picked.has(selectionKey(entry)))
-      )
-      .map(([key]) => key);
-    startTransition(() => setExpandedRows((current) => [...new Set([...current, ...opening])]));
-  };
   const selectedEntries = scoped.filter((resource) => selected.includes(selectionKey(resource)));
   const report = (message: string) => setNotice(message);
   const stage = (shownResource: Secret | Of<"folder">, next: Secret | Of<"folder">) => {
@@ -1668,16 +1657,13 @@ export const OverviewPage = () => {
                                   checked={allOnPage}
                                   indeterminate={someOnPage && !allOnPage}
                                   disabled={!selectableOnPage.length}
-                                  onCheckedChange={() => {
-                                    if (allOnPage) {
-                                      setSelected(
-                                        selected.filter((key) => !selectableOnPage.includes(key))
-                                      );
-                                      return;
-                                    }
-                                    setSelected([...new Set([...selected, ...selectableOnPage])]);
-                                    expandSelected(selectableOnPage);
-                                  }}
+                                  onCheckedChange={() =>
+                                    setSelected(
+                                      allOnPage
+                                        ? selected.filter((key) => !selectableOnPage.includes(key))
+                                        : [...new Set([...selected, ...selectableOnPage])]
+                                    )
+                                  }
                                 />
                               </span>
                             </TableHead>
@@ -1927,10 +1913,7 @@ export const OverviewPage = () => {
                 <FloatingActionBar
                   count={selected.length}
                   total={selectableOnPage.length}
-                  onSelectAll={() => {
-                    setSelected(selectableOnPage);
-                    expandSelected(selectableOnPage);
-                  }}
+                  onSelectAll={() => setSelected(selectableOnPage)}
                   onClear={() => setSelected([])}
                   actions={[
                     {
