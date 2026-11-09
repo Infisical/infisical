@@ -1,10 +1,14 @@
 import * as React from "react";
 
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { useFieldControlAttributes } from "../lib/field-context";
 import { cn } from "../lib/utils";
 import { CopyButton } from "./sensitive-editor";
 
 import styles from "./code.module.css";
+
+const snippetFlags = { "data-input-focus": `:scope > .${styles.input}:focus-visible` };
+const snippetWatch = { subtree: false, focus: true };
 
 export function Snippet({
   id,
@@ -39,8 +43,10 @@ export function Snippet({
     "aria-describedby": describedBy,
     "aria-invalid": invalid
   });
+  const snippetRef = useDescendantFlags<HTMLDivElement>(snippetFlags, snippetWatch);
   return (
     <div
+      ref={snippetRef}
       data-slot="snippet"
       data-size={size}
       className={cn(styles.snippet, size === "sm" && styles.snippetSmall, className)}

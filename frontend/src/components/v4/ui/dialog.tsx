@@ -99,6 +99,7 @@ function DialogContent({
       <DialogPrimitive.Content
         ref={escape.ref}
         data-slot="dialog-content"
+        data-has-close={showCloseButton || undefined}
         data-scroll-fade={sections ? undefined : "y"}
         data-sections={sections ? "" : undefined}
         aria-busy={pending || undefined}
@@ -116,7 +117,11 @@ function DialogContent({
                     <div data-slot="dialog-head">{sections.pinned}</div>
                   )}
                   {sections.scroll.length > 0 && (
-                    <div data-slot="dialog-scroll" data-scroll-fade="y">
+                    <div
+                      data-slot="dialog-scroll"
+                      data-scroll-fade="y"
+                      data-before-footer={sections.footer.length > 0 || undefined}
+                    >
                       {sections.scroll}
                     </div>
                   )}

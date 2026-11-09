@@ -1,11 +1,27 @@
 import * as React from "react";
 
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { useFieldControlAttributes } from "../lib/field-context";
 import { cn } from "../lib/utils";
 import { Icon, type IconName } from "./icon";
 import { Kbd } from "./kbd";
 
 import styles from "./controls.module.css";
+
+const field = `.${styles.field}`;
+/** The state a field box draws from its slotted control or nested field: focus, invalid, disabled and read-only. */
+export const fieldBoxFlags = {
+  "data-control-focus": `[data-field-control]:focus-visible, ${field}:is(:focus-visible, [aria-expanded="true"])`,
+  "data-control-invalid": `:is([data-field-control], ${field})[aria-invalid="true"]`,
+  "data-control-input-focus": "[data-field-control]:focus-visible",
+  "data-control-invalid-focus": `[data-field-control][aria-invalid="true"]:focus-visible, ${field}[aria-invalid="true"]:is(:focus-visible, [aria-expanded="true"])`,
+  "data-control-disabled": "[data-field-control]:disabled",
+  "data-control-readonly": "[data-field-control][readonly]"
+};
+export const fieldBoxWatch = {
+  attributes: ["aria-invalid", "aria-expanded", "disabled", "readonly"],
+  focus: true
+};
 
 export type InputProps = Omit<React.ComponentPropsWithoutRef<"input">, "size"> & {
   size?: number | "xs" | "sm" | "md" | "lg";
@@ -33,6 +49,7 @@ export function Input({
   const fieldSize = typeof size === "number" ? "sm" : size;
   const leading = icon ?? (props.readOnly ? "lock" : undefined);
   const boxed = Boolean(leading || kbd || trailing);
+  const boxRef = useDescendantFlags<HTMLSpanElement>(fieldBoxFlags, fieldBoxWatch);
   const input = (
     <input
       ref={inner}
@@ -53,8 +70,11 @@ export function Input({
   );
   return boxed ? (
     <span
+      ref={boxRef}
       className={cn(styles.field, styles.fieldBox)}
       data-size={fieldSize}
+      data-field-box=""
+      data-trailing={Boolean(kbd || trailing) || undefined}
       onPointerDown={(event) => {
         if (event.target !== event.currentTarget) return;
         event.preventDefault();

@@ -87,6 +87,42 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "pinned-edge-fade",
+    title: "Pinned edge fade",
+    description:
+      "Content scrolling under a pinned column fades into that row's own ground instead of meeting a hard line.",
+    date: "2026-11-07",
+    commit: "3ace3fae11",
+    page: "table"
+  },
+  {
+    id: "row-actions-lazy-default",
+    title: "Lazy row actions by default",
+    description:
+      "DataTable row actions stay plain buttons until a row is hovered or focused, so large tables carry no idle menus.",
+    date: "2026-11-07",
+    commit: "4544b9cd6f",
+    page: "table"
+  },
+  {
+    id: "has-rest",
+    title: "No :has() in v4",
+    description:
+      "Every v4 component sets its states directly, and a lint keeps :has() and unscoped logical insets out of v4 CSS.",
+    date: "2026-11-07",
+    commit: "9beb0637cd",
+    page: "table"
+  },
+  {
+    id: "has-tables",
+    title: "Tables without :has()",
+    description:
+      "Table and row states come from attributes the components set, so an edit inside a large table no longer restyles the whole table.",
+    date: "2026-11-07",
+    commit: "6f0843c796",
+    page: "table"
+  },
+  {
     id: "button-plain",
     title: "Lighter buttons",
     description:
@@ -184,41 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "2f8f8ef459",
     page: "floating-action-bar"
-  },
-  {
-    id: "autofill",
-    title: "Autofill keeps the field",
-    description:
-      "Fields the browser autofills keep their own ground and text color in every theme instead of Chrome's blue fill.",
-    date: "2026-11-07",
-    commit: "7e0192cd9a",
-    page: "input"
-  },
-  {
-    id: "mono-rule",
-    title: "Mono for machine values",
-    description:
-      "Names people choose render in sans; mono is kept for keys, IDs, hashes, hosts and code, with a lint for mono names.",
-    date: "2026-11-07",
-    commit: "1a51d0cb78",
-    page: "text"
-  },
-  {
-    id: "quiet-link",
-    title: "Quiet links",
-    description:
-      "A link Button can drop its underline until hover or keyboard focus, and named row buttons that open a sheet now use it.",
-    date: "2026-11-07",
-    commit: "9b822efc12",
-    page: "button"
-  },
-  {
-    id: "loading-rows",
-    title: "Loading rows and queues",
-    description:
-      "Native tables and ApprovalQueue get the same skeleton loading as DataTable, and a tall error page no longer clips at the top.",
-    date: "2026-11-07",
-    commit: "11c4467d3c",
-    page: "table"
   }
 ];

@@ -39,7 +39,7 @@ function Checkbox({
       ref={ref}
       data-slot="checkbox"
       className={cn(
-        "peer relative flex shrink-0 items-center justify-center group-has-disabled/field:opacity-50 after:absolute after:-inset-x-3 after:-inset-y-2 disabled:cursor-not-allowed disabled:opacity-50",
+        "peer relative flex shrink-0 items-center justify-center group-data-[has-disabled]/field:opacity-50 after:absolute after:-inset-x-3 after:-inset-y-2 disabled:cursor-not-allowed disabled:opacity-50",
         controlStyles.focusOutline,
         controlStyles.choiceMark,
         controlStyles.check,

@@ -1,7 +1,13 @@
 import * as React from "react";
 import { createLink } from "@tanstack/react-router";
 
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { FrameScope, useInFrame } from "../lib/frame-context";
+import {
+  StretchedLinkContext,
+  useStretchedLink,
+  useStretchedLinkHost
+} from "../lib/stretched-link";
 import { cn } from "../lib/utils";
 
 import controlStyles from "./controls.module.css";
@@ -9,6 +15,19 @@ import frameStyles from "./frame.module.css";
 import linkStyles from "./row-link.module.css";
 
 const FramedContext = React.createContext(false);
+
+const cardFlags = {
+  "data-has-slots":
+    ':scope > :is([data-slot="card-header"], [data-slot="card-content"], [data-slot="card-footer"])',
+  "data-frame-head": `:scope > .${frameStyles.frameHead}`,
+  "data-frame-foot": `:scope > .${frameStyles.frameFoot}`
+};
+const cardWatch = {
+  subtree: false,
+  marks: {
+    "data-before-footer": `:scope > .${controlStyles.cardBody}:has(+ .${controlStyles.cardFooter}:not([data-placement="frame"]))`
+  }
+};
 
 function Card({
   className,
@@ -40,10 +59,13 @@ function Card({
     footer !== undefined;
   const inFrame = useInFrame("Card", requestedVariant);
   const variant = inFrame ? "plain" : requestedVariant;
+  const [hasLink, reportLink] = useStretchedLinkHost();
+  const cardRef = useDescendantFlags(cardFlags, cardWatch, ref);
   return (
     <div
-      ref={ref}
+      ref={cardRef}
       data-slot="card"
+      data-stretched-link={hasLink || undefined}
       data-size={size}
       data-variant={variant}
       data-embedded={(inFrame && requestedVariant === "framed") || undefined}
@@ -56,63 +78,65 @@ function Card({
       )}
       {...props}
     >
-      <FrameScope framed={inFrame || variant !== "plain"}>
-        <FramedContext value={variant !== "plain"}>
-          {convenience &&
-          variant !== "plain" &&
-          footer !== undefined &&
-          footerPlacement === "frame" ? (
-            <>
-              <div
-                data-slot="card-inset"
-                className={cn(frameStyles.frameInset, controlStyles.cardInset)}
-              >
-                <FramedContext value={false}>
-                  {(title !== undefined || description !== undefined || action) && (
-                    <CardHeader>
-                      <div className={controlStyles.cardTitleGroup}>
-                        <div className={controlStyles.cardCopy}>
-                          {title !== undefined && <CardTitle>{title}</CardTitle>}
-                          {description !== undefined && (
-                            <CardDescription>{description}</CardDescription>
-                          )}
+      <StretchedLinkContext value={reportLink}>
+        <FrameScope framed={inFrame || variant !== "plain"}>
+          <FramedContext value={variant !== "plain"}>
+            {convenience &&
+            variant !== "plain" &&
+            footer !== undefined &&
+            footerPlacement === "frame" ? (
+              <>
+                <div
+                  data-slot="card-inset"
+                  className={cn(frameStyles.frameInset, controlStyles.cardInset)}
+                >
+                  <FramedContext value={false}>
+                    {(title !== undefined || description !== undefined || action) && (
+                      <CardHeader>
+                        <div className={controlStyles.cardTitleGroup}>
+                          <div className={controlStyles.cardCopy}>
+                            {title !== undefined && <CardTitle>{title}</CardTitle>}
+                            {description !== undefined && (
+                              <CardDescription>{description}</CardDescription>
+                            )}
+                          </div>
                         </div>
+                        {action && <CardAction>{action}</CardAction>}
+                      </CardHeader>
+                    )}
+                    {children !== undefined && children !== null && (
+                      <CardContent>{children}</CardContent>
+                    )}
+                  </FramedContext>
+                </div>
+                <CardFooter placement="frame">{footer}</CardFooter>
+              </>
+            ) : convenience ? (
+              <>
+                {(title !== undefined || description !== undefined || action) && (
+                  <CardHeader>
+                    <div className={controlStyles.cardTitleGroup}>
+                      <div className={controlStyles.cardCopy}>
+                        {title !== undefined && <CardTitle>{title}</CardTitle>}
+                        {description !== undefined && (
+                          <CardDescription>{description}</CardDescription>
+                        )}
                       </div>
-                      {action && <CardAction>{action}</CardAction>}
-                    </CardHeader>
-                  )}
-                  {children !== undefined && children !== null && (
-                    <CardContent>{children}</CardContent>
-                  )}
-                </FramedContext>
-              </div>
-              <CardFooter placement="frame">{footer}</CardFooter>
-            </>
-          ) : convenience ? (
-            <>
-              {(title !== undefined || description !== undefined || action) && (
-                <CardHeader>
-                  <div className={controlStyles.cardTitleGroup}>
-                    <div className={controlStyles.cardCopy}>
-                      {title !== undefined && <CardTitle>{title}</CardTitle>}
-                      {description !== undefined && (
-                        <CardDescription>{description}</CardDescription>
-                      )}
                     </div>
-                  </div>
-                  {action && <CardAction>{action}</CardAction>}
-                </CardHeader>
-              )}
-              <CardContent>{children}</CardContent>
-              {footer !== undefined && (
-                <CardFooter placement={footerPlacement}>{footer}</CardFooter>
-              )}
-            </>
-          ) : (
-            children
-          )}
-        </FramedContext>
-      </FrameScope>
+                    {action && <CardAction>{action}</CardAction>}
+                  </CardHeader>
+                )}
+                <CardContent>{children}</CardContent>
+                {footer !== undefined && (
+                  <CardFooter placement={footerPlacement}>{footer}</CardFooter>
+                )}
+              </>
+            ) : (
+              children
+            )}
+          </FramedContext>
+        </FrameScope>
+      </StretchedLinkContext>
     </div>
   );
 }
@@ -220,6 +244,7 @@ function CardLinkAnchor({
   disabled?: boolean;
   ref?: React.Ref<HTMLAnchorElement>;
 }) {
+  useStretchedLink(!disabled);
   if (disabled)
     return (
       <span

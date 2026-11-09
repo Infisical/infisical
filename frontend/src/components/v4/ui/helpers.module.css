@@ -547,7 +547,7 @@
   overflow-wrap: anywhere;
   text-align: start;
 }
-.alert:has(> svg) {
+.alert[data-has-icon] {
   grid-template-columns: auto minmax(0, 1fr);
 }
 .alert > svg {
@@ -557,17 +557,17 @@
   transform: translateY(var(--v4-space-2));
   color: currentColor;
 }
-.alert:has(> svg) > :is(.alertTitle, .alertDescription) {
+.alert[data-has-icon] > :is(.alertTitle, .alertDescription) {
   grid-column: 2;
 }
-.alert:has(> .alertTitle) > .alertDescription {
+.alert[data-has-title] > .alertDescription {
   grid-row: 2;
 }
-.alert:has(> [data-slot="alert-action"]) {
+.alert[data-has-action] {
   grid-template-columns: minmax(0, 1fr) auto;
   padding-inline-end: var(--v4-space-12);
 }
-.alert:has(> svg):has(> [data-slot="alert-action"]) {
+.alert[data-has-icon][data-has-action] {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 .alertAction {

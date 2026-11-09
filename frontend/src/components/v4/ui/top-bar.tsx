@@ -2,6 +2,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 
+import { type PresenceReport, usePresenceCount, useReportPresence } from "../lib/presence-count";
 import { v4Themes } from "../lib/theme-registry";
 import { cn } from "../lib/utils";
 import { Count } from "./badge";
@@ -59,6 +60,16 @@ type ShellState = {
 const ShellContext = React.createContext<ShellState | null>(null);
 
 export const useAppShell = () => React.useContext(ShellContext);
+
+type ShellChrome = Record<"topBar" | "sidebar" | "sidebarOpen", PresenceReport>;
+const ShellChromeContext = React.createContext<ShellChrome | null>(null);
+/** A TopBar or inline Sidebar tells its AppShell it is there, which sets the inset's margins. */
+export const useShellChrome = () => React.useContext(ShellChromeContext);
+
+const InsetReserveContext = React.createContext<PresenceReport | null>(null);
+/** Pads AppInset by the floating action bar's height while active holds. */
+export const useActionBarReserve = (active: boolean) =>
+  useReportPresence(React.useContext(InsetReserveContext), active);
 
 const sizeOf = (element: HTMLElement, token: string) =>
   parseFloat(getComputedStyle(element).getPropertyValue(token)) || 0;
@@ -123,6 +134,13 @@ export function AppShell({
   const navigationTrigger = React.useRef<HTMLButtonElement>(null);
   const navigationToggle = React.useRef<(() => void) | null>(null);
   const toggleNavigation = React.useCallback(() => navigationToggle.current?.(), []);
+  const [hasTopBar, reportTopBar] = usePresenceCount();
+  const [hasSidebar, reportSidebar] = usePresenceCount();
+  const [sidebarOpen, reportSidebarOpen] = usePresenceCount();
+  const chrome = React.useMemo(
+    () => ({ topBar: reportTopBar, sidebar: reportSidebar, sidebarOpen: reportSidebarOpen }),
+    [reportTopBar, reportSidebar, reportSidebarOpen]
+  );
   const sheetOpen = React.useRef(false);
   React.useEffect(() => {
     sheetOpen.current = navigationOpen;
@@ -182,14 +200,19 @@ export function AppShell({
   );
   return (
     <ShellContext value={value}>
-      <div
-        ref={own}
-        data-slot="app-shell"
-        data-mode={mode}
-        data-narrow={mode === "narrow" || undefined}
-        className={cn(styles.shell, className)}
-        {...props}
-      />
+      <ShellChromeContext value={chrome}>
+        <div
+          ref={own}
+          data-slot="app-shell"
+          data-mode={mode}
+          data-narrow={mode === "narrow" || undefined}
+          data-has-top-bar={hasTopBar || undefined}
+          data-has-sidebar={hasSidebar || undefined}
+          data-sidebar-open={sidebarOpen || undefined}
+          className={cn(styles.shell, className)}
+          {...props}
+        />
+      </ShellChromeContext>
       <Toaster />
     </ShellContext>
   );
@@ -201,8 +224,17 @@ export function AppInset({
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<"main"> & { ref?: React.Ref<HTMLElement> }) {
+  const [reserve, reportReserve] = usePresenceCount();
   return (
-    <main ref={ref} data-slot="app-inset" className={cn(styles.inset, className)} {...props} />
+    <InsetReserveContext value={reportReserve}>
+      <main
+        ref={ref}
+        data-slot="app-inset"
+        data-action-bar-reserve={reserve || undefined}
+        className={cn(styles.inset, className)}
+        {...props}
+      />
+    </InsetReserveContext>
   );
 }
 AppInset.displayName = "AppInset";
@@ -503,6 +535,7 @@ export function TopBar({
   const shell = useAppShell();
   const mode = shell?.mode ?? "wide";
   const narrow = mode === "narrow";
+  useReportPresence(useShellChrome()?.topBar, true);
   const [accountOpen, setAccountOpen] = React.useState(false);
   const searchLabel = search?.label ?? "Search";
   const notificationsLabel = notifications?.label ?? "Notifications";

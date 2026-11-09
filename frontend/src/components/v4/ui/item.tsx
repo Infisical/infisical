@@ -4,6 +4,7 @@ import { Slot } from "radix-ui";
 
 import { Separator } from "@app/components/v4/ui/separator";
 
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { cn } from "../lib/utils";
 import { Icon, type IconName } from "./icon";
 
@@ -13,15 +14,20 @@ import itemStyles from "./item.module.css";
 
 const ItemGroupContext = React.createContext(false);
 
+const groupFlags = { "data-has-sm": '[data-size="sm"]', "data-has-xs": '[data-size="xs"]' };
+const groupWatch = { attributes: ["data-size"] };
+const itemFlags = { "data-has-description": '[data-slot="item-description"]' };
+
 function ItemGroup({ className, ref, ...props }: React.ComponentProps<"div">) {
+  const groupRef = useDescendantFlags(groupFlags, groupWatch, ref);
   return (
     <ItemGroupContext value>
       <div
-        ref={ref}
+        ref={groupRef}
         role="list"
         data-slot="item-group"
         className={cn(
-          "group/item-group flex w-full flex-col gap-4 has-data-[size=sm]:gap-2.5 has-data-[size=xs]:gap-2",
+          "group/item-group flex w-full flex-col gap-4 data-[has-sm]:gap-2.5 data-[has-xs]:gap-2",
           className
         )}
         {...props}
@@ -111,6 +117,7 @@ function Item({
 }: ItemProps & { ref?: React.Ref<HTMLDivElement> }) {
   const inList = React.useContext(ItemGroupContext);
   const Comp = asChild ? Slot.Root : "div";
+  const itemRef = useDescendantFlags<HTMLDivElement>(itemFlags, undefined, ref);
   const composed = title !== undefined || media || icon || description || actions;
   const body = composed ? (
     <>
@@ -121,7 +128,12 @@ function Item({
           {unread && <span className={itemStyles.unread} aria-hidden="true" />}
         </span>
       )}
-      <div className={itemStyles.main}>
+      <div
+        className={itemStyles.main}
+        data-actions-below={
+          (Boolean(actions || meta) && actionsPlacement === "below" && size !== "sm") || undefined
+        }
+      >
         <div className={itemStyles.copy}>
           <div className={itemStyles.titleLine}>
             {unread && !(media || icon) && (
@@ -177,7 +189,7 @@ function Item({
       : body;
   const item = (
     <Comp
-      ref={ref}
+      ref={itemRef}
       role={inList && !asChild ? "listitem" : undefined}
       data-slot="item"
       data-variant={variant}
@@ -200,7 +212,7 @@ function Item({
 Item.displayName = "Item";
 
 const itemMediaVariants = cva(
-  "flex shrink-0 items-center justify-center gap-2 group-has-data-[slot=item-description]/item:translate-y-0.5 group-has-data-[slot=item-description]/item:self-start [&_svg]:pointer-events-none",
+  "flex shrink-0 items-center justify-center gap-2 group-data-[has-description]/item:translate-y-0.5 group-data-[has-description]/item:self-start [&_svg]:pointer-events-none",
   {
     variants: {
       variant: {

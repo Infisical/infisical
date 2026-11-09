@@ -30,6 +30,7 @@ import {
 } from "@app/components/v4/ui/sheet";
 import {
   type RowActionList,
+  RowActions,
   RowContextMenu,
   Table,
   TableActionsCell,
@@ -41,6 +42,7 @@ import {
   TableRow,
   TableRowIndicators
 } from "@app/components/v4/ui/table";
+import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
@@ -64,18 +66,15 @@ import {
 import {
   ChildSelectCell,
   ChildSelectHead,
-  ChromeRow,
   type EnvironmentOption,
   ExpandCell,
   KindIcon,
-  LazyRowActions,
   PendingBadge,
   PendingMenuItems,
   presenceOf,
   ROW_ACTION_SLOTS,
   type RowActionProps,
   type RowContext,
-  RowTooltip,
   SelectCell,
   selectableKinds,
   StatusCell,
@@ -123,23 +122,23 @@ const tone = (value: string): BadgeTone =>
 
 function InfoHint({ text }: { text: string }) {
   return (
-    <RowTooltip content={text}>
+    <Tooltip content={text}>
       <span className={styles.hint}>
         <Icon name="info" size={12} label={text} />
       </span>
-    </RowTooltip>
+    </Tooltip>
   );
 }
 
 function RotationStatus({ rotation }: { rotation: Of<"rotation"> }) {
   if (rotation.status === "failed")
     return (
-      <RowTooltip content={`Failure reason: ${rotation.statusDetails ?? "unknown"}`}>
+      <Tooltip content={`Failure reason: ${rotation.statusDetails ?? "unknown"}`}>
         <Badge tone="bad">
           <Icon icon={XIcon} />
           Rotation failed
         </Badge>
-      </RowTooltip>
+      </Tooltip>
     );
   if (!rotation.autoRotation)
     return (
@@ -174,7 +173,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
         <>
           <Badge tone="outline">{item.provider}</Badge>
           {item.status && (
-            <RowTooltip
+            <Tooltip
               content={
                 item.statusDetails ?? "The provider returned an error while revoking leases."
               }
@@ -183,19 +182,19 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
                 <Icon icon={TriangleAlertIcon} />
                 {item.status === "deleting" ? "Revoking" : "Deletion failed"}
               </Badge>
-            </RowTooltip>
+            </Tooltip>
           )}
         </>
       );
     },
     flag: (entries) =>
       entries.some((entry) => entry.kind === "dynamic" && entry.status) && (
-        <RowTooltip content="One or more dynamic secrets have issues.">
+        <Tooltip content="One or more dynamic secrets have issues.">
           <Badge tone="bad">
             <Icon icon={XIcon} />
             Deletion failed
           </Badge>
-        </RowTooltip>
+        </Tooltip>
       ),
     actions: (entry, ctx) => {
       const item = entry as Of<"dynamic">;
@@ -287,12 +286,12 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
     },
     flag: (entries) =>
       entries.some((entry) => entry.kind === "rotation" && entry.status === "failed") && (
-        <RowTooltip content="One or more secrets failed to rotate.">
+        <Tooltip content="One or more secrets failed to rotate.">
           <Badge tone="bad">
             <Icon icon={XIcon} />
             Rotation failed
           </Badge>
-        </RowTooltip>
+        </Tooltip>
       ),
     actions: (entry, ctx) => {
       const item = entry as Of<"rotation">;
@@ -477,11 +476,11 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
               </Badge>
             )}
             {item.lastUsedAt && (
-              <RowTooltip content={new Date(item.lastUsedAt).toLocaleString("en-US")}>
+              <Tooltip content={new Date(item.lastUsedAt).toLocaleString("en-US")}>
                 <span className={styles.subtle}>
                   Used {formatDistanceToNow(new Date(item.lastUsedAt), { addSuffix: true })}
                 </span>
-              </RowTooltip>
+              </Tooltip>
             )}
           </span>
         </>
@@ -574,7 +573,7 @@ function EnvironmentTable({
                   const rowActions = actions(entry);
                   return (
                     <RowContextMenu key={environment.value} {...rowActions}>
-                      <ChromeRow className={styles.row}>
+                      <TableRow className={styles.row}>
                         <ChildSelectCell
                           resource={entry}
                           label={`${label} in ${environment.label}`}
@@ -583,9 +582,9 @@ function EnvironmentTable({
                         <TableCell className={styles.envName}>{environment.label}</TableCell>
                         <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
                         <TableActionsCell slots={ROW_ACTION_SLOTS}>
-                          <LazyRowActions {...rowActions} />
+                          <RowActions lazy {...rowActions} />
                         </TableActionsCell>
-                      </ChromeRow>
+                      </TableRow>
                     </RowContextMenu>
                   );
                 })}
@@ -627,7 +626,7 @@ function KindRowView({
     const rowActions = actions(first);
     return (
       <RowContextMenu {...rowActions}>
-        <ChromeRow
+        <TableRow
           data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
           className={styles.row}
         >
@@ -647,9 +646,9 @@ function KindRowView({
             {line(first, true)}
           </TableCell>
           <TableActionsCell slots={ROW_ACTION_SLOTS}>
-            <LazyRowActions {...rowActions} />
+            <RowActions lazy {...rowActions} />
           </TableActionsCell>
-        </ChromeRow>
+        </TableRow>
       </RowContextMenu>
     );
   }
@@ -776,7 +775,7 @@ function FolderRowView({
   };
   return (
     <RowContextMenu {...rowActions}>
-      <ChromeRow
+      <TableRow
         data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
         data-pending={ctx.pending?.[first.id]}
         className={styles.row}
@@ -827,9 +826,9 @@ function FolderRowView({
             <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
           ))}
         <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
-          <LazyRowActions {...rowActions} />
+          <RowActions lazy {...rowActions} />
         </TableActionsCell>
-      </ChromeRow>
+      </TableRow>
     </RowContextMenu>
   );
 }
@@ -990,7 +989,7 @@ export function ImportRow({
   const replication = (entry: Of<"import">) =>
     entry.replicated &&
     entry.lastReplicated && (
-      <RowTooltip
+      <Tooltip
         content={`Last replication ${new Date(entry.lastReplicated).toLocaleString("en-US")}${entry.replicationStatus === "failed" ? `. Fail reason: ${entry.replicationDetails ?? "unknown"}` : ""}`}
       >
         <span
@@ -1003,7 +1002,7 @@ export function ImportRow({
             label="Replication status"
           />
         </span>
-      </RowTooltip>
+      </Tooltip>
     );
   const importGate = (entry: Of<"import">, action: ProjectPermissionActions, verb: string) =>
     gate(
@@ -1047,7 +1046,7 @@ export function ImportRow({
   return (
     <>
       <RowContextMenu {...rowActions}>
-        <ChromeRow
+        <TableRow
           data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
           className={styles.row}
           data-expanded={expanded || undefined}
@@ -1091,9 +1090,9 @@ export function ImportRow({
               <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
             ))}
           <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
-            {ctx.single && <LazyRowActions {...rowActions} />}
+            {ctx.single && <RowActions lazy {...rowActions} />}
           </TableActionsCell>
-        </ChromeRow>
+        </TableRow>
       </RowContextMenu>
       {ctx.single && expanded && !first.revoked && (
         <TableRow className={styles.nestedHead}>

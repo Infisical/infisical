@@ -3,10 +3,38 @@ import { type DayButton, DayPicker, getDefaultClassNames, type Locale } from "re
 
 import { Button, buttonVariants } from "@app/components/v4/ui/button";
 
+import { useDescendantFlags } from "../lib/descendant-flags";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";
+
+const rootFlags = {};
+const rootWatch = {
+  focus: true,
+  marks: {
+    "data-child-focus-visible": `.${controlStyles.focusOutlineWithin}:has(> :focus-visible)`
+  }
+};
+
+function CalendarRoot({
+  className,
+  rootRef,
+  ...props
+}: React.ComponentProps<"div"> & { rootRef?: React.Ref<HTMLDivElement> }) {
+  const ref = useDescendantFlags<HTMLDivElement>(rootFlags, rootWatch, rootRef);
+  return (
+    <div
+      data-slot="calendar"
+      ref={ref}
+      className={cn(className)}
+      {...props}
+      role={props.role ?? "region"}
+      tabIndex={props.tabIndex ?? 0}
+      aria-label={props["aria-label"] ?? (props["aria-labelledby"] ? undefined : "Calendar")}
+    />
+  );
+}
 
 function Calendar({
   className,
@@ -124,21 +152,7 @@ function Calendar({
         ...classNames
       }}
       components={{
-        Root: ({ className, rootRef, ...props }) => {
-          return (
-            <div
-              data-slot="calendar"
-              ref={rootRef}
-              className={cn(className)}
-              {...props}
-              role={props.role ?? "region"}
-              tabIndex={props.tabIndex ?? 0}
-              aria-label={
-                props["aria-label"] ?? (props["aria-labelledby"] ? undefined : "Calendar")
-              }
-            />
-          );
-        },
+        Root: CalendarRoot,
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === "left") {
             return <Icon name="chev-left" className={cn("size-4", className)} {...props} />;

@@ -3,6 +3,7 @@ import { createLink, type LinkOptions, useMatchRoute, useRouter } from "@tanstac
 import { CircleHelp } from "lucide-react";
 
 import { ListHighlight } from "../lib/list-highlight";
+import { useReportPresence } from "../lib/presence-count";
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
 import { Count } from "./badge";
@@ -24,7 +25,8 @@ import {
   ShellMenuItems,
   type ShellSheetSlot,
   ShellSheetRows,
-  useAppShell
+  useAppShell,
+  useShellChrome
 } from "./top-bar";
 
 import styles from "./sidebar.module.css";
@@ -625,6 +627,9 @@ const SidebarView = ({
   const [helpSheetOpen, setHelpSheetOpen] = React.useState(false);
   const toggleRef = React.useRef<HTMLButtonElement>(null);
   const railed = mode === "rail" || (!narrow && collapsible && isCollapsed);
+  const chrome = useShellChrome();
+  useReportPresence(chrome?.sidebar, !narrow);
+  useReportPresence(chrome?.sidebarOpen, !narrow && !railed);
   const view = scope?.id ?? activeSpace?.id ?? "root";
   const navRef = React.useRef<HTMLDivElement>(null);
   const backRef = React.useRef<HTMLElement | null>(null);
@@ -900,7 +905,7 @@ const SidebarView = ({
         </nav>
         {inSheet && narrow && <div ref={slotRefs.account} className={styles.sheetAccount} />}
         {(toggle || cornerEnd || (inSheet && narrow)) && (
-          <div className={styles.corner}>
+          <div className={styles.corner} data-has-end={Boolean(cornerEnd) || undefined}>
             {toggle}
             {inSheet && narrow && <span ref={slotRefs.icons} className={styles.cornerSlot} />}
             {cornerEnd}

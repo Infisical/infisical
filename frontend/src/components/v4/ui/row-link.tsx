@@ -1,6 +1,7 @@
 import * as React from "react";
 import { createLink } from "@tanstack/react-router";
 
+import { useStretchedLink } from "../lib/stretched-link";
 import { cn } from "../lib/utils";
 import { Icon } from "./icon";
 
@@ -19,6 +20,7 @@ function RowLinkAnchor({
   chevron?: boolean;
   ref?: React.Ref<HTMLAnchorElement>;
 }) {
+  useStretchedLink(!disabled);
   const content = chevron ? (
     <>
       <span className={styles.label}>{children}</span>

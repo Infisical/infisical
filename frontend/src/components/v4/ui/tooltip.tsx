@@ -325,7 +325,7 @@ function Tooltip({
       {content ? (
         <>
           <TooltipTrigger asChild>{children}</TooltipTrigger>
-          <TooltipContent side={side} align={align}>
+          <TooltipContent side={side} align={align} data-has-kbd={shortcut ? "" : undefined}>
             <span className={menu.tooltipText}>{content}</span>
             {shortcut && <Kbd>{shortcut}</Kbd>}
           </TooltipContent>

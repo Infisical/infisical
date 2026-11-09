@@ -4,6 +4,8 @@ import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 
 import { keyboardModality } from "../lib/input-modality";
+import { type PresenceReport, usePresenceCount, useReportPresence } from "../lib/presence-count";
+import { StretchedLinkContext, useStretchedLinkHost } from "../lib/stretched-link";
 import { cn } from "../lib/utils";
 import { Button, buttonVariants } from "./button";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "./context-menu";
@@ -21,6 +23,13 @@ import { Tooltip, TooltipScope } from "./tooltip";
 import geometry from "./button-geometry.module.css";
 import styles from "./data.module.css";
 
+type PinKind = "start" | "end" | "viewport";
+type PinCounts = Record<PinKind, number>;
+
+const TablePinContext = React.createContext<((kind: PinKind, delta: number) => void) | null>(null);
+const BodyFocusContext = React.createContext<PresenceReport | null>(null);
+const RowFocusContext = React.createContext<PresenceReport | null>(null);
+
 function Table({
   className,
   containerClassName,
@@ -34,21 +43,32 @@ function Table({
   /** The horizontal scroll container, which v3 Table's ref pointed at. */
   containerRef?: React.Ref<HTMLDivElement>;
 }) {
+  const [pins, setPins] = React.useState<PinCounts>({ start: 0, end: 0, viewport: 0 });
+  const reportPin = React.useCallback(
+    (kind: PinKind, delta: number) =>
+      setPins((value) => ({ ...value, [kind]: value[kind] + delta })),
+    []
+  );
   return (
     <div
       ref={containerRef}
       data-slot="table-container"
       data-scroll-fade="x"
+      data-has-start-pin={pins.start > 0 || undefined}
+      data-has-end-pin={pins.end > 0 || undefined}
+      data-has-viewport-cell={pins.viewport > 0 || undefined}
       className={cn("relative w-full", styles.nativeTableContainer, containerClassName)}
     >
-      <table
-        ref={ref}
-        data-slot="table"
-        className={cn("w-full caption-bottom", styles.nativeTable, className)}
-        {...props}
-      >
-        <TooltipScope>{children}</TooltipScope>
-      </table>
+      <TablePinContext value={reportPin}>
+        <table
+          ref={ref}
+          data-slot="table"
+          className={cn("w-full caption-bottom", styles.nativeTable, className)}
+          {...props}
+        >
+          <TooltipScope>{children}</TooltipScope>
+        </table>
+      </TablePinContext>
     </div>
   );
 }
@@ -56,42 +76,52 @@ Table.displayName = "Table";
 
 function TableHeader({ className, ref, ...props }: React.ComponentProps<"thead">) {
   return (
-    <thead
-      ref={ref}
-      data-slot="table-header"
-      className={cn(
-        "[&_tr]:border-b [&_tr]:border-[color:var(--v4-line-soft)] [&_tr]:hover:bg-transparent",
-        className
-      )}
-      {...props}
-    />
+    <BodyFocusContext value={null}>
+      <thead
+        ref={ref}
+        data-slot="table-header"
+        className={cn(
+          "[&_tr]:border-b [&_tr]:border-[color:var(--v4-line-soft)] [&_tr]:hover:bg-transparent",
+          className
+        )}
+        {...props}
+      />
+    </BodyFocusContext>
   );
 }
 TableHeader.displayName = "TableHeader";
 
+/** Marks the body while it holds a focused row at any depth, and tells the row it is nested in. */
 function TableBody({ className, ref, ...props }: React.ComponentProps<"tbody">) {
+  const [hasFocus, report] = usePresenceCount();
+  useReportPresence(React.useContext(RowFocusContext), hasFocus);
   return (
-    <tbody
-      ref={ref}
-      data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
-      {...props}
-    />
+    <BodyFocusContext value={report}>
+      <tbody
+        ref={ref}
+        data-slot="table-body"
+        data-has-focus={hasFocus || undefined}
+        className={cn("[&_tr:last-child]:border-0", className)}
+        {...props}
+      />
+    </BodyFocusContext>
   );
 }
 TableBody.displayName = "TableBody";
 
 function TableFooter({ className, ref, ...props }: React.ComponentProps<"tfoot">) {
   return (
-    <tfoot
-      ref={ref}
-      data-slot="table-footer"
-      className={cn(
-        "border-t border-[color:var(--v4-line-soft)] font-medium [&>tr]:last:border-b-0",
-        className
-      )}
-      {...props}
-    />
+    <BodyFocusContext value={null}>
+      <tfoot
+        ref={ref}
+        data-slot="table-footer"
+        className={cn(
+          "border-t border-[color:var(--v4-line-soft)] font-medium [&>tr]:last:border-b-0",
+          className
+        )}
+        {...props}
+      />
+    </BodyFocusContext>
   );
 }
 TableFooter.displayName = "TableFooter";
@@ -108,6 +138,37 @@ const activatesRow = (event: React.MouseEvent<HTMLTableRowElement>) => {
   return !(selection && !selection.isCollapsed && row.contains(selection.anchorNode));
 };
 
+const setFlag = (element: Element, name: string, on: boolean) => {
+  if (element.hasAttribute(name) !== on) element.toggleAttribute(name, on);
+};
+
+/**
+ * Marks what the row's styles depend on in its own DOM: a lone full-width cell, an open popup trigger,
+ * the last leading pinned cell and cells that hold only text. Rows render arbitrary cells, so the DOM is
+ * the only place this is known.
+ */
+const markRow = (row: HTMLTableRowElement): Record<PinKind, boolean> => {
+  const cells = [...row.children];
+  const only = cells.length === 1 ? cells[0] : undefined;
+  setFlag(row, "data-full-width", only?.tagName === "TD" && only.hasAttribute("colspan"));
+  setFlag(row, "data-expanded-within", row.querySelector('[aria-expanded="true"]') !== null);
+  const starts = cells.filter((cell) => cell.getAttribute("data-pin") === "start");
+  const edge = starts.at(-1);
+  cells.forEach((cell) => {
+    setFlag(
+      cell,
+      "data-pin-edge",
+      cell === edge && !cell.classList.contains(styles.tableSelectionCell)
+    );
+    if (cell.tagName === "TD") setFlag(cell, "data-text-only", cell.firstElementChild === null);
+  });
+  return {
+    start: starts.length > 0,
+    end: cells.some((cell) => cell.classList.contains(styles.tableActions)),
+    viewport: cells.some((cell) => cell.getAttribute("data-pin") === "viewport")
+  };
+};
+
 /** A row draws its focus ring only when the keyboard moved focus to it, never after a pointer interaction. */
 function TableRow({
   className,
@@ -116,39 +177,99 @@ function TableRow({
   onFocus,
   onBlur,
   ref,
+  children,
   ...props
 }: React.ComponentProps<"tr"> & {
   /** The row is being edited: every other row in the same body dims its cell contents until this clears. */
   focused?: boolean;
 }) {
+  const node = React.useRef<HTMLTableRowElement | null>(null);
+  const reportPin = React.useContext(TablePinContext);
+  const reported = React.useRef<Record<PinKind, boolean>>({
+    start: false,
+    end: false,
+    viewport: false
+  });
+  const [containsFocus, reportContains] = usePresenceCount();
+  const [hasLink, reportLink] = useStretchedLinkHost();
+  useReportPresence(React.useContext(BodyFocusContext), Boolean(focused) || containsFocus);
+  const setRef = React.useCallback(
+    (element: HTMLTableRowElement | null) => {
+      node.current = element;
+      if (typeof ref === "function") ref(element);
+      else if (ref) ref.current = element;
+    },
+    [ref]
+  );
+  const mark = React.useCallback(() => {
+    if (!node.current) return;
+    const next = markRow(node.current);
+    (["start", "end", "viewport"] as const).forEach((kind) => {
+      if (next[kind] !== reported.current[kind]) reportPin?.(kind, next[kind] ? 1 : -1);
+    });
+    reported.current = next;
+  }, [reportPin]);
+  React.useLayoutEffect(mark);
+  React.useLayoutEffect(() => {
+    const row = node.current;
+    if (!row) return undefined;
+    const observer = new MutationObserver(mark);
+    observer.observe(row, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["aria-expanded", "data-pin", "colspan"]
+    });
+    return () => {
+      observer.disconnect();
+      (["start", "end", "viewport"] as const).forEach((kind) => {
+        if (reported.current[kind]) reportPin?.(kind, -1);
+      });
+      reported.current = { start: false, end: false, viewport: false };
+    };
+  }, [mark, reportPin]);
+  React.useLayoutEffect(() => {
+    const above = containsFocus ? node.current?.previousElementSibling : null;
+    if (!above) return undefined;
+    above.setAttribute("data-focus-anchor", "");
+    return () => above.removeAttribute("data-focus-anchor");
+  }, [containsFocus]);
   return (
-    <tr
-      ref={ref}
-      data-slot="table-row"
-      data-focused={focused || undefined}
-      className={cn(
-        "border-b border-[color:var(--v4-line-soft)] transition-colors duration-(--v4-duration-fast)",
-        styles.nativeTableRow,
-        className
-      )}
-      onClick={
-        onClick &&
-        ((event) => {
-          if (activatesRow(event)) onClick(event);
-        })
-      }
-      onFocus={(event) => {
-        onFocus?.(event);
-        if (event.target === event.currentTarget && keyboardModality())
-          event.currentTarget.setAttribute("data-focus-ring", "");
-      }}
-      onBlur={(event) => {
-        onBlur?.(event);
-        if (event.target === event.currentTarget)
-          event.currentTarget.removeAttribute("data-focus-ring");
-      }}
-      {...props}
-    />
+    <RowFocusContext value={reportContains}>
+      <StretchedLinkContext value={reportLink}>
+        <tr
+          ref={setRef}
+          data-slot="table-row"
+          data-focused={focused || undefined}
+          data-contains-focus={containsFocus || undefined}
+          data-stretched-link={hasLink || undefined}
+          className={cn(
+            "border-b border-[color:var(--v4-line-soft)] transition-colors duration-(--v4-duration-fast)",
+            styles.nativeTableRow,
+            className
+          )}
+          onClick={
+            onClick &&
+            ((event) => {
+              if (activatesRow(event)) onClick(event);
+            })
+          }
+          onFocus={(event) => {
+            onFocus?.(event);
+            if (event.target === event.currentTarget && keyboardModality())
+              event.currentTarget.setAttribute("data-focus-ring", "");
+          }}
+          onBlur={(event) => {
+            onBlur?.(event);
+            if (event.target === event.currentTarget)
+              event.currentTarget.removeAttribute("data-focus-ring");
+          }}
+          {...props}
+        >
+          {children}
+        </tr>
+      </StretchedLinkContext>
+    </RowFocusContext>
   );
 }
 TableRow.displayName = "TableRow";

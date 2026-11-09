@@ -7,6 +7,9 @@
   "decorative-effect": {
     "src/components/v4/ui/chart.tsx": 1
   },
+  "logical-inline-unscoped": {
+    "src/components/v4/ui/data.module.css": 2
+  },
   "raw-color": {
     "src/components/v4/ui/helpers.module.css": 1
   }

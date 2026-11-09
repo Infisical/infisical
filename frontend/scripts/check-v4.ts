@@ -521,7 +521,7 @@ const elementsNamed = (text: string, pattern: RegExp) =>
 
 /** Hand-built TableRows that hold RowActions or a TableActionsCell with content, without a RowContextMenu around them. An empty self-closing TableActionsCell only keeps the actions column aligned. */
 export const rowsWithoutContextMenu = (text: string) => {
-  const rows = elementsNamed(text, /<(TableRow|ChromeRow)(?=[\s>/])/g);
+  const rows = elementsNamed(text, /<(TableRow)(?=[\s>/])/g);
   const menus = elementsNamed(text, /<(RowContextMenu)(?=[\s>/])/g);
   const found = new Map<number, string>();
   [...text.matchAll(/<(RowActions|TableActionsCell)(?=[\s>/])/g)].forEach((actions) => {
@@ -571,7 +571,62 @@ export const rawTablesInCards = (text: string) => {
   });
 };
 
+/** Tailwind has-* variants, including group-has, peer-has, not-has and arbitrary :has() variants. */
+export const hasVariants = (value: string): string[] =>
+  value
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((token) => /(?:^|[:-])has-|:has\(/.test(splitVariant(token).variant));
+
+const splitTopLevel = (text: string, separator: RegExp) => {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  [...text].forEach((char, index) => {
+    if (char === "(" || char === "[") depth += 1;
+    else if (char === ")" || char === "]") depth -= 1;
+    else if (depth === 0 && separator.test(char)) {
+      parts.push(text.slice(start, index));
+      start = index + 1;
+    }
+  });
+  parts.push(text.slice(start));
+  return parts.map((part) => part.trim()).filter(Boolean);
+};
+
+/** Selectors in the list whose subject, the rightmost compound, names no class, attribute or id. */
+export const unscopedSubjects = (selector: string): string[] =>
+  splitTopLevel(selector, /,/).filter((part) => {
+    const subject =
+      splitTopLevel(part.replace(/:global\(([^()]*)\)/g, "$1"), /[\s>+~]/).pop() ?? "";
+    return !/[.[#]/.test(subject.replace(/::[\w-]+(\([^)]*\))?/g, ""));
+  });
+
 export const v4Checks: readonly V4Check[] = [
+  {
+    id: "has-selector",
+    rule: "no-has-selectors",
+    message:
+      "No :has() selector or Tailwind has-* variant. Chrome re-checks :has() on DOM changes far from the element, so one cell update in a large table relayouts the page. Set a data attribute from the component (props, context, or useDescendantFlags in lib/descendant-flags.ts) and select on that.",
+    appliesTo: isAuthored,
+    css: [/:has\(/g],
+    classString: hasVariants
+  },
+  {
+    id: "logical-inline-unscoped",
+    rule: "scoped-logical-inline",
+    message:
+      "The build lowers inset-inline and the logical corner radii into :lang() selectors for older browsers (margin and padding logical properties ship as they are). Give the rule's subject a class or attribute: a subject left with only :lang() is matched against every element on every style recalc.",
+    appliesTo: (file) => isAuthored(file) && isCss(file),
+    cssBlock: (selector, body) => {
+      if (!unscopedSubjects(selector).length) return [];
+      return [
+        ...body.matchAll(
+          /(?:^|;|\n)\s*((?:inset-inline(?:-start|-end)?|border-(?:start|end)-(?:start|end)-radius)\s*:[^;]+)/g
+        )
+      ].map((match) => match[1].trim());
+    }
+  },
   {
     id: "raw-color",
     rule: "token-colors",

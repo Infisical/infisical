@@ -406,6 +406,35 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [ui, "<p>Only links take cursor: pointer.</p>"]
     ]
   },
+  "has-selector": {
+    bad: [
+      [css, "tbody:has([data-focused]) > tr { filter: none; }"],
+      [css, ".frame:has(> .frameHead) {\n  padding-top: 0;\n}"],
+      [ui, '<div className="flex has-[>[data-slot=field]]:border" />'],
+      [ui, 'cn("size-8 group-has-data-[size=lg]/avatar-group:size-10")'],
+      [ui, '<label className="peer-has-checked:bg-muted not-has-[:disabled]:hover:bg-muted" />'],
+      [ui, '<div className="[&:has([role=checkbox])]:pr-0" />']
+    ],
+    good: [
+      [css, "tbody[data-has-focus] > tr { filter: none; }"],
+      [ui, '<div className="flex data-[has-field]:border" />'],
+      [ui, 'const flags = { "data-before-footer": ":scope > .body:has(+ .footer)" };'],
+      [ui, "<p>The row has-focus state comes from context.</p>"]
+    ]
+  },
+  "logical-inline-unscoped": {
+    bad: [
+      [css, 'td[data-pin="viewport"] > * {\n  inset-inline-start: 0;\n}'],
+      [css, "tbody > tr:first-child > td:first-child {\n  border-start-start-radius: 0;\n}"],
+      [css, ".row > :is(td, th)::after {\n  inset-inline: 0;\n}"]
+    ],
+    good: [
+      [css, ".viewportContent {\n  position: sticky;\n  inset-inline-start: 0;\n}"],
+      [css, 'td[data-pin="viewport"] > .content {\n  inset-inline-start: 0;\n}'],
+      [css, ":global(tr)[data-stretched-link] {\n  inset-inline-start: 0;\n}"],
+      [css, "td > * {\n  margin-inline-start: auto;\n}"]
+    ]
+  },
   "suspense-fallback": {
     bad: [
       [example, '<Suspense fallback={<Spinner label="Loading secrets" />}>'],

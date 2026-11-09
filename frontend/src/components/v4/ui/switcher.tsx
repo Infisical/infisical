@@ -275,6 +275,7 @@ export const Switcher = ({
                       ]}
                       disabled={option.disabled}
                       data-current={option.value === selected || undefined}
+                      data-has-meta={option.meta ? "" : undefined}
                       onSelect={() => {
                         if (option.onSelect) option.onSelect();
                         else if (option.value !== selected) {

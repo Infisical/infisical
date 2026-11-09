@@ -292,6 +292,8 @@ export function DataTable<Row>({
     });
   const fixedWidth = columns.reduce((sum, column) => sum + (column.width ?? 0), 0);
   const leading = columns.some((column) => column.pin === "start");
+  const trailing =
+    Boolean(rowActions) || columns.some((column) => column.pin === true || column.actions);
   const pinOffsets = new Map<string, string>();
   columns
     .filter((column) => column.pin === "start")
@@ -416,6 +418,7 @@ export function DataTable<Row>({
         {rowActions && (
           <TableActionsCell slots={slots} data-pin="true">
             <RowActions
+              lazy
               label={rowLabel(row)}
               inline={rowInline(row)}
               menu={rowActions.renderMenu?.(row)}
@@ -443,6 +446,9 @@ export function DataTable<Row>({
     <div
       ref={attachScroll}
       data-scroll-fade="x"
+      data-has-start-pin={leading || undefined}
+      data-has-end-pin={trailing || undefined}
+      data-frame-foot={Boolean((height && more) || pagination) || undefined}
       className={cn(!embedded && frame.frame, styles.tableScroll, containerClassName)}
       data-virtual={windowed || undefined}
       style={tableStyle}

@@ -29,16 +29,13 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import {
-  DropdownMenu,
   DropdownMenuCheckboxItem,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger
+  DropdownMenuSubTrigger
 } from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
@@ -49,13 +46,14 @@ import {
   TableCell,
   TableHead,
   TableHeader,
+  RowActions,
   RowContextMenu,
   TableActionsCell,
   TableActionsHead,
   TableRow,
-  TableRowActions,
   TableRowIndicators
 } from "@app/components/v4/ui/table";
+import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
@@ -76,15 +74,11 @@ import {
 import type { PendingType } from "./batch/pending";
 import { environmentLabel } from "./flows/shared";
 import {
-  ActionButton,
   ChildSelectCell,
-  ChromeRow,
   ChildSelectHead,
   type EnvironmentStatus,
   ExpandCell,
-  IdleActions,
   KindIcon,
-  LazyRowActions,
   type KindOverlay,
   NEXT_PHASE,
   PendingBadge,
@@ -92,8 +86,6 @@ import {
   ROW_ACTION_SLOTS,
   type RowActionProps,
   type RowContext,
-  RowChrome,
-  RowTooltip,
   SelectCell,
   StatusCell,
   stopRowClick,
@@ -181,11 +173,11 @@ function SecretValue({
   if (value === undefined)
     return (
       <span className={styles.nameLine}>
-        <RowTooltip content="You do not have access to view the current value.">
+        <Tooltip content="You do not have access to view the current value.">
           <span className={styles.hint}>
             <Icon icon={EyeOffIcon} label="Value hidden" />
           </span>
-        </RowTooltip>
+        </Tooltip>
         <code className={styles.value}>{mask}</code>
       </span>
     );
@@ -294,11 +286,11 @@ function Indicators({ secret }: { secret: Secret }) {
   if (!secret.skipMultilineEncoding) return null;
   return (
     <TableRowIndicators>
-      <RowTooltip content="Multi-line encoding disabled">
+      <Tooltip content="Multi-line encoding disabled">
         <span className={styles.hint}>
           <Icon icon={WrapTextIcon} label="Multi-line encoding disabled" />
         </span>
-      </RowTooltip>
+      </Tooltip>
     </TableRowIndicators>
   );
 }
@@ -347,7 +339,7 @@ function Annotations({
   return (
     <span className={styles.annotations}>
       {marks.map((mark) => (
-        <RowTooltip key={mark.overlay} content={mark.hint}>
+        <Tooltip key={mark.overlay} content={mark.hint}>
           <Button
             variant="ghost"
             size="icon-xs"
@@ -360,7 +352,7 @@ function Annotations({
             <Icon icon={mark.icon} size={12} />
             <span className="sr-only">{`${mark.label} for ${secret.name}`}</span>
           </Button>
-        </RowTooltip>
+        </Tooltip>
       ))}
     </span>
   );
@@ -619,7 +611,7 @@ function SecretActionsRow({
   };
   return (
     <RowContextMenu {...rowActions}>
-      <ChromeRow
+      <TableRow
         {...row}
         focused={Boolean(popover)}
         onFocus={(event) => {
@@ -631,111 +623,71 @@ function SecretActionsRow({
       >
         {children}
         <TableActionsCell slots={ROW_ACTION_SLOTS}>
-          <RowChrome
-            force={Boolean(popover)}
-            idle={
-              <IdleActions
-                actions={rowActions.inline ?? []}
-                menu={{ label: "More secret actions" }}
-              />
-            }
+          <Popover
+            open={Boolean(popover)}
+            onOpenChange={(next) => {
+              if (!next) setOpen(undefined);
+            }}
           >
-            <Popover
-              open={Boolean(popover)}
-              onOpenChange={(next) => {
-                if (!next) setOpen(undefined);
-              }}
+            <PopoverAnchor asChild>
+              <RowActions
+                lazy
+                {...rowActions}
+                menuLabel="More secret actions"
+                onOpenChange={(next) => {
+                  const run = pending.current;
+                  pending.current = undefined;
+                  if (next || !run) return;
+                  keepFocus.current = true;
+                  setTimeout(run, 0);
+                }}
+                onMenuCloseAutoFocus={(event) => {
+                  if (!keepFocus.current) return;
+                  keepFocus.current = false;
+                  event.preventDefault();
+                }}
+              />
+            </PopoverAnchor>
+            <PopoverContent
+              draggable
+              align="end"
+              className={popover === "metadata" ? styles.metadataPopover : styles.annotationPopover}
+              onCloseAutoFocus={(event) => event.preventDefault()}
             >
-              <PopoverAnchor asChild>
-                <TableRowActions>
-                  {rowActions.inline?.map((action) => (
-                    <ActionButton
-                      key={action.label}
-                      label={action.label}
-                      name={typeof action.icon === "string" ? action.icon : undefined}
-                      icon={typeof action.icon === "string" ? undefined : action.icon}
-                      disabledReason={action.disabledReason}
-                      onClick={action.onSelect}
-                    />
-                  ))}
-                  <DropdownMenu
-                    onOpenChange={(next) => {
-                      const run = pending.current;
-                      pending.current = undefined;
-                      if (next || !run) return;
-                      keepFocus.current = true;
-                      setTimeout(run, 0);
-                    }}
-                  >
-                    <RowTooltip content="Secret actions">
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-row"
-                          iconOnly
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <Icon name="more" />
-                          <span className="sr-only">More secret actions</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </RowTooltip>
-                    <DropdownMenuContent
-                      align="end"
-                      onCloseAutoFocus={(event) => {
-                        if (!keepFocus.current) return;
-                        keepFocus.current = false;
-                        event.preventDefault();
-                      }}
-                    >
-                      {rowActions.menu}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableRowActions>
-              </PopoverAnchor>
-              <PopoverContent
-                draggable
-                align="end"
-                className={
-                  popover === "metadata" ? styles.metadataPopover : styles.annotationPopover
-                }
-                onCloseAutoFocus={(event) => event.preventDefault()}
-              >
-                {popover === "comment" && (
-                  <CommentForm
-                    comment={secret.comment}
-                    canEdit={canEdit}
-                    onClose={() => setOpen(undefined)}
-                    onSave={(comment) =>
-                      update(secret, { comment }, saved(`Updated the comment on ${secret.name}`))
-                    }
-                  />
-                )}
-                {popover === "tags" && (
-                  <TagForm
-                    tags={secret.tags}
-                    options={handlers.tagOptions}
-                    canEdit={canEdit}
-                    canCreate={canCreateTags}
-                    onClose={() => setOpen(undefined)}
-                    onSave={(tags) =>
-                      update(secret, { tags }, saved(`Updated tags on ${secret.name}`))
-                    }
-                  />
-                )}
-                {popover === "metadata" && (
-                  <MetadataForm
-                    metadata={secret.metadata}
-                    canEdit={canEdit}
-                    onClose={() => setOpen(undefined)}
-                    onSave={(metadata) =>
-                      update(secret, { metadata }, saved(`Updated metadata on ${secret.name}`))
-                    }
-                  />
-                )}
-              </PopoverContent>
-            </Popover>
-          </RowChrome>
+              {popover === "comment" && (
+                <CommentForm
+                  comment={secret.comment}
+                  canEdit={canEdit}
+                  onClose={() => setOpen(undefined)}
+                  onSave={(comment) =>
+                    update(secret, { comment }, saved(`Updated the comment on ${secret.name}`))
+                  }
+                />
+              )}
+              {popover === "tags" && (
+                <TagForm
+                  tags={secret.tags}
+                  options={handlers.tagOptions}
+                  canEdit={canEdit}
+                  canCreate={canCreateTags}
+                  onClose={() => setOpen(undefined)}
+                  onSave={(tags) =>
+                    update(secret, { tags }, saved(`Updated tags on ${secret.name}`))
+                  }
+                />
+              )}
+              {popover === "metadata" && (
+                <MetadataForm
+                  metadata={secret.metadata}
+                  canEdit={canEdit}
+                  onClose={() => setOpen(undefined)}
+                  onSave={(metadata) =>
+                    update(secret, { metadata }, saved(`Updated metadata on ${secret.name}`))
+                  }
+                />
+              )}
+            </PopoverContent>
+          </Popover>
           {open === "edit" && (
             <EditSecretSheet
               secret={secret}
@@ -843,7 +795,7 @@ function SecretActionsRow({
             />
           )}
         </TableActionsCell>
-      </ChromeRow>
+      </TableRow>
     </RowContextMenu>
   );
 }
@@ -962,10 +914,10 @@ function OverrideRow({
   };
   return (
     <RowContextMenu {...rowActions}>
-      <ChromeRow className={`${styles.row} ${styles.overrideRow}`}>
+      <TableRow className={`${styles.row} ${styles.overrideRow}`}>
         {children}
         <TableActionsCell slots={ROW_ACTION_SLOTS}>
-          <LazyRowActions {...rowActions} />
+          <RowActions lazy {...rowActions} />
           <AlertDialog open={removing} onOpenChange={setRemoving}>
             <AlertDialogContent tone="danger">
               <AlertDialogHeader>
@@ -992,7 +944,7 @@ function OverrideRow({
             </AlertDialogContent>
           </AlertDialog>
         </TableActionsCell>
-      </ChromeRow>
+      </TableRow>
     </RowContextMenu>
   );
 }
@@ -1156,7 +1108,7 @@ function SecretRowView({
   return (
     <>
       <RowContextMenu {...groupActions}>
-        <ChromeRow
+        <TableRow
           data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
           className={styles.row}
           data-expanded={expanded || undefined}
@@ -1199,9 +1151,9 @@ function SecretRowView({
             );
           })}
           <TableActionsCell slots={ROW_ACTION_SLOTS} onClick={stopRowClick}>
-            <LazyRowActions {...groupActions} />
+            <RowActions lazy {...groupActions} />
           </TableActionsCell>
-        </ChromeRow>
+        </TableRow>
       </RowContextMenu>
       {expanded && (
         <TableRow className={styles.nestedRow}>
@@ -1251,11 +1203,11 @@ function SecretRowView({
                               <Annotations secret={secret} onOpen={overlayFor(environment.value)} />
                             )}
                             {!secret && imported && (
-                              <RowTooltip content={`Imported from ${imported}`}>
+                              <Tooltip content={`Imported from ${imported}`}>
                                 <span className={styles.hint}>
                                   <Icon icon={ImportIcon} label={`Imported from ${imported}`} />
                                 </span>
-                              </RowTooltip>
+                              </Tooltip>
                             )}
                             {secret?.managedBy && (
                               <Icon name="sync" size={12} label="Rotated secret" />
@@ -1331,12 +1283,12 @@ function SecretRowView({
                         </SecretActionsRow>
                       ) : (
                         <RowContextMenu key={environment.value} {...addValue}>
-                          <ChromeRow className={styles.row}>
+                          <TableRow className={styles.row}>
                             {cells}
                             <TableActionsCell slots={ROW_ACTION_SLOTS}>
-                              <LazyRowActions {...addValue} />
+                              <RowActions lazy {...addValue} />
                             </TableActionsCell>
-                          </ChromeRow>
+                          </TableRow>
                         </RowContextMenu>
                       )
                     ];

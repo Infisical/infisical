@@ -70,7 +70,7 @@
 .tooltip code {
   overflow-wrap: anywhere;
 }
-.tooltip:has([data-slot="kbd"]) {
+.tooltip[data-has-kbd] {
   padding-inline-end: var(--v4-space-6);
 }
 .tooltipArrow {
@@ -164,7 +164,7 @@
   --v4-menu-icon-slot: 0px;
   padding: var(--v4-menu-pad);
 }
-.inset:has(.row > :is(svg, [data-menu-icon]):not(.trail), .row[data-inset], .label[data-inset]) {
+.inset[data-icon-slot] {
   --v4-menu-icon-slot: calc(var(--v4-size-icon) + var(--v4-space-8));
 }
 
@@ -220,7 +220,7 @@
   font-weight: var(--v4-type-body-font-weight);
   letter-spacing: var(--v4-type-body-letter-spacing);
 }
-.row:has(> :is(svg, [data-menu-icon]):not(.trail)) {
+.row.row[data-lead-icon] {
   padding-inline-start: var(--v4-space-8);
 }
 .row > svg,
