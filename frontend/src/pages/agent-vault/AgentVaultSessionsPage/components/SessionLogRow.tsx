@@ -24,6 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { isInfisicalLogHost } from "@app/helpers/agentVaultSessionLogs";
 import { AgentVaultServiceType, AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultSessionLogMcpCall,
@@ -236,7 +237,10 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
   );
   const host = (
     <span className="flex w-fit max-w-full items-center gap-2 text-sm">
-      <ServiceIcon hostPattern={record.host} />
+      <ServiceIcon
+        hostPattern={record.host}
+        isInfisical={isSessionEndpoint(record.decision) || isInfisicalLogHost(record)}
+      />
       <span className="truncate" title={record.service ? undefined : record.host}>
         {record.host}
       </span>
