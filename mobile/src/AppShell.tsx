@@ -29,7 +29,7 @@ const Mark = () => {
 export const AppShell = () => {
   const palette = usePalette();
   const insets = useSafeAreaInsets();
-  const { requests, organizationName } = useStore();
+  const { requests, organizationName, focus } = useStore();
   const { session, signOut } = useSession();
   const live = session.mode === "live" ? session : null;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,6 +39,10 @@ export const AppShell = () => {
   const slide = useRef(new Animated.Value(0)).current;
   const width = Dimensions.get("window").width;
   const waiting = requests.filter((request) => request.awaitingYou && request.status === "pending").length;
+
+  useEffect(() => {
+    focus(openId);
+  }, [focus, openId]);
 
   useEffect(() => {
     if (openId) setShownId(openId);

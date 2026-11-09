@@ -89,8 +89,8 @@ export const createApiClient = ({ instance, getAccessToken, refreshAccessToken, 
         throw new ApiError(`${hostOf(instance)} sent a list the app couldn't read. Pull down to try again.`);
       return (rows as PamAccessRequest[]).map(toApprovalRequest);
     },
-    decide: async (id: string, action: "approve" | "deny", comment?: string) => {
-      await call(
+    decide: async (id: string, action: "approve" | "deny", comment?: string): Promise<RequestStatus> => {
+      const { body } = await call(
         `/api/v1/approval-policies/pam-access/requests/${encodeURIComponent(id)}/${action === "approve" ? "approve" : "reject"}`,
         {
           method: "POST",
@@ -99,6 +99,9 @@ export const createApiClient = ({ instance, getAccessToken, refreshAccessToken, 
         },
         action === "approve" ? "approve this request" : "deny this request"
       );
+      const status = (body?.request as { status?: string } | undefined)?.status;
+      if (STATUSES.includes(status as RequestStatus)) return status as RequestStatus;
+      return action === "approve" ? "approved" : "rejected";
     }
   };
 };

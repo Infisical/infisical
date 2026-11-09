@@ -9,18 +9,21 @@ export type Session =
   | { mode: "loading" }
   | { mode: "signed-out"; notice?: string; lastInstance?: string }
   | { mode: "demo" }
-  | { mode: "live"; instance: string };
+  | { mode: "live"; instance: string; generation: number };
 
-type Tokens = { accessToken: string; refreshToken?: string };
+type Tokens = { accessToken: string; refreshToken?: string; generation: number };
 
 type SessionContextValue = {
   session: Session;
   signIn: (instance: string) => Promise<void>;
   startDemo: () => Promise<void>;
   signOut: (notice?: string) => Promise<void>;
-  getAccessToken: () => string | null;
-  refreshAccessToken: () => Promise<string | null>;
+  endSession: (generation: number, notice: string) => void;
+  getAccessToken: (generation: number) => string | null;
+  refreshAccessToken: (generation: number) => Promise<string | null>;
 };
+
+const REFRESH_TIMEOUT_MS = 15000;
 
 const KEYS = {
   mode: "infisical.mode",
@@ -36,7 +39,7 @@ const endpoints = (instance: string) => ({
   tokenEndpoint: `${instance}/api/v1/oauth/token`
 });
 
-const saveTokens = (tokens: Tokens) =>
+const saveTokens = (tokens: Omit<Tokens, "generation">) =>
   Promise.all([
     SecureStore.setItemAsync(KEYS.accessToken, tokens.accessToken),
     tokens.refreshToken ? SecureStore.setItemAsync(KEYS.refreshToken, tokens.refreshToken) : Promise.resolve()
@@ -65,7 +68,8 @@ const tokenErrorMessage = (error: unknown, host: string) => {
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session>({ mode: "loading" });
   const tokens = useRef<Tokens | null>(null);
-  const refreshing = useRef<Promise<string | null> | null>(null);
+  const refreshing = useRef<{ generation: number; promise: Promise<string | null> } | null>(null);
+  const generation = useRef(0);
 
   useEffect(() => {
     (async () => {
@@ -77,21 +81,31 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       ]).catch(() => [null, null, null, null]);
       if (mode === "demo") return setSession({ mode: "demo" });
       if (mode === "live" && instance && accessToken) {
-        tokens.current = { accessToken, refreshToken: refreshToken ?? undefined };
-        return setSession({ mode: "live", instance });
+        generation.current += 1;
+        tokens.current = { accessToken, refreshToken: refreshToken ?? undefined, generation: generation.current };
+        return setSession({ mode: "live", instance, generation: generation.current });
       }
       setSession({ mode: "signed-out", lastInstance: instance ?? undefined });
     })();
   }, []);
 
   const signOut = useCallback(async (notice?: string) => {
-    const instance = await SecureStore.getItemAsync(KEYS.instance).catch(() => null);
+    generation.current += 1;
     tokens.current = null;
+    refreshing.current = null;
+    const instance = await SecureStore.getItemAsync(KEYS.instance).catch(() => null);
     await Promise.all(
       [KEYS.mode, KEYS.accessToken, KEYS.refreshToken].map((key) => SecureStore.deleteItemAsync(key).catch(() => undefined))
     );
     setSession({ mode: "signed-out", notice, lastInstance: instance ?? undefined });
   }, []);
+
+  const endSession = useCallback(
+    (sessionGeneration: number, notice: string) => {
+      if (sessionGeneration === generation.current) void signOut(notice);
+    },
+    [signOut]
+  );
 
   const signIn = useCallback(async (instance: string) => {
     const host = hostOf(instance);
@@ -126,44 +140,71 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       throw new ApiError(tokenErrorMessage(error, host));
     }
-    tokens.current = { accessToken: response.accessToken, refreshToken: response.refreshToken };
+    generation.current += 1;
+    refreshing.current = null;
+    tokens.current = { accessToken: response.accessToken, refreshToken: response.refreshToken, generation: generation.current };
     await saveTokens(tokens.current);
     await Promise.all([SecureStore.setItemAsync(KEYS.instance, instance), SecureStore.setItemAsync(KEYS.mode, "live")]);
-    setSession({ mode: "live", instance });
+    setSession({ mode: "live", instance, generation: generation.current });
   }, []);
 
   const startDemo = useCallback(async () => {
+    generation.current += 1;
     await SecureStore.setItemAsync(KEYS.mode, "demo").catch(() => undefined);
     setSession({ mode: "demo" });
   }, []);
 
   const instance = session.mode === "live" ? session.instance : null;
 
-  const refreshAccessToken = useCallback(() => {
-    if (refreshing.current) return refreshing.current;
-    const refreshToken = tokens.current?.refreshToken;
-    if (!instance || !refreshToken) return Promise.resolve(null);
-    refreshing.current = AuthSession.refreshAsync({ clientId: OAUTH_CLIENT_ID, refreshToken }, endpoints(instance))
-      .then(async (response) => {
-        tokens.current = { accessToken: response.accessToken, refreshToken: response.refreshToken ?? refreshToken };
-        await saveTokens(tokens.current);
-        return response.accessToken;
-      })
-      .catch((error) => {
-        if (error instanceof AuthSession.TokenError) return null;
-        throw new ApiError(`Couldn't reach ${hostOf(instance)} to renew your session. Check your connection and try again.`);
-      })
-      .finally(() => {
-        refreshing.current = null;
+  const refreshAccessToken = useCallback(
+    (sessionGeneration: number) => {
+      if (sessionGeneration !== generation.current || !instance) return Promise.resolve(null);
+      if (refreshing.current?.generation === sessionGeneration) return refreshing.current.promise;
+      const refreshToken = tokens.current?.refreshToken;
+      if (!refreshToken) return Promise.resolve(null);
+      const host = hostOf(instance);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new ApiError(`${host} took too long to renew your session. Try again in a moment.`)),
+          REFRESH_TIMEOUT_MS
+        );
       });
-    return refreshing.current;
-  }, [instance]);
+      const promise = Promise.race([AuthSession.refreshAsync({ clientId: OAUTH_CLIENT_ID, refreshToken }, endpoints(instance)), timeout])
+        .then(async (response) => {
+          if (sessionGeneration !== generation.current) return null;
+          tokens.current = {
+            accessToken: response.accessToken,
+            refreshToken: response.refreshToken ?? refreshToken,
+            generation: sessionGeneration
+          };
+          await saveTokens(tokens.current);
+          return response.accessToken;
+        })
+        .catch((error) => {
+          if (error instanceof AuthSession.TokenError) return null;
+          if (error instanceof ApiError) throw error;
+          throw new ApiError(`Couldn't reach ${host} to renew your session. Check your connection and try again.`);
+        })
+        .finally(() => {
+          clearTimeout(timer);
+          if (refreshing.current?.promise === promise) refreshing.current = null;
+        });
+      refreshing.current = { generation: sessionGeneration, promise };
+      return promise;
+    },
+    [instance]
+  );
 
-  const getAccessToken = useCallback(() => tokens.current?.accessToken ?? null, []);
+  const getAccessToken = useCallback(
+    (sessionGeneration: number) =>
+      tokens.current?.generation === sessionGeneration ? tokens.current.accessToken : null,
+    []
+  );
 
   const value = useMemo(
-    () => ({ session, signIn, startDemo, signOut, getAccessToken, refreshAccessToken }),
-    [session, signIn, startDemo, signOut, getAccessToken, refreshAccessToken]
+    () => ({ session, signIn, startDemo, signOut, endSession, getAccessToken, refreshAccessToken }),
+    [session, signIn, startDemo, signOut, endSession, getAccessToken, refreshAccessToken]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

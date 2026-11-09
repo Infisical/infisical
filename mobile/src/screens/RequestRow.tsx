@@ -12,7 +12,7 @@ export const statusMeta = (request: ApprovalRequest) => {
   const label = pastTense(request);
   if (request.status === "approved") return { icon: "check-c" as const, label, tone: "ok" as const };
   if (request.status === "rejected") return { icon: "x" as const, label, tone: "bad" as const };
-  if (request.status === "pending") return { icon: "clock" as const, label, tone: "warn" as const };
+  if (request.status === "pending" && request.awaitingYou) return { icon: "clock" as const, label, tone: "warn" as const };
   return { icon: "clock" as const, label, tone: "neutral" as const };
 };
 
@@ -22,7 +22,7 @@ export const RequestRow = ({ request, onOpen, showActions }: Props) => {
   const { activity, decide, undo } = useStore();
   const current = activity[request.id] ?? { state: "idle" };
   const failed = current.state === "failed" && request.status === "pending" ? current : null;
-  const resolved = request.status !== "pending";
+  const resolved = request.status !== "pending" || !request.awaitingYou;
   const unread = !resolved && Date.now() - request.createdAt < 10 * 60 * 1000;
 
   const run = async (action: "approve" | "deny") => {

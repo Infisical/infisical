@@ -14,7 +14,7 @@ export const HistoryScreen = ({ onOpen }: { onOpen: (id: string) => void }) => {
   const palette = usePalette();
   const { requests, historyComplete } = useStore();
   const decided = requests
-    .filter((request) => request.status !== "pending")
+    .filter((request) => request.status !== "pending" || request.decision?.by === "You")
     .sort((a, b) => closedAt(b) - closedAt(a));
   const startOfToday = new Date().setHours(0, 0, 0, 0);
   const groups = [

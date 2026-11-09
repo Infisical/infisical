@@ -27,7 +27,7 @@ const Root = () => {
       </DemoStoreProvider>
     );
   return (
-    <LiveStoreProvider key={session.instance} instance={session.instance}>
+    <LiveStoreProvider key={session.generation} instance={session.instance} generation={session.generation}>
       <AppShell />
     </LiveStoreProvider>
   );

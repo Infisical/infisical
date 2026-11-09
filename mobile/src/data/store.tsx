@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { buildFixtures, ORGANIZATION } from "./fixtures";
-import { Activity, ApprovalRequest } from "./types";
+import { Activity, ApprovalRequest, RequestStatus } from "./types";
 
 export type InboxState = { state: "loading" } | { state: "ready" } | { state: "error"; error: string };
 
@@ -16,13 +16,19 @@ export type Store = {
   undo?: (id: string) => void;
   resolvedThisSession: Set<string>;
   historyComplete: boolean;
+  focus: (id: string | null) => void;
 };
 
 export const StoreContext = createContext<Store | null>(null);
 
-export const applyDecision = (request: ApprovalRequest, action: "approve" | "deny", comment?: string): ApprovalRequest => ({
+export const applyDecision = (
+  request: ApprovalRequest,
+  action: "approve" | "deny",
+  comment?: string,
+  status: RequestStatus = action === "approve" ? "approved" : "rejected"
+): ApprovalRequest => ({
   ...request,
-  status: action === "approve" ? "approved" : "rejected",
+  status,
   awaitingYou: false,
   decision: { by: "You", at: Date.now(), comment: comment || undefined },
   steps: request.steps.map((step) =>
@@ -33,6 +39,8 @@ export const applyDecision = (request: ApprovalRequest, action: "approve" | "den
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isPastExpiry = (request: ApprovalRequest) => request.expiresAt !== undefined && request.expiresAt <= Date.now();
+
+const noop = () => undefined;
 
 const FLAKY_REQUEST_ID = "c7a0f3b2-1e5d-4a8f-b9c4-2f6d7e8a9b03";
 
@@ -123,7 +131,8 @@ export const DemoStoreProvider = ({ children }: { children: ReactNode }) => {
       decide,
       undo,
       resolvedThisSession,
-      historyComplete: true
+      historyComplete: true,
+      focus: noop
     }),
     [requests, refreshing, refresh, activity, decide, undo, resolvedThisSession]
   );

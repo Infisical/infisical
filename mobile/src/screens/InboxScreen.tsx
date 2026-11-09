@@ -16,7 +16,7 @@ export const InboxScreen = ({ onOpen, onHistory }: Props) => {
   const visible = requests
     .filter((request) => request.awaitingYou || resolvedThisSession.has(request.id))
     .sort((a, b) => b.createdAt - a.createdAt);
-  const waiting = visible.filter((request) => request.status === "pending");
+  const waiting = visible.filter((request) => request.status === "pending" && request.awaitingYou);
   const loading = inbox.state === "loading";
   const failed = inbox.state === "error" ? inbox.error : null;
 

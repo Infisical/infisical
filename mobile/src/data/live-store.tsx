@@ -5,28 +5,49 @@ import { createApiClient } from "./api";
 import { applyDecision, InboxState, Store, StoreContext } from "./store";
 import { Activity, ApprovalRequest } from "./types";
 
-export const LiveStoreProvider = ({ instance, children }: { instance: string; children: ReactNode }) => {
-  const { getAccessToken, refreshAccessToken, signOut } = useSession();
+type Props = { instance: string; generation: number; children: ReactNode };
+
+export const LiveStoreProvider = ({ instance, generation, children }: Props) => {
+  const { getAccessToken, refreshAccessToken, endSession } = useSession();
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [inbox, setInbox] = useState<InboxState>({ state: "loading" });
   const [refreshing, setRefreshing] = useState(false);
   const [activity, setActivity] = useState<Record<string, Activity>>({});
   const [resolvedThisSession, setResolved] = useState<Set<string>>(new Set());
-  const resolved = useRef(resolvedThisSession);
-  resolved.current = resolvedThisSession;
+  const focused = useRef<string | null>(null);
+  const deciding = useRef(new Set<string>());
 
   const api = useMemo(
-    () => createApiClient({ instance, getAccessToken, refreshAccessToken, onSessionEnded: (notice) => void signOut(notice) }),
-    [instance, getAccessToken, refreshAccessToken, signOut]
+    () =>
+      createApiClient({
+        instance,
+        getAccessToken: () => getAccessToken(generation),
+        refreshAccessToken: () => refreshAccessToken(generation),
+        onSessionEnded: (notice) => endSession(generation, notice)
+      }),
+    [instance, generation, getAccessToken, refreshAccessToken, endSession]
   );
 
   const load = useCallback(async () => {
+    const startedAt = Date.now();
     try {
       const fetched = await api.listAwaitingReview();
-      setRequests((prev) => [
-        ...fetched.filter((request) => !resolved.current.has(request.id)),
-        ...prev.filter((request) => resolved.current.has(request.id))
-      ]);
+      setRequests((prev) => {
+        const previous = new Map(prev.map((request) => [request.id, request]));
+        const keepLocal = (request: ApprovalRequest) =>
+          deciding.current.has(request.id) || (request.decision?.by === "You" && request.decision.at >= startedAt);
+        const merged = fetched.map((request) => {
+          const local = previous.get(request.id);
+          return local && keepLocal(local) ? local : request;
+        });
+        const fetchedIds = new Set(fetched.map((request) => request.id));
+        const kept = prev.filter(
+          (request) =>
+            !fetchedIds.has(request.id) &&
+            (request.decision?.by === "You" || deciding.current.has(request.id) || request.id === focused.current)
+        );
+        return [...merged, ...kept];
+      });
       setInbox({ state: "ready" });
     } catch (error) {
       setInbox({ state: "error", error: error instanceof Error ? error.message : "Something went wrong loading your requests." });
@@ -46,20 +67,27 @@ export const LiveStoreProvider = ({ instance, children }: { instance: string; ch
   const decide = useCallback(
     async (id: string, action: "approve" | "deny", comment?: string) => {
       setActivity((prev) => ({ ...prev, [id]: { state: action === "approve" ? "approving" : "denying" } }));
+      deciding.current.add(id);
       try {
-        await api.decide(id, action, comment);
+        const status = await api.decide(id, action, comment);
+        setRequests((prev) => prev.map((request) => (request.id === id ? applyDecision(request, action, comment, status) : request)));
+        setResolved((prev) => new Set(prev).add(id));
+        setActivity((prev) => ({ ...prev, [id]: { state: "idle" } }));
+        return true;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Your decision wasn't recorded. Try again.";
         setActivity((prev) => ({ ...prev, [id]: { state: "failed", action, error: message } }));
         return false;
+      } finally {
+        deciding.current.delete(id);
       }
-      setRequests((prev) => prev.map((request) => (request.id === id ? applyDecision(request, action, comment) : request)));
-      setResolved((prev) => new Set(prev).add(id));
-      setActivity((prev) => ({ ...prev, [id]: { state: "idle" } }));
-      return true;
     },
     [api]
   );
+
+  const focus = useCallback((id: string | null) => {
+    focused.current = id;
+  }, []);
 
   const value = useMemo<Store>(
     () => ({
@@ -71,9 +99,10 @@ export const LiveStoreProvider = ({ instance, children }: { instance: string; ch
       activity,
       decide,
       resolvedThisSession,
-      historyComplete: false
+      historyComplete: false,
+      focus
     }),
-    [requests, inbox, refreshing, refresh, activity, decide, resolvedThisSession]
+    [requests, inbox, refreshing, refresh, activity, decide, resolvedThisSession, focus]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

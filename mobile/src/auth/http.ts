@@ -51,10 +51,10 @@ export const describeFailure = (instance: string, response: JsonResponse, action
     return `${host} runs a version of Infisical the app can't use yet, so it couldn't ${action}. Ask your admin to update Infisical.`;
   if (response.status === 429) return `${host} is limiting requests right now. Wait a minute, then try again.`;
   if (response.status >= 500)
-    return `${host} had a problem (HTTP ${response.status}) and couldn't ${action}. Try again in a moment.`;
+    return `${host} ran into a problem and couldn't ${action}. Try again in a moment.`;
   if (response.status === 403)
     return `You don't have permission to ${action} on ${host}.${message ? ` ${message}` : ""}`;
   return message
     ? `Couldn't ${action}: ${message}`
-    : `${host} refused to ${action} (HTTP ${response.status}). Try again, or sign out and back in.`;
+    : `${host} refused to ${action}. Try again, or sign out and back in.`;
 };

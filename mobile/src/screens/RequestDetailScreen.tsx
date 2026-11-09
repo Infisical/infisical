@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -26,6 +26,12 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
   const { requests, activity, decide, undo, resolvedThisSession } = useStore();
   const [comment, setComment] = useState("");
   const request = requests.find((candidate) => candidate.id === id);
+  const missing = !request;
+
+  useEffect(() => {
+    if (missing) onBack();
+  }, [missing, onBack]);
+
   if (!request) return null;
 
   const current = activity[request.id] ?? { state: "idle" };
