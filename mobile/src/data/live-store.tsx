@@ -16,6 +16,7 @@ export const LiveStoreProvider = ({ instance, generation, children }: Props) => 
   const [resolvedThisSession, setResolved] = useState<Set<string>>(new Set());
   const focused = useRef<string | null>(null);
   const deciding = useRef(new Set<string>());
+  const latestLoad = useRef(0);
 
   const api = useMemo(
     () =>
@@ -30,8 +31,10 @@ export const LiveStoreProvider = ({ instance, generation, children }: Props) => 
 
   const load = useCallback(async () => {
     const startedAt = Date.now();
+    const loadId = ++latestLoad.current;
     try {
       const fetched = await api.listAwaitingReview();
+      if (loadId !== latestLoad.current) return;
       setRequests((prev) => {
         const previous = new Map(prev.map((request) => [request.id, request]));
         const keepLocal = (request: ApprovalRequest) =>
@@ -58,6 +61,7 @@ export const LiveStoreProvider = ({ instance, generation, children }: Props) => 
       });
       setInbox({ state: "ready" });
     } catch (error) {
+      if (loadId !== latestLoad.current) return;
       setInbox({ state: "error", error: error instanceof Error ? error.message : "Something went wrong loading your requests." });
     }
   }, [api]);
