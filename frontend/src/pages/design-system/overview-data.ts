@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "viewport-cell-perf",
+    title: "Faster table edits",
+    description:
+      "Editing inside a large table no longer pays for the full-width cell's styling when no row uses it.",
+    date: "2026-11-07",
+    commit: "3f2f553a29",
+    page: "table"
+  },
+  {
     id: "shared-tooltips",
     title: "One tooltip per table",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "7b36bf4064",
     page: "error-state"
-  },
-  {
-    id: "table-rules",
-    title: "Table rules",
-    description:
-      "Navigation, pagination, sheet rows, context menus, facts density, inline actions, toolbars, bulk bars and tables in cards each have one rule.",
-    date: "2026-11-07",
-    commit: "c2b9967476",
-    page: "table"
   }
 ];
