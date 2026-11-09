@@ -1,5 +1,7 @@
 export const OAUTH_CLIENT_ID = "infisical-mobile";
 
+export const expectedIssuer = (instanceUrl: string) => instanceUrl;
+
 export const OAUTH_SCOPE = "approvals:review";
 
 export const OAUTH_REDIRECT_URI = "com.infisical.mobile:/oauth";

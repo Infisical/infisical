@@ -1,15 +1,18 @@
 import * as AuthSession from "expo-auth-session";
+import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { ApiError, describeFailure, isMissingRoute, requestJson } from "./http";
-import { hostOf, OAUTH_CLIENT_ID, OAUTH_REDIRECT_URI, OAUTH_SCOPE } from "./config";
+import { expectedIssuer, hostOf, OAUTH_CLIENT_ID, OAUTH_REDIRECT_URI, OAUTH_SCOPE } from "./config";
 
 export type Session =
   | { mode: "loading" }
   | { mode: "signed-out"; notice?: string; lastInstance?: string }
   | { mode: "demo" }
   | { mode: "live"; instance: string; generation: number };
+
+type PendingSignIn = { state: string; codeVerifier: string; expectedIssuer: string };
 
 type Tokens = { accessToken: string; refreshToken?: string; generation: number };
 
@@ -70,6 +73,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const tokens = useRef<Tokens | null>(null);
   const refreshing = useRef<{ generation: number; promise: Promise<string | null> } | null>(null);
   const generation = useRef(0);
+  const pendingSignIn = useRef<PendingSignIn | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -115,12 +119,29 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       redirectUri: OAUTH_REDIRECT_URI,
       scopes: [OAUTH_SCOPE],
       responseType: AuthSession.ResponseType.Code,
+      state: Crypto.randomUUID(),
       usePKCE: true,
       codeChallengeMethod: AuthSession.CodeChallengeMethod.S256
     });
-    const result = await request.promptAsync(endpoints(instance));
+    await request.getAuthRequestConfigAsync();
+    const { state, codeVerifier } = request;
+    if (!state || !codeVerifier) throw new ApiError("The app couldn't prepare a secure sign-in. Try again.");
+    const attempt: PendingSignIn = { state, codeVerifier, expectedIssuer: expectedIssuer(instance) };
+    pendingSignIn.current = attempt;
+    let result: AuthSession.AuthSessionResult;
+    try {
+      result = await request.promptAsync(endpoints(instance));
+    } finally {
+      if (pendingSignIn.current === attempt) pendingSignIn.current = null;
+    }
     if (result.type === "locked") throw new ApiError("Another sign-in window is already open. Finish or close it first.");
     if (result.type !== "success" && result.type !== "error") return;
+    if (result.params.state !== attempt.state)
+      throw new ApiError(`The sign-in reply didn't match the sign-in you started on ${host}, so the app ignored it. Try again.`);
+    if (result.params.iss !== attempt.expectedIssuer)
+      throw new ApiError(
+        `${host} didn't identify itself when it sent you back to the app, so sign-in stopped to keep your account safe. Try again, or ask your admin to update Infisical.`
+      );
     if (result.type === "error") {
       if (result.params.error === "access_denied") throw new ApiError(`You declined access on ${host}, so you're still signed out.`);
       const reason = result.params.error_description ?? result.error?.description ?? result.errorCode;
@@ -133,7 +154,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
           clientId: OAUTH_CLIENT_ID,
           code: result.params.code,
           redirectUri: OAUTH_REDIRECT_URI,
-          extraParams: { code_verifier: request.codeVerifier ?? "" }
+          extraParams: { code_verifier: attempt.codeVerifier }
         },
         endpoints(instance)
       );
