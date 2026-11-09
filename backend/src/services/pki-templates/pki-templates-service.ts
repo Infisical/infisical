@@ -29,6 +29,7 @@ import {
 } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority/certificate-authority-secret-dal";
 import { InternalCertificateAuthorityFns } from "../certificate-authority/internal/internal-certificate-authority-fns";
+import { parseCsr, verifyCsrSignature } from "../certificate-common/certificate-csr-utils";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
@@ -444,7 +445,8 @@ export const pkiTemplatesServiceFactory = ({
 
     const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
-    const csrObj = new x509.Pkcs10CertificateRequest(csr);
+    const csrObj = parseCsr(csr);
+    await verifyCsrSignature(csrObj);
     const dn = parseDistinguishedName(csrObj.subject);
     const cn = dn.commonName;
     if (!cn)

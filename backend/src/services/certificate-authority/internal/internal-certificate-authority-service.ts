@@ -52,6 +52,7 @@ import {
   PKI_TEXT_COLUMN_MAX_LENGTH,
   SUPPORTED_GENERAL_NAME_TYPES
 } from "../../certificate-common/certificate-constants";
+import { parseCsr, verifyCsrSignature } from "../../certificate-common/certificate-csr-utils";
 import { appendCustomExtensions } from "../../certificate-common/certificate-extension-fns";
 import { validatePqcLicense } from "../../certificate-common/certificate-utils";
 import { TCertificateProfileDALFactory } from "../../certificate-profile/certificate-profile-dal";
@@ -1464,7 +1465,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const caCertObj = new x509.X509Certificate(decryptedCaCert);
-    const csrObj = new x509.Pkcs10CertificateRequest(csr);
+    const csrObj = parseCsr(csr);
+    await verifyCsrSignature(csrObj);
 
     // check path length constraint
     const caPathLength = caCertObj.getExtension(x509.BasicConstraintsExtension)?.pathLength;
@@ -2525,7 +2527,8 @@ export const internalCertificateAuthorityServiceFactory = ({
         ? keyAlgorithmToAlgCfg(caKeyAlgorithm)
         : signatureAlgorithmToAlgCfg(signatureAlgorithm, caKeyAlgorithm);
 
-    const csrObj = new x509.Pkcs10CertificateRequest(csr);
+    const csrObj = parseCsr(csr);
+    await verifyCsrSignature(csrObj);
 
     const dn = extractDnParts(csrObj.subjectName);
     const cn = (commonName || dn.commonName) ?? "";

@@ -14,7 +14,11 @@ import {
   extractDnParts,
   keyAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
-import { extractAlgorithmsFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
+import {
+  extractAlgorithmsFromCSR,
+  parseCsr,
+  verifyCsrSignature
+} from "@app/services/certificate-common/certificate-csr-utils";
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -553,13 +557,8 @@ export const kmipServiceFactory = ({
 
     if (csr) {
       // CSR mode - sign the provided CSR
-      const csrObj = new x509.Pkcs10CertificateRequest(csr);
-
-      // Validate CSR signature
-      const isValid = await csrObj.verify();
-      if (!isValid) {
-        throw new BadRequestError({ message: "Invalid CSR signature" });
-      }
+      const csrObj = parseCsr(csr);
+      await verifyCsrSignature(csrObj);
 
       // Extract key algorithm from CSR
       const { keyAlgorithm: csrKeyAlgorithm } = extractAlgorithmsFromCSR(csr);
