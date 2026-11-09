@@ -3,6 +3,7 @@ import { PlusIcon } from "lucide-react";
 
 import { Popover, PopoverAnchor, PopoverContent } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { useProject } from "@app/context";
 import {
   findVariableReferenceAtCaret,
   normalizeVariableKey,
@@ -35,6 +36,7 @@ export const useVariableAutocomplete = ({
   /** The whole new value, and where in it the caret belongs. */
   onInsert: (value: string, caret: number) => void;
 }) => {
+  const { projectId } = useProject();
   const { requestVariable, localVariables, isLocal } = useServiceVariables();
   const [openReference, setOpenReference] = useState<TOpenReference | null>(null);
   const query = openReference ? normalizeVariableKey(openReference.query) : "";
@@ -44,6 +46,7 @@ export const useVariableAutocomplete = ({
   // Searched on the server, so the list never has to hold every variable. The last page stays up while the next
   // loads, filtered to the new text, which a longer query only narrows.
   const { data: searched, isPlaceholderData } = useListAgentVaultVariables(
+    projectId,
     {
       scope: AgentVaultVariableScope.Global,
       search: debouncedQuery || undefined,
@@ -54,6 +57,7 @@ export const useVariableAutocomplete = ({
   // A search can show only so many, and the exact key may not be among them, so whether to offer to create it is
   // asked of that key alone.
   const { existing } = useAgentVaultVariableKeyStatus(
+    projectId,
     isOpen && !isLocal && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : [],
     { enabled: isOpen && !isLocal }
   );

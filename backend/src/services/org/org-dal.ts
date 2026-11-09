@@ -1437,12 +1437,18 @@ export const orgDALFactory = (db: TDbClient) => {
   // transactions instance-wide; escalated, it only stalls grants in its own tenant. The tenant is the root org
   // because access never crosses one: a root-org group reaches its sub-orgs, nothing reaches another tenant.
   // Tenant first, then sorted actors in one statement, so two callers can't deadlock.
+  // Postgres compares uuids case-insensitively but the advisory key hashes the text, so two spellings
+  // of one id would take two locks.
+  const canonicalUuid = (id: string) => id.trim().toLowerCase();
+
   const lockActorsForOrgAccess = async ({ orgId, actorIds }: { orgId: string; actorIds: string[] }, tx: Knex) => {
-    const actorKeys = [...new Set(actorIds)].sort().map((actorId) => PgSqlLock.OrgAccessReconcile(actorId));
+    const actorKeys = [...new Set(actorIds.map(canonicalUuid))]
+      .sort()
+      .map((actorId) => PgSqlLock.OrgAccessReconcile(actorId));
     if (!actorKeys.length) return;
     try {
       const org = await tx(TableName.Organization).where({ id: orgId }).select("rootOrgId").first();
-      const scopeKey = PgSqlLock.OrgAccessReconcileScope(org?.rootOrgId ?? orgId);
+      const scopeKey = PgSqlLock.OrgAccessReconcileScope(canonicalUuid(org?.rootOrgId ?? orgId));
       if (actorKeys.length > ORG_ACCESS_LOCK_ESCALATION_THRESHOLD) {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [scopeKey]);
         return;

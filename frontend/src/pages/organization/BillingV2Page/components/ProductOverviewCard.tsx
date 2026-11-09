@@ -42,6 +42,7 @@ import {
   dimOnDemandQuantity,
   fmtMoney,
   fmtMoneyCents,
+  meteredUsageCaption,
   pluralizeUnit,
   productAnnualCommitted,
   tierLabel,
@@ -103,7 +104,10 @@ const MeterTile = ({
   const { committedPct, onDemandPct } = dimBarSegments(dim);
 
   let subtext: ReactNode = null;
-  if (overage > 0) {
+  const meteredCaption = meteredUsageCaption(dim);
+  if (meteredCaption) {
+    subtext = meteredCaption;
+  } else if (overage > 0) {
     subtext = <span className="text-warning">+{overage.toLocaleString()} on-demand</span>;
   } else if (allowance === null && monthlyRate > 0) {
     subtext = `${fmtMoneyCents(monthlyRate)} each / mo`;

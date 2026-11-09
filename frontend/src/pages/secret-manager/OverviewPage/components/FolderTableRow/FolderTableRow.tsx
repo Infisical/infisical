@@ -124,14 +124,12 @@ export const FolderTableRow = ({
           />
         </div>
       </TableCell>
-      {/* Safari ignores position: relative on <tr>, so this cell must be positioned (relative or
-          sticky) or the RowLink overlay spans the whole table and swallows clicks on other rows. */}
       <TableCell
         isTruncatable
         colSpan={isSingleEnvView ? 2 : undefined}
         className={
           isSingleEnvView
-            ? "relative transition-all duration-75"
+            ? "transition-all duration-75"
             : "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover"
         }
       >
@@ -224,27 +222,28 @@ export const FolderTableRow = ({
               <TooltipContent>{canEditFolder ? "Edit Folder" : "Access Restricted"}</TooltipContent>
             </Tooltip>
           )}
-          {onToggleFolderAccess &&
-            canManageFolderAccess &&
-            pendingAction !== PendingAction.Delete && (
-              <Tooltip>
-                <TooltipTrigger>
-                  <IconButton
-                    aria-label="Manage folder access"
-                    variant="ghost"
-                    size="xs"
-                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                    onClick={(e) => {
-                      onToggleFolderAccess(folderName);
-                      e.stopPropagation();
-                    }}
-                  >
-                    <UsersIcon />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Manage Access</TooltipContent>
-              </Tooltip>
-            )}
+          {onToggleFolderAccess && pendingAction !== PendingAction.Delete && (
+            <Tooltip>
+              <TooltipTrigger>
+                <IconButton
+                  aria-label="Manage folder access"
+                  variant="ghost"
+                  size="xs"
+                  className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                  isDisabled={!canManageFolderAccess}
+                  onClick={(e) => {
+                    onToggleFolderAccess(folderName);
+                    e.stopPropagation();
+                  }}
+                >
+                  <UsersIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                {canManageFolderAccess ? "Manage Access" : "Access Restricted"}
+              </TooltipContent>
+            </Tooltip>
+          )}
           {pendingAction && onPendingSave && (
             <Tooltip>
               <TooltipTrigger>

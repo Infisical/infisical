@@ -21,6 +21,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import {
   fromDraftFiles,
   getReservedSkillNameMessage,
@@ -111,7 +112,8 @@ export const CreateSkillSheet = ({
   onCreated,
   shouldNotify = true
 }: Props) => {
-  const createSkill = useCreateAgentVaultSkill();
+  const { projectId } = useProject();
+  const createSkill = useCreateAgentVaultSkill(projectId);
   const initialFiles = useMemo(
     () => [newDraftFile(SKILL_ENTRY_FILE, withHeader("", { name: initialName, description: "" }))],
     [initialName]

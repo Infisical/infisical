@@ -429,13 +429,14 @@ export const membershipGroupServiceFactory = ({
     const groupProjectIds = Array.from(
       new Set(groupProjectMemberships.map((membership) => membership.scopeProjectId).filter(Boolean) as string[])
     );
+    // Sorted because the cleanup takes a per-project advisory lock for Agent Vault projects.
     const groupResourceProjectIds = Array.from(
       new Set(
         [...groupProjectMemberships, ...groupResourceMemberships]
           .map((membership) => membership.scopeProjectId)
           .filter(Boolean) as string[]
       )
-    );
+    ).sort();
 
     const membershipIds = [...groupProjectMemberships.map((membership) => membership.id)];
     if (orgMembershipId) membershipIds.push(orgMembershipId);
@@ -620,15 +621,6 @@ export const membershipGroupServiceFactory = ({
           tx
         });
 
-        await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
-          {
-            projectId: existingMembership.scopeProjectId,
-            actorKind: ApplicationMemberKind.Group,
-            actorId: dto.selector.groupId
-          },
-          tx
-        );
-
         const projectId = existingMembership.scopeProjectId;
         const { groupId } = dto.selector;
 
@@ -686,6 +678,18 @@ export const membershipGroupServiceFactory = ({
 
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
       const doc = await membershipGroupDAL.deleteById(existingMembership.id, tx);
+
+      if (scopeData.scope === AccessScope.Project && existingMembership.scopeProjectId) {
+        // After the membership delete: clearing Agent Vault personal values keeps them for anyone still a project admin.
+        await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+          {
+            projectId: existingMembership.scopeProjectId,
+            actorKind: ApplicationMemberKind.Group,
+            actorId: dto.selector.groupId
+          },
+          tx
+        );
+      }
 
       await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [dto.selector.groupId] }, tx);
 

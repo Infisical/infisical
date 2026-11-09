@@ -59,7 +59,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import { downloadTxtFile } from "@app/helpers/download";
 import {
   getUserTablePreference,
@@ -141,6 +141,7 @@ const truncateFingerprint = (fingerprint: string) =>
   `${fingerprint.split(":").slice(0, 5).join(":")}…`;
 
 export const AgentVaultProxiesPage = () => {
+  const { projectId } = useProject();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
   // Asked of the server on every click, never cached: the CA changes on rotation, and only the server can
@@ -167,7 +168,7 @@ export const AgentVaultProxiesPage = () => {
     getUserTablePreference("agentVaultProxiesTable", PreferenceKey.PerPage, 20)
   );
 
-  const { data, isPending } = useListAgentVaultProxies({
+  const { data, isPending } = useListAgentVaultProxies(projectId, {
     orderBy: sortColumn,
     orderDirection: sortDirection === "ascending" ? "asc" : "desc",
     limit: perPage,
@@ -177,9 +178,9 @@ export const AgentVaultProxiesPage = () => {
   const displayed = data?.proxies ?? [];
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
-  const deleteProxy = useDeleteAgentVaultProxy();
-  const revokeProxy = useRevokeAgentVaultProxyAccess();
-  const rotateProxyToken = useRotateAgentVaultProxyToken();
+  const deleteProxy = useDeleteAgentVaultProxy(projectId);
+  const revokeProxy = useRevokeAgentVaultProxyAccess(projectId);
+  const rotateProxyToken = useRotateAgentVaultProxyToken(projectId);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);

@@ -88,10 +88,9 @@ export const IdentityKubernetesAuthContent = ({ identityId }: ViewAuthMethodProp
       gateways?.find((gateway) => gateway.id === data.gatewayId)?.name ?? data.gatewayId;
   }
 
-  // template-sourced JWTs read back as "" (write-only), so truthiness of the value alone
-  // would claim "Not set" for an identity that stores and uses one at login
+  // the JWT is write-only and reads back as "", so the flags say whether one is stored
   let tokenReviewerJwtDisplay: ReactNode = null;
-  if (data.isTokenReviewerJwtTemplateSourced) {
+  if (data.isTokenReviewerJwtTemplateSourced || data.hasTokenReviewerJwt) {
     tokenReviewerJwtDisplay = (
       <Tooltip>
         <TooltipTrigger asChild>
@@ -101,22 +100,9 @@ export const IdentityKubernetesAuthContent = ({ identityId }: ViewAuthMethodProp
           </Badge>
         </TooltipTrigger>
         <TooltipContent side="right" className="max-w-md">
-          This JWT was copied from an auth template and is write-only, so it cannot be viewed. Edit
-          the auth method to replace or remove it.
-        </TooltipContent>
-      </Tooltip>
-    );
-  } else if (data.tokenReviewerJwt) {
-    tokenReviewerJwtDisplay = (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge variant="neutral">
-            <EyeIcon />
-            Reveal
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent side="right" className="max-w-xl p-2">
-          <p className="rounded-sm bg-container p-2 break-words">{data.tokenReviewerJwt}</p>
+          {data.isTokenReviewerJwtTemplateSourced
+            ? "This JWT was copied from an auth template and is write-only, so it cannot be viewed. Edit the auth method to replace or remove it."
+            : "This JWT is write-only, so it cannot be viewed. Edit the auth method to replace or remove it."}
         </TooltipContent>
       </Tooltip>
     );

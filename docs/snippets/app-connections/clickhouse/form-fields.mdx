@@ -1,0 +1,12 @@
+- **Name**: A descriptive name for the connection
+- **Description** (optional): A note for future reference
+- **Gateway** (optional): The [Gateway](/documentation/platform/gateways/overview) Infisical connects through, if Infisical can't reach your ClickHouse server directly, such as when the server is in a private network
+- **Method**: **Username & Password**
+- **Host**: The hostname or IP address of your ClickHouse server, without `https://` or a port, such as `<your-service>.us-east-1.aws.clickhouse.cloud`
+- **Database Name**: The database Infisical connects to, such as `default`
+- **Port**: The port of the ClickHouse HTTP interface (usually `8443` for HTTPS, including ClickHouse Cloud, and `8123` for HTTP)
+- **Username**: The user you [created in Step 1](#step-1-create-a-clickhouse-user-for-infisical)
+- **Password**: The password of that user
+- **Enable SSL**: On the **SSL** tab, whether Infisical connects over HTTPS (on by default; turn it off for an HTTP port such as `8123`)
+- **SSL Certificate** (optional): On the **SSL** tab, the CA certificate in PEM format that signed your server's TLS certificate (ClickHouse Cloud doesn't need one)
+- **Reject Unauthorized**: On the **SSL** tab, whether Infisical refuses to connect when it can't verify the server's TLS certificate (on by default; for a self-signed certificate, enter its CA certificate in **SSL Certificate** instead of turning this off)

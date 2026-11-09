@@ -66,7 +66,7 @@ const PRODUCT_DEFINITIONS: ProductDefinition[] = [
   {
     type: ProjectType.AgentVault,
     name: getProjectTitle(ProjectType.AgentVault),
-    isSingleton: true,
+    isSingleton: false,
     roles: AGENT_VAULT_ROLES
   }
 ];

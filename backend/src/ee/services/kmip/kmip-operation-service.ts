@@ -1,7 +1,9 @@
 import { ForbiddenError } from "@casl/ability";
+import slugify from "@sindresorhus/slugify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { KmipOperationType, recordKmipOperationMetric } from "@app/lib/telemetry/metrics";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
@@ -121,7 +123,8 @@ export const kmipOperationServiceFactory = ({
 
     const key = await kmsDAL.findOne({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -184,7 +187,8 @@ export const kmipOperationServiceFactory = ({
 
     const key = await kmsDAL.findOne({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -246,11 +250,17 @@ export const kmipOperationServiceFactory = ({
 
     const key = await kmsDAL.findOne({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
       throw new NotFoundError({ message: `Key with ID ${id} not found` });
+    }
+
+    // In KMIP a revoked object is deactivated for good, so activating it again is a lifecycle error, not a no-op.
+    if (key.isDisabled) {
+      throw new BadRequestError({ message: `Key with ID ${id} is revoked and cannot be activated again` });
     }
 
     recordKmipOperationMetric({
@@ -284,7 +294,8 @@ export const kmipOperationServiceFactory = ({
 
     const key = await kmsDAL.findOne({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -349,7 +360,8 @@ export const kmipOperationServiceFactory = ({
 
     const key = await kmsDAL.findOne({
       id,
-      projectId
+      projectId,
+      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT
     });
 
     if (!key) {
@@ -441,16 +453,25 @@ export const kmipOperationServiceFactory = ({
       });
     }
 
-    const kmsKey = await kmsService.importKeyMaterial({
-      name,
-      key: Buffer.from(key, "base64"),
-      algorithm,
-      isReserved: false,
-      projectId,
-      keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
-      orgId: actorOrgId,
-      kmipMetadata
-    });
+    let kmsKey: Awaited<ReturnType<TKmsServiceFactory["importKeyMaterial"]>>;
+    try {
+      kmsKey = await kmsService.importKeyMaterial({
+        name,
+        key: Buffer.from(key, "base64"),
+        algorithm,
+        isReserved: false,
+        projectId,
+        keyUsage: KmsKeyUsage.ENCRYPT_DECRYPT,
+        orgId: actorOrgId,
+        kmipMetadata
+      });
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        // Names are stored as slugs, so name the slug the new key collided on rather than what the client sent.
+        throw new BadRequestError({ message: `A key with the name "${slugify(name)}" already exists in this project` });
+      }
+      throw err;
+    }
 
     recordKmipOperationMetric({
       operationType: KmipOperationType.REGISTER,
