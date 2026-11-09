@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "button-plain",
+    title: "Lighter buttons",
+    description:
+      "Buttons render a plain element now that press feedback is CSS, which makes button-heavy tables mount faster.",
+    date: "2026-11-07",
+    commit: "7b78041dbe",
+    page: "button"
+  },
+  {
     id: "row-actions-lazy",
     title: "Lazy row actions",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "11c4467d3c",
     page: "table"
-  },
-  {
-    id: "boot-loader",
-    title: "Boot loader and route progress",
-    description:
-      "v4 boots on its theme's ground with a labelled BootLoader, and navigations show a quiet progress bar instead of NProgress.",
-    date: "2026-11-07",
-    commit: "8796ac7b20",
-    page: "loader"
   }
 ];
