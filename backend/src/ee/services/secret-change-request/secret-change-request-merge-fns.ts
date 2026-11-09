@@ -37,8 +37,8 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { ProjectPermissionSet } from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalRequestCommitFnsFactory } from "./secret-change-request-commit-fns";
-import { hasSecretUpdateCommitConflict } from "./secret-change-request-fns";
 import { TSecretChangeRequestDALFactory } from "./secret-change-request-dal";
+import { hasSecretUpdateCommitConflict } from "./secret-change-request-fns";
 import { InternalMetadataType, TInternalMetadata } from "./secret-change-request-types";
 
 type TSecretApprovalRequestMergeFnsFactoryDep = {

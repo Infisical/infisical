@@ -106,7 +106,10 @@ export type TSecretChangePolicyMethods = {
 };
 
 export type TSecretChangePolicyServiceFactoryDep = {
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByIdForUpdate" | "create" | "updateById" | "deleteById" | "transaction">;
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "findByIdForUpdate" | "create" | "updateById" | "deleteById" | "transaction"
+  >;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create" | "updateById">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany" | "delete">;
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;

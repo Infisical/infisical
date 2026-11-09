@@ -14,7 +14,11 @@ import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex"
 import { OrderByDirection } from "@app/lib/types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
-import { RequestState, SecretApprovalRequestOrderBy, TSecretApprovalRequestListFilter } from "./secret-change-request-types";
+import {
+  RequestState,
+  SecretApprovalRequestOrderBy,
+  TSecretApprovalRequestListFilter
+} from "./secret-change-request-types";
 
 export type TSecretChangeRequestDALFactory = ReturnType<typeof secretChangeRequestDALFactory>;
 
@@ -301,7 +305,6 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
       secretChangeId: secretChangeId as string
     }));
   };
-
 
   const findByProjectId = async (
     {

@@ -2698,7 +2698,6 @@ export const registerRoutes = async (
     orgDAL
   });
 
-
   const secretService = secretServiceFactory({
     folderDAL,
     secretVersionDAL,

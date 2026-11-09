@@ -15,8 +15,8 @@ import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-
 import { SecretOperations } from "@app/services/secret/secret-types";
 import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";
 
-import { ApprovalStatus, RequestState } from "./secret-change-request-types";
 import { secretChangeRequestServiceFactory } from "./secret-change-request-service";
+import { ApprovalStatus, RequestState } from "./secret-change-request-types";
 
 const buildSecretApprovalCommits = vi.fn();
 const resolveRequester = vi.fn();
@@ -266,7 +266,9 @@ const dto = (overrides: Record<string, unknown> = {}) => ({
   ...overrides
 });
 
-type TGenerateInput = Parameters<ReturnType<typeof buildService>["service"]["generateSecretApprovalRequestV2Bridge"]>[0];
+type TGenerateInput = Parameters<
+  ReturnType<typeof buildService>["service"]["generateSecretApprovalRequestV2Bridge"]
+>[0];
 const generate = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
   service.generateSecretApprovalRequestV2Bridge(dto(overrides) as unknown as TGenerateInput);
 
@@ -285,10 +287,7 @@ describe("secretChangeRequest generateSecretApprovalRequestV2Bridge", () => {
     expect(buildSecretApprovalCommits).toHaveBeenCalledWith(expect.objectContaining({ policy: { id: "policy-1" } }));
     expect(deps.approvalRequestDAL.transaction).toHaveBeenCalledTimes(1);
     expect(deps.approvalPolicyDAL.findByIdForShare).toHaveBeenCalledWith("policy-1", OWN_TX);
-    expect(deps.secretChangePolicyService.findSecretChangePolicyById).toHaveBeenCalledWith(
-      "policy-1",
-      OWN_TX
-    );
+    expect(deps.secretChangePolicyService.findSecretChangePolicyById).toHaveBeenCalledWith("policy-1", OWN_TX);
     expect(deps.approvalPolicyDAL.findStepsByPolicyId).toHaveBeenCalledWith("policy-1", OWN_TX);
     expect(deps.approvalPolicyDAL.findByIdForShare.mock.invocationCallOrder[0]).toBeLessThan(
       deps.secretChangePolicyService.findSecretChangePolicyById.mock.invocationCallOrder[0]
@@ -395,10 +394,7 @@ describe("secretChangeRequest generateSecretApprovalRequestV2Bridge", () => {
     expect(deps.approvalRequestDAL.create).toHaveBeenCalledWith(expect.anything(), CALLER_TX);
     expect(deps.secretChangeRequestDAL.create).toHaveBeenCalledWith(expect.anything(), CALLER_TX);
     expect(deps.secretChangeRequestDAL.insertV2Bridge).toHaveBeenCalledWith(expect.anything(), CALLER_TX);
-    expect(deps.secretChangeRequestDAL.insertApprovalSecretV2Tags).toHaveBeenCalledWith(
-      expect.anything(),
-      CALLER_TX
-    );
+    expect(deps.secretChangeRequestDAL.insertApprovalSecretV2Tags).toHaveBeenCalledWith(expect.anything(), CALLER_TX);
     expect(runSecretChangeRequestSideEffects).toHaveBeenCalledWith(expect.objectContaining({ tx: CALLER_TX }));
   });
 
@@ -1002,10 +998,7 @@ describe("secretChangeRequest updateApprovalStatus", () => {
 
     expect(deps.licenseService.getPlan).toHaveBeenCalledWith("org-1");
     expect(deps.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("request-1", OWN_TX);
-    expect(deps.secretChangeRequestDAL.findOne).toHaveBeenCalledWith(
-      { approvalRequestId: "request-1" },
-      OWN_TX
-    );
+    expect(deps.secretChangeRequestDAL.findOne).toHaveBeenCalledWith({ approvalRequestId: "request-1" }, OWN_TX);
     expect(deps.approvalRequestDAL.updateById).toHaveBeenCalledWith(
       "request-1",
       { status: ApprovalRequestStatus.Closed },
@@ -1542,11 +1535,7 @@ describe("secretChangeRequest getSecretApprovals and requestCount", () => {
     const { service, deps } = buildService();
 
     await expect(service.requestCount({ ...listDto, policyId: "policy-1" })).resolves.toEqual({ open: 2, closed: 1 });
-    expect(deps.secretChangeRequestDAL.countByProjectId).toHaveBeenCalledWith(
-      "project-1",
-      "approver-1",
-      "policy-1"
-    );
+    expect(deps.secretChangeRequestDAL.countByProjectId).toHaveBeenCalledWith("project-1", "approver-1", "policy-1");
   });
 });
 
@@ -1571,7 +1560,9 @@ describe("secretChangeRequest createSecretApprovalRequestV2Bridge", () => {
 
   const create = (service: ReturnType<typeof buildService>["service"], tx?: Knex) =>
     service.createSecretApprovalRequestV2Bridge(
-      CREATE_DTO as unknown as Parameters<ReturnType<typeof buildService>["service"]["createSecretApprovalRequestV2Bridge"]>[0],
+      CREATE_DTO as unknown as Parameters<
+        ReturnType<typeof buildService>["service"]["createSecretApprovalRequestV2Bridge"]
+      >[0],
       tx
     );
 
@@ -1585,10 +1576,7 @@ describe("secretChangeRequest createSecretApprovalRequestV2Bridge", () => {
     const result = await create(service, CALLER_TX);
 
     expect(deps.approvalRequestDAL.transaction).not.toHaveBeenCalled();
-    expect(deps.secretChangePolicyService.findSecretChangePolicyById).toHaveBeenCalledWith(
-      "policy-1",
-      CALLER_TX
-    );
+    expect(deps.secretChangePolicyService.findSecretChangePolicyById).toHaveBeenCalledWith("policy-1", CALLER_TX);
     expect(deps.projectDAL.findById).toHaveBeenCalledWith("project-1", CALLER_TX);
     expect(resolveRequester).toHaveBeenCalledWith(ActorType.USER, "user-1", CALLER_TX);
     expect(deps.approvalRequestDAL.create).toHaveBeenCalledWith(
@@ -1717,14 +1705,8 @@ describe("secretChangeRequest createSecretApprovalSideEffects", () => {
     await service.createSecretApprovalSideEffects({ ...SIDE_EFFECTS_DTO, tx: CALLER_TX });
 
     expect(deps.approvalRequestDAL.findById).toHaveBeenCalledWith("request-1", CALLER_TX);
-    expect(deps.secretChangeRequestDAL.findOne).toHaveBeenCalledWith(
-      { approvalRequestId: "request-1" },
-      CALLER_TX
-    );
-    expect(deps.secretChangePolicyService.findSecretChangePolicyById).toHaveBeenCalledWith(
-      "policy-1",
-      CALLER_TX
-    );
+    expect(deps.secretChangeRequestDAL.findOne).toHaveBeenCalledWith({ approvalRequestId: "request-1" }, CALLER_TX);
+    expect(deps.secretChangePolicyService.findSecretChangePolicyById).toHaveBeenCalledWith("policy-1", CALLER_TX);
     expect(deps.projectDAL.findById).toHaveBeenCalledWith("project-1", CALLER_TX);
     expect(runSecretChangeRequestSideEffects).toHaveBeenCalledWith({
       approvalRequest: APPROVAL_REQUEST,

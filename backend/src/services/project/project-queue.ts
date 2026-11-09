@@ -15,12 +15,7 @@ import {
   TSecrets,
   TSecretVersions
 } from "@app/db/schemas";
-import {
-  decryptIntegrationAuths,
-  decryptSecrets,
-  decryptSecretVersions,
-  SymmetricKeySize
-} from "@app/lib/crypto";
+import { decryptIntegrationAuths, decryptSecrets, decryptSecretVersions, SymmetricKeySize } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";

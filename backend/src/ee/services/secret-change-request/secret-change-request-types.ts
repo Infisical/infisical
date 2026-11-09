@@ -311,7 +311,10 @@ export type TSecretChangeRequestServiceFactoryDep = {
   approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create">;
   approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create">;
   approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "findOne" | "create" | "updateById">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByIdForShare" | "findStepsByPolicyId" | "findBypassersByPolicyIds">;
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "findByIdForShare" | "findStepsByPolicyId" | "findBypassersByPolicyIds"
+  >;
   secretChangeRequestDAL: Pick<
     TSecretChangeRequestDALFactory,
     | "create"

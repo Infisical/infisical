@@ -31,11 +31,6 @@ import {
   formatSecretApprovalCommitsV2Bridge
 } from "./secret-change-request-details-fns";
 import {
-  buildRequestedByActor,
-  buildSecretMutationEvents,
-  secretApprovalRequestMergeFnsFactory
-} from "./secret-change-request-merge-fns";
-import {
   groupUserIdsByGroupId,
   isGroupActor,
   resolveActorUserIds,
@@ -48,6 +43,11 @@ import {
   toSecretChangeRequestListItem,
   toSecretChangeRequestReview
 } from "./secret-change-request-fns";
+import {
+  buildRequestedByActor,
+  buildSecretMutationEvents,
+  secretApprovalRequestMergeFnsFactory
+} from "./secret-change-request-merge-fns";
 import {
   ApprovalStatus,
   RequestState,
@@ -154,10 +154,7 @@ export const secretChangeRequestServiceFactory = ({
   const findFolderIdsWithOpenRequests = async (folderIds: string[], tx?: Knex) => {
     if (!folderIds.length) return [];
 
-    const secretChangeRequests = await secretChangeRequestDAL.find(
-      { $in: { folderId: folderIds } },
-      { tx }
-    );
+    const secretChangeRequests = await secretChangeRequestDAL.find({ $in: { folderId: folderIds } }, { tx });
     if (!secretChangeRequests.length) return [];
 
     const openRequests = await approvalRequestDAL.find(
@@ -176,10 +173,7 @@ export const secretChangeRequestServiceFactory = ({
     if (!approvalRequest || approvalRequest.type !== ApprovalPolicyType.SecretChange) {
       throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
     }
-    const secretChangeRequest = await secretChangeRequestDAL.findOne(
-      { approvalRequestId: approvalRequest.id },
-      tx
-    );
+    const secretChangeRequest = await secretChangeRequestDAL.findOne({ approvalRequestId: approvalRequest.id }, tx);
     if (!secretChangeRequest) {
       throw new NotFoundError({ message: `Secret approval request with ID '${requestId}' not found` });
     }
@@ -187,9 +181,7 @@ export const secretChangeRequestServiceFactory = ({
   };
 
   const $findSecretChangePolicyOrThrow = async (policyId: string | null | undefined, tx?: Knex) => {
-    const policy = policyId
-      ? await secretChangePolicyService.findSecretChangePolicyById(policyId, tx)
-      : undefined;
+    const policy = policyId ? await secretChangePolicyService.findSecretChangePolicyById(policyId, tx) : undefined;
     if (!policy) {
       throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
     }
@@ -311,9 +303,7 @@ export const secretChangeRequestServiceFactory = ({
     tx: Knex
   ) => {
     const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policyId, tx);
-    const policy = lockedPolicy
-      ? await secretChangePolicyService.findSecretChangePolicyById(policyId, tx)
-      : null;
+    const policy = lockedPolicy ? await secretChangePolicyService.findSecretChangePolicyById(policyId, tx) : null;
     if (!policy) {
       throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
     }
@@ -372,91 +362,109 @@ export const secretChangeRequestServiceFactory = ({
     return { policy, approvalRequest, secretChangeRequest, commits: approvalCommits };
   };
 
-  const generateSecretApprovalRequestV2Bridge: TSecretChangeRequestMethods["generateSecretApprovalRequestV2Bridge"] = async (
-    dto
-  ) => {
-    const { actor, actorId, actorOrgId, projectId, environment, secretPath, commitMessage, trx, skipPostProcessing } =
-      dto;
-    const { folderId, project, commits, commitTagIds, secretKeys } = await buildSecretApprovalCommits(dto);
+  const generateSecretApprovalRequestV2Bridge: TSecretChangeRequestMethods["generateSecretApprovalRequestV2Bridge"] =
+    async (dto) => {
+      const { actor, actorId, actorOrgId, projectId, environment, secretPath, commitMessage, trx, skipPostProcessing } =
+        dto;
+      const { folderId, project, commits, commitTagIds, secretKeys } = await buildSecretApprovalCommits(dto);
 
-    const write = (tx: Knex) =>
-      $writeSecretChangeRequest(
-        {
-          policyId: dto.policy.id,
-          folderId,
-          projectId,
-          orgId: project.orgId,
+      const write = (tx: Knex) =>
+        $writeSecretChangeRequest(
+          {
+            policyId: dto.policy.id,
+            folderId,
+            projectId,
+            orgId: project.orgId,
+            actor,
+            actorId,
+            commitMessage,
+            commits: commits.map((commit) => pickApprovalCommitColumns(commit)),
+            commitTags: commitTagIds
+          },
+          tx
+        );
+
+      const created = trx ? await write(trx) : await approvalRequestDAL.transaction(write);
+      const result = toSecretChangeRequest(created);
+
+      if (!skipPostProcessing) {
+        await runSecretChangeRequestSideEffects({
+          ...created,
+          project,
+          environment,
+          secretPath,
+          secretKeys,
           actor,
           actorId,
-          commitMessage,
-          commits: commits.map((commit) => pickApprovalCommitColumns(commit)),
-          commitTags: commitTagIds
-        },
-        tx
-      );
-
-    const created = trx ? await write(trx) : await approvalRequestDAL.transaction(write);
-    const result = toSecretChangeRequest(created);
-
-    if (!skipPostProcessing) {
-      await runSecretChangeRequestSideEffects({
-        ...created,
-        project,
-        environment,
-        secretPath,
-        secretKeys,
-        actor,
-        actorId,
-        actorOrgId,
-        tx: trx
-      });
-    }
-
-    return result;
-  };
-
-  const createSecretApprovalRequestV2Bridge: TSecretChangeRequestMethods["createSecretApprovalRequestV2Bridge"] = async (
-    dto,
-    trx
-  ) => {
-    const commitTags = dto.commits.reduce<Record<string, string[]>>((acc, { key, tagIds }) => {
-      if (tagIds?.length) acc[key] = [...(acc[key] ?? []), ...tagIds];
-      return acc;
-    }, {});
-
-    const write = async (tx: Knex) => {
-      const policy = await secretChangePolicyService.findSecretChangePolicyById(dto.policy.id, tx);
-      if (!policy) {
-        throw new NotFoundError({ message: `Secret approval policy with ID '${dto.policy.id}' not found` });
+          actorOrgId,
+          tx: trx
+        });
       }
-      const project = await projectDAL.findById(policy.projectId, tx);
-      if (!project) throw new NotFoundError({ message: `Project with ID '${policy.projectId}' not found` });
 
-      return $writeSecretChangeRequest(
-        {
-          policyId: policy.id,
-          folderId: dto.folderId,
-          projectId: project.id,
-          orgId: project.orgId,
-          actor: dto.actor,
-          actorId: dto.actorId,
-          commitMessage: dto.commitMessage,
-          isReplicated: dto.isReplicated,
-          commits: dto.commits.map(({ tagIds, ...commit }) => commit),
-          commitTags
-        },
-        tx
-      );
+      return result;
     };
 
-    const created = trx ? await write(trx) : await approvalRequestDAL.transaction(write);
-    return toSecretChangeRequest(created);
-  };
+  const createSecretApprovalRequestV2Bridge: TSecretChangeRequestMethods["createSecretApprovalRequestV2Bridge"] =
+    async (dto, trx) => {
+      const commitTags = dto.commits.reduce<Record<string, string[]>>((acc, { key, tagIds }) => {
+        if (tagIds?.length) acc[key] = [...(acc[key] ?? []), ...tagIds];
+        return acc;
+      }, {});
 
-  const createSecretApprovalSideEffects: TSecretChangeRequestMethods["createSecretApprovalSideEffects"] =
-    async ({
-      secretApprovalRequest,
-      projectId,
+      const write = async (tx: Knex) => {
+        const policy = await secretChangePolicyService.findSecretChangePolicyById(dto.policy.id, tx);
+        if (!policy) {
+          throw new NotFoundError({ message: `Secret approval policy with ID '${dto.policy.id}' not found` });
+        }
+        const project = await projectDAL.findById(policy.projectId, tx);
+        if (!project) throw new NotFoundError({ message: `Project with ID '${policy.projectId}' not found` });
+
+        return $writeSecretChangeRequest(
+          {
+            policyId: policy.id,
+            folderId: dto.folderId,
+            projectId: project.id,
+            orgId: project.orgId,
+            actor: dto.actor,
+            actorId: dto.actorId,
+            commitMessage: dto.commitMessage,
+            isReplicated: dto.isReplicated,
+            commits: dto.commits.map(({ tagIds, ...commit }) => commit),
+            commitTags
+          },
+          tx
+        );
+      };
+
+      const created = trx ? await write(trx) : await approvalRequestDAL.transaction(write);
+      return toSecretChangeRequest(created);
+    };
+
+  const createSecretApprovalSideEffects: TSecretChangeRequestMethods["createSecretApprovalSideEffects"] = async ({
+    secretApprovalRequest,
+    projectId,
+    environment,
+    secretPath,
+    secretKeys,
+    actor,
+    actorId,
+    actorOrgId,
+    tx
+  }) => {
+    const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(
+      secretApprovalRequest.id,
+      tx
+    );
+    const policy = await $findSecretChangePolicyOrThrow(approvalRequest.policyId, tx);
+    const project = await projectDAL.findById(projectId, tx);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
+
+    await runSecretChangeRequestSideEffects({
+      approvalRequest,
+      secretChangeRequest,
+      policy,
+      project,
+      commits: secretApprovalRequest.commits,
       environment,
       secretPath,
       secretKeys,
@@ -464,30 +472,8 @@ export const secretChangeRequestServiceFactory = ({
       actorId,
       actorOrgId,
       tx
-    }) => {
-      const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(
-        secretApprovalRequest.id,
-        tx
-      );
-      const policy = await $findSecretChangePolicyOrThrow(approvalRequest.policyId, tx);
-      const project = await projectDAL.findById(projectId, tx);
-      if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-
-      await runSecretChangeRequestSideEffects({
-        approvalRequest,
-        secretChangeRequest,
-        policy,
-        project,
-        commits: secretApprovalRequest.commits,
-        environment,
-        secretPath,
-        secretKeys,
-        actor,
-        actorId,
-        actorOrgId,
-        tx
-      });
-    };
+    });
+  };
 
   const mergeSecretApprovalRequest: TSecretChangeRequestMethods["mergeSecretApprovalRequest"] = async ({
     approvalId,
@@ -740,85 +726,88 @@ export const secretChangeRequestServiceFactory = ({
     return { ...toSecretChangeRequestReview(review, approvalRequest.id), projectId: approvalRequest.projectId };
   };
 
-  const updateApprovalStatus: TSecretChangeRequestMethods["updateApprovalStatus"] =
-    async ({ approvalId, actor, actorId, actorAuthMethod, actorOrgId, status }) => {
-      const plan = await licenseService.getPlan(actorOrgId);
-      if (!plan.secretApproval && status === RequestState.Open) {
-        throw new BadRequestError({
-          message:
-            "Failed to update secret approval request due to plan restriction. Upgrade plan to update secret approval request."
-        });
-      }
-
-      const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
-      if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
-
-      const policy = await $findSecretChangePolicyOrThrow(approvalRequest.policyId);
-      await $assertCanActOnRequest({ approvalRequest, actorId, actorAuthMethod, actorOrgId, action: "update" });
-
-      const alreadyInStatusMessage =
-        status === RequestState.Open ? "Approval request is already open" : "Approval request is already closed";
-      if (secretChangeRequest.hasMerged) throw new BadRequestError({ message: "Approval request has been merged" });
-      if (approvalRequest.status === status) throw new BadRequestError({ message: alreadyInStatusMessage });
-
-      const updated = await approvalRequestDAL.transaction(async (tx) => {
-        const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policy.id, tx);
-        if (!lockedPolicy) throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
-
-        const locked = await approvalRequestDAL.findByIdForUpdate(approvalRequest.id, tx);
-        if (!locked || locked.status !== approvalRequest.status) {
-          throw new BadRequestError({ message: alreadyInStatusMessage });
-        }
-        if (locked.policyId !== policy.id) throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
-        const lockedChangeRequest = await secretChangeRequestDAL.findOne(
-          { approvalRequestId: approvalRequest.id },
-          tx
-        );
-        if (!lockedChangeRequest || lockedChangeRequest.hasMerged) {
-          throw new BadRequestError({ message: "Approval request has been merged" });
-        }
-
-        const updatedApprovalRequest = await approvalRequestDAL.updateById(approvalRequest.id, { status }, tx);
-        const updatedChangeRequest = await secretChangeRequestDAL.updateById(
-          lockedChangeRequest.id,
-          { statusChangedByUserId: actorId },
-          tx
-        );
-        return { approvalRequest: updatedApprovalRequest, secretChangeRequest: updatedChangeRequest };
+  const updateApprovalStatus: TSecretChangeRequestMethods["updateApprovalStatus"] = async ({
+    approvalId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    status
+  }) => {
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval && status === RequestState.Open) {
+      throw new BadRequestError({
+        message:
+          "Failed to update secret approval request due to plan restriction. Upgrade plan to update secret approval request."
       });
+    }
 
-      const action =
-        status === RequestState.Open ? ChangeRequestWebhookAction.Reopened : ChangeRequestWebhookAction.Closed;
-      try {
-        const project = await projectDAL.findById(approvalRequest.projectId);
-        const [folder] = await folderDAL.findSecretPathByFolderIds(approvalRequest.projectId, [
-          secretChangeRequest.folderId
-        ]);
-        if (project && folder) {
-          await queueChangeRequestWebhook({
-            action,
-            approvalRequest: updated.approvalRequest,
-            secretChangeRequest: updated.secretChangeRequest,
-            policy,
-            project,
-            environment: folder.environmentSlug,
-            environmentName: folder.environmentName,
-            secretPath: folder.path
-          });
-        } else {
-          logger.warn(
-            `Skipping change request webhook, project or folder not found [requestId=${approvalRequest.id}] [action=${action}]`
-          );
-        }
-      } catch (error) {
-        logger.error(
-          error,
-          `Failed to queue change request webhook [requestId=${approvalRequest.id}] [action=${action}]`
-        );
+    const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
+    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+
+    const policy = await $findSecretChangePolicyOrThrow(approvalRequest.policyId);
+    await $assertCanActOnRequest({ approvalRequest, actorId, actorAuthMethod, actorOrgId, action: "update" });
+
+    const alreadyInStatusMessage =
+      status === RequestState.Open ? "Approval request is already open" : "Approval request is already closed";
+    if (secretChangeRequest.hasMerged) throw new BadRequestError({ message: "Approval request has been merged" });
+    if (approvalRequest.status === status) throw new BadRequestError({ message: alreadyInStatusMessage });
+
+    const updated = await approvalRequestDAL.transaction(async (tx) => {
+      const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policy.id, tx);
+      if (!lockedPolicy) throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
+
+      const locked = await approvalRequestDAL.findByIdForUpdate(approvalRequest.id, tx);
+      if (!locked || locked.status !== approvalRequest.status) {
+        throw new BadRequestError({ message: alreadyInStatusMessage });
+      }
+      if (locked.policyId !== policy.id) throw new BadRequestError({ message: POLICY_DELETED_MESSAGE });
+      const lockedChangeRequest = await secretChangeRequestDAL.findOne({ approvalRequestId: approvalRequest.id }, tx);
+      if (!lockedChangeRequest || lockedChangeRequest.hasMerged) {
+        throw new BadRequestError({ message: "Approval request has been merged" });
       }
 
-      return { ...toSecretChangeRequestBase(updated), policyId: policy.id, projectId: approvalRequest.projectId };
-    };
+      const updatedApprovalRequest = await approvalRequestDAL.updateById(approvalRequest.id, { status }, tx);
+      const updatedChangeRequest = await secretChangeRequestDAL.updateById(
+        lockedChangeRequest.id,
+        { statusChangedByUserId: actorId },
+        tx
+      );
+      return { approvalRequest: updatedApprovalRequest, secretChangeRequest: updatedChangeRequest };
+    });
+
+    const action =
+      status === RequestState.Open ? ChangeRequestWebhookAction.Reopened : ChangeRequestWebhookAction.Closed;
+    try {
+      const project = await projectDAL.findById(approvalRequest.projectId);
+      const [folder] = await folderDAL.findSecretPathByFolderIds(approvalRequest.projectId, [
+        secretChangeRequest.folderId
+      ]);
+      if (project && folder) {
+        await queueChangeRequestWebhook({
+          action,
+          approvalRequest: updated.approvalRequest,
+          secretChangeRequest: updated.secretChangeRequest,
+          policy,
+          project,
+          environment: folder.environmentSlug,
+          environmentName: folder.environmentName,
+          secretPath: folder.path
+        });
+      } else {
+        logger.warn(
+          `Skipping change request webhook, project or folder not found [requestId=${approvalRequest.id}] [action=${action}]`
+        );
+      }
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to queue change request webhook [requestId=${approvalRequest.id}] [action=${action}]`
+      );
+    }
+
+    return { ...toSecretChangeRequestBase(updated), policyId: policy.id, projectId: approvalRequest.projectId };
+  };
 
   const getSecretApprovalDetails: TSecretChangeRequestMethods["getSecretApprovalDetails"] = async ({
     id,
@@ -987,9 +976,7 @@ export const secretChangeRequestServiceFactory = ({
     };
   };
 
-  const listSecretChangeRequests: TSecretChangeRequestMethods["listSecretChangeRequests"] = async (
-    filter
-  ) => {
+  const listSecretChangeRequests: TSecretChangeRequestMethods["listSecretChangeRequests"] = async (filter) => {
     const { rows, totalCount } = await secretChangeRequestDAL.findByProjectId(filter);
     if (!rows.length) return { approvals: [], totalCount };
 

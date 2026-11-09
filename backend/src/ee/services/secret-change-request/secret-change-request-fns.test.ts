@@ -17,12 +17,12 @@ import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { ChangeRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
-import { ApprovalStatus, RequestState } from "./secret-change-request-types";
 import {
   secretChangeRequestFnsFactory,
   toSecretChangeRequest,
   toSecretChangeRequestReview
 } from "./secret-change-request-fns";
+import { ApprovalStatus, RequestState } from "./secret-change-request-types";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: "https://app.test" }) }));
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
@@ -200,9 +200,7 @@ const buildFns = ({
     queueService: { queue: vi.fn().mockResolvedValue(undefined) },
     telemetryService: { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) }
   };
-  const fns = secretChangeRequestFnsFactory(
-    deps as unknown as Parameters<typeof secretChangeRequestFnsFactory>[0]
-  );
+  const fns = secretChangeRequestFnsFactory(deps as unknown as Parameters<typeof secretChangeRequestFnsFactory>[0]);
   return { fns, deps };
 };
 

@@ -416,10 +416,7 @@ describe("secretChangePolicy createSecretApprovalPolicy", () => {
 
     const policy = await create(service, { environment: undefined, environments: ["dev", "prod"] });
 
-    expect(deps.secretChangePolicyDAL.findSecretChangePolicies).toHaveBeenLastCalledWith(
-      { policyId: "policy-1" },
-      TX
-    );
+    expect(deps.secretChangePolicyDAL.findSecretChangePolicies).toHaveBeenLastCalledWith({ policyId: "policy-1" }, TX);
     expect(policy).toEqual({
       id: "policy-1",
       name: "dev-policy",
@@ -544,9 +541,7 @@ describe("secretChangePolicy updateSecretApprovalPolicy", () => {
 
     expect(deps.approvalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith("policy-1", TX);
     const lockOrder = deps.approvalPolicyDAL.findByIdForUpdate.mock.invocationCallOrder[0];
-    const stateRead = deps.secretChangePolicyDAL.findSecretChangePolicies.mock.calls.findIndex(
-      ([, tx]) => tx === TX
-    );
+    const stateRead = deps.secretChangePolicyDAL.findSecretChangePolicies.mock.calls.findIndex(([, tx]) => tx === TX);
     expect(deps.secretChangePolicyDAL.findSecretChangePolicies.mock.calls[stateRead]).toEqual([
       { policyId: "policy-1" },
       TX
@@ -668,10 +663,7 @@ describe("secretChangePolicy updateSecretApprovalPolicy", () => {
       [{ policyId: "policy-1", userId: "u-3", groupId: null }],
       TX
     );
-    expect(deps.secretChangePolicyDAL.findSecretChangePolicies).toHaveBeenLastCalledWith(
-      { policyId: "policy-1" },
-      TX
-    );
+    expect(deps.secretChangePolicyDAL.findSecretChangePolicies).toHaveBeenLastCalledWith({ policyId: "policy-1" }, TX);
     expect(policy).toEqual(toSecretChangePolicy(updatedRow));
   });
 

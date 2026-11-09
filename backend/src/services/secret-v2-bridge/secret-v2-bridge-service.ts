@@ -168,10 +168,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
   secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretChangeRequestService: Pick<
-    TSecretChangeRequestServiceFactory,
-    "createSecretApprovalRequestV2Bridge"
-  >;
+  secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalRequestV2Bridge">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,

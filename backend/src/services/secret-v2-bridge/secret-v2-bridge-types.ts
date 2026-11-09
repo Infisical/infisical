@@ -319,10 +319,7 @@ export type TFnSecretMove = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretChangeRequestService: Pick<
-    TSecretChangeRequestServiceFactory,
-    "createSecretApprovalRequestV2Bridge"
-  >;
+  secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalRequestV2Bridge">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   reminderService: Pick<TReminderServiceFactory, "moveReminders" | "copyReminders">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
