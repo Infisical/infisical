@@ -151,7 +151,10 @@ export const provisioningTemplateServiceFactory = ({
       kmsService
     });
 
-    return PROVISIONING_TEMPLATE_PROVIDERS[app].getUpdateTemplate({ configuration }, query);
+    return PROVISIONING_TEMPLATE_PROVIDERS[app].getUpdateTemplate(
+      { configuration, method: appConnection.method },
+      query
+    );
   };
 
   return { getProvisioningTemplate, getConnectionProvisioningTemplate };

@@ -5,6 +5,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { AwsConnectionMethod } from "@app/services/app-connection/aws/aws-connection-enums";
 import { AwsConnectionConfigurationSchema } from "@app/services/app-connection/aws/aws-connection-schemas";
 
 import {
@@ -103,7 +104,9 @@ export const awsProvisioningTemplateProvider: TProvisioningTemplateProvider<
   TAwsProvisioningTemplateQuery,
   TAwsProvisioningUpdateQuery
 > = {
-  getUpdateTemplate: async ({ configuration }, query): Promise<TProvisioningTemplate | null> => {
+  getUpdateTemplate: async ({ configuration, method }, query): Promise<TProvisioningTemplate | null> => {
+    if (method !== AwsConnectionMethod.AssumeRole) return null;
+
     const parsed = AwsConnectionConfigurationSchema.safeParse(configuration);
     const recorded = parsed.success ? parsed.data.provisioning : null;
     if (!recorded) return null;

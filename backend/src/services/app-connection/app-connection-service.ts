@@ -1,5 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
+import pLimit from "p-limit";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
@@ -72,7 +73,11 @@ import {
 } from "./app-connection-types";
 import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
 import { auth0ConnectionService } from "./auth0/auth0-connection-service";
-import { AwsConnectionConfigurationSchema, ValidateAwsConnectionCredentialsSchema } from "./aws";
+import {
+  AwsConnectionConfigurationSchema,
+  AwsConnectionMethod,
+  ValidateAwsConnectionCredentialsSchema
+} from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { doesRoleArnBelongToStack } from "./aws/aws-role-arn-fns";
 import { ValidateAzureADCSConnectionCredentialsSchema } from "./azure-adcs/azure-adcs-connection-schemas";
@@ -255,6 +260,8 @@ export type TAppConnectionServiceFactoryDep = {
 };
 
 type TRecordedProvisioning = { useCases: string[] } | null;
+
+const RECORDED_PROVISIONING_CONCURRENCY = 5;
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
 
@@ -1382,6 +1389,8 @@ export const appConnectionServiceFactory = ({
   };
 
   const getRecordedProvisioning = async (connection: TAppConnections): Promise<TRecordedProvisioning> => {
+    if (connection.method !== AwsConnectionMethod.AssumeRole || !connection.encryptedConfiguration) return null;
+
     try {
       const configuration = await decryptAppConnectionConfiguration({
         orgId: connection.orgId,
@@ -1458,10 +1467,12 @@ export const appConnectionServiceFactory = ({
 
     if (app !== AppConnection.AWS) return availableConnections;
 
+    const limit = pLimit(RECORDED_PROVISIONING_CONCURRENCY);
+
     return Promise.all(
       availableConnections.map(async (connection) => ({
         ...connection,
-        provisioning: await getRecordedProvisioning(connection as unknown as TAppConnections)
+        provisioning: await limit(() => getRecordedProvisioning(connection as unknown as TAppConnections))
       }))
     );
   };

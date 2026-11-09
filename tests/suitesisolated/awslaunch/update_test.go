@@ -17,9 +17,10 @@ func TestAWSProvisioningTemplate_Update(t *testing.T) {
 	t.Run("should use the same template location as Launch Stack", func(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
-		connID := fixture.NewAWSAppConnectionWithConfiguration(t, tn, "", map[string]any{
-			"provisioning": fixture.AWSLaunchStackProvisioning(nil),
-		})
+		connID := fixture.NewAWSAssumeRoleAppConnectionWithConfiguration(t, tn, "",
+			"arn:aws:iam::"+trustedAccount+":role/infisical-app-connection", map[string]any{
+				"provisioning": fixture.AWSLaunchStackProvisioning(nil),
+			})
 		launch := getLaunch(t, tn.Admin, &api.GetAwsProvisioningTemplateParams{})
 
 		// Action

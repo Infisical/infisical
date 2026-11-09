@@ -1,5 +1,6 @@
 import { ReactNode, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { ExternalLinkIcon, EyeIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -22,7 +23,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
-import { AWS_USE_CASE_GROUPS } from "@app/helpers/awsUseCases";
+import { getAwsUseCaseLabel } from "@app/helpers/awsUseCases";
 import { useScopeVariant } from "@app/hooks";
 import {
   TAwsConnection,
@@ -47,24 +48,28 @@ type Props = {
   preselectedUseCases?: string[];
 };
 
-const ALL_USE_CASES = AWS_USE_CASE_GROUPS.flatMap((group): { id: string; label: string }[] => [
-  ...group.options
-]);
-
-const getUseCaseLabel = (id: string) =>
-  ALL_USE_CASES.find((option) => option.id === id)?.label ?? id;
-
 const isSameSelection = (a: string[], b: string[]) =>
   a.length === b.length && a.every((id) => b.includes(id));
 
-const UpdateStackFallback = () => (
+const getErrorMessage = (error: unknown) => {
+  if (!axios.isAxiosError<{ message?: unknown }>(error)) return null;
+  const message = error.response?.data?.message;
+  return typeof message === "string" && message ? message : null;
+};
+
+const GENERIC_REASON = "Infisical could not prepare the update steps for this connection.";
+
+const NOT_STACK_MANAGED_REASON =
+  "Infisical prepares update steps only for stacks in the commercial AWS partition that it launched, and this connection's stack is not one.";
+
+const UpdateStackFallback = ({ reason }: { reason: string }) => (
   <Alert variant="info">
     <InfoIcon />
     <AlertTitle>Update the stack manually</AlertTitle>
     <AlertDescription>
       <p>
-        Infisical could not prepare the update steps for this connection. Update the stack in the
-        AWS console by following the manual steps, then come back to record the change.{" "}
+        {reason} Update the stack in the AWS console by following the manual steps, then come back
+        to record the change.{" "}
         <a
           href={MANUAL_DOCS_URL}
           target="_blank"
@@ -220,13 +225,13 @@ export const AwsUpdateStack = ({
   const isRegionMissing = !recorded.region;
   const hasRegion = !isRegionMissing || Boolean(chosenRegion);
   const isChanged = !isSameSelection(useCases, recorded.useCases);
+  const hasNoUseCases = useCases.length === 0;
   const removedUseCases = recorded.useCases.filter((id) => !useCases.includes(id));
-  const selectedLabels = ALL_USE_CASES.filter(({ id }) => useCases.includes(id)).map(
-    ({ label }) => label
-  );
+  const selectedLabels = useCases.map(getAwsUseCaseLabel);
 
   const {
     data: template,
+    error,
     isError,
     isFetching
   } = useGetAwsConnectionProvisioningTemplate(
@@ -235,7 +240,7 @@ export const AwsUpdateStack = ({
       useCases: [...useCases].sort(),
       region: isRegionMissing ? chosenRegion : undefined
     },
-    { enabled: isChanged && hasRegion }
+    { enabled: isChanged && hasRegion && !hasNoUseCases }
   );
 
   const openSheet = (view: "list" | "policy") => {
@@ -250,7 +255,7 @@ export const AwsUpdateStack = ({
   };
 
   const handleMarkAsUpdated = () => {
-    if (!template) return;
+    if (!template || hasNoUseCases) return;
 
     const updatedProvisioning: TAwsConnectionProvisioning = {
       launchMethod: recorded.launchMethod,
@@ -294,11 +299,27 @@ export const AwsUpdateStack = ({
       );
     }
 
+    if (hasNoUseCases) {
+      return (
+        <p className="text-sm text-muted">
+          Select at least one use case. Infisical cannot prepare update steps for a stack with none.
+        </p>
+      );
+    }
+
     if (!hasRegion) return null;
 
     if (isFetching) return <Skeleton className="h-40 w-full" />;
 
-    if (isError || !template) return <UpdateStackFallback />;
+    if (isError) {
+      const message = getErrorMessage(error);
+      const reason = message ? `${message}${/[.!?]$/.test(message) ? "" : "."}` : GENERIC_REASON;
+      return <UpdateStackFallback reason={reason} />;
+    }
+
+    if (template === null) return <UpdateStackFallback reason={NOT_STACK_MANAGED_REASON} />;
+
+    if (!template) return <UpdateStackFallback reason={GENERIC_REASON} />;
 
     return (
       <UpdateStackSteps
@@ -373,7 +394,7 @@ export const AwsUpdateStack = ({
               <AlertDescription>
                 <p>
                   Updating the stack removes the permissions for{" "}
-                  {removedUseCases.map(getUseCaseLabel).join(", ")} from the role. Features that
+                  {removedUseCases.map(getAwsUseCaseLabel).join(", ")} from the role. Features that
                   rely on them will fail.
                 </p>
               </AlertDescription>

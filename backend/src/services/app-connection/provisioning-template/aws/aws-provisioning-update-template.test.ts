@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { BadRequestError } from "@app/lib/errors";
+import { AwsConnectionMethod } from "@app/services/app-connection/aws/aws-connection-enums";
 
 import { AWS_PROVISIONING_TEMPLATE_VERSION } from "./aws-provisioning-template-constants";
 import { awsProvisioningTemplateProvider, AWS_USE_CASE_COMPANION_PARAMETERS } from "./aws-provisioning-template-fns";
@@ -25,8 +26,12 @@ const provisioning = (overrides: Record<string, unknown> = {}) => ({
   }
 });
 
-const update = (configuration: unknown, useCases: string[], region?: string) =>
-  awsProvisioningTemplateProvider.getUpdateTemplate({ configuration }, { useCases, region });
+const update = (
+  configuration: unknown,
+  useCases: string[],
+  region?: string,
+  method: string = AwsConnectionMethod.AssumeRole
+) => awsProvisioningTemplateProvider.getUpdateTemplate({ configuration, method }, { useCases, region });
 
 describe("awsProvisioningTemplateProvider.getUpdateTemplate", () => {
   it("describes the stack and the current template", async () => {
@@ -109,6 +114,12 @@ describe("awsProvisioningTemplateProvider.getUpdateTemplate", () => {
     expect(await update({ provisioning: null }, ["secrets-manager"])).toBeNull();
     expect(await update({}, ["secrets-manager"])).toBeNull();
     expect(await update(undefined, ["secrets-manager"])).toBeNull();
+  });
+
+  it("returns null for an Access Key connection even when provisioning is recorded", async () => {
+    const template = await update(provisioning(), ["secrets-manager"], undefined, AwsConnectionMethod.AccessKey);
+
+    expect(template).toBeNull();
   });
 
   it("returns null outside the commercial partition", async () => {

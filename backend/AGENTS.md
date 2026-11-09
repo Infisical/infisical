@@ -943,6 +943,14 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.
   The issuer is null when `SITE_URL` is unset, so reading a connection never fails on it.
 
+### Provisioning templates (Launch Stack, Update Stack)
+
+Read `docs/adr/0001-*` and `0002-*` before touching `services/app-connection/provisioning-template/`.
+
+- Add an app by registering a provider in that registry. A new template shape is another `kind` in the discriminated union (`cloudformation-update` is the second), never a new response type.
+- Update Stack is a connection-scoped `GET` gated on Edit for that connection. It never calls CloudFormation or AWS, because the role Infisical assumes must not be able to change its own stack.
+- A connection is eligible only when its method is `assume-role` and `provisioning.launchMethod` is `launch-stack`. Pass the connection's `method` into the provider, and return `null` (not an error) otherwise, so Access Key and manual-role connections never get a hint or steps.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:

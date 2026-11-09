@@ -67,40 +67,16 @@ func TestAWSAppConnection_AvailableList(t *testing.T) {
 		return byID
 	}
 
-	t.Run("should list the recorded use cases of a Stack-managed connection and nothing else from provisioning", func(t *testing.T) {
+	t.Run("should list no recorded use cases for an Access Key connection, whatever it records", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
-		stackName := "infisical-aws-connection-" + id.Short()
-		connectionID := createAWSNamed(t, tn, "stack-"+id.Short(), map[string]any{"provisioning": map[string]any{
-			"launchMethod":    "launch-stack",
-			"useCases":        []string{"secrets-manager-sync", "parameter-store-sync"},
-			"stackName":       stackName,
-			"partition":       "aws",
-			"templateVersion": "1.0.0",
-		}})
-
-		// Action
-		listed := listAvailable(t, tn)
-
-		// Assert
-		connection, ok := listed[connectionID]
-		require.True(t, ok, "the connection is not in the available list")
-		require.Equal(t, map[string]any{"useCases": []any{"secrets-manager-sync", "parameter-store-sync"}},
-			connection["provisioning"])
-		raw, err := json.Marshal(connection)
-		require.NoError(t, err)
-		for _, leaked := range []string{stackName, "launch-stack", "templateVersion", "partition", "configuration"} {
-			require.NotContains(t, string(raw), leaked, "provisioning detail leaked into the available list")
-		}
-	})
-
-	t.Run("should list no recorded use cases for a connection without provisioning", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
+		stackID := createAWSNamed(t, tn, "stack-"+id.Short(), map[string]any{
+			"provisioning": fixture.AWSLaunchStackProvisioning(map[string]any{
+				"useCases": []string{"secrets-manager", "parameter-store"},
+			}),
+		})
 		manualID := createAWSNamed(t, tn, "manual-"+id.Short(), nil)
 		emptyID := createAWSNamed(t, tn, "empty-"+id.Short(), map[string]any{})
 
@@ -108,7 +84,7 @@ func TestAWSAppConnection_AvailableList(t *testing.T) {
 		listed := listAvailable(t, tn)
 
 		// Assert
-		for _, connectionID := range []string{manualID, emptyID} {
+		for _, connectionID := range []string{stackID, manualID, emptyID} {
 			connection, ok := listed[connectionID]
 			require.True(t, ok, "the connection is not in the available list")
 			require.Nil(t, connection["provisioning"])

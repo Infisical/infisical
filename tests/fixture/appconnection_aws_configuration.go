@@ -40,22 +40,44 @@ func AWSLaunchStackProvisioning(overrides map[string]any) map[string]any {
 // NewAWSAppConnectionWithConfiguration creates an access key AWS connection carrying the
 // given configuration, at org scope or, with a project ID, in that project.
 //
-// Access key because assume-role cannot be created here (see AWSAccessKeyAppConnection).
-// The configuration is stored whatever the method, so a test about how a role was
-// provisioned reads the same either way.
+// Access key works in every package. Update Stack never applies to it, so use it for
+// a test that an Access Key connection is left out. A test that needs a connection
+// Update Stack applies to uses NewAWSAssumeRoleAppConnectionWithConfiguration.
 func NewAWSAppConnectionWithConfiguration(tt *testing.T, tn *harness.Tenant, projectID string, configuration map[string]any) uuid.UUID {
 	tt.Helper()
 
 	accessKeyID := id.Nonce()
 	fakenet.Track(tt, FakenetAdmin(tt, tn), aws.STS.Host(), accessKeyID)
-	body := map[string]any{
+	return createAWSAppConnectionWithConfiguration(tt, tn, map[string]any{
 		"name":   "aws-" + id.Short(),
 		"method": "access-key",
 		"credentials": map[string]string{
 			"accessKeyId":     accessKeyID,
 			"secretAccessKey": aws.SecretAccessKey(accessKeyID),
 		},
-	}
+	}, projectID, configuration)
+}
+
+// NewAWSAssumeRoleAppConnectionWithConfiguration creates an assume-role AWS connection
+// for the given Role ARN carrying the given configuration, at org scope or, with a
+// project ID, in that project.
+//
+// Assume-role needs the instance's own AWS credentials to call STS AssumeRole, so only
+// a package that sets INF_APP_CONNECTION_AWS_ACCESS_KEY_ID and
+// INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY can use it.
+func NewAWSAssumeRoleAppConnectionWithConfiguration(tt *testing.T, tn *harness.Tenant, projectID, roleArn string, configuration map[string]any) uuid.UUID {
+	tt.Helper()
+
+	return createAWSAppConnectionWithConfiguration(tt, tn, map[string]any{
+		"name":        "aws-" + id.Short(),
+		"method":      "assume-role",
+		"credentials": map[string]string{"roleArn": roleArn},
+	}, projectID, configuration)
+}
+
+func createAWSAppConnectionWithConfiguration(tt *testing.T, tn *harness.Tenant, body map[string]any, projectID string, configuration map[string]any) uuid.UUID {
+	tt.Helper()
+
 	if projectID != "" {
 		body["projectId"] = projectID
 	}

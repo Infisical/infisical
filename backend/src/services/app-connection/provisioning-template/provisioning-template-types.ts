@@ -38,5 +38,8 @@ export type TProvisioningTemplate = z.infer<typeof ProvisioningTemplateSchema>;
 
 export type TProvisioningTemplateProvider<TQuery, TUpdateQuery> = {
   getTemplate: (input: { externalId: string }, query: TQuery) => Promise<TProvisioningTemplate | null>;
-  getUpdateTemplate: (input: { configuration: unknown }, query: TUpdateQuery) => Promise<TProvisioningTemplate | null>;
+  getUpdateTemplate: (
+    input: { configuration: unknown; method: string },
+    query: TUpdateQuery
+  ) => Promise<TProvisioningTemplate | null>;
 };

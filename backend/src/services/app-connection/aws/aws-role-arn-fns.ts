@@ -5,9 +5,7 @@ const parseRoleArn = (roleArn: string | undefined): TRoleArnParts | null => {
   return match ? { partition: match[1], accountId: match[2], resource: match[3] } : null;
 };
 
-// The stack's role sits in the account the connection already assumes, in the stack's partition, and has no
-// IAM path. The account is not recorded with the stack, so it is read from the role the connection has today.
-// A record without a role name cannot be verified, so only the Role ARN the connection already holds belongs to it.
+// The stack records no account ID, so the account comes from the connection's current Role ARN.
 export const doesRoleArnBelongToStack = ({
   roleArn,
   existingRoleArn,

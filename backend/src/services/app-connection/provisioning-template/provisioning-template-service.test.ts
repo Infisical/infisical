@@ -97,7 +97,14 @@ describe("provisioningTemplateService.getConnectionProvisioningTemplate", () => 
     const connection =
       opts.connection === null
         ? undefined
-        : { id: "conn-1", app: AppConnection.AWS, orgId: "org-1", projectId: null, ...opts.connection };
+        : {
+            id: "conn-1",
+            app: AppConnection.AWS,
+            method: "assume-role",
+            orgId: "org-1",
+            projectId: null,
+            ...opts.connection
+          };
     const appConnectionDAL = { findById: vi.fn().mockResolvedValue(connection) };
     const service = provisioningTemplateServiceFactory({
       permissionService,
@@ -122,7 +129,7 @@ describe("provisioningTemplateService.getConnectionProvisioningTemplate", () => 
       actor
     );
 
-    expect(getUpdateTemplate).toHaveBeenCalledWith({ configuration }, updateQuery);
+    expect(getUpdateTemplate).toHaveBeenCalledWith({ configuration, method: "assume-role" }, updateQuery);
   });
 
   it("checks Edit on the project for a project connection", async () => {

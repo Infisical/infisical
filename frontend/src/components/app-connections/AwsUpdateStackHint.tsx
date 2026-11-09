@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { subject } from "@casl/ability";
+import { useQueryClient } from "@tanstack/react-query";
 import { InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -17,6 +18,7 @@ import {
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { getAwsUpdateStackHint, getAwsUseCaseLabel } from "@app/helpers/awsUseCases";
 import {
+  appConnectionKeys,
   useGetAppConnectionById,
   useListAvailableAppConnections
 } from "@app/hooks/api/appConnections";
@@ -30,6 +32,7 @@ type Props = {
 };
 
 export const AwsUpdateStackHint = ({ connectionId, useCases, className }: Props) => {
+  const queryClient = useQueryClient();
   const { currentProject } = useProject();
   const { permission: projectPermission } = useProjectPermission();
   const { permission: orgPermission } = useOrgPermission();
@@ -64,6 +67,17 @@ export const AwsUpdateStackHint = ({ connectionId, useCases, className }: Props)
       type: "error"
     });
   }, [isError, errorUpdatedAt]);
+
+  const handleOpen = (missing: string[]) => {
+    if (connection) {
+      // A connection cached from an earlier opening would seed the sheet with a stale record.
+      queryClient.removeQueries({
+        queryKey: appConnectionKeys.byId(AppConnection.AWS, connection.id),
+        exact: true
+      });
+    }
+    setEdit({ isOpen: true, useCases: missing });
+  };
 
   const canEdit = (() => {
     if (!connection) return false;
@@ -101,7 +115,7 @@ export const AwsUpdateStackHint = ({ connectionId, useCases, className }: Props)
                 variant="outline"
                 size="sm"
                 isPending={edit.isOpen && isFetching && !appConnection}
-                onClick={() => setEdit({ isOpen: true, useCases: missingUseCases })}
+                onClick={() => handleOpen(missingUseCases)}
               >
                 Update Stack
               </Button>

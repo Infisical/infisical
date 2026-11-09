@@ -11,6 +11,7 @@ import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { AppConnection } from "./app-connection-enums";
 import { appConnectionServiceFactory } from "./app-connection-service";
+import { AwsConnectionMethod } from "./aws";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }
@@ -215,10 +216,11 @@ describe("listAvailableAppConnectionsForUser", () => {
     { action: OrgPermissionAppConnectionActions.Connect, subject: OrgPermissionSubjects.AppConnections }
   ]);
 
-  const row = (id: string, name: string, configuration?: unknown) => ({
+  const row = (id: string, name: string, configuration?: unknown, method = AwsConnectionMethod.AssumeRole) => ({
     id,
     name,
     app: AppConnection.AWS,
+    method,
     orgId: ACTOR_ORG_ID,
     projectId: null,
     encryptedCredentials: Buffer.from("{}"),
@@ -253,6 +255,12 @@ describe("listAvailableAppConnectionsForUser", () => {
     ]);
 
     expect(result.map((connection) => connection.provisioning)).toEqual([null, null, null]);
+  });
+
+  test("an Access Key connection never carries recorded use cases", async () => {
+    const [connection] = await listAws([row("c1", "keys", { provisioning }, AwsConnectionMethod.AccessKey)]);
+
+    expect(connection.provisioning).toBeNull();
   });
 
   test("an unreadable stored configuration does not fail the list", async () => {
