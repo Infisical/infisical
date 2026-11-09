@@ -89,12 +89,14 @@ export function TagForm({
   tags,
   options,
   canEdit,
+  canCreate,
   onSave,
   onClose
 }: {
   tags: string[];
   options: string[];
   canEdit: boolean;
+  canCreate: boolean;
   onSave: (tags: string[]) => void;
   onClose: () => void;
 }) {
@@ -118,12 +120,16 @@ export function TagForm({
         searchable
         disabled={!canEdit}
         onChange={setDraft}
-        onCreate={(query) => {
-          const parsed = slugSchema().safeParse(query.trim());
-          if (!parsed.success) return;
-          setCreated((current) => [...current, parsed.data]);
-          setDraft((current) => [...current, parsed.data]);
-        }}
+        onCreate={
+          canCreate
+            ? (query) => {
+                const parsed = slugSchema().safeParse(query.trim());
+                if (!parsed.success) return;
+                setCreated((current) => [...current, parsed.data]);
+                setDraft((current) => [...current, parsed.data]);
+              }
+            : undefined
+        }
       />
       {!canEdit && (
         <SmallText muted>You do not have permission to edit tags on this secret.</SmallText>
