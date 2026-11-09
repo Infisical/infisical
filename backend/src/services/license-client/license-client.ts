@@ -221,20 +221,6 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
     return backend.fetchTrials(orgId);
   };
 
-  const cancelSubscription = async (orgId: string) => {
-    if (!backend) {
-      throw new Error("license client backend is not configured");
-    }
-    return backend.cancelSubscription(orgId);
-  };
-
-  const resumeSubscription = async (orgId: string) => {
-    if (!backend) {
-      throw new Error("license client backend is not configured");
-    }
-    return backend.resumeSubscription(orgId);
-  };
-
   const deleteOrganization = async (orgId: string) => {
     if (!backend) {
       throw new Error("license client backend is not configured");
@@ -265,8 +251,6 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
     cancelTrial,
     confirmTrialPayment,
     getTrials,
-    cancelSubscription,
-    resumeSubscription,
     deleteOrganization
   };
 };

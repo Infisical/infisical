@@ -398,30 +398,6 @@ export const licenseServerBackend = (
     return trialsResponseSchema.parse(body);
   },
 
-  cancelSubscription: async (orgId: string): Promise<TCheckoutResult> => {
-    const url = new URL(orgScoped(orgId, "/subscription/cancel"), serverUrl);
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
-      redirect: "manual"
-    });
-    await throwIfResponseError(res);
-    const body: unknown = await res.json();
-    return checkoutResultSchema.parse(body);
-  },
-
-  resumeSubscription: async (orgId: string): Promise<TCheckoutResult> => {
-    const url = new URL(orgScoped(orgId, "/subscription/resume"), serverUrl);
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
-      redirect: "manual"
-    });
-    await throwIfResponseError(res);
-    const body: unknown = await res.json();
-    return checkoutResultSchema.parse(body);
-  },
-
   deleteOrganization: async (orgId: string): Promise<TOrgDeletedResult> => {
     const url = new URL(orgScoped(orgId, ""), serverUrl);
     const res = await fetch(url, {
@@ -521,8 +497,6 @@ export const licenseServerSelfHostedBackend = (
     cancelTrial: notSupportedOnSelfHosted("cancelTrial"),
     confirmTrialPayment: notSupportedOnSelfHosted("confirmTrialPayment"),
     fetchTrials: notSupportedOnSelfHosted("fetchTrials"),
-    cancelSubscription: notSupportedOnSelfHosted("cancelSubscription"),
-    resumeSubscription: notSupportedOnSelfHosted("resumeSubscription"),
     deleteOrganization: notSupportedOnSelfHosted("deleteOrganization")
   };
 };

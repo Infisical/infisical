@@ -644,8 +644,6 @@ export type TLicenseClientBackend = {
   confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
   // The org's trial history, used to tell which products have already used their one-time trial.
   fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
-  cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
-  resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
   // Cancels the org's subscription right away and closes its licenses.
   deleteOrganization: (orgId: string) => Promise<TOrgDeletedResult>;
 };
