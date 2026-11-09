@@ -222,6 +222,8 @@ const BreakdownPanel = ({
   }
 
   const total = data.scopedCount;
+  if (isIdentity && total === 0) return null;
+
   const rootScopes = data.scopes.filter((scope) => scope.isRoot);
   const subOrgScopes = data.scopes.filter((scope) => !scope.isRoot);
 
