@@ -70,13 +70,14 @@ func (o *Org) routes() *http.ServeMux {
 		writeJSON(w, payload)
 	})
 
-	// Deleting an organization cancels its subscription, and the delete fails if
-	// that call does. Every tenant registers its own removal on t.Cleanup, so
-	// without this each test leaks its organization into the shared database for
-	// the life of the run. The outcome is parsed rather than ignored, so an empty
-	// body is not enough.
-	mux.HandleFunc("POST /v1/organizations/{orgId}/subscription/cancel", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, map[string]any{"outcome": "subscription_canceled"})
+	// Deleting an organization tells the License Server it is gone so the subscription
+	// is canceled. The instance records that in its outbox and retries until this
+	// answers, so every deleted tenant would otherwise keep retrying for the life of
+	// the run. The body is parsed rather than ignored, so an empty one is not enough.
+	// Tests see the call in the scope's call log; an event could not reach them, since
+	// the stream only carries credentials the test binary minted and an org id is not one.
+	mux.HandleFunc("DELETE /v1/organizations/{orgId}", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{"licensesClosed": 1, "canceledSubscriptionIds": []string{}, "commitmentForfeited": false})
 	})
 
 	// The usage reporter authenticates against the same server. Nothing asserts on

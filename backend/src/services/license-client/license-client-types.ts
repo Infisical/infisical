@@ -335,6 +335,17 @@ export const checkoutResultSchema = z
   })
   .passthrough();
 
+// What the license server closed for a deleted organization. Idempotent on its side: a repeat reports
+// zero licenses closed.
+export const orgDeletedResultSchema = z
+  .object({
+    licensesClosed: z.number().int(),
+    canceledSubscriptionIds: z.array(z.string()),
+    commitmentForfeited: z.boolean()
+  })
+  .passthrough();
+export type TOrgDeletedResult = z.infer<typeof orgDeletedResultSchema>;
+
 // Proration preview for an add/remove/commitment change. prorationAmount is signed: positive is
 // charged now (an add/increase), negative is a credit toward the next invoice (a removal). prorationDate
 // is the instant the server priced at; echo it back into the apply so it reproduces the exact charge.
@@ -636,4 +647,6 @@ export type TLicenseClientBackend = {
   fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
   cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
   resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
+  // The organization no longer exists: cancel its subscription now and close its licenses.
+  deleteOrganization: (orgId: string) => Promise<TOrgDeletedResult>;
 };

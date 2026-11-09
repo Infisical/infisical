@@ -782,6 +782,14 @@ Rules for code outside the consumer:
   the daily `org-access-reconcile-sweep` cron is a backstop. End-to-end coverage:
   `e2e-test/routes/v1/org-access-reconcile.spec.ts`.
 
+### Organization Deletion
+
+Every organization delete (the org's own admin, a server admin, a sub-org's parent) goes through
+`orgDeletionService.deleteOrganization` (`services/org/org-deletion-service.ts`), never `orgDAL.deleteById`
+directly. It runs the cross-table cleanups and emits `OrganizationModifiedEventV1` (`org-events.ts`) inside
+the delete transaction; `license-org-deleted-consumer.ts` then tells the license server to cancel the
+subscription, retrying through the outbox. A delete that skips the service leaves the customer billing.
+
 ### Soft-Delete + Async Cleanup
 
 Resources whose deletion cascades across many/large tables use a **soft-delete + paced async hard-delete** pattern instead of a synchronous cascade in the request path.

@@ -235,6 +235,13 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
     return backend.resumeSubscription(orgId);
   };
 
+  const deleteOrganization = async (orgId: string) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.deleteOrganization(orgId);
+  };
+
   return {
     ...featureReaderFactory({ getEntitlements }),
     // False when no license server is reachable (unlicensed self-hosted, or an offline license), so
@@ -259,6 +266,7 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
     confirmTrialPayment,
     getTrials,
     cancelSubscription,
-    resumeSubscription
+    resumeSubscription,
+    deleteOrganization
   };
 };

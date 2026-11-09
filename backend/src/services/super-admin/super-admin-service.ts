@@ -64,6 +64,7 @@ import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
 import { TOrgDALFactory } from "../org/org-dal";
+import { TOrgDeletionServiceFactory } from "../org/org-deletion-service";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
@@ -112,6 +113,7 @@ type TSuperAdminServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
+  orgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: Pick<
     TLicenseServiceFactory,
@@ -171,6 +173,7 @@ export const superAdminServiceFactory = ({
   emailDomainDAL,
   authService,
   orgService,
+  orgDeletionService,
   keyStore,
   kmsRootConfigDAL,
   kmsService,
@@ -1064,10 +1067,7 @@ export const superAdminServiceFactory = ({
     return organization;
   };
 
-  const deleteOrganization = async (organizationId: string) => {
-    const organization = await orgDAL.deleteById(organizationId);
-    return organization;
-  };
+  const deleteOrganization = async (organizationId: string) => orgDeletionService.deleteOrganization(organizationId);
 
   const deleteOrganizationMembership = async (
     organizationId: string,

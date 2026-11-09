@@ -109,6 +109,37 @@ func TestSubOrganization_Create(t *testing.T) {
 	})
 }
 
+func TestSubOrganization_Delete(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should delete the sub-org and leave the root's subscription alone", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sub := fixture.NewSubOrg(t, tn)
+		subLicense := fixture.LicenseServer(t, tn, sub.ID)
+		rootLicense := fixture.LicenseServer(t, tn, tn.OrgID)
+
+		// Action
+		res, err := tn.Admin.API.DeleteSubOrganizationWithResponse(t.Context(), sub.ID.String())
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Empty(t, subOrgNames(t, tn))
+		// A sub-org bills through its root, so the License Server must not hear of it. Deleting
+		// the root afterwards and waiting for its call is what proves the earlier event was
+		// handled and skipped: the outbox delivers a consumer's events in the order written.
+		root, err := tn.Admin.API.DeleteOrganizationWithResponse(t.Context(), tn.OrgID.String())
+		require.NoError(t, err)
+		requireStatus(t, http.StatusOK, root.StatusCode(), root.Body)
+		fixture.RequireLicenseOrgDeleted(t, rootLicense, tn.OrgID)
+		require.False(t, fixture.LicenseOrgDeleted(t, subLicense, sub.ID))
+	})
+}
+
 func TestSubOrganization_Join(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)

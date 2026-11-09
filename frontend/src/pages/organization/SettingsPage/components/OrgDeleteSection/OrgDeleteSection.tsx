@@ -51,7 +51,8 @@ export const OrgDeleteSection = () => {
       <CardHeader className="p-6">
         <CardTitle>Danger Zone</CardTitle>
         <CardDescription>
-          Permanently delete this organization and all of its data. This action cannot be undone.
+          Permanently delete this organization and all of its data, and cancel its subscription.
+          This action cannot be undone.
         </CardDescription>
       </CardHeader>
       <CardFooter className="min-h-8 justify-end border-t border-danger/15 bg-danger/5 p-4">
@@ -70,7 +71,7 @@ export const OrgDeleteSection = () => {
         isOpen={popUp.deleteOrg.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteOrg", isOpen)}
         title={`Delete "${currentOrg?.name}"`}
-        description="This permanently deletes the organization and all of its data. This cannot be undone."
+        description="This permanently deletes the organization and all of its data. Its subscription is canceled immediately, and any remaining prepaid commitment is forfeited without a refund. This cannot be undone."
         confirmKey={CONFIRM_KEYWORD}
         confirmLabel="Delete Organization"
         isPending={isPending}

@@ -8,6 +8,7 @@ import {
   billingProfileResponseSchema,
   catalogResponseSchema,
   checkoutResultSchema,
+  orgDeletedResultSchema,
   cloudPlanResponseSchema,
   confirmTrialPaymentResultSchema,
   entitlementsResponseSchema,
@@ -20,6 +21,7 @@ import {
   TCatalogResponse,
   TChangeCommitmentsPayload,
   TCheckoutResult,
+  TOrgDeletedResult,
   TCloudPlanResponse,
   TConfirmTrialPaymentPayload,
   TConfirmTrialPaymentResult,
@@ -418,6 +420,18 @@ export const licenseServerBackend = (
     await throwIfResponseError(res);
     const body: unknown = await res.json();
     return checkoutResultSchema.parse(body);
+  },
+
+  deleteOrganization: async (orgId: string): Promise<TOrgDeletedResult> => {
+    const url = new URL(orgScoped(orgId, ""), serverUrl);
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
+      redirect: "manual"
+    });
+    await throwIfResponseError(res);
+    const body: unknown = await res.json();
+    return orgDeletedResultSchema.parse(body);
   }
 });
 
@@ -508,6 +522,7 @@ export const licenseServerSelfHostedBackend = (
     confirmTrialPayment: notSupportedOnSelfHosted("confirmTrialPayment"),
     fetchTrials: notSupportedOnSelfHosted("fetchTrials"),
     cancelSubscription: notSupportedOnSelfHosted("cancelSubscription"),
-    resumeSubscription: notSupportedOnSelfHosted("resumeSubscription")
+    resumeSubscription: notSupportedOnSelfHosted("resumeSubscription"),
+    deleteOrganization: notSupportedOnSelfHosted("deleteOrganization")
   };
 };
