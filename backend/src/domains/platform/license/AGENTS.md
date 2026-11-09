@@ -53,6 +53,8 @@ may edit into a paid one.
 - **An offline license never reaches the License Server**: `LicenseServerClient.fromConfig` stays dormant for
   it. EE reads the default features and `getLicenseKeyConfig` only through the exact specifier `./license-fns`:
   the e2e suite aliases it to `src/ee/services/license/__mocks__/license-fns.ts`.
+  `.github/workflows/run-backend-bdd-tests.yml` also rewrites feature lines in that file by path with `sed`;
+  update it when the file moves.
 - Tests: `ce/testing/build-license.ts` builds the module over an in-memory key store and queue with
   `FakeLicenseHooks`, which also plays the License Server; `testFeatures()` is test data, not the product's
   defaults. Consumers use `FakeLicenseDomain`; a product domain's test reads what it registered through
