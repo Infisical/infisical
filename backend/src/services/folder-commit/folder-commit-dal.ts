@@ -29,8 +29,6 @@ export const folderCommitDALFactory = (db: TDbClient) => {
   const folderCommitOrm = ormify(db, TableName.FolderCommit);
   const { delete: deleteOp, deleteById, ...restOfOrm } = folderCommitOrm;
 
-  // A commit whose only changes are personal override versions (written by older code) is not part of the
-  // folder's history, so it is left out of the commit list and count instead of showing up empty.
   const whereCommitHasSharedChanges = (trx: Knex) => (qb: Knex.QueryBuilder) => {
     void qb
       .whereExists((subQuery) => {
@@ -630,18 +628,23 @@ export const folderCommitDALFactory = (db: TDbClient) => {
 
       // DISTINCT ON keeps the name from each author's most recent commit, so a renamed
       // user or identity is labelled with what it is called now rather than at first commit
-      const { rows } = await trx.raw<{
-        rows: { actorId: string | null; actorType: string; name: string | null }[];
-      }>(
-        `SELECT DISTINCT ON ("actorType", "actorMetadata" ->> 'id')
-           "actorType",
-           "actorMetadata" ->> 'id' AS "actorId",
-           "actorMetadata" ->> 'name' AS "name"
-         FROM ??
-         WHERE "folderId" = ?
-         ORDER BY "actorType", "actorMetadata" ->> 'id', "createdAt" DESC`,
-        [TableName.FolderCommit, folderId]
-      );
+      const rows = await trx(TableName.FolderCommit)
+        .where(`${TableName.FolderCommit}.folderId`, folderId)
+        .where(whereCommitHasSharedChanges(trx))
+        .select<{ actorId: string | null; actorType: string; name: string | null }[]>(
+          trx.raw(`DISTINCT ON (??, ?? ->> 'id') ?? AS "actorType"`, [
+            `${TableName.FolderCommit}.actorType`,
+            `${TableName.FolderCommit}.actorMetadata`,
+            `${TableName.FolderCommit}.actorType`
+          ]),
+          trx.raw(`?? ->> 'id' AS "actorId"`, [`${TableName.FolderCommit}.actorMetadata`]),
+          trx.raw(`?? ->> 'name' AS "name"`, [`${TableName.FolderCommit}.actorMetadata`])
+        )
+        .orderByRaw(`??, ?? ->> 'id', ?? DESC`, [
+          `${TableName.FolderCommit}.actorType`,
+          `${TableName.FolderCommit}.actorMetadata`,
+          `${TableName.FolderCommit}.createdAt`
+        ]);
 
       return rows.map((row) => ({
         actorId: row.actorId ?? null,
