@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "action-feedback-toast",
+    title: "Action feedback in toasts",
+    description:
+      "Copy, save, delete and other action results show as toasts. The table footer only carries state that has to stay visible, like a filtered count.",
+    date: "2026-11-07",
+    commit: "878b79110b",
+    page: "toast"
+  },
+  {
     id: "toast-anatomy",
     title: "Toast layout",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "804076293d",
     page: "dropdown-menu"
-  },
-  {
-    id: "row-focus",
-    title: "Row focus",
-    description:
-      "A row being edited can be marked focused, and every other row in the table fades until the edit ends.",
-    date: "2026-11-07",
-    commit: "0da7164369",
-    page: "table"
   }
 ];
