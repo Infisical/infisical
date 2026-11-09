@@ -890,12 +890,10 @@ export const secretScanningV2QueueServiceFactory = ({
         let findings: TSecretScanningFindings[] = [];
 
         if (findingRows.length) {
-          findings = await secretScanningV2DAL.findings.upsert(
-            findingRows,
-            ["resourceId", "fingerprint"],
-            tx,
-            ["rule", "secretFindingBlindIndex"]
-          );
+          findings = await secretScanningV2DAL.findings.upsert(findingRows, ["resourceId", "fingerprint"], tx, [
+            "rule",
+            "secretFindingBlindIndex"
+          ]);
         }
 
         // Same guard as the full scan: a scan the reaper already failed keeps that outcome.
