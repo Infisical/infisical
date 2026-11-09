@@ -207,7 +207,10 @@ export const ACCOUNT_TYPE_CONFIGS = {
     name: "CockroachDB",
     icon: "CockroachDB.png",
     connectionStringSchemes: ["postgres", "postgresql"],
-    connectionDetails: postgresConnectionDetails,
+    connectionDetails: postgresConnectionDetails.extend({
+      port: z.coerce.number().int().min(1).max(65535),
+      sslCertificate: boundedOptionalString(10_240)
+    }),
     credentials: z.object({
       username: z.string().trim().min(1).max(63),
       password: z
