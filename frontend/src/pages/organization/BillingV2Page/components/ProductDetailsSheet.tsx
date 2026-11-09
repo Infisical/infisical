@@ -43,6 +43,7 @@ import {
   SheetTitle,
   Skeleton,
   Tabs,
+  TabsContent,
   TabsList,
   TabsTrigger,
   Toggle
@@ -466,15 +467,13 @@ const EntitlementsSection = ({
 
   return (
     <section className="flex flex-col gap-4" aria-label={entitlementsLabel(prod)}>
-      <div className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-xs font-medium text-accent">{entitlementsLabel(prod)}</span>
-          {selectable.length > 1 && (
-            <span className="text-xs text-muted">Select one to see where it&apos;s used</span>
-          )}
-        </div>
-        {selectable.length > 1 ? (
-          <Tabs value={selected?.key} onValueChange={setSelectedKey}>
+      {selectable.length > 1 ? (
+        <Tabs value={selected?.key} onValueChange={setSelectedKey}>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs font-medium text-accent">{entitlementsLabel(prod)}</span>
+              <span className="text-xs text-muted">Select one to see where it&apos;s used</span>
+            </div>
             <TabsList
               aria-label={entitlementsLabel(prod)}
               className="grid w-full grid-cols-1 gap-1 data-[orientation=horizontal]:h-auto sm:grid-cols-3"
@@ -490,21 +489,31 @@ const EntitlementsSection = ({
                 </TabsTrigger>
               ))}
             </TabsList>
-          </Tabs>
-        ) : (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {dims.map((dim) => (
-              <Item key={dim.key} size="xs">
-                <span className="flex w-full min-w-0 flex-col gap-1.5">
-                  <EntitlementTileContent dim={dim} />
-                </span>
-              </Item>
-            ))}
           </div>
-        )}
-      </div>
-      {selected && (
-        <BreakdownPanel dim={selected} breakdown={breakdown} isEnterprise={isEnterprise} />
+          {selectable.map((dim) => (
+            <TabsContent key={dim.key} value={dim.key}>
+              <BreakdownPanel dim={dim} breakdown={breakdown} isEnterprise={isEnterprise} />
+            </TabsContent>
+          ))}
+        </Tabs>
+      ) : (
+        <>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-accent">{entitlementsLabel(prod)}</span>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {dims.map((dim) => (
+                <Item key={dim.key} size="xs">
+                  <span className="flex w-full min-w-0 flex-col gap-1.5">
+                    <EntitlementTileContent dim={dim} />
+                  </span>
+                </Item>
+              ))}
+            </div>
+          </div>
+          {selected && (
+            <BreakdownPanel dim={selected} breakdown={breakdown} isEnterprise={isEnterprise} />
+          )}
+        </>
       )}
     </section>
   );
