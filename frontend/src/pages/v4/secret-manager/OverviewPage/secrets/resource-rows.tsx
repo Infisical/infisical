@@ -650,6 +650,9 @@ export function KindRow({
         data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
         className={styles.row}
         data-expanded={expanded || undefined}
+        data-has-selection={
+          entries.some((entry) => ctx.selected.includes(selectionKey(entry))) || undefined
+        }
         onClick={() => setExpanded(!expanded)}
       >
         <ExpandCell
