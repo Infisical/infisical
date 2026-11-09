@@ -359,15 +359,10 @@ const getSingleSecretValue = async (
   }
 };
 
-// Many-to-one writes every secret into one AWS secret, so only one-to-one has names to put folders in.
-const preservesFolderStructureInNames = ({ destinationConfig, syncOptions }: TAwsSecretsManagerSyncWithCredentials) =>
-  destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne &&
-  preservesFolderStructure(syncOptions);
-
 export const AwsSecretsManagerSyncFns = {
   syncSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
-    const preserveFolderStructure = preservesFolderStructureInNames(secretSync);
+    const preserveFolderStructure = preservesFolderStructure(secretSync);
 
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
 
@@ -611,7 +606,7 @@ export const AwsSecretsManagerSyncFns = {
   },
   removeSecrets: async (secretSync: TAwsSecretsManagerSyncWithCredentials, payload: TSecretSyncPayload) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
-    const preserveFolderStructure = preservesFolderStructureInNames(secretSync);
+    const preserveFolderStructure = preservesFolderStructure(secretSync);
 
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
 

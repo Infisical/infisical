@@ -232,12 +232,30 @@ const stripSchema = (unprocessedSecretMap: TSecretMap, environment: string, sche
   return strippedMap;
 };
 
-// Only destinations whose schema accepts preserveFolderStructure can store it; every other
-// destination's schema strips it.
-export const preservesFolderStructure = (syncOptions?: {
-  includeAllSubFolders?: boolean;
-  preserveFolderStructure?: boolean;
-}) => Boolean(syncOptions?.includeAllSubFolders && syncOptions?.preserveFolderStructure);
+// Destinations that can write each secret under its folder, given their destination config.
+// Secrets Manager's many-to-one mapping writes every secret into one AWS secret, so it can't.
+const FOLDER_STRUCTURE_DESTINATION_MAP: Partial<
+  Record<SecretSync, (destinationConfig: Record<string, unknown>) => boolean>
+> = {
+  [SecretSync.AWSParameterStore]: () => true,
+  [SecretSync.AWSSecretsManager]: (destinationConfig) =>
+    destinationConfig.mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne
+};
+
+// The save-time duplicate check and the sync jobs both ask this, so a stored option the
+// destination config no longer allows (a Secrets Manager sync switched to many-to-one) is treated
+// as flattening everywhere, and a duplicate name is refused at save rather than failing every run.
+export const preservesFolderStructure = ({
+  destination,
+  destinationConfig,
+  syncOptions
+}: {
+  destination: SecretSync;
+  destinationConfig: unknown;
+  syncOptions?: { includeAllSubFolders?: boolean; preserveFolderStructure?: boolean };
+}) =>
+  Boolean(syncOptions?.includeAllSubFolders && syncOptions?.preserveFolderStructure) &&
+  Boolean(FOLDER_STRUCTURE_DESTINATION_MAP[destination]?.(destinationConfig as Record<string, unknown>));
 
 // Checks if a key matches a schema
 export const matchesSchema = (

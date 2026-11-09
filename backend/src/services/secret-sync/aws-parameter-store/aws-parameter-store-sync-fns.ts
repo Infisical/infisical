@@ -372,7 +372,7 @@ const deleteParametersBatch = async (
 export const AwsParameterStoreSyncFns = {
   syncSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
-    const preserveFolderStructure = preservesFolderStructure(syncOptions);
+    const preserveFolderStructure = preservesFolderStructure(secretSync);
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
 
     if (preserveFolderStructure) assertWithinHierarchyLimit(destinationConfig.path, secretMap);
@@ -523,7 +523,7 @@ export const AwsParameterStoreSyncFns = {
   },
   removeSecrets: async (secretSync: TAwsParameterStoreSyncWithCredentials, payload: TSecretSyncPayload) => {
     const { destinationConfig, syncOptions, environment } = secretSync;
-    const preserveFolderStructure = preservesFolderStructure(syncOptions);
+    const preserveFolderStructure = preservesFolderStructure(secretSync);
     const secretMap = preserveFolderStructure ? payload.mirror() : payload.flatten();
 
     const ssm = await getSSM(secretSync);

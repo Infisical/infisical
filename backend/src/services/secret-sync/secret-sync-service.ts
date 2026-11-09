@@ -688,7 +688,14 @@ export const secretSyncServiceFactory = ({
     // sync including subfolders must flatten its whole subtree to one namespace. Check that it can
     // here, so
     // the sync doesn't get created only to fail immediately on its first run.
-    if (includeAllSubFolders && !preservesFolderStructure(requestedSyncOptions)) {
+    if (
+      includeAllSubFolders &&
+      !preservesFolderStructure({
+        destination: params.destination,
+        destinationConfig: params.destinationConfig,
+        syncOptions: requestedSyncOptions
+      })
+    ) {
       await $assertSyncedSecretsAreFlattenable({
         projectId,
         actorOrgId: actor.orgId,
@@ -947,7 +954,14 @@ export const secretSyncServiceFactory = ({
         includeAllSubFolders
       });
 
-      if (includeAllSubFolders && !preservesFolderStructure(resolvedOptions)) {
+      if (
+        includeAllSubFolders &&
+        !preservesFolderStructure({
+          destination,
+          destinationConfig: params.destinationConfig ?? secretSync.destinationConfig,
+          syncOptions: resolvedOptions
+        })
+      ) {
         await $assertSyncedSecretsAreFlattenable({
           projectId: secretSync.projectId,
           actorOrgId: actor.orgId,

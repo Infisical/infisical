@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/aws"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -137,6 +138,28 @@ func TestAwsSecretsManagerSync_PreserveFolderStructure(t *testing.T) {
 			"DB_URL":       "value-for-/backend",
 			"child/DB_URL": "value-for-/backend/child",
 		}, secretValues(t, cp))
+	})
+
+	t.Run("should refuse and keep one-to-one when an update switches only the mapping to many-to-one over a duplicate key", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `The update carries no syncOptions, so the stored option stays on. Many-to-one
+			writes every secret into one AWS secret, so the sync would flatten the folders, and
+			two secrets with the same name would fail every run.`)
+
+		// Setup
+		proj, conn, _ := setupAWS(t)
+		duplicateUnder(t, proj, "/backend", "DB_URL")
+		s := newAWSSync(t, proj, conn, oneToOne(), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		status, body := s.update(t, map[string]any{"destinationConfig": manyToOne("bundle").config})
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Contains(t, message(body), `"DB_URL" in /backend and /backend/child`)
+		got, err := s.view(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, "one-to-one", got.DestinationConfig["mappingBehavior"])
 	})
 
 	t.Run("should refuse and create nothing when preserving folder structure with many-to-one mapping", func(t *testing.T) {

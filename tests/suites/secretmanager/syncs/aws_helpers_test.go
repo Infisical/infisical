@@ -192,12 +192,13 @@ func awsSyncCount(tt *testing.T, p *fixture.Project, dest awsDestination) int {
 }
 
 type awsSyncView struct {
-	SyncStatus        *string `json:"syncStatus"`
-	LastSyncMessage   *string `json:"lastSyncMessage"`
-	ImportStatus      *string `json:"importStatus"`
-	LastImportMessage *string `json:"lastImportMessage"`
-	RemoveStatus      *string `json:"removeStatus"`
-	LastRemoveMessage *string `json:"lastRemoveMessage"`
+	DestinationConfig map[string]any `json:"destinationConfig"`
+	SyncStatus        *string        `json:"syncStatus"`
+	LastSyncMessage   *string        `json:"lastSyncMessage"`
+	ImportStatus      *string        `json:"importStatus"`
+	LastImportMessage *string        `json:"lastImportMessage"`
+	RemoveStatus      *string        `json:"removeStatus"`
+	LastRemoveMessage *string        `json:"lastRemoveMessage"`
 }
 
 func (s *awsSync) view(ctx context.Context) (awsSyncView, error) {
@@ -288,6 +289,22 @@ func (s *awsSync) importSecrets(tt *testing.T, behavior string) outcome {
 	})
 	require.Equalf(tt, http.StatusOK, status, "importing secrets: %s", apierr.Body(body))
 	return s.await(tt, "the import to finish", func(v awsSyncView) (*string, *string) { return v.ImportStatus, v.LastImportMessage })
+}
+
+// update sends a raw update body, so a test can send one field without the others.
+func (s *awsSync) update(tt *testing.T, body map[string]any) (int, []byte) {
+	tt.Helper()
+	raw, err := json.Marshal(body)
+	require.NoError(tt, err)
+	client := s.proj.Tenant().Admin.API
+	if s.dest.parameterStore {
+		res, uErr := client.UpdateAwsParameterStoreSecretSyncWithBodyWithResponse(tt.Context(), s.ID, "application/json", bytes.NewReader(raw))
+		require.NoError(tt, uErr, "updating a sync")
+		return res.StatusCode(), res.Body
+	}
+	res, uErr := client.UpdateAwsSecretsManagerSecretSyncWithBodyWithResponse(tt.Context(), s.ID, "application/json", bytes.NewReader(raw))
+	require.NoError(tt, uErr, "updating a sync")
+	return res.StatusCode(), res.Body
 }
 
 // removeSecrets deletes what the sync wrote to the destination and returns how it ended.
