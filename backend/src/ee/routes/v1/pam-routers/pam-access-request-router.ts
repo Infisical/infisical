@@ -238,6 +238,20 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         actorOrgId: req.permission.orgId,
         actorAuthMethod: req.permission.authMethod
       });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalPamProjectId,
+        event: {
+          type: EventType.APPROVAL_REQUEST_LIST,
+          metadata: {
+            policyType: ApprovalPolicyType.PamAccess,
+            count: result.requests.length
+          }
+        }
+      });
+
       return result;
     }
   });

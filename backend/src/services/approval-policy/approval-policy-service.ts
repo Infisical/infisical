@@ -2582,10 +2582,13 @@ export const approvalPolicyServiceFactory = ({
     });
     if (!isApprover) return null;
 
-    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId);
+    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId, {
+      status: ApprovalRequestStatus.Pending
+    });
     const candidates = requests.filter((request) => {
-      if (request.status !== ApprovalRequestStatus.Pending) return false;
       if (scopeId && request.scopeId !== scopeId) return false;
+      if ($isRequester(request, actor)) return false;
+      if (isApprovalRequestExpired(request)) return false;
 
       const currentStep = request.steps.find((step) => step.stepNumber === request.currentStep);
       return Boolean(currentStep && $namesActor(currentStep.approvers, actor.id, userGroupIds));
