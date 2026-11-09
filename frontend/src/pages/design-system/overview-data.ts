@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "bulk-action-reason",
+    title: "Blocked bulk actions explain why",
+    description:
+      "A disabled bulk action stays focusable and shows its reason on hover and keyboard focus.",
+    date: "2026-11-07",
+    commit: "f2ee386887",
+    page: "floating-action-bar"
+  },
+  {
     id: "leading-pin",
     title: "Leading pins",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "a843510f1d",
     page: "context-menu"
-  },
-  {
-    id: "error-state",
-    title: "Error and 404 pages",
-    description:
-      "ErrorState gives v4 a quiet Page not found and Something went wrong, inside the shell or full-page when the shell fails.",
-    date: "2026-11-07",
-    commit: "522e7b336a",
-    page: "error-state"
   }
 ];
