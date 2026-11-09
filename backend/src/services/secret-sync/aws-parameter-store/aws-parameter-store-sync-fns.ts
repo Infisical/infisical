@@ -85,9 +85,12 @@ const getFullPath = ({ path, keySchema, environment }: { path: string; keySchema
 const getParameterKey = (name: string, path: string) => (name.startsWith(path) ? name.substring(path.length) : name);
 
 // Each level of a sync's folders becomes a level of the parameter's path, and folders can be nested
-// after the sync is saved, so check every name before writing any rather than failing partway.
+// after the sync is saved, so check every name before writing any rather than failing partway. An
+// empty value is never written, so it can't be too deep.
 const assertWithinHierarchyLimit = (path: string, secretMap: TSecretMap) => {
-  const tooDeep = Object.keys(secretMap).find((key) => `${path}${key}`.split("/").length - 1 > MAX_HIERARCHY_LEVELS);
+  const tooDeep = Object.entries(secretMap).find(
+    ([key, { value }]) => value && `${path}${key}`.split("/").length - 1 > MAX_HIERARCHY_LEVELS
+  )?.[0];
 
   if (tooDeep) {
     throw new SecretSyncError({

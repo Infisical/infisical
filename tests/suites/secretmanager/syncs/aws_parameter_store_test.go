@@ -257,6 +257,46 @@ func TestAwsParameterStoreSync_PreserveFolderStructure(t *testing.T) {
 		require.Equal(t, map[string]string{"/elsewhere/OTHER": "theirs"}, parameterValues(t, cp))
 	})
 
+	t.Run("should fail naming the parameter and write nothing when a secret's folder is too deep for Parameter Store", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `Parameter Store allows 15 levels. "/app/" and 14 folders put the secret at 16.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		deep := tooDeepFolder("/backend")
+		secretmanager.CreateFolder(t, proj, "dev", deep)
+		secretmanager.CreateSecret(t, proj, "dev", "SHALLOW", "v", secretmanager.WithPath("/backend"))
+		secretmanager.CreateSecret(t, proj, "dev", "DEEP", "v", secretmanager.WithPath(deep))
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		got := s.triggerExpectingFailure(t)
+
+		// Assert
+		require.Equal(t, "failed", got.status)
+		require.Contains(t, got.message, "levels deep")
+		require.Empty(t, cp.Parameters(t))
+	})
+
+	t.Run("should sync the rest when only an empty secret's folder is too deep for Parameter Store", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `An empty value is never written, so its depth doesn't matter.`)
+
+		// Setup
+		proj, conn, cp := setupAWS(t)
+		deep := tooDeepFolder("/backend")
+		secretmanager.CreateFolder(t, proj, "dev", deep)
+		secretmanager.CreateSecret(t, proj, "dev", "SHALLOW", "v", secretmanager.WithPath("/backend"))
+		secretmanager.CreateSecret(t, proj, "dev", "DEEP", "", secretmanager.WithPath(deep))
+		s := newAWSSync(t, proj, conn, parameterStorePath("/app/"), fromPath("/backend"), includeSubFolders(), preserveFolders())
+
+		// Action
+		s.trigger(t)
+
+		// Assert
+		require.Equal(t, map[string]string{"/app/SHALLOW": "v"}, parameterValues(t, cp))
+	})
+
 	t.Run("should refuse and create nothing when preserving folder structure without subfolders", func(t *testing.T) {
 		t.Parallel()
 
@@ -272,4 +312,14 @@ func TestAwsParameterStoreSync_PreserveFolderStructure(t *testing.T) {
 		require.Contains(t, message(body), "Preserving folder structure only applies to a sync that includes subfolders")
 		require.Zero(t, awsSyncCount(t, proj, dest))
 	})
+}
+
+// tooDeepFolder is 14 folders below root, one more than fits below a Parameter Store path
+// of "/app/" within the 15-level limit.
+func tooDeepFolder(root string) string {
+	folder := root
+	for i := range 14 {
+		folder = fmt.Sprintf("%s/l%d", folder, i)
+	}
+	return folder
 }
