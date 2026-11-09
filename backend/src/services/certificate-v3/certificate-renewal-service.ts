@@ -117,6 +117,7 @@ import {
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
+  isRenewalNameChange,
   resolveRenewalAlgorithms,
   resolveRenewalAltNames,
   resolveRenewalCustomExtensions,
@@ -1273,6 +1274,19 @@ export const certificateRenewalServiceFactory = ({
           hasStoredKey: Boolean(certificateSecret),
           hasOriginalCsr: Boolean(originalCsr)
         });
+
+        // An external CA may issue the names inside the stored CSR rather than the ones requested, so
+        // a name edit would pass the policy check here and then be ignored by the CA.
+        if (
+          originalCsr &&
+          caType !== CaType.INTERNAL &&
+          isRenewalNameChange({ original: originalCert, requested: certificateRequest })
+        ) {
+          throw new BadRequestError({
+            message:
+              "This renewal reuses the signing request Infisical holds for the certificate's key, and the certificate authority issues the names in that request. To change the common name or alternative names, renew with a CSR that carries them, or with a new key pair."
+          });
+        }
 
         if (keySource !== CertificateRenewalKeySource.New && caType === CaType.INTERNAL && ca) {
           validateCaSupport(ca, "CSR signing");

@@ -95,7 +95,7 @@ Revocation behaves differently. It only takes effect through the issuing authori
 If you generated the certificate's private key yourself, you don't have to give it to Infisical for renewals to keep the same key pair. Paste the certificate signing request (CSR) you generated from that key in **Certificate Signing Request PEM** after you pick the profile. Each renewal, including an automatic one, sends that CSR to the profile's authority, so the renewed certificate carries the public key your servers already use.
 
 - The field appears when the profile is backed by a certificate authority and you haven't pasted a private key
-- Infisical refuses a CSR that wasn't generated from the certificate's private key
+- Infisical refuses a CSR that wasn't generated from the certificate's private key, or that names a domain or address the certificate doesn't
 - Over the API, send the CSR as `csr` to the [Import certificate](/api-reference/endpoints/certificates/import-certificate) endpoint
 - If you imported a certificate without its CSR, [renew it](/documentation/platform/pki/applications/certificate-renewal) once with **Use a CSR**, and later renewals reuse that CSR
 

@@ -1774,7 +1774,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
         privateKeyPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.privateKeyPem),
         chainPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.chainPem),
-        csr: z.string().trim().min(1).max(32768).optional().describe(CERTIFICATES.IMPORT.csr),
+        csr: csrSchema.optional().describe(CERTIFICATES.IMPORT.csr),
 
         friendlyName: z.string().trim().max(255).optional().describe(CERTIFICATES.IMPORT.friendlyName),
         pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId),

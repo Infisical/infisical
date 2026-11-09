@@ -2658,6 +2658,20 @@ describe("CertificateV3Service", () => {
         );
       });
 
+      it("refuses a name change when the external CA would issue the stored CSR's names", async () => {
+        setupKeylessRenewal({ ca: digicertCa, importedCsr: STORED_CSR });
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            renewalKeySource: CertificateRenewalKeySource.Reuse,
+            attributes: { altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "admin.example.com" }] },
+            ...mockActor
+          })
+        ).rejects.toThrow(/issues the names in that request/);
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
+      });
+
       it("refuses to reuse the key pair when Infisical holds no CSR for it either", async () => {
         setupKeylessRenewal({ ca: digicertCa, importedCsr: null });
 

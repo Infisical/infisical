@@ -22,6 +22,7 @@ import {
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
+  isRenewalNameChange,
   resolveRenewalAlgorithms,
   resolveRenewalAltNames,
   resolveRenewalCustomExtensions,
@@ -736,5 +737,46 @@ describe("buildRenewalPreview", () => {
     );
 
     expect(issuerModifiedFields.map((entry) => entry.field)).not.toContain("customExtensions");
+  });
+});
+
+describe("isRenewalNameChange", () => {
+  const issued = { commonName: "web.example.com", altNames: "web.example.com, www.example.com" };
+  const dns = (value: string) => ({ value });
+
+  it("treats the same names in any order or case as unchanged", () => {
+    expect(
+      isRenewalNameChange({
+        original: issued,
+        requested: {
+          commonName: "WEB.example.com",
+          subjectAlternativeNames: [dns("www.example.com"), dns("web.example.com")]
+        }
+      })
+    ).toBe(false);
+  });
+
+  it("flags an added, removed or replaced name", () => {
+    expect(
+      isRenewalNameChange({
+        original: issued,
+        requested: {
+          commonName: "web.example.com",
+          subjectAlternativeNames: [dns("web.example.com"), dns("www.example.com"), dns("api.example.com")]
+        }
+      })
+    ).toBe(true);
+    expect(
+      isRenewalNameChange({
+        original: issued,
+        requested: { commonName: "web.example.com", subjectAlternativeNames: [] }
+      })
+    ).toBe(true);
+    expect(
+      isRenewalNameChange({
+        original: issued,
+        requested: { commonName: "api.example.com", subjectAlternativeNames: [] }
+      })
+    ).toBe(true);
   });
 });

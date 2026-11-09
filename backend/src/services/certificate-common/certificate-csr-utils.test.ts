@@ -133,17 +133,28 @@ describe("assertCsrMatchesCertificate", () => {
 
   const generateKeys = () => crypto.subtle.generateKey(ALG, true, ["sign", "verify"]);
 
-  const buildCsr = async (keys: CryptoKeyPair) =>
-    x509.Pkcs10CertificateRequestGenerator.create({ name: "CN=web.example.com", keys, signingAlgorithm: ALG });
+  const sanExtension = (names: string[]) =>
+    names.length
+      ? [new x509.SubjectAlternativeNameExtension(names.map((value) => ({ type: "dns" as const, value })))]
+      : [];
 
-  const buildCertificate = async (keys: CryptoKeyPair) =>
+  const buildCsr = async (keys: CryptoKeyPair, altNames: string[] = []) =>
+    x509.Pkcs10CertificateRequestGenerator.create({
+      name: "CN=web.example.com",
+      keys,
+      signingAlgorithm: ALG,
+      extensions: sanExtension(altNames)
+    });
+
+  const buildCertificate = async (keys: CryptoKeyPair, altNames: string[] = []) =>
     x509.X509CertificateGenerator.createSelfSigned({
       serialNumber: "01",
       name: "CN=web.example.com",
       notBefore: new Date("2026-01-01"),
       notAfter: new Date("2027-01-01"),
       keys,
-      signingAlgorithm: ALG
+      signingAlgorithm: ALG,
+      extensions: sanExtension(altNames)
     });
 
   it("accepts a CSR generated from the certificate's private key", async () => {
@@ -170,6 +181,25 @@ describe("assertCsrMatchesCertificate", () => {
     const tamperedPem = new x509.Pkcs10CertificateRequest(tampered.buffer).toString("pem");
 
     await expect(assertCsrMatchesCertificate(tamperedPem, certificate)).rejects.toThrow(/signature is invalid/);
+  });
+
+  it("refuses a CSR naming something the certificate doesn't", async () => {
+    const keys = await generateKeys();
+    const [csr, certificate] = await Promise.all([buildCsr(keys, ["admin.example.com"]), buildCertificate(keys)]);
+
+    await expect(assertCsrMatchesCertificate(csr.toString("pem"), certificate)).rejects.toThrow(
+      /includes 'admin.example.com', which the certificate doesn't/
+    );
+  });
+
+  it("accepts a CSR when the CA added names to the certificate at issuance", async () => {
+    const keys = await generateKeys();
+    const [csr, certificate] = await Promise.all([
+      buildCsr(keys),
+      buildCertificate(keys, ["web.example.com", "www.example.com"])
+    ]);
+
+    await expect(assertCsrMatchesCertificate(csr.toString("pem"), certificate)).resolves.toBeUndefined();
   });
 
   it("refuses text that is not a CSR", async () => {

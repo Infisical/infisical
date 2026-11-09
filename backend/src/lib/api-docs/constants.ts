@@ -2505,7 +2505,7 @@ export const CERTIFICATES = {
     certificatePem: "The PEM-encoded leaf certificate.",
     privateKeyPem: "Optional PEM-encoded private key associated with the certificate.",
     chainPem: "Optional PEM-encoded chain of intermediate certificates.",
-    csr: "Optional PEM-encoded certificate signing request generated from the certificate's private key, typically the one it was issued from. Lets renewal reuse the existing key pair, including automatic renewal, without Infisical holding the private key. Requires a profile that issues from a certificate authority, and must carry the certificate's public key.",
+    csr: "Optional PEM-encoded certificate signing request generated from the certificate's private key, typically the one it was issued from. Lets renewal reuse the existing key pair, including automatic renewal, without Infisical holding the private key. Requires a profile that issues from a certificate authority, must carry the certificate's public key, and can't name anything the certificate doesn't.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
     profileId:

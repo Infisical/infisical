@@ -204,6 +204,24 @@ const RENEWAL_ATTRIBUTE_KEYS = Object.keys(RENEWAL_ATTRIBUTES) as (keyof TRenewa
 const suppliedAttributeKeys = (attributes: TRenewalAttributes) =>
   RENEWAL_ATTRIBUTE_KEYS.filter((key) => attributes[key] !== undefined);
 
+const renewalNameSet = (commonName: string | null | undefined, altNames: string[]) =>
+  new Set([commonName ?? "", ...altNames].map((name) => name.trim().toLowerCase()).filter(Boolean));
+
+export const isRenewalNameChange = ({
+  original,
+  requested
+}: {
+  original: { commonName?: string | null; altNames?: string | null };
+  requested: { commonName?: string; subjectAlternativeNames?: { value: string }[] };
+}): boolean => {
+  const before = renewalNameSet(original.commonName, original.altNames ? original.altNames.split(",") : []);
+  const after = renewalNameSet(
+    requested.commonName,
+    (requested.subjectAlternativeNames ?? []).map((san) => san.value)
+  );
+  return before.size !== after.size || [...after].some((name) => !before.has(name));
+};
+
 export const resolveRenewalKeySource = ({
   renewalKeySource,
   csr
