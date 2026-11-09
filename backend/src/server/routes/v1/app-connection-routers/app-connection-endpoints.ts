@@ -11,6 +11,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionInput, TAppConnectionScope } from "@app/services/app-connection/app-connection-types";
+import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TCreateAppConnectionCredentialRotationSchema } from "@app/services/app-connection/credential-rotation/app-connection-credential-rotation-types";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -472,6 +473,11 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
         resolveScope?.(req)
       );
 
+      const useCaseIds =
+        app === AppConnection.AWS && (configuration !== undefined || credentials)
+          ? ((appConnection as TAwsConnection).configuration?.provisioning?.useCases ?? [])
+          : undefined;
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
@@ -482,6 +488,8 @@ export const buildUpdateAppConnectionRoute = <I extends TAppConnectionInput>(
             name,
             description: connectionDescription,
             credentialsUpdated: Boolean(credentials),
+            configurationUpdated: configuration !== undefined,
+            ...(useCaseIds && { useCaseIds }),
             connectionId,
             isPlatformManagedCredentials
           }

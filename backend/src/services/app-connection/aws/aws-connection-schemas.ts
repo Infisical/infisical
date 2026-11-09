@@ -158,7 +158,8 @@ export const UpdateAwsConnectionSchema = z
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AWS).credentials)
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AWS));
+  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AWS))
+  .and(z.object({ configuration: AwsConnectionConfigurationSchema.optional() }));
 
 export const AwsConnectionListItemSchema = z
   .object({

@@ -74,6 +74,7 @@ import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
 import { auth0ConnectionService } from "./auth0/auth0-connection-service";
 import { AwsConnectionConfigurationSchema, ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
+import { doesRoleArnBelongToStack } from "./aws/aws-role-arn-fns";
 import { ValidateAzureADCSConnectionCredentialsSchema } from "./azure-adcs/azure-adcs-connection-schemas";
 import { azureAdcsConnectionService } from "./azure-adcs/azure-adcs-connection-service";
 import { ValidateAzureAppConfigurationConnectionCredentialsSchema } from "./azure-app-configuration";
@@ -1018,6 +1019,39 @@ export const appConnectionServiceFactory = ({
       }
     }
 
+    let configurationToSave = configuration;
+
+    const requestedRoleArn =
+      app === AppConnection.AWS ? (credentials as { roleArn?: string } | undefined)?.roleArn : undefined;
+    if (requestedRoleArn) {
+      const effectiveConfiguration = (configuration ??
+        (await decryptAppConnectionConfiguration({
+          encryptedConfiguration: appConnection.encryptedConfiguration,
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          kmsService
+        }))) as { provisioning?: { partition: string; roleName?: string } | null } | undefined;
+
+      if (effectiveConfiguration?.provisioning) {
+        const existingCredentials = (await decryptAppConnectionCredentials({
+          orgId: appConnection.orgId,
+          projectId: appConnection.projectId,
+          encryptedCredentials: appConnection.encryptedCredentials,
+          kmsService
+        })) as { roleArn?: string };
+
+        if (
+          !doesRoleArnBelongToStack({
+            roleArn: requestedRoleArn,
+            existingRoleArn: existingCredentials.roleArn,
+            provisioning: effectiveConfiguration.provisioning
+          })
+        ) {
+          configurationToSave = { ...effectiveConfiguration, provisioning: null };
+        }
+      }
+    }
+
     try {
       const updateConnection = async (connectionCredentials: TAppConnection["credentials"] | undefined, tx?: Knex) => {
         const encryptedCredentials = connectionCredentials
@@ -1030,9 +1064,9 @@ export const appConnectionServiceFactory = ({
           : undefined;
 
         const encryptedConfiguration =
-          configuration !== undefined
+          configurationToSave !== undefined
             ? await encryptAppConnectionConfiguration({
-                configuration,
+                configuration: configurationToSave,
                 orgId: actor.orgId,
                 kmsService,
                 projectId: appConnection.projectId

@@ -214,6 +214,67 @@ func TestAWSFake_Authentication(t *testing.T) {
 	})
 }
 
+func TestAWSFake_AssumeRole(t *testing.T) {
+	assume := func(t *testing.T, a *account, roleArn string) (int, string) {
+		t.Helper()
+		return a.query(t, aws.STS.Host(), "sts", url.Values{
+			"Action": {"AssumeRole"}, "Version": {"2011-06-15"},
+			"RoleArn": {roleArn}, "RoleSessionName": {"infisical-test"}, "ExternalId": {"org"},
+		})
+	}
+
+	t.Run("should hand back credentials that STS accepts", func(t *testing.T) {
+		// Setup
+		a := newRig(t).account(t)
+		a.cp(t)
+		status, body := assume(t, a, "arn:aws:iam::123456789012:role/infisical")
+		var res struct {
+			Result struct {
+				Credentials struct {
+					AccessKeyID     string `xml:"AccessKeyId"`
+					SecretAccessKey string `xml:"SecretAccessKey"`
+					SessionToken    string `xml:"SessionToken"`
+				} `xml:"Credentials"`
+			} `xml:"AssumeRoleResult"`
+		}
+		require.Equalf(t, http.StatusOK, status, "%s", body)
+		require.NoError(t, xml.Unmarshal([]byte(body), &res))
+		creds := res.Result.Credentials
+		require.NotEmpty(t, creds.AccessKeyID)
+		require.NotEmpty(t, creds.SessionToken)
+
+		// Action
+		identityStatus, identity := a.as(creds.AccessKeyID, creds.SecretAccessKey).callerIdentity(t)
+
+		// Assert
+		require.Equalf(t, http.StatusOK, identityStatus, "%s", identity)
+	})
+
+	t.Run("should refuse a Role ARN that is not a role", func(t *testing.T) {
+		// Setup
+		a := newRig(t).account(t)
+
+		// Action
+		status, body := assume(t, a, "arn:aws:iam::123456789012:user/infisical")
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, status)
+		require.Equal(t, "ValidationError", errorCode(t, body))
+	})
+
+	t.Run("should refuse a request signed with the wrong secret", func(t *testing.T) {
+		// Setup
+		a := newRig(t).account(t)
+
+		// Action
+		status, body := assume(t, a.as(a.id, "not-the-secret"), "arn:aws:iam::123456789012:role/infisical")
+
+		// Assert
+		require.Equal(t, http.StatusForbidden, status)
+		require.Equal(t, "SignatureDoesNotMatch", errorCode(t, body))
+	})
+}
+
 func TestAWSFake_ParameterStore(t *testing.T) {
 	t.Run("should page one level of a path and leave deeper parameters out", func(t *testing.T) {
 		// Setup

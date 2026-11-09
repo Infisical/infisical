@@ -13,5 +13,5 @@ Infisical never calls CloudFormation `UpdateStack`. Its assumed role would need 
 ## Consequences
 
 - The stored use cases are what the user told Infisical, not AWS state. A role changed by hand drifts from the record, so nothing may block a feature on them.
-- Only connections with `configuration.provisioning.launchMethod` set to `launch-stack` are eligible. Saving a different Role ARN clears `provisioning`.
+- Only connections with `configuration.provisioning.launchMethod` set to `launch-stack` are eligible. Saving a different Role ARN clears `provisioning`. The server compares the new Role ARN with the recorded stack: it belongs when it is the Role ARN the connection already holds, or when its partition is the recorded partition, its account is the existing Role ARN's account and its role is `role/<roleName>`. A record without `roleName` cannot be verified, so any Role ARN other than the one already held clears it.
 - Update Stack always points at the current Provisioning template version.

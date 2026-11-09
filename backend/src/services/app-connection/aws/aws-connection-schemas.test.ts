@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   AwsConnectionConfigurationSchema,
   AwsRoleArnInputSchema,
-  CreateAwsConnectionSchema
+  CreateAwsConnectionSchema,
+  UpdateAwsConnectionSchema
 } from "./aws-connection-schemas";
 
 describe("AwsRoleArnInputSchema", () => {
@@ -127,5 +128,40 @@ describe("AwsConnectionConfigurationSchema provisioning region and role name", (
 
   it("accepts a role name using every character IAM allows", () => {
     expect(parse({ roleName: "a+b=c,d.e@f-g_h" }).success).toBe(true);
+  });
+});
+
+describe("UpdateAwsConnectionSchema configuration", () => {
+  const provisioning = {
+    launchMethod: "launch-stack",
+    useCases: ["secrets-manager", "parameter-store"],
+    stackName: "infisical-aws-app-connection-abc123",
+    partition: "aws",
+    templateVersion: "1",
+    region: "eu-west-1",
+    roleName: "infisical-app-connection"
+  };
+
+  it("keeps a configuration sent without credentials", () => {
+    const result = UpdateAwsConnectionSchema.safeParse({ configuration: { provisioning } });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.configuration).toEqual({ provisioning });
+  });
+
+  it("accepts null provisioning to clear it", () => {
+    const result = UpdateAwsConnectionSchema.safeParse({ configuration: { provisioning: null } });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.configuration).toEqual({ provisioning: null });
+  });
+
+  it("rejects provisioning with no use cases", () => {
+    const result = UpdateAwsConnectionSchema.safeParse({
+      configuration: { provisioning: { ...provisioning, useCases: [] } }
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("still accepts an update without configuration", () => {
+    expect(UpdateAwsConnectionSchema.safeParse({ name: "renamed" }).success).toBe(true);
   });
 });
