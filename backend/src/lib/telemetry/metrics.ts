@@ -285,6 +285,11 @@ export const queueJobCounter = infisicalCoreMeter.createCounter("infisical.queue
   unit: "{job}"
 });
 
+export const goSidecarFallbackCounter = infisicalCoreMeter.createCounter("infisical.go_sidecar.fallback.count", {
+  description: "Forwarded reads Node answered itself after the Go sidecar failed, by reason",
+  unit: "{request}"
+});
+
 export const queueJobDurationHistogram = infisicalCoreMeter.createHistogram("infisical.queue.job.duration", {
   description:
     "Queue job processing duration (worker pickup to completion). Skipped on framework-level failures where processedOn is undefined.",

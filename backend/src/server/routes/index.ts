@@ -247,7 +247,7 @@ import { subOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { cronJobFactory } from "@app/lib/cron/cron-job";
@@ -642,7 +642,7 @@ import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
 import { injectIdentity } from "../plugins/auth/inject-identity";
 import { injectPermission } from "../plugins/auth/inject-permission";
 import { goSidecarPlugin } from "../plugins/go-sidecar";
-// import { forwardToGoSidecar } from "../plugins/go-sidecar-forwarding";
+import { forwardToGoSidecar, splitList } from "../plugins/go-sidecar-forwarding";
 import { shadowToGoSidecar } from "../plugins/go-sidecar-shadowing";
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
@@ -5267,11 +5267,19 @@ export const registerRoutes = async (
       sampleRate: envConfig.GO_SIDECAR_SHADOW_SAMPLE_RATE
     });
   }
-  // Forwarding plugin disabled in favor of shadowing
-  // if (envConfig.GOLANG_SIDECAR_URL) {
-  //   logger.info(`Go sidecar is configured: ${envConfig.GOLANG_SIDECAR_URL}`);
-  //   await server.register(forwardToGoSidecar, { sidecarUrl: envConfig.GOLANG_SIDECAR_URL });
-  // }
+  if (envConfig.GOLANG_SIDECAR_URL && envConfig.GO_SIDECAR_FORWARD_ENABLED) {
+    logger.info(`Go sidecar forwarding enabled: ${envConfig.GOLANG_SIDECAR_URL}`);
+    await server.register(forwardToGoSidecar, {
+      sidecarUrl: envConfig.GOLANG_SIDECAR_URL,
+      isDisabled: async () => Boolean(await keyStore.getItem(KeyStorePrefixes.GoSidecarForwardingDisabled)),
+      getSettings: () => ({
+        enabled: envConfig.GO_SIDECAR_FORWARD_ENABLED,
+        enabledRoutes: splitList(envConfig.GO_SIDECAR_FORWARD_ROUTES),
+        orgIds: splitList(envConfig.GO_SIDECAR_FORWARD_ORG_IDS),
+        percent: envConfig.GO_SIDECAR_FORWARD_PERCENT
+      })
+    });
+  }
 
   const shouldForwardWritesToPrimaryInstance = Boolean(envConfig.INFISICAL_PRIMARY_INSTANCE_URL);
   if (shouldForwardWritesToPrimaryInstance) {
