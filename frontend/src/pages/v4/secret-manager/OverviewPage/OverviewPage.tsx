@@ -60,8 +60,13 @@ import {
 import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
+  ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionHoneyTokenActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretFolderActions,
+  ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
@@ -145,6 +150,7 @@ import { CreateSecretSyncSheet } from "./secrets/secret-sync/create-secret-sync-
 import { SecretSyncStatusBadge } from "./secrets/secret-sync/secret-sync-status-badge";
 import type { LocalSecretSync } from "./secrets/secret-sync/sync-model";
 import {
+  type AddNewBlocks,
   AddNewMenu,
   ExportMenu,
   FolderBreadcrumbBar,
@@ -1086,11 +1092,65 @@ export const OverviewPage = () => {
         "create secrets"
       )
     );
-  const createBlock =
+  const deniedEverywhere = (
+    sub: ProjectPermissionSub,
+    action: string,
+    fields: Record<string, unknown> = {}
+  ) =>
     visibleEnvironments.length > 0 &&
-    visibleEnvironments.every((environment) => createDenied(environment.value))
+    visibleEnvironments.every((environment) =>
+      Boolean(
+        blockFor(
+          sub,
+          action,
+          { environment: environment.value, secretPath: path, ...fields },
+          action
+        )
+      )
+    )
       ? "Access denied"
       : undefined;
+  const anySecret = { secretName: "*", secretTags: ["*"] };
+  const createBlock = deniedEverywhere(
+    ProjectPermissionSub.Secrets,
+    ProjectPermissionSecretActions.Create,
+    anySecret
+  );
+  const addBlocks: AddNewBlocks = {
+    secret: createBlock,
+    upload: createBlock,
+    folder: deniedEverywhere(ProjectPermissionSub.SecretFolders, ProjectPermissionActions.Create),
+    import: deniedEverywhere(ProjectPermissionSub.SecretImports, ProjectPermissionActions.Create),
+    dynamic: deniedEverywhere(
+      ProjectPermissionSub.DynamicSecrets,
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      { metadata: ["*"] }
+    ),
+    rotation: deniedEverywhere(
+      ProjectPermissionSub.SecretRotation,
+      ProjectPermissionSecretRotationActions.Create
+    ),
+    honey: deniedEverywhere(
+      ProjectPermissionSub.HoneyTokens,
+      ProjectPermissionHoneyTokenActions.Create
+    ),
+    copy:
+      deniedEverywhere(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.DescribeSecret,
+        anySecret
+      ) &&
+      deniedEverywhere(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.DescribeAndReadValue,
+        anySecret
+      ) &&
+      deniedEverywhere(ProjectPermissionSub.SecretFolders, ProjectPermissionActions.Read),
+    sync: deniedEverywhere(
+      ProjectPermissionSub.SecretSyncs,
+      ProjectPermissionSecretSyncActions.Create
+    )
+  };
   const canQuickAdd =
     !writeBlock &&
     !loading &&
@@ -1552,7 +1612,7 @@ export const OverviewPage = () => {
                   />
                   <AddNewMenu
                     writeBlock={writeBlock}
-                    createBlock={createBlock}
+                    accessBlocks={addBlocks}
                     single={single}
                     available={Object.fromEntries(
                       Object.keys(addFlows).map((kind) => [kind, true])
