@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
+import { isValidAwsRegion } from "@app/lib/aws/region";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   BaseAppConnectionSchema,
@@ -80,7 +81,19 @@ export const AwsConnectionProvisioningSchema = z.object({
     .trim()
     .regex(/^[a-z][a-z0-9-]{0,31}$/, "Partition must be a valid AWS partition label")
     .describe("The AWS partition the stack was launched in."),
-  templateVersion: z.string().trim().min(1).max(64).describe("The version of the Provisioning template.")
+  templateVersion: z.string().trim().min(1).max(64).describe("The version of the Provisioning template."),
+  region: z
+    .string()
+    .trim()
+    .refine(isValidAwsRegion, "Region must be a valid AWS region, for example us-east-1")
+    .optional()
+    .describe("The AWS region the CloudFormation stack lives in."),
+  roleName: z
+    .string()
+    .trim()
+    .regex(/^[\w+=,.@-]{1,64}$/, "Role name must be a valid IAM role name of up to 64 characters")
+    .optional()
+    .describe("The name of the IAM role the stack created.")
 });
 
 export const AwsConnectionConfigurationSchema = z.object({

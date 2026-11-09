@@ -129,9 +129,8 @@ export const AwsConnectionForm = ({
       <form
         onSubmit={handleSubmit((formData) => {
           if (provisioning && formData.method === AwsConnectionMethod.AssumeRole) {
-            const { roleName, ...metadata } = provisioning;
-            if (formData.credentials.roleArn.endsWith(`:role/${roleName}`)) {
-              return onSubmit({ ...formData, configuration: { provisioning: metadata } });
+            if (formData.credentials.roleArn.endsWith(`:role/${provisioning.roleName}`)) {
+              return onSubmit({ ...formData, configuration: { provisioning } });
             }
           }
           return onSubmit(formData);

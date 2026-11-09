@@ -38,6 +38,7 @@ export type TAwsProvisioningMetadata = {
   stackName: string;
   partition: string;
   templateVersion: string;
+  region: string;
   roleName: string;
 };
 
@@ -163,6 +164,7 @@ const LaunchStackBody = ({
       stackName: template.stackName,
       partition: template.partition,
       templateVersion: template.templateVersion,
+      region: template.region,
       roleName
     });
     window.open(template.launchUrl, "_blank", "noopener,noreferrer");

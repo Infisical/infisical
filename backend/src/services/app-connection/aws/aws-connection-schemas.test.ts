@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { AwsConnectionConfigurationSchema, AwsRoleArnInputSchema, CreateAwsConnectionSchema } from "./aws-connection-schemas";
+import {
+  AwsConnectionConfigurationSchema,
+  AwsRoleArnInputSchema,
+  CreateAwsConnectionSchema
+} from "./aws-connection-schemas";
 
 describe("AwsRoleArnInputSchema", () => {
   it.each([
@@ -76,5 +80,52 @@ describe("CreateAwsConnectionSchema", () => {
     expect(bad({ stackName: "1bad name" })).toBe(false);
     expect(bad({ launchMethod: "manual" })).toBe(false);
     expect(bad({ useCases: [] })).toBe(false);
+  });
+});
+
+describe("AwsConnectionConfigurationSchema provisioning region and role name", () => {
+  const parse = (provisioning: object) =>
+    AwsConnectionConfigurationSchema.safeParse({
+      provisioning: {
+        launchMethod: "launch-stack",
+        useCases: ["secrets-manager"],
+        stackName: "infisical-aws-app-connection-abc123",
+        partition: "aws",
+        templateVersion: "1",
+        ...provisioning
+      }
+    });
+
+  it("keeps the region and role name it is given", () => {
+    const result = parse({ region: "eu-west-1", roleName: "infisical-app-connection" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.provisioning?.region).toBe("eu-west-1");
+      expect(result.data.provisioning?.roleName).toBe("infisical-app-connection");
+    }
+  });
+
+  it("stays valid, with neither field set, when both are omitted", () => {
+    const result = parse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.provisioning).not.toHaveProperty("region");
+      expect(result.data.provisioning).not.toHaveProperty("roleName");
+    }
+  });
+
+  it.each(["", "eu west 1", "EU-WEST-1", "us-east", "s3.amazonaws.com", "a".repeat(21)])(
+    "rejects the region %j",
+    (region) => {
+      expect(parse({ region }).success).toBe(false);
+    }
+  );
+
+  it.each(["", "has space", "role/with/slash", "a".repeat(65)])("rejects the role name %j", (roleName) => {
+    expect(parse({ roleName }).success).toBe(false);
+  });
+
+  it("accepts a role name using every character IAM allows", () => {
+    expect(parse({ roleName: "a+b=c,d.e@f-g_h" }).success).toBe(true);
   });
 });
