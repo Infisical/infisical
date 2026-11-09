@@ -84,6 +84,26 @@ export function ListRow({
   if (disabled && anchor) disabledRole = "link";
   else if (disabled && button) disabledRole = "button";
   const below = context?.actionsPlacement === "below" && context.size !== "sm";
+  const [pressed, setPressed] = React.useState(false);
+  React.useEffect(() => {
+    if (!pressed) return undefined;
+    const release = () => setPressed(false);
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
+    window.addEventListener("keyup", release);
+    window.addEventListener("blur", release);
+    return () => {
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
+      window.removeEventListener("keyup", release);
+      window.removeEventListener("blur", release);
+    };
+  }, [pressed]);
+  const press = {
+    onPointerDown: (event: React.PointerEvent) => {
+      if (event.button === 0) setPressed(true);
+    }
+  };
   return (
     <li
       className={styles.listRow}
@@ -94,6 +114,7 @@ export function ListRow({
       data-resolved={resolved || undefined}
       data-size={context?.size}
       data-interactive={(!disabled && Boolean(anchor || button)) || undefined}
+      data-pressed={pressed || undefined}
     >
       {context?.multiple && (
         <span className={styles.rowCheck}>
@@ -121,6 +142,7 @@ export function ListRow({
               className={styles.rowTitle}
               title={fullTitle}
               onClick={click}
+              {...press}
               aria-current={current ? "page" : undefined}
               data-list-target
             >
@@ -132,6 +154,7 @@ export function ListRow({
               title={fullTitle}
               href={href}
               onClick={click}
+              {...press}
               aria-current={current ? "page" : undefined}
               data-list-target
             >
@@ -143,6 +166,10 @@ export function ListRow({
               className={styles.rowTitle}
               title={fullTitle}
               onClick={click}
+              {...press}
+              onKeyDown={(event) => {
+                if (event.key === " ") setPressed(true);
+              }}
               aria-current={current ? "true" : undefined}
               data-list-target
             >

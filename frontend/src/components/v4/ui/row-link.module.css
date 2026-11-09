@@ -59,16 +59,16 @@
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);
   outline-offset: calc(-1 * var(--v4-size-focus-ring));
 }
-:global(tr):has(> td a.stretched),
-:global([data-slot="card"]):has(a.stretched) {
+:global(tr)[data-stretched-link],
+:global([data-slot="card"])[data-stretched-link] {
   position: relative;
   cursor: pointer;
 }
-:global([data-slot="card"]):has(.stretched):hover {
+:global([data-slot="card"])[data-stretched-link]:hover {
   background-image: linear-gradient(var(--v4-action-ghost-hover), var(--v4-action-ghost-hover));
 }
 /* :where keeps this at zero specificity, so a control that positions itself absolutely keeps its own layout. */
-:where(:global(tr):has(> td .stretched), :global([data-slot="card"]):has(.stretched))
+:where(:global(tr)[data-stretched-link], :global([data-slot="card"])[data-stretched-link])
   :where(
     button,
     input,

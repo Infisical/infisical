@@ -645,11 +645,11 @@
     var(--v4-tint)
   );
 }
-.listRow[data-interactive]:not([data-selected], [data-current]):has(.rowTitle:active) {
+.listRow[data-interactive][data-pressed]:not([data-selected], [data-current]) {
   background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-press), transparent);
 }
 :where(.listShell[data-variant="segmented"])
-  .listRow[data-interactive]:not([data-selected], [data-current]):has(.rowTitle:active) {
+  .listRow[data-interactive][data-pressed]:not([data-selected], [data-current]) {
   background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-press), var(--v4-tint));
 }
 .listRow[data-resolved] {
@@ -906,7 +906,7 @@ button.rowTitle::after {
 }
 /* One row focus ring: an overlay inside the row box, above pinned cells and clear of neighbouring rows' borders. */
 .tree [role="treeitem"]:focus-visible > .treeRow::after,
-.listRow:has(.rowTitle:focus-visible)::after {
+.rowTitle:focus-visible::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -1288,12 +1288,12 @@ tbody > .nativeTableRow[data-loading] {
 .tableScroll thead > .nativeTableRow {
   background-color: transparent;
 }
-.nativeTableRow:is(:hover, :has([aria-expanded="true"]), [data-menu-open]):not(
+.nativeTableRow:is(:hover, [data-expanded-within], [data-menu-open]):not(
     thead > *,
     [data-loading],
     [data-spacer],
     [data-row-kind],
-    :has(> td:only-child[colspan])
+    [data-full-width]
   ) {
   --v4-table-row-hover: var(--v4-hover);
 }
@@ -1301,39 +1301,31 @@ tbody > .nativeTableRow[data-loading] {
   --v4-table-row-state: var(--v4-selected-surface);
 }
 /* filter, not opacity, so the dim composes with opacity reveals inside the cells; a cell holding only text dims itself, since text has no element to filter. */
-:where(tbody > .nativeTableRow > td:not(:has(> *)), tbody > .nativeTableRow > td > *) {
+:where(tbody > .nativeTableRow > td[data-text-only], tbody > .nativeTableRow > td > *) {
   transition: filter var(--v4-duration-moderate) var(--v4-ease-fade);
 }
 /* A row that holds the focused row in a nested table, and the row it expands from, keep full strength. */
 :where(
-    tbody:has([data-focused])
-      > .nativeTableRow:not(
-        [data-focused],
-        :has([data-focused]),
-        :has(+ .nativeTableRow [data-focused])
-      )
+    tbody[data-has-focus]
+      > .nativeTableRow:not([data-focused], [data-contains-focus], [data-focus-anchor])
   )
-  > td:not(:has(> *), [data-pin], .tableActions),
+  > td[data-text-only]:not([data-pin], .tableActions),
 :where(
-    tbody:has([data-focused])
-      > .nativeTableRow:not(
-        [data-focused],
-        :has([data-focused]),
-        :has(+ .nativeTableRow [data-focused])
-      )
+    tbody[data-has-focus]
+      > .nativeTableRow:not([data-focused], [data-contains-focus], [data-focus-anchor])
   )
   > td
   > * {
   filter: opacity(var(--v4-opacity-row-dim));
 }
 @media (hover: hover) {
-  tbody > .nativeTableRow:hover > td:not(:has(> *)),
+  tbody > .nativeTableRow:hover > td[data-text-only],
   tbody > .nativeTableRow:hover > td > * {
     filter: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  :where(tbody > .nativeTableRow > td:not(:has(> *)), tbody > .nativeTableRow > td > *) {
+  :where(tbody > .nativeTableRow > td[data-text-only], tbody > .nativeTableRow > td > *) {
     transition: none;
   }
 }
@@ -1426,21 +1418,15 @@ th[data-pin="start"] {
 :is([data-scroll-start-x] > table, [data-scroll-start-x] > .nativeTableContainer > table)
   > *
   > tr
-  > [data-pin="start"]:not(.tableSelectionCell, :has(~ [data-pin="start"])) {
+  > [data-pin="start"][data-pin-edge] {
   box-shadow: inset calc(-1 * var(--v4-size-control-border)) 0 0 var(--v4-line-soft);
 }
 /* Leading pinned cells are the start edge, so the start fade would only wash them out. */
-:is(.tableScroll, .nativeTableContainer)[data-scroll-fade][data-scroll-start-x]:has(
-    > table > * > tr > [data-pin="start"],
-    > .nativeTableContainer > table > * > tr > [data-pin="start"]
-  ) {
+:is(.tableScroll, .nativeTableContainer)[data-scroll-fade][data-scroll-start-x][data-has-start-pin] {
   --v4-fade-x-start: 0px;
 }
 /* A full-width cell keeps its content in the scroll container's visible width, sized from the container, so a nested table never scrolls out of view. */
-:is(.tableScroll, .nativeTableContainer):has(
-  > table > tbody > tr > [data-pin="viewport"],
-  > .nativeTableContainer > table > tbody > tr > [data-pin="viewport"]
-) {
+:is(.tableScroll, .nativeTableContainer)[data-has-viewport-cell] {
   container-type: inline-size;
 }
 td[data-pin="viewport"] {

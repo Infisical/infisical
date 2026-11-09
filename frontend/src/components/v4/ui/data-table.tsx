@@ -443,6 +443,7 @@ export function DataTable<Row>({
     <div
       ref={attachScroll}
       data-scroll-fade="x"
+      data-has-start-pin={leading || undefined}
       className={cn(!embedded && frame.frame, styles.tableScroll, containerClassName)}
       data-virtual={windowed || undefined}
       style={tableStyle}
