@@ -2,6 +2,7 @@ import { TCertificateAuthoritySecret } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { resolveCsrSignatureAlgorithmForCaKey } from "@app/services/certificate-common/certificate-issuance-utils";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
@@ -124,8 +125,11 @@ export const caKeySourceServiceFactory = (deps: TCaKeySourceServiceFactoryDep) =
     csrSignatureAlgorithm?: string;
   }): Promise<string | undefined> => {
     const caSecret = await deps.certificateAuthoritySecretDAL.findOne({ caId });
-    if (!caSecret || !isExternalCaKeySource(caSecret.keySource)) return csrSignatureAlgorithm;
-    return $getProvider(caSecret.keySource).requiredSignatureAlgorithm?.(keyAlgorithm) ?? csrSignatureAlgorithm;
+    const requiredSignatureAlgorithm =
+      caSecret && isExternalCaKeySource(caSecret.keySource)
+        ? $getProvider(caSecret.keySource).requiredSignatureAlgorithm?.(keyAlgorithm)
+        : undefined;
+    return requiredSignatureAlgorithm ?? resolveCsrSignatureAlgorithmForCaKey(csrSignatureAlgorithm, keyAlgorithm);
   };
 
   return { assertCanUse, createKey, buildSigner, describeKey, prepareKeyReleases, resolveCsrSignatureAlgorithm };

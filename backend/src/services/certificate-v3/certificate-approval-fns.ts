@@ -186,7 +186,7 @@ const buildRevalidationRequest = ({
   if (csr) {
     const { keyAlgorithm: csrKeyAlg, signatureAlgorithm: csrSigAlg } = extractAlgorithmsFromCSR(csr);
     mappedRequest.keyAlgorithm = csrKeyAlg;
-    mappedRequest.signatureAlgorithm = csrSigAlg;
+    mappedRequest.signatureAlgorithm = (signatureAlgorithm as typeof csrSigAlg | null) || csrSigAlg;
   }
   // The stored value wins over anything reconstructed from the CSR or profile defaults.
   if (customExtensions?.length) {
@@ -579,7 +579,8 @@ export const certificateApprovalServiceFactory = (
     );
     const mappedReconstructedRequest = mapEnumsForValidation(reconstructedRequest);
     mappedReconstructedRequest.keyAlgorithm = reconstructedKeyAlg;
-    mappedReconstructedRequest.signatureAlgorithm = reconstructedSigAlg;
+    mappedReconstructedRequest.signatureAlgorithm =
+      (certRequest.signatureAlgorithm as typeof reconstructedSigAlg | null) || reconstructedSigAlg;
     if (certRequest.notAfter) {
       mappedReconstructedRequest.notBefore = certRequest.notBefore || undefined;
       mappedReconstructedRequest.notAfter = certRequest.notAfter;

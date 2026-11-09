@@ -65,6 +65,7 @@ import {
   getEffectiveAlgorithms,
   isValidRenewalTiming,
   resolveEffectiveApiConfig,
+  resolveCsrSignatureAlgorithmForCaKey,
   resolveRenewedCertificateRenewBeforeDays,
   validateAlgorithmCompatibility,
   validateCaSupport
@@ -1171,10 +1172,22 @@ export const certificateRenewalServiceFactory = ({
           }
         }
 
+        const caKeyAlgorithm = caType === CaType.INTERNAL ? ca?.internalCa?.keyAlgorithm : undefined;
+        const issuableCsrRenewalRequest =
+          csrRenewalRequest && caKeyAlgorithm
+            ? {
+                ...csrRenewalRequest,
+                signatureAlgorithm: resolveCsrSignatureAlgorithmForCaKey(
+                  csrRenewalRequest.signatureAlgorithm,
+                  caKeyAlgorithm as CertKeyAlgorithm
+                ) as CertSignatureAlgorithm
+              }
+            : csrRenewalRequest;
+
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
           originalCert,
           policy,
-          csrRenewalRequest,
+          csrRenewalRequest: issuableCsrRenewalRequest,
           issuedFrom: originatingRequest,
           attributes,
           keySource,

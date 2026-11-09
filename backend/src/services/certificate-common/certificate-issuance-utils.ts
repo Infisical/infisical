@@ -198,6 +198,29 @@ export const isSignatureAlgorithmCompatibleWithCaKey = (
   return false;
 };
 
+export const getDefaultSignatureAlgorithmForCaKey = (caKeyAlgorithm: CertKeyAlgorithm): CertSignatureAlgorithm => {
+  if (isPqcAlgorithm(caKeyAlgorithm)) return caKeyAlgorithm as unknown as CertSignatureAlgorithm;
+
+  const { name, hash } = keyAlgorithmToAlgCfg(caKeyAlgorithm);
+  const keyType = name === "ECDSA" ? CertKeyType.ECDSA : CertKeyType.RSA;
+  return `${keyType}-${hash.replace("-", "")}` as CertSignatureAlgorithm;
+};
+
+/**
+ * A CSR's own signature only proves possession of the CSR's key, so it says nothing about how the CA
+ * can sign. Keep it when the CA can produce it (it carries the requester's hash preference) and
+ * otherwise sign with the CA key's default.
+ */
+export const resolveCsrSignatureAlgorithmForCaKey = (
+  csrSignatureAlgorithm: string | undefined,
+  caKeyAlgorithm: CertKeyAlgorithm
+): string => {
+  if (csrSignatureAlgorithm && isSignatureAlgorithmCompatibleWithCaKey(csrSignatureAlgorithm, caKeyAlgorithm)) {
+    return csrSignatureAlgorithm;
+  }
+  return getDefaultSignatureAlgorithmForCaKey(caKeyAlgorithm);
+};
+
 /**
  * Validates that the CA's key algorithm is compatible with the template's signature algorithms
  */
