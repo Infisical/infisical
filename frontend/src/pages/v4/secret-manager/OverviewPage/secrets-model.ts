@@ -146,6 +146,8 @@ export const scopeMatches = (resource: Scope, scope: Scope) =>
   resource.path === scope.path;
 export const resourceKey = (resource: Pick<Resource, "kind" | "name">) =>
   `${resource.kind}:${resource.name}`;
+export const selectionKey = (resource: Pick<Resource, "kind" | "name" | "environment">) =>
+  `${resourceKey(resource)}@${resource.environment}`;
 export const readableValue = (secret: Secret) =>
   secret.value.status === "present" ? secret.value.value : undefined;
 export const versionsOf = (secret: Secret): SecretVersion[] => secret.versions ?? [];

@@ -17,10 +17,10 @@ import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { type RowContextMenu, TableCell } from "@app/components/v4/ui/table";
+import { type RowContextMenu, TableCell, TableHead } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
-import type { Resource, ResourceKind } from "../secrets-model";
+import { type Resource, type ResourceKind, selectionKey } from "../secrets-model";
 import type { PendingType } from "./batch/pending";
 import type { useManagedBlock } from "./row-actions/permissions";
 import type { RowAction } from "./row-actions/types";
@@ -42,7 +42,7 @@ export type RowContext = {
   recent: string[];
   expanded: string[];
   onExpand: (key: string, open: boolean) => void;
-  onToggleSelect: (key: string) => void;
+  onToggleSelect: (keys: string[]) => void;
   report: (message: string) => void;
   onAction: (action: RowAction) => void;
   pending?: Record<string, PendingType>;
@@ -187,46 +187,109 @@ export function PendingMenuItems({ id, ctx }: { id: string; ctx: RowContext }) {
   );
 }
 
+export const selectableKinds: ResourceKind[] = ["secret", "folder", "rotation"];
+
+const selectionState = (keys: string[], selected: string[]) => {
+  const count = keys.filter((key) => selected.includes(key)).length;
+  return { all: count > 0 && count === keys.length, some: count > 0 && count < keys.length };
+};
+
+function SelectionCheckbox({
+  keys,
+  label,
+  ctx
+}: {
+  keys: string[];
+  label: string;
+  ctx: RowContext;
+}) {
+  const { all, some } = selectionState(keys, ctx.selected);
+  return (
+    <Checkbox
+      aria-label={label}
+      checked={all}
+      indeterminate={some}
+      disabled={ctx.selectionDisabled || !keys.length}
+      onClick={(event) => event.stopPropagation()}
+      onCheckedChange={() => ctx.onToggleSelect(keys)}
+    />
+  );
+}
+
 export function SelectCell({
   kind,
-  rowKey,
+  keys,
   label,
   ctx,
   selectable,
-  alternate,
-  overlay,
-  pinned
+  overlay
 }: {
   kind: ResourceKind;
-  rowKey: string;
+  keys: string[];
   label: string;
   ctx: RowContext;
   selectable: boolean;
-  alternate?: ReactNode;
   overlay?: KindOverlay;
-  pinned?: boolean;
 }) {
-  const isSelected = ctx.selected.includes(rowKey);
+  const { all, some } = selectionState(keys, ctx.selected);
   return (
     <TableCell selection divider={false}>
-      <span className={styles.iconSlot} data-selected={isSelected || pinned || undefined}>
+      <span className={styles.iconSlot} data-selected={all || some || undefined}>
         <span className={styles.kindGlyph}>
           <KindIcon kind={kind} overlay={overlay} />
         </span>
-        {alternate && <span className={styles.rowCheck}>{alternate}</span>}
-        {selectable && !alternate && (
+        {selectable && (
           <span className={styles.rowCheck}>
-            <Checkbox
-              aria-label={`Select ${label}`}
-              checked={isSelected}
-              disabled={ctx.selectionDisabled}
-              onClick={(event) => event.stopPropagation()}
-              onCheckedChange={() => ctx.onToggleSelect(rowKey)}
-            />
+            <SelectionCheckbox keys={keys} label={`Select ${label}`} ctx={ctx} />
           </span>
         )}
       </span>
     </TableCell>
+  );
+}
+
+export function ChildSelectCell({
+  resource,
+  label,
+  ctx
+}: {
+  resource?: Resource;
+  label: string;
+  ctx: RowContext;
+}) {
+  if (!resource || !selectableKinds.includes(resource.kind))
+    return <TableCell selection divider={false} />;
+  const key = selectionKey(resource);
+  return (
+    <TableCell selection divider={false}>
+      <span className={styles.iconSlot} data-selected={ctx.selected.includes(key) || undefined}>
+        <span className={styles.rowCheck}>
+          <SelectionCheckbox keys={[key]} label={`Select ${label}`} ctx={ctx} />
+        </span>
+      </span>
+    </TableCell>
+  );
+}
+
+export function ChildSelectHead({
+  resources,
+  label,
+  ctx
+}: {
+  resources: Resource[];
+  label: string;
+  ctx: RowContext;
+}) {
+  const keys = resources
+    .filter((resource) => selectableKinds.includes(resource.kind))
+    .map(selectionKey);
+  if (!keys.length) return <TableHead selection divider={false} />;
+  return (
+    <TableHead selection divider={false}>
+      <span className={styles.iconSlot}>
+        <SelectionCheckbox keys={keys} label={`Select ${label} in every environment`} ctx={ctx} />
+      </span>
+    </TableHead>
   );
 }
 
@@ -252,5 +315,23 @@ export function ExpandToggle({
       <Icon name={expanded ? "chev-down" : "chev-right"} />
       <span className="sr-only">{`${expanded ? "Collapse" : "Expand"} ${label}`}</span>
     </Button>
+  );
+}
+
+export function ExpandCell({
+  expanded,
+  label,
+  onToggle
+}: {
+  expanded: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
+  return (
+    <TableCell selection divider={false}>
+      <span className={styles.iconSlot}>
+        <ExpandToggle expanded={expanded} label={label} onToggle={onToggle} />
+      </span>
+    </TableCell>
   );
 }

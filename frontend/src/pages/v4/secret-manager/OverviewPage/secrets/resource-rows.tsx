@@ -50,10 +50,14 @@ import {
   readableValue,
   type Resource,
   type ResourceKind,
-  type Secret
+  type Secret,
+  selectionKey
 } from "../secrets-model";
 import {
-  ExpandToggle,
+  ChildSelectCell,
+  ChildSelectHead,
+  ExpandCell,
+  KindIcon,
   PendingBadge,
   PendingMenuItems,
   presenceOf,
@@ -61,6 +65,7 @@ import {
   type RowActionProps,
   type RowContext,
   SelectCell,
+  selectableKinds,
   StatusCell,
   stopRowClick
 } from "./overview-cells";
@@ -520,12 +525,14 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
 
 function EnvironmentTable({
   ctx,
+  label,
   entries,
   render,
   actions,
   valueHeader
 }: {
   ctx: RowContext;
+  label: string;
   entries: Resource[];
   render: (entry: Resource) => ReactNode;
   actions: (entry: Resource) => RowActionProps;
@@ -537,7 +544,7 @@ function EnvironmentTable({
         <Table className={styles.nestedTable}>
           <TableHeader>
             <TableRow>
-              <TableHead selection divider={false} />
+              <ChildSelectHead resources={entries} label={label} ctx={ctx} />
               <TableHead className={styles.envName}>Environment</TableHead>
               <TableHead>{valueHeader}</TableHead>
               <TableActionsHead slots={ROW_ACTION_SLOTS} />
@@ -554,7 +561,11 @@ function EnvironmentTable({
                 return (
                   <RowContextMenu key={environment.value} {...rowActions}>
                     <TableRow className={styles.row}>
-                      <TableCell selection divider={false} />
+                      <ChildSelectCell
+                        resource={entry}
+                        label={`${label} in ${environment.label}`}
+                        ctx={ctx}
+                      />
                       <TableCell className={styles.envName}>{environment.label}</TableCell>
                       <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
                       <TableActionsCell slots={ROW_ACTION_SLOTS}>
@@ -607,10 +618,10 @@ export function KindRow({
         >
           <SelectCell
             kind={kind}
-            rowKey={rowKey}
+            keys={[selectionKey(first)]}
             label={first.name}
             ctx={ctx}
-            selectable={kind === "rotation"}
+            selectable={selectableKinds.includes(kind)}
           />
           <TableCell colSpan={2} className={styles.nameCell}>
             {line(first, true)}
@@ -630,23 +641,16 @@ export function KindRow({
         data-expanded={expanded || undefined}
         onClick={() => setExpanded(!expanded)}
       >
-        <SelectCell
-          kind={kind}
-          rowKey={rowKey}
+        <ExpandCell
+          expanded={expanded}
           label={first.name}
-          ctx={ctx}
-          selectable={false}
-          pinned={expanded}
-          alternate={
-            <ExpandToggle
-              expanded={expanded}
-              label={first.name}
-              onToggle={() => setExpanded(!expanded)}
-            />
-          }
+          onToggle={() => setExpanded(!expanded)}
         />
         <TableCell className={styles.nameCell}>
           <div className={styles.nameLine}>
+            <span className={styles.nameKind}>
+              <KindIcon kind={kind} />
+            </span>
             <span className={styles.truncate}>{first.name}</span>
             {!expanded && <span className={styles.push}>{spec.flag?.(entries)}</span>}
           </div>
@@ -663,6 +667,7 @@ export function KindRow({
       {expanded && (
         <EnvironmentTable
           ctx={ctx}
+          label={first.name}
           entries={entries}
           render={(entry) => line(entry, false)}
           actions={actions}
@@ -753,7 +758,13 @@ export function FolderRow({
         data-pending={ctx.pending?.[first.id]}
         className={styles.row}
       >
-        <SelectCell kind="folder" rowKey={rowKey} label={first.name} ctx={ctx} selectable />
+        <SelectCell
+          kind="folder"
+          keys={entries.map(selectionKey)}
+          label={first.name}
+          ctx={ctx}
+          selectable
+        />
         <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
           <div className={styles.nameLine}>
             <RowLink
@@ -947,13 +958,6 @@ export function ImportRow({
       </>
     ) : undefined
   };
-  const toggle = (
-    <ExpandToggle
-      expanded={expanded}
-      label={`secret import ${first.source.path}`}
-      onToggle={() => setExpanded(!expanded)}
-    />
-  );
   const keys = ctx.single && expanded ? sourceSecrets(first) : [];
   return (
     <>
@@ -964,17 +968,16 @@ export function ImportRow({
           data-expanded={expanded || undefined}
           onClick={() => setExpanded(!expanded)}
         >
-          <SelectCell
-            kind="import"
-            rowKey={rowKey}
-            label={first.name}
-            ctx={ctx}
-            selectable={false}
-            pinned={expanded}
-            alternate={toggle}
+          <ExpandCell
+            expanded={expanded}
+            label={`secret import ${first.source.path}`}
+            onToggle={() => setExpanded(!expanded)}
           />
           <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
             <div className={styles.nameLine}>
+              <span className={styles.nameKind}>
+                <KindIcon kind="import" />
+              </span>
               {label}
               {first.revoked && (
                 <span className={styles.push}>
