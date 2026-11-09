@@ -431,7 +431,11 @@ export function QuickAddRow({
           }}
         />
       </TableCell>
-      <TableCell colSpan={colSpan} className={styles.valueCell}>
+      <TableCell
+        pin={multiple ? "viewport" : undefined}
+        colSpan={colSpan}
+        className={styles.valueCell}
+      >
         <div className={styles.nameLine}>
           <SecretInput
             className={styles.inlineInput}
