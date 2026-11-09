@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "row-actions-lazy",
+    title: "Lazy row actions",
+    description:
+      "Row actions can render as plain buttons until a row is hovered or focused, and pages can open the More menu themselves.",
+    date: "2026-11-07",
+    commit: "b7ba7061e7",
+    page: "table"
+  },
+  {
     id: "row-context-lazy",
     title: "Lighter row menus",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "8796ac7b20",
     page: "loader"
-  },
-  {
-    id: "preview-v4",
-    title: "v4 on previews",
-    description:
-      "Preview deploys open in v4 by default, and main's login, signup and org home send you to their v4 pages while the flag is on.",
-    date: "2026-11-07",
-    commit: "072c1e484c",
-    page: "overview"
   }
 ];
