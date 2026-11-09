@@ -71,6 +71,25 @@ describe("splitPostgresStatements", () => {
     ).rejects.toThrow("syntax error");
   });
 
+  test("rejects PostgreSQL syntax CockroachDB can't parse, so none of the script runs", async () => {
+    const countStatementsOnServer = async () => {
+      throw new Error('at or near "vacuum": syntax error');
+    };
+    await expect(
+      splitPostgresStatements("DELETE FROM t WHERE id = 2; VACUUM t", { countStatementsOnServer })
+    ).rejects.toThrow("syntax error");
+  });
+
+  test("skips the server check for a single statement", async () => {
+    let serverChecks = 0;
+    const countStatementsOnServer = async () => {
+      serverChecks += 1;
+      return 1;
+    };
+    expect(await splitPostgresStatements("SELECT 1", { countStatementsOnServer })).toEqual(["SELECT 1"]);
+    expect(serverChecks).toBe(0);
+  });
+
   test("refuses to run a lexical split that disagrees with the server's statement count", async () => {
     const countStatementsOnServer = async () => 1;
     await expect(
