@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ChevronsDownUpIcon,
@@ -738,7 +738,7 @@ export const OverviewPage = () => {
           entries[0].kind !== "folder" && entries.some((entry) => picked.has(selectionKey(entry)))
       )
       .map(([key]) => key);
-    setExpandedRows((current) => [...new Set([...current, ...opening])]);
+    startTransition(() => setExpandedRows((current) => [...new Set([...current, ...opening])]));
   };
   const selectedEntries = scoped.filter((resource) => selected.includes(selectionKey(resource)));
   const report = (message: string) => setNotice(message);
