@@ -107,16 +107,21 @@ const activatesRow = (event: React.MouseEvent<HTMLTableRowElement>) => {
 /** A row draws its focus ring only when the keyboard moved focus to it, never after a pointer interaction. */
 function TableRow({
   className,
+  focused,
   onClick,
   onFocus,
   onBlur,
   ref,
   ...props
-}: React.ComponentProps<"tr">) {
+}: React.ComponentProps<"tr"> & {
+  /** The row is being edited: every other row in the same body dims its cell contents until this clears. */
+  focused?: boolean;
+}) {
   return (
     <tr
       ref={ref}
       data-slot="table-row"
+      data-focused={focused || undefined}
       className={cn(
         "border-b border-[color:var(--v4-line-soft)] transition-colors duration-(--v4-duration-fast)",
         styles.nativeTableRow,

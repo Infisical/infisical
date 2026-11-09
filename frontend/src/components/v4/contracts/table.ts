@@ -42,6 +42,8 @@ export const tableDefinition = {
   ],
   referenceNames: ["Table"],
   behavior: [
+    "Row focus: while a row is being edited (an annotation popover, an inline name or value edit), set focused on its TableRow, or pass DataTable focusedRowId (one id or several). The row renders data-focused and every other row in the same body fades its cell contents to opacity-row-dim (40%) through filter: opacity, so row grounds, borders, the selection ring, pinned cells and the header stay at full strength, and the dim composes with opacity reveals inside cells. The dim is pure CSS on the body; there is no table-level prop. Hovering a dimmed row undims it where hover exists, dimmed rows stay interactive, and portalled popovers and menus never dim. The fade runs on duration-moderate and is instant under reduced motion. A selected row that is not focused still dims.",
+    "Nested tables: a body dims when it holds a focused row at any depth. The row that holds the nested table and the row just above it, the one it expands from, keep full strength, and the nested body dims only its own other rows, so focusing an environment row inside an expanded secret dims every other secret and environment row and nothing else.",
     "Row states are layers over the row's ground, which is surface, or row-done on a striped even row. The selected surface and the hover overlay (the shared hover token) stack over the ground on every cell, and a pinned cell or the sticky tail repaints the same ground and layers opaquely, so a striped, selected or hovered row reads as one band to the frame edge and scrolled cells never show through.",
     "DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.",
     "Tables are framed by default: DataTable always sits in the shared tint frame, which suits nearly every standalone table. Use the native Table, which has no frame, only when the table is embedded in another surface that already draws an edge, such as a Card, a sheet or a dialog body.",
@@ -192,6 +194,12 @@ export const tableDefinition = {
       title: "Column toggle, permission matrix",
       module: "./examples/table/column-toggle.tsx",
       states: ["default", "disabled", "keyboard", "controlled"]
+    },
+    {
+      id: "row-focus",
+      title: "Row focus while editing",
+      module: "./examples/table/row-focus.tsx",
+      states: ["default", "controlled"]
     }
   ],
   coverage: [
@@ -338,6 +346,23 @@ export const tableDefinition = {
     decision:
       "Choose DataTable for row comparison, sorting and selection. Use DataGrid when cells need spreadsheet editing, range selection or clipboard navigation.",
     rules: [
+      {
+        id: "table-row-focus",
+        when: "A row is being edited in place, such as its annotation or tag popover being open or its name or value being edited inline.",
+        do: "Set focused on that TableRow, or pass its id to DataTable focusedRowId, for exactly as long as the edit is open, and clear it when the edit closes.",
+        avoid:
+          "Use focus to show selection, the current record or search results, leave it set after the edit closes, or dim rows with your own opacity or filter.",
+        reason:
+          "The dim tells people every other row is out of play for the moment; used for anything lasting it hides content and competes with selection, which already has its own surface.",
+        evidence: [
+          "src/components/v4/ui/table.tsx",
+          "src/pages/design-system/examples/table/row-focus.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "Open a row's popover in the Row focus example and in each page that sets focused: only that row stays at full strength, the header does not dim, and closing the popover clears the dim."
+        }
+      },
       {
         id: "table-usage",
         when: "A table header selects rows from a paged result.",
