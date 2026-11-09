@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { AgentVaultServiceType, AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultServiceType,
+  AgentVaultSessionLogDecision,
+  sessionLogRecordKey
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
 
 import {
+  countSessionLogArrivals,
+  followSessionLogRowAnchor,
   hasNativeSessionLogDetails,
   matchesSessionLogSearch,
   nativeSessionLogSections,
@@ -124,5 +130,95 @@ describe("nativeSessionLogSections", () => {
     expect(hasNativeSessionLogDetails({ note: "Forwarded channel" })).toBe(false);
     expect(hasNativeSessionLogDetails({ shell: true })).toBe(false);
     expect(hasNativeSessionLogDetails({ shell: true, output: "$ ls" })).toBe(true);
+  });
+});
+
+// Lays rows out top to bottom: 41px each unless an expanded height is given.
+const layout = (keys: string[], expanded: Record<string, number> = {}) => {
+  let start = 0;
+  return keys.map((key) => {
+    const row = { key, start };
+    start += expanded[key] ?? 41;
+    return row;
+  });
+};
+const keys = (count: number, prefix = "r") =>
+  Array.from({ length: count }, (_, i) => `${prefix}${i}`);
+
+describe("followSessionLogRowAnchor", () => {
+  it("moves the reader down by the rows that landed above when nothing is expanded", () => {
+    const before = layout(keys(30));
+    const after = layout(["n0", "n1", ...keys(30)]);
+    expect(followSessionLogRowAnchor(before, after, 41 * 10 + 7)).toEqual({
+      scrollTop: 41 * 12 + 7,
+      index: 12
+    });
+  });
+
+  it("finds the row on screen when expanded rows above it push the offset past 41px a row", () => {
+    const expanded = { r1: 561, r2: 561, r3: 561 };
+    const before = layout(keys(30), expanded);
+    // 41 * 30 = 1230, so an index guessed from the offset would point past the end of the list.
+    const scrollTop = 2190;
+    const after = layout(["n0", ...keys(30)], expanded);
+    const moved = followSessionLogRowAnchor(before, after, scrollTop);
+    expect(moved?.scrollTop).toBe(scrollTop + 41);
+    expect(moved?.index).toBe(16);
+  });
+
+  it("keeps the reader at the same place inside a tall expanded row", () => {
+    const before = layout(keys(10), { r4: 900 });
+    const scrollTop = 41 * 4 + 650;
+    const after = layout(["n0", "n1", ...keys(10)], { r4: 900 });
+    expect(followSessionLogRowAnchor(before, after, scrollTop)).toEqual({
+      scrollTop: scrollTop + 82,
+      index: 6
+    });
+  });
+
+  it("follows rows a filled gap inserts above the reader, and ignores ones inserted below", () => {
+    const before = layout(keys(20));
+    const scrollTop = 41 * 10;
+    const above = layout([...keys(5), "g0", "g1", ...keys(15).map((_, i) => `r${i + 5}`)]);
+    expect(followSessionLogRowAnchor(before, above, scrollTop)).toEqual({
+      scrollTop: scrollTop + 82,
+      index: 12
+    });
+    const below = layout([...keys(15), "g0", "g1", ...keys(5).map((_, i) => `r${i + 15}`)]);
+    expect(followSessionLogRowAnchor(before, below, scrollTop)).toEqual({ scrollTop, index: 10 });
+  });
+
+  it("leaves the reader alone when an older page is appended below", () => {
+    const before = layout(keys(20), { r3: 400 });
+    const after = layout([...keys(20), ...keys(20, "old")], { r3: 400 });
+    expect(followSessionLogRowAnchor(before, after, 1000)).toEqual({ scrollTop: 1000, index: 15 });
+  });
+
+  it("follows the row up when rows above it go away", () => {
+    const before = layout(keys(20));
+    const after = layout(keys(20).filter((key) => key !== "r1" && key !== "r2"));
+    expect(followSessionLogRowAnchor(before, after, 41 * 10 + 3)).toEqual({
+      scrollTop: 41 * 8 + 3,
+      index: 8
+    });
+  });
+
+  it("does nothing when the reader's row is gone or nothing was shown", () => {
+    const before = layout(keys(20));
+    const after = layout(keys(20).filter((key) => key !== "r10"));
+    expect(followSessionLogRowAnchor(before, after, 41 * 10 + 3)).toBeNull();
+    expect(followSessionLogRowAnchor([], after, 100)).toBeNull();
+  });
+});
+
+describe("countSessionLogArrivals", () => {
+  it("counts only rows that arrived since the last change", () => {
+    const records = [record({ seq: 1 }), record({ seq: 2 }), record({ seq: 3 })];
+    const arrivals = new Map<string, number>();
+    const [first, second] = records;
+    arrivals.set(sessionLogRecordKey(first), 200);
+    arrivals.set(sessionLogRecordKey(second), 50);
+    expect(countSessionLogArrivals(records, arrivals, 100)).toBe(1);
+    expect(countSessionLogArrivals(records, arrivals, 300)).toBe(0);
   });
 });

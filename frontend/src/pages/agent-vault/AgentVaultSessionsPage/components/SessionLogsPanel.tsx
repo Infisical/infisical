@@ -323,9 +323,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const { newRequestCount, showNewRequests } = useNewRequestsCounter({
     scrollRef,
     visible,
+    measuredRows: rowVirtualizer.measurementsCache,
     arrivals,
-    resetKey: `${session.id}|${filterKey}`,
-    rowHeight: SESSION_LOG_ROW_HEIGHT
+    resetKey: `${session.id}|${filterKey}`
   });
 
   const padTop = virtualRows.length ? virtualRows[0].start : 0;

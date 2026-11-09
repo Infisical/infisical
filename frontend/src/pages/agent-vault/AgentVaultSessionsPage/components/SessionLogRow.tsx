@@ -236,7 +236,7 @@ const NativeDetailPanel = ({ native }: { native: TAgentVaultSessionLogNativeDeta
         label={section.label}
         value={section.value}
         className={twMerge(
-          "max-h-80 overflow-y-auto break-words whitespace-pre-wrap",
+          "max-h-80 break-words whitespace-pre-wrap",
           section.isError && "text-danger"
         )}
       />
@@ -434,10 +434,7 @@ export const SessionLogRow = ({
       </TableRow>
       {isOpen && native && (
         <TableRow ref={detailRef} id={detailId} className="bg-container-hover">
-          <TableCell
-            colSpan={SESSION_LOG_COLUMN_COUNT}
-            className="h-auto px-3 pt-1 pb-4 whitespace-normal"
-          >
+          <TableCell colSpan={SESSION_LOG_COLUMN_COUNT} className="pt-1 pb-4 whitespace-normal">
             <NativeDetailPanel native={native} />
           </TableCell>
         </TableRow>

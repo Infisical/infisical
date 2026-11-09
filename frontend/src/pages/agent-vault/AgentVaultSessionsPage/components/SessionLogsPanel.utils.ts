@@ -12,18 +12,41 @@ import {
   TAgentVaultSessionLogRecord
 } from "@app/hooks/api/agentVault/types";
 
-// Where the row a reader was looking at moved to once new rows landed above it.
-export const findRowShift = (
-  before: TAgentVaultSessionLogRecord[],
-  after: TAgentVaultSessionLogRecord[],
-  index: number
-): number | null => {
-  const row = before[index];
-  if (!row) return null;
-  const key = sessionLogRecordKey(row);
-  const moved = after.findIndex((candidate) => sessionLogRecordKey(candidate) === key);
-  return moved < 0 ? null : moved - index;
+type TMeasuredRow = { key: string | number | bigint; start: number };
+
+// Rows are as tall as their details, so the reader's place is the row at the top of the viewport and how far into
+// it they have scrolled, not an index. Returns where to scroll so that row sits where it was once the rows have
+// changed around it, and how many rows now sit above it. Null when the row is gone, so the scroll is left alone.
+export const followSessionLogRowAnchor = (
+  before: TMeasuredRow[],
+  after: TMeasuredRow[],
+  scrollTop: number
+): { scrollTop: number; index: number } | null => {
+  let low = 0;
+  let high = before.length - 1;
+  let top = -1;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    if (before[middle].start <= scrollTop) {
+      top = middle;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+  if (top < 0) return null;
+  const { key, start } = before[top];
+  const index = after.findIndex((row) => row.key === key);
+  if (index < 0) return null;
+  return { scrollTop: after[index].start + scrollTop - start, index };
 };
+
+// Only rows stamped after `since` count, so rows a filter change reveals or an older page brings in aren't new.
+export const countSessionLogArrivals = (
+  records: TAgentVaultSessionLogRecord[],
+  arrivals: Map<string, number>,
+  since: number
+) => records.filter((record) => (arrivals.get(sessionLogRecordKey(record)) ?? 0) > since).length;
 
 const HTTP_STATUS_TEXT: Record<number, string> = {
   100: "Continue",
