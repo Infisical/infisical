@@ -1,6 +1,6 @@
 import { ProjectType } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
-import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import { HoneyTokenManagedBy, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { CertificateSource, PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
@@ -44,7 +44,11 @@ import { CaStatus } from "@app/services/certificate-authority/certificate-author
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
+import {
+  CertificateRenewalKeySource,
+  TRenewalAuditChange,
+  TRenewCertificateDTO
+} from "@app/services/certificate-v3/certificate-v3-types";
 import {
   CertExtendedKeyUsage,
   CertKeyAlgorithm,
@@ -432,6 +436,8 @@ export enum EventType {
   GET_CA_CERT = "get-certificate-authority-cert",
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
+  IMPORT_CA_CROSS_SIGNED_CERT = "import-ca-cross-signed-cert",
+  DELETE_CA_CROSS_SIGNED_CERT = "delete-ca-cross-signed-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
   GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
   INSTALL_CA_CERT_VENAFI = "install-ca-cert-venafi",
@@ -3159,6 +3165,7 @@ interface GetCaCsr {
   metadata: {
     caId: string;
     dn: string;
+    maxPathLength?: number;
   };
 }
 
@@ -3192,6 +3199,29 @@ interface ImportCaCert {
   metadata: {
     caId: string;
     dn: string;
+  };
+}
+
+interface ImportCaCrossSignedCert {
+  type: EventType.IMPORT_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
+    replacedSerialNumber?: string;
+  };
+}
+
+interface DeleteCaCrossSignedCert {
+  type: EventType.DELETE_CA_CROSS_SIGNED_CERT;
+  metadata: {
+    caId: string;
+    caName: string;
+    issuer: string;
+    serialNumber: string;
+    notAfter: string;
   };
 }
 
@@ -4329,6 +4359,7 @@ interface RenewCertificate {
     applicationName?: string | null;
     serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
+    externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
     changedAttributes: TRenewalAuditChange[];
   };
 }
@@ -6695,6 +6726,8 @@ interface AgentVaultServiceUpdateEvent {
     substitutionPlaceholders?: string[];
     substitutionsReplaced?: string[];
     credentialReplaced: boolean;
+    // Whether the update deleted what members saved for the service: their typed values or their OAuth connections.
+    personalValuesCleared?: boolean;
     // Every key the service uses after the update, present when the update wrote a value that can hold one.
     variableKeys?: string[];
   };
@@ -6776,6 +6809,9 @@ interface AgentVaultPersonalValuesSetEvent {
     // The fields this update set. A field it left out kept its saved value.
     fields: string[];
     variableKeys: string[];
+    // Set when the member connected their own OAuth account.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
   };
 }
 
@@ -6960,9 +6996,25 @@ interface AgentVaultSessionMintEvent {
   metadata: {
     sessionId: string;
     label: string | null;
-    accessBundleId: string;
-    accessBundleName: string;
+    // Null for a session started with inline services only.
+    accessBundleId: string | null;
+    accessBundleName: string | null;
     expiresAt: string | null;
+    // Set when an admin sent services with the session. Never their values.
+    services?: {
+      serviceId: string;
+      // The name it was sent with, or its first host when it was sent without one.
+      name: string;
+      serviceType: string;
+      serverUrl?: string;
+      hostPattern: string;
+      credentialType: string;
+      headerName?: string;
+      allowedMethods: string[] | null;
+      allowedPathPrefixes: string[] | null;
+      customHeaderNames: string[];
+      substitutionPlaceholders: string[];
+    }[];
     // Set when a machine identity started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;
@@ -6992,6 +7044,8 @@ interface AgentVaultSessionRevokeEvent {
     label: string | null;
     sessionOwner: string;
     accessBundleName: string | null;
+    // Set when the session was ended with its own token rather than by a signed-in user or identity.
+    revokedWithToken?: boolean;
     // Set when the machine identity in sessionOwner started the session on this user's behalf.
     onBehalfOfUserId?: string;
     onBehalfOfUserName?: string;
@@ -8348,6 +8402,7 @@ interface CreateHoneyTokenEvent {
     honeyTokenId: string;
     name: string;
     type: HoneyTokenType;
+    managedBy: HoneyTokenManagedBy;
     environment: string;
     secretPath: string;
   };
@@ -8671,6 +8726,8 @@ export type Event =
   | GetCaCert
   | SignIntermediate
   | ImportCaCert
+  | ImportCaCrossSignedCert
+  | DeleteCaCrossSignedCert
   | GetCaCrls
   | GenerateCaCertificate
   | InstallCaCertVenafi

@@ -4,14 +4,18 @@ import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
+  AgentVaultOauthStatus,
   AgentVaultServiceType,
-  AgentVaultSubstitutionSurface
+  AgentVaultSubstitutionSurface,
+  AgentVaultVariableReferenceField
 } from "@app/hooks/api/agentVault";
+import { TAgentVaultCredentialSummary, TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
 import {
   buildCreateServiceRequest,
   buildListMcpToolsRequest,
-  buildUpdateServiceRequest
+  buildUpdateServiceRequest,
+  membersClearedNotice
 } from "./serviceRequest";
 import { HTTP_METHODS, McpToolScope, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
 
@@ -185,17 +189,70 @@ describe("buildCreateServiceRequest", () => {
       type: AgentVaultCredentialType.Bearer,
       headerName: "Authorization",
       headerPrefix: "Bearer",
-      value: "lin_api"
+      value: "lin_api",
+      memberProvidedFields: []
     });
   });
 });
+
+const MEMBER = [AgentVaultVariableReferenceField.CredentialValue as const];
+
+const storedMcp = (credential: TAgentVaultCredentialSummary): TAgentVaultService => ({
+  id: "service-1",
+  accessBundleId: "bundle-1",
+  name: "linear-mcp",
+  hostPattern: "mcp.linear.app",
+  type: AgentVaultServiceType.Mcp,
+  serverUrl: SERVER_URL,
+  transport: AgentVaultMcpTransport.StreamableHttp,
+  allowedMethods: null,
+  allowedPathPrefixes: null,
+  allowedTools: null,
+  credential,
+  customHeaders: [],
+  substitutions: [],
+  createdAt: "2026-10-15T00:00:00.000Z",
+  updatedAt: "2026-10-15T00:00:00.000Z"
+});
+
+const memberOAuth = (clientId: string | null = null) =>
+  storedMcp({
+    type: AgentVaultCredentialType.OAuth,
+    memberProvidedFields: MEMBER,
+    issuer: "https://mcp.linear.app",
+    grantedScopes: [],
+    requiredScopes: [],
+    registration: clientId ? "manual" : "dynamic",
+    clientId
+  });
+
+const sharedOAuth = storedMcp({
+  type: AgentVaultCredentialType.OAuth,
+  memberProvidedFields: [],
+  status: AgentVaultOauthStatus.Connected,
+  issuer: "https://mcp.linear.app",
+  grantedScopes: [],
+  requiredScopes: []
+});
+
+const storedHttp = {
+  ...storedMcp({
+    type: AgentVaultCredentialType.Bearer,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
+    memberProvidedFields: []
+  }),
+  type: AgentVaultServiceType.Http,
+  serverUrl: null,
+  transport: null
+} satisfies TAgentVaultService;
 
 describe("buildUpdateServiceRequest", () => {
   it("omits untouched secrets and keeps row ids", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        storedHttp,
         form({
           secret: UNCHANGED_SECRET,
           customHeaders: [{ id: "h-1", name: "X-Org", prefix: "", value: UNCHANGED_SECRET }],
@@ -233,7 +290,7 @@ describe("buildUpdateServiceRequest", () => {
 
   it("omits an empty bearer token but sends an emptied basic half", () => {
     expect(
-      buildUpdateServiceRequest("bundle-1", "service-1", form({ secret: "", headerName: "" }))
+      buildUpdateServiceRequest("bundle-1", storedHttp, form({ secret: "", headerName: "" }))
         .credential
     ).toEqual({
       type: AgentVaultCredentialType.Bearer,
@@ -245,7 +302,7 @@ describe("buildUpdateServiceRequest", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        storedHttp,
         form({
           credentialType: AgentVaultCredentialType.Basic,
           username: UNCHANGED_SECRET,
@@ -261,7 +318,7 @@ describe("buildUpdateServiceRequest", () => {
   });
 
   it("leaves the OAuth credential out unless a new authorization matches the URL", () => {
-    expect(buildUpdateServiceRequest("bundle-1", "service-1", mcpForm())).toEqual({
+    expect(buildUpdateServiceRequest("bundle-1", sharedOAuth, mcpForm())).toEqual({
       accessBundleId: "bundle-1",
       serviceId: "service-1",
       type: AgentVaultServiceType.Mcp,
@@ -274,14 +331,14 @@ describe("buildUpdateServiceRequest", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({ oauthAuthorizationId: "auth-2", oauthAuthorizedUrl: "https://other.example/mcp" })
       )
     ).not.toHaveProperty("credential");
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({ oauthAuthorizationId: "auth-2", oauthAuthorizedUrl: SERVER_URL })
       ).credential
     ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-2" });
@@ -291,17 +348,17 @@ describe("buildUpdateServiceRequest", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
       )
     ).toMatchObject({ allowedTools: ["read_file"] });
-    expect(buildUpdateServiceRequest("bundle-1", "service-1", mcpForm())).toMatchObject({
+    expect(buildUpdateServiceRequest("bundle-1", sharedOAuth, mcpForm())).toMatchObject({
       allowedTools: null
     });
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        storedHttp,
         form({ toolScope: McpToolScope.Selected, allowedTools: ["read_file"] })
       )
     ).not.toHaveProperty("allowedTools");
@@ -311,7 +368,7 @@ describe("buildUpdateServiceRequest", () => {
     expect(
       buildUpdateServiceRequest(
         "bundle-1",
-        "service-1",
+        sharedOAuth,
         mcpForm({
           headerName: "X-Api-Key",
           headerPrefix: "Token",
@@ -391,5 +448,159 @@ describe("buildListMcpToolsRequest", () => {
     expect(buildListMcpToolsRequest("bundle-1", "service-1", mcpForm())).not.toHaveProperty(
       "credential"
     );
+  });
+
+  it("sends the admin's own token in place of a member-provided one, as a credential set in full", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "bundle-1",
+        "service-1",
+        mcpForm({
+          credentialType: AgentVaultCredentialType.Bearer,
+          secret: UNCHANGED_SECRET,
+          memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue]
+        }),
+        { token: "admin-token" }
+      ).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.Bearer,
+      headerName: "Authorization",
+      headerPrefix: "Bearer",
+      value: "admin-token",
+      memberProvidedFields: []
+    });
+  });
+
+  it("sends the admin's own sign-in in place of a member-provided OAuth credential", () => {
+    expect(
+      buildListMcpToolsRequest(
+        "bundle-1",
+        undefined,
+        mcpForm({ memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue] }),
+        { authorizationId: "auth-2" }
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, authorizationId: "auth-2" });
+  });
+});
+
+describe("member-provided MCP credentials", () => {
+  it("creates a member-provided OAuth service without an authorization, with an optional client", () => {
+    expect(
+      buildCreateServiceRequest("bundle-1", mcpForm({ memberProvidedFields: MEMBER })).credential
+    ).toEqual({ type: AgentVaultCredentialType.OAuth, memberProvidedFields: MEMBER });
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        mcpForm({ memberProvidedFields: MEMBER, oauthClientId: " app ", oauthClientSecret: "s" })
+      ).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      memberProvidedFields: MEMBER,
+      clientId: "app",
+      clientSecret: "s"
+    });
+  });
+
+  it("creates a member-provided bearer token without a value", () => {
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        mcpForm({ credentialType: AgentVaultCredentialType.Bearer, memberProvidedFields: MEMBER })
+      ).credential
+    ).toMatchObject({
+      type: AgentVaultCredentialType.Bearer,
+      value: undefined,
+      memberProvidedFields: MEMBER
+    });
+  });
+
+  it("leaves a member-provided OAuth credential out unless its client changes", () => {
+    const service = memberOAuth("app");
+    const update = (overrides: Partial<TServiceForm>) =>
+      buildUpdateServiceRequest(
+        "bundle-1",
+        service,
+        mcpForm({ memberProvidedFields: MEMBER, oauthClientId: "app", ...overrides })
+      ).credential;
+    expect(update({})).toBeUndefined();
+    expect(update({ oauthClientSecret: "new" })).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      memberProvidedFields: MEMBER,
+      clientId: "app",
+      clientSecret: "new"
+    });
+    expect(update({ oauthClientId: "" })).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      memberProvidedFields: MEMBER,
+      registration: "dynamic"
+    });
+  });
+
+  it("hands the sign-in back to the admin with an empty member list", () => {
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        memberOAuth(),
+        mcpForm({ oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL })
+      ).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.OAuth,
+      authorizationId: "auth-1",
+      memberProvidedFields: []
+    });
+  });
+});
+
+describe("membersClearedNotice", () => {
+  it("names each edit that removes connections or values", () => {
+    expect(
+      membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }), sharedOAuth)?.description
+    ).toBe(
+      "Your connection to mcp.linear.app will be removed. Sessions can't use this service until each member connects their own account."
+    );
+    expect(membersClearedNotice(mcpForm(), memberOAuth())?.description).toBe(
+      "Every member's connection to mcp.linear.app will be removed, and sessions will use your account."
+    );
+    expect(
+      membersClearedNotice(
+        mcpForm({ memberProvidedFields: MEMBER, serverUrl: "https://mcp.linear.app/v2" }),
+        memberOAuth()
+      )?.description
+    ).toBe("Every member's connection will be removed. Each member has to connect again.");
+    expect(
+      membersClearedNotice(
+        mcpForm({ credentialType: AgentVaultCredentialType.Bearer }),
+        storedMcp({
+          type: AgentVaultCredentialType.Bearer,
+          headerName: "Authorization",
+          headerPrefix: "Bearer",
+          memberProvidedFields: MEMBER
+        })
+      )?.description
+    ).toBe(
+      "Every member's token for this service will be removed, and sessions will use the token you set."
+    );
+    expect(
+      membersClearedNotice(
+        mcpForm({ memberProvidedFields: MEMBER, oauthClientId: "other-app" }),
+        memberOAuth("admin-app")
+      )?.description
+    ).toBe("Every member's connection will be removed. Each member has to connect again.");
+    expect(
+      membersClearedNotice(
+        mcpForm({ credentialType: AgentVaultCredentialType.Bearer, secret: "t" }),
+        memberOAuth()
+      )?.description
+    ).toBe(
+      "Every member's connection to mcp.linear.app will be removed, and sessions will use the credential you set."
+    );
+  });
+
+  it("asks nothing for edits that keep members' values", () => {
+    expect(
+      membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }), memberOAuth())
+    ).toBeNull();
+    expect(membersClearedNotice(mcpForm({ name: "renamed" }), sharedOAuth)).toBeNull();
+    expect(membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }))).toBeNull();
   });
 });

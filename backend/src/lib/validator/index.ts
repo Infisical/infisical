@@ -4,7 +4,12 @@ export {
   normalizeAllowedEmailDomains
 } from "./email-domain-matcher";
 export type { TValidatedHost } from "./safe-request";
-export { buildSsrfSafeAgent, PRIVATE_ADDRESS_REFUSED_MESSAGE, safeRequest } from "./safe-request";
+export {
+  buildSsrfSafeAgent,
+  buildUncachedSsrfSafeAgent,
+  PRIVATE_ADDRESS_REFUSED_MESSAGE,
+  safeRequest
+} from "./safe-request";
 export {
   isAliasedEmail,
   isDisposableEmail,

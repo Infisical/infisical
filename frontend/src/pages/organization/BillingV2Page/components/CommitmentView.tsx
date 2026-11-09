@@ -330,7 +330,7 @@ export const CommitmentView = ({
         {approvalUrl && <PaymentApprovalNotice paymentUrl={approvalUrl} />}
       </div>
 
-      <SheetFooter className="flex-row justify-between border-t">
+      <SheetFooter className="m-2 mt-auto flex-row justify-between rounded-md border border-border bg-card">
         <Button variant="ghost" onClick={onBack} isDisabled={applyCommitment.isPending}>
           <ChevronLeftIcon />
           Back to plans

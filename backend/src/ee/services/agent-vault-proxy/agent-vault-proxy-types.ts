@@ -9,7 +9,8 @@ import {
 export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
 
 export type TAgentVaultProxyConfig = {
-  trafficPolicy: AgentVaultTrafficPolicy;
+  // The name proxies understand; the admin API calls bundle-hosts service-hosts.
+  trafficPolicy: AgentVaultTrafficPolicy.AnyHost | AgentVaultTrafficPolicy.BundleHosts;
   allowedHosts: string | null;
   pollInterval: number;
 };
@@ -66,6 +67,10 @@ export type TGetSessionSkillsDTO = {
   sessionToken: string;
 };
 
+export type TRevokeSessionByTokenDTO = {
+  sessionToken: string;
+};
+
 export type TResolveSessionDTO = TAuthorizeSessionDTO & {
   hasSessionLogKey: boolean;
 };
@@ -87,7 +92,8 @@ export type TReportMissingScopesDTO = TRefreshCredentialDTO & {
 export type TResolvedService = {
   id: string;
   name: string;
-  accessBundleName: string;
+  // Null for a service sent inline with the session, which belongs to no bundle.
+  accessBundleName: string | null;
   type: AgentVaultServiceType;
   hostPattern: string;
   allowedMethods: string[] | null;
@@ -110,4 +116,6 @@ export type TResolvedService = {
   // The service takes part of its credential from each member and the member whose values the session uses (its owner,
   // or the user it acts for) hasn't set them, so the proxy refuses its requests rather than sending them without one.
   personalValuesMissing: boolean;
+  // Some of the credential is each member's own, so a rejection is theirs to fix, not the admin's.
+  memberProvided: boolean;
 };

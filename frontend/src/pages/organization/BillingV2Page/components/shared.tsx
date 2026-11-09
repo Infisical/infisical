@@ -34,7 +34,7 @@ import {
   dimOnDemandQuantity,
   fmtMoney,
   fmtMoneyCents,
-  unitForCount
+  meteredRateInCaption
 } from "../billing-v2-format";
 
 type ProductIconProps = {
@@ -215,10 +215,10 @@ export const DimensionMeter = ({ dim, color, hideLegend }: DimensionMeterProps) 
     right = (
       <>
         <span className="font-medium text-foreground">{dim.used.toLocaleString()}</span>
-        {dim.limit !== null
-          ? ` / ${dim.limit.toLocaleString()}`
-          : ` ${unitForCount(dim.noun, dim.used)}`}
-        {monthlyRate > 0 && <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>}
+        {` / ${dim.limit === null ? "Unlimited" : dim.limit.toLocaleString()}`}
+        {!meteredRateInCaption(dim) && monthlyRate > 0 && (
+          <span> · {`${fmtMoney(monthlyRate)}/${dim.noun}/mo`}</span>
+        )}
       </>
     );
   }

@@ -2,6 +2,7 @@ import { PackageIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ConfirmationAlertDialog } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { useDeleteAgentVaultSkill } from "@app/hooks/api/agentVault";
 import { TAgentVaultSkill } from "@app/hooks/api/agentVault/types";
 
@@ -12,7 +13,8 @@ type Props = {
 };
 
 export const DeleteSkillDialog = ({ skill, onOpenChange, onDeleted }: Props) => {
-  const deleteSkill = useDeleteAgentVaultSkill();
+  const { projectId } = useProject();
+  const deleteSkill = useDeleteAgentVaultSkill(projectId);
   const accessBundles = skill?.accessBundles ?? [];
 
   const handleDelete = async () => {

@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
-import { CircleXIcon, RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
+import { RefreshCwIcon, TriangleAlertIcon } from "lucide-react";
 
 import {
   Alert,
@@ -18,10 +18,18 @@ import {
   Toggle
 } from "@app/components/v3";
 import { useListAgentVaultMcpTools } from "@app/hooks/api/agentVault";
-import { TAgentVaultMcpTool } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultMcpTool, TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
-import { buildListMcpToolsRequest } from "./serviceRequest";
-import { MAX_ALLOWED_TOOLS, McpToolScope, toolNameError, TServiceForm } from "./serviceSchema";
+import { McpToolsLoadButton } from "./McpToolsLoadButton";
+import { buildListMcpToolsRequest, TMcpToolsOwnCredential } from "./serviceRequest";
+import {
+  hostOf,
+  MAX_ALLOWED_TOOLS,
+  McpToolScope,
+  OAUTH_OWN_APP_REQUIRED_ERROR,
+  toolNameError,
+  TServiceForm
+} from "./serviceSchema";
 import { serverMessage } from "./useOAuthAuthorize";
 
 /**
@@ -40,23 +48,32 @@ const formatAddLabel = (inputValue: string) => (
 
 type Props = {
   accessBundleId: string;
-  serviceId?: string;
+  service?: TAgentVaultService | null;
   loaded: TLoadedMcpTools | null;
   onLoaded: (loaded: TLoadedMcpTools) => void;
   // The OAuth sign-in from the Credential step expired, so nothing can load until the admin authorizes again.
   isAuthorizationExpired: boolean;
+  // Each member provides the credential, so Infisical has none of its own to list the tools with.
+  isCredentialMemberProvided: boolean;
+  onGoToDetails: () => void;
   onGoToCredential: () => void;
+  onSignInChange?: (isSigningIn: boolean) => void;
 };
 
 export const McpToolsFields = ({
   accessBundleId,
-  serviceId,
+  service,
   loaded,
   onLoaded,
   isAuthorizationExpired,
-  onGoToCredential
+  isCredentialMemberProvided,
+  onGoToDetails,
+  onGoToCredential,
+  onSignInChange
 }: Props) => {
-  const { control, getValues, setValue, clearErrors, formState } = useFormContext<TServiceForm>();
+  const serviceId = service?.id;
+  const { control, getValues, setValue, setError, clearErrors, formState } =
+    useFormContext<TServiceForm>();
   const form = useWatch({ control }) as TServiceForm;
   const { toolScope, allowedTools } = form;
   const listTools = useListAgentVaultMcpTools();
@@ -68,9 +85,16 @@ export const McpToolsFields = ({
   const source = toolsSource(form);
   // An expired sign-in changes the request, but the list it loaded is still the server's, so it stays on screen.
   const serverTools =
-    loaded?.source === source || (isAuthorizationExpired && loaded) ? loaded.tools : null;
-  // Each connection is loaded on its own once; after a failure the admin retries from the error.
+    loaded && (loaded.source === source || (isAuthorizationExpired && !isCredentialMemberProvided))
+      ? loaded.tools
+      : null;
+  // Each connection is loaded on its own once; after a failure the admin reloads with the button.
   const [autoLoadedSource, setAutoLoadedSource] = useState<string | null>(null);
+
+  // An error from the other credential's load says nothing about this one.
+  useEffect(() => {
+    setLoadError(null);
+  }, [isCredentialMemberProvided]);
 
   const options = useMemo<TToolOption[]>(() => {
     const listed = serverTools ?? [];
@@ -98,36 +122,63 @@ export const McpToolsFields = ({
   const setAllowedTools = (next: string[]) => {
     setValue("allowedTools", next, { shouldDirty: true });
     clearErrors("allowedTools");
+    // Typing names is the way past a failed load, so its error is stale now.
+    setLoadError(null);
   };
 
-  const loadTools = async () => {
+  // An own credential is left out of the source: it is used once, and the list it loads is the server's. Its failure
+  // is shown in the dialog it was entered in, so it is only returned.
+  const loadTools = async (own?: TMcpToolsOwnCredential): Promise<string | null> => {
     setLoadError(null);
-    const request = buildListMcpToolsRequest(accessBundleId, serviceId, getValues());
+    const request = buildListMcpToolsRequest(accessBundleId, serviceId, getValues(), own);
     // Serialized before the request: field edits mutate nested form values in place.
-    const requestSource = JSON.stringify(request);
+    const requestSource = toolsSource(getValues());
     // A response for a connection the admin has since changed would replace the current one's list.
     const isCurrent = () => toolsSource(getValues()) === requestSource;
     try {
       const tools = await listTools.mutateAsync(request);
       if (isCurrent()) onLoaded({ source: requestSource, tools });
+      return null;
     } catch (error) {
-      if (isCurrent()) {
-        setLoadError(serverMessage(error) ?? "The server's tools couldn't be loaded. Try again.");
-      }
+      const message = serverMessage(error) ?? "The server's tools couldn't be loaded. Try again.";
+      if (isCurrent() && !own) setLoadError(message);
+      return message;
     }
   };
+
+  // Opens the client fields on the Credential step, as a save the server refuses for the same reason does.
+  const goToOwnApp = (message?: string) => {
+    const host = hostOf(getValues("serverUrl").trim());
+    setError("oauthAuthorizationId", {
+      type: OAUTH_OWN_APP_REQUIRED_ERROR,
+      message:
+        message ??
+        `${host} doesn't let Infisical register as an OAuth client. Enter the client ID (and secret, if it has one) of your own OAuth app, which every member then signs in with. Then go back to the Tools step and load the tools again.`
+    });
+    onGoToCredential();
+  };
+
+  const loadLabel = serverTools ? "Reload Tools" : "Load Tools";
 
   useEffect(() => {
     if (
       toolScope !== McpToolScope.Selected ||
       serverTools ||
       isAuthorizationExpired ||
+      isCredentialMemberProvided ||
       autoLoadedSource === source
     )
       return;
     setAutoLoadedSource(source);
-    loadTools();
-  }, [toolScope, serverTools, isAuthorizationExpired, autoLoadedSource, source]);
+    loadTools().catch(() => undefined);
+  }, [
+    toolScope,
+    serverTools,
+    isAuthorizationExpired,
+    isCredentialMemberProvided,
+    autoLoadedSource,
+    source
+  ]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -161,7 +212,33 @@ export const McpToolsFields = ({
           name="allowedTools"
           render={({ fieldState }) => (
             <Field>
-              <FieldLabel htmlFor={`${baseId}-tools`}>Allowed Tools</FieldLabel>
+              <div className="flex items-center justify-between gap-2">
+                <FieldLabel htmlFor={`${baseId}-tools`}>Allowed Tools</FieldLabel>
+                {isCredentialMemberProvided ? (
+                  <McpToolsLoadButton
+                    accessBundleId={accessBundleId}
+                    service={service}
+                    label={loadLabel}
+                    isLoading={listTools.isPending}
+                    onLoad={loadTools}
+                    onGoToDetails={onGoToDetails}
+                    onGoToOwnApp={goToOwnApp}
+                    onSignInChange={onSignInChange}
+                  />
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    isDisabled={isAuthorizationExpired || listTools.isPending}
+                    isPending={listTools.isPending}
+                    onClick={() => loadTools().catch(() => undefined)}
+                  >
+                    <RefreshCwIcon />
+                    {loadLabel}
+                  </Button>
+                )}
+              </div>
               <FieldContent className="gap-3">
                 <Combobox
                   id={`${baseId}-tools`}
@@ -189,7 +266,9 @@ export const McpToolsFields = ({
                       )}
                     </span>
                   )}
-                  placeholder="Select tools..."
+                  placeholder={
+                    serverTools ? "Select tools..." : "Select tools, or type a tool's name..."
+                  }
                   searchPlaceholder="Search or add a tool..."
                   searchAriaLabel="Search tools"
                   clearAriaLabel="Clear all tools"
@@ -231,25 +310,8 @@ export const McpToolsFields = ({
                 )}
 
                 {loadError && !isAuthorizationExpired && (
-                  <Alert variant="danger">
-                    <CircleXIcon />
-                    <AlertTitle>Couldn&apos;t load the tools</AlertTitle>
-                    <AlertDescription>
-                      {loadError} You can still add a tool by typing its name.
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        className="mt-2"
-                        onClick={loadTools}
-                      >
-                        <RefreshCwIcon />
-                        Try Again
-                      </Button>
-                    </AlertDescription>
-                  </Alert>
+                  <FieldError>{loadError} You can still add a tool by typing its name.</FieldError>
                 )}
-
                 <FieldError>{fieldState.error?.message}</FieldError>
               </FieldContent>
             </Field>

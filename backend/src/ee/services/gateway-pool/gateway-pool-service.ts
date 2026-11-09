@@ -447,6 +447,29 @@ export const gatewayPoolServiceFactory = ({
     }
   };
 
+  const assertGatewayBindingInOrg = async ({
+    gatewayId,
+    gatewayPoolId,
+    orgId
+  }: {
+    gatewayId?: string | null;
+    gatewayPoolId?: string | null;
+    orgId: string;
+  }) => {
+    if (gatewayId) {
+      const gateway = await gatewayV2DAL.findById(gatewayId);
+      if (!gateway || gateway.orgId !== orgId) {
+        throw new NotFoundError({ message: `Gateway with ID '${gatewayId}' not found` });
+      }
+    }
+    if (gatewayPoolId) {
+      const pool = await gatewayPoolDAL.findById(gatewayPoolId);
+      if (!pool || pool.orgId !== orgId) {
+        throw new NotFoundError({ message: `Gateway pool with ID '${gatewayPoolId}' not found` });
+      }
+    }
+  };
+
   // Return gatewayId directly, or pick a random healthy pool member. Null when neither is set.
   const resolveEffectiveGatewayId = async ({
     gatewayId,
@@ -515,6 +538,7 @@ export const gatewayPoolServiceFactory = ({
     getConnectedResources,
     getConnectedResourcesCount,
     resolveAttachableGatewayFromPool,
+    assertGatewayBindingInOrg,
     resolveEffectiveGatewayId
   };
 };

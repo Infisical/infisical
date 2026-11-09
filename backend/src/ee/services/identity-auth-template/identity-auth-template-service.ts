@@ -15,7 +15,7 @@ import {
   OrgPermissionSubjects
 } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { sanitizeUrlForLog } from "@app/lib/logger";
@@ -32,6 +32,7 @@ import { assertIdentityAuthAccessAllowed } from "@app/services/identity/identity
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TIdentityAuthTemplateDALFactory } from "./identity-auth-template-dal";
 import { IdentityAuthTemplateMethod, TEMPLATE_SECRET_FIELDS_BY_METHOD } from "./identity-auth-template-enums";
@@ -389,12 +390,14 @@ export const identityAuthTemplateServiceFactory = ({
     actorAuthMethod,
     actor,
     actorOrgId,
-    auditLogInfo
+    auditLogInfo,
+    isActorSuperAdmin
   }: {
     templateId: string;
     name?: string;
     templateFields?: Record<string, unknown>;
     auditLogInfo?: AuditLogInfo;
+    isActorSuperAdmin?: boolean;
   } & Omit<TOrgPermission, "orgId">) => {
     const plan = await $checkPlan(actorOrgId);
     const template = await identityAuthTemplateDAL.findByIdAndOrgId(templateId, actorOrgId);
@@ -448,6 +451,16 @@ export const identityAuthTemplateServiceFactory = ({
         }[])
       : [];
     const checkedIdentityIds = linkedIdentities.map(({ identityId }) => identityId);
+
+    if (linkedIdentities.length > 0 && !isActorSuperAdmin) {
+      const { adminIdentityIds } = await getServerCfg();
+      const adminIdentity = linkedIdentities.find(({ identityId }) => adminIdentityIds?.includes(identityId));
+      if (adminIdentity) {
+        throw new ForbiddenRequestError({
+          message: `Auth template '${template.name}' is linked to server admin identity '${adminIdentity.identityName}'. Ask a server admin to update it, or unlink the identity from the template first.`
+        });
+      }
+    }
 
     // a field patch rewrites every linked identity's auth, so the editor needs edit-auth on each.
     // otherwise EditTemplates alone lets you point them at an LDAP server or OIDC issuer you control

@@ -93,6 +93,8 @@ export enum EventType {
   GET_CA_CERT = "get-certificate-authority-cert",
   SIGN_INTERMEDIATE = "sign-intermediate",
   IMPORT_CA_CERT = "import-certificate-authority-cert",
+  IMPORT_CA_CROSS_SIGNED_CERT = "import-ca-cross-signed-cert",
+  DELETE_CA_CROSS_SIGNED_CERT = "delete-ca-cross-signed-cert",
   GET_CA_CRL = "get-certificate-authority-crl",
   ISSUE_CERT = "issue-cert",
   IMPORT_CERT = "import-cert",

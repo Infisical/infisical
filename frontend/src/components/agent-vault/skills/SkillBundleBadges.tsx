@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { PackageIcon } from "lucide-react";
 
 import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { TAgentVaultSkill } from "@app/hooks/api/agentVault/types";
 
 const MAX_VISIBLE = 3;
@@ -12,6 +12,7 @@ export const SkillBundleBadges = ({
 }: {
   accessBundles: TAgentVaultSkill["accessBundles"];
 }) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
 
   if (accessBundles.length === 0) return <span className="text-sm text-muted">Unused</span>;
@@ -26,8 +27,8 @@ export const SkillBundleBadges = ({
           <TooltipTrigger asChild>
             <Badge variant="neutral" isTruncatable iconPosition="left" className="max-w-40" asChild>
               <Link
-                to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                params={{ orgId: currentOrg.id, projectId, accessBundleId: bundle.id }}
               >
                 <PackageIcon />
                 <span>{bundle.name}</span>

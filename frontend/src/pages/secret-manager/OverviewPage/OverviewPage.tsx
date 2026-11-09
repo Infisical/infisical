@@ -296,6 +296,7 @@ import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
 import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsSheet } from "./components/SecretDropzone";
+import type { EnvironmentSecretAction } from "./components/SecretTableRow/SecretEditTableRow";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
@@ -1260,8 +1261,12 @@ const OverviewPageContent = () => {
   );
 
   const queryClient = useQueryClient();
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
+  const { mutateAsync: createSecretV3 } = useCreateSecretV3({
+    options: { meta: { skipErrorToast: true } }
+  });
+  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
+    options: { meta: { skipErrorToast: true } }
+  });
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
@@ -1284,7 +1289,9 @@ const OverviewPageContent = () => {
   const batchStoreApi = useBatchStoreApi();
   const { addPendingChange, loadPendingChanges, setExistingKeys, removePendingChange } =
     useBatchModeActions();
-  const { mutateAsync: createCommit } = useCreateCommit();
+  const { mutateAsync: createCommit } = useCreateCommit({
+    options: { meta: { skipErrorToast: true } }
+  });
 
   const telemetryScope = useMemo<OverviewScopeProperties>(() => {
     let environmentMode: OverviewScopeProperties["environmentMode"] = "none";
@@ -1481,6 +1488,11 @@ const OverviewPageContent = () => {
     isSingleEnvView && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
 
   const [recentQuickAddKeys, setRecentQuickAddKeys] = useState<string[]>([]);
+  const [quickAddAnnotation, setQuickAddAnnotation] = useState<{
+    key: string;
+    action: EnvironmentSecretAction;
+  } | null>(null);
+  const clearQuickAddAnnotation = useCallback(() => setQuickAddAnnotation(null), []);
   const pendingSecretRowKeys = useRef(new Map<string, string>());
   const hadPendingBatchChangesRef = useRef(hasPendingBatchChanges);
   const isRecentQuickAddClearPendingRef = useRef(false);
@@ -2839,7 +2851,10 @@ const OverviewPageContent = () => {
   const savePendingChanges = useCallback(
     async (changes: PendingChanges, message: string, source: "bulk" | "row") => {
       if (!singleVisibleEnv) return [];
-      if (isSavingPendingRef.current) throw new Error("A save is already in progress");
+      if (isSavingPendingRef.current)
+        throw new Error(
+          "Another save is still in progress. Wait for it to finish, then save again."
+        );
       isSavingPendingRef.current = true;
       setIsSavingPending(true);
       const environment = singleVisibleEnv.slug;
@@ -3709,6 +3724,8 @@ const OverviewPageContent = () => {
 
   const renderSecretRow = (key: string, rowKey: string) => (
     <SecretTableRow
+      initialAction={quickAddAnnotation?.key === key ? quickAddAnnotation.action : undefined}
+      onInitialActionHandled={clearQuickAddAnnotation}
       isSelected={!hasPendingBatchChanges && Boolean(selectedEntries.secret[key])}
       onToggleSecretSelect={(_, isShiftKey) => {
         if (!hasPendingBatchChanges) toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
@@ -4166,16 +4183,26 @@ const OverviewPageContent = () => {
                 </Tooltip>
               </>
             )}
-            {canManageCurrentFolderAccess && (
-              <Button
-                variant="ghost"
-                size="xs"
-                className="mr-1.5 shrink-0"
-                onClick={handleCurrentFolderAccessOpen}
-              >
-                <UsersIcon />
-                Manage Access
-              </Button>
+            {isSingleEnvView && (
+              <Tooltip open={canManageCurrentFolderAccess ? false : undefined}>
+                <TooltipTrigger asChild>
+                  <span
+                    tabIndex={canManageCurrentFolderAccess ? undefined : 0}
+                    className="mr-1.5 shrink-0"
+                  >
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      isDisabled={!canManageCurrentFolderAccess}
+                      onClick={handleCurrentFolderAccessOpen}
+                    >
+                      <UsersIcon />
+                      Manage Access
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Access Restricted</TooltipContent>
+              </Tooltip>
             )}
           </div>
           {tableView === "no-environments" && (
@@ -4459,7 +4486,7 @@ const OverviewPageContent = () => {
                         <TableHead className="min-w-[368px] text-sm font-medium text-muted">
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
-                            <div className="flex items-center gap-2">
+                            <div className="-mr-1.5 flex items-center gap-2">
                               <Badge variant="ghost" asChild>
                                 <button
                                   type="button"
@@ -4596,6 +4623,21 @@ const OverviewPageContent = () => {
                           page === 1 &&
                           !isTableEmpty && (
                             <QuickAddSecretRow
+                              onAnnotate={
+                                isSingleEnvView
+                                  ? (key, action) => {
+                                      if (
+                                        !key
+                                          .toLowerCase()
+                                          .includes(searchFilter.trim().toLowerCase())
+                                      )
+                                        setSearchFilter("");
+                                      if (isFilteredByResources && !filter.secret)
+                                        setFilter((state) => ({ ...state, secret: true }));
+                                      setQuickAddAnnotation({ key, action });
+                                    }
+                                  : undefined
+                              }
                               autoQueueOnBlur={isSingleEnvView}
                               activityId={getTableRowActivityId("quick-add", secretPath)}
                               environments={visibleEnvs.map((env) => env.slug)}
@@ -4617,6 +4659,24 @@ const OverviewPageContent = () => {
                                   "quick-add",
                                   isDirectSave
                                 );
+                              }}
+                              onQueuedSecretConflict={(draft) => {
+                                const pendingCreate = batchStoreApi
+                                  .getState()
+                                  .pendingChanges.secrets.find(
+                                    (change) =>
+                                      change.type === PendingAction.Create &&
+                                      change.secretKey === draft.key &&
+                                      change.secretValue === draft.value &&
+                                      (change.secretComment ?? "") === draft.comment
+                                  );
+                                if (!pendingCreate || !singleVisibleEnv) return false;
+                                removePendingChange(pendingCreate.id, "secret", {
+                                  projectId,
+                                  environment: singleVisibleEnv.slug,
+                                  secretPath
+                                });
+                                return true;
                               }}
                               onPasteSecrets={(env) => {
                                 overviewTelemetry.flow({
@@ -4723,7 +4783,9 @@ const OverviewPageContent = () => {
                               onToggleFolderDelete={(name: string) =>
                                 handlePopUpOpen("deleteFolder", { name })
                               }
-                              onToggleFolderAccess={handleFolderAccessOpen}
+                              onToggleFolderAccess={
+                                isSingleEnvView ? handleFolderAccessOpen : undefined
+                              }
                               canManageFolderAccess={canManageFolderAccessInRow(folderName)}
                               canEditFolder={canEditFolders}
                               canDeleteFolder={canDeleteFolders}

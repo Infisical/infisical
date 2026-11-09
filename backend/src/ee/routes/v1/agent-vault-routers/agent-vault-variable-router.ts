@@ -12,9 +12,10 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext } from "./agent-vault-router-fns";
+import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
 import {
   agentVaultListQuery,
+  AgentVaultProjectIdSchema,
   AgentVaultVariableKeySchema,
   AgentVaultVariableSchema,
   AgentVaultVariableValueSchema
@@ -34,6 +35,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
         "List the Agent Vault variables you can see: your own personal ones, and the global ones if you're an admin",
       tags: [ApiDocsTags.AgentVaultVariables],
       querystring: z.object({
+        projectId: AgentVaultProjectIdSchema,
         scope: z.nativeEnum(AgentVaultVariableScope).optional().describe(AGENT_VAULT.VARIABLE.listScope),
         orderBy: z.enum(["key", "serviceCount"]).default("key").describe(AGENT_VAULT.VARIABLE.orderBy),
         orderDirection: z.enum(["asc", "desc"]).default("asc").describe(AGENT_VAULT.VARIABLE.orderDirection),
@@ -57,12 +59,15 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultVariable.listVariables({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const { projectId: requestedProjectId, ...query } = req.query;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
+      return server.services.agentVaultVariable.listVariables({
+        projectId,
         ctx: actorContext(req),
-        ...req.query
-      })
+        ...query
+      });
+    }
   });
 
   server.route({
@@ -75,6 +80,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       description: "Create a global variable, or a personal one of your own",
       tags: [ApiDocsTags.AgentVaultVariables],
       body: z.object({
+        projectId: AgentVaultProjectIdSchema,
         scope: z.nativeEnum(AgentVaultVariableScope).describe(AGENT_VAULT.VARIABLE.createScope),
         key: AgentVaultVariableKeySchema.describe(AGENT_VAULT.VARIABLE.key),
         value: AgentVaultVariableValueSchema.describe(AGENT_VAULT.VARIABLE.value)
@@ -83,16 +89,18 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const { projectId: requestedProjectId, ...body } = req.body;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       const { variable } = await server.services.agentVaultVariable.createVariable({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
-        ...req.body
+        ...body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_VARIABLE_CREATE,
           metadata: { variableId: variable.id, key: variable.key, scope: variable.scope }
@@ -133,8 +141,12 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromVariable(
+        actorContext(req),
+        req.params.variableId
+      );
       const { variable, previousKey } = await server.services.agentVaultVariable.updateVariable({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         variableId: req.params.variableId,
         ...req.body
@@ -143,7 +155,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_VARIABLE_UPDATE,
           metadata: {
@@ -188,8 +200,12 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromVariable(
+        actorContext(req),
+        req.params.variableId
+      );
       const { variable } = await server.services.agentVaultVariable.deleteVariable({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         variableId: req.params.variableId
       });
@@ -197,7 +213,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_VARIABLE_DELETE,
           metadata: { variableId: variable.id, key: variable.key, scope: variable.scope }
@@ -229,8 +245,12 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, reply) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromVariable(
+        actorContext(req),
+        req.params.variableId
+      );
       const { variable, value } = await server.services.agentVaultVariable.getVariableValue({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         variableId: req.params.variableId
       });
@@ -238,7 +258,7 @@ export const registerAgentVaultVariableRouter = async (server: FastifyZodProvide
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW,
           metadata: { variableId: variable.id, key: variable.key, scope: variable.scope }

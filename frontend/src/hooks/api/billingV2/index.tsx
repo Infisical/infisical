@@ -1,4 +1,5 @@
 export {
+  billingV2SubmitMutationKey,
   useAddBillingV2PaymentMethod,
   useBuyBillingV2Product,
   useCancelBillingV2Subscription,
@@ -24,6 +25,8 @@ export type {
   BillingV2BreakdownProject,
   BillingV2BreakdownScope,
   BillingV2BreakdownScopeKind,
+  BillingV2Band,
+  BillingV2Bands,
   BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2CommitmentChange,
@@ -33,6 +36,7 @@ export type {
   BillingV2Entitlement,
   BillingV2EntitlementDim,
   BillingV2Invoice,
+  BillingV2MeteredUsage,
   BillingV2Organization,
   BillingV2Overview,
   BillingV2PaymentMethod,

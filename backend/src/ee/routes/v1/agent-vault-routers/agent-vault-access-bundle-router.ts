@@ -2,7 +2,11 @@ import { z } from "zod";
 
 import { AgentVaultAccessBundlesSchema } from "@app/db/schemas";
 import { auditActorFields } from "@app/ee/services/agent-vault/agent-vault-actor-name-fns";
-import { AgentVaultCredentialType, AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultMemberType,
+  AgentVaultVariableReferenceField
+} from "@app/ee/services/agent-vault/agent-vault-enums";
 import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -14,7 +18,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext } from "./agent-vault-router-fns";
+import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
   AgentVaultBundleSkillSchema,
@@ -30,6 +34,7 @@ import {
   AgentVaultPersonalValueInputSchema,
   AgentVaultPersonalValuesSchema,
   AgentVaultProductMemberSchema,
+  AgentVaultProjectIdSchema,
   AgentVaultServiceSchema,
   AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
@@ -91,7 +96,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             .max(255)
             .optional()
             .describe(AGENT_VAULT.ACCESS_BUNDLE.onBehalfOfUserEmail),
-          ...agentVaultListQuery(AGENT_VAULT.ACCESS_BUNDLE)
+          ...agentVaultListQuery(AGENT_VAULT.ACCESS_BUNDLE),
+          projectId: AgentVaultProjectIdSchema
         })
         .refine((query) => !(query.onBehalfOfUserId && query.onBehalfOfUserEmail), {
           message: "Name the user by onBehalfOfUserId or by onBehalfOfUserEmail, not both"
@@ -120,9 +126,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { onBehalfOfUserId, onBehalfOfUserEmail, ...query } = req.query;
+      const { projectId: requestedProjectId, onBehalfOfUserId, onBehalfOfUserEmail, ...query } = req.query;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
       return server.services.agentVaultAccessBundle.listAccessBundles({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         ...query,
         onBehalfOf:
@@ -144,22 +151,25 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       body: z.object({
         name: AgentVaultNameSchema.describe(AGENT_VAULT.ACCESS_BUNDLE.name),
-        description: AccessBundleDescriptionSchema.optional()
+        description: AccessBundleDescriptionSchema.optional(),
+        projectId: AgentVaultProjectIdSchema
       }),
       response: { 200: z.object({ accessBundle: AccessBundleSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const { projectId: requestedProjectId, ...body } = req.body;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       const accessBundle = await server.services.agentVaultAccessBundle.createAccessBundle({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
-        ...req.body
+        ...body
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_CREATE,
           metadata: {
@@ -203,8 +213,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const accessBundle = await server.services.agentVaultAccessBundle.getAccessBundleById({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId
       });
@@ -237,8 +251,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const accessBundle = await server.services.agentVaultAccessBundle.updateAccessBundle({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         ...req.body
@@ -247,7 +265,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE,
           metadata: {
@@ -283,8 +301,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const accessBundle = await server.services.agentVaultAccessBundle.deleteAccessBundle({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId
       });
@@ -292,7 +314,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_DELETE,
           metadata: { accessBundleId: accessBundle.id, name: accessBundle.name }
@@ -327,8 +349,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const { service, accessBundleName } = await server.services.agentVaultAccessBundle.createService({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         ...req.body
@@ -337,7 +363,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_SERVICE_CREATE,
           metadata: {
@@ -360,10 +386,9 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.grantedScopes : undefined,
             ...pick(service, SERVICE_RULE_AUDIT_FIELDS),
             memberProvidedFields:
-              service.credential.type === AgentVaultCredentialType.Bearer ||
-              service.credential.type === AgentVaultCredentialType.Basic
-                ? service.credential.memberProvidedFields
-                : undefined,
+              service.credential.type === AgentVaultCredentialType.Passthrough
+                ? undefined
+                : service.credential.memberProvidedFields,
             customHeaderNames: service.customHeaders.map((header) => header.name),
             substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder),
             variableKeys: variableKeysOf(service)
@@ -412,20 +437,25 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { service, accessBundleName, update, credentialReplaced } =
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
+      const { service, accessBundleName, update, credentialReplaced, personalValuesCleared } =
         await server.services.agentVaultAccessBundle.updateService({
-          projectId: req.internalAgentVaultProjectId,
+          projectId,
           ctx: actorContext(req),
           accessBundleId: req.params.accessBundleId,
           serviceId: req.params.serviceId,
           ...req.body
         });
-      const isOauthAuthorized = req.body.credential?.type === AgentVaultCredentialType.OAuth;
+      const isOauthAuthorized =
+        req.body.credential?.type === AgentVaultCredentialType.OAuth && Boolean(req.body.credential.authorizationId);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_SERVICE_UPDATE,
           // Every field comes off the body, so an absent one means the PATCH did not touch it.
@@ -459,9 +489,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             ...pick(update, SERVICE_RULE_AUDIT_FIELDS),
             // The setting after the update, present whenever the update touched the credential.
             memberProvidedFields:
-              req.body.credential &&
-              (service.credential.type === AgentVaultCredentialType.Bearer ||
-                service.credential.type === AgentVaultCredentialType.Basic)
+              req.body.credential && service.credential.type !== AgentVaultCredentialType.Passthrough
                 ? service.credential.memberProvidedFields
                 : undefined,
             customHeaderNames: req.body.customHeaders?.map((header) => header.name),
@@ -475,6 +503,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               ?.filter((substitution) => substitution.value !== undefined)
               .map((substitution) => substitution.placeholder),
             credentialReplaced,
+            personalValuesCleared,
             variableKeys:
               req.body.credential || req.body.customHeaders || update.substitutions
                 ? variableKeysOf(service)
@@ -531,13 +560,18 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultAccessBundle.listMcpTools({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
+      return server.services.agentVaultAccessBundle.listMcpTools({
+        ...req.body,
+        projectId,
         ctx: actorContext(req),
-        accessBundleId: req.params.accessBundleId,
-        ...req.body
-      })
+        accessBundleId: req.params.accessBundleId
+      });
+    }
   });
 
   server.route({
@@ -557,8 +591,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const { service, accessBundleName } = await server.services.agentVaultAccessBundle.deleteService({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         serviceId: req.params.serviceId
@@ -567,7 +605,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_SERVICE_DELETE,
           metadata: {
@@ -615,8 +653,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const { personalValues } = await server.services.agentVaultPersonalValue.setPersonalValues({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         serviceId: req.params.serviceId,
@@ -627,7 +669,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_PERSONAL_VALUES_SET,
           metadata: {
@@ -652,6 +694,75 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     }
   });
 
+  // Saves a member's completed OAuth sign-in as their connection to a service that leaves sign-in to members. Hidden
+  // like the authorization routes, since only the UI's browser sign-in can produce one.
+  server.route({
+    method: "POST",
+    url: "/:accessBundleId/services/:serviceId/personal-values/oauth-connection",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "connectAgentVaultServicePersonalOauth",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
+      }),
+      body: z.object({
+        authorizationId: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId),
+        credentialType: z
+          .nativeEnum(AgentVaultCredentialType)
+          .optional()
+          .describe(AGENT_VAULT.PERSONAL_VALUE.credentialType)
+      }),
+      response: { 200: z.object({ personalValues: AgentVaultPersonalValuesSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
+      const { personalValues } = await server.services.agentVaultPersonalValue.connectOauth({
+        projectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        serviceId: req.params.serviceId,
+        authorizationId: req.body.authorizationId,
+        credentialType: req.body.credentialType
+      });
+      const oauthConnection = personalValues.fields.find((field) => field.oauth)?.oauth;
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.AGENT_VAULT_PERSONAL_VALUES_SET,
+          metadata: {
+            accessBundleId: personalValues.accessBundleId,
+            accessBundleName: personalValues.accessBundleName,
+            serviceId: personalValues.serviceId,
+            serviceName: personalValues.serviceName,
+            credentialType: personalValues.credentialType,
+            fields: [AgentVaultVariableReferenceField.CredentialValue],
+            variableKeys: [],
+            ...(oauthConnection
+              ? { oauthIssuer: oauthConnection.issuer, oauthScopes: oauthConnection.grantedScopes }
+              : {})
+          }
+        }
+      });
+
+      return {
+        personalValues: {
+          isConfigured: personalValues.isConfigured,
+          fields: personalValues.fields
+        }
+      };
+    }
+  });
+
   server.route({
     method: "DELETE",
     url: "/:accessBundleId/services/:serviceId/personal-values",
@@ -670,8 +781,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const { personalValues } = await server.services.agentVaultPersonalValue.deletePersonalValues({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         serviceId: req.params.serviceId
@@ -680,7 +795,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_PERSONAL_VALUES_DELETE,
           metadata: {
@@ -693,7 +808,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         }
       });
 
-      return { personalValues: { isConfigured: personalValues.isConfigured, fields: personalValues.fields } };
+      return {
+        personalValues: {
+          isConfigured: personalValues.isConfigured,
+          fields: personalValues.fields
+        }
+      };
     }
   });
 
@@ -712,12 +832,17 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       response: { 200: z.object({ skills: AgentVaultBundleSkillSchema.array() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultSkill.listBundleSkills({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
+      return server.services.agentVaultSkill.listBundleSkills({
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId
-      })
+      });
+    }
   });
 
   server.route({
@@ -740,8 +865,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const { skill, accessBundle } = await server.services.agentVaultSkill.addToBundle({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         skillId: req.body.skillId
@@ -750,7 +879,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD,
           metadata: {
@@ -788,8 +917,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const { skill, accessBundle } = await server.services.agentVaultSkill.removeFromBundle({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         skillId: req.params.skillId
@@ -798,7 +931,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE,
           metadata: {
@@ -838,13 +971,18 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       response: { 200: z.object({ members: AgentVaultMemberSchema.array(), totalCount: z.number() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultAccessBundle.listMembers({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
+      return server.services.agentVaultAccessBundle.listMembers({
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         ...req.query
-      })
+      });
+    }
   });
 
   server.route({
@@ -871,13 +1009,18 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultAccessBundle.listAvailableMembers({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
+      return server.services.agentVaultAccessBundle.listAvailableMembers({
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         ...req.query
-      })
+      });
+    }
   });
 
   server.route({
@@ -902,8 +1045,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const { members, skipped, accessBundleName } = await server.services.agentVaultAccessBundle.addMembers({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         ...req.body
@@ -914,7 +1061,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             orgId: req.permission.orgId,
-            projectId: req.internalAgentVaultProjectId,
+            projectId,
             event: {
               type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD,
               metadata: {
@@ -960,8 +1107,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromAccessBundle(
+        actorContext(req),
+        req.params.accessBundleId
+      );
       const { members, skipped, accessBundleName } = await server.services.agentVaultAccessBundle.revokeMembers({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
         ...req.body
@@ -972,7 +1123,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           server.services.auditLog.createAuditLog({
             ...req.auditLogInfo,
             orgId: req.permission.orgId,
-            projectId: req.internalAgentVaultProjectId,
+            projectId,
             event: {
               type: EventType.AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE,
               metadata: {

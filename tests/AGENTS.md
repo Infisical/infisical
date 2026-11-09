@@ -60,7 +60,7 @@ harnesstest/        harness behaviour; only for failures the harness alone can c
                     (harnesstest/isolated is the harness's own Isolated package)
 harness/            Stack, Profile, Tenant, Principal
 fixture/            platform resources: projects, App Connections
-fixture/<product>/  one package per product: secretmanager, pki, pam
+fixture/<product>/  one package per product: secretmanager, kms, pki, pam
 fixture/sso/        SAML and OIDC logins, for any suite whose claim needs an SSO session
 fakes/              one package per external provider
 internal/           wait, mail, id, apierr, spec
