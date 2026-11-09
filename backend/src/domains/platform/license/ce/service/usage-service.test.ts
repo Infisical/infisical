@@ -27,6 +27,31 @@ describe("UsageService.handleUsageEvent", () => {
     expect(snapshotsFor(hooks, Meter.UserIdentities.key)).toEqual([[ROOT.id, 4]]);
   });
 
+  test("should send a recount under a new idempotency key when a retry follows a lost reply", async () => {
+    // Setup
+    const counter = new FakeUsageCounter(Meter.ActiveCerts).set(ROOT.id, 9);
+    const { licenseDomain, queue, hooks } = await buildLicense({ counters: [counter] });
+    hooks.loseNextReplies = 1;
+    licenseDomain.emit(ROOT.id, Meter.ActiveCerts.key);
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+    const [job] = queue.jobs;
+    const run = () => queue.handlers.get(job.queue)!({ data: job.data, timestamp: 1_700_000_000_000 });
+    vi.useFakeTimers({ toFake: ["Date"], now: 1_700_000_005_000 });
+    await expect(run()).rejects.toThrow("License Server reply lost");
+    counter.set(ROOT.id, 8);
+    vi.setSystemTime(1_700_000_015_000);
+
+    // Action
+    await run().finally(() => vi.useRealTimers());
+
+    // Assert
+    const sent = hooks.snapshots.map((s) => s.snapshot);
+    expect(sent.map((s) => s.value)).toEqual([9, 8]);
+    expect(new Set(sent.map((s) => s.idempotency_key)).size).toBe(2);
+  });
+
   test("should not report a value the server already has", async () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);

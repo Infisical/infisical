@@ -40,6 +40,9 @@ export class FakeLicenseHooks implements TLicenseHooks {
 
   failNextReports: UsageReportError[] = [];
 
+  // Reports the License Server receives but whose reply never reaches the instance.
+  loseNextReplies = 0;
+
   cancellations: string[] = [];
 
   cancelFailure: Error | null = null;
@@ -77,6 +80,10 @@ export class FakeLicenseHooks implements TLicenseHooks {
     const failure = this.failNextReports.shift();
     if (failure) throw failure;
     snapshots.forEach((snapshot) => this.snapshots.push({ orgId, snapshot }));
+    if (this.loseNextReplies > 0) {
+      this.loseNextReplies -= 1;
+      throw new Error("License Server reply lost");
+    }
   };
 
   reportEvents = async (orgId: string, events: TUsageEvent[]) => {

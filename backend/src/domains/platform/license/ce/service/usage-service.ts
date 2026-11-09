@@ -51,7 +51,7 @@ export class UsageService {
   }
 
   // Counts the meter and reports it only when the value changed since the last report.
-  async handleUsageEvent(orgId: string, dimensionKey: string, observedAt: Date): Promise<void> {
+  async handleUsageEvent(orgId: string, dimensionKey: string): Promise<void> {
     const { hooks } = this.deps;
     if (!hooks.canReportUsage()) return;
 
@@ -72,6 +72,9 @@ export class UsageService {
 
     try {
       const value = await counter.count(cloud ? reportOrgId : null);
+      // Stamped at counting, not at enqueue: a retried job counts again, and a new count sent under the
+      // first attempt's key would be dropped by the server as a duplicate while recordReported keeps it.
+      const observedAt = new Date();
       const lastReported = await this.deps.usageReportCache.lastReported(reportOrgId, dimensionKey);
       if (lastReported === value) return;
 

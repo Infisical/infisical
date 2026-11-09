@@ -142,7 +142,7 @@ export class LicenseModule {
 
     this.deps.queueService.start(
       UsageQueues.usageEvent,
-      (job) => this.usage.handleUsageEvent(job.data.orgId, job.data.dimensionKey, new Date(job.timestamp)),
+      (job) => this.usage.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
       // Counts are DB-heavy, so a backlog is rate-shaped instead of bursting the read replica.
       { concurrency: 5, limiter: { max: 50, duration: 1000 } }
     );
