@@ -43,7 +43,7 @@ const MeterLabel = ({ dim }: { dim: BillingV2EntitlementDim }) => {
   const noun = rawNoun.includes("_") ? dim.label : pluralizeUnit(rawNoun);
   let unit = noun;
   if (isIdentityDim(dim)) unit = "billed identities";
-  else if (allowance !== null) unit = `/ ${allowance.toLocaleString()} ${noun}`;
+  else unit = `/ ${allowance === null ? "Unlimited" : allowance.toLocaleString()} ${noun}`;
   return (
     <span className="flex h-[18px] items-baseline gap-1 whitespace-nowrap tabular-nums">
       <span className="text-[13px] leading-4 text-foreground">

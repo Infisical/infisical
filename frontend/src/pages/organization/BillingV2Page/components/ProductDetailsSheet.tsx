@@ -32,10 +32,6 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
   IconButton,
   Item,
   Label,
@@ -228,14 +224,7 @@ const BreakdownPanel = ({
   const total = data.scopedCount;
   if (isIdentity && total === 0) return null;
   if (total === 0) {
-    return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyTitle>No {subject} yet</EmptyTitle>
-          <EmptyDescription>Where they&apos;re used will show up here.</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
+    return <span className="text-xs text-muted">No {subject} yet.</span>;
   }
 
   const rootScopes = data.scopes.filter((scope) => scope.isRoot);
@@ -439,6 +428,23 @@ const IdentitySection = ({
   );
 };
 
+const EntitlementTileContent = ({ dim }: { dim: BillingV2EntitlementDim }) => {
+  const allowance = dimAllowance(dim);
+  return (
+    <>
+      <span className="text-xs leading-4 text-accent">{dimDisplayLabel(dim)}</span>
+      <span className="flex items-baseline gap-1 text-sm text-foreground tabular-nums">
+        {dim.used.toLocaleString()}
+        <span className="text-xs text-muted">
+          / {allowance === null ? "Unlimited" : allowance.toLocaleString()}
+        </span>
+      </span>
+      <UsageBar dim={dim} className="h-[3px]" />
+      {isNearLimit(dim) && <span className="text-xs text-warning">Approaching limit</span>}
+    </>
+  );
+};
+
 const EntitlementsSection = ({
   prod,
   dims,
@@ -465,54 +471,35 @@ const EntitlementsSection = ({
             <span className="text-xs text-muted">Select one to see where it&apos;s used</span>
           )}
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {dims.map((dim) => {
-            const allowance = dimAllowance(dim);
-            const content = (
-              <>
-                <span className="text-xs leading-4 text-accent">{dimDisplayLabel(dim)}</span>
-                <span className="flex items-baseline gap-1 text-sm tabular-nums">
-                  {dim.used.toLocaleString()}
-                  {(allowance !== null || isEnterprise) && (
-                    <span className="text-xs text-muted">
-                      / {allowance === null ? "Unlimited" : allowance.toLocaleString()}
-                    </span>
-                  )}
-                </span>
-                <UsageBar dim={dim} className="h-[3px]" />
-                {isNearLimit(dim) && (
-                  <span className="text-xs text-warning">Approaching limit</span>
-                )}
-              </>
-            );
-            const body = (
-              <span className="flex w-full min-w-0 flex-col gap-1.5 text-left">{content}</span>
-            );
-            if (!canBreakDown(dim)) {
-              return (
-                <Item key={dim.key} size="xs">
-                  {body}
-                </Item>
-              );
-            }
-            return (
-              <Item
-                key={dim.key}
-                asChild
-                size="xs"
-                variant={dim.key === selected?.key ? "outline" : "default"}
-              >
-                <button
-                  type="button"
-                  aria-pressed={dim.key === selected?.key}
-                  onClick={() => setSelectedKey(dim.key)}
+        {selectable.length > 1 ? (
+          <Tabs value={selected?.key} onValueChange={setSelectedKey}>
+            <TabsList
+              aria-label={entitlementsLabel(prod)}
+              className="grid w-full grid-cols-1 gap-1 data-[orientation=horizontal]:h-auto sm:grid-cols-3"
+            >
+              {dims.map((dim) => (
+                <TabsTrigger
+                  key={dim.key}
+                  value={dim.key}
+                  disabled={!canBreakDown(dim)}
+                  className="flex-col items-stretch justify-start gap-1.5 px-2.5 py-2 text-left whitespace-normal"
                 >
-                  {body}
-                </button>
+                  <EntitlementTileContent dim={dim} />
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        ) : (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {dims.map((dim) => (
+              <Item key={dim.key} size="xs">
+                <span className="flex w-full min-w-0 flex-col gap-1.5">
+                  <EntitlementTileContent dim={dim} />
+                </span>
               </Item>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
       {selected && (
         <BreakdownPanel dim={selected} breakdown={breakdown} isEnterprise={isEnterprise} />
