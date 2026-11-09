@@ -30,7 +30,7 @@ type Props = {
   footer: ReactNode;
 };
 
-const formatPlanFeatureTitle = ({ label, value }: PlanFeature) => {
+export const formatPlanFeatureTitle = ({ label, value }: PlanFeature) => {
   if (!value) return label;
 
   const dayValue = value.match(/^(\d+)\s+days?$/i);
@@ -41,7 +41,7 @@ const formatPlanFeatureTitle = ({ label, value }: PlanFeature) => {
   return `${value} ${label}`;
 };
 
-const PlanFeatureIcon = ({ value }: { value?: string }) => {
+export const PlanFeatureIcon = ({ value }: { value?: string }) => {
   const className = "mt-0.5 size-4 shrink-0 text-success";
   if (value?.trim().toLowerCase() === "unlimited") {
     return <InfinityIcon aria-hidden="true" className={className} />;
