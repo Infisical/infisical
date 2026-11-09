@@ -59,6 +59,7 @@ import {
   mapExtendedKeyUsageToLegacy,
   mapKeyUsageToLegacy
 } from "../certificate-common/certificate-constants";
+import { extractCertificateRequestFromCSR } from "../certificate-common/certificate-csr-utils";
 import {
   detectSanType,
   extractCertificateFromBuffer,
@@ -117,14 +118,15 @@ import {
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
-  isRenewalNameChange,
+  isRenewalSubjectChange,
   resolveRenewalAlgorithms,
   resolveRenewalAltNames,
   resolveRenewalCustomExtensions,
   resolveRenewalKeySource,
   resolveRenewalSubject,
   resolveRenewalUsages,
-  validateRenewalEligibility
+  validateRenewalEligibility,
+  withCsrSubject
 } from "./certificate-renewal-fns";
 import { processSelfSignedCertificate } from "./certificate-self-signed-fns";
 import {
@@ -1275,17 +1277,39 @@ export const certificateRenewalServiceFactory = ({
           hasOriginalCsr: Boolean(originalCsr)
         });
 
-        // An external CA may issue the names inside the stored CSR rather than the ones requested, so
-        // a name edit would pass the policy check here and then be ignored by the CA.
-        if (
-          originalCsr &&
-          caType !== CaType.INTERNAL &&
-          isRenewalNameChange({ replayed: replayedRequest, requested: certificateRequest })
-        ) {
-          throw new BadRequestError({
-            message:
-              "This renewal reuses the signing request Infisical holds for the certificate's key, and the certificate authority issues the names in that request. To change the common name or alternative names, renew with a CSR that carries them, or with a new key pair."
-          });
+        // The policy check above covers the requested subject, but a stored CSR can put its own subject on
+        // the certificate: an external CA may issue the CSR as-is, and the internal CA takes the CSR's SANs
+        // when none are requested. Check what will actually be issued.
+        if (originalCsr) {
+          const isExternalCa = caType !== CaType.INTERNAL;
+          if (isExternalCa && isRenewalSubjectChange({ replayed: replayedRequest, requested: certificateRequest })) {
+            throw new BadRequestError({
+              message:
+                "This renewal reuses the signing request Infisical holds for the certificate's key, and the certificate authority issues the subject and names in that request. To change them, renew with a CSR that carries them, or with a new key pair."
+            });
+          }
+
+          const csrRequest = extractCertificateRequestFromCSR(originalCsr);
+          let issuedRequest: TCertificateRequest | null = null;
+          if (isExternalCa) {
+            issuedRequest = withCsrSubject(certificateRequest, csrRequest);
+          } else if (
+            !certificateRequest.subjectAlternativeNames?.length &&
+            csrRequest.subjectAlternativeNames?.length
+          ) {
+            issuedRequest = { ...certificateRequest, subjectAlternativeNames: csrRequest.subjectAlternativeNames };
+          }
+
+          if (issuedRequest) {
+            const issuedValidation = certificatePolicyService.validateRequestAgainstPolicy(policy, issuedRequest, {
+              profileCustomExtensions: profile?.defaults?.customExtensions
+            });
+            if (!issuedValidation.isValid) {
+              throw new RenewalBlockedError(
+                `Certificate renewal failed: the signing request Infisical holds for this key no longer meets the certificate policy. Renew with a new CSR or a new key pair. Errors: ${issuedValidation.errors.join(", ")}`
+              );
+            }
+          }
         }
 
         if (keySource !== CertificateRenewalKeySource.New && caType === CaType.INTERNAL && ca) {

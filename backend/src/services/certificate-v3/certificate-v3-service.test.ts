@@ -2618,7 +2618,17 @@ describe("CertificateV3Service", () => {
     });
 
     describe("reusing the key pair when Infisical has no private key", () => {
-      const STORED_CSR = "-----BEGIN CERTIFICATE REQUEST-----\nstored\n-----END CERTIFICATE REQUEST-----";
+      // CN=test.example.com, SANs test.example.com and api.example.com, matching mockOriginalCert
+      const STORED_CSR = [
+        "-----BEGIN CERTIFICATE REQUEST-----",
+        "MIIBFTCBvAIBADAbMRkwFwYDVQQDDBB0ZXN0LmV4YW1wbGUuY29tMFkwEwYHKoZI",
+        "zj0CAQYIKoZIzj0DAQcDQgAEk2xe7vDvSLYLf1J5Bt2n4cUXEy1jmR9HWGujvH9D",
+        "8gRYDkAuChWMdJUPKdBY52M1+RZZPpaYhOyNFGw0yjtwgaA/MD0GCSqGSIb3DQEJ",
+        "DjEwMC4wLAYDVR0RBCUwI4IQdGVzdC5leGFtcGxlLmNvbYIPYXBpLmV4YW1wbGUu",
+        "Y29tMAoGCCqGSM49BAMCA0gAMEUCIBWY1bTFbCf/AQZmITKCie/e5VDGxVls5aGN",
+        "XZOkYYFLAiEA6YDfHLXS6XtANpBLOac88e3UF9LYeGIp5CjU8/y/Ghw=",
+        "-----END CERTIFICATE REQUEST-----"
+      ].join("\n");
       const digicertCa = {
         ...mockCA,
         internalCa: undefined,
@@ -2626,6 +2636,13 @@ describe("CertificateV3Service", () => {
       };
 
       const setupKeylessRenewal = ({ ca, importedCsr }: { ca: unknown; importedCsr: string | null }) => {
+        vi.mocked(extractCertificateRequestFromCSR).mockReturnValue({
+          commonName: "test.example.com",
+          subjectAlternativeNames: [
+            { type: CertSubjectAlternativeNameType.DNS_NAME, value: "test.example.com" },
+            { type: CertSubjectAlternativeNameType.DNS_NAME, value: "api.example.com" }
+          ]
+        });
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue({ ...mockOriginalCert, source: "imported" });
         vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue(undefined as any);
         vi.mocked(mockCertificateBodyDAL.findOne).mockResolvedValue(
@@ -2668,7 +2685,7 @@ describe("CertificateV3Service", () => {
             attributes: { altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "admin.example.com" }] },
             ...mockActor
           })
-        ).rejects.toThrow(/issues the names in that request/);
+        ).rejects.toThrow(/issues the subject and names in that request/);
         expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
       });
 
@@ -2702,6 +2719,30 @@ describe("CertificateV3Service", () => {
         expect(mockCertificateIssuanceQueue.queueCertificateIssuance).toHaveBeenCalledWith(
           expect.objectContaining({ csr: STORED_CSR })
         );
+      });
+
+      it("refuses when the stored CSR's own subject no longer meets the policy", async () => {
+        setupKeylessRenewal({ ca: digicertCa, importedCsr: STORED_CSR });
+        vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy)
+          .mockReturnValueOnce({ isValid: true, errors: [], warnings: [] } as any)
+          .mockReturnValueOnce({ isValid: false, errors: ["api.example.com is not allowed"], warnings: [] } as any);
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            renewalKeySource: CertificateRenewalKeySource.Reuse,
+            ...mockActor
+          })
+        ).rejects.toThrow(/no longer meets the certificate policy/);
+        expect(mockCertificatePolicyService.validateRequestAgainstPolicy).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            commonName: "test.example.com",
+            subjectAlternativeNames: expect.arrayContaining([expect.objectContaining({ value: "api.example.com" })])
+          }),
+          expect.anything()
+        );
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
       });
 
       it("refuses to reuse the key pair when Infisical holds no CSR for it either", async () => {

@@ -204,28 +204,53 @@ const RENEWAL_ATTRIBUTE_KEYS = Object.keys(RENEWAL_ATTRIBUTES) as (keyof TRenewa
 const suppliedAttributeKeys = (attributes: TRenewalAttributes) =>
   RENEWAL_ATTRIBUTE_KEYS.filter((key) => attributes[key] !== undefined);
 
-type TRenewalNames = { commonName?: string; subjectAlternativeNames?: { value: string }[] };
+const normalizeSubjectValue = (value: string | null | undefined) => (value ?? "").trim().toLowerCase();
 
-const renewalNameSet = ({ commonName, subjectAlternativeNames }: TRenewalNames) =>
+const renewalNameSet = ({ commonName, subjectAlternativeNames }: TCertificateRequest) =>
   new Set(
     [commonName ?? "", ...(subjectAlternativeNames ?? []).map((san) => san.value)]
-      .map((name) => name.trim().toLowerCase())
+      .map(normalizeSubjectValue)
       .filter(Boolean)
   );
 
+const subjectFields = (request: TCertificateRequest) => [
+  request.organization,
+  request.organizationalUnit,
+  request.country,
+  request.state,
+  request.locality,
+  (request.domainComponents ?? []).join(",")
+];
+
 // Compares against the request an unedited renewal replays, not the issued certificate, because a CA
 // may have added names at issuance that the replayed request never asked for.
-export const isRenewalNameChange = ({
+export const isRenewalSubjectChange = ({
   replayed,
   requested
 }: {
-  replayed: TRenewalNames;
-  requested: TRenewalNames;
+  replayed: TCertificateRequest;
+  requested: TCertificateRequest;
 }): boolean => {
   const before = renewalNameSet(replayed);
   const after = renewalNameSet(requested);
-  return before.size !== after.size || [...after].some((name) => !before.has(name));
+  if (before.size !== after.size || [...after].some((name) => !before.has(name))) return true;
+
+  const replayedFields = subjectFields(replayed).map(normalizeSubjectValue);
+  return subjectFields(requested).some((value, index) => normalizeSubjectValue(value) !== replayedFields[index]);
 };
+
+// The subject and names a CA that issues from the CSR itself will put on the certificate.
+export const withCsrSubject = (request: TCertificateRequest, csrRequest: TCertificateRequest): TCertificateRequest => ({
+  ...request,
+  commonName: csrRequest.commonName,
+  organization: csrRequest.organization,
+  organizationalUnit: csrRequest.organizationalUnit,
+  country: csrRequest.country,
+  state: csrRequest.state,
+  locality: csrRequest.locality,
+  domainComponents: csrRequest.domainComponents,
+  subjectAlternativeNames: csrRequest.subjectAlternativeNames ?? []
+});
 
 export const resolveRenewalKeySource = ({
   renewalKeySource,
