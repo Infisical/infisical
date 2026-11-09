@@ -671,7 +671,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       commits
     });
     const cipher = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsCoreDomain });
+    const blindIndexer = await createSecretBlindIndexer({ projectCipher: cipher, orgId: actorOrgId, kmsCoreDomain });
 
     const merged = await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(approvalRequest.id, tx);

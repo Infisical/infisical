@@ -61,11 +61,8 @@ describe("KMS wire format (legacy fixtures)", () => {
     const { kms, fixture } = await startOnFixture();
 
     // Action
-    const { cipherTextBlob } = await (
-      await kms.encryptWithKmsKey({ kmsId: fixture.vectors.cmek.kmsId })
-    )({
-      plainText: Buffer.from("x")
-    });
+    const encrypt = await kms.encryptWithKmsKey({ kmsId: fixture.vectors.cmek.kmsId });
+    const { cipherTextBlob } = await encrypt({ plainText: Buffer.from("x") });
 
     // Assert
     expect(cipherTextBlob.subarray(-3).toString()).toBe("v02");

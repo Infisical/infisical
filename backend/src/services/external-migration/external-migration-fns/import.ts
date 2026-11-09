@@ -3,6 +3,7 @@ import path from "node:path";
 import slugify from "@sindresorhus/slugify";
 
 import { SecretType, TSecretFolders } from "@app/db/schemas";
+import { ReadFrom } from "@app/domains/platform/kms-core/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -10,8 +11,9 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { CommitType } from "@app/services/folder-commit/folder-commit-service";
 import { TSecretEventScope } from "@app/services/secret-v2-bridge/secret-events";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
-import { fnSecretBulkInsert, prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
+import { fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 
 import { TImportDataIntoInfisicalDTO } from "./envkey";
 
@@ -382,7 +384,14 @@ export const importDataIntoInfisicalFn = async ({
   const createdProjectIds = [...originalToNewProjectId.values()];
   try {
     for await (const projectId of createdProjectIds) {
-      projectCiphers.set(projectId, await prepareSecretWriteCiphers({ kmsCoreDomain, projectId, orgId: actorOrgId }));
+      // The projects were committed a moment ago, so a replica may not have them yet.
+      const ciphers = await prepareSecretWriteCiphers({
+        kmsCoreDomain,
+        projectId,
+        orgId: actorOrgId,
+        readOptions: { readFrom: ReadFrom.Primary }
+      });
+      projectCiphers.set(projectId, ciphers);
     }
     await $importIntoProjects();
   } catch (error) {

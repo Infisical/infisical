@@ -76,9 +76,10 @@ describe("RootKeyService.start", () => {
     const hsm = fakeHsm({ entitled: false });
     const { module, state } = buildInMemoryKmsCore({ hooks: { rootKeyWrapper: hsm } });
     const now = new Date();
+    const encryptedRootKey = await hsm.wrap(Buffer.alloc(32, 1));
     state.tables.rootKeyConfigs.set(KMS_ROOT_CONFIG_UUID, {
       id: KMS_ROOT_CONFIG_UUID,
-      encryptedRootKey: await hsm.wrap(Buffer.alloc(32, 1)),
+      encryptedRootKey,
       encryptionStrategy: RootKeyEncryptionStrategy.HSM,
       createdAt: now,
       updatedAt: now

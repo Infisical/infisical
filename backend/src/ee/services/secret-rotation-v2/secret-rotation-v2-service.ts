@@ -682,11 +682,12 @@ export const secretRotationV2ServiceFactory = ({
 
         // Resolved before the transaction opens, so a slow external KMS does not hold a connection
         // and the advisory lock while it answers.
-        const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+        const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId
         });
-        const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsCoreDomain });
+        const { encryptor } = projectCipher;
+        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
 
         return secretRotationV2DAL.transaction(async (tx) => {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretRotationV2Creation(folder.id)]);
@@ -1148,12 +1149,14 @@ export const secretRotationV2ServiceFactory = ({
 
     const mappedKeys = Object.values(secretsMapping as TSecretRotationV2["secretsMapping"]);
 
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsCoreDomain.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsCoreDomain });
+    const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = projectCipher;
+
+    const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
 
     const updatedRotation = await secretRotationV2DAL.transaction(async (tx) => {
       const conflictingRotation = await secretRotationV2DAL.findOne({
@@ -1431,11 +1434,16 @@ export const secretRotationV2ServiceFactory = ({
 
           // Resolved before the transaction opens, so a slow external KMS does not hold a connection
           // while it answers.
-          const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+          const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
             type: KmsDataKey.SecretManager,
             projectId
           });
-          const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: connection.orgId, kmsCoreDomain });
+          const { encryptor, decryptor } = projectCipher;
+          const blindIndexer = await createSecretBlindIndexer({
+            projectCipher,
+            orgId: connection.orgId,
+            kmsCoreDomain
+          });
 
           let isRecovery = false;
           const rotated = await secretRotationV2DAL.transaction(async (tx) => {
@@ -2188,11 +2196,12 @@ export const secretRotationV2ServiceFactory = ({
 
         // Resolved before the transaction opens, so a slow external KMS does not hold a connection
         // while it answers.
-        const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+        const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
           type: KmsDataKey.SecretManager,
           projectId
         });
-        const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsCoreDomain });
+        const { encryptor, decryptor } = projectCipher;
+        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
 
         let isRecovery = false;
         const reconciled = await secretRotationV2DAL.transaction(async (tx) => {

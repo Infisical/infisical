@@ -48,10 +48,15 @@ export class FakeLicenseDomain implements TLicenseDomain {
 
   getPlan = async (orgId: string) => this.plans.get(orgId) ?? this.defaultPlan;
 
-  hasFeature = async (orgId: string, feature: TPlanFeature) => Plan.restore(await this.getPlan(orgId)).has(feature);
+  hasFeature = async (orgId: string, feature: TPlanFeature) => {
+    const plan = await this.getPlan(orgId);
+    return Plan.restore(plan).has(feature);
+  };
 
-  assertFeature = async (orgId: string, feature: TPlanFeature) =>
-    Plan.restore(await this.getPlan(orgId)).assert(feature);
+  assertFeature = async (orgId: string, feature: TPlanFeature) => {
+    const plan = await this.getPlan(orgId);
+    Plan.restore(plan).assert(feature);
+  };
 
   refreshPlan = async () => undefined;
 

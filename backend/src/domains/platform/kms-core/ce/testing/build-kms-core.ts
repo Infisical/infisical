@@ -28,5 +28,5 @@ export const buildInMemoryKmsCore = ({
     hooks,
     isFipsEnabled
   });
-  return { module, kms: module.service, state: inMemory.state };
+  return { module, kms: module.service, state: inMemory.state, dataAccess: inMemory.dataAccess };
 };

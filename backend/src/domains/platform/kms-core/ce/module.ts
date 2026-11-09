@@ -1,7 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { TransactionRunner, TTransactionRunner } from "@app/domains/lib/transaction-runner";
-import type { TCronJobFactory } from "@app/lib/cron/cron-job";
+import { CronJobName, type TCronJobFactory } from "@app/lib/cron/cron-job";
 import { crypto } from "@app/lib/crypto/cryptography";
 import type { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import type { TLegacyKeySnapshot } from "@app/lib/crypto/legacy-key";
@@ -139,9 +139,11 @@ export type TKmsCoreDomain = {
 
   // Org and project keys. Each is created on first use in KMS Core's own short transaction: never call these
   // inside a caller's transaction (see kms-core/AGENTS.md).
-  createCipherPairWithDataKey: (context: TEncryptWithKmsDataKeyDTO) => Promise<TCipherPair>;
-  getProjectSecretManagerKmsKeyId: (projectId: string) => Promise<string>;
-  getProjectCertificateKmsKeyId: (projectId: string) => Promise<string>;
+  // Read the org or project from the replica by default; a caller that has just created it passes
+  // { readFrom: ReadFrom.Primary }.
+  createCipherPairWithDataKey: (context: TEncryptWithKmsDataKeyDTO, options?: TReadOptions) => Promise<TCipherPair>;
+  getProjectSecretManagerKmsKeyId: (projectId: string, options?: TReadOptions) => Promise<string>;
+  getProjectCertificateKmsKeyId: (projectId: string, options?: TReadOptions) => Promise<string>;
   wrapKey: (input: { projectId: string; label: string; key: Buffer }) => Promise<Buffer<ArrayBuffer>>;
   unwrapKey: (input: {
     projectId: string;
@@ -195,8 +197,6 @@ export const buildKmsCoreDataAccessDeps = (db: DataAccessDb): TKmsCoreDataAccess
   dataAccess: buildKmsCoreDataAccess(db, noKmsCoreLocks)
 });
 
-const ROOT_KEY_CLEANUP_CRON = "kms-root-key-cleanup";
-
 // The root key, internal KMS keys, org and project keys, HSM and external keys (through hooks), and root key
 // rotation. Owns kms_keys, internal_kms, internal_kms_key_version, external_kms, kms_root_config,
 // kms_kek_history, kms_legacy_encryption_keys, and the key columns on organizations and projects.
@@ -246,7 +246,7 @@ export class KmsCoreModule {
     await this.rootKeys.start(options);
     if (options.skipRotationState || !this.deps.cronJob) return;
     this.deps.cronJob.register({
-      name: ROOT_KEY_CLEANUP_CRON,
+      name: CronJobName.KmsRootKeyCleanup,
       pattern: "0 3 * * 0",
       runHashTtlS: 60 * 60,
       handler: () => this.rotation.removeInactiveKeys()
@@ -305,9 +305,11 @@ export class KmsCoreModule {
       generateMac: (input) => cryptoService.generateMac(input),
       verifyMac: (input) => cryptoService.verifyMac(input),
 
-      createCipherPairWithDataKey: (context) => scopeKeys.createCipherPairWithDataKey(context),
-      getProjectSecretManagerKmsKeyId: (projectId) => scopeKeys.getProjectSecretManagerKmsKeyId(projectId),
-      getProjectCertificateKmsKeyId: (projectId) => scopeKeys.getProjectCertificateKmsKeyId(projectId),
+      createCipherPairWithDataKey: (context, options) => scopeKeys.createCipherPairWithDataKey(context, options),
+      getProjectSecretManagerKmsKeyId: (projectId, options) =>
+        scopeKeys.getProjectSecretManagerKmsKeyId(projectId, options),
+      getProjectCertificateKmsKeyId: (projectId, options) =>
+        scopeKeys.getProjectCertificateKmsKeyId(projectId, options),
       wrapKey: (input) => scopeKeys.wrapKey(input),
       unwrapKey: (input) => scopeKeys.unwrapKey(input),
       updateProjectSecretManagerKmsKey: (input) => scopeKeys.updateProjectSecretManagerKmsKey(input),
@@ -317,25 +319,30 @@ export class KmsCoreModule {
 
       createExternalKms: async (input) => {
         const hook = this.externalKms();
-        return hook.create(input, await orgCipher(input.orgId));
+        const cipher = await orgCipher(input.orgId);
+        return hook.create(input, cipher);
       },
       updateExternalKms: async (input) => {
         const hook = this.externalKms();
-        return hook.update(input, await keyOrgCipher(input.kmsId));
+        const cipher = await keyOrgCipher(input.kmsId);
+        return hook.update(input, cipher);
       },
       deleteExternalKms: async (kmsId) => {
         const hook = this.externalKms();
-        return hook.delete(kmsId, await keyOrgCipher(kmsId));
+        const cipher = await keyOrgCipher(kmsId);
+        return hook.delete(kmsId, cipher);
       },
       getExternalKms: async (kmsId) => {
         const hook = this.externalKms();
-        return hook.get(kmsId, await keyOrgCipher(kmsId));
+        const cipher = await keyOrgCipher(kmsId);
+        return hook.get(kmsId, cipher);
       },
       getExternalKmsByName: async (orgId, name) => {
         const hook = this.externalKms();
         const [key] = await kmsKeys.findKeys({ orgId, name });
         if (!key?.isExternal) throw new NotFoundError({ message: `External KMS with name '${name}' not found` });
-        return hook.get(key.id, await orgCipher(orgId));
+        const cipher = await orgCipher(orgId);
+        return hook.get(key.id, cipher);
       },
       listExternalKms: (orgId) => this.externalKms().list(orgId),
       fetchGcpKeys: (input) => this.externalKms().fetchGcpKeys(input)

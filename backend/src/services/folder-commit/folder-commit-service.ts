@@ -34,11 +34,11 @@ import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { FolderModifiedEventV1, previousSecretLocation } from "../secret-folder/secret-folder-events";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
-import { createSecretBlindIndexer } from "../secret-v2-bridge/secret-blind-index-fns";
 import { secretModifiedEvents } from "../secret-v2-bridge/secret-events";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretWriteCiphers } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-write-cipher-fns";
 import { TUserDALFactory } from "../user/user-dal";
 import { TFolderCommitDALFactory } from "./folder-commit-dal";
 import { TFolderCommitQueueServiceFactory } from "./folder-commit-queue";
@@ -1078,11 +1078,7 @@ export const folderCommitServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) return undefined;
 
-    const [secretManager, blindIndexer] = await Promise.all([
-      kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }),
-      createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsCoreDomain })
-    ]);
-    return { secretManager, blindIndexer };
+    return prepareSecretWriteCiphers({ kmsCoreDomain, projectId, orgId: project.orgId });
   };
 
   /**

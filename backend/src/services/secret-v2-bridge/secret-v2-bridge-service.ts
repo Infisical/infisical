@@ -93,7 +93,6 @@ import {
   fnSecretBulkInsert,
   fnSecretBulkUpdate,
   fnSecretMoveInTransaction,
-  prepareSecretWriteCiphers,
   fnUpdateSecretLinkedReferences,
   recursivelyGetSecretPaths,
   reshapeBridgeSecret
@@ -122,6 +121,7 @@ import {
 } from "./secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
+import { prepareSecretWriteCiphers } from "./secret-write-cipher-fns";
 
 type SecretMetricOp = {
   duration: "read" | "write";
@@ -474,11 +474,14 @@ export const secretV2BridgeServiceFactory = ({
 
     await $validateSecretReferences(projectId, permission, allSecretReferences);
 
-    const { encryptor: secretManagerEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+    const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsCoreDomain });
+
+    const { encryptor: secretManagerEncryptor } = projectCipher;
+
+    const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actorOrgId, kmsCoreDomain });
     const blindIndexes = await (inputSecretData.secretValue
       ? blindIndexer.generateBlindIndexes(Buffer.from(inputSecretData.secretValue))
       : null);
@@ -770,12 +773,14 @@ export const secretV2BridgeServiceFactory = ({
       await $validateSecretReferences(projectId, permission, allSecretReferences);
     }
 
-    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-      await kmsCoreDomain.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsCoreDomain });
+    const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = projectCipher;
+
+    const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actorOrgId, kmsCoreDomain });
     const encryptedValue =
       typeof secretValue === "string"
         ? {

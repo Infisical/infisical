@@ -313,20 +313,17 @@ export const honeyTokenServiceFactory = ({
     // to revoke them or they are left behind with no row to find them by.
     let honeyToken: THoneyTokens;
     try {
-      const { encryptor: credentialEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
+      const { encryptor: credentialEncryptor } = projectCipher;
 
       const encryptedCredentials = credentialEncryptor({
         plainText: Buffer.from(JSON.stringify(honeyTokenCredentials))
       }).cipherTextBlob;
-
-      const { encryptor: secretEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsCoreDomain });
+      const { encryptor: secretEncryptor } = projectCipher;
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
 
       const secretEntries = Object.entries(secretsMapping).map(([credentialField, secretKey]) => {
         const credentialValue = honeyTokenCredentials[credentialField];
@@ -554,20 +551,20 @@ export const honeyTokenServiceFactory = ({
 
       const oldSecretKeys = Object.values(oldMapping);
 
-      const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
+
+      const { decryptor } = projectCipher;
 
       const decryptedCredentials = JSON.parse(
         decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
       ) as Record<string, string>;
 
-      const { encryptor: secretEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsCoreDomain });
+      const { encryptor: secretEncryptor } = projectCipher;
+
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
 
       const secretEntries = Object.entries(nextSecretsMapping).map(([credentialField, secretKey]) => {
         const credentialValue = decryptedCredentials[credentialField];

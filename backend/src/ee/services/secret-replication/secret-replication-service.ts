@@ -285,11 +285,12 @@ export const secretReplicationServiceFactory = ({
     if (!destinationReplicatedSecretImports.length) return;
 
     if (shouldUseSecretV2Bridge) {
-      const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId, kmsCoreDomain });
+      const { decryptor: secretManagerDecryptor } = projectCipher;
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId, kmsCoreDomain });
 
       // these are the secrets to be added in replicated folders
       const sourceLocalSecrets = await secretV2BridgeDAL.find({ folderId: folder.id, type: SecretType.Shared });

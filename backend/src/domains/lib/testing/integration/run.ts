@@ -27,7 +27,8 @@ const addressFile = (runId: string, name: string) => path.join(runDirectory(runI
 
 export const readAddress = async <T>(runId: string, name: string): Promise<T | undefined> => {
   try {
-    return JSON.parse(await readFile(addressFile(runId, name), "utf8")) as T;
+    const contents = await readFile(addressFile(runId, name), "utf8");
+    return JSON.parse(contents) as T;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw err;

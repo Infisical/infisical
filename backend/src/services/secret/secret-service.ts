@@ -63,7 +63,6 @@ import { fnSecretsFromImports } from "../secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import {
   TGetSecretKeyEnvironmentsDTO,
@@ -71,6 +70,7 @@ import {
   TSecretWriteTransaction
 } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretDALFactory } from "./secret-dal";
 import {
   conditionallyHideSecretValue,

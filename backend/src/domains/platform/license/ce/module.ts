@@ -137,7 +137,8 @@ export class LicenseModule {
 
   // Reads the instance's license, then starts the usage workers and the timers. Called once at boot.
   async start(): Promise<void> {
-    this.instanceEntitlements.set(await this.hooks.resolveInstanceEntitlements());
+    const entitlements = await this.hooks.resolveInstanceEntitlements();
+    this.instanceEntitlements.set(entitlements);
     logger.info(`Instance type: ${this.instanceEntitlements.get().instanceType}`);
 
     this.deps.queueService.start(

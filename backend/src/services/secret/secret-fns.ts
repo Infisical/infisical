@@ -755,11 +755,12 @@ export const createManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
+      const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
         type: KmsDataKey.SecretManager,
         projectId
       });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsCoreDomain });
+      const { encryptor: secretManagerEncryptor } = projectCipher;
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: project.orgId, kmsCoreDomain });
 
       const secretsStoredInDB = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -949,12 +950,12 @@ export const updateManySecretsRawFnFactory = ({
       });
     const folderId = folder.id;
     if (shouldUseSecretV2Bridge) {
-      const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
-        await kmsCoreDomain.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: project.orgId, kmsCoreDomain });
+      const projectCipher = await kmsCoreDomain.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = projectCipher;
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: project.orgId, kmsCoreDomain });
 
       const secretsToUpdate = await secretV2BridgeDAL.findBySecretKeys(
         folderId,

@@ -382,18 +382,13 @@ export const signerServiceFactory = ({
   const hsmCertIssuanceDeps = {
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
-    certificateBodyDAL,
     certificateDAL,
-    hsmConnectorService,
-    projectDAL,
-    kmsCoreDomain
+    hsmConnectorService
   };
   const softwareCertIssuanceDeps = {
     certificateAuthorityDAL,
     internalCertificateAuthorityService,
-    certificateBodyDAL,
     certificateSecretDAL,
-    projectDAL,
     kmsCoreDomain
   };
 

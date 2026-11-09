@@ -49,11 +49,12 @@ import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metad
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { fnSecretMoveInTransaction, prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-v2-bridge-fns";
+import { fnSecretMoveInTransaction } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
 import { TFnSecretMoveResult } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
+import { prepareSecretWriteCiphers } from "../secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import { emitFoldersModified, FolderModifiedEventV1 } from "./secret-folder-events";

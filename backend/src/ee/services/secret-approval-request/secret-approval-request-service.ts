@@ -823,11 +823,8 @@ export const secretApprovalRequestServiceFactory = ({
         folderId,
         commits: secretApprovalSecrets
       });
-      const cipher = await kmsCoreDomain.createCipherPairWithDataKey({
-        type: KmsDataKey.SecretManager,
-        projectId
-      });
-      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actorOrgId, kmsCoreDomain });
+      const cipher = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+      const blindIndexer = await createSecretBlindIndexer({ projectCipher: cipher, orgId: actorOrgId, kmsCoreDomain });
 
       mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
         const secrets = await applySecretApprovalCommitsV2Bridge({

@@ -60,16 +60,19 @@ export class PlanService {
   }
 
   async invalidatePlan(orgId: string): Promise<void> {
-    await this.deps.planCache.invalidate(await this.deps.organizations.rootOrgIdOf(orgId));
+    const rootOrgId = await this.deps.organizations.rootOrgIdOf(orgId);
+    await this.deps.planCache.invalidate(rootOrgId);
   }
 
   async isServingFallbackPlan(orgId: string): Promise<boolean> {
     if (!this.deps.instance.isCloud()) return false;
-    return this.deps.planCache.isFallback(await this.deps.organizations.rootOrgIdOf(orgId));
+    const rootOrgId = await this.deps.organizations.rootOrgIdOf(orgId);
+    return this.deps.planCache.isFallback(rootOrgId);
   }
 
   async getLastKnownPlan(orgId: string): Promise<{ plan: TPlanProps; fetchedAt: number } | null> {
-    const lastKnown = await this.deps.planCache.lastKnown(await this.deps.organizations.rootOrgIdOf(orgId));
+    const rootOrgId = await this.deps.organizations.rootOrgIdOf(orgId);
+    const lastKnown = await this.deps.planCache.lastKnown(rootOrgId);
     return lastKnown ? { plan: lastKnown.plan.toJSON(), fetchedAt: lastKnown.fetchedAt } : null;
   }
 
@@ -106,7 +109,8 @@ export class PlanService {
       return;
     }
     if (this.deps.instance.isCloud()) {
-      await this.deps.planCache.invalidate(await this.deps.organizations.rootOrgIdOf(orgId));
+      const rootOrgId = await this.deps.organizations.rootOrgIdOf(orgId);
+      await this.deps.planCache.invalidate(rootOrgId);
       await this.resolve(orgId);
       return;
     }
@@ -156,7 +160,8 @@ export class PlanService {
   }
 
   private async cachePlan(rootOrgId: string, fetched: Plan): Promise<Plan> {
-    const plan = fetched.withWorkspacesUsed(await this.deps.organizations.countWorkspacesUsed(rootOrgId));
+    const workspacesUsed = await this.deps.organizations.countWorkspacesUsed(rootOrgId);
+    const plan = fetched.withWorkspacesUsed(workspacesUsed);
     await this.deps.planCache.write(rootOrgId, plan);
     return plan;
   }
@@ -166,7 +171,8 @@ export class PlanService {
   private revalidateInBackground(rootOrgId: string) {
     void (async () => {
       if (!(await this.deps.planCache.acquireRevalidateLock(rootOrgId))) return;
-      await this.cachePlan(rootOrgId, await this.deps.hooks.fetchPlan(rootOrgId));
+      const fetched = await this.deps.hooks.fetchPlan(rootOrgId);
+      await this.cachePlan(rootOrgId, fetched);
     })().catch((error) => {
       logger.error(error, `getPlan: background revalidation failed [orgId=${rootOrgId}]`);
     });

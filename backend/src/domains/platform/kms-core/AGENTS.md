@@ -17,14 +17,14 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 - **Never call KMS Core inside a caller's transaction.** It has no `within(tx)`. Fetch ciphers, key ids and key
   material before opening the transaction; delete keys after it commits (`deleteProjectKeys`). A secret write that
   runs inside a caller's transaction takes its ciphers through `TSecretWriteTransaction`
-  (`prepareSecretWriteCiphers` in `secret-v2-bridge-fns.ts`); validation takes the project cipher as an argument;
+  (`prepareSecretWriteCiphers` in `secret-write-cipher-fns.ts`); validation takes the project cipher as an argument;
   a folder commit created inside a transaction takes `secretManagerDecryptor` (`createCommit` refuses without it);
   an approval request built inside one takes `TSecretApprovalCommitTransaction`; certificate issuance writes its
   rows in `onPersisted` instead of taking a `tx`; app connection rotations are `prepareRotation` before the
   transaction and `persistRotation` inside it. Notifications (Slack, Teams, email) run after the commit. KMS Core
   reads on its own connection, so it cannot see rows a caller has not committed: a caller that creates a project
-  and encrypts for it commits the project first (see `external-migration-fns/import.ts`), and deletes the keys it
-  created if it then removes the project.
+  and encrypts for it commits the project first, passes `{ readFrom: ReadFrom.Primary }` (a replica may not have the
+  row yet), and deletes the keys it created if it then removes the project (see `external-migration-fns/import.ts`).
 - **No network or HSM call inside a KMS Core transaction.** External-key data keys are encrypted with the provider
   before the lock is taken; a key switch re-wraps the data key before its transaction; provider decrypts run after the
   read returns. Root key wrapping (HSM) happens before the bootstrap and strategy-change transactions.
@@ -46,8 +46,11 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 - **The root key never leaves the domain.** Callers encrypt and decrypt with it (`encryptWithRootKey`), and get a key
   derived from it (`getCookieSigningKey`). The checks on the env key that wraps it (missing `ENCRYPTION_KEY`, its FIPS
   format) run in `RootKeyService.start`, not in `crypto.initialize`.
-- **No cache of key material.** Every cipher pair reads the key columns: from the replica, or with
-  `ReadFrom.Primary` right after a creation.
+- **No cache of key material.** Every cipher pair reads the key columns once: the KMS key id and the encrypted data
+  key come from the same row, so a key switch committing between two reads can never pair one key with the other's
+  ciphertext. The read is on the replica unless the caller or a first-use creation needs the primary. A caller that
+  already holds the project cipher passes it on (`createSecretBlindIndexer({ projectCipher })`) instead of having it
+  resolved again.
 - **Root key state reads `ReadFrom.Primary`** (`RootKeyService`, `RootKeyRotationService`): a lagging replica could
   miss the key this pod holds, or show a superseded view to promote against.
 - **Licensing stays outside.** KMS Core never calls License. HSM: `domains.ts` boot passes

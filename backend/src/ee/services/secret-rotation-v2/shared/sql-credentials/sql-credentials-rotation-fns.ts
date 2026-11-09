@@ -67,7 +67,7 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
 > = (
   secretRotation,
   _appConnectionDAL,
-  _kmsService,
+  _kmsCoreDomain,
   gatewayV2Service,
   gatewayPoolService,
   _keyStore,

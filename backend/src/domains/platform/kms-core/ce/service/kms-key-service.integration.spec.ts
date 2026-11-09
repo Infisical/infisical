@@ -26,11 +26,13 @@ describe("KmsKeyService on Postgres", () => {
       isReserved: false,
       name: "rotating"
     });
-    const before = await (await kms.encryptWithKmsKey({ kmsId: key.id }))({ plainText: Buffer.from("v1") });
+    const encryptBefore = await kms.encryptWithKmsKey({ kmsId: key.id });
+    const before = await encryptBefore({ plainText: Buffer.from("v1") });
 
     // Action
     const versions = await Promise.all([kms.rotateKmsKey(key.id), kms.rotateKmsKey(key.id)]);
-    const after = await (await kms.encryptWithKmsKey({ kmsId: key.id }))({ plainText: Buffer.from("v3") });
+    const encryptAfter = await kms.encryptWithKmsKey({ kmsId: key.id });
+    const after = await encryptAfter({ plainText: Buffer.from("v3") });
 
     // Assert
     expect(versions.map(({ version }) => version).sort()).toEqual([2, 3]);

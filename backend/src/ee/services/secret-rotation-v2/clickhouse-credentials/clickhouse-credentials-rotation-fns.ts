@@ -40,7 +40,7 @@ const escapeIdentifier = (identifier: string) => identifier.replaceAll("\\", "\\
 export const clickhouseCredentialsRotationFactory: TRotationFactory<
   TClickHouseCredentialsRotationWithConnection,
   TClickHouseCredentialsRotationGeneratedCredentials
-> = (secretRotation, _appConnectionDAL, _kmsService, gatewayV2Service, gatewayPoolService) => {
+> = (secretRotation, _appConnectionDAL, _kmsCoreDomain, gatewayV2Service, gatewayPoolService) => {
   const {
     connection,
     parameters: { username1, username2 },

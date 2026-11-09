@@ -259,7 +259,10 @@ export class RootKeyService {
 
   private async resolveRootKey(isHsmConfigured: boolean, skipRotationState: boolean): Promise<Buffer> {
     const rows = await this.deps.dataAccess.rootKeyConfigs.findAll(PRIMARY);
-    if (!rows.length) return this.unwrapRootKey(await this.bootstrapRootKey(isHsmConfigured, skipRotationState));
+    if (!rows.length) {
+      const bootstrapped = await this.bootstrapRootKey(isHsmConfigured, skipRotationState);
+      return this.unwrapRootKey(bootstrapped);
+    }
 
     const errors: unknown[] = [];
     for (const row of RootKeyConfig.orderForResolution(rows)) {

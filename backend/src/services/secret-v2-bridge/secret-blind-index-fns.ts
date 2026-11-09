@@ -1,4 +1,4 @@
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { KmsDataKey, TCipherPair, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 
 export type TSecretValueBlindIndexes = {
   secretValueBlindIndex: string;
@@ -12,12 +12,13 @@ export type TSecretBlindIndexer = {
 };
 
 export type TCreateSecretBlindIndexerDTO = {
-  projectId: string;
+  // The project's SecretManager cipher pair the caller already holds, so it is not resolved a second time.
+  projectCipher: TCipherPair;
   orgId: string;
   kmsCoreDomain: TKmsCoreDomain;
 };
 
-export type TCreateOrgSecretBlindIndexerDTO = Omit<TCreateSecretBlindIndexerDTO, "projectId">;
+export type TCreateOrgSecretBlindIndexerDTO = Omit<TCreateSecretBlindIndexerDTO, "projectCipher">;
 
 // Searching an org by value needs the org digest alone, so this resolves only the org data key
 // rather than paying for a project key it would never use.
@@ -29,19 +30,7 @@ export const createOrgSecretBlindIndexer = async ({ orgId, kmsCoreDomain }: TCre
   };
 };
 
-// Build one of these per request and reuse it for every secret in that request. A bulk write can
-// carry thousands of values, and resolving a data key per value would hit an external KMS that many
-// times.
-export const createSecretBlindIndexer = async ({
-  projectId,
-  orgId,
-  kmsCoreDomain
-}: TCreateSecretBlindIndexerDTO): Promise<TSecretBlindIndexer> => {
-  const [projectCipher, orgCipher] = await Promise.all([
-    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }),
-    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId })
-  ]);
-
+export const buildSecretBlindIndexer = (projectCipher: TCipherPair, orgCipher: TCipherPair): TSecretBlindIndexer => {
   const generateProjectLevelBlindIndex = (secretValue: Buffer) => projectCipher.generateSecretBlindIndex(secretValue);
   const generateOrgLevelBlindIndex = (secretValue: Buffer) => orgCipher.generateSecretBlindIndex(secretValue);
 
@@ -57,4 +46,16 @@ export const createSecretBlindIndexer = async ({
       return { secretValueBlindIndex, secretValueOrgBlindIndex };
     }
   };
+};
+
+// Build one of these per request and reuse it for every secret in that request. A bulk write can
+// carry thousands of values, and resolving a data key per value would hit an external KMS that many
+// times.
+export const createSecretBlindIndexer = async ({
+  projectCipher,
+  orgId,
+  kmsCoreDomain
+}: TCreateSecretBlindIndexerDTO): Promise<TSecretBlindIndexer> => {
+  const orgCipher = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.Organization, orgId });
+  return buildSecretBlindIndexer(projectCipher, orgCipher);
 };

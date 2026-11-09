@@ -99,6 +99,9 @@ domain's service.
 | Module | Builds state once, builds services per transaction runner, exposes the public surface | `class KmsCoreModule` |
 | Router, shared helpers | Plain functions | `registerKmsKeyRouter`, `createKmsKey(dataAccess, state, input)` |
 
+Each `await` is its own statement. Assign the inner result first instead of writing `await (await f())(x)` or
+`g(await f())`, so every asynchronous step reads on its own line.
+
 ### State and services
 
 A module has two kinds of objects:

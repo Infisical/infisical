@@ -160,7 +160,8 @@ export class KmsKeyService {
       if (!key) throw notFoundKey(kmsId);
       key.updateAttributes(attributes);
       await dataAccess.kmsKeys.saveAttributes(key);
-      return toKeyDetails((await dataAccess.kmsKeys.findById(kmsId)) as KmsKey);
+      const saved = (await dataAccess.kmsKeys.findById(kmsId)) as KmsKey;
+      return toKeyDetails(saved);
     });
   }
 

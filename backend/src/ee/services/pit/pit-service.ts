@@ -25,9 +25,9 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
-import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
 import { SecretOperations, SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { prepareSecretWriteCiphers } from "@app/services/secret-v2-bridge/secret-write-cipher-fns";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretServiceFactory } from "@app/services/secret/secret-service";
 import { TProcessNewCommitRawDTO } from "@app/services/secret/secret-types";

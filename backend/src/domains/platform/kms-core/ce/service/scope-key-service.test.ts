@@ -1,4 +1,4 @@
-import { KmsDataKey } from "../module";
+import { KmsDataKey, ReadFrom, TReadOptions } from "../module";
 import { buildInMemoryKmsCore } from "../testing/build-kms-core";
 
 vi.mock("@app/lib/logger", () => ({
@@ -38,6 +38,70 @@ describe("ScopeKeyService.createCipherPairWithDataKey", () => {
     // Assert
     await expect(result).rejects.toThrow("Project with ID 'missing' not found");
     expect(state.tables.kmsKeys.size).toBe(0);
+  });
+});
+
+describe("ScopeKeyService reads", () => {
+  // A replica that has not caught up with a project committed a moment ago.
+  const withLaggingReplica = (built: Awaited<ReturnType<typeof started>>, projectId: string) => {
+    const { scopeKeys } = built.dataAccess;
+    const findProject = scopeKeys.findProject.bind(scopeKeys);
+    return vi
+      .spyOn(scopeKeys, "findProject")
+      .mockImplementation(async (id: string, options?: TReadOptions) =>
+        id === projectId && options?.readFrom !== ReadFrom.Primary ? undefined : findProject(id)
+      );
+  };
+
+  test("should read a project its caller has just created from the primary when asked to", async () => {
+    // Setup
+    const built = await started();
+    built.state.addProject("project-new", "org-1");
+    withLaggingReplica(built, "project-new");
+
+    // Action
+    const cipher = await built.kms.createCipherPairWithDataKey(
+      { type: KmsDataKey.SecretManager, projectId: "project-new" },
+      { readFrom: ReadFrom.Primary }
+    );
+
+    // Assert
+    expect(cipher.encryptor({ plainText: Buffer.from("v") }).cipherTextBlob.length).toBeGreaterThan(0);
+  });
+
+  test("should refuse a project the replica does not have yet when the caller did not ask for the primary", async () => {
+    // Setup
+    const built = await started();
+    built.state.addProject("project-new", "org-1");
+    withLaggingReplica(built, "project-new");
+
+    // Action
+    const result = built.kms.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId: "project-new" });
+
+    // Assert
+    await expect(result).rejects.toThrow("Project with ID 'project-new' not found");
+  });
+
+  // The key id and the encrypted data key must come from one row: two reads can straddle a key switch.
+  test("should read the project row once for a project whose keys exist", async () => {
+    // Setup
+    const built = await started();
+    const first = await built.kms.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: "project-1"
+    });
+    const findProject = vi.spyOn(built.dataAccess.scopeKeys, "findProject");
+
+    // Action
+    const second = await built.kms.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: "project-1"
+    });
+
+    // Assert
+    expect(findProject).toHaveBeenCalledTimes(1);
+    const { cipherTextBlob } = first.encryptor({ plainText: Buffer.from("v") });
+    expect(second.decryptor({ cipherTextBlob }).toString()).toBe("v");
   });
 });
 

@@ -170,6 +170,7 @@ export class UsageService {
   }
 
   private async countSeats(scope: string | null): Promise<SeatUsage> {
-    return SeatUsage.create(await this.deps.organizations.countSeats(scope));
+    const seats = await this.deps.organizations.countSeats(scope);
+    return SeatUsage.create(seats);
   }
 }

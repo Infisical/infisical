@@ -149,9 +149,10 @@ const postUsage = async (
   body: unknown
 ) => {
   const url = new URL(`/v1/organizations/${encodeURIComponent(orgId)}/${resource}`, endpoint.serverUrl);
+  const bearerToken = await endpoint.getBearerToken();
   const res = await fetch(url, {
     method: "POST",
-    headers: { Authorization: `Bearer ${await endpoint.getBearerToken()}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${bearerToken}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
     redirect: "manual"
   });
@@ -283,9 +284,9 @@ export class LicenseServerClient {
     for (let i = 0; i < events.length; i += MAX_USAGE_EVENTS_PER_REQUEST) {
       const chunk = events.slice(i, i + MAX_USAGE_EVENTS_PER_REQUEST);
       // eslint-disable-next-line no-await-in-loop
-      const body = (await (await postUsage(endpoint, orgId, "usage-events", { events: chunk })).json()) as {
-        results?: TUsageEventResult[];
-      };
+      const res = await postUsage(endpoint, orgId, "usage-events", { events: chunk });
+      // eslint-disable-next-line no-await-in-loop
+      const body = (await res.json()) as { results?: TUsageEventResult[] };
       results.push(...(body.results ?? []));
     }
     return results;

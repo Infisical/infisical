@@ -55,7 +55,8 @@ export class InMemoryTransactionRunner<TDataAccess> implements TTransactionRunne
     const releases: Array<() => void> = [];
     const locks: TDataAccessLocks = {
       acquire: async (key: string) => {
-        releases.push(await this.shared.mutex.acquire(key));
+        const release = await this.shared.mutex.acquire(key);
+        releases.push(release);
       }
     };
     const tx = { afterCommit: (fn: () => Promise<void>) => hooks.push(fn), locks } as unknown as TInMemoryTransaction;

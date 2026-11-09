@@ -68,7 +68,8 @@ describe("TransactionRunner", () => {
     await transactionRunner.run(async ({ dataAccess, tx }) => {
       await dataAccess.insert("a");
       tx.afterCommit(async () => {
-        seen.push(await values());
+        const committed = await values();
+        seen.push(committed);
       });
     });
     await transactionRunner
@@ -136,7 +137,8 @@ describe("TransactionRunner", () => {
     await locked;
     const second = transactionRunner.run(async ({ dataAccess }) => {
       await dataAccess.locks.acquire("k");
-      await dataAccess.insert(`second saw ${(await values()).join(",") || "nothing"}`);
+      const seen = await values();
+      await dataAccess.insert(`second saw ${seen.join(",") || "nothing"}`);
     });
     releaseFirst();
     await Promise.all([first, second]);

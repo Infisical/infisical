@@ -478,12 +478,14 @@ export const licenseServerSelfHostedBackend = (
 ): TLicenseClientBackend => {
   // GET with the exchanged JWT; on a 401 (token expired mid-flight) drop the cache and retry once.
   const authedGet = async (url: URL): Promise<Response> => {
-    const send = async () =>
-      fetch(url, {
+    const send = async () => {
+      const token = await tokenProvider.getToken();
+      return fetch(url, {
         method: "GET",
-        headers: { Authorization: `Bearer ${await tokenProvider.getToken()}` },
+        headers: { Authorization: `Bearer ${token}` },
         redirect: "manual"
       });
+    };
     const res = await send();
     if (res.status !== 401) {
       return res;

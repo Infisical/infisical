@@ -13,7 +13,6 @@ import {
   TSecretsV2,
   TSecretVersionsV2
 } from "@app/db/schemas";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
@@ -40,7 +39,7 @@ import {
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
-import { createSecretBlindIndexer, TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
+import { TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { emitSecretsModified, secretModifiedEvents } from "./secret-events";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
@@ -50,7 +49,6 @@ import {
   TFnSecretBulkInsert,
   TFnSecretBulkUpdate,
   TFnSecretMove,
-  TSecretWriteCiphers,
   TFnSecretMoveInTransaction,
   TFnSecretMoveResult
 } from "./secret-v2-bridge-types";
@@ -2192,23 +2190,6 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
     sourceFolder,
     destinationFolder
   };
-};
-
-// The ciphers a secret write needs, fetched before the caller opens the transaction the write runs in.
-export const prepareSecretWriteCiphers = async ({
-  kmsCoreDomain,
-  projectId,
-  orgId
-}: {
-  kmsCoreDomain: TKmsCoreDomain;
-  projectId: string;
-  orgId: string;
-}): Promise<TSecretWriteCiphers> => {
-  const [secretManager, blindIndexer] = await Promise.all([
-    kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId }),
-    createSecretBlindIndexer({ projectId, orgId, kmsCoreDomain })
-  ]);
-  return { secretManager, blindIndexer };
 };
 
 // performs the move within a caller-supplied transaction and returns the result without side effects.

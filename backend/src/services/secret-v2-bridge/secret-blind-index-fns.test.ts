@@ -4,18 +4,24 @@ import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 
 import { createSecretBlindIndexer } from "./secret-blind-index-fns";
 
-const PROJECT_ID = "6c1b0e3a-0e3a-4c1b-8e3a-0e3a4c1b8e3a";
 const ORG_ID = "9d2c1f4b-1f4b-4d2c-9f4b-1f4b4d2c9f4b";
 
-const makeKmsService = () => ({
-  createCipherPairWithDataKey: vi.fn(async (ctx: { type: KmsDataKey }) => ({
-    generateSecretBlindIndex: async (value: Buffer) =>
-      `${ctx.type === KmsDataKey.Organization ? "org" : "project"}:${value.toString()}`
-  }))
+const fakeCipher = (scope: string) => ({
+  generateSecretBlindIndex: async (value: Buffer) => `${scope}:${value.toString()}`
 });
 
-const makeIndexer = (kmsCoreDomain = makeKmsService()) =>
-  createSecretBlindIndexer({ projectId: PROJECT_ID, orgId: ORG_ID, kmsCoreDomain: kmsCoreDomain as never });
+const makeKmsCoreDomain = () => ({
+  createCipherPairWithDataKey: vi.fn(async (ctx: { type: KmsDataKey }) =>
+    fakeCipher(ctx.type === KmsDataKey.Organization ? "org" : "project")
+  )
+});
+
+const makeIndexer = (kmsCoreDomain = makeKmsCoreDomain()) =>
+  createSecretBlindIndexer({
+    projectCipher: fakeCipher("project") as never,
+    orgId: ORG_ID,
+    kmsCoreDomain: kmsCoreDomain as never
+  });
 
 describe("createSecretBlindIndexer", () => {
   it("derives the project index from the project data key and the org index from the org data key", async () => {
@@ -56,12 +62,16 @@ describe("createSecretBlindIndexer", () => {
 
   // A bulk write can carry thousands of values, and each data key resolution can be a round trip to an
   // external KMS, so the pairs are built once for the request rather than once per value.
-  it("resolves each data key once no matter how many values it indexes", async () => {
-    const kmsCoreDomain = makeKmsService();
+  it("resolves only the org data key, once, no matter how many values it indexes", async () => {
+    const kmsCoreDomain = makeKmsCoreDomain();
     const indexer = await makeIndexer(kmsCoreDomain);
 
     await Promise.all(["a", "b", "c", "d"].map((value) => indexer.generateBlindIndexes(Buffer.from(value))));
 
-    expect(kmsCoreDomain.createCipherPairWithDataKey).toHaveBeenCalledTimes(2);
+    expect(kmsCoreDomain.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+    expect(kmsCoreDomain.createCipherPairWithDataKey).toHaveBeenCalledWith({
+      type: KmsDataKey.Organization,
+      orgId: ORG_ID
+    });
   });
 });

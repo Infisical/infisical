@@ -140,8 +140,6 @@ export const KeyStorePrefixes = {
   ProjectFolderAccessData: (projectId: string, folderId: string, actorType: string, page: string) =>
     `project-folder-access-data:${projectId}:${folderId}:${actorType}:${page}` as const,
 
-  KmsProjectSecretManagerMaterial: (projectId: string) => `kms-project-sm-material:${projectId}` as const,
-
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
   ScepIntuneAccess: (connectionId: string, connectionUpdatedAt: Date) =>
     `scep-intune-access:${connectionId}:${connectionUpdatedAt.getTime()}` as const,

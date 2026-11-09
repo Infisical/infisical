@@ -181,10 +181,14 @@ export class ExternalKmsService {
       orgCipher.decryptor({ cipherTextBlob: ref.encryptedProviderInputs }).toString("utf8")
     ) as unknown;
     switch (ref.provider) {
-      case KmsProviders.Aws:
-        return this.deps.providers.aws({ inputs: await ExternalKmsAwsSchema.parseAsync(raw) });
-      case KmsProviders.Gcp:
-        return this.deps.providers.gcp({ inputs: await ExternalKmsGcpSchema.parseAsync(raw) });
+      case KmsProviders.Aws: {
+        const inputs = await ExternalKmsAwsSchema.parseAsync(raw);
+        return this.deps.providers.aws({ inputs });
+      }
+      case KmsProviders.Gcp: {
+        const inputs = await ExternalKmsGcpSchema.parseAsync(raw);
+        return this.deps.providers.gcp({ inputs });
+      }
       default:
         throw new BadRequestError({ message: "Invalid KMS provider." });
     }
