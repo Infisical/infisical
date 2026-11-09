@@ -13,13 +13,22 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultCredentialType,
+  AgentVaultVariableReferenceField
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
-import { SecretInput } from "./CredentialFields";
+import { MemberProvidedInput, MemberProvidedToggle, SecretInput } from "./CredentialFields";
 import { OAuthAuthorizeCard } from "./OAuthAuthorizeCard";
 import { SendsPreview } from "./SendsPreview";
-import { TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  isCredentialMemberProvided,
+  storedMemberFields,
+  TServiceForm,
+  UNCHANGED_SECRET
+} from "./serviceSchema";
 import { useServiceVariables } from "./ServiceVariablesContext";
 import { TransformationsFields } from "./TransformationsFields";
 
@@ -53,19 +62,40 @@ export const McpCredentialFields = ({
   const headerName = watch("headerName");
   const headerPrefix = watch("headerPrefix");
   const customHeaders = watch("customHeaders");
+  const memberProvidedFields = watch("memberProvidedFields");
   const isOAuth = credentialType === AgentVaultCredentialType.OAuth;
+  const isMemberProvided = isCredentialMemberProvided({ memberProvidedFields });
   const authMethodLabelId = useId();
   const headerNameInputId = useId();
   const headerPrefixInputId = useId();
   const storedType = service?.credential.type;
+  const storedFields = storedMemberFields(service);
 
+  // Who provides the credential belongs to the type it was saved under, so a switch starts from the stored setting
+  // of the new type, or from off.
   const selectType = (type: AgentVaultCredentialType) => {
     if (type === credentialType) return;
     setValue("credentialType", type, { shouldDirty: true });
+    setValue("memberProvidedFields", type === storedType ? storedFields : [], {
+      shouldDirty: true
+    });
     clearErrors(["secret", "oauthAuthorizationId", "headerName", "headerPrefix"]);
   };
 
-  const hasStoredSecret = storedType === AgentVaultCredentialType.Bearer;
+  // Nothing is stored behind a token each member used to set.
+  const hasStoredSecret = storedType === AgentVaultCredentialType.Bearer && !storedFields.length;
+
+  const setMemberProvided = (isOn: boolean) => {
+    setValue(
+      "memberProvidedFields",
+      isOn ? [AgentVaultVariableReferenceField.CredentialValue] : [],
+      { shouldDirty: true }
+    );
+    if (!isOAuth) {
+      setValue("secret", !isOn && hasStoredSecret ? UNCHANGED_SECRET : "", { shouldDirty: true });
+    }
+    clearErrors(["secret", "oauthAuthorizationId", "oauthClientId", "oauthClientSecret"]);
+  };
   const trimmedHeaderName = (headerName ?? "").trim();
   // The default Authorization: Bearer header needs no preview; it earns one once something is customized.
   const isHeaderCustomized =
@@ -102,6 +132,8 @@ export const McpCredentialFields = ({
           accessBundleId={accessBundleId}
           service={service}
           onSignInChange={onSignInChange}
+          isMemberProvided={isMemberProvided}
+          onMemberProvidedChange={setMemberProvided}
         />
       ) : (
         <Controller
@@ -109,19 +141,31 @@ export const McpCredentialFields = ({
           name="secret"
           render={({ field, fieldState }) => (
             <Field>
-              <FieldLabel>Token</FieldLabel>
-              <FieldContent>
-                <SecretInput
-                  field={field}
+              <div className="flex items-center justify-between gap-2">
+                <FieldLabel>Token</FieldLabel>
+                <MemberProvidedToggle
                   label="Token"
-                  ariaLabel="Token"
-                  placeholder="Enter the token, or type {{"
-                  isError={Boolean(fieldState.error)}
-                  isUntouched={secret === UNCHANGED_SECRET}
-                  hasStoredSecret={hasStoredSecret}
-                  canBeCleared={false}
-                  storedKeys={hasStoredSecret ? storedKeys.secret : undefined}
+                  isOn={isMemberProvided}
+                  onChange={setMemberProvided}
+                  docsUrl={AgentVaultDocsUrls.mcpMemberProvidedCredential}
                 />
+              </div>
+              <FieldContent>
+                {isMemberProvided ? (
+                  <MemberProvidedInput label="Token" />
+                ) : (
+                  <SecretInput
+                    field={field}
+                    label="Token"
+                    ariaLabel="Token"
+                    placeholder="Enter the token, or type {{"
+                    isError={Boolean(fieldState.error)}
+                    isUntouched={secret === UNCHANGED_SECRET}
+                    hasStoredSecret={hasStoredSecret}
+                    canBeCleared={false}
+                    storedKeys={hasStoredSecret ? storedKeys.secret : undefined}
+                  />
+                )}
                 <FieldError>{fieldState.error?.message}</FieldError>
               </FieldContent>
             </Field>

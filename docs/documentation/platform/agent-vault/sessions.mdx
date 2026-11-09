@@ -27,14 +27,14 @@ Anyone granted at least one access bundle in a project can create a session in t
         Pick the **Access Bundle** the agent should use, optionally enter a **Label** that says what the session is for, set a duration under **Expires**, then select **Create Session**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session dialog with an access bundle picked, a label, and a seven day expiry" />
+          <img src="/images/platform/agent-vault/session-create.png" alt="The Create Session dialog with the on-call access bundle picked, Incident bot as the label, and a seven day expiry" />
         </Frame>
       </Step>
       <Step>
         Copy the command shown. The session token appears once and can't be retrieved again.
 
         <Frame>
-          <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the run command with the session token shown once" />
+          <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the infisical agent-vault run command with the session token, which is shown once" />
         </Frame>
       </Step>
     </Steps>
@@ -93,12 +93,16 @@ You can add, change, or remove a session's label, even after the session expires
 - In your Agent Vault project, go to **Sessions**, open the session's menu, and select **Add Label** or **Edit Label**
 - From an agent or a script, call [the endpoint that updates a session](/api-reference/endpoints/agent-vault-sessions/update), for example to record what the agent is working on
 
+<Frame>
+  <img src="/images/platform/agent-vault/session-actions.png" alt="The Sessions page with the menu of the Nightly deploy session open, showing View Session Logs, Edit Label, and Revoke Session" />
+</Frame>
+
 ## View session logs
 
 [Session logs](/documentation/platform/agent-vault/session-logs) record every request an agent makes during a session. To view them, go to **Sessions** in your Agent Vault project and select **View Session Logs** on the session's row. You can filter and search the requests, and while the session is active, new logs keep appearing.
 
 <Frame>
-  <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for an active session, listing each request's time, method, host, path, upstream status, and outcome" />
+  <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for the Review PR #1486 session, listing each request's time, method, host, path, upstream status, and outcome: brokered requests to GitHub, Anthropic, and Slack, a DELETE blocked by the service's method rules, and requests to registry.npmjs.org and pastebin.com blocked by the proxy's traffic policy" />
 </Frame>
 
 ## Revoke a session
@@ -108,7 +112,7 @@ To revoke a session before it expires, go to **Sessions** in your Agent Vault pr
 The **Sessions** page shows each session as **Active**, **Revoked**, or **Expired**, and keeps expired and revoked sessions so you can audit what an agent had access to during the session:
 
 <Frame>
-  <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing active, revoked, and expired sessions with their label, access bundle, and expiry" />
+  <img src="/images/platform/agent-vault/sessions-list.png" alt="The Sessions page listing active, revoked, and expired sessions with their label, identity, access bundle, creation time, and expiry, including a release-bot session on behalf of a user and a session with an inline service" />
 </Frame>
 
 ## Access changes

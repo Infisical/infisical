@@ -46,11 +46,15 @@ If an API offers both WebSocket connections and plain HTTPS requests, configure 
     Enter a **Name**. Optionally, add a **Description**. To set the [traffic policy](#traffic-policy), [exceptions](#exceptions), or [poll interval](#poll-interval) now, expand **Advanced Options**. You can change these settings later.
 
     <Frame>
-      <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with the two traffic policy options and the poll interval" />
+      <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with egress-1 as the name, a description, and Advanced Options expanded to show the Any host and Service hosts only traffic policies and a poll interval of 60" />
     </Frame>
   </Step>
   <Step>
     Select **Create**. The **Proxy Token** dialog shows the proxy token, and commands for the CLI, systemd, Docker, and Kubernetes with your token and instance filled in.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/proxy-token.png" alt="The Proxy Token dialog showing the proxy token once, with CLI, systemd, Docker, and Kubernetes tabs and the CLI command to start the proxy" />
+    </Frame>
   </Step>
   <Step>
     Run one of the commands on each machine where the proxy will run.
@@ -173,6 +177,10 @@ Each time the proxy starts, it loads its settings and certificate authority from
 ## Settings
 
 To change a setting, select **Edit Settings** on the proxy's menu. If the proxy is running, it applies the change within one [poll interval](#poll-interval) (60 seconds by default).
+
+<Frame>
+  <img src="/images/platform/agent-vault/proxy-actions.png" alt="The Proxies page with the menu of prod-proxy open, showing Edit Settings, Rotate Proxy Token, Revoke Access, and Delete" />
+</Frame>
 
 ### Traffic policy
 
@@ -298,7 +306,7 @@ infisical agent-vault run --session-token <session-token> --proxy <proxy-address
 If the proxy's certificate doesn't match, the CLI stops before starting the agent.
 
 <Frame>
-  <img src="/images/platform/agent-vault/proxies-list.png" alt="The Proxies page showing two healthy proxies with their traffic policy and certificate authority fingerprints" />
+  <img src="/images/platform/agent-vault/proxies-list.png" alt="The Proxies page showing three proxies with their status, traffic policy, and certificate authority fingerprint: staging-proxy and prod-proxy are Healthy, and laptop-dev shows Not connected" />
 </Frame>
 
 ### Use your own certificate authority

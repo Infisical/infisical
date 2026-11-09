@@ -66,6 +66,12 @@ When you create the session, Infisical compares the host patterns of the inline 
 
 To see a session's inline services, go to **Sessions** in your Agent Vault project, select **View Session Logs** on the session's row, and look under **Inline Services**.
 
+The **Access** column on the **Sessions** page also shows how many inline services a session has. Hover over the count to see their names and hosts.
+
+<Frame>
+  <img src="/images/platform/agent-vault/session-inline-services.png" alt="The Sessions page with the pointer over the 1 inline service badge of the Deploy preview session, showing the vercel service and its host api.vercel.com" />
+</Frame>
+
 [The endpoint that reads a session](/api-reference/endpoints/agent-vault-sessions/get) and [the endpoint that lists sessions](/api-reference/endpoints/agent-vault-sessions/list) return the inline services in `services`, and the [audit event](/documentation/platform/agent-vault/sessions#audit-trail) for creating the session lists them too.
 
 ## When the session ends

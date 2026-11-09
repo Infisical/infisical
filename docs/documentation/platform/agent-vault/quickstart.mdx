@@ -21,6 +21,10 @@ An Agent Vault project holds the credentials, members, and proxies for one agent
   </Step>
   <Step>
     Select **New Project**, enter a **Project Name**, then select **Create Project**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/project-create.png" alt="The Create a New Agent Vault Project dialog, with a project name, a description, and a Create Project button" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -42,7 +46,7 @@ You become the project's admin.
         Select **Create Access Bundle**. Give the access bundle a **Name**, such as `code-review`, then select **Create Access Bundle**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with code-review entered as the name" />
+          <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with a name and a description entered" />
         </Frame>
       </Step>
     </Steps>
@@ -66,11 +70,15 @@ You become the project's admin.
         On the **Choose a template** panel, pick the template for the API, or select **Custom HTTP API**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with GitHub among the available services" />
+          <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with MCP server templates and HTTP API templates, GitHub among them" />
         </Frame>
       </Step>
       <Step>
         On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom HTTP API**. Select **Continue**.
+
+        <Frame>
+          <img src="/images/platform/agent-vault/service-details.png" alt="The Details step of a GitHub service, with api.github.com as the host" />
+        </Frame>
       </Step>
       <Step>
         On the **Credential** step, paste the real key, then select **Continue**.
@@ -130,6 +138,10 @@ You become the project's admin.
     ### Copy the project ID
 
     Requests that create something in Agent Vault take the ID of the project to create it in. In your Agent Vault project, go to **Administration** > **Settings** and copy the **Project ID**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/project-settings-general.png" alt="The General settings of an Agent Vault project, with the Project ID and its copy button in the Project Overview card" />
+    </Frame>
 
     ### Create an access bundle
 

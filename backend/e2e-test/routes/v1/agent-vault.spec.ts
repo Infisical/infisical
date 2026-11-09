@@ -1600,7 +1600,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(moved.payload).service.hostPattern).toBe("mcp.linear.dev");
     });
 
-    test("an MCP service refuses member-provided credentials, on create and update", async () => {
+    test("an MCP service accepts a member-provided bearer token, on create and update", async () => {
       const bundle = await createAccessBundle("mcp-member-provided");
       const created = await inject("POST", servicesUrl(bundle.id), {
         type: "mcp",
@@ -1609,16 +1609,16 @@ describe("Agent Vault V1 Router", async () => {
         transport: "streamable-http",
         credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
       });
-      expect(created.statusCode).toBe(422);
-      expect(created.payload).toContain("MCP services don't support member-provided credentials yet");
+      expect(created.statusCode).toBe(200);
+      expect(JSON.parse(created.payload).service.credential.memberProvidedFields).toEqual(["credential-value"]);
 
-      const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+      const service = await createMcpService(bundle.id, "github", "https://api.githubcopilot.com/mcp/");
       const updated = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
         type: "mcp",
         credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
       });
-      expect(updated.statusCode).toBe(422);
-      expect(updated.payload).toContain("MCP services don't support member-provided credentials yet");
+      expect(updated.statusCode).toBe(200);
+      expect(JSON.parse(updated.payload).service.credential.memberProvidedFields).toEqual(["credential-value"]);
     });
 
     test("a field that belongs to the other type is refused by name, on create and update", async () => {
@@ -1836,6 +1836,7 @@ describe("Agent Vault V1 Router", async () => {
         const { credential } = (JSON.parse(reached.payload) as TBundleRead).accessBundle.services[0];
         expect(credential).toEqual({
           type: "oauth",
+          memberProvidedFields: [],
           status: "connected",
           issuer: "https://mcp.linear.app",
           grantedScopes: ["read"],

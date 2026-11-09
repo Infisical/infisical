@@ -58,6 +58,7 @@ import {
   useGetWsTags
 } from "@app/hooks/api";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
 import { SecretType } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -242,6 +243,7 @@ export const CreateSecretForm = ({
     reset,
     setValue,
     getValues,
+    setError,
     watch,
     formState: { isSubmitting, errors, dirtyFields }
   } = useForm<TFormSchema>({
@@ -271,8 +273,12 @@ export const CreateSecretForm = ({
     remove: removeSecret
   } = useFieldArray({ control, name: "secrets" });
 
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  const { mutateAsync: createCommit } = useCreateCommit();
+  const { mutateAsync: createSecretV3 } = useCreateSecretV3({
+    options: { meta: { skipErrorToast: true } }
+  });
+  const { mutateAsync: createCommit } = useCreateCommit({
+    options: { meta: { skipErrorToast: true } }
+  });
   const batchStore = useBatchStoreApi();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { data: projectTags, isPending: isTagsLoading } = useGetWsTags(
@@ -379,7 +385,7 @@ export const CreateSecretForm = ({
         return;
       }
     }
-    await Promise.all(
+    const areFoldersReady = await Promise.all(
       selectedEnv.map(async (env) => {
         if (secretPath !== "/") {
           const pathSegment = secretPath.split("/").filter(Boolean);
@@ -403,10 +409,14 @@ export const CreateSecretForm = ({
           }
         }
       })
-    ).catch((error) => {
-      attempt.flow({ ...flow, phase: "failed" });
-      throw error;
-    });
+    )
+      .then(() => true)
+      .catch((error) => {
+        attempt.flow({ ...flow, phase: "failed" });
+        showSecretWriteErrors([{ error }]);
+        return false;
+      });
+    if (!areFoldersReady) return;
 
     if (selectedEnv.length === 1 && secrets.length > 1) {
       const result = await createCommit({
@@ -436,8 +446,10 @@ export const CreateSecretForm = ({
         }
       }).catch((error) => {
         attempt.flow({ ...flow, commitKind: "batch", phase: "failed" });
-        throw error;
+        showSecretWriteErrors([{ error }]);
+        return undefined;
       });
+      if (!result) return;
       attempt.flow({
         ...flow,
         commitKind: "batch",
@@ -467,30 +479,31 @@ export const CreateSecretForm = ({
       return;
     }
 
-    const promises = selectedEnv.flatMap((env) =>
-      secrets.map(async (secret) => {
-        const environment = env.slug;
-        const filteredMetadata = secret.metadata
-          ?.filter((metadata) => metadata.key && metadata.value)
-          .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
-        return {
-          ...(await createSecretV3({
-            environment,
-            projectId,
-            secretPath,
-            secretKey: secret.key,
-            secretValue: secret.value || "",
-            secretComment: secret.comment || "",
-            skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
-            type: SecretType.Shared,
-            tagIds: secret.tags?.map((tag) => tag.value),
-            secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined
-          })),
-          environment,
-          secret
-        };
-      })
+    const requests = selectedEnv.flatMap((env) =>
+      secrets.map((secret, secretIndex) => ({ env, secret, secretIndex }))
     );
+    const promises = requests.map(async ({ env, secret }) => {
+      const environment = env.slug;
+      const filteredMetadata = secret.metadata
+        ?.filter((metadata) => metadata.key && metadata.value)
+        .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
+      return {
+        ...(await createSecretV3({
+          environment,
+          projectId,
+          secretPath,
+          secretKey: secret.key,
+          secretValue: secret.value || "",
+          secretComment: secret.comment || "",
+          skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
+          type: SecretType.Shared,
+          tagIds: secret.tags?.map((tag) => tag.value),
+          secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined
+        })),
+        environment,
+        secret
+      };
+    });
 
     const results = await Promise.allSettled(promises);
     const allRequestsSucceeded = didAllSecretCreationsSucceed(results);
@@ -564,9 +577,32 @@ export const CreateSecretForm = ({
       onSecretCreated?.();
     }
 
-    if (!updatedEnvs.length && !forApprovalEnvs.length) {
-      // this should only occur when a toast notifcation is created from failed mutation
-      console.warn("failed to create secrets");
+    const failedRequests = requests.flatMap((request, index) => {
+      const result = results[index];
+      return result.status === "rejected" ? [{ ...request, error: result.reason as unknown }] : [];
+    });
+    if (failedRequests.length && formOwner.current.invocation === invocation) {
+      const failedEnvSlugs = new Set(failedRequests.map(({ env }) => env.slug));
+      const failedSecretIndexes = [
+        ...new Set(failedRequests.map(({ secretIndex }) => secretIndex))
+      ].sort((a, b) => a - b);
+      setValue(
+        "environments",
+        selectedEnv.filter((env) => failedEnvSlugs.has(env.slug))
+      );
+      removeSecret(
+        secrets.flatMap((_, secretIndex) =>
+          failedSecretIndexes.includes(secretIndex) ? [] : [secretIndex]
+        )
+      );
+      showSecretWriteErrors(
+        failedRequests.map(({ env, secretIndex, error }) => ({
+          error,
+          field: `secrets.${failedSecretIndexes.indexOf(secretIndex)}.key` as const,
+          environmentName: selectedEnv.length > 1 ? env.name : undefined
+        })),
+        (field, message) => setError(field, { type: "server", message })
+      );
     }
 
     if (
@@ -759,7 +795,7 @@ export const CreateSecretForm = ({
                             </Tooltip>
                           )}
                         </div>
-                        <FieldError errors={[error]} />
+                        <FieldError errors={[error]} className="whitespace-pre-line" />
                       </FieldContent>
                     </Field>
                   )}
@@ -771,6 +807,7 @@ export const CreateSecretForm = ({
                     size="xs"
                     className="mt-6.5"
                     aria-label={`Remove secret ${index + 1}`}
+                    isDisabled={isSubmitting}
                     onClick={() => removeSecret(index)}
                   >
                     <TrashIcon className="size-4" />
