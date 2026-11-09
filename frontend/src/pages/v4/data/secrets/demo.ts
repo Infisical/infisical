@@ -338,6 +338,26 @@ export const secretsDemo: SecretsAdapter = {
     isPending: false,
     error: null
   }),
+  useCreateTag: () => {
+    const store = useStore();
+    return {
+      isPending: false,
+      mutateAsync: async ({ projectId, tagSlug, tagColor }) => {
+        const timestamp = new Date().toISOString();
+        const tag = {
+          id: crypto.randomUUID(),
+          slug: tagSlug,
+          color: tagColor || "",
+          projectId,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          __v: 0
+        };
+        store.update((state) => ({ ...state, tags: [...state.tags, tag] }));
+        return tag;
+      }
+    };
+  },
   useOverview: (dto) => {
     const scenario = useScenario();
     const state = useStore().use();

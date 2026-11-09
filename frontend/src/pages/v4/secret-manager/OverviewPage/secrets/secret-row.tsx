@@ -58,6 +58,11 @@ import {
   TableRowIndicators
 } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
 
 import { useV4Adapter } from "../../../data/adapters";
 import { useRequestBreadth } from "../bridge/scopes";
@@ -70,6 +75,7 @@ import {
   type Secret,
   selectionKey
 } from "../secrets-model";
+import type { PendingType } from "./batch/pending";
 import { environmentLabel } from "./flows/shared";
 import {
   ActionButton,
@@ -294,6 +300,12 @@ function Indicators({ secret }: { secret: Secret }) {
   );
 }
 
+const pendingSecretActions: Record<PendingType, ProjectPermissionSecretActions> = {
+  create: ProjectPermissionSecretActions.Create,
+  update: ProjectPermissionSecretActions.Edit,
+  delete: ProjectPermissionSecretActions.Delete
+};
+
 type Annotation = "comment" | "tags" | "metadata";
 
 function Annotations({
@@ -395,17 +407,53 @@ function SecretActionsRow({
     });
   };
   const label = environmentLabel(secret.environment);
-  const canEdit = !ctx.writeBlock;
+  const denied = (
+    sub: ProjectPermissionSub,
+    action: string,
+    fields: Record<string, unknown> = {}
+  ) =>
+    ctx.blockFor?.(
+      sub,
+      action,
+      {
+        environment: secret.environment,
+        secretPath: secret.path,
+        secretName: secret.name,
+        secretTags: ["*"],
+        ...fields
+      },
+      action
+    )
+      ? "Access denied"
+      : undefined;
+  const describeDenied = (secretTags: string[]) =>
+    denied(ProjectPermissionSub.Secrets, ProjectPermissionSecretActions.DescribeSecret, {
+      secretTags
+    }) &&
+    denied(ProjectPermissionSub.Secrets, ProjectPermissionSecretActions.DescribeAndReadValue, {
+      secretTags
+    });
+  const editDenied = denied(ProjectPermissionSub.Secrets, ProjectPermissionSecretActions.Edit);
+  const canEdit = !ctx.writeBlock && !editDenied;
+  const tagsDenied = denied(ProjectPermissionSub.Tags, ProjectPermissionActions.Read);
+  const canCreateTags = !denied(ProjectPermissionSub.Tags, ProjectPermissionActions.Create);
+  const historyDenied = denied(ProjectPermissionSub.Commits, ProjectPermissionActions.Read);
+  const pendingType = ctx.pending?.[secret.id];
+  const pendingSaveBlock =
+    pendingType && denied(ProjectPermissionSub.Secrets, pendingSecretActions[pendingType]);
+  const overrideBlock =
+    secret.override !== undefined ? "Override already exists" : describeDenied(["*"]);
   const update: SecretUpdate = (target, patch, feedback) => {
     handlers.onUpdate(target, patch, feedback);
     setOpen(undefined);
   };
-  let editBlock = ctx.writeBlock;
+  let editBlock = ctx.writeBlock ?? editDenied;
   if (secret.honeyToken)
     editBlock = "Honey token secrets are managed by Infisical and can't be edited";
   if (secret.managedBy)
     editBlock = "Rotated secrets are managed by their secret rotation and can't be edited";
-  let deleteBlock = ctx.writeBlock;
+  let deleteBlock =
+    ctx.writeBlock ?? denied(ProjectPermissionSub.Secrets, ProjectPermissionSecretActions.Delete);
   if (secret.honeyToken) deleteBlock = "Cannot delete honey token secret";
   if (secret.managedBy) deleteBlock = "Cannot delete rotated secret";
   let copyBlock: string | undefined;
@@ -414,6 +462,7 @@ function SecretActionsRow({
   let { copySecretBlock } = handlers;
   if (secret.honeyToken) copySecretBlock = "Cannot copy honey token secret";
   if (secret.managedBy) copySecretBlock = "Cannot copy rotated secret";
+  copySecretBlock ??= describeDenied(secret.tags);
   let referencesBlock: string | undefined;
   if (unreadable) referencesBlock = "Access denied";
   else if (value === "") referencesBlock = "Create secret to view references";
@@ -440,7 +489,7 @@ function SecretActionsRow({
     ],
     menu: (
       <>
-        <PendingMenuItems id={secret.id} ctx={ctx} />
+        <PendingMenuItems id={secret.id} ctx={ctx} saveBlock={pendingSaveBlock} />
         <DropdownMenuItem
           disabled={Boolean(copyBlock)}
           description={copyBlock}
@@ -469,7 +518,11 @@ function SecretActionsRow({
               <Icon icon={MessageSquareIcon} />
               {secret.comment ? "View comment" : "Add comment"}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={select("tags")}>
+            <DropdownMenuItem
+              disabled={Boolean(tagsDenied)}
+              description={tagsDenied}
+              onSelect={select("tags")}
+            >
               <Icon icon={TagsIcon} />
               {secret.tags.length ? "View tags" : "Add tags"}
             </DropdownMenuItem>
@@ -493,7 +546,11 @@ function SecretActionsRow({
           <Icon icon={WorkflowIcon} />
           Secret references
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={select("history")}>
+        <DropdownMenuItem
+          disabled={Boolean(historyDenied)}
+          description={historyDenied}
+          onSelect={select("history")}
+        >
           <Icon name="history" />
           Version history
         </DropdownMenuItem>
@@ -518,8 +575,8 @@ function SecretActionsRow({
           Multi-line encoding
         </DropdownMenuCheckboxItem>
         <DropdownMenuItem
-          disabled={secret.override !== undefined}
-          description={secret.override !== undefined ? "Override already exists" : undefined}
+          disabled={Boolean(overrideBlock)}
+          description={overrideBlock}
           onSelect={later(onAddOverride)}
         >
           <Icon icon={GitBranchIcon} />
@@ -558,6 +615,7 @@ function SecretActionsRow({
     <RowContextMenu {...rowActions}>
       <TableRow
         {...row}
+        focused={Boolean(popover)}
         onFocus={(event) => {
           const run = pending.current;
           if (event.target !== event.currentTarget || !run) return;
@@ -641,6 +699,7 @@ function SecretActionsRow({
                   tags={secret.tags}
                   options={handlers.tagOptions}
                   canEdit={canEdit}
+                  canCreate={canCreateTags}
                   onClose={() => setOpen(undefined)}
                   onSave={(tags) =>
                     update(secret, { tags }, saved(`Updated tags on ${secret.name}`))
@@ -1068,6 +1127,9 @@ function SecretRowView({
           data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
           className={styles.row}
           data-expanded={expanded || undefined}
+          data-has-selection={
+            entries.some((entry) => ctx.selected.includes(selectionKey(entry))) || undefined
+          }
           onClick={() => setExpanded(!expanded)}
         >
           <ExpandCell expanded={expanded} label={name} onToggle={() => setExpanded(!expanded)} />
@@ -1195,7 +1257,21 @@ function SecretRowView({
                       {
                         label: "Add value",
                         icon: EditIcon,
-                        disabledReason: ctx.writeBlock,
+                        disabledReason:
+                          ctx.writeBlock ??
+                          (ctx.blockFor?.(
+                            ProjectPermissionSub.Secrets,
+                            ProjectPermissionSecretActions.Create,
+                            {
+                              environment: environment.value,
+                              secretPath: ctx.path,
+                              secretName: name,
+                              secretTags: ["*"]
+                            },
+                            "add a value"
+                          )
+                            ? "Access denied"
+                            : undefined),
                         onSelect: () => handlers.onCreateIn(environment.value, name)
                       }
                     ]

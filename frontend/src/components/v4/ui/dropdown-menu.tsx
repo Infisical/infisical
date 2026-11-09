@@ -117,18 +117,7 @@ function DropdownMenuItem({
       className={cn(menu.row, className)}
       {...props}
     >
-      {description === undefined
-        ? menuRowContent(children)
-        : React.Children.map(children, (child) =>
-            typeof child === "string" || typeof child === "number" ? (
-              <span className={menu.text}>
-                <span className={menu.title}>{child}</span>
-                <span className={menu.description}>{description}</span>
-              </span>
-            ) : (
-              child
-            )
-          )}
+      {menuRowContent(children, description)}
     </Primitive.Item>
   );
 }
@@ -137,6 +126,7 @@ DropdownMenuItem.displayName = "DropdownMenuItem";
 function DropdownMenuCheckboxItem({
   className,
   children,
+  description,
   checked,
   inset,
   onSelect,
@@ -144,6 +134,7 @@ function DropdownMenuCheckboxItem({
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem> & {
+  description?: React.ReactNode;
   closeOnSelect?: boolean;
 } & {
   inset?: boolean;
@@ -167,7 +158,7 @@ function DropdownMenuCheckboxItem({
           <Icon name="check" />
         </Primitive.ItemIndicator>
       </span>
-      {menuRowContent(children)}
+      {menuRowContent(children, description)}
     </Primitive.CheckboxItem>
   );
 }
@@ -185,12 +176,14 @@ DropdownMenuRadioGroup.displayName = "DropdownMenuRadioGroup";
 function DropdownMenuRadioItem({
   className,
   children,
+  description,
   inset,
   onSelect,
   closeOnSelect = false,
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem> & {
+  description?: React.ReactNode;
   closeOnSelect?: boolean;
 } & {
   inset?: boolean;
@@ -213,7 +206,7 @@ function DropdownMenuRadioItem({
           <Icon name="check" />
         </Primitive.ItemIndicator>
       </span>
-      {menuRowContent(children)}
+      {menuRowContent(children, description)}
     </Primitive.RadioItem>
   );
 }

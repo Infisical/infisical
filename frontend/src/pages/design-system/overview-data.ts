@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "menu-item-description",
+    title: "Reasons on checkbox items",
+    description:
+      "Checkbox and radio menu items take a description, so a disabled setting can say why it is unavailable.",
+    date: "2026-11-07",
+    commit: "804076293d",
+    page: "dropdown-menu"
+  },
+  {
     id: "row-focus",
     title: "Row focus",
     description:
@@ -210,15 +219,6 @@ export const recentChanges: {
       "Row focus rings appear only after keyboard focus and draw the same width on all four edges, above pinned cells.",
     date: "2026-11-07",
     commit: "73aa450373",
-    page: "table"
-  },
-  {
-    id: "row-context-menu",
-    title: "Right-click row actions",
-    description:
-      "Right-click a row, or press Shift+F10, to open the same actions as its More menu.",
-    date: "2026-11-07",
-    commit: "a7c26c60b7",
     page: "table"
   }
 ];
