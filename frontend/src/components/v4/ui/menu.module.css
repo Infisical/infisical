@@ -156,18 +156,23 @@
   }
 }
 
+.inset,
+.scroll {
+  --v4-menu-pad: var(--v4-space-3);
+}
 .inset {
   --v4-menu-icon-slot: 0px;
-  --v4-menu-pad: var(--v4-space-3);
   padding: var(--v4-menu-pad);
 }
 .inset:has(.row > :is(svg, [data-menu-icon]):not(.trail), .row[data-inset], .label[data-inset]) {
   --v4-menu-icon-slot: calc(var(--v4-size-icon) + var(--v4-space-8));
 }
 
+/* Nine whole rows plus one inset pad: at rest the top pad and nine rows show, and scrolled to the
+   end the nine last rows and the bottom pad do, so neither edge ever cuts a row. */
 /* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .list {
-  max-height: calc(9 * var(--v4-size-control-sm));
+  max-height: calc(9 * var(--v4-size-control-sm) + var(--v4-menu-pad));
   overflow-x: hidden;
   overflow-y: auto;
   outline: none;
@@ -177,7 +182,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: calc(9 * var(--v4-size-control-sm));
+  max-height: calc(9 * var(--v4-size-control-sm) + var(--v4-menu-pad));
 }
 .viewport {
   flex: 0 1 auto;
