@@ -8,6 +8,24 @@ Choose DataTable for row comparison, sorting and selection. Use DataGrid when ce
 
 ## Usage rules
 
+### table-row-focus
+
+Owner: table.
+
+When a row is being edited in place, such as its annotation or tag popover being open or its name or value being edited inline.
+
+Do: Set focused on that TableRow, or pass its id to DataTable focusedRowId, for exactly as long as the edit is open, and clear it when the edit closes.
+
+Avoid: Use focus to show selection, the current record or search results, leave it set after the edit closes, or dim rows with your own opacity or filter.
+
+Why: The dim tells people every other row is out of play for the moment; used for anything lasting it hides content and competes with selection, which already has its own surface.
+
+Checked by: review only. Look for: Open a row's popover in the Row focus example and in each page that sets focused: only that row stays at full strength, the header does not dim, and closing the popover clears the dim.
+
+Source evidence:
+- src/components/v4/ui/table.tsx
+- src/pages/design-system/examples/table/row-focus.tsx
+
 ### table-usage
 
 Owner: table.
@@ -276,6 +294,8 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 
 ## Behavior
 
+- Row focus: while a row is being edited (an annotation popover, an inline name or value edit), set focused on its TableRow, or pass DataTable focusedRowId (one id or several). The row renders data-focused and every other row in the same body fades its cell contents to opacity-row-dim (40%) through filter: opacity, so row grounds, borders, the selection ring, pinned cells and the header stay at full strength, and the dim composes with opacity reveals inside cells. The dim is pure CSS on the body; there is no table-level prop. Hovering a dimmed row undims it where hover exists, dimmed rows stay interactive, and portalled popovers and menus never dim. The fade runs on duration-moderate and is instant under reduced motion. A selected row that is not focused still dims.
+- Nested tables: a body dims when it holds a focused row at any depth. The row that holds the nested table and the row just above it, the one it expands from, keep full strength, and the nested body dims only its own other rows, so focusing an environment row inside an expanded secret dims every other secret and environment row and nothing else.
 - Row states are layers over the row's ground, which is surface, or row-done on a striped even row. The selected surface and the hover overlay (the shared hover token) stack over the ground on every cell, and a pinned cell or the sticky tail repaints the same ground and layers opaquely, so a striped, selected or hovered row reads as one band to the frame edge and scrolled cells never show through.
 - DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.
 - Tables are framed by default: DataTable always sits in the shared tint frame, which suits nearly every standalone table. Use the native Table, which has no frame, only when the table is embedded in another surface that already draws an edge, such as a Card, a sheet or a dialog body.
@@ -1876,6 +1896,197 @@ export default function ColumnToggle() {
         rowLabel={(row) => row.subject}
       />
       <Meta role="status">{status}</Meta>
+    </div>
+  );
+}
+```
+
+### Row focus while editing
+
+Save this example at `src/pages/design-system/examples/table/row-focus.tsx`; its relative imports are generated for that exact path. States: default, controlled.
+
+Registry items used: @infisical/badge, @infisical/button, @infisical/data-table, @infisical/popover, @infisical/table, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+
+import { Badge } from "../../../../components/v4/ui/badge";
+import { Button } from "../../../../components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
+import {
+  Popover,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger
+} from "../../../../components/v4/ui/popover";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "../../../../components/v4/ui/table";
+import { SmallText } from "../../../../components/v4/ui/text";
+
+type Secret = { id: string; name: string; tags: string[] };
+
+const secrets: Secret[] = [
+  { id: "stripe", name: "STRIPE_API_KEY", tags: ["billing"] },
+  { id: "database", name: "DATABASE_URL", tags: ["core", "rotated"] },
+  { id: "sentry", name: "SENTRY_DSN", tags: [] },
+  { id: "redis", name: "REDIS_PASSWORD", tags: ["core"] }
+];
+
+const environments = [
+  { id: "development", name: "Development", tags: ["local"] },
+  { id: "staging", name: "Staging", tags: [] },
+  { id: "production", name: "Production", tags: ["pci"] }
+];
+
+function TagEditor({
+  label,
+  tags,
+  open,
+  onOpenChange
+}: {
+  label: string;
+  tags: string[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="xs">
+          {tags.length ? tags.join(", ") : "Add tags"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start">
+        <PopoverHeader>
+          <PopoverTitle>{`Tags on ${label}`}</PopoverTitle>
+        </PopoverHeader>
+        <div className="flex flex-wrap gap-2">
+          {tags.length ? tags.map((tag) => <Badge key={tag}>{tag}</Badge>) : "No tags yet"}
+        </div>
+        <Button onClick={() => onOpenChange(false)}>Done</Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function DimAmount() {
+  const ref = React.useRef<HTMLSpanElement>(null);
+  const [value, setValue] = React.useState("");
+  React.useLayoutEffect(() => {
+    if (ref.current)
+      setValue(getComputedStyle(ref.current).getPropertyValue("--v4-opacity-row-dim").trim());
+  }, []);
+  return (
+    <SmallText muted>
+      <span ref={ref}>
+        <code>opacity-row-dim</code> {value}
+      </span>
+    </SmallText>
+  );
+}
+
+export default function RowFocusExample() {
+  const [editing, setEditing] = React.useState<string | null>(null);
+  const [nested, setNested] = React.useState<string | null>(null);
+  const toggle = (set: (id: string | null) => void, id: string) => (open: boolean) =>
+    set(open ? id : null);
+  const columns: DataTableColumn<Secret>[] = [
+    { id: "name", header: "Name", primary: true, grow: true, render: (row) => row.name },
+    {
+      id: "tags",
+      header: "Tags",
+      width: 220,
+      render: (row) => (
+        <TagEditor
+          label={row.name}
+          tags={row.tags}
+          open={editing === row.id}
+          onOpenChange={toggle(setEditing, row.id)}
+        />
+      )
+    }
+  ];
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DimAmount />
+          <DataTable
+            label="Secrets"
+            rows={secrets}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            focusedRowId={editing ?? undefined}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Editing a row's tags focuses it; the other rows dim"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Table aria-label="Secrets by environment">
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Name</TableHead>
+                <TableHead scope="col">Environments</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell>STRIPE_API_KEY</TableCell>
+                <TableCell>3 of 3</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>DATABASE_URL</TableCell>
+                <TableCell>3 of 3</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell colSpan={2}>
+                  <Table aria-label="DATABASE_URL by environment">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead scope="col">Environment</TableHead>
+                        <TableHead scope="col">Tags</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {environments.map((environment) => (
+                        <TableRow key={environment.id} focused={nested === environment.id}>
+                          <TableCell>{environment.name}</TableCell>
+                          <TableCell>
+                            <TagEditor
+                              label={`DATABASE_URL in ${environment.name}`}
+                              tags={environment.tags}
+                              open={nested === environment.id}
+                              onOpenChange={toggle(setNested, environment.id)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>SENTRY_DSN</TableCell>
+                <TableCell>2 of 3</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Nested: focusing an environment row dims the outer rows too, not its secret"}
+        </figcaption>
+      </figure>
     </div>
   );
 }

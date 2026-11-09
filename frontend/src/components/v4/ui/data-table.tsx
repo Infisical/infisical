@@ -106,6 +106,8 @@ interface DataTableBaseProps<Row> {
   loading?: boolean;
   loadingRows?: number;
   actionBar?: React.ReactNode;
+  /** Row ids being edited. Their rows render focused and the other rows dim until the value clears. */
+  focusedRowId?: string | readonly string[];
   /** Persistent row actions in the sticky tail column: inline icon actions, then the More menu. */
   rowActions?: DataTableRowActions<Row>;
   /** Right-click (and Shift+F10 or the Menu key) on a data row opens its inline actions and More menu items. On by default with rowActions. */
@@ -155,6 +157,7 @@ export function DataTable<Row>({
   loading = false,
   loadingRows = 5,
   actionBar,
+  focusedRowId,
   rowActions,
   rowContextMenu = true,
   containerRef,
@@ -333,6 +336,11 @@ export function DataTable<Row>({
         tabIndex={onRowActivate ? 0 : position === focusRow ? -1 : undefined}
         onBlur={position === focusRow ? () => setFocusRow(null) : undefined}
         data-state={selected.includes(getRowId(row)) ? "selected" : undefined}
+        focused={
+          typeof focusedRowId === "string"
+            ? focusedRowId === getRowId(row)
+            : Boolean(focusedRowId?.includes(getRowId(row)))
+        }
         data-activatable={onRowActivate ? "" : undefined}
         onClick={onRowActivate ? () => onRowActivate(row) : undefined}
         onKeyDown={(event) => {

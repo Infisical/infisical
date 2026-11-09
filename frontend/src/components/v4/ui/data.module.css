@@ -630,12 +630,20 @@
 }
 .listRow[data-interactive]:not([data-selected], [data-current]):hover {
   background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), transparent);
-  --v4-list-row-surface: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), var(--v4-surface));
+  --v4-list-row-surface: color-mix(
+    in oklab,
+    var(--v4-mix-ink) var(--overlay-hover),
+    var(--v4-surface)
+  );
 }
 :where(.listShell[data-variant="segmented"])
   .listRow[data-interactive]:not([data-selected], [data-current]):hover {
   background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), var(--v4-tint));
-  --v4-list-row-surface: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-hover), var(--v4-tint));
+  --v4-list-row-surface: color-mix(
+    in oklab,
+    var(--v4-mix-ink) var(--overlay-hover),
+    var(--v4-tint)
+  );
 }
 .listRow[data-interactive]:not([data-selected], [data-current]):has(.rowTitle:active) {
   background: color-mix(in oklab, var(--v4-mix-ink) var(--overlay-press), transparent);
@@ -1290,6 +1298,43 @@ tbody > .nativeTableRow[data-loading] {
 }
 .nativeTableRow[data-state="selected"] {
   --v4-table-row-state: var(--v4-selected-surface);
+}
+/* filter, not opacity, so the dim composes with opacity reveals inside the cells; a cell holding only text dims itself, since text has no element to filter. */
+:where(tbody > .nativeTableRow > td:not(:has(> *)), tbody > .nativeTableRow > td > *) {
+  transition: filter var(--v4-duration-moderate) var(--v4-ease-fade);
+}
+/* A row that holds the focused row in a nested table, and the row it expands from, keep full strength. */
+:where(
+    tbody:has([data-focused])
+      > .nativeTableRow:not(
+        [data-focused],
+        :has([data-focused]),
+        :has(+ .nativeTableRow [data-focused])
+      )
+  )
+  > td:not(:has(> *)),
+:where(
+    tbody:has([data-focused])
+      > .nativeTableRow:not(
+        [data-focused],
+        :has([data-focused]),
+        :has(+ .nativeTableRow [data-focused])
+      )
+  )
+  > td
+  > * {
+  filter: opacity(var(--v4-opacity-row-dim));
+}
+@media (hover: hover) {
+  tbody > .nativeTableRow:hover > td:not(:has(> *)),
+  tbody > .nativeTableRow:hover > td > * {
+    filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(tbody > .nativeTableRow > td:not(:has(> *)), tbody > .nativeTableRow > td > *) {
+    transition: none;
+  }
 }
 .nativeTableHead,
 .nativeTableCell {
