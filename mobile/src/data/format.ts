@@ -24,7 +24,8 @@ export const ago = (from: number, now = Date.now()) => {
   return `${Math.round(hours / 24)}d`;
 };
 
-export const timeLeft = (until: number, now = Date.now()) => {
+export const timeLeft = (until: number | undefined, now = Date.now()) => {
+  if (until === undefined) return "No expiry";
   const minutes = Math.round((until - now) / 60000);
   if (minutes <= 0) return "Expired";
   if (minutes < 60) return `${minutes} min left`;

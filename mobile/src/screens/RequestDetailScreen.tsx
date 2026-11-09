@@ -64,8 +64,8 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
             Requested by {request.requesterName}, {ago(request.createdAt)} ago
           </Text>
           <View style={styles.badges}>
-            <Badge label={request.environment} tone={request.isProduction ? "warn" : "neutral"} />
-            <Badge label={request.projectName} />
+            {request.environment && <Badge label={request.environment} tone={request.isProduction ? "warn" : "neutral"} />}
+            <Badge label={request.scopeName} />
           </View>
         </View>
 
@@ -86,25 +86,27 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
                 { term: "Location", value: request.location, mono: true },
                 { term: "Access", value: summary(request), half: true },
                 { term: "Request expires", value: resolved ? "Closed" : timeLeft(request.expiresAt), half: true },
-                { term: "Policy", value: request.policyName }
+                ...(request.policyName ? [{ term: "Policy", value: request.policyName }] : [])
               ]}
             />
           </Frame>
         </View>
 
-        <List variant="divided" title="Approval steps" count={`${request.steps.length} ${request.steps.length === 1 ? "step" : "steps"}`}>
-          {request.steps.map((step, index) => (
-            <ListRow
-              key={step.name}
-              resolved={step.status === "approved" || step.status === "rejected"}
-              title={<Text variant="rowTitle">{step.name}</Text>}
-              meta={String(index + 1).padStart(2, "0")}
-              description={step.approvers.join(", ")}
-            >
-              <StatusText {...stepStatus(step)} />
-            </ListRow>
-          ))}
-        </List>
+        {request.steps.length > 0 && (
+          <List variant="divided" title="Approval steps" count={`${request.steps.length} ${request.steps.length === 1 ? "step" : "steps"}`}>
+            {request.steps.map((step, index) => (
+              <ListRow
+                key={step.name}
+                resolved={step.status === "approved" || step.status === "rejected"}
+                title={<Text variant="rowTitle">{step.name}</Text>}
+                meta={String(index + 1).padStart(2, "0")}
+                description={step.approvers.join(", ")}
+              >
+                <StatusText {...stepStatus(step)} />
+              </ListRow>
+            ))}
+          </List>
+        )}
 
         {request.decision?.comment && (
           <Frame>
@@ -157,7 +159,7 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
         ) : (
           <View style={styles.resolved}>
             <StatusText {...statusMeta(request)} />
-            {request.decision?.by === "You" && resolvedThisSession.has(request.id) && <Button small variant="ghost" label="Undo" onPress={() => undo(request.id)} />}
+            {undo && request.decision?.by === "You" && resolvedThisSession.has(request.id) && <Button small variant="ghost" label="Undo" onPress={() => undo(request.id)} />}
           </View>
         )}
       </View>

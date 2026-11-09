@@ -43,7 +43,7 @@ export const RequestRow = ({ request, onOpen, showActions }: Props) => {
           {request.resource}
         </Text>
       }
-      description={`${request.requesterName} · ${summary(request)} · ${request.projectName}`}
+      description={`${request.requesterName} · ${summary(request)} · ${request.scopeName}`}
     >
       {request.isProduction && !resolved && <Badge label="production" tone="warn" />}
       {failed && (
@@ -76,7 +76,7 @@ export const RequestRow = ({ request, onOpen, showActions }: Props) => {
       ) : (
         <View style={styles.actions}>
           <StatusText {...statusMeta(request)} />
-          {showActions && request.decision?.by === "You" && <Button small variant="ghost" label="Undo" onPress={() => undo(request.id)} />}
+          {showActions && undo && request.decision?.by === "You" && <Button small variant="ghost" label="Undo" onPress={() => undo(request.id)} />}
         </View>
       )}
     </ListRow>

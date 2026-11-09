@@ -4,6 +4,7 @@
     "slug": "infisical-mobile",
     "version": "0.1.0",
     "orientation": "portrait",
+    "scheme": "com.infisical.mobile",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -30,7 +31,9 @@
         {
           "faceIDPermission": "Infisical uses Face ID to confirm approvals."
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-web-browser"
     ]
   }
 }
