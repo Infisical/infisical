@@ -32,6 +32,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
 import { AwsLaunchStack, TAwsProvisioningMetadata } from "./AwsLaunchStack";
+import { AwsUpdateStack } from "./AwsUpdateStack";
 import {
   genericAppConnectionFieldsSchema,
   GenericAppConnectionsFields
@@ -43,6 +44,7 @@ type Props = {
   projectType?: ProjectType;
   projectId?: string | null;
   defaultUseCases?: string[];
+  preselectedUseCases?: string[];
 };
 
 const rootSchema = genericAppConnectionFieldsSchema.extend({
@@ -107,10 +109,17 @@ export const AwsConnectionForm = ({
   onSubmit,
   projectType,
   projectId,
-  defaultUseCases
+  defaultUseCases,
+  preselectedUseCases
 }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [provisioning, setProvisioning] = useState<TAwsProvisioningMetadata | null>(null);
+  const recordedProvisioning = appConnection?.configuration?.provisioning;
+  const stackProvisioning =
+    appConnection?.method === AwsConnectionMethod.AssumeRole &&
+    recordedProvisioning?.launchMethod === "launch-stack"
+      ? recordedProvisioning
+      : null;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -181,6 +190,13 @@ export const AwsConnectionForm = ({
                 onLaunch={setProvisioning}
               />
             )}
+            {appConnection && stackProvisioning && (
+              <AwsUpdateStack
+                connectionId={appConnection.id}
+                provisioning={stackProvisioning}
+                preselectedUseCases={preselectedUseCases}
+              />
+            )}
             <Controller
               name="credentials.roleArn"
               control={control}
@@ -198,6 +214,12 @@ export const AwsConnectionForm = ({
                   />
                   {projectType === ProjectType.AgentVault && projectId && (
                     <ProjectExternalIdHint projectId={projectId} />
+                  )}
+                  {stackProvisioning && (
+                    <FieldDescription>
+                      Saving a Role ARN that does not belong to this stack stops Infisical treating
+                      the connection as Stack-managed.
+                    </FieldDescription>
                   )}
                   <FieldError id="app-connection-aws-role-arn-error" errors={[error]} />
                 </Field>

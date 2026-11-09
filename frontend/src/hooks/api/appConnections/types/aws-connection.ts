@@ -6,7 +6,20 @@ export enum AwsConnectionMethod {
   AccessKey = "access-key"
 }
 
-export type TAwsConnection = TRootAppConnection & { app: AppConnection.AWS } & (
+export type TAwsConnectionProvisioning = {
+  launchMethod: "launch-stack";
+  useCases: string[];
+  stackName: string;
+  partition: string;
+  templateVersion: string;
+  region?: string;
+  roleName?: string;
+};
+
+export type TAwsConnection = TRootAppConnection & {
+  app: AppConnection.AWS;
+  configuration?: { provisioning?: TAwsConnectionProvisioning | null };
+} & (
     | {
         method: AwsConnectionMethod.AccessKey;
         credentials: {

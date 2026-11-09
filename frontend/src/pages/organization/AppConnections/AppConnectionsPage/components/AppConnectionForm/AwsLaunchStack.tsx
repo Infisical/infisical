@@ -48,7 +48,7 @@ type Props = {
   onLaunch: (provisioning: TAwsProvisioningMetadata | null) => void;
 };
 
-const AwsPartition = {
+export const AwsPartition = {
   Commercial: "aws",
   GovCloud: "aws-us-gov",
   China: "aws-cn",
@@ -62,7 +62,7 @@ const PARTITIONS = [
   { slug: AwsPartition.China, name: "AWS China" }
 ];
 
-const PARTITION_REGIONS: Record<string, typeof AWS_REGIONS> = {
+export const PARTITION_REGIONS: Record<string, typeof AWS_REGIONS> = {
   [AwsPartition.Commercial]: AWS_REGIONS.filter(
     ({ slug }) =>
       !slug.startsWith("us-gov-") && !slug.startsWith("cn-") && !slug.startsWith("eusc-")
@@ -88,7 +88,7 @@ const generateSuffix = () =>
     byte.toString(16).padStart(2, "0")
   ).join("");
 
-const MANUAL_DOCS_URL = "https://infisical.com/docs/integrations/app-connections/aws";
+export const MANUAL_DOCS_URL = "https://infisical.com/docs/integrations/app-connections/aws";
 
 const ManualRoleCreation = ({ reason }: { reason: string }) => (
   <Alert variant="info" className="mb-4">

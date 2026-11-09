@@ -16,7 +16,7 @@ import {
   TListAwsConnectionKmsKeys
 } from "./types";
 
-const awsConnectionKeys = {
+export const awsConnectionKeys = {
   all: [...appConnectionKeys.all, "aws"] as const,
   listKmsKeys: (params: TListAwsConnectionKmsKeys) =>
     [...awsConnectionKeys.all, "kms-keys", params] as const,
@@ -24,6 +24,8 @@ const awsConnectionKeys = {
     [...awsConnectionKeys.all, "iam-users", params] as const,
   provisioningTemplate: (params: TGetAwsProvisioningTemplate) =>
     [...awsConnectionKeys.all, "provisioning-template", params] as const,
+  allConnectionProvisioningTemplates: () =>
+    [...awsConnectionKeys.all, "connection-provisioning-template"] as const,
   connectionProvisioningTemplate: (params: TGetAwsConnectionProvisioningTemplate) =>
     [...awsConnectionKeys.all, "connection-provisioning-template", params] as const
 };

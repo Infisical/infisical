@@ -8,12 +8,14 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   appConnection?: TAppConnection;
+  preselectedUseCases?: string[];
 };
 
 export const EditAppConnectionCredentialsModal = ({
   isOpen,
   onOpenChange,
-  appConnection
+  appConnection,
+  preselectedUseCases
 }: Props) => {
   if (!appConnection) return null;
 
@@ -28,6 +30,7 @@ export const EditAppConnectionCredentialsModal = ({
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <AppConnectionForm
             appConnection={appConnection}
+            preselectedUseCases={preselectedUseCases}
             onComplete={() => onOpenChange(false)}
             onCancel={() => onOpenChange(false)}
           />
