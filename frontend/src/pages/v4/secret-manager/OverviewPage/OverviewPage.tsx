@@ -729,6 +729,17 @@ export const OverviewPage = () => {
   const selectableOnPage = windowRows.flatMap(([, entries]) =>
     selectableKinds.includes(entries[0].kind) ? entries.map(selectionKey) : []
   );
+  const expandSelected = (keys: string[]) => {
+    if (single) return;
+    const picked = new Set(keys);
+    const opening = windowRows
+      .filter(
+        ([, entries]) =>
+          entries[0].kind !== "folder" && entries.some((entry) => picked.has(selectionKey(entry)))
+      )
+      .map(([key]) => key);
+    setExpandedRows((current) => [...new Set([...current, ...opening])]);
+  };
   const selectedEntries = scoped.filter((resource) => selected.includes(selectionKey(resource)));
   const report = (message: string) => setNotice(message);
   const stage = (shownResource: Secret | Of<"folder">, next: Secret | Of<"folder">) => {
@@ -1657,13 +1668,16 @@ export const OverviewPage = () => {
                                   checked={allOnPage}
                                   indeterminate={someOnPage && !allOnPage}
                                   disabled={!selectableOnPage.length}
-                                  onCheckedChange={() =>
-                                    setSelected(
-                                      allOnPage
-                                        ? selected.filter((key) => !selectableOnPage.includes(key))
-                                        : [...new Set([...selected, ...selectableOnPage])]
-                                    )
-                                  }
+                                  onCheckedChange={() => {
+                                    if (allOnPage) {
+                                      setSelected(
+                                        selected.filter((key) => !selectableOnPage.includes(key))
+                                      );
+                                      return;
+                                    }
+                                    setSelected([...new Set([...selected, ...selectableOnPage])]);
+                                    expandSelected(selectableOnPage);
+                                  }}
                                 />
                               </span>
                             </TableHead>
@@ -1913,7 +1927,10 @@ export const OverviewPage = () => {
                 <FloatingActionBar
                   count={selected.length}
                   total={selectableOnPage.length}
-                  onSelectAll={() => setSelected(selectableOnPage)}
+                  onSelectAll={() => {
+                    setSelected(selectableOnPage);
+                    expandSelected(selectableOnPage);
+                  }}
                   onClear={() => setSelected([])}
                   actions={[
                     {
