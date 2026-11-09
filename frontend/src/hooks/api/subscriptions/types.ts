@@ -33,6 +33,8 @@ export type SubscriptionPlan = {
   identityLimit: number;
   enforceIdentityLimit?: boolean;
   auditLogs: boolean;
+  // The plan is a stand-in served while the License Server is unreachable, not the org's real plan.
+  isFallback?: boolean;
   dynamicSecret: boolean;
   auditLogsRetentionDays: number | null;
   auditLogStreamLimit: number;

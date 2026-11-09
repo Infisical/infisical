@@ -391,7 +391,7 @@ export const licenseServiceFactory = ({
       await refreshPlan(rootOrgId);
     }
     const plan = await getPlan(rootOrgId, projectId);
-    return plan;
+    return { ...plan, isFallback: await isServingFallbackPlan(rootOrgId) };
   };
 
   const invalidateGetPlan = async (orgId: string) => {

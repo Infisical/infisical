@@ -36,7 +36,7 @@ const AUDIT_LOG_LIMIT = 30;
 export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
   const { data: status } = useFetchServerStatus();
   const { subscription } = useSubscription();
-  const isOnPlan = subscription.auditLogs;
+  const isOnPlan = subscription.auditLogs || Boolean(subscription.isFallback);
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["logDetails"] as const);
 
   // Determine the project ID for filtering
