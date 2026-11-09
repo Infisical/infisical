@@ -31,6 +31,7 @@ const facts = (overrides: Partial<TSessionServiceFacts> = {}): TSessionServiceFa
   substitutions: [],
   personalValuesMissing: false,
   memberProvided: false,
+  memberSignsIn: false,
   ...overrides
 });
 
@@ -99,7 +100,7 @@ describe("describing one service", () => {
       { placeholder: "__TOKEN__", surfaces: ["path", "body"] }
     ]);
     expect(substituted.howToUse).toBe(
-      "Call https://api.telegram.org directly. Write __TOKEN_SECONDARY__ exactly where the secret goes (in the header): the proxy replaces it with the real value. Any other value is sent unchanged. Write __TOKEN__ exactly where the secret goes (in the path or body): the proxy replaces it with the real value. Any other value is sent unchanged."
+      'Call https://api.telegram.org directly. Write "__TOKEN_SECONDARY__" exactly where the secret goes (in the header): the proxy replaces it with the real value. Any other value is sent unchanged. Write "__TOKEN__" exactly where the secret goes (in the path or body): the proxy replaces it with the real value. Any other value is sent unchanged.'
     );
   });
 
@@ -129,9 +130,15 @@ describe("describing one service", () => {
     expect(describeSessionService(facts({ personalValuesMissing: true, memberProvided: true }), true).howToUse).toBe(
       'Not usable yet: the user this session is for has to set their personal values for "github" in Agent Vault. The proxy refuses requests to it until then, and it can take a few minutes to apply.'
     );
+    // A sign-in that expired needs connecting again, which "set their personal values" wouldn't say.
+    expect(
+      describeSessionService(facts({ personalValuesMissing: true, memberProvided: true, memberSignsIn: true })).howToUse
+    ).toBe(
+      'Not usable yet: the session\'s owner has to connect their account for "github" in Agent Vault. The proxy refuses requests to it until then, and it can take a few minutes to apply.'
+    );
     const document = buildSessionServicesDocument({
       proxy: null,
-      session: { label: null, expiresAt: null, accessBundle: "engineering", onBehalfOfUser: true },
+      session: { expiresAt: null, accessBundle: "engineering", onBehalfOfUser: true },
       services: [facts({ memberProvided: true })]
     });
     expect(document.services[0].howToUse).toContain("the user this session is for");
@@ -186,7 +193,7 @@ describe("describing one service", () => {
       })
     );
     expect(described.howToUse).toBe(
-      "Remote MCP server (streamable-http transport). Connect to https://mcp.linear.app/mcp with no credential and no OAuth sign-in: the proxy adds the credential. A client that only loads MCP servers at startup will not see a server added now, so in this session call it with JSON-RPC over HTTPS POST to https://mcp.linear.app/mcp (send Content-Type: application/json and Accept: application/json, text/event-stream; call initialize, send the notifications/initialized notification, then call tools/list and tools/call, and send back any Mcp-Session-Id header it returns)."
+      "Remote MCP server (streamable-http transport). Connect to https://mcp.linear.app/mcp with no credential and no OAuth sign-in: the proxy adds the credential. A client that only loads MCP servers at startup will not see a server added now, so in this session call it with JSON-RPC over HTTPS POST to https://mcp.linear.app/mcp (send Content-Type: application/json and Accept: application/json, text/event-stream; call initialize, send the notifications/initialized notification, then call tools/list and tools/call; on every request after initialize, send back any Mcp-Session-Id header it returns and an MCP-Protocol-Version header with the protocolVersion from its initialize result)."
     );
   });
 
@@ -223,16 +230,18 @@ describe("the whole list", () => {
 
   test("describes the proxy it came through and that proxy's traffic policy", () => {
     const document = buildSessionServicesDocument({
-      proxy: { name: "prod-proxy", version: "0.44.0", trafficPolicy: AgentVaultTrafficPolicy.BundleHosts },
-      session: { label: "nightly triage", expiresAt, accessBundle: "engineering", onBehalfOfUser: false },
+      proxy: {
+        name: "prod-proxy",
+        version: "0.44.0",
+        trafficPolicy: AgentVaultTrafficPolicy.BundleHosts,
+        allowedHosts: null
+      },
+      session: { expiresAt, accessBundle: "engineering", onBehalfOfUser: false },
       services: [facts()]
     });
     expect(document.agentVault).toEqual({ proxy: "prod-proxy", version: "0.44.0", trafficPolicy: "service-hosts" });
-    expect(document.session).toEqual({
-      label: "nightly triage",
-      expiresAt: "2026-11-05T02:00:00Z",
-      accessBundle: "engineering"
-    });
+    // No label: someone's summary of the session could steer an agent away from its prompt.
+    expect(document.session).toEqual({ expiresAt: "2026-11-05T02:00:00Z", accessBundle: "engineering" });
     expect(document.notes).toContain("This proxy refuses requests to hosts no service covers.");
     expect(document.notes).toContain(
       "The session expires at 2026-11-05T02:00:00Z; after that the proxy refuses every request."
@@ -246,8 +255,8 @@ describe("the whole list", () => {
 
   test("under any-host, says hosts no service covers are reachable", () => {
     const document = buildSessionServicesDocument({
-      proxy: { name: "dev-proxy", version: null, trafficPolicy: AgentVaultTrafficPolicy.AnyHost },
-      session: { label: null, expiresAt: null, accessBundle: "skills-only", onBehalfOfUser: false },
+      proxy: { name: "dev-proxy", version: null, trafficPolicy: AgentVaultTrafficPolicy.AnyHost, allowedHosts: null },
+      session: { expiresAt: null, accessBundle: "skills-only", onBehalfOfUser: false },
       services: []
     });
     expect(document.agentVault.trafficPolicy).toBe("any-host");
@@ -259,14 +268,30 @@ describe("the whole list", () => {
     expect(document.notes.some((note) => note.startsWith("The session expires"))).toBe(false);
   });
 
+  test("under service-hosts, names the hosts an admin made exceptions, up to a limit", () => {
+    const list = (allowedHosts: string) =>
+      buildSessionServicesDocument({
+        proxy: { name: "prod-proxy", version: null, trafficPolicy: AgentVaultTrafficPolicy.BundleHosts, allowedHosts },
+        session: { expiresAt: null, accessBundle: "engineering", onBehalfOfUser: false },
+        services: []
+      }).notes;
+    expect(list("pypi.org, files.pythonhosted.org")).toContain(
+      "This proxy refuses requests to hosts no service covers, except these, which an admin allowed: pypi.org, files.pythonhosted.org. The proxy adds no credential to requests to them."
+    );
+    const many = Array.from({ length: 30 }, (_, index) => `host${index}.example.com`).join(",");
+    const note = list(many).find((text) => text.startsWith("This proxy refuses"))!;
+    expect(note).toContain("host24.example.com and 5 more.");
+    expect(note).not.toContain("host25.example.com");
+  });
+
   test("without a proxy, leaves the traffic policy out instead of guessing it", () => {
     const document = buildSessionServicesDocument({
       proxy: null,
-      session: { label: "", expiresAt: null, accessBundle: null, onBehalfOfUser: false },
+      session: { expiresAt: null, accessBundle: null, onBehalfOfUser: false },
       services: [facts()]
     });
     expect(document.agentVault).toEqual({ proxy: null, version: null, trafficPolicy: null });
-    expect(document.session).toEqual({ label: null, expiresAt: null, accessBundle: null });
+    expect(document.session).toEqual({ expiresAt: null, accessBundle: null });
     expect(document.notes.some((note) => note.includes("hosts no service covers"))).toBe(false);
   });
 });

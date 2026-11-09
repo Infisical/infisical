@@ -24,7 +24,7 @@ curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/ser
 
 - **A URL error, such as `No host part in the URL`:** `INFISICAL_AGENT_VAULT_URL` is not set, so you are not behind Agent Vault. Ignore this skill.
 - **JSON with an `agentVault` field:** your HTTP and HTTPS requests go through an Agent Vault proxy. For hosts that a service in your session covers, the proxy adds the real credential on the way out. You never see it, so no API key in your environment is normal, and it does not mean you lack access. The JSON gives each service's name, what it is for, its hosts or URL, what the proxy adds, placeholders, what it allows, a status, and a `howToUse` sentence. Follow `howToUse`.
-- **JSON with an `error`:** you are behind Agent Vault, and the request was refused. Follow the `hint` if there is one. For `session_invalid` or a 401, tell the user that the Agent Vault session can't be used through this proxy (it expired, was revoked, or belongs to a different Agent Vault project) and that a new session is needed. Don't offer a key or another tool as a workaround: the proxy replaces any key you send, and it refuses everything until there is a new session.
+- **JSON with an `error`:** you are behind Agent Vault, and the request was refused. For `session_invalid`, tell the user that the Agent Vault session can't be used through this proxy (it expired, was revoked, or belongs to a different Agent Vault project) and that a new session is needed. Don't offer a key or another tool as a workaround: the proxy replaces any key you send, and it refuses everything until there is a new session. For any other error, follow the `hint` if there is one, and if that doesn't help, tell the user the error and its hint.
 
 Run it when a task needs an outside service, and again after an error about access.
 
@@ -44,12 +44,14 @@ curl -s -D /tmp/mcp-headers https://SERVER/mcp -H 'Content-Type: application/jso
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"agent","version":"1.0"}}}'
 grep -i '^mcp-session-id' /tmp/mcp-headers
 curl -s https://SERVER/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-  -H 'Mcp-Session-Id: SESSION_ID_FROM_ABOVE' -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+  -H 'Mcp-Session-Id: SESSION_ID_FROM_ABOVE' -H 'MCP-Protocol-Version: 2025-06-18' \
+  -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
 curl -s https://SERVER/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-  -H 'Mcp-Session-Id: SESSION_ID_FROM_ABOVE' -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+  -H 'Mcp-Session-Id: SESSION_ID_FROM_ABOVE' -H 'MCP-Protocol-Version: 2025-06-18' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
 ```
 
-Then call a tool the same way with `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"TOOL","arguments":{}}}`. Leave out the `Mcp-Session-Id` header if the server sent none. For a service whose `transport` is `sse`, follow its `howToUse` instead. To keep a server for later sessions, add it to your MCP client by URL with no credentials (for Claude Code: `claude mcp add --transport http NAME URL`).
+Then call a tool the same way with `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"TOOL","arguments":{}}}`. Leave out the `Mcp-Session-Id` header if the server sent none, and if the initialize result's `protocolVersion` isn't `2025-06-18`, send that version in `MCP-Protocol-Version` instead. For a service whose `transport` is `sse`, follow its `howToUse` instead. To keep a server for later sessions, add it to your MCP client by URL with no credentials (for Claude Code: `claude mcp add --transport http NAME URL`).
 
 ## Read the response
 
@@ -61,6 +63,10 @@ Each response that went through the proxy has an `X-Agent-Vault-Decision` header
 - No header at all: the request did not go through the proxy.
 
 If an HTTPS request fails before it starts (curl: `CONNECT tunnel failed, response 403`), the proxy refused the connection. Run the list command: when it says the session is no longer valid, tell the user that a new Agent Vault session is needed.
+
+## More about Infisical
+
+Only when a task is about Infisical itself, such as setting up Agent Vault, read Infisical's docs for agents: https://infisical.com/docs/llms.txt lists every page, and https://infisical.com/docs/documentation/platform/agent-vault/overview.md covers Agent Vault. A proxy that refuses hosts no service covers may refuse infisical.com.
 
 ## Never
 

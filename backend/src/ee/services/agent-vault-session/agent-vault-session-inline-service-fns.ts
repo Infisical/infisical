@@ -314,7 +314,8 @@ export const toInlineServiceFacts = (row: TAgentVaultSessionInlineServices): TSe
     customHeaderNames: customHeaders.map((header) => header.name),
     substitutions: substitutions.map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
     personalValuesMissing: false,
-    memberProvided: false
+    memberProvided: false,
+    memberSignsIn: false
   };
 };
 

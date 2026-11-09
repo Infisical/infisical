@@ -23,13 +23,13 @@ For each service in the session, the list includes:
 - The person who has to fix the credential if the service rejects it: an admin, or, if the credential uses personal values, the person who set them (the session's owner, or for a session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users), that user)
 - A sentence that tells the agent how to call the service
 
-The list also shows the session's label and expiry, and the [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) of the proxy that the request came through, so the agent can tell if the proxy refuses hosts that no service covers. The list never includes a credential, a custom header's value, or a substitution's value.
+The list also shows the session's expiry, and the [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) of the proxy that the request came through, so the agent can tell if the proxy refuses hosts that no service covers. If it does, the list names the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions), such as a package registry the agent can still reach. The list never includes a credential, a custom header's value, or a substitution's value.
 
 This shortened example shows a GitHub service that allows only `GET` requests:
 
 ```json
 {
-  "session": { "label": "nightly triage", "expiresAt": "2026-11-05T02:00:00Z", "accessBundle": "engineering" },
+  "session": { "expiresAt": "2026-11-05T02:00:00Z", "accessBundle": "engineering" },
   "services": [
     {
       "name": "github",
@@ -128,6 +128,7 @@ Then start Claude Code with `--mcp-config` set to `mcp_config`.
 - Give a placeholder key, such as `agent-vault`, to a tool or SDK that won't start without one, and write a service's substitution placeholder where the secret goes
 - Call an MCP service with plain HTTP requests if the agent's MCP client only loads servers when the client starts
 - Read the `X-Agent-Vault-Decision` header to tell the proxy's responses apart from the API's (see [Responses from the proxy](#responses-from-the-proxy))
+- Read Infisical's documentation for agents only when a task is about Infisical itself
 - Never bypass the proxy, turn off TLS verification, or print the proxy URL, which holds the session token
 
 The skill tells the agent to request the list first, and to ignore the skill if `INFISICAL_AGENT_VAULT_URL` isn't set, such as when an agent later runs on the same host without Agent Vault.

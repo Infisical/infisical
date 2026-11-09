@@ -5139,13 +5139,13 @@ export const AGENT_VAULT = {
     agentVault:
       "The proxy the request came through: its name, its Infisical CLI version, and its traffic policy. Each is null when the request didn't come through a proxy in the session's project.",
     trafficPolicy:
-      "any-host if the proxy forwards requests to hosts no service covers, service-hosts if it refuses them.",
-    session: "The session's label, its expiry as an RFC 3339 time, and the name of its access bundle.",
+      "any-host if the proxy forwards requests to hosts no service covers, service-hosts if it refuses them, apart from the exception hosts the notes name.",
+    session: "The session's expiry as an RFC 3339 time, and the name of its access bundle.",
     services: "The services the session can use, bundle services first, then the session's own.",
     hosts: "The host patterns the service covers, as an admin wrote them.",
     url: "The URL to call: an MCP server's URL, or for an HTTP service with exactly one host that isn't a wildcard, that host's URL.",
     status:
-      "ready, or needs-personal-values if the session's owner hasn't set every personal value the service needs. The proxy refuses requests to the service until they do.",
+      "ready, or needs-personal-values if the session's owner, or the user it was started on behalf of, hasn't set every personal value the service needs or connected their account. The proxy refuses requests to the service until they do.",
     credential:
       "What the proxy adds to each request: its type, the header it sets, and whether it adds one at all. Never the credential itself.",
     customHeaders: "The names of the headers the proxy adds. Never their values.",
@@ -5154,7 +5154,6 @@ export const AGENT_VAULT = {
     notes: "Facts about working behind the proxy that apply to every service.",
     proxyName: "The name of the proxy the request came through.",
     proxyVersion: "The version of the Infisical CLI that runs the proxy, as the proxy reported it.",
-    sessionLabel: "The session's label, or null if it has none.",
     sessionExpiresAt: "When the session expires, as an RFC 3339 time, or null if it doesn't expire.",
     sessionAccessBundle: "The name of the session's access bundle, or null if its owner can no longer reach one.",
     serviceName: "The service's name.",
@@ -5165,7 +5164,7 @@ export const AGENT_VAULT = {
     credentialHeader: "The header the proxy sets the credential in.",
     credentialAddedByProxy: "Whether the proxy adds a credential to the service's requests.",
     credentialMemberProvided:
-      "Whether some part of the credential is the session owner's own personal value, so the owner, not an admin, fixes it when the service rejects it.",
+      "Whether some part of the credential is a personal value of the session's owner, or the user it was started on behalf of, so that person, not an admin, fixes it when the service rejects it.",
     placeholder: "The text the agent writes where the secret goes.",
     placeholderSurfaces: "The parts of a request the proxy replaces the placeholder in: path, query, header, or body.",
     allowedMethods: "The HTTP methods the service allows, or null if it allows every method.",

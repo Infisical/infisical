@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { TAgentVaultSessions } from "@app/db/schemas";
 import { AGENT_VAULT_SESSION_TOKEN_PREFIX } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
-import { getAgentVaultBuiltinSkill } from "@app/ee/services/agent-vault-skill/agent-vault-builtin-skill";
+import { getAgentVaultBuiltinSkillOrNull } from "@app/ee/services/agent-vault-skill/agent-vault-builtin-skill";
 import { AgentVaultServiceType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType, IdentityActor, UserActor, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -129,7 +129,7 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
       } = await server.services.agentVaultProxy.getSessionSkills({
         sessionToken: authorization.data
       });
-      const builtin = req.query.includeBuiltin ? await getAgentVaultBuiltinSkill() : null;
+      const builtin = req.query.includeBuiltin ? await getAgentVaultBuiltinSkillOrNull() : null;
       // The built-in skill is delivered in place of a library skill created under its name before it was reserved.
       // It isn't audited or counted below: it holds no project data, and every session would otherwise record it.
       const skills = builtin ? reachableSkills.filter((skill) => skill.name !== builtin.name) : reachableSkills;
@@ -196,8 +196,6 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
     }
   });
 
-  // Ends the session the token belongs to, like Vault's token revoke. The same token-only auth as /skills, so a
-  // script that minted a session can end it without keeping its id.
   // Authenticated by the session token alone, like the skills above. A proxy forwards an agent's request here with the
   // session's own token and names itself, so the list can say how that proxy treats hosts no service covers.
   server.route({
@@ -224,7 +222,6 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
             .describe(AGENT_VAULT.SESSION_SERVICES.agentVault),
           session: z
             .object({
-              label: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.sessionLabel),
               expiresAt: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.sessionExpiresAt),
               accessBundle: z.string().nullable().describe(AGENT_VAULT.SESSION_SERVICES.sessionAccessBundle)
             })
@@ -252,6 +249,8 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
     }
   });
 
+  // Ends the session the token belongs to, like Vault's token revoke. The same token-only auth as /skills, so a
+  // script that minted a session can end it without keeping its id.
   server.route({
     method: "POST",
     url: "/revoke",

@@ -100,15 +100,18 @@ const statusTone = (status: number) => {
   return "text-foreground";
 };
 
-// Agent Vault answers Blocked and Error requests itself, and sends Discovery and Skills requests to Infisical for the
-// session, so none of their statuses come from the host the request named.
+// Agent Vault answers Blocked and Error requests itself, so their statuses don't come from the host the request named.
 const isProxyAnswered = (decision: AgentVaultSessionLogDecision) =>
   decision === AgentVaultSessionLogDecision.Blocked ||
-  decision === AgentVaultSessionLogDecision.Error ||
+  decision === AgentVaultSessionLogDecision.Error;
+
+// Discovery and Skills requests go to the session's Infisical, so their status is Infisical's own answer and shows like
+// any host's, while the outcome says what the agent asked for.
+const isSessionEndpoint = (decision: AgentVaultSessionLogDecision) =>
   decision === AgentVaultSessionLogDecision.Discovery ||
   decision === AgentVaultSessionLogDecision.Skills;
 
-const proxyAnswerDescription = (record: TAgentVaultSessionLogRecord) => {
+const outcomeDescription = (record: TAgentVaultSessionLogRecord) => {
   if (record.decision === AgentVaultSessionLogDecision.Discovery) {
     return record.status === 200
       ? "The agent asked Agent Vault which services this session can use, and Agent Vault listed them"
@@ -224,6 +227,7 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
 
   const presentation = decisionPresentation(record.decision);
   const proxyAnswered = isProxyAnswered(record.decision);
+  const isOutcomeDescribed = proxyAnswered || isSessionEndpoint(record.decision);
   const outcome = (
     <Badge variant={presentation.variant}>
       <presentation.icon />
@@ -287,10 +291,10 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
         )}
       </TableCell>
       <TableCell>
-        {proxyAnswered && record.status ? (
+        {isOutcomeDescribed && record.status ? (
           <Tooltip>
             <TooltipTrigger asChild>{outcome}</TooltipTrigger>
-            <TooltipContent className="max-w-sm">{proxyAnswerDescription(record)}</TooltipContent>
+            <TooltipContent className="max-w-sm">{outcomeDescription(record)}</TooltipContent>
           </Tooltip>
         ) : (
           outcome

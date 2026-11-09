@@ -86,7 +86,14 @@ const setup = (
     // The session was minted a moment ago and hasn't reached the replica.
     onlyOnPrimary?: boolean;
     personalRows?: { serviceId: string; field: string; encryptedValue: Buffer; oauthConfig: unknown }[];
-    proxy?: { projectId: string; orgId: string; pollInterval: number; name: string; trafficPolicy: string };
+    proxy?: {
+      projectId: string;
+      orgId: string;
+      pollInterval: number;
+      name: string;
+      trafficPolicy: string;
+      allowedHosts?: string | null;
+    };
   } = {}
 ) => {
   const refreshServiceToken = vi.fn(refresh);
@@ -372,7 +379,7 @@ describe("the services list a session's agent reads", () => {
     });
 
     expect(listed.agentVault).toEqual({ proxy: "prod-proxy", version: "0.44.0", trafficPolicy: "service-hosts" });
-    expect(listed.session).toEqual({ label: "nightly triage", expiresAt: null, accessBundle: "bundle" });
+    expect(listed.session).toEqual({ expiresAt: null, accessBundle: "bundle" });
     expect(listed.services).toMatchObject([
       {
         name: "linear",
@@ -396,6 +403,23 @@ describe("the services list a session's agent reads", () => {
 
     const direct = await setup(noRefresh, [serviceRow()]).service.getSessionServices({ sessionToken: "token" });
     expect(direct.agentVault).toEqual({ proxy: null, version: null, trafficPolicy: null });
+  });
+
+  test("names the exception hosts of a service-hosts proxy that asked", async () => {
+    const { service } = setup(noRefresh, [serviceRow()], [], {
+      proxy: {
+        projectId: PROJECT_ID,
+        orgId: "org-1",
+        pollInterval: 60,
+        name: "prod-proxy",
+        trafficPolicy: "service-hosts",
+        allowedHosts: "pypi.org,files.pythonhosted.org"
+      }
+    });
+    const listed = await service.getSessionServices({ sessionToken: "token", proxyId: "proxy-1" });
+    expect(listed.notes).toContain(
+      "This proxy refuses requests to hosts no service covers, except these, which an admin allowed: pypi.org, files.pythonhosted.org. The proxy adds no credential to requests to them."
+    );
   });
 
   test("lists inline services only while the session's owner is an admin", async () => {

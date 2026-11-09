@@ -7312,7 +7312,7 @@ describe("Agent Vault V1 Router", async () => {
       // A bundle's services are listed in name order.
       expect(viaProxy.json()).toMatchObject({
         agentVault: { proxy: "session-services-list", version: "0.44.0", trafficPolicy: "service-hosts" },
-        session: { label: "Nightly triage", expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/), accessBundle: bundle.name },
+        session: { expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/), accessBundle: bundle.name },
         services: [
           {
             name: "github",
@@ -7332,6 +7332,8 @@ describe("Agent Vault V1 Router", async () => {
         ]
       });
       expect(viaProxy.payload).not.toContain("lin_api_listing");
+      // Someone's summary of the session could steer an agent away from its prompt, so the list leaves it out.
+      expect(viaProxy.json().session).not.toHaveProperty("label");
 
       // A name that isn't a proxy only leaves the traffic policy out.
       const unnamed = await list(`Bearer ${session.token}`, { "x-agent-vault-proxy-id": "not-a-proxy" });
@@ -7658,6 +7660,32 @@ describe("Agent Vault V1 Router", async () => {
         files: skill.files
       });
       expect(JSON.parse((await inject("GET", skillsUrl)).payload)).toEqual({ skills: [], totalCount: 0 });
+    });
+
+    test("the built-in skill's name is refused for a library skill, on create and on update", async () => {
+      const reserved =
+        "'infisical-agent-vault' is reserved for the skill Agent Vault gives every agent. Choose another name in SKILL.md.";
+      const created = await inject("POST", skillsUrl, { files: skillFiles("infisical-agent-vault") });
+      expect(created.statusCode).toBe(400);
+      expect(JSON.parse(created.payload).message).toBe(reserved);
+
+      const { skill } = await createSkill("renamed-later");
+      const renamed = await publish(skill.id, skillFiles("infisical-agent-vault"));
+      expect(renamed.statusCode).toBe(400);
+      expect(JSON.parse(renamed.payload).message).toBe(reserved);
+      const kept = JSON.parse((await inject("GET", `${skillsUrl}/${skill.id}`)).payload) as { skill: TSkill };
+      expect(kept.skill).toMatchObject({ name: "renamed-later", latestVersion: 1 });
+    });
+
+    test("includeBuiltin=false leaves the built-in skill out of a session's skills", async () => {
+      const session = await mintFor([await createAccessBundle("skills-no-builtin-bundle")]);
+      const withoutBuiltin = await testServer.inject({
+        method: "GET",
+        url: `${sessionSkillsUrl}?includeBuiltin=false`,
+        headers: { authorization: `Bearer ${session.token}` }
+      });
+      expect(withoutBuiltin.statusCode).toBe(200);
+      expect(JSON.parse(withoutBuiltin.payload)).toEqual({ skills: [] });
     });
 
     test("a duplicate name is a 409", async () => {

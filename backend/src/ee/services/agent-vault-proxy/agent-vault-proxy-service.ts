@@ -1393,11 +1393,16 @@ export const agentVaultProxyServiceFactory = ({
     return buildSessionServicesDocument({
       proxy:
         isSessionProxy && proxy
-          ? { name: proxy.name, version: proxyVersion ?? null, trafficPolicy: proxy.trafficPolicy }
+          ? {
+              name: proxy.name,
+              version: proxyVersion ?? null,
+              trafficPolicy: proxy.trafficPolicy,
+              allowedHosts: proxy.allowedHosts ?? null
+            }
           : null,
       // A session carries one access bundle today.
+      // No label: someone's short summary of the session could steer an agent away from the prompt it was given.
       session: {
-        label: session.label ?? null,
         expiresAt: session.expiresAt ?? null,
         accessBundle: bundles[0]?.name ?? null,
         onBehalfOfUser: Boolean(session.onBehalfOfUserId)

@@ -3,6 +3,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 
 import { AGENT_VAULT_SKILL_MANIFEST, validateSkillFiles } from "./agent-vault-skill-fns";
 import { AgentVaultSkillFileMode } from "./agent-vault-skill-types";
@@ -55,6 +56,14 @@ export const getAgentVaultBuiltinSkill = () => {
   }
   return builtinSkill;
 };
+
+// Null, with an error in the log, when the built-in skill can't be read or isn't a valid skill, so a session still
+// gets its library skills.
+export const getAgentVaultBuiltinSkillOrNull = () =>
+  getAgentVaultBuiltinSkill().catch((error: unknown) => {
+    logger.error(error, "getAgentVaultBuiltinSkill: the built-in skill couldn't be read, so it was left out");
+    return null;
+  });
 
 // Agents get the built-in skill under this name, so a library skill can't take it.
 export const assertSkillNameNotReserved = (name: string) => {

@@ -36,6 +36,8 @@ export type TSessionServiceFacts = {
   personalValuesMissing: boolean;
   // Some part of the credential is the session owner's own, so a rejection is theirs to fix, not an admin's.
   memberProvided: boolean;
+  // Each member signs in to the service with OAuth, so what they're missing is a connected account.
+  memberSignsIn: boolean;
 };
 
 export type TSessionServiceDescription = {
@@ -60,11 +62,17 @@ export type TSessionServiceDescription = {
   howToUse: string;
 };
 
-export type TSessionServicesProxy = { name: string; version: string | null; trafficPolicy: string };
+export type TSessionServicesProxy = {
+  name: string;
+  version: string | null;
+  trafficPolicy: string;
+  // The hosts an admin lets through under service-hosts though no service covers them, as written.
+  allowedHosts: string | null;
+};
 
 export type TSessionServicesDocument = {
   agentVault: { proxy: string | null; version: string | null; trafficPolicy: "any-host" | "service-hosts" | null };
-  session: { label: string | null; expiresAt: string | null; accessBundle: string | null };
+  session: { expiresAt: string | null; accessBundle: string | null };
   services: TSessionServiceDescription[];
   notes: string[];
 };
@@ -167,7 +175,9 @@ const howToUse = (
   onBehalfOfUser: boolean
 ) => {
   if (service.personalValuesMissing) {
-    return `Not usable yet: ${personalValuesHolder(onBehalfOfUser)} has to set their personal values for ${JSON.stringify(service.name)} in Agent Vault. The proxy refuses requests to it until then, and it can take a few minutes to apply.`;
+    // A sign-in that expired needs connecting again, not values set, so one sentence covers both.
+    const setUp = service.memberSignsIn ? "connect their account" : "set their personal values";
+    return `Not usable yet: ${personalValuesHolder(onBehalfOfUser)} has to ${setUp} for ${JSON.stringify(service.name)} in Agent Vault. The proxy refuses requests to it until then, and it can take a few minutes to apply.`;
   }
   const parts: string[] = [];
   const target = description.url ?? "these hosts";
@@ -178,7 +188,7 @@ const howToUse = (
     parts.push(
       transport === AgentVaultMcpTransport.Sse
         ? `${connect} open a GET request to ${target} with Accept: text/event-stream and keep reading it. Its first event, named endpoint, gives the URL to POST JSON-RPC messages to, and every response arrives on that stream rather than in the reply to the POST (call initialize, send the notifications/initialized notification, then call tools/list and tools/call).`
-        : `${connect} call it with JSON-RPC over HTTPS POST to ${target} (send Content-Type: application/json and Accept: application/json, text/event-stream; call initialize, send the notifications/initialized notification, then call tools/list and tools/call, and send back any Mcp-Session-Id header it returns).`
+        : `${connect} call it with JSON-RPC over HTTPS POST to ${target} (send Content-Type: application/json and Accept: application/json, text/event-stream; call initialize, send the notifications/initialized notification, then call tools/list and tools/call; on every request after initialize, send back any Mcp-Session-Id header it returns and an MCP-Protocol-Version header with the protocolVersion from its initialize result).`
     );
   } else if (description.credential.type === "bearer" || description.credential.type === "oauth") {
     parts.push(
@@ -198,7 +208,7 @@ const howToUse = (
   }
   description.placeholders.forEach(({ placeholder, surfaces }) =>
     parts.push(
-      `Write ${placeholder} exactly where the secret goes (in the ${surfaces.join(" or ")}): the proxy replaces it with the real value. Any other value is sent unchanged.`
+      `Write ${JSON.stringify(placeholder)} exactly where the secret goes (in the ${surfaces.join(" or ")}): the proxy replaces it with the real value. Any other value is sent unchanged.`
     )
   );
   if (description.customHeaders.length) parts.push(`The proxy also sets ${description.customHeaders.join(", ")}.`);
@@ -245,8 +255,21 @@ export const describeSessionService = (
   return { ...description, howToUse: howToUse(service, description, onBehalfOfUser) };
 };
 
+// Enough to name every host an agent usually needs, such as a package registry, without filling the list.
+const MAX_LISTED_EXCEPTIONS = 25;
+
+const exceptionsNote = (allowedHosts: string | null) => {
+  const exceptions = allowedHosts ? splitHostPatterns(allowedHosts) : [];
+  if (!exceptions.length) return "This proxy refuses requests to hosts no service covers.";
+  const shown = exceptions.slice(0, MAX_LISTED_EXCEPTIONS).join(", ");
+  const more =
+    exceptions.length > MAX_LISTED_EXCEPTIONS ? ` and ${exceptions.length - MAX_LISTED_EXCEPTIONS} more` : "";
+  return `This proxy refuses requests to hosts no service covers, except these, which an admin allowed: ${shown}${more}. The proxy adds no credential to requests to them.`;
+};
+
 const sessionNotes = (
   trafficPolicy: TSessionServicesDocument["agentVault"]["trafficPolicy"],
+  allowedHosts: string | null,
   expiresAt: string | null,
   onBehalfOfUser: boolean
 ) => {
@@ -255,7 +278,7 @@ const sessionNotes = (
     "Use your usual HTTP client with the proxy settings from the environment (HTTPS_PROXY). Do not unset them or bypass the proxy: a request that skips it carries no credential.",
     `Responses that went through the proxy carry X-Agent-Vault-Decision: brokered (a credential was added), passthrough (no service covers the host), blocked (the proxy refused it; the JSON body says why) or error. A 401 or 403 marked brokered means the stored credential was rejected or lacks permission: an Agent Vault admin has to fix it, or ${personalValuesHolder(onBehalfOfUser)} when the service's credential is memberProvided, and a key you send will not help.`
   ];
-  if (trafficPolicy === "service-hosts") notes.push("This proxy refuses requests to hosts no service covers.");
+  if (trafficPolicy === "service-hosts") notes.push(exceptionsNote(allowedHosts));
   if (trafficPolicy === "any-host") {
     notes.push("Hosts no service covers are reachable, but the proxy adds nothing to those requests.");
   }
@@ -280,7 +303,7 @@ export const buildSessionServicesDocument = ({
   services
 }: {
   proxy: TSessionServicesProxy | null;
-  session: { label: string | null; expiresAt: Date | null; accessBundle: string | null; onBehalfOfUser: boolean };
+  session: { expiresAt: Date | null; accessBundle: string | null; onBehalfOfUser: boolean };
   services: TSessionServiceFacts[];
 }): TSessionServicesDocument => {
   let trafficPolicy: TSessionServicesDocument["agentVault"]["trafficPolicy"] = null;
@@ -288,9 +311,9 @@ export const buildSessionServicesDocument = ({
   const expiresAt = session.expiresAt ? toRfc3339(session.expiresAt) : null;
   return {
     agentVault: { proxy: proxy?.name ?? null, version: proxy?.version ?? null, trafficPolicy },
-    session: { label: session.label || null, expiresAt, accessBundle: session.accessBundle },
+    session: { expiresAt, accessBundle: session.accessBundle },
     services: services.map((service) => describeSessionService(service, session.onBehalfOfUser)),
-    notes: sessionNotes(trafficPolicy, expiresAt, session.onBehalfOfUser)
+    notes: sessionNotes(trafficPolicy, proxy?.allowedHosts ?? null, expiresAt, session.onBehalfOfUser)
   };
 };
 
@@ -359,6 +382,7 @@ export const toBundleServiceFacts = (
     customHeaderNames: context.customHeaderNames,
     substitutions: context.substitutions,
     personalValuesMissing,
-    memberProvided: memberFields.length > 0
+    memberProvided: memberFields.length > 0,
+    memberSignsIn: isMemberProvidedOauth(row)
   };
 };
