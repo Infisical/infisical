@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Controller, FormProvider, useForm } from "react-hook-form";
+import { Controller, FieldPath, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangleIcon } from "lucide-react";
 
@@ -75,7 +75,7 @@ type FormTab = {
     description: string;
     examples: { path: string; result: string; tone: "warning" | "success" }[];
   };
-  fields: (keyof TSecretSyncForm)[];
+  fields: FieldPath<TSecretSyncForm>[];
 };
 
 const getFormTabs = (
@@ -156,7 +156,9 @@ const getFormTabs = (
       rightLabel: "INITIAL SYNC",
       rightDescription:
         "The first run is special. Infisical can either overwrite everything in the destination or import existing secrets back into Infisical. Subsequent runs follow your sync options.",
-      fields: ["syncOptions"]
+      // Only the field this step shows: a check on another step's sync option would otherwise block
+      // the way forward to the step where it can be fixed.
+      fields: ["syncOptions.initialSyncBehavior"]
     },
     {
       name: "Sync Options",
