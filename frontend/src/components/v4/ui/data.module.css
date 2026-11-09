@@ -1446,7 +1446,7 @@ th[data-pin="start"] {
 td[data-pin="viewport"] {
   padding: 0;
 }
-td[data-pin="viewport"] > * {
+.viewportContent {
   position: sticky;
   inset-inline-start: 0;
   box-sizing: border-box;

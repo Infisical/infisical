@@ -32,6 +32,26 @@ const scopeOf = (resource: Resource) => `${resource.environment}\u0000${resource
 const valueOf = (secret: Secret) =>
   secret.value.status === "present" ? secret.value.value : undefined;
 
+export const useEnsureTags = (projectId: string, tags: readonly WsTag[]) => {
+  const createTag = useV4Adapter("secrets").useCreateTag();
+  return async (slugs: string[]) => {
+    const missing = [...new Set(slugs.filter((slug) => !tags.some((tag) => tag.slug === slug)))];
+    const created = await Promise.all(
+      missing.map((slug) =>
+        createTag
+          .mutateAsync({ projectId, tagSlug: slug, tagColor: "" })
+          .catch((error: unknown) => {
+            const reason = isAxiosError<{ message?: string }>(error)
+              ? error.response?.data?.message
+              : undefined;
+            throw new Error(`Could not create the tag ${slug}.${reason ? ` ${reason}` : ""}`);
+          })
+      )
+    );
+    return [...tags, ...created];
+  };
+};
+
 export const useResourceApply = ({
   projectId,
   projectSlug,
@@ -59,7 +79,7 @@ export const useResourceApply = ({
   const createImport = adapter.useCreateSecretImport();
   const deleteImport = adapter.useDeleteSecretImport();
   const resyncImport = adapter.useResyncSecretImport();
-  const createTag = adapter.useCreateTag();
+  const ensureTags = useEnsureTags(projectId, tags);
 
   return async (
     before: readonly Resource[],
@@ -89,26 +109,9 @@ export const useResourceApply = ({
         pair[0].kind === "secret" && !pair[0].managedBy && !pair[0].honeyToken
     );
 
-    const missingTags = [
-      ...new Set(
-        [...createdSecrets, ...secretChanges.map(([, to]) => to)].flatMap((secret) =>
-          secret.tags.filter((slug) => !tags.some((tag) => tag.slug === slug))
-        )
-      )
-    ];
-    const createdTags = await Promise.all(
-      missingTags.map((slug) =>
-        createTag
-          .mutateAsync({ projectId, tagSlug: slug, tagColor: "" })
-          .catch((error: unknown) => {
-            const reason = isAxiosError<{ message?: string }>(error)
-              ? error.response?.data?.message
-              : undefined;
-            throw new Error(`Could not create the tag ${slug}.${reason ? ` ${reason}` : ""}`);
-          })
-      )
+    const knownTags = await ensureTags(
+      [...createdSecrets, ...secretChanges.map(([, to]) => to)].flatMap((secret) => secret.tags)
     );
-    const knownTags = [...tags, ...createdTags];
     const tagIds = (slugs: string[]) =>
       slugs.flatMap((slug) => knownTags.filter((tag) => tag.slug === slug).map((tag) => tag.id));
 

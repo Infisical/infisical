@@ -521,7 +521,7 @@ const elementsNamed = (text: string, pattern: RegExp) =>
 
 /** Hand-built TableRows that hold RowActions or a TableActionsCell with content, without a RowContextMenu around them. An empty self-closing TableActionsCell only keeps the actions column aligned. */
 export const rowsWithoutContextMenu = (text: string) => {
-  const rows = elementsNamed(text, /<(TableRow)(?=[\s>/])/g);
+  const rows = elementsNamed(text, /<(TableRow|ChromeRow)(?=[\s>/])/g);
   const menus = elementsNamed(text, /<(RowContextMenu)(?=[\s>/])/g);
   const found = new Map<number, string>();
   [...text.matchAll(/<(RowActions|TableActionsCell)(?=[\s>/])/g)].forEach((actions) => {

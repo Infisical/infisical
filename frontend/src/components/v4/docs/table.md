@@ -287,6 +287,7 @@ Why: Stable lanes support comparison. Counts must describe actual loaded rows an
 - src/components/v4/ui/data-table.tsx
 - src/components/v4/ui/data.module.css
 - src/components/v4/ui/data-table.test.tsx
+- src/components/v4/ui/row-actions.test.tsx
 - src/components/v4/ui/frame.module.css
 - src/components/v4/tokens.json
 
@@ -301,6 +302,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Nested tables: a body dims when it holds a focused row at any depth. The row that holds the nested table and the row just above it, the one it expands from, keep full strength, and the nested body dims only its own other rows, so focusing an environment row inside an expanded secret dims every other secret and environment row and nothing else.
 - Row states are layers over the row's ground, which is surface, or row-done on a striped even row. The selected surface and the hover overlay (the shared hover token) stack over the ground on every cell, and a pinned cell or the sticky tail repaints the same ground and layers opaquely, so a striped, selected or hovered row reads as one band to the frame edge and scrolled cells never show through.
 - DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.
+- Shared tooltips: Table, and so DataTable, wraps its rows in a TooltipScope. Every Tooltip inside (status marks through TooltipText, Button disabledReason, RowActions labels, selection reasons) renders only its trigger element and the table mounts one Radix tooltip on first use, instead of one root per trigger, about five per secrets row. Hover, focus, the skip delay between neighboring triggers, Escape and aria-describedby behave as with standalone tooltips. A controlled Tooltip (open, defaultOpen, onOpenChange or delayDuration) keeps its own root.
 - Tables are framed by default: DataTable always sits in the shared tint frame, which suits nearly every standalone table. Use the native Table, which has no frame, only when the table is embedded in another surface that already draws an edge, such as a Card, a sheet or a dialog body.
 - DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.
 - A table embedded in a framed card is frameless. Inside a framed Card, List or other frame, DataTable drops its tint frame and the body's own border: the header row, pinned actions tail and pagination sit on the parent's inset surface with a line-soft rule under the header, so the header reads apart from the card's band. A flush framed Card keeps its bordered inset around the embedded table.
@@ -315,7 +317,9 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - TableRowActions is the end-aligned group inside the actions tail, with targets touching (space-row-actions-gap, 0). For a native Table, TableActionsHead and TableActionsCell take slots, the widest row's action count, and draw the same actions tail; RowActions renders the inline actions and More inside it. TableRowIndicators lays persistent row marks in size-target-row slots with size-glyph glyphs, pulled so the last glyph lands on the 12px content edge; marks never swap out for actions.
 - The selection column is size-row wide with its Checkbox centered between the frame edge and a persistent line-soft divider on its right, the same line as the actions tail divider, on the header and every row, at rest, hovered and selected.
 - The selection column always uses one hook, the selection prop on TableHead and TableCell (data-slot "table-selection"), in DataTable and in a native Table alike. It owns the width, padding, centered Checkbox and divider, and repaints the row's ground and its stripe, hover and selected layers on the cell, so the column reads as one band with its row and stays opaque if pinned. The selection cell counts as row-interactive, so a click on it never activates the row. Nothing else draws a selection column. The divider is on by default; an icon or expand column that doubles as selection, such as the one on the Secrets overview, may pass divider false on its TableHead and TableCell (data-divider "false") to drop it, and keeps everything else the hook owns.
-- Row actions also open as a right-click menu on the whole row, from the same source: the inline actions first, each with its icon and its disabled reason as the item description, then a separator and the More menu items unchanged, destructive last. DataTable does this for every data row with rowActions; rowContextMenu={false} opts out. A hand-built Table row wraps itself in RowContextMenu with the same label, inline, menu and menuDisabledReason it passes RowActions. Shift+F10 and the Menu key open it on a focused row, right-clicking an input, textarea, select or editable cell keeps the browser's own menu, and empty, loading, spacer and group rows never open it. While it is open the row takes the hover layer (pinned cells included), and closing returns focus to the row.
+- Row actions also open as a right-click menu on the whole row, from the same source: the inline actions first, each with its icon and its disabled reason as the item description, then a separator and the More menu items unchanged, destructive last. DataTable does this for every data row with rowActions; rowContextMenu={false} opts out. A hand-built Table row wraps itself in RowContextMenu with the same label, inline, menu and menuDisabledReason it passes RowActions. Shift+F10 and the Menu key open it on a focused row, right-clicking an input, textarea, select or editable cell keeps the browser's own menu, and empty, loading, spacer and group rows never open it. While it is open the row takes the hover layer (pinned cells included), and closing returns focus to the row. The menu content, its portal and its positioning mount only while the menu is open or running its close animation, so a closed row costs only the trigger.
+- RowActions lazy renders plain buttons with the same DOM, classes and accessible names as the real ones, and no Tooltip, DropdownMenu or Popper, until the row is hovered (the pointer rests on it for 120ms, or enters the actions themselves) or anything in it takes focus. It then swaps in the real parts once and stays live, and focus stays on the same button. A press while idle still works: an inline action runs, and More opens its menu on the first press, pointer or keyboard. Use it for long native tables such as the secrets overview; it is off by default, and DataTable does not set it, because each row's first hover costs one swap.
+- RowActions open, defaultOpen and onOpenChange control the More menu, so a page can open it from outside (a shortcut, a context menu item or a tour). open opens a lazy row's menu even while idle, and onOpenChange also reports the open from an idle press. onMenuCloseAutoFocus is the menu's close focus handler: preventDefault keeps focus where a menu item moved it, such as into a popover the item opened.
 - Responsibilities: tokens own the numbers (size-row, size-target-row, size-row-action-step, size-glyph, space-row-inline, space-row-actions-gap, space-row-actions-inset, space-row-indent); DataTable rowActions, the tail cells, RowActions and TableRowIndicators own geometry; a composite chooses which actions a row shows and their order, and sets no sizes, gaps or offsets.
 - With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.
 - onRowActivate makes every row a pointer target with the ordinary hover overlay. A click anywhere in the row activates it unless it lands on a link, button, input, checkbox, menu item, tooltip trigger, the selection cell, the actions cell or anything marked data-row-interactive, or it ends a text selection inside the row. Menu items rendered in a portal never reach the row.
@@ -1268,6 +1272,257 @@ export default function RowActions() {
           <figcaption className="text-muted-foreground text-xs">
             {
               "Mixed counts in one table, each row end-aligned; right-click a row for the same actions"
+            }
+          </figcaption>
+        </figure>
+      </div>
+      <p role="status" className="sr-only">
+        {status}
+      </p>
+    </>
+  );
+}
+```
+
+### Shared tooltips
+
+Save this example at `src/pages/design-system/examples/table/shared-tooltips.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
+
+Registry items used: @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/text, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "../../../../components/v4/ui/data-table";
+import { DropdownMenuItem } from "../../../../components/v4/ui/dropdown-menu";
+import { Icon } from "../../../../components/v4/ui/icon";
+import { Inline } from "../../../../components/v4/ui/layout";
+import { StatusText } from "../../../../components/v4/ui/text";
+import { TooltipProvider, TooltipText } from "../../../../components/v4/ui/tooltip";
+
+type Row = {
+  id: string;
+  name: string;
+  rotated: string;
+  locked: boolean;
+  environments: Record<string, boolean>;
+};
+
+const environments = [
+  { id: "dev", label: "Development" },
+  { id: "staging", label: "Staging" },
+  { id: "prod", label: "Production" }
+];
+
+const names = [
+  "DATABASE_URL",
+  "LOG_LEVEL",
+  "JWT_SIGNING_KEY",
+  "STRIPE_WEBHOOK_SECRET",
+  "REDIS_URL",
+  "SMTP_PASSWORD"
+];
+
+const rows: Row[] = names.map((name, index) => ({
+  id: name.toLowerCase(),
+  name,
+  rotated: `2026-10-${String(29 - index).padStart(2, "0")} 14:02 UTC`,
+  locked: index % 3 === 2,
+  environments: { dev: true, staging: index % 2 === 0, prod: index % 4 !== 1 }
+}));
+
+export default function SharedTooltips() {
+  const [status, setStatus] = React.useState("");
+  const columns: DataTableColumn<Row>[] = [
+    {
+      id: "name",
+      header: "Name",
+      primary: true,
+      mono: true,
+      grow: true,
+      render: (row) => row.name
+    },
+    {
+      id: "rotation",
+      header: "Rotation",
+      render: (row) => (
+        <TooltipText
+          asChild
+          content={
+            <>
+              Last rotated <code>{row.rotated}</code>
+            </>
+          }
+        >
+          <StatusText icon={row.locked ? "lock" : "clock"}>
+            {row.locked ? "Locked" : "Scheduled"}
+          </StatusText>
+        </TooltipText>
+      )
+    },
+    {
+      id: "environments",
+      header: "Environments",
+      render: (row) => (
+        <Inline gap={8} wrap={false}>
+          {environments.map((env) => {
+            const present = row.environments[env.id];
+            return (
+              <TooltipText
+                key={env.id}
+                asChild
+                content={`${present ? "Present" : "Missing"} in ${env.label}`}
+              >
+                <span>
+                  <Icon
+                    name={present ? "check-c" : "minus"}
+                    label={`${env.label}: ${present ? "present" : "missing"}`}
+                  />
+                </span>
+              </TooltipText>
+            );
+          })}
+        </Inline>
+      )
+    }
+  ];
+  const actions: DataTableRowActions<Row> = {
+    inline: [
+      {
+        label: "Copy secret",
+        icon: "copy",
+        onSelect: (row) => setStatus(`Copied the fabricated value of ${row.name}.`)
+      },
+      {
+        label: "Rotate now",
+        icon: "sync",
+        disabledReason: (row) => (row.locked ? "Locked secrets can't be rotated" : undefined),
+        onSelect: (row) => setStatus(`Rotated ${row.name}.`)
+      }
+    ],
+    renderMenu: (row) => (
+      <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+        <Icon name="eye" />
+        Open secret
+      </DropdownMenuItem>
+    )
+  };
+  return (
+    <TooltipProvider>
+      <DataTable
+        label="Example secrets with status marks and row actions"
+        rows={rows}
+        columns={columns}
+        getRowId={(row) => row.id}
+        rowLabel={(row) => row.name}
+        rowActions={actions}
+      />
+      <p role="status" className="sr-only">
+        {status}
+      </p>
+    </TooltipProvider>
+  );
+}
+```
+
+### Lazy row actions
+
+Save this example at `src/pages/design-system/examples/table/lazy-row-actions.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
+
+Registry items used: @infisical/dropdown-menu, @infisical/icon, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+
+import { DropdownMenuItem, DropdownMenuSeparator } from "../../../../components/v4/ui/dropdown-menu";
+import { Icon } from "../../../../components/v4/ui/icon";
+import {
+  type RowActionList,
+  RowActions,
+  RowContextMenu,
+  Table,
+  TableActionsCell,
+  TableActionsHead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "../../../../components/v4/ui/table";
+
+const names = [
+  "DATABASE_URL",
+  "REDIS_URL",
+  "JWT_SIGNING_KEY",
+  "SMTP_PASSWORD",
+  "STRIPE_SECRET_KEY",
+  "SENTRY_DSN",
+  "S3_BUCKET",
+  "LOG_LEVEL"
+];
+
+export default function LazyRowActions() {
+  const [status, setStatus] = React.useState("");
+  return (
+    <>
+      <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+        <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Table aria-label="Example secrets with lazy row actions">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Key</TableHead>
+                  <TableActionsHead slots={2}>Actions</TableActionsHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {names.map((name) => {
+                  const inline: RowActionList = [
+                    {
+                      label: "Copy secret",
+                      icon: "copy",
+                      disabledReason:
+                        name === "JWT_SIGNING_KEY" ? "Cannot copy rotated secret" : undefined,
+                      onSelect: () => setStatus(`Copied the fabricated value of ${name}.`)
+                    }
+                  ];
+                  const menu = (
+                    <>
+                      <DropdownMenuItem onSelect={() => setStatus(`Opened ${name}.`)}>
+                        <Icon name="eye" />
+                        Open secret
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={() => setStatus(`Deleted ${name}.`)}
+                      >
+                        <Icon name="trash" />
+                        Delete secret
+                      </DropdownMenuItem>
+                    </>
+                  );
+                  return (
+                    <RowContextMenu key={name} label={name} inline={inline} menu={menu}>
+                      <TableRow>
+                        <TableCell>{name}</TableCell>
+                        <TableActionsCell slots={2}>
+                          <RowActions lazy label={name} inline={inline} menu={menu} />
+                        </TableActionsCell>
+                      </TableRow>
+                    </RowContextMenu>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">
+            {
+              "Lazy row actions: plain buttons until a row is hovered or focused, then tooltips and the More menu"
             }
           </figcaption>
         </figure>

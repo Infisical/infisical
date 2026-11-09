@@ -1,6 +1,5 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { motion } from "motion/react";
 import { Slot } from "radix-ui";
 
 import { cn } from "../lib/utils";
@@ -67,9 +66,6 @@ const buttonVariants = cva(
   }
 );
 
-const MotionButton = motion.create("button");
-const MotionSlot = motion.create(Slot.Root);
-
 function Button({
   className,
   variant = "default",
@@ -93,10 +89,6 @@ function Button({
   onPointerLeave,
   onPointerCancel,
   style,
-  onDrag: _onDrag,
-  onDragStart: _onDragStart,
-  onDragEnd: _onDragEnd,
-  onAnimationStart: _onAnimationStart,
   type,
   ref,
   ...props
@@ -117,7 +109,7 @@ function Button({
     /** For variant link: always (the default) keeps the underline at rest; hover draws it only on hover and keyboard focus, for a record name in a table row. */
     underline?: "always" | "hover";
   } & { ref?: React.Ref<React.ComponentRef<"button">> }) {
-  const Comp = asChild ? MotionSlot : MotionButton;
+  const Comp = asChild ? Slot.Root : "button";
   const loading = loadingProp ?? false;
   const reason = disabledReason || undefined;
   const inactive =

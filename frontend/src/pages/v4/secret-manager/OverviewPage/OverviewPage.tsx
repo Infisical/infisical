@@ -6,6 +6,7 @@ import {
   useRef,
   useState
 } from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ChevronsDownUpIcon,
@@ -67,8 +68,13 @@ import {
 import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
+  ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionHoneyTokenActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretFolderActions,
+  ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
@@ -91,7 +97,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
 import { withoutDefaults } from "../search-defaults";
-import { useResourceApply } from "./bridge/apply";
+import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges } from "./bridge/commit";
 import { BreadthContext, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
@@ -133,7 +139,8 @@ import {
   NEXT_PHASE,
   ROW_ACTION_SLOTS,
   type RowContext,
-  selectableKinds
+  selectableKinds,
+  useStableHandlers
 } from "./secrets/overview-cells";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
@@ -152,6 +159,7 @@ import { CreateSecretSyncSheet } from "./secrets/secret-sync/create-secret-sync-
 import { SecretSyncStatusBadge } from "./secrets/secret-sync/secret-sync-status-badge";
 import type { LocalSecretSync } from "./secrets/secret-sync/sync-model";
 import {
+  type AddNewBlocks,
   AddNewMenu,
   ExportMenu,
   FolderBreadcrumbBar,
@@ -368,15 +376,18 @@ export const OverviewPage = () => {
       ) === index
   );
   const breadth = useScopeSecrets(projectId, breadthScopes);
-  const resources = buildResources({
-    projectId,
-    path,
-    overview: overview.data,
-    folderTree,
-    scopes: breadth.scopes,
-    values: valueStore.values
-  });
-  const resourcesRef = useRef(resources);
+  const resourcesRef = useRef<Resource[]>([]);
+  const resources = replaceEqualDeep(
+    resourcesRef.current,
+    buildResources({
+      projectId,
+      path,
+      overview: overview.data,
+      folderTree,
+      scopes: breadth.scopes,
+      values: valueStore.values
+    })
+  );
   resourcesRef.current = resources;
   const projectSlug = projectQuery.data?.slug ?? projectId;
   const createDynamicSecret = adapter.useCreateDynamicSecret();
@@ -390,6 +401,7 @@ export const OverviewPage = () => {
   const updateProxiedService = adapter.useUpdateProxiedService();
   const deleteProxiedService = adapter.useDeleteProxiedService();
   const honeyMapping = (keys: string[]) => ({ accessKeyId: keys[0], secretAccessKey: keys[1] });
+  const ensureTags = useEnsureTags(projectId, tagList);
   const runApply = useResourceApply({
     projectId,
     projectSlug,
@@ -781,14 +793,18 @@ export const OverviewPage = () => {
       changes.length === 1
         ? `${target.kind === "secret" ? "Secret" : "Folder"} "${target.name}" ${past}`
         : `${changes.length} changes committed`;
-    createCommit
-      .mutateAsync({
-        projectId,
-        environment: target.environment,
-        secretPath: target.path,
-        pendingChanges: toPendingChanges(changes, tagList),
-        message: message.trim() || title
-      })
+    ensureTags(
+      changes.flatMap((change) => (change.next?.kind === "secret" ? change.next.tags : []))
+    )
+      .then((knownTags) =>
+        createCommit.mutateAsync({
+          projectId,
+          environment: target.environment,
+          secretPath: target.path,
+          pendingChanges: toPendingChanges(changes, knownTags),
+          message: message.trim() || title
+        })
+      )
       .then(
         (response) => {
           setPending((current) => current.filter((change) => !changes.includes(change)));
@@ -817,15 +833,14 @@ export const OverviewPage = () => {
     .map(([key]) => key);
   const allOpen =
     secretKeysOnPage.length > 0 && secretKeysOnPage.every((key) => expandedRows.includes(key));
-  const ctx: RowContext = {
-    environments: visibleEnvironments,
-    single,
-    path,
-    writeBlock,
-    blockFor,
-    selected,
-    recent,
-    expanded: expandedRows,
+  const rowEvents = useStableHandlers<
+    Required<
+      Pick<
+        RowContext,
+        "onExpand" | "onToggleSelect" | "report" | "onAction" | "onSavePending" | "onRevertPending"
+      >
+    >
+  >({
     onExpand: (key, open) =>
       setExpandedRows((current) =>
         open
@@ -840,8 +855,6 @@ export const OverviewPage = () => {
       ),
     report,
     onAction: setRowAction,
-    pending: pendingMarks(pendingHere),
-    selectionDisabled: pendingHere.length > 0,
     onSavePending: (id) =>
       commitChanges(
         pendingHere.filter((change) => pendingTarget(change).id === id),
@@ -849,6 +862,19 @@ export const OverviewPage = () => {
       ),
     onRevertPending: (id) =>
       setPending((current) => current.filter((change) => pendingTarget(change).id !== id))
+  });
+  const ctx: RowContext = {
+    environments: visibleEnvironments,
+    single,
+    path,
+    writeBlock,
+    blockFor,
+    selected,
+    recent,
+    expanded: expandedRows,
+    pending: pendingMarks(pendingHere),
+    selectionDisabled: pendingHere.length > 0,
+    ...rowEvents
   };
   const importedFrom = (environment: string, key: string) =>
     resources
@@ -1114,7 +1140,79 @@ export const OverviewPage = () => {
       directory: path,
       enabled: single
     }).data ?? 0;
-  const canQuickAdd = !writeBlock && !loading && totalCount > 0;
+  const createDenied = (environment: string) =>
+    Boolean(
+      blockFor(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.Create,
+        { environment, secretPath: path, secretName: "*", secretTags: ["*"] },
+        "create secrets"
+      )
+    );
+  const deniedEverywhere = (
+    sub: ProjectPermissionSub,
+    action: string,
+    fields: Record<string, unknown> = {}
+  ) =>
+    visibleEnvironments.length > 0 &&
+    visibleEnvironments.every((environment) =>
+      Boolean(
+        blockFor(
+          sub,
+          action,
+          { environment: environment.value, secretPath: path, ...fields },
+          action
+        )
+      )
+    )
+      ? "Access denied"
+      : undefined;
+  const anySecret = { secretName: "*", secretTags: ["*"] };
+  const createBlock = deniedEverywhere(
+    ProjectPermissionSub.Secrets,
+    ProjectPermissionSecretActions.Create,
+    anySecret
+  );
+  const addBlocks: AddNewBlocks = {
+    secret: createBlock,
+    upload: createBlock,
+    folder: deniedEverywhere(ProjectPermissionSub.SecretFolders, ProjectPermissionActions.Create),
+    import: deniedEverywhere(ProjectPermissionSub.SecretImports, ProjectPermissionActions.Create),
+    dynamic: deniedEverywhere(
+      ProjectPermissionSub.DynamicSecrets,
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      { metadata: ["*"] }
+    ),
+    rotation: deniedEverywhere(
+      ProjectPermissionSub.SecretRotation,
+      ProjectPermissionSecretRotationActions.Create
+    ),
+    honey: deniedEverywhere(
+      ProjectPermissionSub.HoneyTokens,
+      ProjectPermissionHoneyTokenActions.Create
+    ),
+    copy:
+      deniedEverywhere(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.DescribeSecret,
+        anySecret
+      ) &&
+      deniedEverywhere(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.DescribeAndReadValue,
+        anySecret
+      ) &&
+      deniedEverywhere(ProjectPermissionSub.SecretFolders, ProjectPermissionActions.Read),
+    sync: deniedEverywhere(
+      ProjectPermissionSub.SecretSyncs,
+      ProjectPermissionSecretSyncActions.Create
+    )
+  };
+  const canQuickAdd =
+    !writeBlock &&
+    !loading &&
+    totalCount > 0 &&
+    !visibleEnvironments.some((environment) => createDenied(environment.value));
   const gate = (reason: string | undefined, node: ReactNode) =>
     reason ? (
       <Tooltip content={reason}>
@@ -1123,7 +1221,9 @@ export const OverviewPage = () => {
     ) : (
       node
     );
-  const handlers: SecretRowHandlers = {
+  const secretEvents = useStableHandlers<
+    Omit<SecretRowHandlers, "copySecretBlock" | "resources" | "tagOptions">
+  >({
     onCreateIn: (environment, key) =>
       openFlow("secret", { environments: [environment], name: key }),
     onDelete: (secret) => setDeleting([secret]),
@@ -1134,7 +1234,6 @@ export const OverviewPage = () => {
         sourcePath: secret.path,
         secrets: [{ id: secret.id, name: secret.name, path: secret.path }]
       }),
-    copySecretBlock: pendingHere.length ? "Discard pending changes first" : undefined,
     onUpdate: (secret, { value, ...patch }, feedback) => {
       if (single && !("reminder" in patch || "override" in patch || "versions" in patch)) {
         stage(secret, {
@@ -1161,7 +1260,11 @@ export const OverviewPage = () => {
       setQuery(key);
     },
     onRefresh: () => overview.refetch(),
-    importedFrom,
+    importedFrom
+  });
+  const handlers: SecretRowHandlers = {
+    ...secretEvents,
+    copySecretBlock: pendingHere.length ? "Discard pending changes first" : undefined,
     resources,
     tagOptions
   };
@@ -1199,6 +1302,10 @@ export const OverviewPage = () => {
   if (honeySelected) bulkCopyBlock = "Honey token secrets cannot be copied";
   else if (rotationsSelected || managedSelected) bulkCopyBlock = "Rotated secrets cannot be copied";
   else if (!selectedSecrets.length && !selectedFolders.length) bulkCopyBlock = "Nothing to copy";
+  else if (
+    new Set([...selectedSecrets, ...selectedFolders].map((entry) => entry.environment)).size > 1
+  )
+    bulkCopyBlock = "Select secrets from one environment to copy";
   const clipboardBlock =
     !selectedSecrets.length ||
     selectedFolders.length > 0 ||
@@ -1283,6 +1390,7 @@ export const OverviewPage = () => {
           }
         />
       );
+    if (createBlock) return <EmptyState icon="key" title="This table is empty" />;
     return (
       <SecretDropzone
         disabledReason={writeBlock}
@@ -1568,6 +1676,7 @@ export const OverviewPage = () => {
                   />
                   <AddNewMenu
                     writeBlock={writeBlock}
+                    accessBlocks={addBlocks}
                     single={single}
                     available={Object.fromEntries(
                       Object.keys(addFlows).map((kind) => [kind, true])
@@ -1991,7 +2100,7 @@ export const OverviewPage = () => {
                     {
                       label: "Copy to new source",
                       icon: "copy",
-                      disabled: Boolean(bulkCopyBlock),
+                      disabledReason: bulkCopyBlock,
                       onClick: () =>
                         setCopyInvocation({
                           origin: "bulk",

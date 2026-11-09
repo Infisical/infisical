@@ -33,7 +33,7 @@ export const secretsLive: SecretsAdapter = {
   useProject: useProjectById,
   useCreateEnvironment: useCreateWsEnvironment,
   useTags: useGetWsTags,
-  useCreateTag: useCreateWsTag,
+  useCreateTag: () => useCreateWsTag({ meta: { skipErrorToast: true } }),
   useOverview: useGetProjectSecretsOverview,
   useSecretValue: useGetSecretValue,
   useSecretReferenceTree: useGetSecretReferenceTree,

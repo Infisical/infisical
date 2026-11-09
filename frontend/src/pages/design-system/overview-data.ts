@@ -87,6 +87,51 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "button-plain",
+    title: "Lighter buttons",
+    description:
+      "Buttons render a plain element now that press feedback is CSS, which makes button-heavy tables mount faster.",
+    date: "2026-11-07",
+    commit: "7b78041dbe",
+    page: "button"
+  },
+  {
+    id: "row-actions-lazy",
+    title: "Lazy row actions",
+    description:
+      "Row actions can render as plain buttons until a row is hovered or focused, and pages can open the More menu themselves.",
+    date: "2026-11-07",
+    commit: "b7ba7061e7",
+    page: "table"
+  },
+  {
+    id: "row-context-lazy",
+    title: "Lighter row menus",
+    description:
+      "Right-click row menus mount only when opened, so large tables carry no closed menus.",
+    date: "2026-11-07",
+    commit: "7a2ed78093",
+    page: "table"
+  },
+  {
+    id: "viewport-cell-perf",
+    title: "Faster table edits",
+    description:
+      "Editing inside a large table no longer pays for the full-width cell's styling when no row uses it.",
+    date: "2026-11-07",
+    commit: "3f2f553a29",
+    page: "table"
+  },
+  {
+    id: "shared-tooltips",
+    title: "One tooltip per table",
+    description:
+      "Tooltips inside a table share a single instance, so large tables mount faster with the same hover and keyboard behavior.",
+    date: "2026-11-07",
+    commit: "9f6084dc3e",
+    page: "tooltip"
+  },
+  {
     id: "list-whole-rows",
     title: "Lists end on a whole row",
     description:
@@ -174,51 +219,6 @@ export const recentChanges: {
       "Native tables and ApprovalQueue get the same skeleton loading as DataTable, and a tall error page no longer clips at the top.",
     date: "2026-11-07",
     commit: "11c4467d3c",
-    page: "table"
-  },
-  {
-    id: "boot-loader",
-    title: "Boot loader and route progress",
-    description:
-      "v4 boots on its theme's ground with a labelled BootLoader, and navigations show a quiet progress bar instead of NProgress.",
-    date: "2026-11-07",
-    commit: "8796ac7b20",
-    page: "loader"
-  },
-  {
-    id: "preview-v4",
-    title: "v4 on previews",
-    description:
-      "Preview deploys open in v4 by default, and main's login, signup and org home send you to their v4 pages while the flag is on.",
-    date: "2026-11-07",
-    commit: "072c1e484c",
-    page: "overview"
-  },
-  {
-    id: "error-state-forbidden",
-    title: "Forbidden error state",
-    description:
-      "ErrorState adds You don't have access, and pages can slot their own flows such as Request access.",
-    date: "2026-11-07",
-    commit: "7b36bf4064",
-    page: "error-state"
-  },
-  {
-    id: "table-rules",
-    title: "Table rules",
-    description:
-      "Navigation, pagination, sheet rows, context menus, facts density, inline actions, toolbars, bulk bars and tables in cards each have one rule.",
-    date: "2026-11-07",
-    commit: "c2b9967476",
-    page: "table"
-  },
-  {
-    id: "row-ring-width",
-    title: "Row rings keep column widths",
-    description:
-      "A focused table row no longer narrows its columns, and the error details panel drops its repeated label.",
-    date: "2026-11-07",
-    commit: "a3f075ef64",
     page: "table"
   }
 ];
