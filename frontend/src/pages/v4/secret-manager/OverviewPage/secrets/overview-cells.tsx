@@ -1,10 +1,16 @@
 import {
   type ComponentProps,
+  createContext,
   type MouseEvent,
+  type PointerEvent,
   type ReactNode,
+  use,
+  useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
-  useRef
+  useRef,
+  useState
 } from "react";
 import { replaceEqualDeep } from "@tanstack/react-query";
 import {
@@ -21,11 +27,18 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@app/components/v4/ui/badge";
-import { Button } from "@app/components/v4/ui/button";
+import { Button, buttonVariants } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { type RowContextMenu, TableCell, TableHead } from "@app/components/v4/ui/table";
+import {
+  RowActions,
+  type RowContextMenu,
+  TableCell,
+  TableHead,
+  TableRow,
+  TableRowActions
+} from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { type Resource, type ResourceKind, selectionKey } from "../secrets-model";
@@ -91,6 +104,199 @@ export const useStableHandlers = <T extends Record<string, (...args: never[]) =>
     []
   );
 };
+const HOVER_REST_MS = 120;
+const RowLive = createContext(true);
+const RowOpen = createContext<(target: HTMLElement) => void>(() => undefined);
+const focusable = "button, a[href], input, select, textarea, [tabindex]:not([tabindex='-1'])";
+type Swap = { row: Element; target: Element; index: number; open: boolean };
+const swapFor = (row: Element | null, target: Element, open: boolean): Swap | undefined =>
+  row
+    ? { row, target, index: [...row.querySelectorAll(focusable)].indexOf(target), open }
+    : undefined;
+
+export function ChromeRow({
+  onFocus,
+  onPointerEnter,
+  onPointerMove,
+  onPointerLeave,
+  ...props
+}: ComponentProps<typeof TableRow>) {
+  const [live, setLive] = useState(false);
+  const rest = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const swap = useRef<Swap>(undefined);
+  const pointer = useRef<{ clientX: number; clientY: number }>(undefined);
+  useEffect(() => () => clearTimeout(rest.current), []);
+  useLayoutEffect(() => {
+    const at = pointer.current;
+    pointer.current = undefined;
+    if (live && at)
+      document
+        .elementFromPoint(at.clientX, at.clientY)
+        ?.dispatchEvent(
+          new globalThis.PointerEvent("pointermove", { ...at, bubbles: true, pointerType: "mouse" })
+        );
+    const pending = swap.current;
+    if (!live || !pending) return;
+    swap.current = undefined;
+    if (pending.target.isConnected) return;
+    const next = pending.row.querySelectorAll<HTMLElement>(focusable)[pending.index];
+    next?.focus();
+    if (pending.open)
+      next?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true })
+      );
+  }, [live]);
+  const open = useCallback((target: HTMLElement) => {
+    swap.current = swapFor(target.closest("tr"), target, true);
+    setLive(true);
+  }, []);
+  const settle = (event: PointerEvent<HTMLTableRowElement>) => {
+    if (live || event.pointerType === "touch") return;
+    const { clientX, clientY } = event;
+    clearTimeout(rest.current);
+    rest.current = setTimeout(() => {
+      pointer.current = { clientX, clientY };
+      setLive(true);
+    }, HOVER_REST_MS);
+  };
+  return (
+    <RowOpen value={open}>
+      <RowLive value={live}>
+        <TableRow
+          {...props}
+          onPointerEnter={(event) => {
+            onPointerEnter?.(event);
+            settle(event);
+          }}
+          onPointerMove={(event) => {
+            onPointerMove?.(event);
+            settle(event);
+          }}
+          onPointerLeave={(event) => {
+            onPointerLeave?.(event);
+            clearTimeout(rest.current);
+          }}
+          onFocus={(event) => {
+            onFocus?.(event);
+            if (live) return;
+            swap.current = swapFor(event.currentTarget, event.target, false);
+            setLive(true);
+          }}
+        />
+      </RowLive>
+    </RowOpen>
+  );
+}
+
+export function RowChrome({
+  children,
+  idle,
+  force
+}: {
+  children: ReactNode;
+  idle: ReactNode;
+  force?: boolean;
+}) {
+  return use(RowLive) || force ? children : idle;
+}
+
+export function RowTooltip(props: ComponentProps<typeof Tooltip>) {
+  return use(RowLive) ? <Tooltip {...props} /> : props.children;
+}
+
+function PlainButton({
+  disabledReason,
+  children,
+  ...props
+}: ComponentProps<"button"> & { disabledReason?: string }) {
+  return (
+    <button
+      type="button"
+      data-slot="button"
+      data-variant="ghost"
+      data-size="icon-row"
+      data-v4-button=""
+      data-disabled-reason={disabledReason ? "" : undefined}
+      aria-disabled={disabledReason ? true : undefined}
+      className={buttonVariants({ variant: "ghost", size: "icon-row" })}
+      {...props}
+    >
+      <span data-press="">{children}</span>
+    </button>
+  );
+}
+
+export type IdleAction = {
+  label: string;
+  icon: IconName | LucideIcon;
+  disabledReason?: string;
+  onSelect?: () => void;
+};
+
+export function IdleActions({
+  actions,
+  menu
+}: {
+  actions: readonly IdleAction[];
+  menu?: { label: string; disabledReason?: string };
+}) {
+  const open = use(RowOpen);
+  return (
+    <TableRowActions>
+      {actions.map((action) => (
+        <span key={action.label} className={styles.actionSlot}>
+          <PlainButton
+            disabledReason={action.disabledReason}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (!action.disabledReason) action.onSelect?.();
+            }}
+          >
+            <Icon
+              name={typeof action.icon === "string" ? action.icon : undefined}
+              icon={typeof action.icon === "string" ? undefined : action.icon}
+            />
+            <span className="sr-only">{action.label}</span>
+          </PlainButton>
+        </span>
+      ))}
+      {menu && (
+        <span className={styles.actionSlot}>
+          <PlainButton
+            aria-haspopup="menu"
+            aria-expanded={false}
+            disabled={Boolean(menu.disabledReason)}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => {
+              event.stopPropagation();
+              open(event.currentTarget);
+            }}
+          >
+            <Icon name="more" />
+            <span className="sr-only">{menu.label}</span>
+          </PlainButton>
+        </span>
+      )}
+    </TableRowActions>
+  );
+}
+
+export function LazyRowActions(props: ComponentProps<typeof RowActions>) {
+  const { label, inline = [], menu, menuLabel = "More actions", menuDisabledReason } = props;
+  if (use(RowLive)) return <RowActions {...props} />;
+  return (
+    <IdleActions
+      actions={inline.map((action) => ({ ...action, label: `${action.label} for ${label}` }))}
+      menu={
+        menu === undefined
+          ? undefined
+          : { label: `${menuLabel} for ${label}`, disabledReason: menuDisabledReason }
+      }
+    />
+  );
+}
+
 export type EnvironmentStatus = "present" | "missing" | "empty" | "imported" | "no-access";
 type Glyph = { name?: IconName; icon?: LucideIcon };
 
@@ -137,17 +343,17 @@ export function StatusCell({
     <TableCell className={styles.statusCell} data-status={status}>
       <span className={styles.statusLine}>
         <span className={styles.statusGroup}>
-          <Tooltip content={meta.label}>
+          <RowTooltip content={meta.label}>
             <span className={styles.statusMark}>
               <Icon name={meta.name} icon={meta.icon} label={meta.label} />
             </span>
-          </Tooltip>
+          </RowTooltip>
           {hasOverride && (
-            <Tooltip content="Has personal override">
+            <RowTooltip content="Has personal override">
               <span className={styles.overrideMark}>
                 <Icon icon={GitBranchIcon} label="Has personal override" />
               </span>
-            </Tooltip>
+            </RowTooltip>
           )}
         </span>
         {annotations}
@@ -344,10 +550,7 @@ export function ExpandToggle({
   onToggle: () => void;
 }) {
   return (
-    <Button
-      variant="ghost"
-      size="icon-row"
-      iconOnly
+    <PlainButton
       onClick={(event) => {
         event.stopPropagation();
         onToggle();
@@ -355,7 +558,7 @@ export function ExpandToggle({
     >
       <Icon name={expanded ? "chev-down" : "chev-right"} />
       <span className="sr-only">{`${expanded ? "Collapse" : "Expand"} ${label}`}</span>
-    </Button>
+    </PlainButton>
   );
 }
 
