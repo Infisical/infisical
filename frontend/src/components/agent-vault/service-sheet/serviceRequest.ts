@@ -247,10 +247,12 @@ const buildSshKeyCredentialPatch = (data: TServiceForm): TAgentVaultSshKeyCreden
 
 // The CA is left out while TLS is off: its field is hidden then, and leaving it out keeps a stored one for when TLS
 // is turned back on. An emptied CA is null, which clears a stored one and is the same as none on create.
-const buildNativeTls = (data: TServiceForm) =>
-  data.tlsEnabled
-    ? { enabled: true, verify: data.tlsVerify, ca: data.tlsCa.trim() || null }
-    : { enabled: false, verify: data.tlsVerify };
+// The proxy reads the CA only while it verifies the certificate, so it is left out otherwise and a stored one is kept.
+const buildNativeTls = (data: TServiceForm) => {
+  if (!data.tlsEnabled) return { enabled: false, verify: data.tlsVerify };
+  if (!data.tlsVerify) return { enabled: true, verify: false };
+  return { enabled: true, verify: true, ca: data.tlsCa.trim() || null };
+};
 
 const buildNativeConnection = (data: TServiceForm, serviceType: TAgentVaultNativeServiceType) => ({
   name: data.name,

@@ -605,8 +605,9 @@ export const buildServiceSchema = (
         if (hasDatabase(data.serviceType)) {
           const databaseIssue = nativeDatabaseError(data.database);
           if (databaseIssue) issue("database", databaseIssue);
-          // The CA field is hidden while TLS is off, and nothing sends it then.
-          const caIssue = data.tlsEnabled ? certificateAuthorityError(data.tlsCa) : null;
+          // The CA field is hidden unless the proxy verifies the certificate, and nothing sends it then.
+          const caIssue =
+            data.tlsEnabled && data.tlsVerify ? certificateAuthorityError(data.tlsCa) : null;
           if (caIssue) issue("tlsCa", caIssue);
         }
         if (!NATIVE_CREDENTIAL_TYPES[data.serviceType].includes(data.credentialType)) {

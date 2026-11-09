@@ -1,6 +1,5 @@
 import { useId } from "react";
 import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
-import { InfoIcon } from "lucide-react";
 
 import {
   Button,
@@ -8,10 +7,7 @@ import {
   FieldContent,
   FieldDescription,
   FieldError,
-  FieldLabel,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  FieldLabel
 } from "@app/components/v3";
 import { SecretInput as SecretTextArea } from "@app/components/v3/platform/SecretInput/SecretInput";
 import {
@@ -163,17 +159,7 @@ export const NativeCredentialFields = ({
             render={({ field, fieldState }) => (
               <Field>
                 <div className="flex items-center justify-between gap-2">
-                  <FieldLabel htmlFor={`${baseId}-certificate`}>
-                    Certificate (optional)
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        For a server that accepts SSH certificates signed by a trusted authority.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
+                  <FieldLabel htmlFor={`${baseId}-certificate`}>Certificate (optional)</FieldLabel>
                   {hasCertificateToKeep && (
                     <Button
                       type="button"
@@ -200,6 +186,11 @@ export const NativeCredentialFields = ({
                       hasStoredValue={hasCertificateToKeep}
                       isError={Boolean(fieldState.error)}
                     />
+                  )}
+                  {!isCertificateRemoved && (
+                    <FieldDescription>
+                      For a server that trusts SSH certificates signed by your authority.
+                    </FieldDescription>
                   )}
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>

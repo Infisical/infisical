@@ -572,10 +572,11 @@ describe("certificateAuthorityError", () => {
 });
 
 describe("buildServiceSchema with native validation", () => {
-  it("marks a corrupt CA on its field only while TLS is on", () => {
+  it("marks a corrupt CA on its field only while the certificate is verified", () => {
     const corrupt = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----";
     expect(issuesOf(nativeForm({ tlsCa: corrupt }))).toEqual(["tlsCa"]);
     expect(issuesOf(nativeForm({ tlsCa: corrupt, tlsEnabled: false }))).toEqual([]);
+    expect(issuesOf(nativeForm({ tlsCa: corrupt, tlsVerify: false }))).toEqual([]);
   });
 
   it("marks a templated host and database on their fields", () => {

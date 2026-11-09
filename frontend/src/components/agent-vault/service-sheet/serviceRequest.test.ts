@@ -801,6 +801,16 @@ describe("native service requests", () => {
     );
   });
 
+  it("leaves the CA out while the certificate isn't verified, so a stored one is kept", () => {
+    const noVerify = postgresForm({ tlsVerify: false, tlsCa: "not a certificate" });
+    expect(buildUpdateServiceRequest("bundle-1", storedPostgres, noVerify)).toMatchObject({
+      tls: { enabled: true, verify: false }
+    });
+    expect(buildUpdateServiceRequest("bundle-1", storedPostgres, noVerify)).not.toHaveProperty(
+      "tls.ca"
+    );
+  });
+
   it("sends a trimmed CA while TLS is on", () => {
     expect(buildCreateServiceRequest("bundle-1", postgresForm({ tlsCa: " PEM " }))).toMatchObject({
       tls: { enabled: true, verify: true, ca: "PEM" }
