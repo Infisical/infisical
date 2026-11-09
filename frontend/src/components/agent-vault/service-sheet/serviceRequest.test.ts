@@ -753,6 +753,16 @@ describe("native service requests", () => {
     ).toEqual({ type: AgentVaultCredentialType.SshKey });
   });
 
+  it("keeps the stored SSH username and key when their boxes hold only spaces", () => {
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        storedSsh,
+        sshKeyForm({ username: "   ", sshPrivateKey: " \n ", sshCertificate: UNCHANGED_SECRET })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey });
+  });
+
   it("keeps an untouched database password and clears a removed CA on update", () => {
     expect(
       buildUpdateServiceRequest(

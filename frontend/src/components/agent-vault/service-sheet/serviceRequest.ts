@@ -227,16 +227,20 @@ const buildSshKeyCredential = (data: TServiceForm): TAgentVaultSshKeyCredentialI
   ...(data.sshCertificate.trim() ? { certificate: data.sshCertificate.trim() } : {})
 });
 
-// A part left at the sentinel keeps what is stored. Only Remove Certificate sends null; an emptied box keeps it.
+// A part left at the sentinel, or emptied, keeps what is stored. Only Remove Certificate sends null.
 const buildSshKeyCredentialPatch = (data: TServiceForm): TAgentVaultSshKeyCredentialUpdate => {
-  const certificate = data.sshCertificate === UNCHANGED_SECRET ? "" : data.sshCertificate.trim();
+  const changed = (value: string | undefined) =>
+    value === UNCHANGED_SECRET ? "" : (value ?? "").trim();
+  const username = changed(data.username);
+  const privateKey = changed(data.sshPrivateKey);
+  const certificate = changed(data.sshCertificate);
   let certificatePatch: { certificate?: string | null } = {};
   if (data.sshCertificateRemoved) certificatePatch = { certificate: null };
   else if (certificate) certificatePatch = { certificate };
   return {
     type: AgentVaultCredentialType.SshKey,
-    ...(data.username === UNCHANGED_SECRET ? {} : { username: (data.username ?? "").trim() }),
-    ...(data.sshPrivateKey === UNCHANGED_SECRET ? {} : { privateKey: data.sshPrivateKey.trim() }),
+    ...(username ? { username } : {}),
+    ...(privateKey ? { privateKey } : {}),
     ...certificatePatch
   };
 };
