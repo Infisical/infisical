@@ -84,7 +84,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
 import { withoutDefaults } from "../search-defaults";
-import { useResourceApply } from "./bridge/apply";
+import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges } from "./bridge/commit";
 import { BreadthContext, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
@@ -383,6 +383,7 @@ export const OverviewPage = () => {
   const updateProxiedService = adapter.useUpdateProxiedService();
   const deleteProxiedService = adapter.useDeleteProxiedService();
   const honeyMapping = (keys: string[]) => ({ accessKeyId: keys[0], secretAccessKey: keys[1] });
+  const ensureTags = useEnsureTags(projectId, tagList);
   const runApply = useResourceApply({
     projectId,
     projectSlug,
@@ -773,14 +774,18 @@ export const OverviewPage = () => {
       changes.length === 1
         ? `${target.kind === "secret" ? "Secret" : "Folder"} "${target.name}" ${past}`
         : `${changes.length} changes committed`;
-    createCommit
-      .mutateAsync({
-        projectId,
-        environment: target.environment,
-        secretPath: target.path,
-        pendingChanges: toPendingChanges(changes, tagList),
-        message: message.trim() || title
-      })
+    ensureTags(
+      changes.flatMap((change) => (change.next?.kind === "secret" ? change.next.tags : []))
+    )
+      .then((knownTags) =>
+        createCommit.mutateAsync({
+          projectId,
+          environment: target.environment,
+          secretPath: target.path,
+          pendingChanges: toPendingChanges(changes, knownTags),
+          message: message.trim() || title
+        })
+      )
       .then(
         (response) => {
           setPending((current) => current.filter((change) => !changes.includes(change)));
