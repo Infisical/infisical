@@ -294,6 +294,35 @@ export const OverviewPage = () => {
     limit: perPage,
     offset: (page - 1) * perPage
   });
+  const importSites = adapter.useOverview(
+    {
+      projectId,
+      environments: projectEnvironments.map((environment) => environment.value),
+      secretPath: path,
+      includeFolders: false,
+      includeDynamicSecrets: false,
+      includeSecrets: false,
+      includeImports: true,
+      includeSecretRotations: false,
+      includeHoneyTokens: false,
+      includeProxiedServices: false,
+      limit: 100,
+      offset: 0
+    },
+    {
+      enabled:
+        !single && environmentIds.length > 0 && environmentIds.length < projectEnvironments.length
+    }
+  );
+  const sitesOf = (entries: Of<"import">[]) => {
+    const [{ name }] = entries;
+    const slugs = importSites.data
+      ? (importSites.data.imports ?? [])
+          .filter((entry) => `${entry.importEnv.slug}:${entry.importPath}` === name)
+          .map((entry) => entry.environment ?? "")
+      : entries.map((entry) => entry.environment);
+    return projectEnvironments.filter((environment) => slugs.includes(environment.value));
+  };
   const valueStore = useSecretValues(projectId);
   const [breadthHolders, setBreadthHolders] = useState(0);
   const holdBreadth = useCallback(
@@ -1811,6 +1840,7 @@ export const OverviewPage = () => {
                                     ctx={ctx}
                                     sourceSecrets={sourceSecrets}
                                     projectName={project}
+                                    sites={sitesOf(entries as Of<"import">[])}
                                   />
                                 );
                               if (first.kind === "folder")

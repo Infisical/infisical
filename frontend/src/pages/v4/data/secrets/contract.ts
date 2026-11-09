@@ -41,7 +41,8 @@ export type SecretsAdapter = SecretsFlowsAdapter & {
   useTags: (projectId: string) => V4QueryResult<UserWsTags>;
   useCreateTag: V4Mutation<CreateTagDTO, WsTag>;
   useOverview: (
-    dto: TGetDashboardProjectSecretsOverviewDTO
+    dto: TGetDashboardProjectSecretsOverviewDTO,
+    options?: { enabled?: boolean }
   ) => V4QueryResult<DashboardProjectSecretsOverview> & { refetch: () => unknown };
   useSecretValue: (
     dto: TGetSecretValueDTO,
