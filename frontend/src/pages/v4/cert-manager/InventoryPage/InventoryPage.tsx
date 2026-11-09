@@ -515,7 +515,7 @@ export const InventoryPage = () => {
               }
             />
           }
-          footer={
+          persistentStatus={
             filtered
               ? `${totalCount} of ${plural(total, "certificate", "certificates")}`
               : `${plural(total, "certificate", "certificates")} from ${plural(authorities.length, "certificate authority", "certificate authorities")}`

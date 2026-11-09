@@ -290,7 +290,7 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
             <EmptyState size="sm" icon="apps" title="No app connections yet" />
           )
         }
-        footer={`${visible.length} of ${scoped.length} connections`}
+        persistentStatus={`${visible.length} of ${scoped.length} connections`}
       />
     </>
   );

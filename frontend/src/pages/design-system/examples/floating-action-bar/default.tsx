@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { List, ListRow } from "@app/components/v4/ui/list";
+import { toast } from "@app/components/v4/ui/sonner";
 
 import { ExampleCell, ExampleStage } from "../../example-presentation";
 
@@ -10,7 +11,6 @@ const secrets = ["stripe_api_key", "database_url", "sentry_dsn", "redis_password
 export default function Example() {
   const [rows, setRows] = useState(secrets);
   const [selected, setSelected] = useState<string[]>(["stripe_api_key", "database_url"]);
-  const [message, setMessage] = useState("");
   return (
     <ExampleCell label="Two of five selected" align="stretch">
       <ExampleStage height="app">
@@ -20,7 +20,6 @@ export default function Example() {
           selection="multiple"
           selectedIds={selected}
           onSelectionChange={setSelected}
-          footer={message || undefined}
         >
           {rows.map((key) => (
             <ListRow key={key} value={key} label={key} title={<code>{key}</code>} />
@@ -35,7 +34,7 @@ export default function Example() {
             {
               label: "Move",
               icon: "folder",
-              onClick: () => setMessage(`Ready to move ${selected.length}.`)
+              onClick: () => toast(`Ready to move ${selected.length}.`)
             },
             {
               label: "Delete",
@@ -43,7 +42,7 @@ export default function Example() {
               danger: true,
               onClick: () => {
                 setRows(rows.filter((row) => !selected.includes(row)));
-                setMessage(`Deleted ${selected.length} secrets.`);
+                toast(`Deleted ${selected.length} secrets.`);
                 setSelected([]);
               }
             }
@@ -59,7 +58,7 @@ export default function Example() {
                 link.download = "secret-names.txt";
                 link.click();
                 URL.revokeObjectURL(link.href);
-                setMessage(`Downloaded ${selected.length} names.`);
+                toast(`Downloaded ${selected.length} names.`);
               }
             }
           ]}

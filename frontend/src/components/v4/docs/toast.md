@@ -46,6 +46,24 @@ Source evidence:
 - src/components/v4/scope.tsx
 - src/pages/design-system/examples/toast/over-sheet.tsx
 
+### toast-action-result-default
+
+Owner: toast.
+
+When an action finishes: copied, saved, deleted, moved, uploaded or failed.
+
+Do: Call toast with the result by default, even when the action started from a table row, a bulk bar or a toolbar.
+
+Avoid: Show the result in a table or list footer, a status line beside the table or a hidden role="status" paragraph.
+
+Why: The toast region is aria-live, so one call shows and announces the result in the same place on every page.
+
+Checked by: review only. Look for: ui:lint action-feedback-in-status flags action state rendered in a footer slot or role="status" element; trigger the action and read the result in the toast region.
+
+Source evidence:
+- src/components/v4/ui/sonner.tsx
+- src/pages/design-system/examples/toast/parts.tsx
+
 ### toast-one-feedback-owner
 
 Owner: toast.

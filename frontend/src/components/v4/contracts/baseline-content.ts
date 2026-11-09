@@ -2679,6 +2679,23 @@ export const baselineContent = [
           }
         },
         {
+          id: "toast-action-result-default",
+          when: "An action finishes: copied, saved, deleted, moved, uploaded or failed.",
+          do: "Call toast with the result by default, even when the action started from a table row, a bulk bar or a toolbar.",
+          avoid:
+            'Show the result in a table or list footer, a status line beside the table or a hidden role="status" paragraph.',
+          reason:
+            "The toast region is aria-live, so one call shows and announces the result in the same place on every page.",
+          evidence: [
+            "src/components/v4/ui/sonner.tsx",
+            "src/pages/design-system/examples/toast/parts.tsx"
+          ],
+          detect: {
+            by: "review",
+            how: 'ui:lint action-feedback-in-status flags action state rendered in a footer slot or role="status" element; trigger the action and read the result in the toast region.'
+          }
+        },
+        {
           id: "toast-one-feedback-owner",
           when: "A recent operation needs transient result feedback.",
           do: "Choose Toaster or controlled ToastStack as the queue owner, create success after settlement and keep actionable errors reachable.",

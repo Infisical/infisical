@@ -1251,6 +1251,19 @@
       "exceptions": "A grid of cards or another collection that is not a DataTable renders its own Pagination below it. A slot value built in a variable or helper is not read, so check its variant by hand."
     },
     {
+      "id": "toast-action-feedback",
+      "title": "Action results go to a toast",
+      "category": "Interaction",
+      "instruction": "Report the result of an action (copied, saved, deleted, moved, uploaded, and every failure) with a toast from @infisical/sonner. The toast region is a live region, so the result is announced without a separate role=\"status\" line. A DataTable's persistentStatus, a List or DataGrid footer and a toolbar status line hold only state that must stay visible while the person works, such as Showing 5 of 120 after filter.",
+      "good": "Copy secret name on a secrets row calls toast(\"Copied the name hello.\"), and the table footer keeps showing the row counts.",
+      "avoid": "A notice state set by row actions and rendered in the table footer, so Copied the name hello. replaces the counts bottom left and nothing announces it unless a hidden role=\"status\" paragraph repeats it.",
+      "detect": {
+        "by": "lint",
+        "check": "action-feedback-in-status"
+      },
+      "exceptions": "Keep a result in place only when it must outlive a toast, such as a bulk job's progress that the person reads while it runs; say why in the persistentStatus value's owner. State set through a helper or a prop from another file is not traced, so check those by hand."
+    },
+    {
       "id": "sheet-row-open",
       "title": "Rows that open a sheet use onRowActivate and a named button",
       "category": "Interaction",
