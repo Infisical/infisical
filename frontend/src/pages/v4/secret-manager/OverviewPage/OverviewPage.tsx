@@ -2030,7 +2030,7 @@ export const OverviewPage = () => {
                     {
                       label: "Copy to new source",
                       icon: "copy",
-                      disabled: Boolean(bulkCopyBlock),
+                      disabledReason: bulkCopyBlock,
                       onClick: () =>
                         setCopyInvocation({
                           origin: "bulk",
