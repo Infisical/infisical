@@ -2533,7 +2533,9 @@ export const baselineContent = [
       "The v4 Toaster has its own toaster id (V4_TOASTER_ID), and the toast exported beside it routes every call to that id. The app's v3 Toaster only shows toasts without an id, so a v4 toast and a v3 toast never render twice, even when both Toasters are mounted on one page.",
       "AppShell mounts the one toast host, so every page inside the v4 shell calls toast() without mounting a Toaster. Toaster is idempotent per toaster id: when a page or example still mounts its own, the first mounted instance renders and the others render nothing, so no toast shows twice; when it unmounts, the next one takes over.",
       "Toaster portals into the V4Scope toast layer, a sibling placed right after the overlay container, and sits on the shared overlay layer (z-50). It follows every sheet, dialog and menu in DOM order, so a toast paints above an open sheet or dialog without a higher z-index. Its toasts keep pointer events while a modal turns them off for the page, and a click on one never dismisses the overlay under it. The notifications region is aria-live, so a modal never hides it from assistive technology.",
-      "Toaster renders sonner unstyled and draws each toast with the v4 tokens: toast-bg, toast-line and shadow-pop on the card, the row-title type for the title and small type in toast-muted for the description, both in Archivo. The status icon sits at the top, centered on the title's first line, however many lines the description wraps to. The stack is always expanded with an 8px gap, newest at the bottom, so every toast shows its content."
+      "Toaster renders sonner unstyled and draws each toast with the v4 tokens: toast-bg, toast-line and shadow-pop on the card, the row-title type for the title and small type in toast-muted for the description, both in Archivo. The status icon sits at the top, centered on the title's first line, however many lines the description wraps to. The stack is always expanded with an 8px gap, newest at the bottom, so every toast shows its content.",
+      "Both owners use one anatomy: the status icon, then a text column with the title, the description and an actions row, then the close button. The title and description take the whole text column. The action sits on its own row under the text as a quiet sm button (a ghost Button in ToastStack), start-aligned with the title like Alert actions, so it never squeezes the title. The close button stays top-right, centered on the title's first line.",
+      "Width comes from the text: a ToastStack is as wide as its widest title or description, capped at size-toast, and every toast in the stack shares that width. The actions row does not add to it. The Sonner Toaster draws every toast at size-toast. ToastItem takes one action."
     ],
     accessibility: [
       "ToastStack exposes status feedback and named action/dismiss buttons. Its auto-dismiss timer pauses while hovered or keyboard-focused, then resumes the remaining duration."
@@ -2549,6 +2551,12 @@ export const baselineContent = [
         title: "One notice per tone",
         module: "./examples/toast/default.tsx",
         states: ["default", "controlled"]
+      },
+      {
+        id: "anatomy",
+        title: "Content variants",
+        module: "./examples/toast/anatomy.tsx",
+        states: ["default", "success", "error", "loading"]
       },
       {
         id: "parts",
@@ -2589,6 +2597,18 @@ export const baselineContent = [
             exampleId: "default",
             label: "loading"
           }
+        ]
+      },
+      {
+        axis: "content",
+        slot: "toast",
+        expected: ["title only", "description", "action", "long title", "upload"],
+        shown: [
+          { value: "title only", exampleId: "anatomy", label: "ok, title only" },
+          { value: "description", exampleId: "anatomy", label: "ok, description" },
+          { value: "action", exampleId: "anatomy", label: "neutral, action" },
+          { value: "long title", exampleId: "anatomy", label: "long title" },
+          { value: "upload", exampleId: "anatomy", label: "upload" }
         ]
       },
       {

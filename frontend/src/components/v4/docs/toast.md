@@ -95,6 +95,8 @@ Exports: Toaster, toast, V4_TOASTER_ID, ToastStack, ToastItem. Source TypeScript
 - AppShell mounts the one toast host, so every page inside the v4 shell calls toast() without mounting a Toaster. Toaster is idempotent per toaster id: when a page or example still mounts its own, the first mounted instance renders and the others render nothing, so no toast shows twice; when it unmounts, the next one takes over.
 - Toaster portals into the V4Scope toast layer, a sibling placed right after the overlay container, and sits on the shared overlay layer (z-50). It follows every sheet, dialog and menu in DOM order, so a toast paints above an open sheet or dialog without a higher z-index. Its toasts keep pointer events while a modal turns them off for the page, and a click on one never dismisses the overlay under it. The notifications region is aria-live, so a modal never hides it from assistive technology.
 - Toaster renders sonner unstyled and draws each toast with the v4 tokens: toast-bg, toast-line and shadow-pop on the card, the row-title type for the title and small type in toast-muted for the description, both in Archivo. The status icon sits at the top, centered on the title's first line, however many lines the description wraps to. The stack is always expanded with an 8px gap, newest at the bottom, so every toast shows its content.
+- Both owners use one anatomy: the status icon, then a text column with the title, the description and an actions row, then the close button. The title and description take the whole text column. The action sits on its own row under the text as a quiet sm button (a ghost Button in ToastStack), start-aligned with the title like Alert actions, so it never squeezes the title. The close button stays top-right, centered on the title's first line.
+- Width comes from the text: a ToastStack is as wide as its widest title or description, capped at size-toast, and every toast in the stack shares that width. The actions row does not add to it. The Sonner Toaster draws every toast at size-toast. ToastItem takes one action.
 
 ## Accessibility
 
@@ -120,6 +122,14 @@ Source declarations and review criteria only. Generation checks references and c
 - ok: example `default`, visible label "ok".
 - bad: example `default`, visible label "bad".
 - loading: example `default`, visible label "loading".
+
+### content
+
+- title only: example `anatomy`, visible label "ok, title only".
+- description: example `anatomy`, visible label "ok, description".
+- action: example `anatomy`, visible label "neutral, action".
+- long title: example `anatomy`, visible label "long title".
+- upload: example `anatomy`, visible label "upload".
 
 ### clipboard lifecycle
 
@@ -190,6 +200,102 @@ export default function Example() {
             <ToneDemo tone={tone} />
           </div>
           <figcaption className="text-muted-foreground text-xs">{tone}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+```
+
+### Content variants
+
+Save this example at `src/pages/design-system/examples/toast/anatomy.tsx`; its relative imports are generated for that exact path. States: default, success, error, loading.
+
+Registry items used: @infisical/button, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Button } from "../../../../components/v4/ui/button";
+import { type ToastItem, ToastStack } from "../../../../components/v4/ui/sonner";
+
+const share = { label: "Share 2 secrets", onClick: () => undefined };
+
+const cases: { label: string; item: ToastItem }[] = [
+  { label: "ok, title only", item: { id: "ok", tone: "ok", title: "Changes saved" } },
+  {
+    label: "ok, description",
+    item: {
+      id: "ok-description",
+      tone: "ok",
+      title: "Changes saved",
+      description: "New versions are available to clients."
+    }
+  },
+  {
+    label: "bad, description",
+    item: {
+      id: "bad",
+      tone: "bad",
+      title: "Connection failed",
+      description: "Reconnect the integration before retrying."
+    }
+  },
+  { label: "neutral, title only", item: { id: "neutral", title: "Version available" } },
+  {
+    label: "neutral, action",
+    item: {
+      id: "neutral-action",
+      title: "Version available",
+      description: "Reload to get the latest dashboard.",
+      action: { label: "Reload", onClick: () => undefined }
+    }
+  },
+  {
+    label: "ok, action, no description",
+    item: { id: "ok-action", tone: "ok", title: "Uploaded 2 secrets", action: share }
+  },
+  {
+    label: "long title",
+    item: {
+      id: "long",
+      tone: "ok",
+      title: "Uploaded 2 secrets into Development, Staging, Production and Preview"
+    }
+  },
+  {
+    label: "upload",
+    item: {
+      id: "upload",
+      tone: "ok",
+      title: "Uploaded 2 secrets into Development, Staging, Production",
+      description: "6 secrets created.",
+      action: share
+    }
+  },
+  { label: "loading", item: { id: "loading", tone: "loading", title: "Checking provider" } }
+];
+
+const Case = ({ item }: { item: ToastItem }) => {
+  const [open, setOpen] = useState(true);
+  if (!open)
+    return (
+      <Button variant="outline" onClick={() => setOpen(true)}>
+        Show again
+      </Button>
+    );
+  return <ToastStack inline items={[{ ...item, duration: 0 }]} onDismiss={() => setOpen(false)} />;
+};
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] items-start gap-x-6 gap-y-8">
+      {cases.map(({ label, item }) => (
+        <figure key={label} className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+            <Case item={item} />
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{label}</figcaption>
         </figure>
       ))}
     </div>
