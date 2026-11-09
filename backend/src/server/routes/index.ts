@@ -680,6 +680,9 @@ export const registerRoutes = async (
   });
   await domains.license.start();
   const licenseDomain = domains.license.service;
+  const kmsCoreDomain = domains.kmsCore.service;
+  const organizationsProjectsDomain = domains.organizationsProjects.service;
+  const certManagerDomain = domains.certManager.service;
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
   // the fleet reports itself in Redis and every api pod complains when the reports stop.
@@ -923,8 +926,8 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     licenseDomain,
-    organizationsProjectsDomain: domains.organizationsProjects.service,
-    certManagerDomain: domains.certManager.service,
+    organizationsProjectsDomain,
+    certManagerDomain,
     breakdownDAL: licenseV2BreakdownDAL
   });
 
@@ -1029,8 +1032,6 @@ export const registerRoutes = async (
     licenseDomain,
     keyStore
   });
-
-  const kmsCoreDomain = domains.kmsCore.service;
 
   const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
     honeyTokenDAL,
@@ -1441,7 +1442,7 @@ export const registerRoutes = async (
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
     telemetryDAL,
-    certManagerDomain: domains.certManager.service,
+    certManagerDomain,
     cronJob,
     telemetryService
   });
@@ -2487,7 +2488,7 @@ export const registerRoutes = async (
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
-    organizationsProjectsDomain: domains.organizationsProjects.service,
+    organizationsProjectsDomain,
     projectQueue: projectQueueService,
     secretValueTrackingService,
     userDAL,
@@ -4034,7 +4035,7 @@ export const registerRoutes = async (
   });
 
   const certificateService = certificateServiceFactory({
-    certManagerDomain: domains.certManager.service,
+    certManagerDomain,
     keyStore,
     certificateDAL,
     certificateRequestDAL,
@@ -4130,7 +4131,7 @@ export const registerRoutes = async (
 
   const certificateApprovalService = certificateApprovalServiceFactory({
     licenseDomain,
-    certManagerDomain: domains.certManager.service,
+    certManagerDomain,
     keyStore,
     certificateRequestDAL,
     certificateProfileDAL,
@@ -4385,7 +4386,7 @@ export const registerRoutes = async (
 
   const certificateV3Service = certificateV3ServiceFactory({
     caKeySourceService,
-    certManagerDomain: domains.certManager.service,
+    certManagerDomain,
     pkiApplicationDAL,
     keyStore,
     certificateDAL,
@@ -4488,7 +4489,7 @@ export const registerRoutes = async (
   const pkiScepService = pkiScepServiceFactory({
     keyStore,
     pkiApplicationDAL,
-    certManagerDomain: domains.certManager.service,
+    certManagerDomain,
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
@@ -4525,7 +4526,7 @@ export const registerRoutes = async (
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
     licenseDomain,
-    certManagerDomain: domains.certManager.service,
+    certManagerDomain,
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
