@@ -87,6 +87,33 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "list-whole-rows",
+    title: "Lists end on a whole row",
+    description:
+      "Multi-select, combobox and command lists size to whole rows, so the last visible option is never cut.",
+    date: "2026-11-07",
+    commit: "dfbd72f4c0",
+    page: "multi-select"
+  },
+  {
+    id: "bulk-action-reason",
+    title: "Blocked bulk actions explain why",
+    description:
+      "A disabled bulk action stays focusable and shows its reason on hover and keyboard focus.",
+    date: "2026-11-07",
+    commit: "f2ee386887",
+    page: "floating-action-bar"
+  },
+  {
+    id: "leading-pin",
+    title: "Leading pins",
+    description:
+      "Selection and name columns can pin to the start of a wide table, and an expanded row's nested content stays in view while the table scrolls sideways.",
+    date: "2026-11-07",
+    commit: "cb490b4bba",
+    page: "table"
+  },
+  {
     id: "menu-item-description",
     title: "Reasons on checkbox items",
     description:
@@ -192,33 +219,6 @@ export const recentChanges: {
       "A focused table row no longer narrows its columns, and the error details panel drops its repeated label.",
     date: "2026-11-07",
     commit: "a3f075ef64",
-    page: "table"
-  },
-  {
-    id: "context-menu-release",
-    title: "Safer context menus",
-    description:
-      "Releasing the right button that opened a context menu can no longer pick the item that lands under the cursor.",
-    date: "2026-11-07",
-    commit: "a843510f1d",
-    page: "context-menu"
-  },
-  {
-    id: "error-state",
-    title: "Error and 404 pages",
-    description:
-      "ErrorState gives v4 a quiet Page not found and Something went wrong, inside the shell or full-page when the shell fails.",
-    date: "2026-11-07",
-    commit: "522e7b336a",
-    page: "error-state"
-  },
-  {
-    id: "row-ring",
-    title: "Even, keyboard-only row rings",
-    description:
-      "Row focus rings appear only after keyboard focus and draw the same width on all four edges, above pinned cells.",
-    date: "2026-11-07",
-    commit: "73aa450373",
     page: "table"
   }
 ];
