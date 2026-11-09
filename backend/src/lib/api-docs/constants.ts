@@ -3471,6 +3471,12 @@ export const SecretSyncs = {
   REMOVE_SECRETS: (destination: SecretSync) => ({
     syncId: `The ID of the ${SECRET_SYNC_NAME_MAP[destination]} Sync to trigger removing secrets for.`
   }),
+  RECURSIVE_CONFLICTS: {
+    folders:
+      "Every folder under the secret path that holds a secret the sync would include. Secret names aren't returned.",
+    folderPath: "The folder's path.",
+    secretCount: "The number of secrets in the folder the sync would include, counting imported secrets."
+  },
   SYNC_OPTIONS: (destination: SecretSync) => {
     const destinationName = SECRET_SYNC_NAME_MAP[destination];
     return {
