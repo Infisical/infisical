@@ -1581,7 +1581,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificates: z.array(SanitizedCertificateSchema.extend({ hasPrivateKey: z.boolean() })),
+          certificates: z.array(SanitizedCertificateSchema.extend({ hasPrivateKey: z.boolean(), hasCsr: z.boolean() })),
           totalCount: z.number()
         })
       }
@@ -1675,6 +1675,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           certificates: z.array(
             SanitizedCertificateSchema.extend({
               hasPrivateKey: z.boolean(),
+              hasCsr: z.boolean(),
               caName: z.string().nullable().optional(),
               profileName: z.string().nullable().optional(),
               enrollmentType: z.string().nullable().optional(),

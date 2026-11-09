@@ -42,6 +42,18 @@ export const NON_PQC_KEY_ALGORITHMS: string[] = [
 
 export type TCertificateDALFactory = ReturnType<typeof certificateDALFactory>;
 
+// A CSR for the certificate's key pair: the one its originating request carried, or the one supplied at import.
+const HAS_CSR_SELECT = `(
+  EXISTS (
+    SELECT 1 FROM certificate_requests
+    WHERE certificate_requests."certificateId" = certificates.id AND certificate_requests.csr IS NOT NULL
+  )
+  OR EXISTS (
+    SELECT 1 FROM certificate_bodies
+    WHERE certificate_bodies."certId" = certificates.id AND certificate_bodies.csr IS NOT NULL
+  )
+) as "hasCsr"`;
+
 const toLegacyExtendedKeyUsageForQuery = (usage: string): string => {
   try {
     return mapExtendedKeyUsageToLegacy(mapLegacyExtendedKeyUsageToStandard(usage));
@@ -521,7 +533,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     filter: TSyncEligibilityFilterParams & { projectId: string },
     options?: { limit?: number; offset?: number },
     permissionFilters?: ProcessedPermissionRules
-  ): Promise<(TCertificates & { hasPrivateKey: boolean; profileName?: string | null })[]> => {
+  ): Promise<(TCertificates & { hasPrivateKey: boolean; hasCsr: boolean; profileName?: string | null })[]> => {
     try {
       const { projectId, ...inventoryFilters } = filter;
 
@@ -535,6 +547,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         )
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
+        .select(db.raw(HAS_CSR_SELECT))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
         .andWhere(`${TableName.Certificate}.projectId`, projectId);
 
@@ -559,7 +572,8 @@ export const certificateDALFactory = (db: TDbClient) => {
       const certs = await query;
       return certs.map((cert) => ({
         ...cert,
-        hasPrivateKey: Boolean(cert.privateKeyRef)
+        hasPrivateKey: Boolean(cert.privateKeyRef),
+        hasCsr: Boolean((cert as { hasCsr?: boolean }).hasCsr)
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find active certificates for sync" });
@@ -750,23 +764,45 @@ export const certificateDALFactory = (db: TDbClient) => {
   }: {
     limit: number;
     offset: number;
-  }): Promise<(TCertificates & { profileName?: string; applicationName?: string | null })[]> => {
+  }): Promise<
+    (TCertificates & { profileName?: string; applicationName?: string | null; hasPrivateKey: boolean })[]
+  > => {
     try {
       const now = new Date();
       const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      // Without its private key, a certificate renews on its existing key pair only from a CSR Infisical
+      // holds for it: one a request carried, or one supplied at import.
+      const hasRequestCsr = db
+        .select(db.raw("1"))
+        .from(TableName.CertificateRequests)
+        .whereRaw(`??."certificateId" = ??.id`, [TableName.CertificateRequests, TableName.Certificate])
+        .whereNotNull(`${TableName.CertificateRequests}.csr`);
+      const hasImportedCsr = db
+        .select(db.raw("1"))
+        .from(TableName.CertificateBody)
+        .whereRaw(`??."certId" = ??.id`, [TableName.CertificateBody, TableName.Certificate])
+        .whereNotNull(`${TableName.CertificateBody}.csr`);
 
       const certs = (await db
         .replicaNode()(TableName.Certificate)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
+        .select(db.ref("certId").withSchema(TableName.CertificateSecret).as("privateKeyRef"))
         .leftJoin(
           TableName.PkiCertificateProfile,
           `${TableName.Certificate}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
         .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
-        .innerJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
+        .leftJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
+        .where((qb) => {
+          void qb
+            .whereNotNull(`${TableName.CertificateSecret}.certId`)
+            .orWhereExists(hasRequestCsr)
+            .orWhereExists(hasImportedCsr);
+        })
         .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
         .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
         .whereNull(`${TableName.Certificate}.deletedAt`)
@@ -783,9 +819,13 @@ export const certificateDALFactory = (db: TDbClient) => {
         )
         .limit(limit)
         .offset(offset)
-        .orderBy(`${TableName.Certificate}.notAfter`, "asc")) as TCertificates[];
+        .orderBy(`${TableName.Certificate}.notAfter`, "asc")) as (TCertificates & {
+        profileName?: string;
+        applicationName?: string | null;
+        privateKeyRef: string | null;
+      })[];
 
-      return certs;
+      return certs.map(({ privateKeyRef, ...cert }) => ({ ...cert, hasPrivateKey: privateKeyRef !== null }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificates eligible for renewal" });
     }
@@ -844,6 +884,7 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   type TCertificateWithInventoryFields = TCertificates & {
     hasPrivateKey: boolean;
+    hasCsr: boolean;
     caName?: string | null;
     profileName?: string | null;
     enrollmentType?: string | null;
@@ -872,6 +913,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.PkiApplication, `${TableName.Certificate}.applicationId`, `${TableName.PkiApplication}.id`)
         .select(selectAllTableCols(TableName.Certificate))
         .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
+        .select(db.raw(HAS_CSR_SELECT))
         .select(db.ref("name").withSchema(TableName.CertificateAuthority).as("caName"))
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
         .select(
@@ -972,7 +1014,8 @@ export const certificateDALFactory = (db: TDbClient) => {
       const results = await query;
       return results.map((row) => ({
         ...row,
-        hasPrivateKey: row.privateKeyRef !== null
+        hasPrivateKey: row.privateKeyRef !== null,
+        hasCsr: Boolean((row as { hasCsr?: boolean }).hasCsr)
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificates with private key info" });
@@ -985,6 +1028,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     applicationName?: string | null;
     caType?: "internal" | "external" | null;
     hasPrivateKey: boolean;
+    hasCsr: boolean;
   };
 
   type TCertificateLookupFilter = { id: string; serialNumber?: never } | { id?: never; serialNumber: string };
@@ -1049,7 +1093,8 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
         .select(db.ref("name").withSchema(TableName.PkiApplication).as("applicationName"))
         .select(db.ref("id").withSchema(TableName.InternalCertificateAuthority).as("internalCaId"))
-        .select(db.ref("certId").withSchema(TableName.CertificateSecret).as("privateKeyRef"));
+        .select(db.ref("certId").withSchema(TableName.CertificateSecret).as("privateKeyRef"))
+        .select(db.raw(HAS_CSR_SELECT));
 
       if (filter.id) {
         query = query.where(`${TableName.Certificate}.id`, filter.id);
@@ -1075,7 +1120,8 @@ export const certificateDALFactory = (db: TDbClient) => {
       return {
         ...rest,
         caType,
-        hasPrivateKey: Boolean(privateKeyRef)
+        hasPrivateKey: Boolean(privateKeyRef),
+        hasCsr: Boolean(rest.hasCsr)
       } as TCertificateWithRequestDetails;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate with full details" });

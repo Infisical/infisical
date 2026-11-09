@@ -84,6 +84,7 @@ import {
   rebuildCaCrl
 } from "../certificate-authority/certificate-authority-fns";
 import { TInternalCertificateAuthorityDALFactory } from "../certificate-authority/internal/internal-certificate-authority-dal";
+import { assertCsrMatchesCertificate } from "../certificate-common/certificate-csr-utils";
 import { parseImportedCustomExtensions } from "../certificate-common/certificate-extension-fns";
 import {
   calculateFinalRenewBeforeDays,
@@ -1175,6 +1176,7 @@ export const certificateServiceFactory = ({
     certificatePem: rawCertificatePem,
     chainPem: rawChainPem,
     privateKeyPem: rawPrivateKeyPem,
+    csr: rawCsr,
     profileId,
     externalMetadata
   }: TImportCertDTO) => {
@@ -1182,6 +1184,7 @@ export const certificateServiceFactory = ({
     const certificatePem = normalizePemText(rawCertificatePem);
     const chainPem = rawChainPem ? normalizePemText(rawChainPem) : rawChainPem;
     const privateKeyPem = rawPrivateKeyPem ? normalizePemText(rawPrivateKeyPem) : rawPrivateKeyPem;
+    const csr = rawCsr ? normalizePemText(rawCsr) : undefined;
 
     const resolveProjectId = async (): Promise<string> => {
       if (projectIdInput) return projectIdInput;
@@ -1256,6 +1259,19 @@ export const certificateServiceFactory = ({
       });
     }
 
+    if (csr && !linkage) {
+      throw new BadRequestError({
+        message:
+          "'csr' can only be set when the certificate is imported into a certificate profile, because only a certificate a profile manages can be renewed."
+      });
+    }
+
+    if (csr && linkage && !linkage.caId) {
+      throw new BadRequestError({
+        message: `Certificate profile '${linkage.profileName}' is self-signed, and a self-signed certificate can only be renewed with its private key, which a signing request does not carry. Import the private key instead of 'csr'.`
+      });
+    }
+
     const leafCert = new x509.X509Certificate(certificatePem);
 
     // Verify the certificate chain when one is provided
@@ -1326,6 +1342,10 @@ export const certificateServiceFactory = ({
         }
         throw new BadRequestError({ message: "Error verifying private key against certificate" });
       }
+    }
+
+    if (csr) {
+      await assertCsrMatchesCertificate(csr, leafCert);
     }
 
     // Get certificate attributes
@@ -1456,7 +1476,8 @@ export const certificateServiceFactory = ({
           {
             certId: txCert.id,
             encryptedCertificate,
-            encryptedCertificateChain
+            encryptedCertificateChain,
+            csr: csr ?? null
           },
           tx
         );

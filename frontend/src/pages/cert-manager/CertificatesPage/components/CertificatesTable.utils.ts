@@ -196,6 +196,12 @@ export const getCertificateDeletionWarning = (
   return `${removed}${getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion)} This cannot be undone.`;
 };
 
+// Without the private key, Infisical renews on the existing key pair only from a CSR it holds for it.
+export const canRenewOnExistingKeyPair = (certificate: {
+  hasPrivateKey?: boolean;
+  hasCsr?: boolean;
+}): boolean => certificate.hasPrivateKey !== false || Boolean(certificate.hasCsr);
+
 export const isExpiringWithinOneDay = (notAfter: string): boolean => {
   const expiryDate = new Date(notAfter);
   const now = new Date();

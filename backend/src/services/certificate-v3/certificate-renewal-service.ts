@@ -149,7 +149,7 @@ type TCertificateRenewalServiceFactoryDep = {
     | "getRequestEnrollmentTypeByCertId"
     | "getOriginatingRequestByCertId"
   >;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
@@ -593,6 +593,16 @@ export const certificateRenewalServiceFactory = ({
     });
   };
 
+  // An imported certificate has no request row, so the CSR supplied at import lives on its body instead.
+  const $findOriginalCsr = async (
+    { certificateId, originatingRequestCsr }: { certificateId: string; originatingRequestCsr: string | null },
+    tx?: Knex
+  ) => {
+    if (originatingRequestCsr) return originatingRequestCsr;
+    const certificateBody = await certificateBodyDAL.findOne({ certId: certificateId }, tx);
+    return certificateBody?.csr ?? null;
+  };
+
   const $loadRenewalSubject = async (
     { certificateId, keySource }: { certificateId: string; keySource: CertificateRenewalKeySource },
     tx: Knex
@@ -627,7 +637,9 @@ export const certificateRenewalServiceFactory = ({
 
     const certificateSecret = await certificateSecretDAL.findOne({ certId: originalCert.id }, tx);
     const originalCsr =
-      !certificateSecret && keySource === CertificateRenewalKeySource.Reuse ? originatingRequest.csr : null;
+      !certificateSecret && keySource === CertificateRenewalKeySource.Reuse
+        ? await $findOriginalCsr({ certificateId: originalCert.id, originatingRequestCsr: originatingRequest.csr }, tx)
+        : null;
 
     if (
       !originalCert.deletedAt &&
@@ -834,12 +846,14 @@ export const certificateRenewalServiceFactory = ({
     keySource,
     issuerType,
     caType,
-    hasStoredKey
+    hasStoredKey,
+    hasOriginalCsr
   }: {
     keySource: CertificateRenewalKeySource;
     issuerType: IssuerType;
     caType?: CaType;
     hasStoredKey: boolean;
+    hasOriginalCsr: boolean;
   }) => {
     if (keySource === CertificateRenewalKeySource.New) return;
 
@@ -859,7 +873,10 @@ export const certificateRenewalServiceFactory = ({
       return;
     }
 
-    if (keySource === CertificateRenewalKeySource.Reuse && caType !== CaType.INTERNAL) {
+    // Without a stored key, reuse resubmits the original CSR, which every external CA accepts the same
+    // way it accepts a CSR supplied at renewal.
+    const isReuseFromOriginalCsr = !hasStoredKey && hasOriginalCsr;
+    if (keySource === CertificateRenewalKeySource.Reuse && caType !== CaType.INTERNAL && !isReuseFromOriginalCsr) {
       throw new BadRequestError({
         message: `Certificates issued by a ${caType?.toUpperCase() ?? "external"} certificate authority cannot reuse their existing key pair on renewal. Renew with a new key pair, or supply a CSR generated from the existing key.`
       });
@@ -1249,7 +1266,13 @@ export const certificateRenewalServiceFactory = ({
           ? { isCA: true, pathLength: certificateRequest.basicConstraints.pathLength }
           : undefined;
 
-        $assertKeySourceSupported({ keySource, issuerType, caType, hasStoredKey: Boolean(certificateSecret) });
+        $assertKeySourceSupported({
+          keySource,
+          issuerType,
+          caType,
+          hasStoredKey: Boolean(certificateSecret),
+          hasOriginalCsr: Boolean(originalCsr)
+        });
 
         if (keySource !== CertificateRenewalKeySource.New && caType === CaType.INTERNAL && ca) {
           validateCaSupport(ca, "CSR signing");
@@ -1312,6 +1335,7 @@ export const certificateRenewalServiceFactory = ({
               ca,
               profile,
               originalCert,
+              originalCsr,
               certificateRequest,
               renewalAltNames,
               renewalBasicConstraints,
@@ -1463,6 +1487,7 @@ export const certificateRenewalServiceFactory = ({
         ca,
         profile,
         originalCert,
+        originalCsr,
         certificateRequest: renewalRequest,
         renewalAltNames: structuredAltNames,
         renewalBasicConstraints,
@@ -1472,6 +1497,7 @@ export const certificateRenewalServiceFactory = ({
         ttl
       } = renewalResult;
 
+      const renewalCsr = csr ?? originalCsr ?? undefined;
       const renewalOrderId = randomUUID();
 
       const certificateRequest = await certificateRequestService.createCertificateRequest({
@@ -1485,7 +1511,7 @@ export const certificateRenewalServiceFactory = ({
         profileId: profile?.id,
         applicationId: originalCert.applicationId ?? undefined,
         caId: ca.id,
-        csr,
+        csr: renewalCsr,
         commonName: renewalRequest.commonName,
         altNames: structuredAltNames,
         keyUsages: renewalRequest.keyUsages,
@@ -1535,7 +1561,7 @@ export const certificateRenewalServiceFactory = ({
         certificateRequestId: certificateRequest.id,
         basicConstraints: renewalBasicConstraints,
         customExtensions: resolvedCustomExtensions,
-        ...(csr && { csr }),
+        ...(renewalCsr && { csr: renewalCsr }),
         ...(originalCert.applicationId && { applicationId: originalCert.applicationId })
       });
 
@@ -1636,8 +1662,12 @@ export const certificateRenewalServiceFactory = ({
     });
 
     const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(certificate.id);
+    const originalCsr = await $findOriginalCsr({
+      certificateId: certificate.id,
+      originatingRequestCsr: originatingRequest.csr
+    });
 
-    return buildRenewalPreview(originatingRequest, certificate);
+    return buildRenewalPreview({ ...originatingRequest, csr: originalCsr }, certificate);
   };
 
   const updateRenewalConfig = async ({
@@ -1665,10 +1695,17 @@ export const certificateRenewalServiceFactory = ({
 
     const certificateSecret = await certificateSecretDAL.findOne({ certId: certificate.id });
     if (!certificateSecret) {
-      throw new ForbiddenRequestError({
-        message:
-          "Certificate is not eligible for auto-renewal: certificates issued from CSR (external private key) cannot be auto-renewed"
+      const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(certificate.id);
+      const originalCsr = await $findOriginalCsr({
+        certificateId: certificate.id,
+        originatingRequestCsr: originatingRequest.csr
       });
+      if (!originalCsr) {
+        throw new ForbiddenRequestError({
+          message:
+            "Certificate is not eligible for auto-renewal: Infisical holds neither its private key nor a signing request generated from it. Renew it once with a CSR from its existing key, then turn on auto-renewal."
+        });
+      }
     }
 
     if (certificate.status !== CertStatus.ACTIVE) {

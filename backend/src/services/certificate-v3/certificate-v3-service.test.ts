@@ -220,6 +220,11 @@ describe("CertificateV3Service", () => {
     queueCertificateIssuance: vi.fn()
   };
 
+  const mockCertificateBodyDAL = {
+    create: vi.fn(),
+    findOne: vi.fn()
+  };
+
   const mockCertificateRequestService = {
     createCertificateRequest: vi.fn()
   };
@@ -358,9 +363,7 @@ describe("CertificateV3Service", () => {
         queuePkiSyncSyncCertificatesById: vi.fn().mockResolvedValue(undefined),
         queuePkiSyncLinkMatchingCertificates: vi.fn().mockResolvedValue(undefined)
       },
-      certificateBodyDAL: {
-        create: vi.fn().mockResolvedValue({ id: "body-123" })
-      },
+      certificateBodyDAL: mockCertificateBodyDAL,
       kmsService: {
         generateKmsKey: vi.fn().mockResolvedValue("kms-key-123"),
         encryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("encrypted"))),
@@ -2611,6 +2614,83 @@ describe("CertificateV3Service", () => {
         await service.renewCertificate({ certificateId: "cert-123", ...mockActor }).catch(() => undefined);
 
         expect(mockUsageCounterDAL.countActiveCertificateQuotaKeysByOrg).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("reusing the key pair when Infisical has no private key", () => {
+      const STORED_CSR = "-----BEGIN CERTIFICATE REQUEST-----\nstored\n-----END CERTIFICATE REQUEST-----";
+      const digicertCa = {
+        ...mockCA,
+        internalCa: undefined,
+        externalCa: { id: "ext-ca-1", type: CaType.DIGICERT, configuration: {} }
+      };
+
+      const setupKeylessRenewal = ({ ca, importedCsr }: { ca: unknown; importedCsr: string | null }) => {
+        vi.mocked(mockCertificateDAL.findById).mockResolvedValue({ ...mockOriginalCert, source: "imported" });
+        vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue(undefined as any);
+        vi.mocked(mockCertificateBodyDAL.findOne).mockResolvedValue(
+          importedCsr ? ({ id: "body-123", certId: "cert-123", csr: importedCsr } as any) : (undefined as any)
+        );
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+        vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(ca as any);
+        vi.mocked(mockCertificatePolicyService.getPolicyById).mockResolvedValue(mockPolicy);
+        vi.mocked(mockCertificatePolicyService.validateRequestAgainstPolicy).mockReturnValue({
+          isValid: true,
+          errors: [],
+          warnings: []
+        } as any);
+      };
+
+      it("sends the CSR supplied at import to the external CA", async () => {
+        setupKeylessRenewal({ ca: digicertCa, importedCsr: STORED_CSR });
+
+        await service.renewCertificate({
+          certificateId: "cert-123",
+          renewalKeySource: CertificateRenewalKeySource.Reuse,
+          ...mockActor
+        });
+
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).toHaveBeenCalledWith(
+          expect.objectContaining({ isRenewal: true, csr: STORED_CSR })
+        );
+        expect(mockCertificateRequestService.createCertificateRequest).toHaveBeenCalledWith(
+          expect.objectContaining({ csr: STORED_CSR })
+        );
+      });
+
+      it("refuses to reuse the key pair when Infisical holds no CSR for it either", async () => {
+        setupKeylessRenewal({ ca: digicertCa, importedCsr: null });
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            renewalKeySource: CertificateRenewalKeySource.Reuse,
+            ...mockActor
+          })
+        ).rejects.toThrow(/holds neither its private key nor the signing request/);
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
+      });
+
+      it("still refuses reuse on an external CA when Infisical holds the private key", async () => {
+        setupKeylessRenewal({ ca: digicertCa, importedCsr: STORED_CSR });
+        vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            renewalKeySource: CertificateRenewalKeySource.Reuse,
+            ...mockActor
+          })
+        ).rejects.toThrow(/cannot reuse their existing key pair/);
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
+      });
+
+      it("reports the imported CSR in the renewal preview", async () => {
+        setupKeylessRenewal({ ca: digicertCa, importedCsr: STORED_CSR });
+
+        const preview = await service.getRenewalPreview({ certificateId: "cert-123", ...mockActor });
+
+        expect(preview.hasOriginatingCsr).toBe(true);
       });
     });
 

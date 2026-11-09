@@ -4,6 +4,7 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 
 import {
+  canRenewOnExistingKeyPair,
   getApplicationCertificateAccess,
   getCertificateDeletedBySummary,
   getCertificateDeletionWarning,
@@ -246,5 +247,20 @@ describe("getCertificateDeletedBySummary", () => {
     expect(getCertificateDeletedBySummary({ deletedByActorType: ActorType.PLATFORM })).toBe(
       "Certificate cleanup"
     );
+  });
+});
+
+describe("canRenewOnExistingKeyPair", () => {
+  it("allows a certificate whose private key Infisical holds", () => {
+    expect(canRenewOnExistingKeyPair({ hasPrivateKey: true })).toBe(true);
+  });
+
+  it("allows a certificate without its private key when Infisical holds a CSR for it", () => {
+    expect(canRenewOnExistingKeyPair({ hasPrivateKey: false, hasCsr: true })).toBe(true);
+  });
+
+  it("refuses a certificate with neither its private key nor a CSR", () => {
+    expect(canRenewOnExistingKeyPair({ hasPrivateKey: false, hasCsr: false })).toBe(false);
+    expect(canRenewOnExistingKeyPair({ hasPrivateKey: false })).toBe(false);
   });
 });

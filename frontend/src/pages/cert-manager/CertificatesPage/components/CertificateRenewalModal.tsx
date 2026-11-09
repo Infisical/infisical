@@ -594,16 +594,20 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   if (isSelfSigned && certificate?.hasPrivateKey === false) {
     reuseRefusalReason =
       "Infisical does not hold this certificate's private key, which is what signs a self-signed certificate.";
-  } else if (!isSelfSigned && certificate?.caType === CertificateIssuerKind.External) {
-    reuseRefusalReason =
-      "The issuing certificate authority does not support reusing an existing key pair.";
   } else if (
     !isSelfSigned &&
     certificate?.hasPrivateKey === false &&
     renewalPreview?.hasOriginatingCsr === false
   ) {
     reuseRefusalReason =
-      "Infisical holds neither this certificate's private key nor the signing request it was issued from. Generate a new key pair, or use a CSR generated from the existing key.";
+      "Infisical holds neither this certificate's private key nor a signing request generated from it. Generate a new key pair, or use a CSR generated from the existing key.";
+  } else if (
+    !isSelfSigned &&
+    certificate?.caType === CertificateIssuerKind.External &&
+    certificate?.hasPrivateKey !== false
+  ) {
+    reuseRefusalReason =
+      "The issuing certificate authority reuses a key pair only from a signing request. Use a CSR generated from the existing key.";
   }
   const csrRefusalReason = isSelfSigned
     ? "A self-signed certificate is signed by its own private key, which a signing request does not carry."
@@ -858,7 +862,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
         label: "Reuse the existing key pair",
         description: certificate?.hasPrivateKey
           ? "Keep the same private and public key."
-          : "Renew from the signing request this certificate was issued from, so the public key stays the same.",
+          : "Renew from the signing request Infisical holds for this key, so the public key stays the same.",
         isDisabled: !isReuseAllowed,
         disabledReason: reuseRefusalReason
       },

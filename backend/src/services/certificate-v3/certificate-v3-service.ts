@@ -150,7 +150,7 @@ type TCertificateV3ServiceFactoryDep = {
     | "getRequestEnrollmentTypeByCertId"
     | "getOriginatingRequestByCertId"
   >;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,

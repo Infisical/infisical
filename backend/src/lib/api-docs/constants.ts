@@ -2438,6 +2438,8 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get.",
     includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    hasCsr:
+      "Whether Infisical holds a CSR generated from this certificate's private key, either the one the request that produced it carried or the one supplied at import. Without the private key, this CSR is what lets the certificate renew, and auto-renew, on its existing key pair.",
     externalMetadata:
       "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
@@ -2465,7 +2467,7 @@ export const CERTIFICATES = {
     hasOriginatingRequest:
       "Whether the certificate has a recorded originating request. When false the preview falls back to the issued certificate, which is the case for imported and discovered certificates.",
     hasOriginatingCsr:
-      "Whether the request that produced this certificate carried a CSR. When Infisical holds neither the private key nor this CSR, renewing with the existing key pair is refused.",
+      "Whether Infisical holds a CSR for this certificate's key pair: the one the request that produced it carried, or the one supplied when it was imported. When Infisical holds neither the private key nor this CSR, renewing with the existing key pair is refused.",
     request:
       "The values a renewal will request, taken from the request that produced this certificate including any profile defaults it recorded.",
     issuerModifiedFields:
@@ -2503,6 +2505,7 @@ export const CERTIFICATES = {
     certificatePem: "The PEM-encoded leaf certificate.",
     privateKeyPem: "Optional PEM-encoded private key associated with the certificate.",
     chainPem: "Optional PEM-encoded chain of intermediate certificates.",
+    csr: "Optional PEM-encoded certificate signing request generated from the certificate's private key, typically the one it was issued from. Lets renewal reuse the existing key pair, including automatic renewal, without Infisical holding the private key. Requires a profile that issues from a certificate authority, and must carry the certificate's public key.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
     profileId:
