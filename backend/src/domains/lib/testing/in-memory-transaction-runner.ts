@@ -20,6 +20,10 @@ type TRunnerShared<TStore> = {
  * Behaves like TransactionRunner over an in-memory store: it restores the store when the work throws,
  * runs afterCommit hooks only on success, joins when bound with within(tx), gives per-key locks held until
  * the outermost run ends.
+ *
+ * Runs share one store with no isolation: a run that throws restores the snapshot it took when it started,
+ * which also undoes writes another run committed in the meantime. A test that overlaps runs must not rely
+ * on one of them rolling back.
  */
 export class InMemoryTransactionRunner<TStore> implements TTransactionRunner<TStore> {
   private readonly shared: TRunnerShared<TStore>;

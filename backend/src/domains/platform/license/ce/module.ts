@@ -168,13 +168,11 @@ export class LicenseModule {
     return this.deps.startLocalRefresh({
       name: "self-hosted-license-sync",
       intervalMs: 10 * 60 * 1000,
+      // A failure is thrown so startLocalRefresh logs it and records it as a failed run; the last
+      // entitlements stay in place until a refresh succeeds.
       task: async () => {
-        try {
-          const refreshed = await this.hooks.refreshInstanceEntitlements();
-          if (refreshed) this.instanceEntitlements.set(refreshed);
-        } catch (error) {
-          logger.error(error, "Failed to sync self-hosted license features from License Server v2");
-        }
+        const refreshed = await this.hooks.refreshInstanceEntitlements();
+        if (refreshed) this.instanceEntitlements.set(refreshed);
       }
     });
   }

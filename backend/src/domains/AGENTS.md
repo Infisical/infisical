@@ -133,7 +133,8 @@ export class TransactionRunner<TStore> {
 - `run` opens a transaction, or joins the one the runner was bound to with `within(tx)`, and hands
   the work two things:
   - `store`: this domain's data access, pointed at that transaction;
-  - `tx`: the same transaction as a sealed token, to pass to other domains.
+  - `tx`: the same transaction as a sealed token, for `afterCommit` and for joining another runner of
+    this domain with `within(tx)`. It never goes to another domain (see "Across domains" below).
 - `tx` is not a Knex handle. Nothing outside `data-access/` can run SQL with it; lint bans unsealing it
   anywhere else.
 - `tx.afterCommit(fn)` runs `fn` only if the whole transaction commits. Cache invalidation and other
