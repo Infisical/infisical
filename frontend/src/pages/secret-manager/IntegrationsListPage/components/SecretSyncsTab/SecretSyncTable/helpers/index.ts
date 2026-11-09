@@ -10,6 +10,7 @@ import {
 } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { GitLabSyncScope } from "@app/hooks/api/secretSyncs/types/gitlab-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
+import { JenkinsSyncScope } from "@app/hooks/api/secretSyncs/types/jenkins-sync";
 import { OctopusDeploySyncScope } from "@app/hooks/api/secretSyncs/types/octopus-deploy-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 import { VercelSyncScope } from "@app/hooks/api/secretSyncs/types/vercel-sync";
@@ -319,6 +320,13 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
         destinationConfig.configType === "environment-variable"
           ? "environment variables"
           : "file mount";
+      break;
+    case SecretSync.Jenkins:
+      primaryText =
+        destinationConfig.scope === JenkinsSyncScope.Folder
+          ? destinationConfig.folderPath
+          : "Global";
+      secondaryText = "Credentials";
       break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);

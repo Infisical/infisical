@@ -61,6 +61,7 @@ import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { ImpervaConnectionForm } from "./ImpervaConnectionForm";
+import { JenkinsConnectionForm } from "./JenkinsConnectionForm";
 import { JiraConnectionForm } from "./JiraConnectionForm";
 import { KeeperConnectionForm } from "./KeeperConnectionForm";
 import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
@@ -415,6 +416,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
         return <RundeckConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Jenkins:
+        return <JenkinsConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Portainer:
         return <PortainerConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NutanixPrismCentral:
@@ -735,6 +738,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:
         return <RundeckConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Jenkins:
+        return <JenkinsConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Portainer:
         return <PortainerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NutanixPrismCentral:

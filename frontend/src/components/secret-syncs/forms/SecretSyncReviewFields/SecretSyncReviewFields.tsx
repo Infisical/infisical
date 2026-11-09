@@ -60,6 +60,7 @@ import { HasuraCloudSyncReviewFields } from "./HasuraCloudSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { JenkinsSyncReviewFields } from "./JenkinsSyncReviewFields";
 import { KeeperSyncReviewFields } from "./KeeperSyncReviewFields";
 import { LaravelForgeSyncReviewFields } from "./LaravelForgeSyncReviewFields";
 import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
@@ -284,6 +285,9 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Spacelift:
       DestinationFieldsComponent = <SpaceliftSyncReviewFields />;
       AdditionalSyncOptionsFieldsComponent = <SpaceliftSyncOptionsReviewFields />;
+      break;
+    case SecretSync.Jenkins:
+      DestinationFieldsComponent = <JenkinsSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

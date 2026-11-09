@@ -113,6 +113,7 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Cloud66:
     case SecretSync.Daytona:
     case SecretSync.Keeper:
+    case SecretSync.Jenkins:
       AdditionalSyncOptionsComponent = null;
       break;
     case SecretSync.Spacelift:
