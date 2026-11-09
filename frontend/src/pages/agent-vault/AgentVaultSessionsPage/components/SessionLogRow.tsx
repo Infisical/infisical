@@ -434,7 +434,7 @@ export const SessionLogRow = ({
       </TableRow>
       {isOpen && native && (
         <TableRow ref={detailRef} id={detailId} className="bg-container-hover">
-          <TableCell colSpan={SESSION_LOG_COLUMN_COUNT} className="pt-1 pb-4 whitespace-normal">
+          <TableCell colSpan={SESSION_LOG_COLUMN_COUNT} className="py-3 whitespace-normal">
             <NativeDetailPanel native={native} />
           </TableCell>
         </TableRow>
