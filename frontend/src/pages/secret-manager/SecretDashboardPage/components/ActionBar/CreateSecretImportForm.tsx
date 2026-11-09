@@ -83,7 +83,10 @@ export const CreateSecretImportForm = ({
     reset,
     watch,
     formState: { isSubmitting, errors }
-  } = useForm<TFormSchema>({ resolver: zodResolver(typeSchema) });
+  } = useForm<TFormSchema>({
+    resolver: zodResolver(typeSchema),
+    defaultValues: { secretPath: "/", isReplication: false }
+  });
 
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
@@ -224,7 +227,6 @@ export const CreateSecretImportForm = ({
       <Controller
         control={control}
         name="secretPath"
-        defaultValue="/"
         render={({ field }) => (
           <Field>
             <FieldLabel>Secret Path</FieldLabel>
@@ -238,7 +240,6 @@ export const CreateSecretImportForm = ({
       <Controller
         name="isReplication"
         control={control}
-        defaultValue={false}
         render={({ field: { value, onChange } }) => (
           <Field>
             <FieldContent>
