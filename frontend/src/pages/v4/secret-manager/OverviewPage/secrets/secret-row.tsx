@@ -557,6 +557,7 @@ function SecretActionsRow({
     <RowContextMenu {...rowActions}>
       <TableRow
         {...row}
+        focused={Boolean(popover)}
         onFocus={(event) => {
           const run = pending.current;
           if (event.target !== event.currentTarget || !run) return;
