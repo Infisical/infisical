@@ -55,8 +55,19 @@ test-docker:
 # Separate targets so a red line says which thing broke. `test-suites` failing means
 # Infisical is broken; `test-harness` failing means the harness is. One target running
 # both would report them the same way.
-test-suites:  PKGS = ./suites/...
+test-suites:  PKGS = $(SLOW_SUITES) ./suites/...
 test-harness: PKGS = ./harnesstest/shared/...
+
+# go test starts packages in the order it is given them, and four at a time, so the
+# longest ones go first. Left to alphabetical order they started last and ran on alone
+# at the end of the run. Order only: ./suites/... after them still runs every package,
+# each once, so a package missing from this list is slower to finish, never skipped.
+SLOW_SUITES = \
+	./suites/secretmanager/syncs \
+	./suites/secretmanager/approvals \
+	./suites/auditlog \
+	./suites/secretmanager/accessapprovals \
+	./suites/secretmanager/webhooks
 
 # Extra `go test` flags, such as `-run` or `-skip`.
 TEST_FLAGS ?=

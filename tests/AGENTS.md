@@ -45,6 +45,9 @@ go test ./suites/secretmanager/secrets/... -count=1
 make down
 ```
 
+`make test-suites` starts the packages in `SLOW_SUITES` first; add a package there when it becomes
+one of the longest, or it starts late and holds up the end of the run.
+
 `-count=1` disables Go's result cache. Run `make down` after changing a container's
 configuration, or the old container is reused.
 
