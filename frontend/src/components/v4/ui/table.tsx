@@ -23,7 +23,7 @@ import { Tooltip, TooltipScope } from "./tooltip";
 import geometry from "./button-geometry.module.css";
 import styles from "./data.module.css";
 
-type PinKind = "start" | "viewport";
+type PinKind = "start" | "end" | "viewport";
 type PinCounts = Record<PinKind, number>;
 
 const TablePinContext = React.createContext<((kind: PinKind, delta: number) => void) | null>(null);
@@ -43,7 +43,7 @@ function Table({
   /** The horizontal scroll container, which v3 Table's ref pointed at. */
   containerRef?: React.Ref<HTMLDivElement>;
 }) {
-  const [pins, setPins] = React.useState<PinCounts>({ start: 0, viewport: 0 });
+  const [pins, setPins] = React.useState<PinCounts>({ start: 0, end: 0, viewport: 0 });
   const reportPin = React.useCallback(
     (kind: PinKind, delta: number) =>
       setPins((value) => ({ ...value, [kind]: value[kind] + delta })),
@@ -55,6 +55,7 @@ function Table({
       data-slot="table-container"
       data-scroll-fade="x"
       data-has-start-pin={pins.start > 0 || undefined}
+      data-has-end-pin={pins.end > 0 || undefined}
       data-has-viewport-cell={pins.viewport > 0 || undefined}
       className={cn("relative w-full", styles.nativeTableContainer, containerClassName)}
     >
@@ -163,6 +164,7 @@ const markRow = (row: HTMLTableRowElement): Record<PinKind, boolean> => {
   });
   return {
     start: starts.length > 0,
+    end: cells.some((cell) => cell.classList.contains(styles.tableActions)),
     viewport: cells.some((cell) => cell.getAttribute("data-pin") === "viewport")
   };
 };
@@ -183,7 +185,11 @@ function TableRow({
 }) {
   const node = React.useRef<HTMLTableRowElement | null>(null);
   const reportPin = React.useContext(TablePinContext);
-  const reported = React.useRef<Record<PinKind, boolean>>({ start: false, viewport: false });
+  const reported = React.useRef<Record<PinKind, boolean>>({
+    start: false,
+    end: false,
+    viewport: false
+  });
   const [containsFocus, reportContains] = usePresenceCount();
   const [hasLink, reportLink] = useStretchedLinkHost();
   useReportPresence(React.useContext(BodyFocusContext), Boolean(focused) || containsFocus);
@@ -198,7 +204,7 @@ function TableRow({
   const mark = React.useCallback(() => {
     if (!node.current) return;
     const next = markRow(node.current);
-    (["start", "viewport"] as const).forEach((kind) => {
+    (["start", "end", "viewport"] as const).forEach((kind) => {
       if (next[kind] !== reported.current[kind]) reportPin?.(kind, next[kind] ? 1 : -1);
     });
     reported.current = next;
@@ -216,10 +222,10 @@ function TableRow({
     });
     return () => {
       observer.disconnect();
-      (["start", "viewport"] as const).forEach((kind) => {
+      (["start", "end", "viewport"] as const).forEach((kind) => {
         if (reported.current[kind]) reportPin?.(kind, -1);
       });
-      reported.current = { start: false, viewport: false };
+      reported.current = { start: false, end: false, viewport: false };
     };
   }, [mark, reportPin]);
   React.useLayoutEffect(() => {

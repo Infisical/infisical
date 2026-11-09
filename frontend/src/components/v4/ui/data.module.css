@@ -1047,7 +1047,7 @@ tbody > .nativeTableRow[data-loading] {
 .tableShell[data-embedded] .tablePagination {
   background: var(--v4-surface);
 }
-.tableShell[data-embedded] td[data-pin="true"] {
+.tableShell[data-embedded] td:is([data-pin="true"], [data-pin="start"]:first-child) {
   box-shadow: none;
 }
 .tableShell[data-embedded] .tablePagination {
@@ -1112,6 +1112,9 @@ tbody > .nativeTableRow[data-loading] {
 }
 .tableScroll th:is([data-pin="true"], [data-pin="start"]) {
   background: var(--v4-tint);
+}
+.tableScroll :is(td, th)[data-pin="start"]:first-child {
+  box-shadow: calc(-1 * var(--v4-frame-pad)) 0 0 var(--v4-tint);
 }
 .tableSort {
   display: inline-flex;
@@ -1402,16 +1405,65 @@ th[data-pin="start"] {
 .tableSelectionCell[data-pin="start"] ~ [data-pin="start"] {
   --v4-pin-offset: var(--v4-size-row);
 }
-/* The last leading pinned cell draws its edge only once the table has scrolled sideways, from the scroll-edge watcher's data-scroll-start-x. */
+/* Pinned columns fade scrolled content into their own paint, inherited from the cell so stripe, hover, selected and the header band all match; it shows only while the scroll-edge watcher reports content past that edge. */
+:is(td, th)[data-pin="start"][data-pin-edge]::before,
+:is(td, th):is(.tableActions, [data-pin="true"])::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: var(--v4-size-scroll-fade);
+  pointer-events: none;
+  background-color: inherit;
+  background-image: inherit;
+  opacity: 0;
+  transition: opacity var(--v4-duration-moderate) var(--v4-ease-fade);
+}
+:is(td, th)[data-pin="start"][data-pin-edge]::before {
+  inset-inline-start: 100%;
+  mask-image: linear-gradient(to right, black, transparent);
+}
+:is(td, th):is(.tableActions, [data-pin="true"])::before {
+  inset-inline-end: 100%;
+  mask-image: linear-gradient(to left, black, transparent);
+}
+:dir(rtl):is(td, th)[data-pin="start"][data-pin-edge]::before {
+  mask-image: linear-gradient(to left, black, transparent);
+}
+:dir(rtl):is(td, th):is(.tableActions, [data-pin="true"])::before {
+  mask-image: linear-gradient(to right, black, transparent);
+}
 :is([data-scroll-start-x] > table, [data-scroll-start-x] > .nativeTableContainer > table)
   > *
   > tr
-  > [data-pin="start"][data-pin-edge] {
-  box-shadow: inset calc(-1 * var(--v4-size-control-border)) 0 0 var(--v4-line-soft);
+  > [data-pin="start"][data-pin-edge]::before,
+:is([data-scroll-end-x] > table, [data-scroll-end-x] > .nativeTableContainer > table)
+  > *
+  > tr
+  > :is(.tableActions, [data-pin="true"])::before {
+  opacity: 1;
 }
-/* Leading pinned cells are the start edge, so the start fade would only wash them out. */
-:is(.tableScroll, .nativeTableContainer)[data-scroll-fade][data-scroll-start-x][data-has-start-pin] {
+/* The fade replaces the trailing divider while content passes under it; the colour clears instead of the border so the column keeps its width. */
+:is([data-scroll-end-x] > table, [data-scroll-end-x] > .nativeTableContainer > table)
+  > *
+  > tr
+  > :is(.tableActions, [data-pin="true"]) {
+  border-inline-start-color: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(td, th)[data-pin="start"][data-pin-edge]::before,
+  :is(td, th):is(.tableActions, [data-pin="true"])::before {
+    transition: none;
+  }
+}
+/* Pinned columns are the scroll container's edges, so its own edge fade would only wash them out. */
+:is(
+    .tableScroll,
+    .nativeTableContainer
+  )[data-scroll-fade][data-scroll-start-x][data-has-start-pin] {
   --v4-fade-x-start: 0px;
+}
+:is(.tableScroll, .nativeTableContainer)[data-scroll-fade][data-scroll-end-x][data-has-end-pin] {
+  --v4-fade-x-end: 0px;
 }
 /* A full-width cell keeps its content in the scroll container's visible width, sized from the container, so a nested table never scrolls out of view. */
 :is(.tableScroll, .nativeTableContainer)[data-has-viewport-cell] {
