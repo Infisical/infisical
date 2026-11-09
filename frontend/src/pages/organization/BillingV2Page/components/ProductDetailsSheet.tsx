@@ -432,7 +432,9 @@ const EntitlementTileContent = ({ dim }: { dim: BillingV2EntitlementDim }) => {
   const allowance = dimAllowance(dim);
   return (
     <>
-      <span className="text-xs leading-4 text-accent">{dimDisplayLabel(dim)}</span>
+      <span className="truncate text-xs leading-4 text-accent" title={dimDisplayLabel(dim)}>
+        {dimDisplayLabel(dim)}
+      </span>
       <span className="flex items-baseline gap-1 text-sm text-foreground tabular-nums">
         {dim.used.toLocaleString()}
         <span className="text-xs text-muted">
@@ -482,7 +484,7 @@ const EntitlementsSection = ({
                   key={dim.key}
                   value={dim.key}
                   disabled={!canBreakDown(dim)}
-                  className="flex-col items-stretch justify-start gap-1.5 px-2.5 py-2 text-left whitespace-normal"
+                  className="min-w-0 flex-col items-stretch justify-start gap-1.5 px-2.5 py-2 text-left"
                 >
                   <EntitlementTileContent dim={dim} />
                 </TabsTrigger>
@@ -895,6 +897,7 @@ export const ProductDetailsSheet = ({
       <Sheet open onOpenChange={(open) => !open && !isMutating && onClose()}>
         <SheetContent
           side="right"
+          size="form"
           isPending={isMutating}
           className="product-color"
           style={{ "--product-color": prod.color } as CSSProperties}
