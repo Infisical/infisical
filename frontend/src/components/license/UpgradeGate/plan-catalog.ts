@@ -1,4 +1,4 @@
-import { BillingV2Cadence, BillingV2CatalogProduct, BillingV2Plan } from "@app/hooks/api";
+import { BillingCadence, BillingCatalogProduct, BillingCatalogPlan } from "@app/hooks/api";
 
 import { PlanFeature } from "./ProductUpgradeDialog";
 
@@ -72,12 +72,12 @@ const getPlanFeatureDescription = (label: string, productKey: string) => {
   );
 };
 
-export const planSupportsCadence = (plan: BillingV2Plan, cadence: BillingV2Cadence) => {
+export const planSupportsCadence = (plan: BillingCatalogPlan, cadence: BillingCadence) => {
   const basePrice = plan.base?.[cadence] ?? 0;
   return basePrice > 0 || plan.dims.some((dimension) => dimension[cadence] > 0);
 };
 
-export const getPlanPrice = (plan: BillingV2Plan, cadence: BillingV2Cadence): PlanPrice => {
+export const getPlanPrice = (plan: BillingCatalogPlan, cadence: BillingCadence): PlanPrice => {
   const basePrice = plan.base?.[cadence] ?? 0;
   if (basePrice > 0) {
     return {
@@ -107,7 +107,7 @@ export const getPlanPrice = (plan: BillingV2Plan, cadence: BillingV2Cadence): Pl
   };
 };
 
-export const annualSavingsPercent = (plan: BillingV2Plan) => {
+export const annualSavingsPercent = (plan: BillingCatalogPlan) => {
   const monthly = getPlanPrice(plan, "monthly");
   const annual = getPlanPrice(plan, "annual");
   if (
@@ -123,9 +123,9 @@ export const annualSavingsPercent = (plan: BillingV2Plan) => {
 };
 
 export const getEffectiveCadence = (
-  plan: BillingV2Plan,
-  cadence: BillingV2Cadence
-): BillingV2Cadence => {
+  plan: BillingCatalogPlan,
+  cadence: BillingCadence
+): BillingCadence => {
   if (planSupportsCadence(plan, cadence)) {
     return cadence;
   }
@@ -136,8 +136,8 @@ export const getEffectiveCadence = (
 };
 
 export const getPlanFeatures = (
-  product: BillingV2CatalogProduct,
-  plan: BillingV2Plan
+  product: BillingCatalogProduct,
+  plan: BillingCatalogPlan
 ): PlanFeature[] => {
   const comparedFeatures = (product.compare ?? []).flatMap<PlanFeature>((row) => {
     const value = row.cells[plan.tier];
