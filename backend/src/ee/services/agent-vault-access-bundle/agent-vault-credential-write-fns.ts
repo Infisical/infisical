@@ -51,12 +51,12 @@ const SSH_KEY_PARTS = ["username", "privateKey", "certificate"] as const;
 
 type TSshKeyUpdate = Extract<TAgentVaultCredentialUpdate, { type: AgentVaultCredentialType.SshKey }>;
 
-const storedHasCertificate = (stored: TAgentVaultServices) =>
+export const storedHasCertificate = (stored: TAgentVaultServices) =>
   stored.credentialType === AgentVaultCredentialType.SshKey &&
   Boolean((stored.credentialConfig as { hasCertificate?: boolean } | null)?.hasCertificate);
 
-// Removing a certificate that isn't stored changes nothing. The edit form sends `certificate: null` on every save of a
-// key with no certificate, so counting it would rewrite the secret and audit a replaced credential on a port change.
+// Removing a certificate that isn't stored changes nothing, so it rewrites no secret and audits no replaced credential.
+// The edit form sends `certificate: null` only when the user removes the certificate.
 const sendsSshKeyPart = (credential: TSshKeyUpdate, stored: TAgentVaultServices) =>
   SSH_KEY_PARTS.some((part) =>
     part === "certificate" && credential.certificate === null

@@ -136,6 +136,7 @@ import {
   needsStoredSecretFor,
   nextMemberFieldsOf,
   splitCredential,
+  storedHasCertificate,
   TCredentialWrite
 } from "./agent-vault-credential-write-fns";
 import { listMcpServerTools, McpListError } from "./agent-vault-mcp-tool-list-fns";
@@ -1495,6 +1496,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
         }
         lockedCredentialConfig = effectiveCredentialConfig;
+        // An SSH key save that writes no secret took its config from the first read, whose `hasCertificate` may no
+        // longer describe the secret a concurrent save sealed. A removal of a certificate this request never saw
+        // can't be applied to it.
+        if (credential.type === AgentVaultCredentialType.SshKey && writtenSecret === undefined) {
+          const sshKeyChanged =
+            storedHasCertificate(locked) !== storedHasCertificate(service) ||
+            !locked.encryptedCredential?.equals(service.encryptedCredential!);
+          if (credential.certificate === null && sshKeyChanged) {
+            throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
+          }
+          lockedCredentialConfig = locked.credentialConfig as TAgentVaultCredentialConfig;
+          lockedCredentialUpdate = { ...credentialUpdate, credentialConfig: lockedCredentialConfig };
+        }
         if (oauth && credential.type === AgentVaultCredentialType.OAuth) {
           // The claim checked the server URL of the first read; these tokens must never reach another host.
           const requiredScopes = checkOauthClaimUnderLock({

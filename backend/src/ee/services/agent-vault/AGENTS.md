@@ -474,6 +474,9 @@ one: a host pattern, method or path decides what a service can reach, so it stay
   and returns a 409 if the type changed, or, for a partial basic update, the sealed secret did. Otherwise the
   half left out is written back stale, and its rows describe text that is no longer sealed. That first read is
   on the primary (`findByIdInAccessBundle`): a replica still behind the previous save would 409 the next one.
+  An `ssh-key` update that writes no secret (a port edit, or `certificate: null` with none stored) writes the
+  locked row's `credentialConfig`, so `hasCertificate` keeps matching a secret a concurrent save sealed. A
+  `certificate: null` that meets a certificate or key changed since the first read is a 409.
 - The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A project delete cascades to its bundles' services and
   to its variables in one statement, and an immediate check can fire before the service cascade has removed the
   rows, depending on which constraint was created first. The refusal that matters is the one under the variable
