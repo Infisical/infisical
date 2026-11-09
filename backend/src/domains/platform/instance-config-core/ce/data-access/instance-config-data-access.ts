@@ -28,6 +28,15 @@ export class InstanceConfigDataAccess implements TInstanceConfigDataAccess {
     return row ? Boolean(row.fipsEnabled) : null;
   }
 
+  // For the boot banner, outside any module: false until an instance admin finished setup.
+  static async readInitialized(knex: Knex): Promise<boolean> {
+    if (!(await knex.schema.hasTable(TableName.SuperAdmin))) return false;
+    const row = (await knex(TableName.SuperAdmin).where({ id: INSTANCE_CONFIG_ID }).first("initialized")) as
+      | { initialized?: boolean | null }
+      | undefined;
+    return Boolean(row?.initialized);
+  }
+
   async findById(options?: TReadOptions): Promise<InstanceConfig | undefined> {
     try {
       const knex = this.db.reader(options);

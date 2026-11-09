@@ -15,6 +15,7 @@ import fastify from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
+import type { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
 import { CustomLogger } from "@app/lib/logger/logger";
@@ -155,6 +156,7 @@ export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore, redi
       })
     });
 
+    let instanceConfigCoreDomain: TInstanceConfigCoreDomain | undefined;
     await server.register(registerRoutes, {
       smtp,
       queue,
@@ -163,11 +165,15 @@ export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore, redi
       keyStore,
       redis,
       clickhouse,
-      envConfig
+      envConfig,
+      onInstanceConfigCore: (domain) => {
+        instanceConfigCoreDomain = domain;
+      }
     });
 
-    if (appCfg.isApiRunModeEnabled) {
+    if (appCfg.isApiRunModeEnabled && instanceConfigCoreDomain) {
       await server.register(registerServeUI, {
+        instanceConfigCoreDomain,
         standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
         dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
       });

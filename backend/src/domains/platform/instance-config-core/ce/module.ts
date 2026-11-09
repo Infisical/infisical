@@ -136,6 +136,12 @@ export class InstanceConfigCoreModule {
     return InstanceConfigDataAccess.readFipsSetting(knex);
   }
 
+  // Whether an instance admin finished setup. A plain read for the boot banner, which runs outside the route plugin
+  // that builds the modules.
+  static readInitialized(knex: Knex): Promise<boolean> {
+    return InstanceConfigDataAccess.readInitialized(knex);
+  }
+
   // Creates the config row on a new instance and clears the shared cache. Called once at boot, before KMS Core starts.
   initialize(): Promise<void> {
     return this.instanceConfig.initialize();

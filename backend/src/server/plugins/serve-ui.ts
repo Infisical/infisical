@@ -4,15 +4,19 @@ import path from "node:path";
 import staticServe from "@fastify/static";
 import RE2 from "re2";
 
+import type { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 const CONNECT_SRC_DIRECTIVE = new RE2("(connect-src\\s+[^;]+)(;)");
 
 // browsers download session recordings straight from storage hosts a server admin allowed
-const withAllowedStorageHostnames = async (server: FastifyZodProvider, indexHtml: string) => {
+const withAllowedStorageHostnames = async (
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">,
+  indexHtml: string
+) => {
   try {
-    const { allowedStorageHostnames } = await server.services.instanceConfigCoreDomain.getServerConfig();
+    const { allowedStorageHostnames } = await instanceConfigCoreDomain.getServerConfig();
     if (!allowedStorageHostnames?.length) return indexHtml;
     const hosts = allowedStorageHostnames.map((hostname) => `https://${hostname}`).join(" ");
     return indexHtml.replace(CONNECT_SRC_DIRECTIVE, `$1 ${hosts}$2`);
@@ -27,10 +31,13 @@ export const registerServeUI = async (
   server: FastifyZodProvider,
   {
     standaloneMode,
-    dir
+    dir,
+    instanceConfigCoreDomain
   }: {
     standaloneMode?: boolean;
     dir: string;
+    // Passed in: this plugin is registered beside the routes plugin, so it cannot see server.services.
+    instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
   }
 ) => {
   const appCfg = getConfig();
@@ -171,7 +178,7 @@ export const registerServeUI = async (
           .header("Cache-Control", "no-cache, no-store, must-revalidate")
           .header("Pragma", "no-cache")
           .header("Expires", "0")
-          .send(await withAllowedStorageHostnames(server, indexHtml));
+          .send(await withAllowedStorageHostnames(instanceConfigCoreDomain, indexHtml));
       }
     });
   }

@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 
 import { TableName } from "@app/db/schemas";
+import type { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { LoginMethod, SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
+
+// registerRoutes publishes its services for the e2e suite; writes through the domain also refresh the shared cache.
+const instanceConfig = () =>
+  (globalThis as unknown as { testServices: { instanceConfigCoreDomain: TInstanceConfigCoreDomain } }).testServices
+    .instanceConfigCoreDomain;
 
 const updateServerConfig = (body: Record<string, unknown>) =>
   testServer.inject({
@@ -26,7 +32,7 @@ describe("Admin V1 Router", () => {
       createdUserId = undefined;
       createdOrganizationId = undefined;
 
-      await testInstanceConfigCoreDomain.updateConfig({ initialized: false });
+      await instanceConfig().updateConfig({ initialized: false });
     });
 
     afterEach(async () => {
@@ -43,7 +49,7 @@ describe("Admin V1 Router", () => {
         await testDb(TableName.Users).where({ id: user }).delete();
       }
 
-      await testInstanceConfigCoreDomain.updateConfig({ initialized: true, allowSignUp: true });
+      await instanceConfig().updateConfig({ initialized: true, allowSignUp: true });
     });
 
     test("creates the initial organization with the supplied name", async () => {
@@ -94,7 +100,7 @@ describe("Admin V1 Router", () => {
 
   describe("allowed signup domains", () => {
     afterEach(async () => {
-      await testInstanceConfigCoreDomain.updateConfig({ allowedSignUpDomain: null });
+      await instanceConfig().updateConfig({ allowedSignUpDomain: null });
     });
 
     test("normalizes valid domains before persisting them", async () => {

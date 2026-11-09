@@ -77,7 +77,7 @@ export default {
         envConfig: envCfg
       });
 
-      await bootstrapCheck({ db, instanceConfigCoreDomain: server.services.instanceConfigCoreDomain });
+      await bootstrapCheck({ db });
 
       // @ts-expect-error type
       globalThis.testServer = server;
@@ -91,8 +91,6 @@ export default {
       globalThis.testKeyStore = keyStore;
       // @ts-expect-error type
       globalThis.testQueue = queue;
-      // @ts-expect-error type
-      globalThis.testInstanceConfigCoreDomain = server.services.instanceConfigCoreDomain;
       // @ts-expect-error type
       globalThis.jwtAuthToken = crypto.jwt().sign(
         {
@@ -126,8 +124,6 @@ export default {
         delete globalThis.testRedis;
         // @ts-expect-error type
         delete globalThis.testKeyStore;
-        // @ts-expect-error type
-        delete globalThis.testInstanceConfigCoreDomain;
         // @ts-expect-error type
         delete globalThis.jwtAuthToken;
         // @ts-expect-error type

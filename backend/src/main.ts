@@ -94,7 +94,7 @@ const run = async () => {
     envConfig
   });
 
-  const bootstrap = await bootstrapCheck({ db, instanceConfigCoreDomain: server.services.instanceConfigCoreDomain });
+  const bootstrap = await bootstrapCheck({ db });
 
   // eslint-disable-next-line
   process.on("SIGINT", async () => {

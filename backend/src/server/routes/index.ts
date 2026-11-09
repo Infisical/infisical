@@ -7,6 +7,7 @@ import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
 import { createDomains } from "@app/domains/domains";
+import type { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
@@ -641,7 +642,8 @@ export const registerRoutes = async (
     keyStore,
     redis,
     clickhouse,
-    envConfig
+    envConfig,
+    onInstanceConfigCore
   }: {
     auditLogDb?: Knex;
     db: Knex;
@@ -651,6 +653,8 @@ export const registerRoutes = async (
     redis: Redis | Cluster;
     clickhouse: ClickHouseClient | null;
     envConfig: TEnvConfig;
+    // Hands Instance Config Core to plugins app.ts registers beside this one, which cannot see server.services.
+    onInstanceConfigCore?: (instanceConfigCoreDomain: TInstanceConfigCoreDomain) => void;
   }
 ) => {
   const appCfg = getConfig();
@@ -679,6 +683,7 @@ export const registerRoutes = async (
   const licenseDomain = domains.license.service;
   const kmsCoreDomain = domains.kmsCore.service;
   const instanceConfigCoreDomain = domains.instanceConfigCore.service;
+  onInstanceConfigCore?.(instanceConfigCoreDomain);
   const organizationsProjectsDomain = domains.organizationsProjects.service;
   const certManagerDomain = domains.certManager.service;
 
