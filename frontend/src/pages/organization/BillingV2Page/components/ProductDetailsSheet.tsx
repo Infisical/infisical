@@ -783,7 +783,7 @@ const PlansView = ({
           </section>
         )}
       </div>
-      <SheetFooter>
+      <SheetFooter className="m-2 mt-auto rounded-md border border-border bg-card">
         <div className="flex w-full flex-wrap items-center justify-between gap-3">{footer}</div>
       </SheetFooter>
     </>
