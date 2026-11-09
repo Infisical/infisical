@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { JENKINS_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
 import { useJenkinsConnectionListFolders } from "@app/hooks/api/appConnections/jenkins";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 import { JenkinsSyncScope } from "@app/hooks/api/secretSyncs/types/jenkins-sync";
@@ -36,12 +37,13 @@ export const JenkinsSyncFields = () => {
   const connectionId = useWatch({ name: "connection.id", control });
   const scope = useWatch({ name: "destinationConfig.scope", control });
 
-  const { data: folders = [], isPending: isFoldersLoading } = useJenkinsConnectionListFolders(
-    connectionId,
-    {
-      enabled: Boolean(connectionId) && scope === JenkinsSyncScope.Folder
-    }
-  );
+  const {
+    data: folders = [],
+    isPending: isFoldersLoading,
+    error: foldersError
+  } = useJenkinsConnectionListFolders(connectionId, {
+    enabled: Boolean(connectionId) && scope === JenkinsSyncScope.Folder
+  });
 
   return (
     <FieldGroup>
@@ -66,13 +68,13 @@ export const JenkinsSyncFields = () => {
                   setValue("destinationConfig.folderPath", "");
                 }}
               >
-                <SelectTrigger className="w-full capitalize" isError={Boolean(error)}>
+                <SelectTrigger className="w-full" isError={Boolean(error)}>
                   <SelectValue placeholder="Select a scope..." />
                 </SelectTrigger>
                 <SelectContent position="popper">
                   {Object.values(JenkinsSyncScope).map((jenkinsScope) => (
-                    <SelectItem className="capitalize" value={jenkinsScope} key={jenkinsScope}>
-                      {jenkinsScope}
+                    <SelectItem value={jenkinsScope} key={jenkinsScope}>
+                      {JENKINS_SYNC_SCOPE_LABELS[jenkinsScope]}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -112,6 +114,11 @@ export const JenkinsSyncFields = () => {
                   }}
                   options={folders}
                   placeholder="Select a folder..."
+                  emptyMessage={
+                    foldersError
+                      ? "Unable to load Jenkins folders. Check the connection's credentials and that its user has Job/Read on the folders."
+                      : undefined
+                  }
                   getOptionLabel={(option) => option.fullName}
                   getOptionValue={(option) => option.fullName}
                   modal

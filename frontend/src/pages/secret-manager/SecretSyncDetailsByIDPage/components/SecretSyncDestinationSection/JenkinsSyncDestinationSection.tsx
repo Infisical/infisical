@@ -1,4 +1,5 @@
 import { Detail, DetailLabel, DetailValue } from "@app/components/v3";
+import { JENKINS_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
 import { JenkinsSyncScope, TJenkinsSync } from "@app/hooks/api/secretSyncs/types/jenkins-sync";
 
 type Props = {
@@ -12,7 +13,7 @@ export const JenkinsSyncDestinationSection = ({ secretSync }: Props) => {
     <>
       <Detail>
         <DetailLabel>Scope</DetailLabel>
-        <DetailValue className="capitalize">{destinationConfig.scope}</DetailValue>
+        <DetailValue>{JENKINS_SYNC_SCOPE_LABELS[destinationConfig.scope]}</DetailValue>
       </Detail>
       {destinationConfig.scope === JenkinsSyncScope.Folder && (
         <Detail>

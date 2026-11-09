@@ -10,6 +10,7 @@ import { CloudflareWorkersVariableType } from "@app/hooks/api/secretSyncs/types/
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { GitHubSyncSecretType } from "@app/hooks/api/secretSyncs/types/github-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
+import { JenkinsSyncScope } from "@app/hooks/api/secretSyncs/types/jenkins-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 export const SECRET_SYNC_MAP: Record<
@@ -517,6 +518,11 @@ export const CLOUDFLARE_SECRETS_STORE_SCOPE_LABELS: Record<CloudflareSecretsStor
   [CloudflareSecretsStoreScope.Workers]: "Workers",
   [CloudflareSecretsStoreScope.AiGateway]: "AI Gateway",
   [CloudflareSecretsStoreScope.Containers]: "Containers"
+};
+
+export const JENKINS_SYNC_SCOPE_LABELS: Record<JenkinsSyncScope, string> = {
+  [JenkinsSyncScope.Global]: "Global",
+  [JenkinsSyncScope.Folder]: "Folder"
 };
 
 export const CLOUDFLARE_PAGES_VARIABLE_TYPE_LABELS: Record<CloudflarePagesVariableType, string> = {
