@@ -47,6 +47,17 @@ export const createPostgresConnectionController = async (
   // From the server's BackendKeyData, which @types/pg doesn't declare
   const { processID, secretKey } = pgClient as unknown as { processID: number | null; secretKey: number | null };
 
+  // CockroachDB's SHOW SYNTAX parses a script without running it
+  const countCockroachdbStatements = async (script: string) => {
+    const { rows } = await pgClient.query<{ field: string; message: string }>(
+      `SHOW SYNTAX ${pgClient.escapeLiteral(script)}`
+    );
+    const field = (name: string) => rows.find((row) => row.field === name)?.message;
+    const error = field("error");
+    if (error) throw Object.assign(new Error(error), { detail: field("detail"), hint: field("hint") });
+    return rows.filter((row) => row.field === "sql").length;
+  };
+
   let isInTransaction = false;
   let disposing = false;
 
@@ -147,7 +158,10 @@ export const createPostgresConnectionController = async (
               const startTime = performance.now();
               const MAX_ROWS = 1000;
 
-              const stmtTexts = await splitPostgresStatements(message.sql, { lexicalFallback });
+              const stmtTexts = await splitPostgresStatements(
+                message.sql,
+                lexicalFallback ? { countStatementsOnServer: countCockroachdbStatements } : {}
+              );
 
               let lastRows: Record<string, unknown>[] = [];
               let lastFields: { name: string }[] = [];

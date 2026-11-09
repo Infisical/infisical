@@ -98,14 +98,23 @@ const splitStatementsLexically = (sql: string): string[] => {
   return statements;
 };
 
-// libpg-query only parses PostgreSQL's grammar, so CockroachDB scripts it rejects (UPSERT, say) are split lexically
-export const splitPostgresStatements = async (sql: string, { lexicalFallback = false } = {}): Promise<string[]> => {
+// libpg-query only parses PostgreSQL's grammar, so a CockroachDB script it rejects (UPSERT, say) is split lexically,
+// once the server has parsed it whole: a typo anywhere still stops every statement, and a mis-split never runs
+export const splitPostgresStatements = async (
+  sql: string,
+  { countStatementsOnServer }: { countStatementsOnServer?: (script: string) => Promise<number> } = {}
+): Promise<string[]> => {
   let stmts: { stmt_location?: number; stmt_len?: number }[];
   try {
     ({ stmts } = (await parseSql(sql)) as { stmts: typeof stmts });
   } catch (err) {
-    if (!lexicalFallback) throw err;
-    return splitStatementsLexically(sql);
+    if (!countStatementsOnServer) throw err;
+    const expectedCount = await countStatementsOnServer(sql);
+    const statements = splitStatementsLexically(sql);
+    if (statements.length !== expectedCount) {
+      throw new Error("Infisical couldn't split this script into statements. Run its statements one at a time.");
+    }
+    return statements;
   }
   // libpg-query reports UTF-8 byte offsets, not string indexes
   const bytes = Buffer.from(sql);

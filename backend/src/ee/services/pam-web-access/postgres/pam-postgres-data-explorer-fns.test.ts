@@ -62,10 +62,26 @@ describe("splitPostgresStatements", () => {
     await expect(splitPostgresStatements("DELETE FROM orders; SELEC 1")).rejects.toThrow();
   });
 
+  test("rejects a script the server can't parse, so none of it runs", async () => {
+    const countStatementsOnServer = async () => {
+      throw new Error('at or near "selec": syntax error');
+    };
+    await expect(
+      splitPostgresStatements("UPSERT INTO t VALUES (2); SELEC 1", { countStatementsOnServer })
+    ).rejects.toThrow("syntax error");
+  });
+
+  test("refuses to run a lexical split that disagrees with the server's statement count", async () => {
+    const countStatementsOnServer = async () => 1;
+    await expect(
+      splitPostgresStatements("UPSERT INTO t VALUES (1); UPSERT INTO t VALUES (2)", { countStatementsOnServer })
+    ).rejects.toThrow("Run its statements one at a time");
+  });
+
   test("passes CockroachDB syntax the PostgreSQL parser rejects through to the server", async () => {
     const script =
       "UPSERT INTO t (id, v) VALUES (1, 'x;y'); SELECT * FROM t AS OF SYSTEM TIME '-1s'; SHOW CREATE TABLE t";
-    expect(await splitPostgresStatements(script, { lexicalFallback: true })).toEqual([
+    expect(await splitPostgresStatements(script, { countStatementsOnServer: async () => 3 })).toEqual([
       "UPSERT INTO t (id, v) VALUES (1, 'x;y')",
       "SELECT * FROM t AS OF SYSTEM TIME '-1s'",
       "SHOW CREATE TABLE t"
@@ -78,7 +94,7 @@ describe("splitPostgresStatements", () => {
       "CREATE FUNCTION f() RETURNS INT LANGUAGE SQL AS $body$ SELECT 1; $body$",
       "SELECT $$;$$ /* outer /* inner; */ still a comment; */ -- trailing;\n"
     ].join("; ");
-    expect(await splitPostgresStatements(script, { lexicalFallback: true })).toEqual([
+    expect(await splitPostgresStatements(script, { countStatementsOnServer: async () => 3 })).toEqual([
       `UPSERT INTO "a;b" VALUES (E'it\\'s;', b'\\';', 'O''Neil;')`,
       "CREATE FUNCTION f() RETURNS INT LANGUAGE SQL AS $body$ SELECT 1; $body$",
       "SELECT $$;$$ /* outer /* inner; */ still a comment; */ -- trailing;"
@@ -87,7 +103,9 @@ describe("splitPostgresStatements", () => {
 
   test("drops segments that hold only comments", async () => {
     expect(
-      await splitPostgresStatements("UPSERT INTO t VALUES (1); -- done\n/* end */", { lexicalFallback: true })
+      await splitPostgresStatements("UPSERT INTO t VALUES (1); -- done\n/* end */", {
+        countStatementsOnServer: async () => 1
+      })
     ).toEqual(["UPSERT INTO t VALUES (1)"]);
   });
 });
