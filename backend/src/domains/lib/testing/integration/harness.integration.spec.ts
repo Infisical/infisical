@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { readdir } from "node:fs/promises";
+import RE2 from "re2";
 import { describe, expect, test } from "vitest";
 
 import { OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
@@ -106,7 +107,7 @@ describe("setupIntegration({ freshDatabase: true })", () => {
     const [{ count }] = await h.db("infisical_migrations").count<{ count: string }[]>("* as count");
 
     // Assert
-    expect(h.databaseName).toMatch(new RegExp(`^infisical_it_${getRunId()}_f[a-z0-9]+$`));
+    expect(new RE2(`^infisical_it_${getRunId()}_f[a-z0-9]+$`).test(h.databaseName)).toBe(true);
     expect(Number(count)).toBe(expected);
   });
 });
