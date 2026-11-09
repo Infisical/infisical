@@ -1038,6 +1038,8 @@ export function SecretRow({
             overlay={overlayOf(first)}
           />
           <TableCell
+            pin="start"
+            pinOffset="var(--v4-size-row)"
             className={styles.nameCell}
             data-override-rule={first.override !== undefined || undefined}
           >
@@ -1068,12 +1070,17 @@ export function SecretRow({
             ctx={ctx}
             onUpdate={handlers.onUpdate}
           >
-            <TableCell selection divider={false}>
+            <TableCell pin="start" selection divider={false}>
               <span className={styles.iconSlot}>
                 <Icon icon={GitBranchIcon} label="Personal override" />
               </span>
             </TableCell>
-            <TableCell className={styles.nameCell} data-override-rule>
+            <TableCell
+              pin="start"
+              pinOffset="var(--v4-size-row)"
+              className={styles.nameCell}
+              data-override-rule
+            >
               <span className={styles.truncate}>{name}</span>
             </TableCell>
             <TableCell className={styles.valueCell}>
@@ -1132,7 +1139,7 @@ export function SecretRow({
           onClick={() => setExpanded(!expanded)}
         >
           <ExpandCell expanded={expanded} label={name} onToggle={() => setExpanded(!expanded)} />
-          <TableCell className={styles.nameCell}>
+          <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
             <div className={styles.nameLine}>
               <span className={styles.nameKind}>
                 <KindIcon kind="secret" />
@@ -1171,169 +1178,176 @@ export function SecretRow({
       </RowContextMenu>
       {expanded && (
         <TableRow className={styles.nestedRow}>
-          <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
-            <Table className={styles.nestedTable}>
-              <TableHeader>
-                <TableRow>
-                  <ChildSelectHead resources={entries} label={name} ctx={ctx} />
-                  <TableHead className={styles.envName}>Environment</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead className={styles.revealHead}>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      icon="eye"
-                      onClick={() => setRowVisible(!rowVisible)}
-                    >
-                      {rowVisible ? "Hide values" : "Reveal values"}
-                    </Button>
-                  </TableHead>
-                  <TableActionsHead slots={ROW_ACTION_SLOTS} />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ctx.environments.flatMap((environment) => {
-                  const secret = entries.find((entry) => entry.environment === environment.value);
-                  const imported = handlers.importedFrom(environment.value, name);
-                  const cells = (
-                    <>
-                      <ChildSelectCell
-                        resource={secret}
-                        label={`${name} in ${environment.label}`}
-                        ctx={ctx}
-                      />
-                      <TableCell
-                        className={styles.envName}
-                        data-override-rule={secret?.override !== undefined || undefined}
+          <TableCell
+            pin="viewport"
+            colSpan={ctx.environments.length + 3}
+            className={styles.nestedCell}
+          >
+            <div>
+              <Table className={styles.nestedTable}>
+                <TableHeader>
+                  <TableRow>
+                    <ChildSelectHead resources={entries} label={name} ctx={ctx} />
+                    <TableHead className={styles.envName}>Environment</TableHead>
+                    <TableHead>Value</TableHead>
+                    <TableHead className={styles.revealHead}>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        icon="eye"
+                        onClick={() => setRowVisible(!rowVisible)}
                       >
-                        <span className={styles.nameLine}>
-                          <span className={styles.truncate}>{environment.label}</span>
-                          {secret && (
-                            <Annotations secret={secret} onOpen={overlayFor(environment.value)} />
-                          )}
-                          {!secret && imported && (
-                            <Tooltip content={`Imported from ${imported}`}>
-                              <span className={styles.hint}>
-                                <Icon icon={ImportIcon} label={`Imported from ${imported}`} />
-                              </span>
-                            </Tooltip>
-                          )}
-                          {secret?.managedBy && (
-                            <Icon name="sync" size={12} label="Rotated secret" />
-                          )}
-                          {secret?.honeyToken && (
-                            <Icon icon={HexagonIcon} size={12} label="Honey token secret" />
-                          )}
-                        </span>
-                      </TableCell>
-                      <TableCell colSpan={2} className={styles.valueCell}>
-                        {secret && editing === environment.value ? (
-                          <InlineEditor
-                            label={`Value of ${name} in ${environment.label}`}
-                            scope={secret}
-                            initial={readableValue(secret) ?? ""}
-                            saveLabel="Save"
-                            undoLabel="Undo"
-                            onCancel={() => setEditing(undefined)}
-                            onSave={(value) => saveInline(secret, value)}
-                          />
-                        ) : (
-                          <div className={styles.nameLine}>
-                            <SecretValue
-                              secret={secret}
-                              visible={rowVisible}
-                              pending={Boolean(secret && ctx.pending?.[secret.id])}
-                            />
-                            {secret && <Indicators secret={secret} />}
-                          </div>
-                        )}
-                      </TableCell>
-                    </>
-                  );
-                  const addValue: RowActionProps = {
-                    label: `${name} in ${environment.label}`,
-                    inline: [
-                      {
-                        label: "Add value",
-                        icon: EditIcon,
-                        disabledReason:
-                          ctx.writeBlock ??
-                          (ctx.blockFor?.(
-                            ProjectPermissionSub.Secrets,
-                            ProjectPermissionSecretActions.Create,
-                            {
-                              environment: environment.value,
-                              secretPath: ctx.path,
-                              secretName: name,
-                              secretTags: ["*"]
-                            },
-                            "add a value"
-                          )
-                            ? "Access denied"
-                            : undefined),
-                        onSelect: () => handlers.onCreateIn(environment.value, name)
-                      }
-                    ]
-                  };
-                  const rows = [
-                    secret ? (
-                      <SecretActionsRow
-                        key={environment.value}
-                        secret={secret}
-                        ctx={ctx}
-                        handlers={handlers}
-                        onInlineEdit={() => setEditing(environment.value)}
-                        onAddOverride={() => startCreating(environment.value)}
-                        open={overlays[environment.value]}
-                        setOpen={overlayFor(environment.value)}
-                        row={{ className: styles.row }}
-                      >
-                        {cells}
-                      </SecretActionsRow>
-                    ) : (
-                      <RowContextMenu key={environment.value} {...addValue}>
-                        <TableRow className={styles.row}>
-                          {cells}
-                          <TableActionsCell slots={ROW_ACTION_SLOTS}>
-                            <RowActions {...addValue} />
-                          </TableActionsCell>
-                        </TableRow>
-                      </RowContextMenu>
-                    )
-                  ];
-                  if (
-                    secret &&
-                    (secret.override !== undefined || creatingOverride.includes(environment.value))
-                  )
-                    rows.push(
-                      <OverrideRow
-                        key={`${environment.value}-override`}
-                        secret={secret}
-                        label={`${name} override in ${environment.label}`}
-                        creating={creatingOverride.includes(environment.value)}
-                        ctx={ctx}
-                        onUpdate={handlers.onUpdate}
-                      >
-                        <TableCell selection divider={false} />
-                        <TableCell className={styles.envName} data-override-rule />
-                        <TableCell colSpan={2} className={styles.valueCell}>
-                          <div className={styles.nameLine}>
-                            <Icon icon={GitBranchIcon} size={14} label="Personal override" />
-                            <OverrideValue
-                              secret={secret}
-                              creating={creatingOverride.includes(environment.value)}
-                              visible={rowVisible}
-                              onStopCreating={() => stopCreating(environment.value)}
-                              onUpdate={handlers.onUpdate}
-                            />
-                          </div>
+                        {rowVisible ? "Hide values" : "Reveal values"}
+                      </Button>
+                    </TableHead>
+                    <TableActionsHead slots={ROW_ACTION_SLOTS} />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ctx.environments.flatMap((environment) => {
+                    const secret = entries.find((entry) => entry.environment === environment.value);
+                    const imported = handlers.importedFrom(environment.value, name);
+                    const cells = (
+                      <>
+                        <ChildSelectCell
+                          resource={secret}
+                          label={`${name} in ${environment.label}`}
+                          ctx={ctx}
+                        />
+                        <TableCell
+                          className={styles.envName}
+                          data-override-rule={secret?.override !== undefined || undefined}
+                        >
+                          <span className={styles.nameLine}>
+                            <span className={styles.truncate}>{environment.label}</span>
+                            {secret && (
+                              <Annotations secret={secret} onOpen={overlayFor(environment.value)} />
+                            )}
+                            {!secret && imported && (
+                              <Tooltip content={`Imported from ${imported}`}>
+                                <span className={styles.hint}>
+                                  <Icon icon={ImportIcon} label={`Imported from ${imported}`} />
+                                </span>
+                              </Tooltip>
+                            )}
+                            {secret?.managedBy && (
+                              <Icon name="sync" size={12} label="Rotated secret" />
+                            )}
+                            {secret?.honeyToken && (
+                              <Icon icon={HexagonIcon} size={12} label="Honey token secret" />
+                            )}
+                          </span>
                         </TableCell>
-                      </OverrideRow>
+                        <TableCell colSpan={2} className={styles.valueCell}>
+                          {secret && editing === environment.value ? (
+                            <InlineEditor
+                              label={`Value of ${name} in ${environment.label}`}
+                              scope={secret}
+                              initial={readableValue(secret) ?? ""}
+                              saveLabel="Save"
+                              undoLabel="Undo"
+                              onCancel={() => setEditing(undefined)}
+                              onSave={(value) => saveInline(secret, value)}
+                            />
+                          ) : (
+                            <div className={styles.nameLine}>
+                              <SecretValue
+                                secret={secret}
+                                visible={rowVisible}
+                                pending={Boolean(secret && ctx.pending?.[secret.id])}
+                              />
+                              {secret && <Indicators secret={secret} />}
+                            </div>
+                          )}
+                        </TableCell>
+                      </>
                     );
-                  return rows;
-                })}
-              </TableBody>
-            </Table>
+                    const addValue: RowActionProps = {
+                      label: `${name} in ${environment.label}`,
+                      inline: [
+                        {
+                          label: "Add value",
+                          icon: EditIcon,
+                          disabledReason:
+                            ctx.writeBlock ??
+                            (ctx.blockFor?.(
+                              ProjectPermissionSub.Secrets,
+                              ProjectPermissionSecretActions.Create,
+                              {
+                                environment: environment.value,
+                                secretPath: ctx.path,
+                                secretName: name,
+                                secretTags: ["*"]
+                              },
+                              "add a value"
+                            )
+                              ? "Access denied"
+                              : undefined),
+                          onSelect: () => handlers.onCreateIn(environment.value, name)
+                        }
+                      ]
+                    };
+                    const rows = [
+                      secret ? (
+                        <SecretActionsRow
+                          key={environment.value}
+                          secret={secret}
+                          ctx={ctx}
+                          handlers={handlers}
+                          onInlineEdit={() => setEditing(environment.value)}
+                          onAddOverride={() => startCreating(environment.value)}
+                          open={overlays[environment.value]}
+                          setOpen={overlayFor(environment.value)}
+                          row={{ className: styles.row }}
+                        >
+                          {cells}
+                        </SecretActionsRow>
+                      ) : (
+                        <RowContextMenu key={environment.value} {...addValue}>
+                          <TableRow className={styles.row}>
+                            {cells}
+                            <TableActionsCell slots={ROW_ACTION_SLOTS}>
+                              <RowActions {...addValue} />
+                            </TableActionsCell>
+                          </TableRow>
+                        </RowContextMenu>
+                      )
+                    ];
+                    if (
+                      secret &&
+                      (secret.override !== undefined ||
+                        creatingOverride.includes(environment.value))
+                    )
+                      rows.push(
+                        <OverrideRow
+                          key={`${environment.value}-override`}
+                          secret={secret}
+                          label={`${name} override in ${environment.label}`}
+                          creating={creatingOverride.includes(environment.value)}
+                          ctx={ctx}
+                          onUpdate={handlers.onUpdate}
+                        >
+                          <TableCell selection divider={false} />
+                          <TableCell className={styles.envName} data-override-rule />
+                          <TableCell colSpan={2} className={styles.valueCell}>
+                            <div className={styles.nameLine}>
+                              <Icon icon={GitBranchIcon} size={14} label="Personal override" />
+                              <OverrideValue
+                                secret={secret}
+                                creating={creatingOverride.includes(environment.value)}
+                                visible={rowVisible}
+                                onStopCreating={() => stopCreating(environment.value)}
+                                onUpdate={handlers.onUpdate}
+                              />
+                            </div>
+                          </TableCell>
+                        </OverrideRow>
+                      );
+                    return rows;
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </TableCell>
         </TableRow>
       )}

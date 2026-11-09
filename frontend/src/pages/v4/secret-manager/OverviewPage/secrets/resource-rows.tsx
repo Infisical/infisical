@@ -551,43 +551,45 @@ function EnvironmentTable({
 }) {
   return (
     <TableRow className={styles.nestedRow}>
-      <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
-        <Table className={styles.nestedTable}>
-          <TableHeader>
-            <TableRow>
-              <ChildSelectHead resources={entries} label={label} ctx={ctx} />
-              <TableHead className={styles.envName}>Environment</TableHead>
-              <TableHead>{valueHeader}</TableHead>
-              <TableActionsHead slots={ROW_ACTION_SLOTS} />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ctx.environments
-              .filter((environment) =>
-                entries.some((entry) => entry.environment === environment.value)
-              )
-              .map((environment) => {
-                const entry = entries.find((item) => item.environment === environment.value)!;
-                const rowActions = actions(entry);
-                return (
-                  <RowContextMenu key={environment.value} {...rowActions}>
-                    <TableRow className={styles.row}>
-                      <ChildSelectCell
-                        resource={entry}
-                        label={`${label} in ${environment.label}`}
-                        ctx={ctx}
-                      />
-                      <TableCell className={styles.envName}>{environment.label}</TableCell>
-                      <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
-                      <TableActionsCell slots={ROW_ACTION_SLOTS}>
-                        <RowActions {...rowActions} />
-                      </TableActionsCell>
-                    </TableRow>
-                  </RowContextMenu>
-                );
-              })}
-          </TableBody>
-        </Table>
+      <TableCell pin="viewport" colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
+        <div>
+          <Table className={styles.nestedTable}>
+            <TableHeader>
+              <TableRow>
+                <ChildSelectHead resources={entries} label={label} ctx={ctx} />
+                <TableHead className={styles.envName}>Environment</TableHead>
+                <TableHead>{valueHeader}</TableHead>
+                <TableActionsHead slots={ROW_ACTION_SLOTS} />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ctx.environments
+                .filter((environment) =>
+                  entries.some((entry) => entry.environment === environment.value)
+                )
+                .map((environment) => {
+                  const entry = entries.find((item) => item.environment === environment.value)!;
+                  const rowActions = actions(entry);
+                  return (
+                    <RowContextMenu key={environment.value} {...rowActions}>
+                      <TableRow className={styles.row}>
+                        <ChildSelectCell
+                          resource={entry}
+                          label={`${label} in ${environment.label}`}
+                          ctx={ctx}
+                        />
+                        <TableCell className={styles.envName}>{environment.label}</TableCell>
+                        <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
+                        <TableActionsCell slots={ROW_ACTION_SLOTS}>
+                          <RowActions {...rowActions} />
+                        </TableActionsCell>
+                      </TableRow>
+                    </RowContextMenu>
+                  );
+                })}
+            </TableBody>
+          </Table>
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -634,7 +636,12 @@ export function KindRow({
             ctx={ctx}
             selectable={selectableKinds.includes(kind)}
           />
-          <TableCell colSpan={2} className={styles.nameCell}>
+          <TableCell
+            pin="start"
+            pinOffset="var(--v4-size-row)"
+            colSpan={2}
+            className={styles.nameCell}
+          >
             {line(first, true)}
           </TableCell>
           <TableActionsCell slots={ROW_ACTION_SLOTS}>
@@ -660,7 +667,7 @@ export function KindRow({
           label={first.name}
           onToggle={() => setExpanded(!expanded)}
         />
-        <TableCell className={styles.nameCell}>
+        <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
           <div className={styles.nameLine}>
             <span className={styles.nameKind}>
               <KindIcon kind={kind} />
@@ -779,7 +786,12 @@ export function FolderRow({
           ctx={ctx}
           selectable
         />
-        <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
+        <TableCell
+          pin="start"
+          pinOffset="var(--v4-size-row)"
+          colSpan={ctx.single ? 2 : undefined}
+          className={styles.nameCell}
+        >
           <div className={styles.nameLine}>
             <RowLink
               from={OVERVIEW_ROUTE}
@@ -1044,7 +1056,12 @@ export function ImportRow({
             label={`secret import ${first.source.path}`}
             onToggle={() => setExpanded(!expanded)}
           />
-          <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
+          <TableCell
+            pin="start"
+            pinOffset="var(--v4-size-row)"
+            colSpan={ctx.single ? 2 : undefined}
+            className={styles.nameCell}
+          >
             <div className={styles.nameLine}>
               <span className={styles.nameKind}>
                 <KindIcon kind="import" />
@@ -1078,8 +1095,10 @@ export function ImportRow({
       </RowContextMenu>
       {ctx.single && expanded && !first.revoked && (
         <TableRow className={styles.nestedHead}>
-          <TableCell selection divider={false} />
-          <TableCell className={styles.nameCell}>Name</TableCell>
+          <TableCell pin="start" selection divider={false} />
+          <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
+            <span>Name</span>
+          </TableCell>
           <TableCell colSpan={2} className={styles.valueCell}>
             Value
           </TableCell>
@@ -1088,8 +1107,8 @@ export function ImportRow({
       {ctx.single &&
         keys.map((secret) => (
           <TableRow key={secret.id} className={styles.importedRow}>
-            <TableCell selection divider={false} />
-            <TableCell className={styles.nameCell}>
+            <TableCell pin="start" selection divider={false} />
+            <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
               <span className={styles.truncate}>{secret.name}</span>
             </TableCell>
             <TableCell colSpan={2} className={styles.valueCell}>
@@ -1101,7 +1120,7 @@ export function ImportRow({
         ))}
       {ctx.single && expanded && first.revoked && (
         <TableRow className={styles.importedRow}>
-          <TableCell selection divider={false} />
+          <TableCell pin="start" selection divider={false} />
           <TableCell colSpan={3} className={styles.subtle}>
             Access to this source was revoked, so its secrets are not shown.
           </TableCell>
@@ -1109,40 +1128,46 @@ export function ImportRow({
       )}
       {!ctx.single && expanded && (
         <TableRow className={styles.nestedRow}>
-          <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
-            <Table className={styles.nestedTable}>
-              <TableHeader>
-                <TableRow>
-                  <TableHead selection divider={false} />
-                  <TableHead className={styles.envName}>Name</TableHead>
-                  <TableHead>Value</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {first.revoked ? (
+          <TableCell
+            pin="viewport"
+            colSpan={ctx.environments.length + 3}
+            className={styles.nestedCell}
+          >
+            <div>
+              <Table className={styles.nestedTable}>
+                <TableHeader>
                   <TableRow>
-                    <TableCell selection divider={false} />
-                    <TableCell colSpan={2} className={styles.subtle}>
-                      Access to this source was revoked, so its secrets are not shown.
-                    </TableCell>
+                    <TableHead selection divider={false} />
+                    <TableHead className={styles.envName}>Name</TableHead>
+                    <TableHead>Value</TableHead>
                   </TableRow>
-                ) : (
-                  sourceSecrets(first).map((secret) => (
-                    <TableRow key={secret.id} className={styles.row}>
+                </TableHeader>
+                <TableBody>
+                  {first.revoked ? (
+                    <TableRow>
                       <TableCell selection divider={false} />
-                      <TableCell className={styles.envName}>
-                        <span className={styles.truncate}>{secret.name}</span>
-                      </TableCell>
-                      <TableCell className={styles.valueCell}>
-                        <code className={styles.value}>
-                          {readableValue(secret) === undefined ? "No access" : mask}
-                        </code>
+                      <TableCell colSpan={2} className={styles.subtle}>
+                        Access to this source was revoked, so its secrets are not shown.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    sourceSecrets(first).map((secret) => (
+                      <TableRow key={secret.id} className={styles.row}>
+                        <TableCell selection divider={false} />
+                        <TableCell className={styles.envName}>
+                          <span className={styles.truncate}>{secret.name}</span>
+                        </TableCell>
+                        <TableCell className={styles.valueCell}>
+                          <code className={styles.value}>
+                            {readableValue(secret) === undefined ? "No access" : mask}
+                          </code>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </TableCell>
         </TableRow>
       )}
