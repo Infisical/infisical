@@ -231,7 +231,7 @@ export const listJenkinsFolders = async (
   } catch (error) {
     if (error instanceof BadRequestError) throw error;
 
-    logger.error(toLoggableError(error), "Failed to list Jenkins folders");
+    logger.error(toLoggableError(error), `Failed to list Jenkins folders [appConnectionId=${appConnection.id}]`);
     throw new BadRequestError({
       message: `Failed to list Jenkins folders: ${getJenkinsErrorMessage(error, "verify the instance URL, username and API token")}`
     });
@@ -262,7 +262,7 @@ export const listJenkinsFolders = async (
   if (isTruncated) {
     logger.warn(
       { appConnectionId: appConnection.id },
-      `Jenkins folders nested deeper than ${JENKINS_MAX_FOLDER_DEPTH} levels were not listed`
+      `Jenkins folders nested deeper than ${JENKINS_MAX_FOLDER_DEPTH} levels were not listed [appConnectionId=${appConnection.id}]`
     );
   }
 
