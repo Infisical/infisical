@@ -26,11 +26,14 @@ export const AwsSecretsManagerSyncReviewFields = () => {
     TSecretSyncForm & { destination: SecretSync.AWSSecretsManager }
   >();
 
-  const [region, mappingBehavior, secretName] = watch([
-    "destinationConfig.region",
-    "destinationConfig.mappingBehavior",
-    "destinationConfig.secretName"
-  ]);
+  const [region, mappingBehavior, secretName, includeAllSubFolders, preserveFolderStructure] =
+    watch([
+      "destinationConfig.region",
+      "destinationConfig.mappingBehavior",
+      "destinationConfig.secretName",
+      "syncOptions.includeAllSubFolders",
+      "syncOptions.preserveFolderStructure"
+    ]);
 
   const awsRegion = AWS_REGIONS.find((r) => r.slug === region);
 
@@ -53,6 +56,17 @@ export const AwsSecretsManagerSyncReviewFields = () => {
           <DetailValue>{secretName}</DetailValue>
         </Detail>
       )}
+      {includeAllSubFolders &&
+        mappingBehavior === AwsSecretsManagerSyncMappingBehavior.OneToOne && (
+          <Detail>
+            <DetailLabel>Mirror Folder Structure</DetailLabel>
+            <DetailValue>
+              <Badge variant={preserveFolderStructure ? "success" : "neutral"}>
+                {preserveFolderStructure ? "Enabled" : "Disabled"}
+              </Badge>
+            </DetailValue>
+          </Detail>
+        )}
     </>
   );
 };
@@ -62,9 +76,7 @@ export const AwsSecretsManagerSyncOptionsReviewFields = () => {
     TSecretSyncForm & { destination: SecretSync.AWSSecretsManager }
   >();
 
-  const [{ keyId, tags, syncSecretMetadataAsTags, preserveFolderStructure }] = watch([
-    "syncOptions"
-  ]);
+  const [{ keyId, tags, syncSecretMetadataAsTags }] = watch(["syncOptions"]);
 
   return (
     <>
@@ -112,14 +124,6 @@ export const AwsSecretsManagerSyncOptionsReviewFields = () => {
       {syncSecretMetadataAsTags && (
         <Detail>
           <DetailLabel>Sync Secret Metadata as Resource Tags</DetailLabel>
-          <DetailValue>
-            <Badge variant="success">Enabled</Badge>
-          </DetailValue>
-        </Detail>
-      )}
-      {preserveFolderStructure && (
-        <Detail>
-          <DetailLabel>Mirror Folder Structure</DetailLabel>
           <DetailValue>
             <Badge variant="success">Enabled</Badge>
           </DetailValue>

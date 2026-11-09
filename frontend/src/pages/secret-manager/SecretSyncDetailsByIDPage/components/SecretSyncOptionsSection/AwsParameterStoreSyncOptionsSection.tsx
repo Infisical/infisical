@@ -23,7 +23,7 @@ type Props = {
 
 export const AwsParameterStoreSyncOptionsSection = ({ secretSync }: Props) => {
   const {
-    syncOptions: { keyId, tags, syncSecretMetadataAsTags, preserveFolderStructure }
+    syncOptions: { keyId, tags, syncSecretMetadataAsTags }
   } = secretSync;
 
   return (
@@ -72,14 +72,6 @@ export const AwsParameterStoreSyncOptionsSection = ({ secretSync }: Props) => {
       {syncSecretMetadataAsTags && (
         <Detail>
           <DetailLabel>Sync Secret Metadata as Resource Tags</DetailLabel>
-          <DetailValue>
-            <Badge variant="success">Enabled</Badge>
-          </DetailValue>
-        </Detail>
-      )}
-      {preserveFolderStructure && (
-        <Detail>
-          <DetailLabel>Mirror Folder Structure</DetailLabel>
           <DetailValue>
             <Badge variant="success">Enabled</Badge>
           </DetailValue>

@@ -25,9 +25,7 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
     TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
   >();
 
-  const [{ keyId, tags, syncSecretMetadataAsTags, preserveFolderStructure }] = watch([
-    "syncOptions"
-  ]);
+  const [{ keyId, tags, syncSecretMetadataAsTags }] = watch(["syncOptions"]);
 
   return (
     <>
@@ -80,14 +78,6 @@ export const AwsParameterStoreSyncOptionsReviewFields = () => {
           </DetailValue>
         </Detail>
       )}
-      {preserveFolderStructure && (
-        <Detail>
-          <DetailLabel>Mirror Folder Structure</DetailLabel>
-          <DetailValue>
-            <Badge variant="success">Enabled</Badge>
-          </DetailValue>
-        </Detail>
-      )}
     </>
   );
 };
@@ -97,7 +87,10 @@ export const AwsParameterStoreDestinationReviewFields = () => {
     TSecretSyncForm & { destination: SecretSync.AWSParameterStore }
   >();
 
-  const [{ region, path }] = watch(["destinationConfig"]);
+  const [{ region, path }, { includeAllSubFolders, preserveFolderStructure }] = watch([
+    "destinationConfig",
+    "syncOptions"
+  ]);
 
   const awsRegion = AWS_REGIONS.find((r) => r.slug === region);
 
@@ -114,6 +107,16 @@ export const AwsParameterStoreDestinationReviewFields = () => {
         <DetailLabel>Path</DetailLabel>
         <DetailValue>{path}</DetailValue>
       </Detail>
+      {includeAllSubFolders && (
+        <Detail>
+          <DetailLabel>Mirror Folder Structure</DetailLabel>
+          <DetailValue>
+            <Badge variant={preserveFolderStructure ? "success" : "neutral"}>
+              {preserveFolderStructure ? "Enabled" : "Disabled"}
+            </Badge>
+          </DetailValue>
+        </Detail>
+      )}
     </>
   );
 };

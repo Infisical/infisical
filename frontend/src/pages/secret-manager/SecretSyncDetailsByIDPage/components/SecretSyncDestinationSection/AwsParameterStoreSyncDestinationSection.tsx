@@ -8,7 +8,8 @@ type Props = {
 
 export const AwsParameterStoreSyncDestinationSection = ({ secretSync }: Props) => {
   const {
-    destinationConfig: { path, region }
+    destinationConfig: { path, region },
+    syncOptions: { includeAllSubFolders, preserveFolderStructure }
   } = secretSync;
 
   const awsRegion = AWS_REGIONS.find((r) => r.slug === region);
@@ -28,6 +29,16 @@ export const AwsParameterStoreSyncDestinationSection = ({ secretSync }: Props) =
         <DetailLabel>Path</DetailLabel>
         <DetailValue>{path}</DetailValue>
       </Detail>
+      {includeAllSubFolders && (
+        <Detail>
+          <DetailLabel>Mirror Folder Structure</DetailLabel>
+          <DetailValue>
+            <Badge variant={preserveFolderStructure ? "success" : "neutral"}>
+              {preserveFolderStructure ? "Enabled" : "Disabled"}
+            </Badge>
+          </DetailValue>
+        </Detail>
+      )}
     </>
   );
 };
