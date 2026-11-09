@@ -447,6 +447,45 @@ export const findPolicyProtectedFolder = async (
   return null;
 };
 
+const PROTECTED_CONTENT_LABEL = {
+  secret: "secrets",
+  secret_import: "secret imports"
+} as const;
+
+const FOLDER_CHANGE_BLOCKED_BY_POLICY = {
+  delete: {
+    secret: "DeleteFolderProtectedByPolicy",
+    secret_import: "DeleteFolderImportProtectedByPolicy"
+  },
+  rename: {
+    secret: "RenameFolderProtectedByPolicy",
+    secret_import: "RenameFolderImportProtectedByPolicy"
+  }
+} as const;
+
+const folderChangeBlockedByPolicyMessage = (
+  action: keyof typeof FOLDER_CHANGE_BLOCKED_BY_POLICY,
+  { path, policyName, protects }: TPolicyProtectedFolder
+) => {
+  const content = PROTECTED_CONTENT_LABEL[protects];
+  return `You cannot ${action} the selected folder because it contains one or more ${content} that are protected by the change policy "${policyName}" at folder path "${path}". Please remove the ${content} at folder path "${path}" and try again.`;
+};
+
+const throwFolderChangeBlockedByPolicy = (
+  action: keyof typeof FOLDER_CHANGE_BLOCKED_BY_POLICY,
+  protectedFolder: TPolicyProtectedFolder
+): never => {
+  throw new BadRequestError({
+    message: folderChangeBlockedByPolicyMessage(action, protectedFolder),
+    name: FOLDER_CHANGE_BLOCKED_BY_POLICY[action][protectedFolder.protects]
+  });
+};
+
+export const assertFolderDeleteAllowed = (protectedFolder: TPolicyProtectedFolder | null) => {
+  if (!protectedFolder) return;
+  throwFolderChangeBlockedByPolicy("delete", protectedFolder);
+};
+
 export const assertFolderRenameAllowed = (
   protectedFolder: TPolicyProtectedFolder | null,
   scope: "source" | "destination"
@@ -457,20 +496,10 @@ export const assertFolderRenameAllowed = (
 
   if (scope === "destination") {
     throw new BadRequestError({
-      message: `You cannot rename the selected folder because its ${protects === "secret" ? "secrets" : "secret imports"} would move to folder path "${path}", which is protected by the change policy "${policyName}". Choose a different name and try again.`,
+      message: `You cannot rename the selected folder because its ${PROTECTED_CONTENT_LABEL[protects]} would move to folder path "${path}", which is protected by the change policy "${policyName}". Choose a different name and try again.`,
       name: "RenameFolderIntoProtectedPath"
     });
   }
 
-  if (protects === "secret") {
-    throw new BadRequestError({
-      message: `You cannot rename the selected folder because it contains one or more secrets that are protected by the change policy "${policyName}" at folder path "${path}". Please remove the secrets at folder path "${path}" and try again.`,
-      name: "RenameFolderProtectedByPolicy"
-    });
-  }
-
-  throw new BadRequestError({
-    message: `You cannot rename the selected folder because it contains one or more secret imports that are protected by the change policy "${policyName}" at folder path "${path}". Please remove the secret imports at folder path "${path}" and try again.`,
-    name: "RenameFolderImportProtectedByPolicy"
-  });
+  throwFolderChangeBlockedByPolicy("rename", protectedFolder);
 };

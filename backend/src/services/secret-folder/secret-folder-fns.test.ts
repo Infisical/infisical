@@ -10,6 +10,7 @@ import { ActorType } from "../auth/auth-type";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import {
+  assertFolderDeleteAllowed,
   assertFolderRenameAllowed,
   buildChildrenMap,
   buildFolderIdMap,
@@ -531,6 +532,47 @@ describe("findPolicyProtectedFolder", () => {
     await expect(find(makeContent({ secrets: ["app-id", "api-id"] }), deps, ActorType.IDENTITY)).resolves.toMatchObject(
       { path: "/app/api", policyName: "prod-guard" }
     );
+  });
+});
+
+describe("assertFolderDeleteAllowed", () => {
+  const thrown = (fn: () => void) => {
+    try {
+      fn();
+    } catch (error) {
+      return error;
+    }
+    throw new Error("expected the delete to be refused");
+  };
+
+  test("refuses a delete when a change policy covers a secret in the tree", () => {
+    const error = thrown(() =>
+      assertFolderDeleteAllowed({ path: "/app/api", policyName: "prod-guard", protects: "secret" })
+    );
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toMatchObject({
+      name: "DeleteFolderProtectedByPolicy",
+      message:
+        'You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "prod-guard" at folder path "/app/api". Please remove the secrets at folder path "/app/api" and try again.'
+    });
+  });
+
+  test("refuses a delete when a change policy covers a secret import in the tree", () => {
+    const error = thrown(() =>
+      assertFolderDeleteAllowed({ path: "/app/api", policyName: "prod-guard", protects: "secret_import" })
+    );
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toMatchObject({
+      name: "DeleteFolderImportProtectedByPolicy",
+      message:
+        'You cannot delete the selected folder because it contains one or more secret imports that are protected by the change policy "prod-guard" at folder path "/app/api". Please remove the secret imports at folder path "/app/api" and try again.'
+    });
+  });
+
+  test("allows a delete when nothing is protected", () => {
+    expect(assertFolderDeleteAllowed(null)).toBeUndefined();
   });
 });
 

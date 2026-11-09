@@ -23,6 +23,7 @@ import { EventModificationType } from "@app/services/event-outbox/event-definiti
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import {
+  assertFolderDeleteAllowed,
   assertFolderMoveAllowed,
   assertFolderRenameAllowed,
   buildFolderPath,
@@ -844,20 +845,7 @@ export const secretFolderServiceFactory = ({
       { secretApprovalPolicyService },
       tx
     );
-    if (!protectedFolder) return;
-
-    const { path: protectedPath, policyName } = protectedFolder;
-    if (protectedFolder.protects === "secret") {
-      throw new BadRequestError({
-        message: `You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "${policyName}" at folder path "${protectedPath}". Please remove the secrets at folder path "${protectedPath}" and try again.`,
-        name: "DeleteFolderProtectedByPolicy"
-      });
-    }
-
-    throw new BadRequestError({
-      message: `You cannot delete the selected folder because it contains one or more secret imports that are protected by the change policy "${policyName}" at folder path "${protectedPath}". Please remove the secret imports at folder path "${protectedPath}" and try again.`,
-      name: "DeleteFolderImportProtectedByPolicy"
-    });
+    assertFolderDeleteAllowed(protectedFolder);
   };
 
   const deleteFolder = async ({
