@@ -1,0 +1,29 @@
+{/*
+Bare <Step> elements for adding permissions to a connection that Launch Stack created, so
+integrations/app-connections/aws.mdx can place them inside a <Steps>. The labels match
+AwsUpdateStack.tsx in the frontend.
+*/}
+
+<Step>
+    Open the connection's **App Connections** list as in [Step 1](#step-1-create-the-connection-with-launch-stack), open the connection's actions menu, and select **Edit Credentials**.
+</Step>
+<Step>
+    Expand **Update Stack**. Under **Role permissions**, select **Customize** and choose the integrations the role should cover. Infisical starts from the integrations already recorded for the connection. To review the permissions your selection grants, select **View policy**. If Infisical asks for the **Stack region**, choose the region where you created the stack.
+</Step>
+<Step>
+    Infisical shows the steps for your selection. Select **Open stack in AWS** to open the stack in the AWS CloudFormation console, then select **Update stack** and **Make a direct update**.
+</Step>
+<Step>
+    Choose **Replace existing template** and **Amazon S3 URL**. Paste the template URL that Infisical shows, which you can copy with the button next to it, and select **Next**.
+</Step>
+<Step>
+    On the **Specify stack details** page, change only the parameters that Infisical lists, setting each to the value Infisical shows: `true` adds an integration's permissions and `false` removes them. If you added an integration that needs a resource, such as a bucket name or a hosted zone ID, also enter a value for each extra parameter that Infisical lists. See [Parameters for each integration](#parameters-for-each-integration).
+
+    Leave every other parameter on its existing value, including `ExternalId`, `TrustedAccountId`, and `RoleName`.
+</Step>
+<Step>
+    Select **Next** through the remaining pages. If CloudFormation asks you to acknowledge that it might create IAM resources, select the checkbox. Then, select **Submit** and wait until the stack status is `UPDATE_COMPLETE`.
+</Step>
+<Step>
+    In Infisical, select **Mark as updated**.
+</Step>

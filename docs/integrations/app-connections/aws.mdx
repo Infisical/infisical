@@ -11,6 +11,7 @@ import CreateIamRole from "/snippets/app-connections/aws/create-iam-role.mdx";
 import CreateIamUser from "/snippets/app-connections/aws/create-iam-user.mdx";
 import AddPermissions from "/snippets/app-connections/aws/add-permissions.mdx";
 import LaunchStackSteps from "/snippets/app-connections/aws/launch-stack-steps.mdx";
+import UpdateStackSteps from "/snippets/app-connections/aws/update-stack-steps.mdx";
 import AgentVaultSessionLogsCorsRule from "/snippets/app-connections/aws/agent-vault-session-logs-cors-rule.mdx";
 
 <UseCasePicker prefix="I want the connection to work with" groups={awsUseCaseGroups} />
@@ -223,6 +224,45 @@ Now that your AWS app connection is configured, you can use it to set up the fol
         <AgentVaultSessionLogsCorsRule />
     </Steps>
 </UseCase>
+
+## Add permissions to an existing connection
+
+A role that Launch Stack created has permissions for only the integrations you selected. To use the connection for another integration, update the stack in AWS so the role gets the extra permissions. Infisical doesn't update the stack for you. It shows the steps and the values to use, and you make the change in the AWS console.
+
+Update Stack is available only for connections that you created with Launch Stack, and only if you can edit the connection. If you created the role yourself or the connection uses an access key, add the permissions in IAM instead, as in [Set up the connection without Launch Stack](#set-up-the-connection-without-launch-stack).
+
+<Steps>
+    <UpdateStackSteps />
+</Steps>
+
+<Warning>
+    If you clear an integration, updating the stack removes its permissions from the role, and any sync or feature that relies on them fails.
+</Warning>
+
+**Mark as updated** doesn't check AWS. It saves the integrations you selected as the record of what the role can do, and nothing is saved if you close the sheet without selecting it.
+
+### Parameters for each integration
+
+Each integration has a toggle parameter on the stack. Some integrations also need the name or ID of the resource they use. Infisical lists the parameters that your selection changes, so you only need this table if you can't use Update Stack, for example because you manage the connection through the API.
+
+In that case, update the stack as in the steps above, with the current template at `https://infisical-static-assets.s3.us-east-1.amazonaws.com/aws-app-connection/v1/infisical-aws-app-connection.yaml`. If you self-host Infisical and load the template from your own copy, use the URL of that copy instead (see [Launch Stack on a self-hosted instance](#launch-stack-on-a-self-hosted-instance)).
+
+| Integration | Toggle parameter | Extra parameters to enter |
+| --- | --- | --- |
+| AWS Secrets Manager sync | `EnableSecretsManager` | `EnableSecretsManagerKms` set to `true` if the sync uses a customer managed KMS key |
+| AWS Parameter Store sync | `EnableParameterStore` | `EnableParameterStoreKms` set to `true` if the sync uses a customer managed KMS key |
+| AWS IAM user secret rotation | `EnableIamRotation` | None |
+| AWS honey tokens | `EnableHoneyTokens` | None |
+| AWS Certificate Manager sync | `EnableAcmSync` | None |
+| AWS Elastic Load Balancer sync | `EnableElbSync` | None |
+| AWS Secrets Manager certificate sync | `EnablePkiSecretsManager` | None |
+| AWS Private CA | `EnablePrivateCa` | `PrivateCaArn` |
+| AWS Certificate Manager public CA | `EnableAcmPublicCa` | `Route53HostedZoneId` |
+| ACME CA with Route 53 | `EnableAcmeRoute53` | `Route53HostedZoneId` |
+| PAM session recording | `EnablePamRecording` | `PamRecordingBucket` |
+| Agent Vault session logs | `EnableAgentVaultSessionLogs` | `AgentVaultSessionLogsBucket` and `AgentVaultSessionLogsKeyPrefix` |
+
+Set a toggle to `true` to add the integration's permissions, or to `false` to remove them. Leave every other parameter on its existing value. If you update the stack without Update Stack, Infisical's record of the connection's integrations doesn't change.
 
 ## Set up the connection without Launch Stack
 
