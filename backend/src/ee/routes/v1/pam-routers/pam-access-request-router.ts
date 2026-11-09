@@ -247,7 +247,8 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
           type: EventType.APPROVAL_REQUEST_LIST,
           metadata: {
             policyType: ApprovalPolicyType.PamAccess,
-            count: result.requests.length
+            count: result.requests.length,
+            ...(req.query.folderId ? { folderId: req.query.folderId } : {})
           }
         }
       });
