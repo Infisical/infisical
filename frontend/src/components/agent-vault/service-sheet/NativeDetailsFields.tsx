@@ -37,6 +37,7 @@ export const NativeDetailsFields = () => {
   const baseId = useId();
   const serviceType = watch("serviceType");
   const tlsEnabled = watch("tlsEnabled");
+  const tlsVerify = watch("tlsVerify");
   const showsDatabase = hasDatabase(serviceType);
   const tlsCa = watch("tlsCa");
   const [isCaOpen, setIsCaOpen] = useState(false);
@@ -143,7 +144,7 @@ export const NativeDetailsFields = () => {
       )}
 
       {showsDatabase && (
-        <div className="flex flex-col gap-4 rounded-md border border-border p-4">
+        <div className="flex flex-col gap-4">
           <Controller
             control={control}
             name="tlsEnabled"
@@ -184,8 +185,8 @@ export const NativeDetailsFields = () => {
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         Checks that the server&apos;s certificate is valid for the host and signed
-                        by a publicly trusted authority, or by the certificate authority you add.
-                        Turn it off only for a self-signed certificate you can&apos;t add.
+                        by a publicly trusted authority, or by the CA certificate you add. Turn it
+                        off only for a self-signed certificate you can&apos;t add.
                       </TooltipContent>
                     </Tooltip>
                   </FieldLabel>
@@ -199,7 +200,8 @@ export const NativeDetailsFields = () => {
               )}
             />
           )}
-          {tlsEnabled && (
+          {/* The proxy only reads the CA certificate while it verifies the server, so it is offered only then. */}
+          {tlsEnabled && tlsVerify && (
             <Controller
               control={control}
               name="tlsCa"
@@ -207,14 +209,15 @@ export const NativeDetailsFields = () => {
                 isCaOpen || tlsCa.trim() || fieldState.error ? (
                   <Field>
                     <FieldLabel htmlFor={`${baseId}-tls-ca`}>
-                      Certificate Authority (optional)
+                      CA Certificate (optional)
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <InfoIcon />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs">
-                          The PEM certificate of the authority that signed the server&apos;s
-                          certificate, for a server whose certificate isn&apos;t publicly trusted.
+                          The certificate of the authority that signed the database&apos;s
+                          certificate, for one that isn&apos;t publicly trusted, such as
+                          global-bundle.pem for AWS RDS.
                         </TooltipContent>
                       </Tooltip>
                     </FieldLabel>
@@ -240,7 +243,7 @@ export const NativeDetailsFields = () => {
                     onClick={() => setIsCaOpen(true)}
                   >
                     <PlusIcon />
-                    Add Certificate Authority
+                    Add CA Certificate
                   </Button>
                 )
               }
