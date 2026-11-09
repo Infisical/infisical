@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "has-tables",
+    title: "Tables without :has()",
+    description:
+      "Table and row states come from attributes the components set, so an edit inside a large table no longer restyles the whole table.",
+    date: "2026-11-07",
+    commit: "6f0843c796",
+    page: "table"
+  },
+  {
     id: "button-plain",
     title: "Lighter buttons",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "9b822efc12",
     page: "button"
-  },
-  {
-    id: "loading-rows",
-    title: "Loading rows and queues",
-    description:
-      "Native tables and ApprovalQueue get the same skeleton loading as DataTable, and a tall error page no longer clips at the top.",
-    date: "2026-11-07",
-    commit: "11c4467d3c",
-    page: "table"
   }
 ];
