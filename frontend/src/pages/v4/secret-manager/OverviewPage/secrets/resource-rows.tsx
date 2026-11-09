@@ -1,4 +1,4 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { memo, type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   ActivityIcon,
@@ -67,7 +67,8 @@ import {
   SelectCell,
   selectableKinds,
   StatusCell,
-  stopRowClick
+  stopRowClick,
+  sameRow
 } from "./overview-cells";
 import { type PermissionScope, useFolderAccessPlanBlock } from "./row-actions/permissions";
 import { canReconcile } from "./row-actions/rotation-actions";
@@ -582,7 +583,7 @@ function EnvironmentTable({
   );
 }
 
-export function KindRow({
+function KindRowView({
   kind,
   rowKey,
   entries,
@@ -677,7 +678,7 @@ export function KindRow({
   );
 }
 
-export function FolderRow({
+function FolderRowView({
   rowKey,
   entries,
   ctx,
@@ -1086,3 +1087,6 @@ export function ImportRow({
 }
 
 export const kindRowKinds = Object.keys(specs) as (keyof typeof specs)[];
+
+export const KindRow = memo(KindRowView, sameRow);
+export const FolderRow = memo(FolderRowView, sameRow);

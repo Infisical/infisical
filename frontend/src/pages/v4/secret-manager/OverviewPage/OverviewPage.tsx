@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ChevronsDownUpIcon,
@@ -126,7 +127,8 @@ import {
   NEXT_PHASE,
   ROW_ACTION_SLOTS,
   type RowContext,
-  selectableKinds
+  selectableKinds,
+  useStableHandlers
 } from "./secrets/overview-cells";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
@@ -332,15 +334,18 @@ export const OverviewPage = () => {
       ) === index
   );
   const breadth = useScopeSecrets(projectId, breadthScopes);
-  const resources = buildResources({
-    projectId,
-    path,
-    overview: overview.data,
-    folderTree,
-    scopes: breadth.scopes,
-    values: valueStore.values
-  });
-  const resourcesRef = useRef(resources);
+  const resourcesRef = useRef<Resource[]>([]);
+  const resources = replaceEqualDeep(
+    resourcesRef.current,
+    buildResources({
+      projectId,
+      path,
+      overview: overview.data,
+      folderTree,
+      scopes: breadth.scopes,
+      values: valueStore.values
+    })
+  );
   resourcesRef.current = resources;
   const projectSlug = projectQuery.data?.slug ?? projectId;
   const createDynamicSecret = adapter.useCreateDynamicSecret();
@@ -780,15 +785,14 @@ export const OverviewPage = () => {
     .map(([key]) => key);
   const allOpen =
     secretKeysOnPage.length > 0 && secretKeysOnPage.every((key) => expandedRows.includes(key));
-  const ctx: RowContext = {
-    environments: visibleEnvironments,
-    single,
-    path,
-    writeBlock,
-    blockFor,
-    selected,
-    recent,
-    expanded: expandedRows,
+  const rowEvents = useStableHandlers<
+    Required<
+      Pick<
+        RowContext,
+        "onExpand" | "onToggleSelect" | "report" | "onAction" | "onSavePending" | "onRevertPending"
+      >
+    >
+  >({
     onExpand: (key, open) =>
       setExpandedRows((current) =>
         open
@@ -803,8 +807,6 @@ export const OverviewPage = () => {
       ),
     report,
     onAction: setRowAction,
-    pending: pendingMarks(pendingHere),
-    selectionDisabled: pendingHere.length > 0,
     onSavePending: (id) =>
       commitChanges(
         pendingHere.filter((change) => pendingTarget(change).id === id),
@@ -812,6 +814,19 @@ export const OverviewPage = () => {
       ),
     onRevertPending: (id) =>
       setPending((current) => current.filter((change) => pendingTarget(change).id !== id))
+  });
+  const ctx: RowContext = {
+    environments: visibleEnvironments,
+    single,
+    path,
+    writeBlock,
+    blockFor,
+    selected,
+    recent,
+    expanded: expandedRows,
+    pending: pendingMarks(pendingHere),
+    selectionDisabled: pendingHere.length > 0,
+    ...rowEvents
   };
   const importedFrom = (environment: string, key: string) =>
     resources
@@ -1086,7 +1101,9 @@ export const OverviewPage = () => {
     ) : (
       node
     );
-  const handlers: SecretRowHandlers = {
+  const secretEvents = useStableHandlers<
+    Omit<SecretRowHandlers, "copySecretBlock" | "resources" | "tagOptions">
+  >({
     onCreateIn: (environment, key) =>
       openFlow("secret", { environments: [environment], name: key }),
     onDelete: (secret) => setDeleting([secret]),
@@ -1097,7 +1114,6 @@ export const OverviewPage = () => {
         sourcePath: secret.path,
         secrets: [{ id: secret.id, name: secret.name, path: secret.path }]
       }),
-    copySecretBlock: pendingHere.length ? "Discard pending changes first" : undefined,
     onUpdate: (secret, { value, ...patch }, feedback) => {
       if (single && !("reminder" in patch || "override" in patch || "versions" in patch)) {
         stage(secret, {
@@ -1124,7 +1140,11 @@ export const OverviewPage = () => {
       setQuery(key);
     },
     onRefresh: () => overview.refetch(),
-    importedFrom,
+    importedFrom
+  });
+  const handlers: SecretRowHandlers = {
+    ...secretEvents,
+    copySecretBlock: pendingHere.length ? "Discard pending changes first" : undefined,
     resources,
     tagOptions
   };
