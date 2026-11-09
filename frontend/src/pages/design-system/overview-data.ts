@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "has-rest",
+    title: "No :has() in v4",
+    description:
+      "Every v4 component sets its states directly, and a lint keeps :has() and unscoped logical insets out of v4 CSS.",
+    date: "2026-11-07",
+    commit: "9beb0637cd",
+    page: "table"
+  },
+  {
     id: "has-tables",
     title: "Tables without :has()",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "1a51d0cb78",
     page: "text"
-  },
-  {
-    id: "quiet-link",
-    title: "Quiet links",
-    description:
-      "A link Button can drop its underline until hover or keyboard focus, and named row buttons that open a sheet now use it.",
-    date: "2026-11-07",
-    commit: "9b822efc12",
-    page: "button"
   }
 ];
