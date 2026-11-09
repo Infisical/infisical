@@ -563,6 +563,7 @@ export const fetchSearchSecretsByMetadata = async ({
   environments,
   secretPath,
   tags,
+  search,
   ...params
 }: TSearchSecretsByMetadataDTO) => {
   const { data } = await apiRequest.post<TSearchSecretsByMetadataResponse>(
@@ -571,6 +572,7 @@ export const fetchSearchSecretsByMetadata = async ({
       ...params,
       environments: environments?.length ? environments : undefined,
       secretPath: secretPath || undefined,
+      search: search || undefined,
       tags: getEnabledTagSlugs(tags)
     }
   );
@@ -579,7 +581,7 @@ export const fetchSearchSecretsByMetadata = async ({
 };
 
 export const useSearchSecretsByMetadata = (
-  { projectId, operator, filters, tags, environments, secretPath }: TSearchSecretsByMetadataDTO,
+  params: TSearchSecretsByMetadataDTO,
   options?: Omit<
     UseQueryOptions<
       TSearchSecretsByMetadataResponse,
@@ -592,24 +594,9 @@ export const useSearchSecretsByMetadata = (
 ) => {
   return useQuery({
     ...options,
-    enabled: (options?.enabled ?? true) && filters.length > 0 && Boolean(projectId),
-    queryKey: dashboardKeys.searchSecretsByMetadata({
-      projectId,
-      operator,
-      filters,
-      tags,
-      environments,
-      secretPath
-    }),
-    queryFn: () =>
-      fetchSearchSecretsByMetadata({
-        projectId,
-        operator,
-        filters,
-        tags,
-        environments,
-        secretPath
-      }),
+    enabled: (options?.enabled ?? true) && params.filters.length > 0 && Boolean(params.projectId),
+    queryKey: dashboardKeys.searchSecretsByMetadata(params),
+    queryFn: () => fetchSearchSecretsByMetadata(params),
     placeholderData: (previousData) => previousData
   });
 };

@@ -41,5 +41,8 @@ export type TSearchSecretMetadataDTO = {
   tagSlugs?: string[];
   environments?: string[];
   secretPath?: string;
+  search?: string;
+  limit: number;
+  offset: number;
   actor: OrgServiceActor;
 };

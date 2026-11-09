@@ -20,6 +20,8 @@ const dto = {
   projectId: "project",
   filters: [{ key: "team", value: "platform", operator: SecretMetadataSearchOperator.Is }],
   operator: SecretMetadataSearchLogicalOperator.And,
+  limit: 25,
+  offset: 0,
   actor: { type: "user", id: "user", orgId: "org" }
 } as TSearchSecretMetadataDTO;
 
@@ -87,7 +89,7 @@ describe("metadata search scope and candidate limits", () => {
     state.searchSecretMetadataWithEncryptedValues.mockResolvedValue(
       Array.from({ length: count }, (_, index) => candidate(`encrypted-${index}`, true))
     );
-    expect(await state.service.searchSecretMetadata(dto)).toEqual({ secrets: [], searchLimit: 100 });
+    expect(await state.service.searchSecretMetadata(dto)).toEqual({ secrets: [], totalCount: 0, searchLimit: 100 });
   });
 
   test("resolves the recursive subtree before running both scoped candidate queries in the transaction", async () => {
@@ -117,6 +119,7 @@ describe("metadata search scope and candidate limits", () => {
     state.findBySecretPathMultiEnv.mockResolvedValue([]);
     expect(await state.service.searchSecretMetadata({ ...dto, secretPath: "/missing" })).toEqual({
       secrets: [],
+      totalCount: 0,
       searchLimit: 100
     });
     expect(state.find).toHaveBeenCalledWith({ projectId: "project" }, { tx: state.db });
@@ -130,6 +133,7 @@ describe("metadata search scope and candidate limits", () => {
     state.findByEnvsDeep.mockResolvedValue([]);
     expect(await state.service.searchSecretMetadata({ ...dto, secretPath: "/app" })).toEqual({
       secrets: [],
+      totalCount: 0,
       searchLimit: 100
     });
     expect(state.searchSecretMetadata).not.toHaveBeenCalled();
@@ -141,6 +145,7 @@ describe("metadata search scope and candidate limits", () => {
     state.searchSecretMetadata.mockResolvedValue(Array.from({ length: 100 }, (_, index) => candidate(String(index))));
     expect(await state.service.searchSecretMetadata(dto)).toEqual({
       secrets: [],
+      totalCount: 0,
       searchLimit: 100
     });
   });
@@ -152,6 +157,7 @@ describe("metadata search scope and candidate limits", () => {
     );
     expect(await state.service.searchSecretMetadata(dto)).toEqual({
       secrets: [],
+      totalCount: 0,
       searchLimit: 100
     });
   });

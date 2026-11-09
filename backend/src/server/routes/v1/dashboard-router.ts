@@ -24,6 +24,7 @@ import {
   secretRawSchema
 } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { MAX_SECRET_METADATA_SEARCH_SECRETS } from "@app/services/resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import {
   SecretMetadataSearchLogicalOperator,
@@ -45,6 +46,8 @@ const DEEP_SEARCH_DEFAULT_PAGE_LIMIT = 25;
 const DEEP_SEARCH_MAX_PAGE_LIMIT = 100;
 
 const SECRET_METADATA_SEARCH_MAX_FILTERS = 20;
+const SECRET_METADATA_SEARCH_DEFAULT_PAGE_LIMIT = 25;
+const SECRET_METADATA_SEARCH_MAX_PAGE_LIMIT = 100;
 
 const DashboardSlugListSchema = z.string().trim().min(1).max(255).array().max(1000);
 
@@ -111,10 +114,30 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         secretPath: SecretMetadataQuerySchema.shape.secretPath,
         tags: DashboardSlugListSchema.optional().describe(
           "Tag slugs that further narrow results to secrets carrying at least one of them."
-        )
+        ),
+        search: z.string().trim().max(1000).optional().describe(DASHBOARD.SECRET_METADATA_SEARCH.search),
+        limit: z
+          .number({ invalid_type_error: "Limit must be a number" })
+          .int({ message: "Limit must be a whole number" })
+          .min(1, { message: "Limit must be at least 1" })
+          .max(SECRET_METADATA_SEARCH_MAX_PAGE_LIMIT, {
+            message: `Limit cannot be greater than ${SECRET_METADATA_SEARCH_MAX_PAGE_LIMIT}`
+          })
+          .default(SECRET_METADATA_SEARCH_DEFAULT_PAGE_LIMIT)
+          .describe(DASHBOARD.SECRET_METADATA_SEARCH.limit),
+        offset: z
+          .number({ invalid_type_error: "Offset must be a number" })
+          .int({ message: "Offset must be a whole number" })
+          .min(0, { message: "Offset cannot be negative" })
+          .max(MAX_SECRET_METADATA_SEARCH_SECRETS * 2, {
+            message: `Offset cannot be greater than ${MAX_SECRET_METADATA_SEARCH_SECRETS * 2}. Narrow your search to reach more results`
+          })
+          .default(0)
+          .describe(DASHBOARD.SECRET_METADATA_SEARCH.offset)
       }),
       response: {
         200: z.object({
+          totalCount: z.number().describe(DASHBOARD.SECRET_METADATA_SEARCH.totalCount),
           searchLimit: z.number().describe(DASHBOARD.SECRET_METADATA_SEARCH.searchLimit),
           secrets: z
             .object({
@@ -149,6 +172,9 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         tagSlugs,
         environments: req.body.environments,
         secretPath: req.body.secretPath,
+        search: req.body.search,
+        limit: req.body.limit,
+        offset: req.body.offset,
         actor: req.permission,
         projectId
       });

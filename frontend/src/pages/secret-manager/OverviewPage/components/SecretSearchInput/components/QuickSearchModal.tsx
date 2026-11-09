@@ -264,7 +264,10 @@ const Content = ({
           ? SecretMetadataSearchLogicalOperator.And
           : SecretMetadataSearchLogicalOperator.Or,
       filters: metadataFilters,
-      tags: filterTags
+      tags: filterTags,
+      search: debouncedSearch.trim(),
+      limit: perPage,
+      offset: (page - 1) * perPage
     },
     { enabled: isMetadataMode }
   );
@@ -368,33 +371,32 @@ const Content = ({
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filterTags, showFilter, secretPath, selectedEnvironments, isMetadataMode]);
+  }, [
+    debouncedSearch,
+    filterTags,
+    showFilter,
+    secretPath,
+    selectedEnvironments,
+    isMetadataMode,
+    metadataFilters,
+    metadataMatch
+  ]);
+
+  const metadataResultCount = metadataData?.totalCount ?? 0;
 
   // a background refetch can shrink the counts and leave the current offset past the data
   useResetPageHelper({
-    totalCount: pageableResultCount,
+    totalCount: isMetadataMode ? metadataResultCount : pageableResultCount,
     offset: (page - 1) * perPage,
     setPage
   });
 
   const metadataResultsByEnv = useMemo(() => {
-    const query = debouncedSearch.trim().toLowerCase();
-    const filtered = (metadataData?.secrets ?? []).filter(
-      (secret) =>
-        !query ||
-        secret.secretKey.toLowerCase().includes(query) ||
-        secret.secretPath.toLowerCase().includes(query)
-    );
-    const secretsByEnv = groupBy(filtered, (secret) => secret.environment);
+    const secretsByEnv = groupBy(metadataData?.secrets ?? [], (secret) => secret.environment);
     return environments
       .map((env) => ({ env, secrets: secretsByEnv[env.slug] ?? [] }))
       .filter((group) => group.secrets.length > 0);
-  }, [metadataData, environments, debouncedSearch]);
-
-  const metadataResultCount = metadataResultsByEnv.reduce(
-    (total, group) => total + group.secrets.length,
-    0
-  );
+  }, [metadataData, environments]);
 
   // metadata search only supports secrets, so clear its conditions and match mode
   // whenever it should no longer apply
@@ -811,17 +813,27 @@ const Content = ({
           >
             {resultsContent}
           </ScrollableContent>
-          {isMetadataMode && (
-            <div
-              className="shrink-0 space-y-1 border-t border-border py-4 text-xs text-accent"
-              role="status"
-            >
-              <p className="font-medium text-foreground">
-                {isMetadataLoading
-                  ? "Searching..."
-                  : `${metadataResultCount} matching ${metadataResultCount === 1 ? "secret" : "secrets"} shown`}
-              </p>
-              <p>{`Search checks up to ${metadataData?.searchLimit ?? 100} candidates per metadata query. Results may be incomplete. Narrow your filters to see the rest.`}</p>
+          {isMetadataMode && !isMetadataLoading && metadataResultCount > 0 && (
+            <div className="shrink-0 border-t border-border py-2">
+              <Pagination
+                startAdornment={
+                  <div className="flex items-center gap-3">
+                    <ResourceCount secretCount={metadataResultCount} />
+                    <span className="text-xs text-accent">
+                      {`Search checks up to ${metadataData?.searchLimit ?? 100} candidates. Narrow your filters to see the rest.`}
+                    </span>
+                  </div>
+                }
+                count={metadataResultCount}
+                page={page}
+                perPage={perPage}
+                perPageList={QUICK_SEARCH_PER_PAGE_OPTIONS}
+                onChangePage={setPage}
+                onChangePerPage={(newPerPage) => {
+                  setPerPage(newPerPage);
+                  setPage(1);
+                }}
+              />
             </div>
           )}
           {isDeepSearchEnabled && !isDeepSearchLoading && visibleResultCount > 0 && (

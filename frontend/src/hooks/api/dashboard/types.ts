@@ -219,6 +219,9 @@ export type TSearchSecretsByMetadataDTO = {
   operator: SecretMetadataSearchLogicalOperator;
   filters: TSecretMetadataSearchFilter[];
   tags: Record<string, boolean>;
+  search?: string;
+  limit?: number;
+  offset?: number;
 };
 
 export type TMetadataMatchedSecret = {
@@ -233,6 +236,7 @@ export type TMetadataMatchedSecret = {
 
 export type TSearchSecretsByMetadataResponse = {
   secrets: TMetadataMatchedSecret[];
+  totalCount: number;
   searchLimit: number;
 };
 

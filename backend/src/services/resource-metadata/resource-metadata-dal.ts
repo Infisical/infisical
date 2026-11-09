@@ -10,7 +10,7 @@ import { SecretMetadataSearchLogicalOperator, TSearchSecretMetadataDALDTO } from
 export type TResourceMetadataDALFactory = ReturnType<typeof resourceMetadataDALFactory>;
 
 // defensive cap on the number of matched secrets scanned before permission filtering.
-// full pagination is intentionally out of scope for now.
+// The service paginates within this window.
 export const MAX_SECRET_METADATA_SEARCH_SECRETS = 100;
 
 export const resourceMetadataDALFactory = (db: TDbClient) => {

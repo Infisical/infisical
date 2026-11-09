@@ -1625,7 +1625,12 @@ export const SECRET_IMPORTS = {
 export const DASHBOARD = {
   SECRET_METADATA_SEARCH: {
     searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
-    tags: "The tags attached to the secret, including each tag's ID and slug."
+    tags: "The tags attached to the secret, including each tag's ID and slug.",
+    search: "Text that further narrows results to secrets whose key or folder path contains it, ignoring case.",
+    offset: "The number of matching secrets to skip.",
+    limit: "The maximum number of matching secrets to return.",
+    totalCount:
+      "The number of matching secrets the requester can describe within the candidate limit, across all pages."
   },
   SECRET_METADATA_LIST: {
     projectId: "The ID of the project containing the secrets.",
