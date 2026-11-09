@@ -338,7 +338,7 @@ export const secretsDemo: SecretsAdapter = {
     isPending: false,
     error: null
   }),
-  useOverview: (dto) => {
+  useOverview: (dto, options) => {
     const scenario = useScenario();
     const state = useStore().use();
     const isRecovered = recovered.use();
@@ -348,6 +348,8 @@ export const secretsDemo: SecretsAdapter = {
       [state, key, scenario]
     );
     const refetch = () => recovered.update(() => true);
+    if (options?.enabled === false)
+      return { data: undefined, isPending: true, error: null, refetch };
     if (scenario === "loading") return { data: undefined, isPending: true, error: null, refetch };
     if (scenario === "error" && !isRecovered)
       return {

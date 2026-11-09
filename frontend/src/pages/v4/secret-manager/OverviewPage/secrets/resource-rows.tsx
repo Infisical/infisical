@@ -1,4 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
   ActivityIcon,
@@ -15,9 +16,18 @@ import {
 } from "lucide-react";
 
 import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
+import { Button } from "@app/components/v4/ui/button";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v4/ui/hover-card";
 import { Icon } from "@app/components/v4/ui/icon";
 import { RowLink } from "@app/components/v4/ui/row-link";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v4/ui/sheet";
 import {
   type RowActionList,
   RowActions,
@@ -56,6 +66,7 @@ import {
 import {
   ChildSelectCell,
   ChildSelectHead,
+  type EnvironmentOption,
   ExpandCell,
   KindIcon,
   PendingBadge,
@@ -806,12 +817,47 @@ export function FolderRow({
   );
 }
 
-function ImportedIn({ labels }: { labels: string[] }) {
+function SiteLink({ site }: { site: EnvironmentOption }) {
+  return (
+    <Badge asChild tone="outline">
+      <Link
+        from={OVERVIEW_ROUTE}
+        to="."
+        search={(previous) =>
+          withoutDefaults(
+            { ...previous, environments: [site.value], search: "" },
+            { secretPath: "/", search: "", environments: [] }
+          )
+        }
+      >
+        <Icon icon={LayersIcon} />
+        {site.label}
+      </Link>
+    </Badge>
+  );
+}
+
+function SiteList({ sites, path }: { sites: EnvironmentOption[]; path: string }) {
+  return (
+    <ul className={styles.importSites}>
+      {sites.map((site) => (
+        <li key={site.value} className={styles.importSite}>
+          <SiteLink site={site} />
+          <span className={styles.truncate}>{path}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ImportedIn({ sites, path }: { sites: EnvironmentOption[]; path: string }) {
   const fit = useRef<HTMLSpanElement>(null);
   const measure = useRef<HTMLSpanElement>(null);
-  const [shown, setShown] = useState(labels.length);
+  const [shown, setShown] = useState(sites.length);
   const [reserve, setReserve] = useState(0);
-  const signature = labels.join("|");
+  const [listOpen, setListOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
+  const signature = sites.map((site) => site.value).join("|");
   useLayoutEffect(() => {
     const box = fit.current;
     const ruler = measure.current;
@@ -843,34 +889,55 @@ function ImportedIn({ labels }: { labels: string[] }) {
     observer.observe(box);
     return () => observer.disconnect();
   }, [signature]);
-  const badge = (label: string) => (
-    <Badge key={label} tone="outline">
-      <Icon icon={LayersIcon} />
-      {label}
-    </Badge>
-  );
-  const overflow = labels.slice(shown);
+  const hidden = sites.length - shown;
   return (
     <span className={styles.importedIn}>
       <span className={styles.subtle}>Imported in</span>
       <span ref={fit} className={styles.importedBadges} style={{ minWidth: reserve }}>
-        {labels.slice(0, shown).map(badge)}
-        {overflow.length > 0 && (
-          <Tooltip content={overflow.join(", ")}>
-            <Badge tone="outline">{`+${overflow.length}`}</Badge>
-          </Tooltip>
+        {sites.slice(0, shown).map((site) => (
+          <SiteLink key={site.value} site={site} />
+        ))}
+        {hidden > 0 && (
+          <HoverCard open={cardOpen && !listOpen} onOpenChange={setCardOpen}>
+            <HoverCardTrigger asChild>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={() => {
+                  setCardOpen(false);
+                  setListOpen(true);
+                }}
+              >
+                {`+${hidden} more`}
+              </Button>
+            </HoverCardTrigger>
+            <HoverCardContent align="start">
+              <SiteList sites={sites} path={path} />
+            </HoverCardContent>
+          </HoverCard>
         )}
       </span>
       <span ref={measure} className={styles.importedRuler} aria-hidden="true">
-        <Badge tone="outline">{`+${labels.length}`}</Badge>
-        {labels.map(badge)}
+        <Button variant="ghost" size="xs" tabIndex={-1}>
+          {`+${sites.length} more`}
+        </Button>
+        {sites.map((site) => (
+          <Badge key={site.value} tone="outline">
+            <Icon icon={LayersIcon} />
+            {site.label}
+          </Badge>
+        ))}
       </span>
-      <span className={styles.importedHint}>
-        <span className={styles.hint} data-tone="info">
-          <Icon name="info" size={12} />
-        </span>
-        <span className={styles.truncate}>Select one environment to manage</span>
-      </span>
+      <Sheet open={listOpen} onOpenChange={setListOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>{`Imported in ${sites.length} environments`}</SheetTitle>
+          </SheetHeader>
+          <SheetBody>
+            <SiteList sites={sites} path={path} />
+          </SheetBody>
+        </SheetContent>
+      </Sheet>
     </span>
   );
 }
@@ -880,13 +947,15 @@ export function ImportRow({
   entries,
   ctx,
   sourceSecrets,
-  projectName
+  projectName,
+  sites
 }: {
   rowKey: string;
   entries: Of<"import">[];
   ctx: RowContext;
   sourceSecrets: (entry: Of<"import">) => Secret[];
   projectName: string;
+  sites: EnvironmentOption[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const first = entries[0];
@@ -992,13 +1061,7 @@ export function ImportRow({
           </TableCell>
           {!ctx.single && expanded && (
             <TableCell colSpan={ctx.environments.length} className={styles.importedInCell}>
-              <ImportedIn
-                labels={entries.map(
-                  (entry) =>
-                    environments.find((environment) => environment.value === entry.environment)
-                      ?.label ?? entry.environment
-                )}
-              />
+              <ImportedIn sites={sites} path={first.path} />
             </TableCell>
           )}
           {!ctx.single &&
