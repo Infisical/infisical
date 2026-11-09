@@ -32,7 +32,6 @@ export const RequestRow = ({ request, onOpen, showActions }: Props) => {
 
   return (
     <ListRow
-      label={`${request.resource}, requested by ${request.requesterName}`}
       onPress={onOpen}
       resolved={resolved && showActions}
       meta={ago(request.createdAt)}

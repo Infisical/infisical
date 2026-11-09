@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { space, usePalette } from "../theme/tokens";
@@ -11,7 +11,6 @@ const VariantContext = createContext<Variant>("segmented");
 
 type ListProps = {
   variant: Variant;
-  label: string;
   title?: string;
   count?: string;
   action?: ReactNode;
@@ -19,9 +18,9 @@ type ListProps = {
   children: ReactNode;
 };
 
-export const List = ({ variant, label, title, count, action, footer, children }: ListProps) => (
+export const List = ({ variant, title, count, action, footer, children }: ListProps) => (
   <VariantContext value={variant}>
-    <View accessibilityLabel={label}>
+    <View>
       {(title || count || action) && (
         <View style={styles.header}>
           {title && (
@@ -80,7 +79,6 @@ export const Media = ({ icon, tone, unread, surface }: { icon: IconName; tone?: 
 };
 
 type RowProps = {
-  label: string;
   title: ReactNode;
   meta?: string;
   description?: string;
@@ -90,45 +88,48 @@ type RowProps = {
   children?: ReactNode;
 };
 
-export const ListRow = ({ label, title, meta, description, media, resolved, onPress, children }: RowProps) => {
+export const ListRow = ({ title, meta, description, media, resolved, onPress, children }: RowProps) => {
   const palette = usePalette();
   const variant = useContext(VariantContext);
+  const [pressed, setPressed] = useState(false);
   const surface =
     variant === "segmented" ? (resolved ? palette.rowDoneCard : palette.tint) : resolved ? palette.rowDoneDivided : palette.inset;
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole={onPress ? "link" : undefined}
-      accessibilityLabel={label}
+    <View
       style={[
         styles.row,
         { backgroundColor: variant === "segmented" || resolved ? surface : "transparent" },
         variant === "divided" && { borderBottomWidth: 1, borderBottomColor: palette.lineSoft }
       ]}
     >
-      {({ pressed }) => (
-        <>
-          {pressed && onPress && <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.hover }]} />}
-          {media?.(variant === "segmented" ? surface : palette.inset)}
-          <View style={styles.body}>
-            <View style={styles.titleLine}>
-              <View style={{ flex: 1, minWidth: 0 }}>{title}</View>
-              {meta && (
-                <Text variant="monoSm" color="muted" style={{ lineHeight: 20 }}>
-                  {meta}
-                </Text>
-              )}
-            </View>
-            {description && (
-              <Text variant="bodySm" color="muted">
-                {description}
+      {pressed && <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.hover }]} />}
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => setPressed(true)}
+        onPressOut={() => setPressed(false)}
+        disabled={!onPress}
+        accessibilityRole={onPress ? "link" : undefined}
+        style={styles.target}
+      >
+        {media?.(variant === "segmented" ? surface : palette.inset)}
+        <View style={styles.body}>
+          <View style={styles.titleLine}>
+            <View style={{ flex: 1, minWidth: 0 }}>{title}</View>
+            {meta && (
+              <Text variant="monoSm" color="muted" style={{ lineHeight: 20 }}>
+                {meta}
               </Text>
             )}
-            {children}
           </View>
-        </>
-      )}
-    </Pressable>
+          {description && (
+            <Text variant="bodySm" color="muted">
+              {description}
+            </Text>
+          )}
+        </View>
+      </Pressable>
+      {children && <View style={[styles.extra, media && styles.extraIndent]}>{children}</View>}
+    </View>
   );
 };
 
@@ -208,8 +209,11 @@ const styles = StyleSheet.create({
     paddingBottom: space[6]
   },
   footer: { paddingHorizontal: space[12], paddingTop: space[8] },
-  row: { flexDirection: "row", alignItems: "flex-start", gap: space[12], padding: space[12], overflow: "hidden" },
+  row: { padding: space[12], gap: space[4], overflow: "hidden" },
+  target: { flexDirection: "row", alignItems: "flex-start", gap: space[12] },
   body: { flex: 1, minWidth: 0, gap: space[4] },
+  extra: { gap: space[4] },
+  extraIndent: { marginLeft: 36 + space[12] },
   titleLine: { flexDirection: "row", alignItems: "flex-start", gap: space[8] },
   media: { width: 36, height: 36, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   unread: { position: "absolute", top: -4, right: -4, width: 10, height: 10, borderWidth: 2 },

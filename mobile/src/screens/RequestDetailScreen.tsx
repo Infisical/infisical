@@ -92,11 +92,10 @@ export const RequestDetailScreen = ({ id, onBack }: { id: string; onBack: () => 
           </Frame>
         </View>
 
-        <List variant="divided" label="Approval steps" title="Approval steps" count={`${request.steps.length} ${request.steps.length === 1 ? "step" : "steps"}`}>
+        <List variant="divided" title="Approval steps" count={`${request.steps.length} ${request.steps.length === 1 ? "step" : "steps"}`}>
           {request.steps.map((step, index) => (
             <ListRow
               key={step.name}
-              label={step.name}
               resolved={step.status === "approved" || step.status === "rejected"}
               title={<Text variant="rowTitle">{step.name}</Text>}
               meta={String(index + 1).padStart(2, "0")}

@@ -16,7 +16,6 @@ export const InboxScreen = ({ onOpen, onHistory }: Props) => {
     .filter((request) => request.awaitingYou || resolvedThisSession.has(request.id))
     .sort((a, b) => b.createdAt - a.createdAt);
   const waiting = visible.filter((request) => request.status === "pending");
-  const decided = visible.filter((request) => request.status !== "pending");
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -39,19 +38,12 @@ export const InboxScreen = ({ onOpen, onHistory }: Props) => {
       )}
       <List
         variant="segmented"
-        label="Requests that need you"
+       
         footer={<ListLink icon="history" label="View history" onPress={onHistory} />}
       >
-        {waiting.length > 0 && (
+        {visible.length > 0 && (
           <ListSection label="Waiting" meta={String(waiting.length)}>
-            {waiting.map((request) => (
-              <RequestRow key={request.id} request={request} showActions onOpen={() => onOpen(request.id)} />
-            ))}
-          </ListSection>
-        )}
-        {decided.length > 0 && (
-          <ListSection label="Decided">
-            {decided.map((request) => (
+            {visible.map((request) => (
               <RequestRow key={request.id} request={request} showActions onOpen={() => onOpen(request.id)} />
             ))}
           </ListSection>

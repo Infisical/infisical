@@ -25,7 +25,7 @@ export const HistoryScreen = ({ onOpen }: { onOpen: (id: string) => void }) => {
           Decisions on requests you could approve.
         </Text>
       </View>
-      <List variant="divided" label="Decided requests">
+      <List variant="divided">
         {groups.map((group) => (
           <ListSection key={group.label} label={group.label} meta={String(group.items.length)}>
             {group.items.map((request) => (
