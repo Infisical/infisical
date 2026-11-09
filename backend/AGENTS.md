@@ -251,7 +251,7 @@ New backend code is moving to domain modules under `src/domains/`: one folder pe
 
 No IoC container. Every service is a factory function that receives explicit dependencies as a typed object and returns an object of methods. Dependencies are narrowed with TypeScript `Pick` to define minimal interface contracts.
 
-The entire dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
+The entire dependency graph is manually wired in `src/server/routes/index.ts` (5k+ lines, so search by name), in this order: `createDomains` and `await domains.license.start()` right after the cron job (legacy services depend on domains, never the reverse, and queue workers read the license as soon as a factory starts them), DAL instantiation (each DAL factory receives the `db` client), service instantiation (each factory receives its DALs + other services), `server.decorate("services", {...})` exposing them as `server.services.*`, then route registration, where `registerV<N>EERoutes` is registered before `registerV<N>Routes` for each API version.
 
 See `secretServiceFactory` in `src/services/secret/secret-service.ts` for a representative factory with ~20 dependencies. See `src/services/user/user-service.ts` for a simpler example (~8 dependencies).
 

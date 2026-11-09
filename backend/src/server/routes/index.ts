@@ -686,6 +686,18 @@ export const registerRoutes = async (
     cronJob.start();
   }
 
+  // Before any service: legacy services depend on the domains, and queue workers read the license as
+  // soon as they start.
+  const domains = createDomains({
+    db,
+    keyStore,
+    queueService,
+    cronJob,
+    envConfig
+  });
+  await domains.license.start();
+  const licenseDomain = domains.license.service;
+
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
   // the fleet reports itself in Redis and every api pod complains when the reports stop.
   const workerHeartbeat = workerHeartbeatFactory({ keyStore });
@@ -926,14 +938,6 @@ export const registerRoutes = async (
     userDAL
   });
 
-  const domains = createDomains({
-    db,
-    keyStore,
-    queueService,
-    cronJob,
-    envConfig
-  });
-  const licenseDomain = domains.license.service;
   const licenseV2BreakdownDAL = licenseV2BreakdownDALFactory(db);
 
   // Billing surface. Drives the catalog, subscription, and entitlement reads off the real license
@@ -4852,9 +4856,6 @@ export const registerRoutes = async (
     folderDAL,
     projectEnvDAL
   });
-
-  // Reads the instance's license and starts usage metering.
-  await domains.license.start();
 
   // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
   crypto.verifyFipsLicense(licenseDomain.getInstanceEntitlements().features.fips);
