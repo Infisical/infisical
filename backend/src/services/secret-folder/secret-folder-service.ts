@@ -118,7 +118,7 @@ type TSecretFolderServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
   secretRotationV2DAL: Pick<TSecretRotationV2DALFactory, "existsByFolderIds">;
   honeyTokenDAL: Pick<THoneyTokenDALFactory, "find">;
-  secretImportDAL: Pick<TSecretImportDALFactory, "findImportByFolderIds">;
+  secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findImportByFolderIds">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "dispatchSecretMoveSideEffects">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   reminderService: Pick<TReminderServiceFactory, "moveReminders" | "copyReminders">;
@@ -764,15 +764,21 @@ export const secretFolderServiceFactory = ({
       });
     }
 
+    const folderIds = folderPolicyPaths.map((p) => p.id);
     // get secrets under the given folders
     const secrets = await secretV2BridgeDAL.findByFolderIds({
-      folderIds: folderPolicyPaths.map((p) => p.id),
+      folderIds,
       tx
     });
+    const secretImports = await secretImportDAL.findByFolderIds(folderIds, tx);
 
     for await (const folderPolicyPath of folderPolicyPaths) {
+      const folderHasSecrets = secrets.some((s) => s.folderId === folderPolicyPath.id);
+      const folderHasSecretImports = secretImports.some(
+        (secretImport) => secretImport.folderId === folderPolicyPath.id
+      );
       // eslint-disable-next-line no-continue
-      if (!secrets.some((s) => s.folderId === folderPolicyPath.id)) continue;
+      if (!folderHasSecrets && !folderHasSecretImports) continue;
 
       const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
         projectId,
@@ -781,11 +787,17 @@ export const secretFolderServiceFactory = ({
         tx
       );
 
-      // if there is an enforced policy and there are secrets under the given folder, throw error
       if (shouldApplyPolicy(policy, actor)) {
+        if (folderHasSecrets) {
+          throw new BadRequestError({
+            message: `You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "${policy.name}" at folder path "${folderPolicyPath.path}". Please remove the secrets at folder path "${folderPolicyPath.path}" and try again.`,
+            name: "DeleteFolderProtectedByPolicy"
+          });
+        }
+
         throw new BadRequestError({
-          message: `You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "${policy.name}" at folder path "${folderPolicyPath.path}". Please remove the secrets at folder path "${folderPolicyPath.path}" and try again.`,
-          name: "DeleteFolderProtectedByPolicy"
+          message: `You cannot delete the selected folder because it contains one or more secret imports that are protected by the change policy "${policy.name}" at folder path "${folderPolicyPath.path}". Please remove the secret imports at folder path "${folderPolicyPath.path}" and try again.`,
+          name: "DeleteFolderImportProtectedByPolicy"
         });
       }
     }
