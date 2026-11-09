@@ -284,7 +284,11 @@ export function SelectCell({
   const { all, some } = selectionState(keys, ctx.selected);
   return (
     <TableCell selection divider={false}>
-      <span className={styles.iconSlot} data-selected={all || some || undefined}>
+      <span
+        className={styles.iconSlot}
+        data-selectable={selectable || undefined}
+        data-selected={all || some || undefined}
+      >
         <span className={styles.kindGlyph}>
           <KindIcon kind={kind} overlay={overlay} />
         </span>
