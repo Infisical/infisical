@@ -1,5 +1,5 @@
 schemaVersion: 1
-generatedAt: 2026-11-02T17:06:10.950Z
+generatedAt: 2026-11-08T20:19:02.306Z
 versions:
   - version: v0.159.16
     releasedAt: 2026-04-17T17:49:54-03:00
@@ -238,3 +238,6 @@ versions:
   - version: v0.167.5
     releasedAt: 2026-11-02T11:15:32-05:00
     file: releases/v0.167.5.yaml
+  - version: v0.167.7
+    releasedAt: 2026-11-07T12:49:14-07:00
+    file: releases/v0.167.7.yaml
