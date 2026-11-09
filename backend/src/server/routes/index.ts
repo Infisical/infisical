@@ -294,6 +294,7 @@ import {
   appConnectionCredentialRotationQueueFactory,
   appConnectionCredentialRotationServiceFactory
 } from "@app/services/app-connection/credential-rotation";
+import { provisioningTemplateServiceFactory } from "@app/services/app-connection/provisioning-template/provisioning-template-service";
 import {
   approvalPolicyBypassersDALFactory,
   approvalPolicyDALFactory,
@@ -3434,6 +3435,8 @@ export const registerRoutes = async (
     gatewayPoolService
   });
 
+  const provisioningTemplateService = provisioningTemplateServiceFactory({ permissionService, projectDAL });
+
   const appConnectionService = appConnectionServiceFactory({
     orgDAL,
     appConnectionDAL,
@@ -5098,6 +5101,7 @@ export const registerRoutes = async (
     webAuthn: webAuthnService,
     mfaRecoveryCode: mfaRecoveryCodeService,
     appConnection: appConnectionService,
+    provisioningTemplate: provisioningTemplateService,
     hsmConnector: hsmConnectorService,
     secretSync: secretSyncService,
     kmip: kmipService,

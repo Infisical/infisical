@@ -656,6 +656,13 @@ const envSchema = z
     // aws
     INF_APP_CONNECTION_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
     INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
+    INF_APP_CONNECTION_AWS_TRUSTED_ACCOUNT_ID: zpStr(
+      z
+        .string()
+        .regex(/^\d{12}$/, "INF_APP_CONNECTION_AWS_TRUSTED_ACCOUNT_ID must be a 12-digit AWS account ID")
+        .optional()
+    ),
+    INF_APP_CONNECTION_AWS_TEMPLATE_BASE_URL: zpStr(z.string().url().optional()),
 
     // github oauth
     INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID: zpStr(z.string().optional()),

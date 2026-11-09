@@ -94,6 +94,7 @@ import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { TAnnouncementServiceFactory } from "@app/services/announcement/announcement-service";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnectionCredentialRotationServiceFactory } from "@app/services/app-connection/credential-rotation";
+import { TProvisioningTemplateServiceFactory } from "@app/services/app-connection/provisioning-template/provisioning-template-service";
 import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
@@ -453,6 +454,7 @@ declare module "fastify" {
     webAuthn: TWebAuthnServiceFactory;
     mfaRecoveryCode: TMfaRecoveryCodeServiceFactory;
     appConnection: TAppConnectionServiceFactory;
+    provisioningTemplate: TProvisioningTemplateServiceFactory;
     hsmConnector: THsmConnectorServiceFactory;
     secretSync: TSecretSyncServiceFactory;
     kmip: TKmipServiceFactory;
