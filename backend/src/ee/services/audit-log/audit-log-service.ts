@@ -51,7 +51,7 @@ type TAuditLogServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "isServingFallbackPlan">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -134,6 +134,15 @@ export const auditLogServiceFactory = ({
         OrgPermissionAuditLogsActions.Read,
         OrgPermissionSubjects.AuditLogs
       );
+    }
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    // The stand-in plan served while the License Server is unreachable has no audit logs, and must not lock out
+    // an org that pays for them.
+    if (!plan.auditLogs && !(await licenseService.isServingFallbackPlan(actorOrgId))) {
+      throw new BadRequestError({
+        message: "Failed to list audit logs due to plan restriction. Upgrade your plan to view audit logs."
+      });
     }
 
     if (filter.auditLogActorId && filter.actorType && !ACTOR_TYPE_TO_METADATA_ID_KEY[filter.actorType]) {
