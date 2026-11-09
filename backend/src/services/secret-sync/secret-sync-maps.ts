@@ -2,7 +2,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { buildAwsConnectionConfig, getAwsAccountId } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TDaytonaConnection } from "@app/services/app-connection/daytona";
-import { getJenkinsInstanceUrl, TJenkinsConnection } from "@app/services/app-connection/jenkins";
+import { getJenkinsInstanceUrl } from "@app/services/app-connection/jenkins/jenkins-connection-fns";
+import { TJenkinsConnection } from "@app/services/app-connection/jenkins/jenkins-connection-types";
 import { getPortainerInstanceUrl } from "@app/services/app-connection/portainer/portainer-connection-fns";
 import { TPortainerConnection } from "@app/services/app-connection/portainer/portainer-connection-types";
 import { GcpSyncScope } from "@app/services/secret-sync/gcp/gcp-sync-enums";
