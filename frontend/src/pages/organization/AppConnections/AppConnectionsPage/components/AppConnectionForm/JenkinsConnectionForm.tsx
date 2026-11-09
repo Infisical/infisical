@@ -38,6 +38,21 @@ type Props = {
   onSubmit: (formData: FormData) => void;
 };
 
+const isValidInstanceUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  } catch {
+    return false;
+  }
+};
+
 const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.Jenkins)
 });
@@ -49,9 +64,12 @@ const formSchema = z.discriminatedUnion("method", [
       instanceUrl: z
         .string()
         .trim()
-        .url("Invalid Instance URL")
         .min(1, "Instance URL required")
-        .max(255),
+        .max(255)
+        .refine(
+          isValidInstanceUrl,
+          "Instance URL must be an http or https URL without credentials, a query, or a fragment"
+        ),
       username: z.string().trim().min(1, "Username required").max(255),
       apiToken: z.string().trim().min(1, "API Token required").max(255)
     })

@@ -11,13 +11,24 @@ import {
 import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { JenkinsConnectionMethod } from "./jenkins-connection-enums";
 
+// Credentials embedded in the URL would be returned with the sanitized connection, and request
+// paths are appended to the URL, so a query or fragment would end up in the middle of every request
+const isValidInstanceUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+};
+
 export const JenkinsConnectionApiTokenCredentialsSchema = z.object({
   instanceUrl: z
     .string()
     .trim()
-    .url("Invalid Instance URL")
     .min(1, "Instance URL required")
     .max(255)
+    .refine(isValidInstanceUrl, "Instance URL must be an http or https URL without credentials, a query, or a fragment")
     .describe(AppConnections.CREDENTIALS.JENKINS.instanceUrl),
   username: z
     .string()
