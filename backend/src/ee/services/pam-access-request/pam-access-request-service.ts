@@ -527,7 +527,12 @@ export const pamAccessRequestServiceFactory = ({
       toApprovalActor(ctx)
     );
 
-    return { requests: await pamAccessApprovalResource.decorateRequests(requests) };
+    const folder = folderId ? await pamFolderDAL.findById(folderId) : null;
+
+    return {
+      requests: await pamAccessApprovalResource.decorateRequests(requests),
+      folderName: folder?.projectId === projectId ? folder.name : undefined
+    };
   };
 
   const getCount = async ({ projectId, ...ctx }: TGetAccessRequestCountDTO) => {

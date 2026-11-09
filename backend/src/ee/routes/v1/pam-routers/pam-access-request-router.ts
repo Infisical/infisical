@@ -230,7 +230,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const result = await server.services.pamAccessRequest.listPendingMyApproval({
+      const { requests, folderName } = await server.services.pamAccessRequest.listPendingMyApproval({
         projectId: req.internalPamProjectId,
         folderId: req.query.folderId,
         actorId: req.permission.id,
@@ -247,13 +247,13 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
           type: EventType.APPROVAL_REQUEST_LIST,
           metadata: {
             policyType: ApprovalPolicyType.PamAccess,
-            count: result.requests.length,
-            ...(req.query.folderId ? { folderId: req.query.folderId } : {})
+            count: requests.length,
+            ...(req.query.folderId ? { folderId: req.query.folderId, folderName } : {})
           }
         }
       });
 
-      return result;
+      return { requests };
     }
   });
 
