@@ -56,9 +56,6 @@ export const resourceMetadataServiceFactory = ({
     tagSlugs,
     environments,
     secretPath = "/",
-    search,
-    limit,
-    offset,
     actor
   }: TSearchSecretMetadataDTO) => {
     if (!filters.length) {
@@ -80,10 +77,10 @@ export const resourceMetadataServiceFactory = ({
       const environmentSlugs =
         environments ?? (await projectEnvDAL.find({ projectId }, { tx: db })).map((env) => env.slug);
       const parents = await folderDAL.findBySecretPathMultiEnv(projectId, environmentSlugs, secretPath, db);
-      if (!parents.length) return { secrets: [], totalCount: 0, searchLimit };
+      if (!parents.length) return { secrets: [], searchLimit };
       const scopedFolders = await folderDAL.findByEnvsDeep({ parentIds: parents.map((folder) => folder.id) }, db);
       scopedFolderIds = scopedFolders.map((folder) => folder.id);
-      if (!scopedFolderIds.length) return { secrets: [], totalCount: 0, searchLimit };
+      if (!scopedFolderIds.length) return { secrets: [], searchLimit };
     }
 
     // run both searches on primary via a transaction so recently written metadata is visible (avoids
@@ -158,7 +155,7 @@ export const resourceMetadataServiceFactory = ({
     }
 
     const matchedSecrets = [...matchedSecretById.values()];
-    if (!matchedSecrets.length) return { secrets: [], totalCount: 0, searchLimit };
+    if (!matchedSecrets.length) return { secrets: [], searchLimit };
 
     const folderIds = [...new Set(matchedSecrets.map((secret) => secret.folderId))];
     const foldersWithPath = await folderDAL.findSecretPathByFolderIds(projectId, folderIds, db);
@@ -167,7 +164,7 @@ export const resourceMetadataServiceFactory = ({
       if (folder) folderPathById[folder.id] = { path: folder.path, environmentSlug: folder.environmentSlug };
     });
 
-    const describableSecrets = matchedSecrets.flatMap((secret) => {
+    const secrets = matchedSecrets.flatMap((secret) => {
       const folder = folderPathById[secret.folderId];
       if (!folder) return [];
 
@@ -206,32 +203,7 @@ export const resourceMetadataServiceFactory = ({
       ];
     });
 
-    const searchTerm = search?.toLowerCase();
-    const searchedSecrets = searchTerm
-      ? describableSecrets.filter(
-          (secret) =>
-            secret.secretKey.toLowerCase().includes(searchTerm) || secret.secretPath.toLowerCase().includes(searchTerm)
-        )
-      : describableSecrets;
-
-    // candidates arrive from two queries in secret ID order, so sort for an order that holds across pages
-    const compare = (a: string, b: string) => {
-      if (a === b) return 0;
-      return a < b ? -1 : 1;
-    };
-    searchedSecrets.sort(
-      (a, b) =>
-        compare(a.secretKey.toLowerCase(), b.secretKey.toLowerCase()) ||
-        compare(a.secretPath, b.secretPath) ||
-        compare(a.environment, b.environment) ||
-        compare(a.secretId, b.secretId)
-    );
-
-    return {
-      secrets: searchedSecrets.slice(offset, offset + limit),
-      totalCount: searchedSecrets.length,
-      searchLimit
-    };
+    return { secrets, searchLimit };
   };
 
   return { searchSecretMetadata };

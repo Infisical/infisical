@@ -264,10 +264,7 @@ const Content = ({
           ? SecretMetadataSearchLogicalOperator.And
           : SecretMetadataSearchLogicalOperator.Or,
       filters: metadataFilters,
-      tags: filterTags,
-      search: debouncedSearch.trim(),
-      limit: perPage,
-      offset: (page - 1) * perPage
+      tags: filterTags
     },
     { enabled: isMetadataMode }
   );
@@ -382,7 +379,23 @@ const Content = ({
     metadataMatch
   ]);
 
-  const metadataResultCount = metadataData?.totalCount ?? 0;
+  const metadataMatches = useMemo(() => {
+    const query = debouncedSearch.trim().toLowerCase();
+    const filtered = (metadataData?.secrets ?? []).filter(
+      (secret) =>
+        !query ||
+        secret.secretKey.toLowerCase().includes(query) ||
+        secret.secretPath.toLowerCase().includes(query)
+    );
+    const secretsByEnv = groupBy(filtered, (secret) => secret.environment);
+    return environments.flatMap((env) =>
+      (secretsByEnv[env.slug] ?? []).sort(
+        (a, b) => a.secretKey.localeCompare(b.secretKey) || a.secretPath.localeCompare(b.secretPath)
+      )
+    );
+  }, [metadataData, environments, debouncedSearch]);
+
+  const metadataResultCount = metadataMatches.length;
 
   // a background refetch can shrink the counts and leave the current offset past the data
   useResetPageHelper({
@@ -392,11 +405,14 @@ const Content = ({
   });
 
   const metadataResultsByEnv = useMemo(() => {
-    const secretsByEnv = groupBy(metadataData?.secrets ?? [], (secret) => secret.environment);
+    const secretsByEnv = groupBy(
+      metadataMatches.slice((page - 1) * perPage, page * perPage),
+      (secret) => secret.environment
+    );
     return environments
       .map((env) => ({ env, secrets: secretsByEnv[env.slug] ?? [] }))
       .filter((group) => group.secrets.length > 0);
-  }, [metadataData, environments]);
+  }, [metadataMatches, environments, page, perPage]);
 
   // metadata search only supports secrets, so clear its conditions and match mode
   // whenever it should no longer apply
