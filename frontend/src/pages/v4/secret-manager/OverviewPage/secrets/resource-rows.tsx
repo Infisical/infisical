@@ -593,8 +593,7 @@ export function KindRow({
   entries: Resource[];
   ctx: RowContext;
 }) {
-  const expanded = ctx.expanded.includes(rowKey);
-  const setExpanded = (open: boolean) => ctx.onExpand(rowKey, open);
+  const [expanded, setExpanded] = useState(false);
   const spec = specs[kind];
   const first = entries[0];
   const line = (entry: Resource, withName: boolean) => (
