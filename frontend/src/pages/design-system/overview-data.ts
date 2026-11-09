@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "pinned-edge-fade",
+    title: "Pinned edge fade",
+    description:
+      "Content scrolling under a pinned column fades into that row's own ground instead of meeting a hard line.",
+    date: "2026-11-07",
+    commit: "3ace3fae11",
+    page: "table"
+  },
+  {
     id: "row-actions-lazy-default",
     title: "Lazy row actions by default",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "2f8f8ef459",
     page: "floating-action-bar"
-  },
-  {
-    id: "autofill",
-    title: "Autofill keeps the field",
-    description:
-      "Fields the browser autofills keep their own ground and text color in every theme instead of Chrome's blue fill.",
-    date: "2026-11-07",
-    commit: "7e0192cd9a",
-    page: "input"
   }
 ];
