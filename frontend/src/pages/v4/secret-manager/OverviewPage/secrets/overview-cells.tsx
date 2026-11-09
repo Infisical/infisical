@@ -1,4 +1,12 @@
-import type { ComponentProps, MouseEvent, ReactNode } from "react";
+import {
+  type ComponentProps,
+  type MouseEvent,
+  type ReactNode,
+  useLayoutEffect,
+  useMemo,
+  useRef
+} from "react";
+import { replaceEqualDeep } from "@tanstack/react-query";
 import {
   BanIcon,
   ChevronsLeftRightEllipsisIcon,
@@ -49,6 +57,39 @@ export type RowContext = {
   selectionDisabled?: boolean;
   onSavePending?: (id: string) => void;
   onRevertPending?: (id: string) => void;
+};
+export const sameRow = <
+  P extends { rowKey: string; entries: readonly Resource[]; ctx: RowContext }
+>(
+  prev: P,
+  next: P
+) => {
+  const marks = (props: P) => ({
+    props: { ...props, ctx: { ...props.ctx, selected: [], expanded: [], recent: [] } },
+    selected: props.entries.map((entry) => props.ctx.selected.includes(selectionKey(entry))),
+    expanded: props.ctx.expanded.includes(props.rowKey),
+    recent: props.ctx.recent.includes(props.rowKey)
+  });
+  const before = marks(prev);
+  return replaceEqualDeep(before, marks(next)) === before;
+};
+export const useStableHandlers = <T extends Record<string, (...args: never[]) => unknown>>(
+  handlers: T
+): T => {
+  const latest = useRef(handlers);
+  useLayoutEffect(() => {
+    latest.current = handlers;
+  });
+  return useMemo(
+    () =>
+      Object.fromEntries(
+        Object.keys(latest.current).map((name) => [
+          name,
+          (...args: never[]) => latest.current[name](...args)
+        ])
+      ) as T,
+    []
+  );
 };
 export type EnvironmentStatus = "present" | "missing" | "empty" | "imported" | "no-access";
 type Glyph = { name?: IconName; icon?: LucideIcon };

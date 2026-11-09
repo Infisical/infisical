@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { subject } from "@casl/ability";
 
 import type { ProjectPermissionSub } from "@app/context/ProjectPermissionContext/types";
@@ -10,10 +11,13 @@ export type PermissionScope = { environment: string; secretPath: string } & Reco
 
 export const useManagedBlock = (projectId: string) => {
   const { permission, isPending } = useProjectPermission(projectId);
-  return (sub: ProjectPermissionSub, action: string, scope: PermissionScope, verb: string) =>
-    isPending || permission.can(action as never, subject(sub, scope) as never)
-      ? undefined
-      : `You don't have permission to ${verb}`;
+  return useCallback(
+    (sub: ProjectPermissionSub, action: string, scope: PermissionScope, verb: string) =>
+      isPending || permission.can(action as never, subject(sub, scope) as never)
+        ? undefined
+        : `You don't have permission to ${verb}`,
+    [permission, isPending]
+  );
 };
 
 export const useCreateBlock = (

@@ -1,4 +1,4 @@
-import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from "react";
+import { type ComponentProps, memo, type ReactNode, useEffect, useRef, useState } from "react";
 import {
   BellIcon,
   CodeXmlIcon,
@@ -93,7 +93,8 @@ import {
   type RowContext,
   SelectCell,
   StatusCell,
-  stopRowClick
+  stopRowClick,
+  sameRow
 } from "./overview-cells";
 import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
 import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
@@ -971,7 +972,7 @@ function OverrideRow({
   );
 }
 
-export function SecretRow({
+function SecretRowView({
   rowKey,
   entries,
   ctx,
@@ -1341,3 +1342,5 @@ export function SecretRow({
     </>
   );
 }
+
+export const SecretRow = memo(SecretRowView, sameRow);
