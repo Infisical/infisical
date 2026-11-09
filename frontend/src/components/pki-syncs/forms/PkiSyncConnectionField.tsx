@@ -4,6 +4,7 @@ import { Info } from "lucide-react";
 
 import {
   AppConnectionOptionContent,
+  AwsUpdateStackHint,
   useAppConnectionCreation
 } from "@app/components/app-connections";
 import {
@@ -158,6 +159,10 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
           ) : (
             <FieldError errors={[error]} />
           )}
+          <AwsUpdateStackHint
+            connectionId={value?.id}
+            useCases={AWS_PKI_SYNC_USE_CASES[destination]}
+          />
         </Field>
       )}
     />

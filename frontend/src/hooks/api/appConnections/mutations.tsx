@@ -46,14 +46,14 @@ export const useUpdateAppConnection = () => {
 
       return data.appConnection;
     },
-    onSuccess: ({ projectId, app }) => {
+    onSuccess: ({ projectId, app }, { connectionId }) => {
       queryClient.invalidateQueries({ queryKey: appConnectionKeys.list(projectId) });
       queryClient.invalidateQueries({ queryKey: appConnectionKeys.listAvailable(app, projectId) });
+      queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
       queryClient.invalidateQueries({ queryKey: gatewayPoolsQueryKeys.allKey() });
       if (app === AppConnection.GitHub) {
         queryClient.invalidateQueries({ queryKey: gitHubAppKeys.all });
       }
-      // queryClient.invalidateQueries({ queryKey: appConnectionKeys.byId(app, connectionId) });
     }
   });
 };

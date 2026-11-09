@@ -3,7 +3,7 @@ import { Controller, useFormContext } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { Info } from "lucide-react";
 
-import { AppConnectionOptionContent } from "@app/components/app-connections";
+import { AppConnectionOptionContent, AwsUpdateStackHint } from "@app/components/app-connections";
 import {
   Combobox,
   Field,
@@ -39,6 +39,7 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
 
   const destination = watch("destination");
+  const selectedConnection = watch("connection");
   const environment = watch("environment");
   const secretPath = watch("secretPath");
   const app = SECRET_SYNC_CONNECTION_MAP[destination];
@@ -135,6 +136,11 @@ export const SecretSyncConnectionField = ({ onChange: callback }: Props) => {
             </FieldContent>
           </Field>
         )}
+      />
+      <AwsUpdateStackHint
+        connectionId={selectedConnection?.id}
+        useCases={AWS_SECRET_SYNC_USE_CASES[destination]}
+        className="mt-2"
       />
       {!isPending && !allowedConnections.length && !canCreateConnection && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-warning">

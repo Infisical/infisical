@@ -38,6 +38,11 @@ export const AWS_USE_CASE_GROUPS = [
   }
 ] as const;
 
+export const getAwsUseCaseLabel = (id: string) =>
+  AWS_USE_CASE_GROUPS.flatMap((group): { id: string; label: string }[] => [...group.options]).find(
+    (option) => option.id === id
+  )?.label ?? id;
+
 export const getAwsUpdateStackHint = ({
   recordedUseCases,
   neededUseCases,
