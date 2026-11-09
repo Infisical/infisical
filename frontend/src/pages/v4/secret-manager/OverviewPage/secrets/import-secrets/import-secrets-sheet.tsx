@@ -529,25 +529,26 @@ function ImportSecretsContent({
       return { next, counts };
     };
     const { counts } = plan(resources);
-    const environmentNames = selectedEnvs.map(environmentLabel).join(", ");
-    const outcome = [
-      counts.created && `${plural(counts.created, "secret")} created`,
-      counts.updated && `${counts.updated} updated`,
-      counts.skipped &&
-        `${counts.skipped} skipped because ${counts.skipped === 1 ? "it already exists" : "they already exist"}`
-    ]
-      .filter(Boolean)
-      .join(", ");
+    const target =
+      selectedEnvs.length === 1
+        ? environmentLabel(selectedEnvs[0])
+        : plural(selectedEnvs.length, "environment");
     if (counts.created || counts.updated || (nestedImport && folderCount)) {
       onApply((current) => plan(current).next, {
-        title: `Uploaded ${plural(secretCount, "secret")}${folderSummary} into ${environmentNames}`,
-        description: `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}.`,
+        title: `Uploaded ${plural(secretCount, "secret")}${folderSummary} to ${target}`,
+        description: [
+          counts.created && `${plural(counts.created, "secret")} created`,
+          counts.updated && `${counts.updated} updated`,
+          counts.skipped && `${counts.skipped} skipped`
+        ]
+          .filter(Boolean)
+          .join(", "),
         share: true
       });
     } else {
       onToast("neutral", {
-        title: `No secrets uploaded into ${environmentNames}`,
-        description: `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}. Turn on overwrite existing secrets to update them.`
+        title: `No secrets uploaded to ${target}`,
+        description: `${counts.skipped === 1 ? "1 secret already exists" : `${counts.skipped} secrets already exist`}. Turn on overwrite existing secrets to update them.`
       });
     }
     onClose();
