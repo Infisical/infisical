@@ -16,7 +16,7 @@ export const CertificateBodiesSchema = z.object({
   certId: z.string().uuid(),
   encryptedCertificate: zodBuffer,
   encryptedCertificateChain: zodBuffer.nullable().optional(),
-  csr: z.string().nullable().optional()
+  importedCsr: z.string().nullable().optional()
 });
 
 export type TCertificateBodies = z.infer<typeof CertificateBodiesSchema>;

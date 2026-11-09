@@ -50,7 +50,7 @@ const HAS_CSR_SELECT = `(
   )
   OR EXISTS (
     SELECT 1 FROM certificate_bodies
-    WHERE certificate_bodies."certId" = certificates.id AND certificate_bodies.csr IS NOT NULL
+    WHERE certificate_bodies."certId" = certificates.id AND certificate_bodies."importedCsr" IS NOT NULL
   )
 ) as "hasCsr"`;
 
@@ -782,7 +782,7 @@ export const certificateDALFactory = (db: TDbClient) => {
         .select(db.raw("1"))
         .from(TableName.CertificateBody)
         .whereRaw(`??."certId" = ??.id`, [TableName.CertificateBody, TableName.Certificate])
-        .whereNotNull(`${TableName.CertificateBody}.csr`);
+        .whereNotNull(`${TableName.CertificateBody}.importedCsr`);
 
       const certs = (await db
         .replicaNode()(TableName.Certificate)

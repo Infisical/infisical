@@ -741,13 +741,16 @@ describe("buildRenewalPreview", () => {
 });
 
 describe("isRenewalNameChange", () => {
-  const issued = { commonName: "web.example.com", altNames: "web.example.com, www.example.com" };
   const dns = (value: string) => ({ value });
+  const replayed = {
+    commonName: "web.example.com",
+    subjectAlternativeNames: [dns("web.example.com"), dns("www.example.com")]
+  };
 
   it("treats the same names in any order or case as unchanged", () => {
     expect(
       isRenewalNameChange({
-        original: issued,
+        replayed,
         requested: {
           commonName: "WEB.example.com",
           subjectAlternativeNames: [dns("www.example.com"), dns("web.example.com")]
@@ -759,7 +762,7 @@ describe("isRenewalNameChange", () => {
   it("flags an added, removed or replaced name", () => {
     expect(
       isRenewalNameChange({
-        original: issued,
+        replayed,
         requested: {
           commonName: "web.example.com",
           subjectAlternativeNames: [dns("web.example.com"), dns("www.example.com"), dns("api.example.com")]
@@ -768,13 +771,13 @@ describe("isRenewalNameChange", () => {
     ).toBe(true);
     expect(
       isRenewalNameChange({
-        original: issued,
+        replayed,
         requested: { commonName: "web.example.com", subjectAlternativeNames: [] }
       })
     ).toBe(true);
     expect(
       isRenewalNameChange({
-        original: issued,
+        replayed,
         requested: { commonName: "api.example.com", subjectAlternativeNames: [] }
       })
     ).toBe(true);

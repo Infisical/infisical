@@ -601,7 +601,7 @@ export const certificateRenewalServiceFactory = ({
   ) => {
     if (originatingRequestCsr) return originatingRequestCsr;
     const certificateBody = await certificateBodyDAL.findOne({ certId: certificateId }, tx);
-    return certificateBody?.csr ?? null;
+    return certificateBody?.importedCsr ?? null;
   };
 
   const $loadRenewalSubject = async (
@@ -1280,7 +1280,7 @@ export const certificateRenewalServiceFactory = ({
         if (
           originalCsr &&
           caType !== CaType.INTERNAL &&
-          isRenewalNameChange({ original: originalCert, requested: certificateRequest })
+          isRenewalNameChange({ replayed: replayedRequest, requested: certificateRequest })
         ) {
           throw new BadRequestError({
             message:

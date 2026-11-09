@@ -2629,7 +2629,7 @@ describe("CertificateV3Service", () => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue({ ...mockOriginalCert, source: "imported" });
         vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue(undefined as any);
         vi.mocked(mockCertificateBodyDAL.findOne).mockResolvedValue(
-          importedCsr ? ({ id: "body-123", certId: "cert-123", csr: importedCsr } as any) : (undefined as any)
+          importedCsr ? ({ id: "body-123", certId: "cert-123", importedCsr } as any) : (undefined as any)
         );
         vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
         vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(ca as any);
@@ -2670,6 +2670,38 @@ describe("CertificateV3Service", () => {
           })
         ).rejects.toThrow(/issues the names in that request/);
         expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
+      });
+
+      it("renews unchanged when the CA added names the originating request never asked for", async () => {
+        setupKeylessRenewal({ ca: digicertCa, importedCsr: null });
+        vi.mocked(mockCertificateDAL.getOriginatingRequestByCertId).mockResolvedValue({
+          enrollmentType: EnrollmentType.API,
+          csr: STORED_CSR,
+          exists: true,
+          commonName: "test.example.com",
+          organization: null,
+          organizationalUnit: null,
+          country: null,
+          state: null,
+          locality: null,
+          domainComponents: null,
+          altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "test.example.com" }],
+          keyUsages: null,
+          extendedKeyUsages: null,
+          customExtensions: null,
+          keyAlgorithm: null,
+          signatureAlgorithm: null
+        });
+
+        await service.renewCertificate({
+          certificateId: "cert-123",
+          renewalKeySource: CertificateRenewalKeySource.Reuse,
+          ...mockActor
+        });
+
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).toHaveBeenCalledWith(
+          expect.objectContaining({ csr: STORED_CSR })
+        );
       });
 
       it("refuses to reuse the key pair when Infisical holds no CSR for it either", async () => {

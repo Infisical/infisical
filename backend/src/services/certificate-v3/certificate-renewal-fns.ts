@@ -204,21 +204,26 @@ const RENEWAL_ATTRIBUTE_KEYS = Object.keys(RENEWAL_ATTRIBUTES) as (keyof TRenewa
 const suppliedAttributeKeys = (attributes: TRenewalAttributes) =>
   RENEWAL_ATTRIBUTE_KEYS.filter((key) => attributes[key] !== undefined);
 
-const renewalNameSet = (commonName: string | null | undefined, altNames: string[]) =>
-  new Set([commonName ?? "", ...altNames].map((name) => name.trim().toLowerCase()).filter(Boolean));
+type TRenewalNames = { commonName?: string; subjectAlternativeNames?: { value: string }[] };
 
+const renewalNameSet = ({ commonName, subjectAlternativeNames }: TRenewalNames) =>
+  new Set(
+    [commonName ?? "", ...(subjectAlternativeNames ?? []).map((san) => san.value)]
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean)
+  );
+
+// Compares against the request an unedited renewal replays, not the issued certificate, because a CA
+// may have added names at issuance that the replayed request never asked for.
 export const isRenewalNameChange = ({
-  original,
+  replayed,
   requested
 }: {
-  original: { commonName?: string | null; altNames?: string | null };
-  requested: { commonName?: string; subjectAlternativeNames?: { value: string }[] };
+  replayed: TRenewalNames;
+  requested: TRenewalNames;
 }): boolean => {
-  const before = renewalNameSet(original.commonName, original.altNames ? original.altNames.split(",") : []);
-  const after = renewalNameSet(
-    requested.commonName,
-    (requested.subjectAlternativeNames ?? []).map((san) => san.value)
-  );
+  const before = renewalNameSet(replayed);
+  const after = renewalNameSet(requested);
   return before.size !== after.size || [...after].some((name) => !before.has(name));
 };
 

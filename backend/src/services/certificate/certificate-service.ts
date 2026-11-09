@@ -1477,7 +1477,7 @@ export const certificateServiceFactory = ({
             certId: txCert.id,
             encryptedCertificate,
             encryptedCertificateChain,
-            csr: csr ?? null
+            importedCsr: csr ?? null
           },
           tx
         );
