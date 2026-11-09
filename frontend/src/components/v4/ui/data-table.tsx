@@ -44,7 +44,8 @@ export interface DataTableColumn<Row> {
   grow?: boolean;
   align?: "start" | "end" | "center";
   actions?: boolean;
-  pin?: boolean;
+  /** true pins the column to the inline end (the actions tail); start pins it to the inline start, after a pinned selection column. */
+  pin?: boolean | "start";
   hideHeader?: boolean;
 }
 export interface DataTableToggle<Row> {
@@ -290,11 +291,24 @@ export function DataTable<Row>({
       return column.minWidth ? `${column.minWidth}px` : "var(--v4-size-cell-min)";
     });
   const fixedWidth = columns.reduce((sum, column) => sum + (column.width ?? 0), 0);
-  const columnStyle = (column: DataTableColumn<Row>): React.CSSProperties => ({
+  const leading = columns.some((column) => column.pin === "start");
+  const pinOffsets = new Map<string, string>();
+  columns
+    .filter((column) => column.pin === "start")
+    .reduce((before, column) => {
+      pinOffsets.set(column.id, `calc(${selectable ? "var(--v4-size-row)" : "0px"} + ${before}px)`);
+      return before + (column.width ?? 0);
+    }, 0);
+  const columnStyle = (
+    column: DataTableColumn<Row>
+  ): React.CSSProperties & {
+    "--v4-pin-offset"?: string;
+  } => ({
     width: column.width ?? (hasGrowingColumn && !column.grow && !column.actions ? "1%" : undefined),
     minWidth: column.width ?? (column.actions ? undefined : (column.minWidth ?? 64)),
     maxWidth: column.maxWidth,
-    textAlign: column.align
+    textAlign: column.align,
+    "--v4-pin-offset": pinOffsets.get(column.id)
   });
   const skeletonRows = Math.max(1, Math.floor(loadingRows));
   const tableStyle: React.CSSProperties & { "--v4-table-row-height"?: string } = {
@@ -356,7 +370,7 @@ export function DataTable<Row>({
         style={{ height: effectiveRowHeight }}
       >
         {selectable && (
-          <TableCell selection>
+          <TableCell selection pin={leading ? "start" : undefined}>
             <SelectionBox
               label={`Select ${rowLabel(row)}`}
               checked={selected.includes(getRowId(row))}
@@ -458,7 +472,7 @@ export function DataTable<Row>({
         <TableHeader>
           <TableRow>
             {selectable && (
-              <TableHead selection>
+              <TableHead selection pin={leading ? "start" : undefined}>
                 <Checkbox
                   aria-label={`Select all available rows in ${label}`}
                   disabled={loading || !eligible.length}

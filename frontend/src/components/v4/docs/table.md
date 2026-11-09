@@ -294,6 +294,9 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 
 ## Behavior
 
+- Leading pins: pin="start" on TableHead and TableCell (selection cells included) renders data-pin="start", the same attribute DataTable's trailing pin sets to true, and sticks the cell at the inline start. A second pinned column stacks on the first through --v4-pin-offset: a cell after a pinned selection cell takes size-row on its own, and any later one passes pinOffset, a CSS length for the width of the pinned columns before it. DataTable columns take pin: "start" too; the selection column then pins with them and DataTable sets each offset from the declared widths. Pinned cells repaint the row's ground and its stripe, hover, selected and keyboard-ring layers through the same rules as the actions tail, keep row focus (a focused row stays full and a dimmed row dims a pinned cell's contents, not its ground), sit at z-index 4 over scrolled cells, and pinned header cells sit at 6 with the sticky DataTable header at 5. The last leading pinned column draws a line-soft edge only once the table has scrolled sideways, read from the scroll-edge watcher's data-scroll-start-x, and the start scroll fade is off while leading pins hold that edge. Pin only the columns that identify the row, usually selection and Name, in wide matrices such as the secrets overview across many environments.
+- Full-width cell: pin="viewport" on a TableCell with colSpan across every column makes its one child sticky at the inline start and as wide as the scroll container (100cqi; the container becomes an inline-size query container only while it holds such a cell), so an expanded row's nested table stays in view while the outer table scrolls sideways. The cell drops its padding; the child owns its insets. Use it for an expansion that belongs to the row, never for ordinary cells.
+- Pinned cells that hold only text keep their text at full strength while other rows dim, because the dim would otherwise fade the cell's opaque ground; wrap the text in an element to dim it.
 - Row focus: while a row is being edited (an annotation popover, an inline name or value edit), set focused on its TableRow, or pass DataTable focusedRowId (one id or several). The row renders data-focused and every other row in the same body fades its cell contents to opacity-row-dim (40%) through filter: opacity, so row grounds, borders, the selection ring, pinned cells and the header stay at full strength, and the dim composes with opacity reveals inside cells. The dim is pure CSS on the body; there is no table-level prop. Hovering a dimmed row undims it where hover exists, dimmed rows stay interactive, and portalled popovers and menus never dim. The fade runs on duration-moderate and is instant under reduced motion. A selected row that is not focused still dims.
 - Nested tables: a body dims when it holds a focused row at any depth. The row that holds the nested table and the row just above it, the one it expands from, keep full strength, and the nested body dims only its own other rows, so focusing an environment row inside an expanded secret dims every other secret and environment row and nothing else.
 - Row states are layers over the row's ground, which is surface, or row-done on a striped even row. The selected surface and the hover overlay (the shared hover token) stack over the ground on every cell, and a pinned cell or the sticky tail repaints the same ground and layers opaquely, so a striped, selected or hovered row reads as one band to the frame edge and scrolled cells never show through.
@@ -1896,6 +1899,265 @@ export default function ColumnToggle() {
         rowLabel={(row) => row.subject}
       />
       <Meta role="status">{status}</Meta>
+    </div>
+  );
+}
+```
+
+### Leading pins and a full-width cell
+
+Save this example at `src/pages/design-system/examples/table/leading-pin.tsx`; its relative imports are generated for that exact path. States: default, controlled, overflow.
+
+Registry items used: @infisical/button, @infisical/checkbox, @infisical/data-table, @infisical/popover, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+
+import { Button } from "../../../../components/v4/ui/button";
+import { Checkbox } from "../../../../components/v4/ui/checkbox";
+import { DataTable, type DataTableColumn, EnvMark } from "../../../../components/v4/ui/data-table";
+import {
+  Popover,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger
+} from "../../../../components/v4/ui/popover";
+import {
+  RowActions,
+  RowContextMenu,
+  Table,
+  TableActionsCell,
+  TableActionsHead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "../../../../components/v4/ui/table";
+
+const environments = [
+  "Development",
+  "Staging",
+  "QA",
+  "UAT",
+  "Performance",
+  "Sandbox",
+  "Demo",
+  "Preview",
+  "Canary",
+  "Production US",
+  "Production EU",
+  "Production AP"
+];
+
+type Secret = { id: string; name: string; present: number[] };
+
+const secrets: Secret[] = [
+  { id: "stripe", name: "STRIPE_API_KEY", present: [0, 1, 2, 9, 10, 11] },
+  { id: "database", name: "DATABASE_URL", present: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
+  { id: "sentry", name: "SENTRY_DSN", present: [1, 9, 10] },
+  { id: "redis", name: "REDIS_PASSWORD", present: [0, 1, 3, 9] },
+  { id: "jwt", name: "JWT_SIGNING_SECRET", present: [0, 1, 2, 3, 9, 10, 11] },
+  { id: "smtp", name: "SMTP_PASSWORD", present: [9, 10, 11] }
+];
+
+const copyAction = (name: string) => ({
+  label: `Copy ${name}`,
+  icon: "copy" as const,
+  onSelect: () => navigator.clipboard?.writeText(name)
+});
+
+function ValueEditor({
+  label,
+  open,
+  onOpenChange
+}: {
+  label: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="xs">
+          ••••••••
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start">
+        <PopoverHeader>
+          <PopoverTitle>{label}</PopoverTitle>
+        </PopoverHeader>
+        <Button onClick={() => onOpenChange(false)}>Done</Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function Matrix() {
+  const [selected, setSelected] = React.useState<string[]>(["stripe"]);
+  const [expanded, setExpanded] = React.useState<string | null>("database");
+  const [editing, setEditing] = React.useState<string | null>(null);
+  const allState = () => {
+    if (selected.length === secrets.length) return true;
+    return selected.length > 0 ? "indeterminate" : false;
+  };
+  const toggle = (id: string) =>
+    setSelected((current) =>
+      current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]
+    );
+  return (
+    <Table aria-label="Secrets across twelve environments">
+      <TableHeader>
+        <TableRow>
+          <TableHead selection pin="start">
+            <Checkbox
+              aria-label="Select every secret"
+              checked={allState()}
+              onCheckedChange={() =>
+                setSelected(
+                  selected.length === secrets.length ? [] : secrets.map((secret) => secret.id)
+                )
+              }
+            />
+          </TableHead>
+          <TableHead scope="col" pin="start">
+            Name
+          </TableHead>
+          {environments.map((environment) => (
+            <TableHead key={environment} scope="col">
+              {environment}
+            </TableHead>
+          ))}
+          <TableActionsHead slots={1} />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {secrets.map((secret) => (
+          <React.Fragment key={secret.id}>
+            <RowContextMenu label={secret.name} inline={[copyAction(secret.name)]}>
+              <TableRow data-state={selected.includes(secret.id) ? "selected" : undefined}>
+                <TableCell selection pin="start">
+                  <Checkbox
+                    aria-label={`Select ${secret.name}`}
+                    checked={selected.includes(secret.id)}
+                    onCheckedChange={() => toggle(secret.id)}
+                  />
+                </TableCell>
+                <TableCell pin="start">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    icon={expanded === secret.id ? "chev-down" : "chev-right"}
+                    aria-expanded={expanded === secret.id}
+                    onClick={() => setExpanded(expanded === secret.id ? null : secret.id)}
+                  >
+                    {secret.name}
+                  </Button>
+                </TableCell>
+                {environments.map((environment, index) => (
+                  <TableCell key={environment}>
+                    <EnvMark env={environment} present={secret.present.includes(index)} />
+                  </TableCell>
+                ))}
+                <TableActionsCell slots={1}>
+                  <RowActions label={secret.name} inline={[copyAction(secret.name)]} />
+                </TableActionsCell>
+              </TableRow>
+            </RowContextMenu>
+            {expanded === secret.id && (
+              <TableRow>
+                <TableCell pin="viewport" colSpan={environments.length + 3}>
+                  <div>
+                    <Table aria-label={`${secret.name} by environment`}>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead scope="col">Environment</TableHead>
+                          <TableHead scope="col">Value</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {environments.slice(0, 4).map((environment) => (
+                          <TableRow
+                            key={environment}
+                            focused={editing === `${secret.id}:${environment}`}
+                          >
+                            <TableCell>
+                              <span>{environment}</span>
+                            </TableCell>
+                            <TableCell>
+                              <ValueEditor
+                                label={`${secret.name} in ${environment}`}
+                                open={editing === `${secret.id}:${environment}`}
+                                onOpenChange={(open) =>
+                                  setEditing(open ? `${secret.id}:${environment}` : null)
+                                }
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
+          </React.Fragment>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+export default function LeadingPinExample() {
+  const columns: DataTableColumn<Secret>[] = [
+    {
+      id: "name",
+      header: "Name",
+      primary: true,
+      pin: "start",
+      width: 220,
+      render: (row) => row.name
+    },
+    ...environments.map((environment, index): DataTableColumn<Secret> => ({
+      id: environment,
+      header: environment,
+      width: 128,
+      render: (row) => <EnvMark env={environment} present={row.present.includes(index)} />
+    }))
+  ];
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Matrix />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {
+            "Native Table: selection and Name pinned at the start, actions at the end, an expanded row's full-width cell"
+          }
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <DataTable
+            label="Secrets across twelve environments"
+            variant="striped"
+            rows={secrets}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            selectable
+            defaultSelectedIds={["database"]}
+            rowActions={{
+              inline: [{ label: "Copy name", icon: "copy", onSelect: () => undefined }]
+            }}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"DataTable, striped: a start-pinned Name column after selection"}
+        </figcaption>
+      </figure>
     </div>
   );
 }
