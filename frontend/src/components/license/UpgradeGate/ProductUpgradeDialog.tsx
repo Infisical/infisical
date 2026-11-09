@@ -2,8 +2,8 @@ import { ReactNode } from "react";
 import { Check, Infinity as InfinityIcon, Plus } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
-import { BillingV2CatalogProduct, BillingV2Plan } from "@app/hooks/api";
-import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
+import { BillingCatalogProduct, BillingCatalogPlan } from "@app/hooks/api";
+import { ProductIcon } from "@app/pages/organization/BillingPage/components/shared";
 
 import { UpgradeDialogLayout } from "./UpgradeDialogLayout";
 
@@ -16,10 +16,10 @@ export type PlanFeature = {
 };
 
 type Props = {
-  product: BillingV2CatalogProduct;
+  product: BillingCatalogProduct;
   upgradeLabel?: string;
   requiredPlanName?: string;
-  plans: BillingV2Plan[];
+  plans: BillingCatalogPlan[];
   selectedTier: string;
   currentPlanTier?: string;
   onTierChange: (tier: string) => void;
