@@ -3435,7 +3435,12 @@ export const registerRoutes = async (
     gatewayPoolService
   });
 
-  const provisioningTemplateService = provisioningTemplateServiceFactory({ permissionService, projectDAL });
+  const provisioningTemplateService = provisioningTemplateServiceFactory({
+    permissionService,
+    projectDAL,
+    appConnectionDAL,
+    kmsService
+  });
 
   const appConnectionService = appConnectionServiceFactory({
     orgDAL,

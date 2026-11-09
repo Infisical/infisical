@@ -6449,13 +6449,28 @@ func (e GetAwsAppConnectionByName500JSONResponseBodyStatusCode) Valid() bool {
 
 // Defines values for GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind.
 const (
-	CloudformationLaunch GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind = "cloudformation-launch"
+	GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0KindCloudformationLaunch GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind = "cloudformation-launch"
 )
 
 // Valid indicates whether the value is a known member of the GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind enum.
 func (e GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind) Valid() bool {
 	switch e {
-	case CloudformationLaunch:
+	case GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0KindCloudformationLaunch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind.
+const (
+	GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1KindCloudformationUpdate GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind = "cloudformation-update"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind enum.
+func (e GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind) Valid() bool {
+	switch e {
+	case GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1KindCloudformationUpdate:
 		return true
 	default:
 		return false
@@ -7224,6 +7239,126 @@ const (
 func (e UpdateAwsAppConnection500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case UpdateAwsAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind.
+const (
+	GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0KindCloudformationLaunch GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind = "cloudformation-launch"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind enum.
+func (e GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind) Valid() bool {
+	switch e {
+	case GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0KindCloudformationLaunch:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind.
+const (
+	GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1KindCloudformationUpdate GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind = "cloudformation-update"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind enum.
+func (e GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind) Valid() bool {
+	switch e {
+	case GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1KindCloudformationUpdate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCode.
+const (
+	GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCodeN400 GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCode enum.
+func (e GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCode.
+const (
+	GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCodeN401 GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCode enum.
+func (e GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCode.
+const (
+	GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCodeN403 GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCode enum.
+func (e GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCode.
+const (
+	GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCodeN404 GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCode enum.
+func (e GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCode.
+const (
+	GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCodeN422 GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCode enum.
+func (e GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCode.
+const (
+	GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCodeN500 GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCode enum.
+func (e GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -96680,6 +96815,12 @@ type ListAwsAppConnections200JSONResponseBodyAppConnections0 struct {
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
 
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
+
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
 
@@ -96763,6 +96904,12 @@ type ListAwsAppConnections200JSONResponseBodyAppConnections1 struct {
 
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
+
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
 
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
@@ -96868,6 +97015,12 @@ type CreateAwsAppConnectionJSONBody struct {
 
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
+
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
 
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
@@ -96992,6 +97145,12 @@ type CreateAwsAppConnection200JSONResponseBodyAppConnection0 struct {
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
 
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
+
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
 
@@ -97075,6 +97234,12 @@ type CreateAwsAppConnection200JSONResponseBodyAppConnection1 struct {
 
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
+
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
 
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
@@ -97188,6 +97353,12 @@ type GetAwsAppConnectionByName200JSONResponseBodyAppConnection0 struct {
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
 
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
+
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
 
@@ -97271,6 +97442,12 @@ type GetAwsAppConnectionByName200JSONResponseBodyAppConnection1 struct {
 
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
+
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
 
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
@@ -97392,6 +97569,22 @@ type GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 struct {
 // GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind defines parameters for GetAwsProvisioningTemplate.
 type GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind string
 
+// GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 struct {
+	CompanionParameters []string                                                               `json:"companionParameters"`
+	Kind                GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind `json:"kind"`
+	Parameters          map[string]string                                                      `json:"parameters"`
+	Partition           string                                                                 `json:"partition"`
+	Region              string                                                                 `json:"region"`
+	StackName           string                                                                 `json:"stackName"`
+	StackUrl            string                                                                 `json:"stackUrl"`
+	TemplateUrl         string                                                                 `json:"templateUrl"`
+	TemplateVersion     string                                                                 `json:"templateVersion"`
+}
+
+// GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind string
+
 // GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate defines parameters for GetAwsProvisioningTemplate.
 type GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate struct {
 	union json.RawMessage
@@ -97426,6 +97619,12 @@ type DeleteAwsAppConnection200JSONResponseBodyAppConnection0 struct {
 
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
+
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
 
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
@@ -97510,6 +97709,12 @@ type DeleteAwsAppConnection200JSONResponseBodyAppConnection1 struct {
 
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
+
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
 
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
@@ -97617,6 +97822,12 @@ type GetAwsAppConnection200JSONResponseBodyAppConnection0 struct {
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
 
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
+
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
 
@@ -97700,6 +97911,12 @@ type GetAwsAppConnection200JSONResponseBodyAppConnection1 struct {
 
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
+
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
 
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
@@ -97892,6 +98109,12 @@ type UpdateAwsAppConnection200JSONResponseBodyAppConnection0 struct {
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
 
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
+
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
 
@@ -97975,6 +98198,12 @@ type UpdateAwsAppConnection200JSONResponseBodyAppConnection1 struct {
 
 			// Partition The AWS partition the stack was launched in.
 			Partition string `json:"partition"`
+
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
 
 			// StackName The CloudFormation stack name.
 			StackName string `json:"stackName"`
@@ -98069,6 +98298,70 @@ type UpdateAwsAppConnection422JSONResponseBodyStatusCode float32
 
 // UpdateAwsAppConnection500JSONResponseBodyStatusCode defines parameters for UpdateAwsAppConnection.
 type UpdateAwsAppConnection500JSONResponseBodyStatusCode float32
+
+// GetAwsConnectionProvisioningTemplateParams defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplateParams struct {
+	// UseCases The Use cases the role should cover afterwards, as comma-separated IDs.
+	UseCases string `form:"useCases" json:"useCases"`
+
+	// Region The stack's region. Only used when the connection has no recorded region.
+	Region *string `form:"region,omitempty" json:"region,omitempty"`
+}
+
+// GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 struct {
+	Kind            GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind `json:"kind"`
+	LaunchUrl       string                                                                           `json:"launchUrl"`
+	OutputKey       string                                                                           `json:"outputKey"`
+	Parameters      map[string]string                                                                `json:"parameters"`
+	Partition       string                                                                           `json:"partition"`
+	Region          string                                                                           `json:"region"`
+	StackName       string                                                                           `json:"stackName"`
+	TemplateUrl     string                                                                           `json:"templateUrl"`
+	TemplateVersion string                                                                           `json:"templateVersion"`
+}
+
+// GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind string
+
+// GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 struct {
+	CompanionParameters []string                                                                         `json:"companionParameters"`
+	Kind                GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind `json:"kind"`
+	Parameters          map[string]string                                                                `json:"parameters"`
+	Partition           string                                                                           `json:"partition"`
+	Region              string                                                                           `json:"region"`
+	StackName           string                                                                           `json:"stackName"`
+	StackUrl            string                                                                           `json:"stackUrl"`
+	TemplateUrl         string                                                                           `json:"templateUrl"`
+	TemplateVersion     string                                                                           `json:"templateVersion"`
+}
+
+// GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind string
+
+// GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate struct {
+	union json.RawMessage
+}
+
+// GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCode defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCode float32
+
+// GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCode defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCode float32
+
+// GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCode defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCode float32
+
+// GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCode defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCode float32
+
+// GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCode defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCode float32
+
+// GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCode defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCode float32
 
 // CreateAzureKeyVaultAppConnectionJSONBody defines parameters for CreateAzureKeyVaultAppConnection.
 type CreateAzureKeyVaultAppConnectionJSONBody struct {
@@ -138427,6 +138720,32 @@ func (t *GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) Mer
 	return err
 }
 
+// AsGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 returns the union data inside the GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate as a GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1
+func (t GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) AsGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1() (GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1, error) {
+	var body GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 overwrites any union data inside the GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate as the provided GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1
+func (t *GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) FromGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1(v GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 performs a merge with any union data inside the GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate, using the provided GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1
+func (t *GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) MergeGetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1(v GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
 func (t GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) MarshalJSON() ([]byte, error) {
 	b, err := t.union.MarshalJSON()
 	return b, err
@@ -138867,6 +139186,68 @@ func (t UpdateAwsAppConnection200JSONResponseBody_AppConnection) MarshalJSON() (
 }
 
 func (t *UpdateAwsAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 returns the union data inside the GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate as a GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0
+func (t GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) AsGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0() (GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0, error) {
+	var body GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 overwrites any union data inside the GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate as the provided GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0
+func (t *GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) FromGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0(v GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0 performs a merge with any union data inside the GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate, using the provided GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0
+func (t *GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) MergeGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0(v GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 returns the union data inside the GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate as a GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1
+func (t GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) AsGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1() (GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1, error) {
+	var body GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 overwrites any union data inside the GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate as the provided GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1
+func (t *GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) FromGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1(v GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 performs a merge with any union data inside the GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate, using the provided GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1
+func (t *GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) MergeGetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1(v GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -164211,6 +164592,9 @@ type ClientInterface interface {
 	// Update the specified AWS Connection.
 	UpdateAwsAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateAwsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetAwsConnectionProvisioningTemplate performs a GET /api/v1/app-connections/aws/{connectionId}/provisioning-template (the `GetAwsConnectionProvisioningTemplate` operationId) request.
+	GetAwsConnectionProvisioningTemplate(ctx context.Context, connectionId openapi_types.UUID, params *GetAwsConnectionProvisioningTemplateParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateAzureKeyVaultAppConnectionWithBody performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -170022,6 +170406,19 @@ func (c *Client) UpdateAwsAppConnectionWithBody(ctx context.Context, connectionI
 // Update the specified AWS Connection.
 func (c *Client) UpdateAwsAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdateAwsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateAwsAppConnectionRequest(c.Server, connectionId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetAwsConnectionProvisioningTemplate performs a GET /api/v1/app-connections/aws/{connectionId}/provisioning-template (the `GetAwsConnectionProvisioningTemplate` operationId) request.
+func (c *Client) GetAwsConnectionProvisioningTemplate(ctx context.Context, connectionId openapi_types.UUID, params *GetAwsConnectionProvisioningTemplateParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetAwsConnectionProvisioningTemplateRequest(c.Server, connectionId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -187324,6 +187721,75 @@ func NewUpdateAwsAppConnectionRequestWithBody(server string, connectionId openap
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetAwsConnectionProvisioningTemplateRequest constructs an http.Request for the GetAwsConnectionProvisioningTemplate method
+func NewGetAwsConnectionProvisioningTemplateRequest(server string, connectionId openapi_types.UUID, params *GetAwsConnectionProvisioningTemplateParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "connectionId", connectionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/aws/%s/provisioning-template", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "useCases", params.UseCases, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.Region != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "region", *params.Region, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -219400,6 +219866,11 @@ type ClientWithResponsesInterface interface {
 	// Update the specified AWS Connection.
 	UpdateAwsAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdateAwsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAwsAppConnectionResponse, error)
 
+	// GetAwsConnectionProvisioningTemplateWithResponse performs a GET /api/v1/app-connections/aws/{connectionId}/provisioning-template (the `GetAwsConnectionProvisioningTemplate` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetAwsConnectionProvisioningTemplateWithResponse(ctx context.Context, connectionId openapi_types.UUID, params *GetAwsConnectionProvisioningTemplateParams, reqEditors ...RequestEditorFn) (*GetAwsConnectionProvisioningTemplateResponse, error)
+
 	// CreateAzureKeyVaultAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
 	// with any type of body and a specified content type.
 	//
@@ -235814,6 +236285,157 @@ func (r UpdateAwsAppConnectionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateAwsAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetAwsConnectionProvisioningTemplateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		ProvisioningTemplate *GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate `json:"provisioningTemplate"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                       `json:"details,omitempty"`
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                       `json:"details,omitempty"`
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                            `json:"error"`
+		Message    interface{}                                                       `json:"message,omitempty"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                            `json:"error"`
+		Message    string                                                            `json:"message"`
+		ReqId      string                                                            `json:"reqId"`
+		StatusCode GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetAwsConnectionProvisioningTemplateResponse) GetJSON200() *struct {
+	ProvisioningTemplate *GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate `json:"provisioningTemplate"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetAwsConnectionProvisioningTemplateResponse) GetJSON400() *struct {
+	Details    interface{}                                                       `json:"details,omitempty"`
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetAwsConnectionProvisioningTemplateResponse) GetJSON401() *struct {
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetAwsConnectionProvisioningTemplateResponse) GetJSON403() *struct {
+	Details    interface{}                                                       `json:"details,omitempty"`
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetAwsConnectionProvisioningTemplateResponse) GetJSON404() *struct {
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetAwsConnectionProvisioningTemplateResponse) GetJSON422() *struct {
+	Error      string                                                            `json:"error"`
+	Message    interface{}                                                       `json:"message,omitempty"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetAwsConnectionProvisioningTemplateResponse) GetJSON500() *struct {
+	Error      string                                                            `json:"error"`
+	Message    string                                                            `json:"message"`
+	ReqId      string                                                            `json:"reqId"`
+	StatusCode GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetAwsConnectionProvisioningTemplateResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetAwsConnectionProvisioningTemplateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetAwsConnectionProvisioningTemplateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAwsConnectionProvisioningTemplateResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -362428,6 +363050,17 @@ func (c *ClientWithResponses) UpdateAwsAppConnectionWithResponse(ctx context.Con
 	return ParseUpdateAwsAppConnectionResponse(rsp)
 }
 
+// GetAwsConnectionProvisioningTemplateWithResponse performs a GET /api/v1/app-connections/aws/{connectionId}/provisioning-template (the `GetAwsConnectionProvisioningTemplate` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetAwsConnectionProvisioningTemplateWithResponse(ctx context.Context, connectionId openapi_types.UUID, params *GetAwsConnectionProvisioningTemplateParams, reqEditors ...RequestEditorFn) (*GetAwsConnectionProvisioningTemplateResponse, error) {
+	rsp, err := c.GetAwsConnectionProvisioningTemplate(ctx, connectionId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetAwsConnectionProvisioningTemplateResponse(rsp)
+}
+
 // CreateAzureKeyVaultAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/azure-key-vault (the `CreateAzureKeyVaultAppConnection` operationId) request,
 // with any type of body and a specified content type.
 //
@@ -381112,6 +381745,108 @@ func ParseUpdateAwsAppConnectionResponse(rsp *http.Response) (*UpdateAwsAppConne
 			Message    string                                              `json:"message"`
 			ReqId      string                                              `json:"reqId"`
 			StatusCode UpdateAwsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetAwsConnectionProvisioningTemplateResponse parses an HTTP response from a GetAwsConnectionProvisioningTemplateWithResponse call
+func ParseGetAwsConnectionProvisioningTemplateResponse(rsp *http.Response) (*GetAwsConnectionProvisioningTemplateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetAwsConnectionProvisioningTemplateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			ProvisioningTemplate *GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate `json:"provisioningTemplate"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                       `json:"details,omitempty"`
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode GetAwsConnectionProvisioningTemplate400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode GetAwsConnectionProvisioningTemplate401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                       `json:"details,omitempty"`
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode GetAwsConnectionProvisioningTemplate403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode GetAwsConnectionProvisioningTemplate404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    interface{}                                                       `json:"message,omitempty"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode GetAwsConnectionProvisioningTemplate422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                            `json:"error"`
+			Message    string                                                            `json:"message"`
+			ReqId      string                                                            `json:"reqId"`
+			StatusCode GetAwsConnectionProvisioningTemplate500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

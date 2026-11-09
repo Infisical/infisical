@@ -54,3 +54,25 @@ export type TAwsProvisioningTemplate = {
 export type TAwsProvisioningTemplateResponse = {
   provisioningTemplate: TAwsProvisioningTemplate | null;
 };
+
+export type TGetAwsConnectionProvisioningTemplate = {
+  connectionId: string;
+  useCases: string[];
+  region?: string;
+};
+
+export type TAwsUpdateProvisioningTemplate = {
+  kind: "cloudformation-update";
+  stackUrl: string;
+  templateUrl: string;
+  stackName: string;
+  region: string;
+  partition: string;
+  templateVersion: string;
+  parameters: Record<string, string>;
+  companionParameters: string[];
+};
+
+export type TAwsConnectionProvisioningTemplateResponse = {
+  provisioningTemplate: TAwsUpdateProvisioningTemplate | null;
+};

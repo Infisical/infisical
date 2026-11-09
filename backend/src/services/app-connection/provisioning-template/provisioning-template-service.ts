@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { OrgPermissionAppConnectionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -7,20 +7,34 @@ import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
-import { awsProvisioningTemplateProvider, TAwsProvisioningTemplateQuery } from "./aws/aws-provisioning-template-fns";
+import { decryptAppConnectionConfiguration } from "../app-connection-fns";
+import {
+  awsProvisioningTemplateProvider,
+  TAwsProvisioningTemplateQuery,
+  TAwsProvisioningUpdateQuery
+} from "./aws/aws-provisioning-template-fns";
 import { TProvisioningTemplate, TProvisioningTemplateProvider } from "./provisioning-template-types";
 
 type TProvisioningTemplateQueries = {
   [AppConnection.AWS]: TAwsProvisioningTemplateQuery;
 };
 
+type TProvisioningUpdateQueries = {
+  [AppConnection.AWS]: TAwsProvisioningUpdateQuery;
+};
+
 const PROVISIONING_TEMPLATE_PROVIDERS: {
-  [App in keyof TProvisioningTemplateQueries]: TProvisioningTemplateProvider<TProvisioningTemplateQueries[App]>;
+  [App in keyof TProvisioningTemplateQueries]: TProvisioningTemplateProvider<
+    TProvisioningTemplateQueries[App],
+    TProvisioningUpdateQueries[App]
+  >;
 } = {
   [AppConnection.AWS]: awsProvisioningTemplateProvider
 };
@@ -28,13 +42,17 @@ const PROVISIONING_TEMPLATE_PROVIDERS: {
 type TProvisioningTemplateServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findProjectById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
 export type TProvisioningTemplateServiceFactory = ReturnType<typeof provisioningTemplateServiceFactory>;
 
 export const provisioningTemplateServiceFactory = ({
   permissionService,
-  projectDAL
+  projectDAL,
+  appConnectionDAL,
+  kmsService
 }: TProvisioningTemplateServiceFactoryDep) => {
   const getProvisioningTemplate = async <App extends keyof TProvisioningTemplateQueries>(
     app: App,
@@ -83,5 +101,58 @@ export const provisioningTemplateServiceFactory = ({
     return PROVISIONING_TEMPLATE_PROVIDERS[app].getTemplate({ externalId }, query);
   };
 
-  return { getProvisioningTemplate };
+  const getConnectionProvisioningTemplate = async <App extends keyof TProvisioningTemplateQueries>(
+    app: App,
+    { connectionId, query }: { connectionId: string; query: TProvisioningUpdateQueries[App] },
+    actor: OrgServiceActor
+  ): Promise<TProvisioningTemplate | null> => {
+    const appConnection = await appConnectionDAL.findById(connectionId);
+
+    if (!appConnection || appConnection.orgId !== actor.orgId)
+      throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
+
+    if (appConnection.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorId: actor.id,
+        projectId: appConnection.projectId,
+        actorAuthMethod: actor.authMethod,
+        actorOrgId: actor.orgId,
+        actionProjectType: ActionProjectType.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionAppConnectionActions.Edit,
+        subject(ProjectPermissionSub.AppConnections, { connectionId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        actorId: actor.id,
+        actor: actor.type,
+        orgId: appConnection.orgId,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        scope: OrganizationActionScope.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionAppConnectionActions.Edit,
+        subject(OrgPermissionSubjects.AppConnections, { connectionId })
+      );
+    }
+
+    if (appConnection.app !== app)
+      throw new BadRequestError({ message: `App Connection with ID ${connectionId} is not for App "${app}"` });
+
+    const configuration = await decryptAppConnectionConfiguration({
+      orgId: appConnection.orgId,
+      projectId: appConnection.projectId,
+      encryptedConfiguration: appConnection.encryptedConfiguration,
+      kmsService
+    });
+
+    return PROVISIONING_TEMPLATE_PROVIDERS[app].getUpdateTemplate({ configuration }, query);
+  };
+
+  return { getProvisioningTemplate, getConnectionProvisioningTemplate };
 };

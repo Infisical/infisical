@@ -86,6 +86,51 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
 
   server.route({
     method: "GET",
+    url: "/:connectionId/provisioning-template",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getAwsConnectionProvisioningTemplate",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      querystring: z.object({
+        useCases: z
+          .string()
+          .max(1024)
+          .transform((value) => value.split(",").filter(Boolean))
+          .refine(
+            (ids) => ids.length >= 1 && ids.length <= 50 && ids.every((id) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)),
+            "Use cases must be 1 to 50 comma-separated kebab-case IDs"
+          )
+          .describe("The Use cases the role should cover afterwards, as comma-separated IDs."),
+        region: z
+          .string()
+          .refine((region) => isValidAwsRegion(region), "Region must look like us-east-1")
+          .optional()
+          .describe("The stack's region. Only used when the connection has no recorded region.")
+      }),
+      response: {
+        200: z.object({
+          provisioningTemplate: ProvisioningTemplateSchema.nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const provisioningTemplate = await server.services.provisioningTemplate.getConnectionProvisioningTemplate(
+        AppConnection.AWS,
+        { connectionId: req.params.connectionId, query: req.query },
+        req.permission
+      );
+
+      return { provisioningTemplate };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: `/:connectionId/kms-keys`,
     config: {
       rateLimit: readLimit

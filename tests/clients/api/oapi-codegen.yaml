@@ -210,6 +210,7 @@ output-options:
     - getAccessibleSecretMetadata
     - getAwsAppConnection
     - getAwsAppConnectionByName
+    - getAwsConnectionProvisioningTemplate
     - getAwsHoneyTokenConfig
     - getAwsProvisioningTemplate
     - getAwsParameterStoreSecretSync

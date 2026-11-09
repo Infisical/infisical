@@ -8,7 +8,9 @@ import {
   TAwsConnectionKmsKey,
   TAwsConnectionListIamUsersResponse,
   TAwsConnectionListKmsKeysResponse,
+  TAwsConnectionProvisioningTemplateResponse,
   TAwsProvisioningTemplateResponse,
+  TGetAwsConnectionProvisioningTemplate,
   TGetAwsProvisioningTemplate,
   TListAwsConnectionIamUsers,
   TListAwsConnectionKmsKeys
@@ -21,7 +23,34 @@ const awsConnectionKeys = {
   listIamUsers: (params: TListAwsConnectionIamUsers) =>
     [...awsConnectionKeys.all, "iam-users", params] as const,
   provisioningTemplate: (params: TGetAwsProvisioningTemplate) =>
-    [...awsConnectionKeys.all, "provisioning-template", params] as const
+    [...awsConnectionKeys.all, "provisioning-template", params] as const,
+  connectionProvisioningTemplate: (params: TGetAwsConnectionProvisioningTemplate) =>
+    [...awsConnectionKeys.all, "connection-provisioning-template", params] as const
+};
+
+export const useGetAwsConnectionProvisioningTemplate = (
+  params: TGetAwsConnectionProvisioningTemplate,
+  options?: { enabled?: boolean }
+) => {
+  return useQuery({
+    queryKey: awsConnectionKeys.connectionProvisioningTemplate(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TAwsConnectionProvisioningTemplateResponse>(
+        `/api/v1/app-connections/aws/${params.connectionId}/provisioning-template`,
+        {
+          params: {
+            useCases: params.useCases.join(","),
+            region: params.region
+          }
+        }
+      );
+
+      return data.provisioningTemplate;
+    },
+    placeholderData: keepPreviousData,
+    retry: false,
+    ...options
+  });
 };
 
 export const useGetAwsProvisioningTemplate = (

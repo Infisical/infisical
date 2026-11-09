@@ -5,6 +5,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { AwsConnectionConfigurationSchema } from "@app/services/app-connection/aws/aws-connection-schemas";
 
 import {
   ProvisioningTemplateKind,
@@ -79,7 +80,75 @@ export type TAwsProvisioningTemplateQuery = {
   stackName?: string;
 };
 
-export const awsProvisioningTemplateProvider: TProvisioningTemplateProvider<TAwsProvisioningTemplateQuery> = {
+export type TAwsProvisioningUpdateQuery = {
+  region?: string;
+  useCases: string[];
+};
+
+export const AWS_USE_CASE_COMPANION_PARAMETERS: Record<string, string[]> = {
+  "private-ca": ["PrivateCaArn"],
+  "acm-public-ca": ["Route53HostedZoneId"],
+  "acme-route53": ["Route53HostedZoneId"],
+  "pam-recording": ["PamRecordingBucket"],
+  "agent-vault-session-logs": ["AgentVaultSessionLogsBucket", "AgentVaultSessionLogsKeyPrefix"]
+};
+
+const getCompanionParameters = (recorded: string[], added: string[]) => {
+  const alreadyFilled = new Set(recorded.flatMap((useCase) => AWS_USE_CASE_COMPANION_PARAMETERS[useCase] ?? []));
+  const needed = added.flatMap((useCase) => AWS_USE_CASE_COMPANION_PARAMETERS[useCase] ?? []);
+  return [...new Set(needed)].filter((parameter) => !alreadyFilled.has(parameter));
+};
+
+export const awsProvisioningTemplateProvider: TProvisioningTemplateProvider<
+  TAwsProvisioningTemplateQuery,
+  TAwsProvisioningUpdateQuery
+> = {
+  getUpdateTemplate: async ({ configuration }, query): Promise<TProvisioningTemplate | null> => {
+    const parsed = AwsConnectionConfigurationSchema.safeParse(configuration);
+    const recorded = parsed.success ? parsed.data.provisioning : null;
+    if (!recorded) return null;
+
+    const partition = AWS_PARTITIONS[recorded.partition];
+    if (!partition?.launchSupported) return null;
+
+    const region = recorded.region ?? query.region;
+    if (!region) {
+      throw new BadRequestError({
+        message:
+          "This connection does not have a recorded stack region. Provide the AWS region the stack was launched in."
+      });
+    }
+    if (!partition.isRegionInPartition(region)) {
+      throw new BadRequestError({
+        message: `Region ${region} does not belong to the ${recorded.partition} partition`
+      });
+    }
+
+    const requested = [...new Set(query.useCases)];
+    const added = requested.filter((useCase) => !recorded.useCases.includes(useCase));
+    const removed = recorded.useCases.filter((useCase) => !requested.includes(useCase));
+
+    const parameters: Record<string, string> = {};
+    added.forEach((useCase) => {
+      parameters[toggleName(useCase)] = "true";
+    });
+    removed.forEach((useCase) => {
+      parameters[toggleName(useCase)] = "false";
+    });
+
+    return {
+      kind: ProvisioningTemplateKind.CloudFormationUpdate,
+      stackName: recorded.stackName,
+      region,
+      partition: recorded.partition,
+      stackUrl: `https://${region}.${partition.consoleDomain}/cloudformation/home?region=${region}#/stacks?filteringText=${encodeURIComponent(recorded.stackName)}`,
+      templateUrl: getAwsTemplateUrl(),
+      templateVersion: AWS_PROVISIONING_TEMPLATE_VERSION,
+      parameters,
+      companionParameters: getCompanionParameters(recorded.useCases, added)
+    };
+  },
+
   getTemplate: async ({ externalId }, query): Promise<TProvisioningTemplate | null> => {
     const partition = AWS_PARTITIONS[query.partition];
     if (!partition?.launchSupported) return null;
