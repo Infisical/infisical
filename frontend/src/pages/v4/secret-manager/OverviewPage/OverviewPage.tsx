@@ -1077,7 +1077,25 @@ export const OverviewPage = () => {
       directory: path,
       enabled: single
     }).data ?? 0;
-  const canQuickAdd = !writeBlock && !loading && totalCount > 0;
+  const createDenied = (environment: string) =>
+    Boolean(
+      blockFor(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.Create,
+        { environment, secretPath: path, secretName: "*", secretTags: ["*"] },
+        "create secrets"
+      )
+    );
+  const createBlock =
+    visibleEnvironments.length > 0 &&
+    visibleEnvironments.every((environment) => createDenied(environment.value))
+      ? "Access denied"
+      : undefined;
+  const canQuickAdd =
+    !writeBlock &&
+    !loading &&
+    totalCount > 0 &&
+    !visibleEnvironments.some((environment) => createDenied(environment.value));
   const gate = (reason: string | undefined, node: ReactNode) =>
     reason ? (
       <Tooltip content={reason}>
@@ -1162,6 +1180,10 @@ export const OverviewPage = () => {
   if (honeySelected) bulkCopyBlock = "Honey token secrets cannot be copied";
   else if (rotationsSelected || managedSelected) bulkCopyBlock = "Rotated secrets cannot be copied";
   else if (!selectedSecrets.length && !selectedFolders.length) bulkCopyBlock = "Nothing to copy";
+  else if (
+    new Set([...selectedSecrets, ...selectedFolders].map((entry) => entry.environment)).size > 1
+  )
+    bulkCopyBlock = "Select secrets from one environment to copy";
   const clipboardBlock =
     !selectedSecrets.length ||
     selectedFolders.length > 0 ||
@@ -1246,6 +1268,7 @@ export const OverviewPage = () => {
           }
         />
       );
+    if (createBlock) return <EmptyState icon="key" title="This table is empty" />;
     return (
       <SecretDropzone
         disabledReason={writeBlock}
@@ -1529,6 +1552,7 @@ export const OverviewPage = () => {
                   />
                   <AddNewMenu
                     writeBlock={writeBlock}
+                    createBlock={createBlock}
                     single={single}
                     available={Object.fromEntries(
                       Object.keys(addFlows).map((kind) => [kind, true])

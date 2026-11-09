@@ -165,6 +165,7 @@ export function ExportMenu({
 
 export function AddNewMenu({
   writeBlock,
+  createBlock,
   single,
   available,
   copyBlock,
@@ -174,6 +175,7 @@ export function AddNewMenu({
   onAddSync
 }: {
   writeBlock?: string;
+  createBlock?: string;
   single: boolean;
   available: Partial<Record<ResourceKind, boolean>>;
   copyBlock?: string;
@@ -185,6 +187,7 @@ export function AddNewMenu({
   const blockOf = (kind: ResourceKind, singleReason?: string) => {
     if (!available[kind]) return NEXT_PHASE;
     if (writeBlock) return writeBlock;
+    if (kind === "secret" && createBlock) return createBlock;
     return singleReason && !single ? singleReason : undefined;
   };
   const item = (kind: ResourceKind, label: string, icon: ReactNode, singleReason?: string) => {
@@ -212,8 +215,8 @@ export function AddNewMenu({
         {item("secret", "New secret", <KindIcon kind="secret" />)}
         {item("folder", "New folder", <KindIcon kind="folder" />)}
         <DropdownMenuItem
-          disabled={Boolean(writeBlock)}
-          description={writeBlock}
+          disabled={Boolean(writeBlock ?? createBlock)}
+          description={writeBlock ?? createBlock}
           onSelect={onUpload}
         >
           <Icon name="upload" />
