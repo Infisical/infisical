@@ -36,8 +36,8 @@ export const useRecursiveConflictsCheck = ({
 
   return {
     conflicts,
-    // Every synced secret's name and folder, for previews of what the sync covers.
-    secrets: shouldCheck ? (data?.secrets ?? []) : [],
+    // Every folder holding a synced secret, with its count, for previews of what the sync covers.
+    folders: shouldCheck ? (data?.folders ?? []) : [],
     isChecking: shouldCheck && isLoading,
     // True once a check has actually completed and found nothing, so the caller can render a
     // "no conflicts" success state distinct from "no check has run yet".

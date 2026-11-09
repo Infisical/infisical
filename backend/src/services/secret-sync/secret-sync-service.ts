@@ -12,6 +12,7 @@ import {
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -306,9 +307,10 @@ export const secretSyncServiceFactory = ({
   // step, before a provider or destination is even chosen: the check is destination-agnostic
   // (flatten() never uses the destination or the source folder path to build a key), so nothing
   // downstream can change the answer. Returns every conflict, untruncated, unlike the
-  // BadRequestError $assertSyncedSecretsAreFlattenable throws at create/update time. Also lists
-  // each synced secret's name and folder, never its value, so the form can preview where secrets
-  // will land; $assertCanReadSyncedFolders below has already checked the actor can describe them.
+  // BadRequestError $assertSyncedSecretsAreFlattenable throws at create/update time. Also counts
+  // the synced secrets in each folder so the form can preview the subtree. Counts, not names:
+  // $assertCanReadSyncedFolders below checks the actor's access per folder, not per secret, and a
+  // role can deny individual secret names or tags inside a folder it allows.
   const findRecursiveConflicts = async (
     { projectId, environment, secretPath, keySchema }: TFindRecursiveSyncConflictsDTO,
     actor: OrgServiceActor
@@ -365,9 +367,9 @@ export const secretSyncServiceFactory = ({
 
     return {
       conflicts: payload.findConflicts(),
-      secrets: payload.secrets
-        .map(({ key, path }) => ({ key, path }))
-        .sort((a, b) => a.path.localeCompare(b.path) || a.key.localeCompare(b.key))
+      folders: Object.entries(groupBy(payload.secrets, (secret) => secret.path))
+        .map(([path, secrets]) => ({ path, secretCount: secrets.length }))
+        .sort((a, b) => a.path.localeCompare(b.path))
     };
   };
 

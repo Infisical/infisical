@@ -45,7 +45,7 @@ export const SecretSyncPreserveFolderStructureField = ({
   const includeAllSubFolders = Boolean(watch("syncOptions.includeAllSubFolders"));
   const preserveFolderStructure = Boolean(watch("syncOptions.preserveFolderStructure"));
 
-  const { conflicts, secrets } = useRecursiveConflictsCheck({
+  const { conflicts, folders } = useRecursiveConflictsCheck({
     destination,
     projectId: currentProject.id,
     environment: environment?.slug,
@@ -54,28 +54,27 @@ export const SecretSyncPreserveFolderStructureField = ({
     includeAllSubFolders
   });
 
-  const { rows, folderCount } = useMemo(() => {
-    const conflictingNames = new Set(conflicts.map((conflict) => conflict.key));
-    const folders = new Set<string>();
+  const { rows, keyCount, pathCount } = useMemo(() => {
+    const conflictingFolders = new Set(conflicts.flatMap((conflict) => conflict.paths));
+    const names = applySecretSyncKeySchema(keySchema, "*", environment?.slug ?? "");
 
-    const mapped = secrets.map(({ key, path }) => {
-      const name = applySecretSyncKeySchema(keySchema, key, environment?.slug ?? "");
+    const mapped = folders.map(({ path }) => {
       const folder = preserveFolderStructure ? getRelativeFolder(path, secretPath) : "";
-      folders.add(folder);
 
       return {
-        source: `${path === "/" ? "" : path}/${key}`,
-        destination: `${destinationPrefix}${folder ? `${folder}/` : ""}${name}`,
-        isDuplicate: conflictingNames.has(name)
+        source: `${path === "/" ? "" : path}/*`,
+        destination: `${destinationPrefix}${folder ? `${folder}/` : ""}${names}`,
+        isDuplicate: conflictingFolders.has(path)
       };
     });
 
     return {
       rows: mapped.sort((a, b) => Number(b.isDuplicate) - Number(a.isDuplicate)),
-      folderCount: folders.size
+      keyCount: folders.reduce((total, folder) => total + folder.secretCount, 0),
+      pathCount: new Set(mapped.map((row) => row.destination)).size
     };
   }, [
-    secrets,
+    folders,
     conflicts,
     keySchema,
     environment?.slug,
@@ -87,8 +86,8 @@ export const SecretSyncPreserveFolderStructureField = ({
   if (!includeAllSubFolders) return null;
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
-  const nestedSecret = secrets.find(({ path }) => getRelativeFolder(path, secretPath));
-  const exampleFolder = nestedSecret ? getRelativeFolder(nestedSecret.path, secretPath) : "api";
+  const nestedFolder = folders.find(({ path }) => getRelativeFolder(path, secretPath));
+  const exampleFolder = nestedFolder ? getRelativeFolder(nestedFolder.path, secretPath) : "api";
   const sourceRoot = secretPath === "/" ? "" : secretPath;
 
   return (
@@ -143,8 +142,8 @@ export const SecretSyncPreserveFolderStructureField = ({
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm text-label">Where keys land</p>
             <p className="text-xs text-muted">
-              {rows.length} {rows.length === 1 ? "key" : "keys"} · {folderCount}{" "}
-              {folderCount === 1 ? "path" : "paths"}
+              {keyCount} {keyCount === 1 ? "key" : "keys"} · {pathCount}{" "}
+              {pathCount === 1 ? "path" : "paths"}
             </p>
           </div>
           <div className="overflow-hidden rounded-md border border-border text-sm">

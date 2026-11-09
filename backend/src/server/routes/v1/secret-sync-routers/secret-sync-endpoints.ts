@@ -574,10 +574,10 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
               paths: z.array(z.string())
             })
           ),
-          secrets: z.array(
+          folders: z.array(
             z.object({
-              key: z.string(),
-              path: z.string()
+              path: z.string(),
+              secretCount: z.number()
             })
           )
         })

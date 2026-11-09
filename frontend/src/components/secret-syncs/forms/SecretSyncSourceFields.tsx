@@ -55,7 +55,7 @@ const DefaultSecretSyncSourceFields = () => {
   // the folder tree here and leave duplicate names to that step.
   const supportsFolderStructure = Boolean(syncOption?.supportsPreserveFolderStructure);
 
-  const { conflicts, secrets, isChecking } = useRecursiveConflictsCheck({
+  const { conflicts, folders, isChecking } = useRecursiveConflictsCheck({
     destination,
     projectId: currentProject.id,
     environment: selectedEnvironment?.slug,
@@ -192,7 +192,7 @@ const DefaultSecretSyncSourceFields = () => {
             {Boolean(value) && supportsFolderStructure && (
               <SecretSyncSourceFolderTree
                 secretPath={selectedSecretPath}
-                secrets={secrets}
+                folders={folders}
                 conflicts={conflicts}
                 isLoading={isChecking}
               />

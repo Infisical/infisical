@@ -11,12 +11,12 @@ import {
 } from "@app/components/v3";
 import {
   TSecretSyncRecursiveConflict,
-  TSecretSyncRecursiveSecret
+  TSecretSyncRecursiveFolder
 } from "@app/hooks/api/secretSyncs";
 
 type Props = {
   secretPath: string;
-  secrets: TSecretSyncRecursiveSecret[];
+  folders: TSecretSyncRecursiveFolder[];
   conflicts: TSecretSyncRecursiveConflict[];
   isLoading: boolean;
 };
@@ -30,17 +30,19 @@ type TFolderRow = {
 
 // The source folder and every folder below it that holds a synced secret, each right after its
 // parent.
-const getFolderRows = (secretPath: string, secrets: TSecretSyncRecursiveSecret[]) => {
+const getFolderRows = (secretPath: string, folders: TSecretSyncRecursiveFolder[]) => {
   const rootSegments = secretPath.split("/").filter(Boolean);
-  const tree = buildFileTree(
-    secrets.map(({ key, path }) =>
-      [...path.split("/").filter(Boolean).slice(rootSegments.length), key].join("/")
-    )
+  const counts = new Map(
+    folders.map(({ path, secretCount }) => [
+      path.split("/").filter(Boolean).slice(rootSegments.length).join("/"),
+      secretCount
+    ])
   );
+  const tree = buildFileTree([], [...counts.keys()].filter(Boolean));
 
   const rows: TFolderRow[] = [];
   const visit = (nodes: FileTreeNode[], row: Omit<TFolderRow, "secretCount">) => {
-    rows.push({ ...row, secretCount: nodes.filter((node) => node.type === "file").length });
+    rows.push({ ...row, secretCount: counts.get(row.path) ?? 0 });
     nodes.forEach((node) => {
       if (node.type === "folder") {
         visit(node.children, { path: node.path, name: node.name, depth: row.depth + 1 });
@@ -54,13 +56,14 @@ const getFolderRows = (secretPath: string, secrets: TSecretSyncRecursiveSecret[]
 
 export const SecretSyncSourceFolderTree = ({
   secretPath,
-  secrets,
+  folders,
   conflicts,
   isLoading
 }: Props) => {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
 
-  const folders = useMemo(() => getFolderRows(secretPath, secrets), [secretPath, secrets]);
+  const rows = useMemo(() => getFolderRows(secretPath, folders), [secretPath, folders]);
+  const secretCount = rows.reduce((total, row) => total + row.secretCount, 0);
 
   if (isLoading) {
     return (
@@ -76,12 +79,12 @@ export const SecretSyncSourceFolderTree = ({
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-label">What will sync</p>
         <p className="text-xs text-muted">
-          {secrets.length} {secrets.length === 1 ? "key" : "keys"} · {folders.length}{" "}
-          {folders.length === 1 ? "folder" : "folders"}
+          {secretCount} {secretCount === 1 ? "key" : "keys"} · {rows.length}{" "}
+          {rows.length === 1 ? "folder" : "folders"}
         </p>
       </div>
       <div className="overflow-hidden rounded-md border border-border">
-        {folders.map((folder) => (
+        {rows.map((folder) => (
           <div
             key={folder.path}
             className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-sm last:border-b-0"

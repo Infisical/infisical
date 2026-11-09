@@ -55,14 +55,14 @@ export type TSecretSyncRecursiveConflict = {
   paths: string[];
 };
 
-export type TSecretSyncRecursiveSecret = {
-  key: string;
+export type TSecretSyncRecursiveFolder = {
   path: string;
+  secretCount: number;
 };
 
 type TSecretSyncRecursiveConflictsResponse = {
   conflicts: TSecretSyncRecursiveConflict[];
-  secrets: TSecretSyncRecursiveSecret[];
+  folders: TSecretSyncRecursiveFolder[];
 };
 
 export const useSecretSyncOptions = (
