@@ -70,12 +70,9 @@ func (o *Org) routes() *http.ServeMux {
 		writeJSON(w, payload)
 	})
 
-	// Deleting an organization tells the License Server it is gone so the subscription
-	// is canceled. The instance records that in its outbox and retries until this
-	// answers, so every deleted tenant would otherwise keep retrying for the life of
-	// the run. The body is parsed rather than ignored, so an empty one is not enough.
-	// Tests see the call in the scope's call log; an event could not reach them, since
-	// the stream only carries credentials the test binary minted and an org id is not one.
+	// The instance retries this through the outbox until it gets a parseable body, so
+	// without it every deleted tenant keeps retrying all run. Tests check the call log,
+	// not an event, since the event stream only carries credentials the test minted.
 	mux.HandleFunc("DELETE /v1/organizations/{orgId}", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]any{"licensesClosed": 1, "canceledSubscriptionIds": []string{}, "commitmentForfeited": false})
 	})

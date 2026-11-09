@@ -2,8 +2,8 @@ import { z } from "zod";
 
 import { defineEvent, EventModificationType } from "@app/services/event-outbox/event-definition";
 
-// `rootOrgId` is set for a sub-organization. A deleted organization leaves no row to read, so the
-// event carries everything a consumer needs to act.
+// `rootOrgId` is set for sub-orgs. The org row is gone by the time consumers run, so the event carries
+// what they need.
 export const OrganizationModifiedEventV1 = defineEvent({
   domain: "organization",
   entity: "organization",

@@ -39,10 +39,7 @@ type TLicenseServiceFactoryDep = {
   licenseDAL: Pick<TLicenseDALFactory, "countBillableOrgActors">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItems" | "deleteItem">;
   projectDAL: Pick<TProjectDALFactory, "countOfBillableOrgProjects">;
-  licenseClient?: Pick<
-    TLicenseClientFactory,
-    "getEntitlements" | "getSubscription" | "refreshEntitlements" | "invalidateEntitlements"
-  >;
+  licenseClient?: Pick<TLicenseClientFactory, "getEntitlements" | "getSubscription" | "refreshEntitlements">;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit" | "reconcile">;
 };
 
@@ -335,7 +332,6 @@ export const licenseServiceFactory = ({
     }
   };
 
-  // Called after an org is deleted so it stops billing. Cloud-only
   const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
     const org = await orgDAL.findRootOrgDetails(orgId, tx);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });

@@ -1,7 +1,7 @@
 import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
-import { parseEventPayload, runEventsSerially } from "@app/services/event-outbox/event-outbox-fns";
+import { parseEventPayload, runEventsConcurrentlyByKey } from "@app/services/event-outbox/event-outbox-fns";
 import {
   EventResultStatus,
   IEventConsumer,
@@ -13,15 +13,15 @@ import { TLicenseClientFactory } from "@app/services/license-client/license-clie
 import { OrganizationModifiedEventV1, TOrganizationModifiedEventData } from "./org-events";
 
 export const LICENSE_ORG_DELETED_CONSUMER = "license-org-deleted";
+const LICENSE_ORG_DELETED_CONCURRENCY = 10;
 
 type TLicenseOrgDeletedConsumerDep = {
   envConfig: Pick<TEnvConfig, "isCloud">;
   licenseClient: Pick<TLicenseClientFactory, "deleteOrganization" | "invalidateEntitlements">;
 };
 
-// Tells the license server a root organization is gone so it cancels the subscription. Only cloud
-// bills per organization, so elsewhere nothing subscribes and no row is written. A sub-organization
-// shares its root's subscription and is skipped.
+// Cloud only, since that's the only place orgs bill on their own. Sub-orgs bill through their root, so
+// we skip them.
 export const licenseOrgDeletedConsumerFactory = ({
   envConfig,
   licenseClient
@@ -62,6 +62,11 @@ export const licenseOrgDeletedConsumerFactory = ({
     name: LICENSE_ORG_DELETED_CONSUMER,
     dataSchema: OrganizationModifiedEventV1.data,
     subscribesTo,
-    handle: (events) => runEventsSerially(events, $handleEvent)
+    handle: (events) =>
+      runEventsConcurrentlyByKey(events, {
+        keyOf: (event) => OrganizationModifiedEventV1.data.safeParse(event.data).data?.organizationId,
+        concurrency: LICENSE_ORG_DELETED_CONCURRENCY,
+        handleEvent: $handleEvent
+      })
   };
 };

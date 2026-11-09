@@ -335,8 +335,7 @@ export const checkoutResultSchema = z
   })
   .passthrough();
 
-// What the license server closed for a deleted organization. Idempotent on its side: a repeat reports
-// zero licenses closed.
+// Idempotent, so a repeat just reports zero licenses closed.
 export const orgDeletedResultSchema = z
   .object({
     licensesClosed: z.number().int(),
@@ -647,6 +646,6 @@ export type TLicenseClientBackend = {
   fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
   cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
   resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
-  // The organization no longer exists: cancel its subscription now and close its licenses.
+  // Cancels the org's subscription right away and closes its licenses.
   deleteOrganization: (orgId: string) => Promise<TOrgDeletedResult>;
 };
