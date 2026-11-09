@@ -14,19 +14,27 @@ type Props = {
   id: string;
   value: string;
   onChange: (value: string | undefined) => void;
+  regions?: typeof AWS_REGIONS;
   isError?: boolean;
   isDisabled?: boolean;
   "aria-describedby"?: string;
   "aria-labelledby"?: string;
 };
 
-export const AwsRegionSelect = ({ id, value, onChange, isError, ...props }: Props) => {
+export const AwsRegionSelect = ({
+  id,
+  value,
+  onChange,
+  regions = AWS_REGIONS,
+  isError,
+  ...props
+}: Props) => {
   return (
     <Combobox
       id={id}
-      value={AWS_REGIONS.find((region) => region.slug === value)}
+      value={regions.find((region) => region.slug === value)}
       onValueChange={(option) => onChange(option?.slug ?? "")}
-      options={AWS_REGIONS}
+      options={regions}
       isError={isError}
       placeholder="Select region..."
       getOptionLabel={(option) => option.name}
