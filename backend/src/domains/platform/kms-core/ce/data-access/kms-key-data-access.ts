@@ -1,5 +1,3 @@
-import { Knex } from "knex";
-
 import { ProjectType, TableName, TKmsKeys } from "@app/db/schemas";
 import { DataAccessDb, ReadFrom, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
@@ -98,23 +96,6 @@ const toModel = (row: TKmsKeyRow): KmsKey => {
   return KmsKey.restore(props);
 };
 
-const withMaterial = (db: Knex) =>
-  db(TableName.KmsKey)
-    .leftJoin(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
-    .leftJoin(TableName.ExternalKms, `${TableName.KmsKey}.id`, `${TableName.ExternalKms}.kmsKeyId`)
-    .select(`${TableName.KmsKey}.*`)
-    .select(
-      db.ref("id").withSchema(TableName.InternalKms).as("internalKmsId"),
-      db.ref("encryptedKey").withSchema(TableName.InternalKms).as("internalKmsEncryptedKey"),
-      db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
-      db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion"),
-      db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
-      db.ref("provider").withSchema(TableName.ExternalKms).as("externalKmsProvider"),
-      db.ref("encryptedProviderInputs").withSchema(TableName.ExternalKms).as("externalKmsEncryptedProviderInputs"),
-      db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
-      db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
-    );
-
 // Owns kms_keys, internal_kms and external_kms: one KmsKey is stored across them.
 export class KmsKeyDataAccess implements TKmsKeyDataAccess {
   constructor(private readonly db: DataAccessDb) {}
@@ -166,7 +147,7 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
 
   async find(filter: TKmsKeyFilter, options?: TReadOptions): Promise<KmsKey[]> {
     try {
-      const query = withMaterial(this.db.reader(options));
+      const query = this.withMaterial(options);
       if (filter.id) void query.where(`${TableName.KmsKey}.id`, filter.id);
       if (filter.ids) void query.whereIn(`${TableName.KmsKey}.id`, filter.ids);
       if (filter.orgId) void query.where(`${TableName.KmsKey}.orgId`, filter.orgId);
@@ -328,5 +309,24 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
     } catch (error) {
       throw new DatabaseError({ error, name: "Count project KMS keys" });
     }
+  }
+
+  private withMaterial(options?: TReadOptions) {
+    const db = this.db.reader(options);
+    return db(TableName.KmsKey)
+      .leftJoin(TableName.InternalKms, `${TableName.KmsKey}.id`, `${TableName.InternalKms}.kmsKeyId`)
+      .leftJoin(TableName.ExternalKms, `${TableName.KmsKey}.id`, `${TableName.ExternalKms}.kmsKeyId`)
+      .select(`${TableName.KmsKey}.*`)
+      .select(
+        db.ref("id").withSchema(TableName.InternalKms).as("internalKmsId"),
+        db.ref("encryptedKey").withSchema(TableName.InternalKms).as("internalKmsEncryptedKey"),
+        db.ref("encryptionAlgorithm").withSchema(TableName.InternalKms).as("internalKmsEncryptionAlgorithm"),
+        db.ref("version").withSchema(TableName.InternalKms).as("internalKmsVersion"),
+        db.ref("id").withSchema(TableName.ExternalKms).as("externalKmsId"),
+        db.ref("provider").withSchema(TableName.ExternalKms).as("externalKmsProvider"),
+        db.ref("encryptedProviderInputs").withSchema(TableName.ExternalKms).as("externalKmsEncryptedProviderInputs"),
+        db.ref("status").withSchema(TableName.ExternalKms).as("externalKmsStatus"),
+        db.ref("statusDetails").withSchema(TableName.ExternalKms).as("externalKmsStatusDetails")
+      );
   }
 }
