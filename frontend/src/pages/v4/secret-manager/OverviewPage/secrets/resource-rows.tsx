@@ -837,20 +837,19 @@ function SiteLink({ site }: { site: EnvironmentOption }) {
   );
 }
 
-function SiteList({ sites, path }: { sites: EnvironmentOption[]; path: string }) {
+function SiteList({ sites }: { sites: EnvironmentOption[] }) {
   return (
     <ul className={styles.importSites}>
       {sites.map((site) => (
         <li key={site.value} className={styles.importSite}>
           <SiteLink site={site} />
-          <span className={styles.truncate}>{path}</span>
         </li>
       ))}
     </ul>
   );
 }
 
-function ImportedIn({ sites, path }: { sites: EnvironmentOption[]; path: string }) {
+function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
   const fit = useRef<HTMLSpanElement>(null);
   const measure = useRef<HTMLSpanElement>(null);
   const [shown, setShown] = useState(sites.length);
@@ -912,7 +911,7 @@ function ImportedIn({ sites, path }: { sites: EnvironmentOption[]; path: string 
               </Button>
             </HoverCardTrigger>
             <HoverCardContent align="start">
-              <SiteList sites={sites} path={path} />
+              <SiteList sites={sites} />
             </HoverCardContent>
           </HoverCard>
         )}
@@ -934,7 +933,7 @@ function ImportedIn({ sites, path }: { sites: EnvironmentOption[]; path: string 
             <SheetTitle>{`Imported in ${sites.length} environments`}</SheetTitle>
           </SheetHeader>
           <SheetBody>
-            <SiteList sites={sites} path={path} />
+            <SiteList sites={sites} />
           </SheetBody>
         </SheetContent>
       </Sheet>
@@ -1061,7 +1060,7 @@ export function ImportRow({
           </TableCell>
           {!ctx.single && expanded && (
             <TableCell colSpan={ctx.environments.length} className={styles.importedInCell}>
-              <ImportedIn sites={sites} path={first.path} />
+              <ImportedIn sites={sites} />
             </TableCell>
           )}
           {!ctx.single &&
