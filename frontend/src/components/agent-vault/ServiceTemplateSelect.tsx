@@ -4,6 +4,11 @@ import { twMerge } from "tailwind-merge";
 
 import {
   CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -287,7 +292,21 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
           </Grid>
         </div>
       )}
-      {showsNative && nativeSection(native)}
+      {/* MCP and HTTP always keep their custom card, so only this tab can be left with nothing to show. */}
+      {showsNative &&
+        (typeFilter === "native" && native.length === 0 ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <SearchIcon />
+              </EmptyMedia>
+              <EmptyTitle>No matching databases or servers</EmptyTitle>
+              <EmptyDescription>Try a different search term.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          nativeSection(native)
+        ))}
     </>
   );
 
