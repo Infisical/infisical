@@ -117,7 +117,8 @@ A module has two kinds of objects:
 
 ## Transactions
 
-`lib/` provides one mechanism for transactions inside a domain and across domains.
+`lib/` provides one mechanism for transactions inside a domain. Domains never share one (see "Across
+domains").
 
 ```ts
 // lib/transaction-runner.ts
@@ -191,11 +192,24 @@ export const createKmsKey = async (store: TKmsCoreStore, state: TKmsCoreState, i
 
 ### Across domains
 
+**Calling another domain is the last resort.** Each call ties together domains that must be able to
+move independently, and every step between two commits is one more place a use case can stop halfway.
+Before adding one, go down this list and stop at the first that fits:
+
+1. **The data or rule is yours.** If your domain keeps needing another domain's data to make its own
+   decisions, the boundary is in the wrong place: move the data or the rule into one domain and raise it
+   in review.
+2. **The other domain should react to your change.** Emit an outbox event in your own transaction and
+   let it consume the event; you do not call it.
+3. **You need a value from it to write your own data** (a cipher, a key id, a plan). Call it, following
+   the rules below.
+
 **Domains do not share transactions.** Each domain commits its own data in its own short
 transaction, and a use case that spans domains is a sequence of calls that are each safe to repeat. A
 shared transaction keeps one domain's row locks held while another domain works, so a write in one
-domain can block or deadlock on a lock held by a connection Postgres cannot see waiting, and it ties
-together domains that must be able to move independently.
+domain can block or deadlock on a lock held by a connection Postgres cannot see waiting.
+
+When a call cannot be avoided:
 
 | You need | Do this | Not this |
 | --- | --- | --- |
