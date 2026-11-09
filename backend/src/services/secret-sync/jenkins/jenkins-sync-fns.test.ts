@@ -134,6 +134,27 @@ describe("JenkinsSyncFns.syncSecrets", () => {
     expect(requestsWith("DELETE").map(({ url }) => url)).toEqual([`${GLOBAL_STORE}/credential/INF_STALE/config.xml`]);
   });
 
+  it("ignores credentials whose IDs could not have been written by Infisical", async () => {
+    stubJenkins([
+      { id: "..", typeName: "Secret text" },
+      { id: "team/key", typeName: "Secret text" },
+      { id: "STALE", typeName: "Secret text" }
+    ]);
+
+    await sync(syncWith(), payloadOf({ NEW: "a" }));
+    await JenkinsSyncFns.removeSecrets(
+      syncWith(),
+      payloadOf({ "..": "a", STALE: "b" }),
+      gatewayV2Service as any,
+      gatewayPoolService as any
+    );
+
+    expect(requestsWith("DELETE").map(({ url }) => url)).toEqual([
+      `${GLOBAL_STORE}/credential/STALE/config.xml`,
+      `${GLOBAL_STORE}/credential/STALE/config.xml`
+    ]);
+  });
+
   it("deletes nothing when secret deletion is disabled", async () => {
     stubJenkins([{ id: "STALE", typeName: "Secret text" }]);
 

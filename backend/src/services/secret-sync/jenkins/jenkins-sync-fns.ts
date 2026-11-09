@@ -100,7 +100,9 @@ const listJenkinsCredentials = async (
       deps
     );
 
-    return credentials ?? [];
+    // Infisical only writes IDs that pass this check, and an ID goes into the request path, where one
+    // such as `..` would retarget an update or delete at the store's domain instead of a credential
+    return (credentials ?? []).filter((credential) => isValidJenkinsCredentialId(credential.id));
   } catch (error) {
     throw toSyncError(error, "Failed to list Jenkins credentials");
   }
