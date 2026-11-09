@@ -163,8 +163,11 @@ export function ExportMenu({
   );
 }
 
+export type AddNewBlocks = Partial<Record<ResourceKind | "upload" | "copy" | "sync", string>>;
+
 export function AddNewMenu({
   writeBlock,
+  accessBlocks = {},
   single,
   available,
   copyBlock,
@@ -174,6 +177,7 @@ export function AddNewMenu({
   onAddSync
 }: {
   writeBlock?: string;
+  accessBlocks?: AddNewBlocks;
   single: boolean;
   available: Partial<Record<ResourceKind, boolean>>;
   copyBlock?: string;
@@ -185,6 +189,7 @@ export function AddNewMenu({
   const blockOf = (kind: ResourceKind, singleReason?: string) => {
     if (!available[kind]) return NEXT_PHASE;
     if (writeBlock) return writeBlock;
+    if (accessBlocks[kind]) return accessBlocks[kind];
     return singleReason && !single ? singleReason : undefined;
   };
   const item = (kind: ResourceKind, label: string, icon: ReactNode, singleReason?: string) => {
@@ -212,8 +217,8 @@ export function AddNewMenu({
         {item("secret", "New secret", <KindIcon kind="secret" />)}
         {item("folder", "New folder", <KindIcon kind="folder" />)}
         <DropdownMenuItem
-          disabled={Boolean(writeBlock)}
-          description={writeBlock}
+          disabled={Boolean(writeBlock ?? accessBlocks.upload)}
+          description={writeBlock ?? accessBlocks.upload}
           onSelect={onUpload}
         >
           <Icon name="upload" />
@@ -237,17 +242,18 @@ export function AddNewMenu({
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             <DropdownMenuItem
-              disabled={Boolean(copyBlock)}
-              description={copyBlock}
+              disabled={Boolean(accessBlocks.copy ?? copyBlock)}
+              description={accessBlocks.copy ?? copyBlock}
               onSelect={onCopySecrets}
             >
               <Icon icon={ClipboardPasteIcon} />
               Copy secrets
             </DropdownMenuItem>
             <DropdownMenuItem
-              disabled={Boolean(writeBlock) || !single}
+              disabled={Boolean(writeBlock ?? accessBlocks.sync) || !single}
               description={
                 writeBlock ??
+                accessBlocks.sync ??
                 (single ? undefined : "Select a single environment to add a secret sync")
               }
               onSelect={onAddSync}

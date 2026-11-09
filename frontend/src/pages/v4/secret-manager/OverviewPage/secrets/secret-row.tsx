@@ -563,6 +563,7 @@ function SecretActionsRow({
         <DropdownMenuCheckboxItem
           checked={Boolean(secret.skipMultilineEncoding)}
           disabled={!canEdit}
+          description={ctx.writeBlock ?? editDenied}
           onCheckedChange={() =>
             handlers.onUpdate(
               secret,

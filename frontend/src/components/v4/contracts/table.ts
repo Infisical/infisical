@@ -42,10 +42,14 @@ export const tableDefinition = {
   ],
   referenceNames: ["Table"],
   behavior: [
+    'Leading pins: pin="start" on TableHead and TableCell (selection cells included) renders data-pin="start", the same attribute DataTable\'s trailing pin sets to true, and sticks the cell at the inline start. A second pinned column stacks on the first through --v4-pin-offset: a cell after a pinned selection cell takes size-row on its own, and any later one passes pinOffset, a CSS length for the width of the pinned columns before it. DataTable columns take pin: "start" too; the selection column then pins with them and DataTable sets each offset from the declared widths. Pinned cells repaint the row\'s ground and its stripe, hover, selected and keyboard-ring layers through the same rules as the actions tail, keep row focus (a focused row stays full and a dimmed row dims a pinned cell\'s contents, not its ground), sit at z-index 4 over scrolled cells, and pinned header cells sit at 6 with the sticky DataTable header at 5. The last leading pinned column draws a line-soft edge only once the table has scrolled sideways, read from the scroll-edge watcher\'s data-scroll-start-x, and the start scroll fade is off while leading pins hold that edge. Pin only the columns that identify the row, usually selection and Name, in wide matrices such as the secrets overview across many environments.',
+    'Full-width cell: pin="viewport" on a TableCell with colSpan across every column makes its one child sticky at the inline start and as wide as the scroll container (100cqi; the container becomes an inline-size query container only while it holds such a cell), so an expanded row\'s nested table stays in view while the outer table scrolls sideways. The cell drops its padding; the child owns its insets. Use it for an expansion that belongs to the row, never for ordinary cells.',
+    "Pinned cells that hold only text keep their text at full strength while other rows dim, because the dim would otherwise fade the cell's opaque ground; wrap the text in an element to dim it.",
     "Row focus: while a row is being edited (an annotation popover, an inline name or value edit), set focused on its TableRow, or pass DataTable focusedRowId (one id or several). The row renders data-focused and every other row in the same body fades its cell contents to opacity-row-dim (40%) through filter: opacity, so row grounds, borders, the selection ring, pinned cells and the header stay at full strength, and the dim composes with opacity reveals inside cells. The dim is pure CSS on the body; there is no table-level prop. Hovering a dimmed row undims it where hover exists, dimmed rows stay interactive, and portalled popovers and menus never dim. The fade runs on duration-moderate and is instant under reduced motion. A selected row that is not focused still dims.",
     "Nested tables: a body dims when it holds a focused row at any depth. The row that holds the nested table and the row just above it, the one it expands from, keep full strength, and the nested body dims only its own other rows, so focusing an environment row inside an expanded secret dims every other secret and environment row and nothing else.",
     "Row states are layers over the row's ground, which is surface, or row-done on a striped even row. The selected surface and the hover overlay (the shared hover token) stack over the ground on every cell, and a pinned cell or the sticky tail repaints the same ground and layers opaquely, so a striped, selected or hovered row reads as one band to the frame edge and scrolled cells never show through.",
     "DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.",
+    "Shared tooltips: Table, and so DataTable, wraps its rows in a TooltipScope. Every Tooltip inside (status marks through TooltipText, Button disabledReason, RowActions labels, selection reasons) renders only its trigger element and the table mounts one Radix tooltip on first use, instead of one root per trigger, about five per secrets row. Hover, focus, the skip delay between neighboring triggers, Escape and aria-describedby behave as with standalone tooltips. A controlled Tooltip (open, defaultOpen, onOpenChange or delayDuration) keeps its own root.",
     "Tables are framed by default: DataTable always sits in the shared tint frame, which suits nearly every standalone table. Use the native Table, which has no frame, only when the table is embedded in another surface that already draws an edge, such as a Card, a sheet or a dialog body.",
     "DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.",
     "A table embedded in a framed card is frameless. Inside a framed Card, List or other frame, DataTable drops its tint frame and the body's own border: the header row, pinned actions tail and pagination sit on the parent's inset surface with a line-soft rule under the header, so the header reads apart from the card's band. A flush framed Card keeps its bordered inset around the embedded table.",
@@ -166,6 +170,12 @@ export const tableDefinition = {
       states: ["default", "disabled", "keyboard"]
     },
     {
+      id: "shared-tooltips",
+      title: "Shared tooltips",
+      module: "./examples/table/shared-tooltips.tsx",
+      states: ["default", "disabled", "keyboard"]
+    },
+    {
       id: "row-activation",
       title: "Row activation",
       module: "./examples/table/row-activation.tsx",
@@ -194,6 +204,12 @@ export const tableDefinition = {
       title: "Column toggle, permission matrix",
       module: "./examples/table/column-toggle.tsx",
       states: ["default", "disabled", "keyboard", "controlled"]
+    },
+    {
+      id: "leading-pin",
+      title: "Leading pins and a full-width cell",
+      module: "./examples/table/leading-pin.tsx",
+      states: ["default", "controlled", "overflow"]
     },
     {
       id: "row-focus",

@@ -898,8 +898,19 @@ export const baselineOverlays = [
     title: "Tooltip",
     group: "Overlays",
     summary: "Explain a control on hover and keyboard focus.",
-    sourceFiles: ["src/components/v4/ui/tooltip.tsx", "src/components/v4/ui/controls.module.css"],
-    exports: ["Tooltip", "TooltipContent", "TooltipProvider", "TooltipText", "TooltipTrigger"],
+    sourceFiles: [
+      "src/components/v4/ui/tooltip.tsx",
+      "src/components/v4/ui/controls.module.css",
+      "src/components/v4/ui/tooltip-scope.test.tsx"
+    ],
+    exports: [
+      "Tooltip",
+      "TooltipContent",
+      "TooltipProvider",
+      "TooltipScope",
+      "TooltipText",
+      "TooltipTrigger"
+    ],
     referenceNames: ["Tooltip"],
     behavior: [
       "The shortcut specimen owns a Mod+K binding scoped to its focused region. Its button and binding open the same local search, which filters fictional connections and exposes the selected record. Editing and composition keys remain with their controls.",
@@ -907,10 +918,12 @@ export const baselineOverlays = [
       "Tooltips are pass-through: the content has pointer-events none and user-select none, and hoverable content is disabled, so it closes as soon as the pointer leaves the trigger and whatever sits under it stays clickable. Content meant to be read, selected or copied belongs in HoverCard, and content with actions in Popover.",
       "A tooltip never reopens on its own. When a closing menu, dialog or sheet returns focus to the trigger, the tooltip stays closed; only keyboard navigation focus opens it. After a click on the trigger, it stays closed until the pointer leaves the trigger and comes back.",
       "TooltipText makes non-interactive text the tooltip trigger: it renders a span with tabIndex 0 (or, with asChild, puts that on its one child, such as StatusText or MiddleTruncate), draws the shared focus outline on keyboard focus and opens its content on hover and on focus. It adds no other styling, so the text keeps its own type and color. Inside a row with onRowActivate or a TableRow onClick, a click on it never activates the row.",
+      "TooltipScope shares one tooltip among every Tooltip inside it. Each trigger renders only its own element, marked with data-v4-tooltip, and registers its content, shortcut, side and align with the scope; there is no Radix root per trigger. The scope mounts a single Radix tooltip on the first hover or keyboard focus and moves it to whichever trigger is hovered or focused, so the hover delay, the skip delay between neighboring triggers, side, align, the collision boundary, the V4Scope portal and theme, Escape, close on scroll and reduced motion are Radix's own. While it shows, the trigger gets aria-describedby pointing at the shared content unless it already has one. Content can be any node. Table renders a TooltipScope around its rows, so Tooltip, TooltipText, Button disabledReason and RowActions inside any Table or DataTable take the shared path with no change at the call site. A Tooltip that sets open, defaultOpen, onOpenChange, delayDuration or hoverable content keeps its own root, inside a scope or not.",
       "Content renders as one inline text run beside the shortcut, so inline code stays inside the sentence. It grows to size-tooltip-max (320px) and then wraps, breaking long inline code so it never runs past the surface. Content resets white-space, so a trigger inside a nowrap table cell or menu row never forces one long line; wrap is deprecated and has no effect. Menus, popovers, hover cards, dialogs and sheets reset white-space the same way."
     ],
     accessibility: [
-      "The trigger retains its own accessible name. Tooltip shortcut text describes a host binding; it does not register a hotkey."
+      "The trigger retains its own accessible name. Tooltip shortcut text describes a host binding; it does not register a hotkey.",
+      "Inside a TooltipScope, the shared content has role tooltip and the active trigger references it through aria-describedby only while it shows, as a standalone Tooltip does. Button disabledReason keeps aria-description on the button, so the reason is read even before the tooltip opens."
     ],
     limitations: [
       "Tooltip content is supplementary text, not a place for focusable actions. A displayed shortcut does not register its binding.",

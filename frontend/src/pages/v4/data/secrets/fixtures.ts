@@ -88,10 +88,29 @@ const environments: ProjectEnv[] = [
   { id: "env-prod", name: "Production", slug: "prod" }
 ];
 const all = environments.map((environment) => environment.slug);
+const manyEnvironments: ProjectEnv[] = [
+  environments[0],
+  { id: "env-qa", name: "QA", slug: "qa" },
+  environments[1],
+  { id: "env-uat", name: "UAT", slug: "uat" },
+  { id: "env-perf", name: "Performance", slug: "perf" },
+  { id: "env-sandbox", name: "Sandbox", slug: "sandbox" },
+  { id: "env-demo", name: "Demo", slug: "demo" },
+  { id: "env-preview", name: "Preview", slug: "preview" },
+  { id: "env-canary", name: "Canary", slug: "canary" },
+  environments[2],
+  { id: "env-prod-eu", name: "Production EU", slug: "prod-eu" },
+  { id: "env-prod-apac", name: "Production APAC", slug: "prod-apac" }
+];
+const many = manyEnvironments.map((environment) => environment.slug);
 export const envOf = (slug: string) =>
-  environments.find((environment) => environment.slug === slug)!;
+  manyEnvironments.find((environment) => environment.slug === slug)!;
 
-const project = (id: string, description: string): Project => ({
+const project = (
+  id: string,
+  description: string,
+  projectEnvironments: ProjectEnv[] = environments
+): Project => ({
   __v: 0,
   id,
   name: id,
@@ -102,7 +121,7 @@ const project = (id: string, description: string): Project => ({
   upgradeStatus: null,
   updatedAt: created,
   autoCapitalization: false,
-  environments,
+  environments: projectEnvironments,
   deletedEnvironments: [],
   pitVersionLimit: 10,
   auditLogsRetentionDays: 30,
@@ -202,17 +221,18 @@ const secretImport = (
   path: string,
   environment: string,
   source: { environment: string; path: string },
-  extra: Partial<TSecretImport> = {}
+  extra: Partial<TSecretImport> = {},
+  projectId = "payments-api"
 ): DemoImport => ({
-  id: id("payments-api", environment, path, "import", source.environment, source.path),
-  folderId: id("payments-api", environment, path),
+  id: id(projectId, environment, path, "import", source.environment, source.path),
+  folderId: id(projectId, environment, path),
   importPath: source.path,
   importEnv: envOf(source.environment),
   position: "1",
   createdAt: created,
   updatedAt: created,
   isReplication: false,
-  projectId: "payments-api",
+  projectId,
   environment,
   path,
   ...extra
@@ -519,12 +539,22 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
     "web-dashboard",
     "/",
     [
-      { name: "DASHBOARD_URL", envs: all },
-      { name: "PUBLIC_API", envs: all },
+      { name: "DASHBOARD_URL", envs: many },
+      { name: "PUBLIC_API", envs: many },
       { name: "THEME", envs: all }
     ],
     secrets
   );
+  secretsAt(
+    "web-dashboard",
+    "/shared",
+    [
+      { name: "SENTRY_DSN", envs: ["prod"] },
+      { name: "CDN_HOST", envs: ["prod"] }
+    ],
+    secrets
+  );
+  secretsAt("web-dashboard", "/flags", [{ name: "NEW_CHECKOUT", envs: ["staging"] }], secrets);
 
   const dynamicSecrets = [
     dynamicSecret("/", "dev", "payments-db-readonly"),
@@ -565,7 +595,7 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
     },
     projects: [
       project("payments-api", "Billing and checkout service"),
-      project("web-dashboard", "Customer web application"),
+      project("web-dashboard", "Customer web application", manyEnvironments),
       project("platform-core", "Shared platform services")
     ],
     tags,
@@ -574,7 +604,9 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
       ...folders("payments-api", "/", "api", all),
       ...folders("payments-api", "/", "workers", ["dev", "staging"]),
       ...folders("payments-api", "/api", "v1", all),
-      ...folders("payments-api", "/api", "webhooks", ["dev", "prod"])
+      ...folders("payments-api", "/api", "webhooks", ["dev", "prod"]),
+      ...folders("web-dashboard", "/", "shared", ["prod"]),
+      ...folders("web-dashboard", "/", "flags", ["staging"])
     ],
     imports: [
       secretImport("/", "dev", { environment: "dev", path: "/workers" }),
@@ -592,7 +624,28 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
         }
       ),
       secretImport("/api", "dev", { environment: "dev", path: "/workers" }),
-      secretImport("/api", "prod", { environment: "staging", path: "/api/v1" })
+      secretImport("/api", "prod", { environment: "staging", path: "/api/v1" }),
+      ...many
+        .filter((environment) => environment !== "prod")
+        .map((environment) =>
+          secretImport(
+            "/",
+            environment,
+            { environment: "prod", path: "/shared" },
+            {},
+            "web-dashboard"
+          )
+        ),
+      ...["dev", "qa", "uat", "perf", "sandbox", "demo", "preview", "canary", "prod-eu"].map(
+        (environment) =>
+          secretImport(
+            "/",
+            environment,
+            { environment: "staging", path: "/flags" },
+            {},
+            "web-dashboard"
+          )
+      )
     ],
     dynamicSecrets,
     leases: seedLeases(dynamicSecrets),

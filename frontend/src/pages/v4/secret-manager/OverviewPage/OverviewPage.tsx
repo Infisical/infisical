@@ -61,8 +61,13 @@ import {
 import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
+  ProjectPermissionActions,
+  ProjectPermissionDynamicSecretActions,
+  ProjectPermissionHoneyTokenActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretFolderActions,
+  ProjectPermissionSecretRotationActions,
+  ProjectPermissionSecretSyncActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
@@ -85,7 +90,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
 import { withoutDefaults } from "../search-defaults";
-import { useResourceApply } from "./bridge/apply";
+import { useEnsureTags, useResourceApply } from "./bridge/apply";
 import { toPendingChanges } from "./bridge/commit";
 import { BreadthContext, useScopeSecrets } from "./bridge/scopes";
 import { useSecretValues } from "./bridge/values";
@@ -147,6 +152,7 @@ import { CreateSecretSyncSheet } from "./secrets/secret-sync/create-secret-sync-
 import { SecretSyncStatusBadge } from "./secrets/secret-sync/secret-sync-status-badge";
 import type { LocalSecretSync } from "./secrets/secret-sync/sync-model";
 import {
+  type AddNewBlocks,
   AddNewMenu,
   ExportMenu,
   FolderBreadcrumbBar,
@@ -296,6 +302,35 @@ export const OverviewPage = () => {
     limit: perPage,
     offset: (page - 1) * perPage
   });
+  const importSites = adapter.useOverview(
+    {
+      projectId,
+      environments: projectEnvironments.map((environment) => environment.value),
+      secretPath: path,
+      includeFolders: false,
+      includeDynamicSecrets: false,
+      includeSecrets: false,
+      includeImports: true,
+      includeSecretRotations: false,
+      includeHoneyTokens: false,
+      includeProxiedServices: false,
+      limit: 100,
+      offset: 0
+    },
+    {
+      enabled:
+        !single && environmentIds.length > 0 && environmentIds.length < projectEnvironments.length
+    }
+  );
+  const sitesOf = (entries: Of<"import">[]) => {
+    const [{ name }] = entries;
+    const slugs = importSites.data
+      ? (importSites.data.imports ?? [])
+          .filter((entry) => `${entry.importEnv.slug}:${entry.importPath}` === name)
+          .map((entry) => entry.environment ?? "")
+      : entries.map((entry) => entry.environment);
+    return projectEnvironments.filter((environment) => slugs.includes(environment.value));
+  };
   const valueStore = useSecretValues(projectId);
   const [breadthHolders, setBreadthHolders] = useState(0);
   const holdBreadth = useCallback(
@@ -359,6 +394,7 @@ export const OverviewPage = () => {
   const updateProxiedService = adapter.useUpdateProxiedService();
   const deleteProxiedService = adapter.useDeleteProxiedService();
   const honeyMapping = (keys: string[]) => ({ accessKeyId: keys[0], secretAccessKey: keys[1] });
+  const ensureTags = useEnsureTags(projectId, tagList);
   const runApply = useResourceApply({
     projectId,
     projectSlug,
@@ -749,14 +785,18 @@ export const OverviewPage = () => {
       changes.length === 1
         ? `${target.kind === "secret" ? "Secret" : "Folder"} "${target.name}" ${past}`
         : `${changes.length} changes committed`;
-    createCommit
-      .mutateAsync({
-        projectId,
-        environment: target.environment,
-        secretPath: target.path,
-        pendingChanges: toPendingChanges(changes, tagList),
-        message: message.trim() || title
-      })
+    ensureTags(
+      changes.flatMap((change) => (change.next?.kind === "secret" ? change.next.tags : []))
+    )
+      .then((knownTags) =>
+        createCommit.mutateAsync({
+          projectId,
+          environment: target.environment,
+          secretPath: target.path,
+          pendingChanges: toPendingChanges(changes, knownTags),
+          message: message.trim() || title
+        })
+      )
       .then(
         (response) => {
           setPending((current) => current.filter((change) => !changes.includes(change)));
@@ -1092,7 +1132,79 @@ export const OverviewPage = () => {
       directory: path,
       enabled: single
     }).data ?? 0;
-  const canQuickAdd = !writeBlock && !loading && totalCount > 0;
+  const createDenied = (environment: string) =>
+    Boolean(
+      blockFor(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.Create,
+        { environment, secretPath: path, secretName: "*", secretTags: ["*"] },
+        "create secrets"
+      )
+    );
+  const deniedEverywhere = (
+    sub: ProjectPermissionSub,
+    action: string,
+    fields: Record<string, unknown> = {}
+  ) =>
+    visibleEnvironments.length > 0 &&
+    visibleEnvironments.every((environment) =>
+      Boolean(
+        blockFor(
+          sub,
+          action,
+          { environment: environment.value, secretPath: path, ...fields },
+          action
+        )
+      )
+    )
+      ? "Access denied"
+      : undefined;
+  const anySecret = { secretName: "*", secretTags: ["*"] };
+  const createBlock = deniedEverywhere(
+    ProjectPermissionSub.Secrets,
+    ProjectPermissionSecretActions.Create,
+    anySecret
+  );
+  const addBlocks: AddNewBlocks = {
+    secret: createBlock,
+    upload: createBlock,
+    folder: deniedEverywhere(ProjectPermissionSub.SecretFolders, ProjectPermissionActions.Create),
+    import: deniedEverywhere(ProjectPermissionSub.SecretImports, ProjectPermissionActions.Create),
+    dynamic: deniedEverywhere(
+      ProjectPermissionSub.DynamicSecrets,
+      ProjectPermissionDynamicSecretActions.CreateRootCredential,
+      { metadata: ["*"] }
+    ),
+    rotation: deniedEverywhere(
+      ProjectPermissionSub.SecretRotation,
+      ProjectPermissionSecretRotationActions.Create
+    ),
+    honey: deniedEverywhere(
+      ProjectPermissionSub.HoneyTokens,
+      ProjectPermissionHoneyTokenActions.Create
+    ),
+    copy:
+      deniedEverywhere(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.DescribeSecret,
+        anySecret
+      ) &&
+      deniedEverywhere(
+        ProjectPermissionSub.Secrets,
+        ProjectPermissionSecretActions.DescribeAndReadValue,
+        anySecret
+      ) &&
+      deniedEverywhere(ProjectPermissionSub.SecretFolders, ProjectPermissionActions.Read),
+    sync: deniedEverywhere(
+      ProjectPermissionSub.SecretSyncs,
+      ProjectPermissionSecretSyncActions.Create
+    )
+  };
+  const canQuickAdd =
+    !writeBlock &&
+    !loading &&
+    totalCount > 0 &&
+    !visibleEnvironments.some((environment) => createDenied(environment.value));
   const gate = (reason: string | undefined, node: ReactNode) =>
     reason ? (
       <Tooltip content={reason}>
@@ -1182,6 +1294,10 @@ export const OverviewPage = () => {
   if (honeySelected) bulkCopyBlock = "Honey token secrets cannot be copied";
   else if (rotationsSelected || managedSelected) bulkCopyBlock = "Rotated secrets cannot be copied";
   else if (!selectedSecrets.length && !selectedFolders.length) bulkCopyBlock = "Nothing to copy";
+  else if (
+    new Set([...selectedSecrets, ...selectedFolders].map((entry) => entry.environment)).size > 1
+  )
+    bulkCopyBlock = "Select secrets from one environment to copy";
   const clipboardBlock =
     !selectedSecrets.length ||
     selectedFolders.length > 0 ||
@@ -1266,6 +1382,7 @@ export const OverviewPage = () => {
           }
         />
       );
+    if (createBlock) return <EmptyState icon="key" title="This table is empty" />;
     return (
       <SecretDropzone
         disabledReason={writeBlock}
@@ -1549,6 +1666,7 @@ export const OverviewPage = () => {
                   />
                   <AddNewMenu
                     writeBlock={writeBlock}
+                    accessBlocks={addBlocks}
                     single={single}
                     available={Object.fromEntries(
                       Object.keys(addFlows).map((kind) => [kind, true])
@@ -1831,6 +1949,7 @@ export const OverviewPage = () => {
                                     ctx={ctx}
                                     sourceSecrets={sourceSecrets}
                                     projectName={project}
+                                    sites={sitesOf(entries as Of<"import">[])}
                                   />
                                 );
                               if (first.kind === "folder")
@@ -1966,7 +2085,7 @@ export const OverviewPage = () => {
                     {
                       label: "Copy to new source",
                       icon: "copy",
-                      disabled: Boolean(bulkCopyBlock),
+                      disabledReason: bulkCopyBlock,
                       onClick: () =>
                         setCopyInvocation({
                           origin: "bulk",
