@@ -36,12 +36,12 @@ const HTTP_SECTION_DESCRIPTION =
 const NATIVE_SECTION_DESCRIPTION =
   "Databases and servers your agent connects to by name. The proxy logs in for it.";
 
-// In the order of the sections under All Types, where HTTP comes last because its category list is long.
+// In the order of the sections under All Types.
 const TYPE_FILTERS: { value: TTypeFilter; label: string }[] = [
   { value: "all", label: "All Types" },
   { value: AgentVaultServiceType.Mcp, label: "MCP Servers" },
-  { value: "native", label: "Databases and More" },
-  { value: AgentVaultServiceType.Http, label: "HTTP APIs" }
+  { value: AgentVaultServiceType.Http, label: "HTTP APIs" },
+  { value: "native", label: "Databases and More" }
 ];
 
 // MCP cards sit under the "MCP Servers" heading, so a tag would only repeat it.
@@ -276,7 +276,6 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
           </Grid>
         </div>
       )}
-      {showsNative && nativeSection(native)}
       {showsHttp && (
         <div>
           <SectionHeader title="HTTP APIs" description={HTTP_SECTION_DESCRIPTION} />
@@ -288,6 +287,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
           </Grid>
         </div>
       )}
+      {showsNative && nativeSection(native)}
     </>
   );
 
@@ -304,7 +304,6 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
           </Grid>
         </div>
       )}
-      {showsNative && nativeSection(AGENT_VAULT_NATIVE_SERVICE_TYPES)}
       {showsHttp && (
         <div>
           <SectionHeader title="HTTP APIs" description={HTTP_SECTION_DESCRIPTION} />
@@ -335,6 +334,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
             </div>
           );
         })}
+      {showsNative && nativeSection(AGENT_VAULT_NATIVE_SERVICE_TYPES)}
     </>
   );
 

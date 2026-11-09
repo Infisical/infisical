@@ -1,6 +1,5 @@
 import { useId } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { InfoIcon } from "lucide-react";
 
 import {
   Field,
@@ -8,12 +7,10 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldTitle,
   Input,
   TextArea,
-  Toggle,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  Toggle
 } from "@app/components/v3";
 import { AgentVaultServiceType } from "@app/hooks/api/agentVault";
 
@@ -23,12 +20,6 @@ const NAME_PLACEHOLDERS: Partial<Record<AgentVaultServiceType, string>> = {
   [AgentVaultServiceType.Postgres]: "orders-db",
   [AgentVaultServiceType.Mysql]: "orders-db",
   [AgentVaultServiceType.Ssh]: "build-server"
-};
-
-const TLS_OFF_DESCRIPTIONS: Partial<Record<AgentVaultServiceType, string>> = {
-  [AgentVaultServiceType.Postgres]:
-    "When off, the proxy still uses TLS if the server offers it, but doesn't check the certificate.",
-  [AgentVaultServiceType.Mysql]: "When off, the proxy connects to the server without TLS."
 };
 
 export const NativeDetailsFields = () => {
@@ -143,20 +134,15 @@ export const NativeDetailsFields = () => {
             name="tlsEnabled"
             render={({ field }) => (
               <Field orientation="horizontal">
-                <FieldLabel htmlFor={`${baseId}-tls-enabled`}>
-                  Use TLS
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoIcon />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      Encrypts the connection from the proxy to the database.{" "}
-                      {TLS_OFF_DESCRIPTIONS[serviceType]}
-                    </TooltipContent>
-                  </Tooltip>
-                </FieldLabel>
+                <FieldContent>
+                  <FieldTitle>Use TLS</FieldTitle>
+                  <FieldDescription>
+                    Encrypt the connection from the proxy to the database.
+                  </FieldDescription>
+                </FieldContent>
                 <Toggle
                   id={`${baseId}-tls-enabled`}
+                  aria-label="Use TLS"
                   variant="av"
                   checked={field.value}
                   onCheckedChange={field.onChange}
@@ -170,21 +156,15 @@ export const NativeDetailsFields = () => {
               name="tlsVerify"
               render={({ field }) => (
                 <Field orientation="horizontal">
-                  <FieldLabel htmlFor={`${baseId}-tls-verify`}>
-                    Verify Certificate
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InfoIcon />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        Checks that the server&apos;s certificate is valid for the host and signed
-                        by a publicly trusted authority, or by the CA certificate you add. Turn it
-                        off only for a self-signed certificate you can&apos;t add.
-                      </TooltipContent>
-                    </Tooltip>
-                  </FieldLabel>
+                  <FieldContent>
+                    <FieldTitle>Verify Certificate</FieldTitle>
+                    <FieldDescription>
+                      Check that the database&apos;s certificate is trusted and matches the host.
+                    </FieldDescription>
+                  </FieldContent>
                   <Toggle
                     id={`${baseId}-tls-verify`}
+                    aria-label="Verify Certificate"
                     variant="av"
                     checked={field.value}
                     onCheckedChange={field.onChange}
