@@ -29,6 +29,44 @@ export const folderCommitDALFactory = (db: TDbClient) => {
   const folderCommitOrm = ormify(db, TableName.FolderCommit);
   const { delete: deleteOp, deleteById, ...restOfOrm } = folderCommitOrm;
 
+  // A commit whose only changes are personal override versions (written by older code) is not part of the
+  // folder's history, so it is left out of the commit list and count instead of showing up empty.
+  const whereCommitHasSharedChanges = (trx: Knex) => (qb: Knex.QueryBuilder) => {
+    void qb
+      .whereExists((subQuery) => {
+        void subQuery
+          .select(trx.raw("1"))
+          .from(TableName.FolderCommitChanges)
+          .leftJoin(
+            TableName.SecretVersionV2,
+            `${TableName.FolderCommitChanges}.secretVersionId`,
+            `${TableName.SecretVersionV2}.id`
+          )
+          .whereRaw(`?? = ??`, [`${TableName.FolderCommitChanges}.folderCommitId`, `${TableName.FolderCommit}.id`])
+          .where(filterToSharedSecretVersions);
+      })
+      .orWhereNotExists((subQuery) => {
+        void subQuery
+          .select(trx.raw("1"))
+          .from(TableName.FolderCommitChanges)
+          .whereRaw(`?? = ??`, [`${TableName.FolderCommitChanges}.folderCommitId`, `${TableName.FolderCommit}.id`]);
+      });
+  };
+
+  const countByFolderId = async (folderId: string, tx?: Knex): Promise<number> => {
+    try {
+      const trx = tx || db.replicaNode();
+      const result = await trx(TableName.FolderCommit)
+        .where(`${TableName.FolderCommit}.folderId`, folderId)
+        .where(whereCommitHasSharedChanges(trx))
+        .count("*", { as: "count" })
+        .first();
+      return Number(result?.count || 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountByFolderId" });
+    }
+  };
+
   const findByFolderId = async (folderId: string, tx?: Knex): Promise<TFolderCommits[]> => {
     try {
       const trx = tx || db.replicaNode();
@@ -439,7 +477,9 @@ export const folderCommitDALFactory = (db: TDbClient) => {
       const trx = tx || db.replicaNode();
 
       // Build base query
-      let baseQuery = trx(TableName.FolderCommit).where(`${TableName.FolderCommit}.folderId`, folderId);
+      let baseQuery = trx(TableName.FolderCommit)
+        .where(`${TableName.FolderCommit}.folderId`, folderId)
+        .where(whereCommitHasSharedChanges(trx));
 
       if (actorType) {
         baseQuery = baseQuery.where(`${TableName.FolderCommit}.actorType`, actorType);
@@ -647,6 +687,7 @@ export const folderCommitDALFactory = (db: TDbClient) => {
     findPreviousCommitTo,
     findById,
     findByFolderIdPaginated,
+    countByFolderId,
     findCommitAuthorsByFolderId,
     findCommitBefore
   };

@@ -1783,8 +1783,8 @@ export const folderCommitServiceFactory = ({
         message: `Folder not found for project ID ${projectId}, environment ${environment}, path ${path}`
       });
     }
-    const folderCommits = await folderCommitDAL.findByFolderId(folder.id);
-    return { count: folderCommits.length, folderId: folder.id };
+    const count = await folderCommitDAL.countByFolderId(folder.id);
+    return { count, folderId: folder.id };
   };
 
   /**
