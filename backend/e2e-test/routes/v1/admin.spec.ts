@@ -1,8 +1,6 @@
 import { randomUUID } from "node:crypto";
 
 import { TableName } from "@app/db/schemas";
-import { KeyStorePrefixes } from "@app/keystore/keystore";
-import { ADMIN_CONFIG_DB_UUID } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod, SuperAdminErrorCode } from "@app/services/super-admin/super-admin-types";
 
 const updateServerConfig = (body: Record<string, unknown>) =>
@@ -28,8 +26,7 @@ describe("Admin V1 Router", () => {
       createdUserId = undefined;
       createdOrganizationId = undefined;
 
-      await testSuperAdminDAL.updateById(ADMIN_CONFIG_DB_UUID, { initialized: false });
-      await testRedis.del(KeyStorePrefixes.AdminConfig);
+      await testInstanceConfigCoreDomain.updateConfig({ initialized: false });
     });
 
     afterEach(async () => {
@@ -46,11 +43,7 @@ describe("Admin V1 Router", () => {
         await testDb(TableName.Users).where({ id: user }).delete();
       }
 
-      await testSuperAdminDAL.updateById(ADMIN_CONFIG_DB_UUID, {
-        initialized: true,
-        allowSignUp: true
-      });
-      await testRedis.del(KeyStorePrefixes.AdminConfig);
+      await testInstanceConfigCoreDomain.updateConfig({ initialized: true, allowSignUp: true });
     });
 
     test("creates the initial organization with the supplied name", async () => {
@@ -101,8 +94,7 @@ describe("Admin V1 Router", () => {
 
   describe("allowed signup domains", () => {
     afterEach(async () => {
-      await testSuperAdminDAL.updateById(ADMIN_CONFIG_DB_UUID, { allowedSignUpDomain: null });
-      await testRedis.del(KeyStorePrefixes.AdminConfig);
+      await testInstanceConfigCoreDomain.updateConfig({ allowedSignUpDomain: null });
     });
 
     test("normalizes valid domains before persisting them", async () => {

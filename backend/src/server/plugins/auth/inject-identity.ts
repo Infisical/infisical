@@ -24,7 +24,6 @@ import {
 import { readClientCertificateHeader } from "@app/services/identity-access-token/identity-access-token-fns";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { invalidSignatureMessage } from "./invalid-signature-message";
 
@@ -387,7 +386,7 @@ export const injectIdentity = fp(
             req.realIp,
             readClientCertificateHeader(req.headers)
           );
-          const serverCfg = await getServerCfg();
+          const serverCfg = await server.services.instanceConfigCoreDomain.getServerConfig();
           requestContext.set(RequestContextKey.OrgId, identity.orgId);
           requestContext.set(RequestContextKey.OrgName, identity.orgName);
           req.auth = {

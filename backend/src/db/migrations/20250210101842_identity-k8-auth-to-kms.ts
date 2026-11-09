@@ -6,7 +6,6 @@ import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { SecretKeyEncoding, TableName, TOrgBots } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
@@ -57,8 +56,7 @@ const reencryptIdentityK8sAuth = async (knex: Knex) => {
 
   initLogger();
 
-  const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const envConfig = await getMigrationEnvConfig(knex);
   const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const orgEncryptionRingBuffer =
     createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);

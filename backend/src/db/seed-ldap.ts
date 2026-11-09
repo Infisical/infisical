@@ -23,7 +23,6 @@ import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { AuthMethod } from "@app/services/auth/auth-type";
 import { orgDALFactory } from "@app/services/org/org-dal";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { initDbConnection } from "./instance";
 import { getMigrationEnvConfig } from "./migrations/utils/env-config";
@@ -114,8 +113,7 @@ const main = async () => {
 
   try {
     // Bootstrap the KMS stack outside the service container, exactly as the *-to-kms migrations do.
-    const superAdminDAL = superAdminDALFactory(db);
-    const envConfig = await getMigrationEnvConfig(superAdminDAL);
+    const envConfig = await getMigrationEnvConfig(db);
     const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db });
     const orgDAL = orgDALFactory(db);
 

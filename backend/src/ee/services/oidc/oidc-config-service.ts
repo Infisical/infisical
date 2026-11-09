@@ -5,6 +5,7 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
@@ -57,7 +58,6 @@ import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -89,6 +89,7 @@ import {
 } from "./oidc-config-types";
 
 type TOidcConfigServiceFactoryDep = {
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
   userDAL: Pick<
     TUserDALFactory,
     | "create"
@@ -151,6 +152,7 @@ type TOidcConfigServiceFactoryDep = {
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
 
 export const oidcConfigServiceFactory = ({
+  instanceConfigCoreDomain,
   orgDAL,
   userDAL,
   userAliasDAL,
@@ -252,7 +254,7 @@ export const oidcConfigServiceFactory = ({
     manageGroupMemberships,
     idpMfa
   }: TOidcLoginDTO) => {
-    const serverCfg = await getServerCfg();
+    const serverCfg = await instanceConfigCoreDomain.getServerConfig();
 
     if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.OIDC)) {
       throw new ForbiddenRequestError({

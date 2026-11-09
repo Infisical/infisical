@@ -12,7 +12,6 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { CompleteAccountType } from "@app/services/auth/auth-signup-type";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";
@@ -45,7 +44,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { email } = req.body;
 
-      const serverCfg = await getServerCfg();
+      const serverCfg = await server.services.instanceConfigCoreDomain.getServerConfig();
       if (!serverCfg.allowSignUp) {
         throw new ForbiddenRequestError({
           message: "Signup's are disabled"
@@ -95,7 +94,7 @@ export const registerSignupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const serverCfg = await getServerCfg();
+      const serverCfg = await server.services.instanceConfigCoreDomain.getServerConfig();
       if (!serverCfg.allowSignUp) {
         throw new ForbiddenRequestError({
           message: "Signup's are disabled"

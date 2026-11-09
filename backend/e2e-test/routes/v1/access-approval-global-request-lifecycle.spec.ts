@@ -10,6 +10,7 @@ import {
   TAccessApprovalPoliciesInsert,
   TAccessApprovalRequestsInsert
 } from "@app/db/schemas";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
@@ -228,7 +229,8 @@ describe("Additional privilege list on the global system", () => {
 
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testSuperAdminDAL, logger);
+    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
+    await initEnvConfig(fipsSetting, logger);
     approver = await createApproverUser();
     approvers.push(approver);
   });

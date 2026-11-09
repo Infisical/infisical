@@ -2,7 +2,6 @@ import { Knex } from "knex";
 
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { initLogger, logger } from "@app/lib/logger";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
@@ -25,8 +24,7 @@ export async function up(knex: Knex): Promise<void> {
 
   initLogger();
 
-  const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const envConfig = await getMigrationEnvConfig(knex);
   const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const orgKmsCache =
     createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);

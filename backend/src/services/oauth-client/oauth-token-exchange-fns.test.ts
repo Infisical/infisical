@@ -130,7 +130,7 @@ const signEddsaSubjectToken = async ({
 
 beforeAll(async () => {
   process.env.FIPS_ENABLED = "false";
-  await crypto.initialize({} as never);
+  await crypto.initialize(null);
 });
 
 afterAll(() => {

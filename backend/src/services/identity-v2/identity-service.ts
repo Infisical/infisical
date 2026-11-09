@@ -9,6 +9,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionAdminConsoleAction,
@@ -67,6 +68,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
   permissionService: TPermissionServiceFactory;
   licenseDomain: TLicenseDomain;
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getAdminIdentityIds">;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -88,6 +90,7 @@ export const identityV2ServiceFactory = ({
   identityMembershipV2DAL,
   permissionService,
   licenseDomain,
+  instanceConfigCoreDomain,
   membershipIdentityDAL,
   membershipRoleDAL,
   identityMetadataDAL,
@@ -340,7 +343,11 @@ export const identityV2ServiceFactory = ({
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
 
-    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(
+      instanceConfigCoreDomain,
+      dto.selector.identityId,
+      dto.isActorSuperAdmin
+    );
 
     if (data.name !== undefined && data.name !== existingIdentity.name && containsLogUnsafeCharacters(data.name)) {
       throw new BadRequestError({ message: LOG_UNSAFE_TEXT_MESSAGE });
@@ -402,7 +409,11 @@ export const identityV2ServiceFactory = ({
     if (!existingIdentity)
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
 
-    await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(
+      instanceConfigCoreDomain,
+      dto.selector.identityId,
+      dto.isActorSuperAdmin
+    );
     if (existingIdentity.hasDeleteProtection) {
       throw new BadRequestError({ message: "Cannot delete identity while delete protection is enabled" });
     }

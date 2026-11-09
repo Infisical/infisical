@@ -7,6 +7,7 @@ import "./lib/config/snowflake-sdk-ocsp";
 import axios from "axios";
 import dotenv from "dotenv";
 
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 
 import { runMigrations } from "./auto-start-migrations";
@@ -24,7 +25,6 @@ import { queueServiceFactory } from "./queue";
 import { main } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
-import { superAdminDALFactory } from "./services/super-admin/super-admin-dal";
 
 dotenv.config();
 
@@ -50,8 +50,9 @@ const run = async () => {
   // Register connection-pool and entity-count observable gauges. No-ops when telemetry is disabled.
   registerInfrastructureMetrics(db);
 
-  const superAdminDAL = superAdminDALFactory(db);
-  const envConfig = await initEnvConfig(superAdminDAL, logger);
+  // Before migrations: the FIPS mode an existing instance stored, or null on a new one.
+  const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(db);
+  const envConfig = await initEnvConfig(fipsSetting, logger);
 
   logger.info(
     `Running Infisical ${envConfig.INFISICAL_PLATFORM_VERSION ? `v${envConfig.INFISICAL_PLATFORM_VERSION}` : "Development Mode"}`
@@ -84,7 +85,6 @@ const run = async () => {
   const server = await main({
     db,
     auditLogDb,
-    superAdminDAL,
     smtp,
     logger,
     queue,
@@ -94,7 +94,7 @@ const run = async () => {
     envConfig
   });
 
-  const bootstrap = await bootstrapCheck({ db });
+  const bootstrap = await bootstrapCheck({ db, instanceConfigCoreDomain: server.services.instanceConfigCoreDomain });
 
   // eslint-disable-next-line
   process.on("SIGINT", async () => {

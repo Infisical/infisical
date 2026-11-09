@@ -2,13 +2,13 @@ import { ForbiddenError } from "@casl/ability";
 import { InstallProvider } from "@slack/oauth";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
-import { getServerCfg } from "../super-admin/super-admin-service";
 import { TWorkflowIntegrationDALFactory } from "../workflow-integration/workflow-integration-dal";
 import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
 import { fetchSlackChannels } from "./slack-fns";
@@ -36,6 +36,7 @@ type TSlackServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   kmsCoreDomain: TKmsCoreDomain;
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getSlackCredentials">;
   workflowIntegrationDAL: Pick<TWorkflowIntegrationDALFactory, "transaction" | "create" | "updateById" | "deleteById">;
 };
 
@@ -45,6 +46,7 @@ export const slackServiceFactory = ({
   permissionService,
   slackIntegrationDAL,
   kmsCoreDomain,
+  instanceConfigCoreDomain,
   workflowIntegrationDAL
 }: TSlackServiceFactoryDep) => {
   const completeSlackIntegration = async ({
@@ -136,20 +138,8 @@ export const slackServiceFactory = ({
 
   const getSlackInstaller = async () => {
     const appCfg = getConfig();
-    const serverCfg = await getServerCfg();
-
-    let slackClientId = appCfg.WORKFLOW_SLACK_CLIENT_ID as string;
-    let slackClientSecret = appCfg.WORKFLOW_SLACK_CLIENT_SECRET as string;
-
-    const decrypt = kmsCoreDomain.decryptWithRootKey();
-
-    if (serverCfg.encryptedSlackClientId) {
-      slackClientId = decrypt(Buffer.from(serverCfg.encryptedSlackClientId)).toString();
-    }
-
-    if (serverCfg.encryptedSlackClientSecret) {
-      slackClientSecret = decrypt(Buffer.from(serverCfg.encryptedSlackClientSecret)).toString();
-    }
+    const { clientId: slackClientId, clientSecret: slackClientSecret } =
+      await instanceConfigCoreDomain.getSlackCredentials();
 
     if (!slackClientId || !slackClientSecret) {
       throw new BadRequestError({

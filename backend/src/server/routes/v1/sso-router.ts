@@ -33,7 +33,6 @@ import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
 import { OrgAuthMethod } from "@app/services/org/org-types";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 const passport = new Authenticator({ key: "sso", userProperty: "passportUser" });
@@ -578,7 +577,7 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
     }
 
     if (passportResult.result === ProviderAuthResult.SIGNUP_REQUIRED) {
-      const serverCfg = await getServerCfg();
+      const serverCfg = await server.services.instanceConfigCoreDomain.getServerConfig();
       const signupUrl = new URL("/signup/sso", reqOrigin);
       signupUrl.searchParams.set("token", passportResult.signupToken);
       if (serverCfg.defaultAuthOrgId && !appCfg.isCloud) signupUrl.searchParams.set("defaultOrgAllowed", "true");

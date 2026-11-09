@@ -1,6 +1,7 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { InstanceType, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
@@ -21,7 +22,6 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { HubSpotSignupMethod, PostHogEventTypes, TPostHogEvent, TSecretModifiedEvent } from "./telemetry-types";
 
@@ -81,6 +81,7 @@ type SingleEventData = {
 
 export type TTelemetryServiceFactory = ReturnType<typeof telemetryServiceFactory>;
 export type TTelemetryServiceFactoryDep = {
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
   keyStore: Pick<
     TKeyStoreFactory,
     "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
@@ -137,6 +138,7 @@ const getDeploymentType = (
 };
 
 export const telemetryServiceFactory = ({
+  instanceConfigCoreDomain,
   keyStore,
   licenseDomain,
   orgDAL,
@@ -148,7 +150,8 @@ export const telemetryServiceFactory = ({
   const getInstanceId = (): Promise<string | undefined> => {
     if (appCfg.INFISICAL_CLOUD) return Promise.resolve(undefined);
     if (!instanceIdPromise) {
-      instanceIdPromise = getServerCfg()
+      instanceIdPromise = instanceConfigCoreDomain
+        .getServerConfig()
         .then(({ instanceId }) => instanceId)
         .catch(() => {
           instanceIdPromise = undefined;

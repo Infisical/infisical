@@ -12,6 +12,7 @@ import {
   TIdentityOidcAuthsUpdate
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
@@ -81,6 +82,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   licenseDomain: TLicenseDomain;
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getAdminIdentityIds">;
   kmsCoreDomain: TKmsCoreDomain;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -100,6 +102,7 @@ export const identityOidcAuthServiceFactory = ({
   keyStore,
   permissionService,
   licenseDomain,
+  instanceConfigCoreDomain,
   identityAccessTokenDAL,
   kmsCoreDomain,
   orgDAL,
@@ -654,7 +657,7 @@ export const identityOidcAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigCoreDomain, identityId, isActorSuperAdmin);
 
     const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
@@ -843,7 +846,7 @@ export const identityOidcAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigCoreDomain, identityId, isActorSuperAdmin);
 
     const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
@@ -1102,7 +1105,7 @@ export const identityOidcAuthServiceFactory = ({
       }
     );
 
-    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigCoreDomain, identityId, isActorSuperAdmin);
 
     const revokedIdentityOidcAuth = await identityOidcAuthDAL.transaction(async (tx) => {
       const deletedOidcAuth = await identityOidcAuthDAL.delete({ identityId }, tx);

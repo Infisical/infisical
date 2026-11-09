@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { AuthMethod } from "../../services/auth/auth-type";
 import { TableName } from "../schemas";
@@ -17,9 +17,8 @@ export async function seed(knex: Knex): Promise<void> {
 
   initLogger();
 
-  const superAdminDAL = superAdminDALFactory(knex);
-
-  await initEnvConfig(superAdminDAL, logger);
+  const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(knex);
+  await initEnvConfig(fipsSetting, logger);
 
   await knex(TableName.SuperAdmin).insert([
     {

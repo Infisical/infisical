@@ -17,7 +17,6 @@ import { SamlProviders } from "@app/ee/services/saml-config/saml-config-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { AuthTokenType } from "@app/services/auth/auth-type";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { initDbConnection } from "./instance";
 import { getMigrationEnvConfig } from "./migrations/utils/env-config";
@@ -91,8 +90,7 @@ const main = async () => {
 
   try {
     // ---- Infisical: KMS bootstrap ----
-    const superAdminDAL = superAdminDALFactory(db);
-    const envConfig = await getMigrationEnvConfig(superAdminDAL);
+    const envConfig = await getMigrationEnvConfig(db);
     const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db });
 
     // ---- Infisical: org (SCIM enabled) ----

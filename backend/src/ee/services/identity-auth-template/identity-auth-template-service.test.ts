@@ -1,6 +1,7 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { FakeInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-core-domain";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   OrgPermissionIdentityActions,
@@ -28,13 +29,12 @@ vi.mock("node:dns/promises", () => ({
   }
 }));
 
-const { getServerCfgMock } = vi.hoisted(() => ({ getServerCfgMock: vi.fn() }));
+// Reassigned per test: the instance admin identities the service under test reads.
+let instanceConfigCoreDomain = new FakeInstanceConfigCoreDomain();
 
-vi.mock("@app/services/super-admin/super-admin-service", () => ({
-  getServerCfg: getServerCfgMock
-}));
-
-beforeEach(() => getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] }));
+beforeEach(() => {
+  instanceConfigCoreDomain = new FakeInstanceConfigCoreDomain({ adminIdentityIds: [] });
+});
 
 const ORG_ID = "org-id";
 const TEMPLATE_ID = "template-id";
@@ -113,6 +113,7 @@ const createService = ({
   const getProjectPermission = vi.fn().mockResolvedValue({ permission: createMongoAbility(projectRules) });
 
   const service = identityAuthTemplateServiceFactory({
+    instanceConfigCoreDomain,
     identityAuthTemplateDAL,
     identityLdapAuthDAL,
     identityKubernetesAuthDAL,
@@ -566,7 +567,7 @@ describe("identityAuthTemplateServiceFactory linked identity authorization", () 
   });
 
   it("refuses a field patch when a linked identity is a server admin and the editor is not", async () => {
-    getServerCfgMock.mockResolvedValue({ adminIdentityIds: ["identity-id"] });
+    instanceConfigCoreDomain = new FakeInstanceConfigCoreDomain({ adminIdentityIds: ["identity-id"] });
     const { service, identityAuthTemplateDAL, identityLdapAuthDAL } = createLdapService();
 
     await expect(patchTemplate(service, { searchBase: "dc=other" })).rejects.toThrow(
@@ -577,7 +578,7 @@ describe("identityAuthTemplateServiceFactory linked identity authorization", () 
   });
 
   it("propagates to a linked server admin identity when the editor is a server admin", async () => {
-    getServerCfgMock.mockResolvedValue({ adminIdentityIds: ["identity-id"] });
+    instanceConfigCoreDomain = new FakeInstanceConfigCoreDomain({ adminIdentityIds: ["identity-id"] });
     const { service, identityLdapAuthDAL } = createLdapService();
 
     await service.updateTemplate({

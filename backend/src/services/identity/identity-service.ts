@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -50,6 +51,7 @@ type TIdentityServiceFactoryDep = {
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseDomain: TLicenseDomain;
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getAdminIdentityIds">;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
@@ -68,6 +70,7 @@ export const identityServiceFactory = ({
   identityProjectDAL,
   permissionService,
   licenseDomain,
+  instanceConfigCoreDomain,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
@@ -272,7 +275,7 @@ export const identityServiceFactory = ({
       if (isCustomRole) customRole = rolePermissionDetails?.role;
     }
 
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigCoreDomain, id, isActorSuperAdmin);
 
     const identityDetails = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
 
@@ -403,7 +406,7 @@ export const identityServiceFactory = ({
       baseMessage: "Failed to remove a more privileged identity from the organization"
     });
 
-    await validateIdentityUpdateForSuperAdminPrivileges(id, isActorSuperAdmin);
+    await validateIdentityUpdateForSuperAdminPrivileges(instanceConfigCoreDomain, id, isActorSuperAdmin);
 
     if (identityOrgMembership.identity.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });

@@ -2,18 +2,19 @@
 import { Knex } from "knex";
 import { createTransport } from "nodemailer";
 
+import type { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { formatSmtpConfig, getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
 import { logger } from "@app/lib/logger";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 type BootstrapOpt = {
   db: Knex;
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
 };
 
-const bootstrapCb = async () => {
+const bootstrapCb = async (instanceConfigCoreDomain: BootstrapOpt["instanceConfigCoreDomain"]) => {
   const appCfg = getConfig();
-  const serverCfg = await getServerCfg();
+  const serverCfg = await instanceConfigCoreDomain.getServerConfig();
   const baseUrl = appCfg.SITE_URL || `http://localhost:${appCfg.PORT}`;
   if (!serverCfg.initialized) {
     console.info(`Welcome to Infisical
@@ -33,11 +34,11 @@ ${baseUrl}
   }
 };
 
-export const bootstrapCheck = async ({ db }: BootstrapOpt) => {
+export const bootstrapCheck = async ({ db, instanceConfigCoreDomain }: BootstrapOpt) => {
   const appCfg = getConfig();
   if (appCfg.isDevelopmentMode) {
     console.log("Development mode. Skipping initial check");
-    return bootstrapCb;
+    return () => bootstrapCb(instanceConfigCoreDomain);
   }
 
   console.info("Checking configurations...");
@@ -78,5 +79,5 @@ export const bootstrapCheck = async ({ db }: BootstrapOpt) => {
     redis.disconnect();
   }
 
-  return bootstrapCb;
+  return () => bootstrapCb(instanceConfigCoreDomain);
 };

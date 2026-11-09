@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnections } from "@app/db/schemas";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
@@ -231,6 +232,7 @@ export type TAppConnectionServiceFactoryDep = {
   appConnectionDAL: TAppConnectionDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsCoreDomain: TKmsCoreDomain;
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
   licenseDomain: TLicenseDomain;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
@@ -355,6 +357,7 @@ export const appConnectionServiceFactory = ({
   appConnectionDAL,
   permissionService,
   kmsCoreDomain,
+  instanceConfigCoreDomain,
   licenseDomain,
   gatewayV2Service,
   gatewayPoolService,
@@ -669,7 +672,15 @@ export const appConnectionServiceFactory = ({
           projectType: project?.type
         } as TAppConnectionConfig,
         gatewayV2Service,
-        { identityUaDAL, gitHubAppDAL, kmsCoreDomain, keyStore, oidcIssuerService, actorId: actor.id }
+        {
+          identityUaDAL,
+          gitHubAppDAL,
+          kmsCoreDomain,
+          instanceConfigCoreDomain,
+          keyStore,
+          oidcIssuerService,
+          actorId: actor.id
+        }
       );
 
     // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -1006,7 +1017,15 @@ export const appConnectionServiceFactory = ({
             projectType: updateProject?.type
           } as TAppConnectionConfig,
           gatewayV2Service,
-          { identityUaDAL, gitHubAppDAL, kmsCoreDomain, keyStore, oidcIssuerService, actorId: actor.id }
+          {
+            identityUaDAL,
+            gitHubAppDAL,
+            kmsCoreDomain,
+            instanceConfigCoreDomain,
+            keyStore,
+            oidcIssuerService,
+            actorId: actor.id
+          }
         );
 
       // Validation only dials the target and reads back, so retrying it on another member is safe.

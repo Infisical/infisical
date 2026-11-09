@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { packRules } from "@casl/ability/extra";
 import jwt from "jsonwebtoken";
 
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -102,7 +103,8 @@ describe("SCIM group to org role mappings", () => {
 
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testSuperAdminDAL, logger);
+    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
+    await initEnvConfig(fipsSetting, logger);
 
     // `scim` edit alone: enough for the route's own check, not enough to hand out org roles.
     const [role] = await testDb(TableName.Role)

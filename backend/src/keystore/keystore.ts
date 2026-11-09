@@ -229,7 +229,6 @@ export const KeyStorePrefixes = {
   WorkerHeartbeat: (workerType: string, instanceId: string) =>
     `worker-heartbeat:{${workerType}}:${instanceId}` as const,
 
-  AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
   SecretManagerCachePattern: `${SECRET_MANAGER_CACHE_PREFIX}:*` as const,
@@ -306,7 +305,6 @@ export const KeyStoreTtls = {
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
   InsightsUnusedAccessCacheInSeconds: 86400, // 24 hours
-  AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
   AuditLogMigrationAlertInSeconds: 604800, // 7 days

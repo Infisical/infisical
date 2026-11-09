@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import jwt from "jsonwebtoken";
 
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -151,7 +152,8 @@ const postOauthToken = (body: Record<string, string>) =>
 describe("Org scope of user tokens after root membership deactivation", () => {
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testSuperAdminDAL, logger);
+    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
+    await initEnvConfig(fipsSetting, logger);
   });
 
   afterEach(async () => {

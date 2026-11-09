@@ -9,6 +9,7 @@ import {
   SecretFolderRole,
   TableName
 } from "@app/db/schemas";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { seedData1 } from "@app/db/seed-data";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
@@ -57,7 +58,8 @@ const folderVersionKey = KeyStorePrefixes.ProjectFolderPermissionVersion(project
 
 beforeAll(async () => {
   initLogger();
-  await initEnvConfig(testSuperAdminDAL, logger);
+  const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
+  await initEnvConfig(fipsSetting, logger);
   const keyStore = keyStoreFactory(getConfig(), keyValueStoreDALFactory(testDb));
 
   permissionService = permissionServiceFactory({

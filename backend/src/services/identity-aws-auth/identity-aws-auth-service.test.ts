@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { FakeInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-core-domain";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { logger } from "@app/lib/logger";
 
@@ -91,6 +92,7 @@ const makeService = (awsAuth: Partial<TAwsAuthRow> = {}, authMethods: string[] =
     identityAccessTokenDAL: {} as never,
     permissionService: {} as never,
     licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, { ipAllowlisting: true as false }),
+    instanceConfigCoreDomain: new FakeInstanceConfigCoreDomain(),
     identityAccessTokenService: {
       issueIdentityAccessToken,
       invalidateTrustedIpsCache: vi.fn().mockResolvedValue(undefined)

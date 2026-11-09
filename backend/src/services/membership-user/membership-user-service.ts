@@ -8,6 +8,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
@@ -42,7 +43,6 @@ import { TProjectAccessRequestDALFactory } from "../project/project-access-reque
 import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSmtpService } from "../smtp/smtp-service";
-import { getServerCfg } from "../super-admin/super-admin-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "../user-alias/user-alias-fns";
@@ -60,6 +60,7 @@ import { newOrgMembershipUserFactory } from "./org/org-membership-user-factory";
 import { newProjectMembershipUserFactory } from "./project/project-membership-user-factory";
 
 type TMembershipUserServiceFactoryDep = {
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   orgDAL: Pick<
@@ -105,6 +106,7 @@ type TMembershipUserServiceFactoryDep = {
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
 
 export const membershipUserServiceFactory = ({
+  instanceConfigCoreDomain,
   membershipUserDAL,
   roleDAL,
   membershipRoleDAL,
@@ -132,6 +134,7 @@ export const membershipUserServiceFactory = ({
     [AccessScope.Organization]: newOrgMembershipUserFactory({
       permissionService,
       licenseDomain,
+      instanceConfigCoreDomain,
       smtpService,
       orgDAL,
       tokenService,
@@ -337,7 +340,7 @@ export const membershipUserServiceFactory = ({
     if (users.every((user) => existingUserIds.has(user.id))) return { memberships: [] };
     const isSubOrganization = Boolean(orgDetails.rootOrgId);
 
-    const serverCfg = await getServerCfg();
+    const serverCfg = await instanceConfigCoreDomain.getServerConfig();
     const isEmailLoginEnabled =
       !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
 

@@ -23,7 +23,6 @@ import { RequestContextKey } from "@app/lib/request-context/request-context-keys
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TQueueServiceFactory } from "@app/queue";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
-import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { apiMetrics } from "./plugins/api-metrics";
@@ -46,22 +45,10 @@ type TMain = {
   redis: Redis | Cluster;
   clickhouse: ClickHouseClient | null;
   envConfig: TEnvConfig;
-  superAdminDAL: TSuperAdminDALFactory;
 };
 
 // Run the server!
-export const main = async ({
-  db,
-  auditLogDb,
-  smtp,
-  logger,
-  queue,
-  keyStore,
-  redis,
-  clickhouse,
-  envConfig,
-  superAdminDAL
-}: TMain) => {
+export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore, redis, clickhouse, envConfig }: TMain) => {
   const appCfg = getConfig();
 
   // Infisical Cloud request IDs carry a region segment (req-us-, req-eu-) so an ID's
@@ -176,8 +163,7 @@ export const main = async ({
       keyStore,
       redis,
       clickhouse,
-      envConfig,
-      superAdminDAL
+      envConfig
     });
 
     if (appCfg.isApiRunModeEnabled) {

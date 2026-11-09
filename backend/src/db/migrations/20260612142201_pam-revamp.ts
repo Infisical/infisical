@@ -8,7 +8,6 @@ import { PamProductRole, PamResourceRole } from "@app/ee/services/pam/pam-enums"
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import {
   AccessScope,
@@ -268,8 +267,7 @@ export async function up(knex: Knex): Promise<void> {
 
   // Migrate data from old projects
   initLogger();
-  const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const envConfig = await getMigrationEnvConfig(knex);
   const { kmsCoreDomain } = await getMigrationEncryptionServices({
     envConfig,
     db: knex

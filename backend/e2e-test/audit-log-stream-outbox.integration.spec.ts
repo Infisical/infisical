@@ -5,6 +5,7 @@ import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { Knex } from "knex";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
 
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { TableName } from "@app/db/schemas";
 import { auditLogStreamDALFactory } from "@app/ee/services/audit-log-stream/audit-log-stream-dal";
 import { LogProvider, StreamMode } from "@app/ee/services/audit-log-stream/audit-log-stream-enums";
@@ -128,7 +129,8 @@ describe("audit log stream outbox (postgres)", () => {
     // Spec files run in a separate module graph from the test server, so the logger and env config the
     // outbox service and the providers read have to be initialized here as well.
     initLogger();
-    await initEnvConfig(testSuperAdminDAL, logger);
+    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
+    await initEnvConfig(fipsSetting, logger);
     ({ orgId, cleanup: cleanupOrg } = await createIsolatedOrgAndProject("audit-log-stream-outbox-e2e"));
     await cleanupEvents();
   });

@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
@@ -149,7 +150,8 @@ const deletePolicyThroughGenericEndpoint = (policyId: string, token: string) =>
 describe("Access approval policy router", async () => {
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testSuperAdminDAL, logger);
+    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
+    await initEnvConfig(fipsSetting, logger);
   });
 
   afterEach(async () => {

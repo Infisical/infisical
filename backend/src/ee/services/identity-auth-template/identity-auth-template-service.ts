@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -31,7 +32,6 @@ import { TIdentityLdapAuthDALFactory } from "@app/services/identity-ldap-auth/id
 import { TIdentityOidcAuthDALFactory } from "@app/services/identity-oidc-auth/identity-oidc-auth-dal";
 import { assertIdentityAuthAccessAllowed } from "@app/services/identity/identity-auth-permission-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TIdentityAuthTemplateDALFactory } from "./identity-auth-template-dal";
 import { IdentityAuthTemplateMethod, TEMPLATE_SECRET_FIELDS_BY_METHOD } from "./identity-auth-template-enums";
@@ -50,6 +50,7 @@ import {
 } from "./identity-auth-template-types";
 
 type TIdentityAuthTemplateServiceFactoryDep = {
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getAdminIdentityIds">;
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
   identityLdapAuthDAL: Pick<TIdentityLdapAuthDALFactory, "updateByTemplateId">;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "updateByTemplateId">;
@@ -71,6 +72,7 @@ export type TIdentityAuthTemplateServiceFactory = ReturnType<typeof identityAuth
 const AUDIT_FANOUT_CHUNK_SIZE = 20;
 
 export const identityAuthTemplateServiceFactory = ({
+  instanceConfigCoreDomain,
   identityAuthTemplateDAL,
   identityLdapAuthDAL,
   identityKubernetesAuthDAL,
@@ -452,7 +454,7 @@ export const identityAuthTemplateServiceFactory = ({
     const checkedIdentityIds = linkedIdentities.map(({ identityId }) => identityId);
 
     if (linkedIdentities.length > 0 && !isActorSuperAdmin) {
-      const { adminIdentityIds } = await getServerCfg();
+      const adminIdentityIds = await instanceConfigCoreDomain.getAdminIdentityIds();
       const adminIdentity = linkedIdentities.find(({ identityId }) => adminIdentityIds?.includes(identityId));
       if (adminIdentity) {
         throw new ForbiddenRequestError({

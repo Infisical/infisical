@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
@@ -10,7 +11,6 @@ import { membershipUserDALFactory } from "@app/services/membership-user/membersh
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { assignWorkspaceKeysToMembers, createProjectKey } from "@app/services/project/project-fns";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 import {
@@ -191,9 +191,8 @@ export async function seed(knex: Knex): Promise<void> {
 
   initLogger();
 
-  const superAdminDAL = superAdminDALFactory(knex);
-
-  await initEnvConfig(superAdminDAL, logger);
+  const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(knex);
+  await initEnvConfig(fipsSetting, logger);
 
   const [project] = await knex(TableName.Project)
     .insert({

@@ -60,7 +60,7 @@ const expectRejected = async <T, E extends Error>(
 describe("emailDispatchGuard", () => {
   beforeAll(async () => {
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize({} as never);
+    await crypto.initialize(null);
   });
 
   afterAll(() => {

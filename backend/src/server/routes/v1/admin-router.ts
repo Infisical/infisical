@@ -29,7 +29,6 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { StorageHostnameSchema } from "@app/services/app-connection/s3-compatible";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { CacheType, LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -88,7 +87,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const config = await getServerCfg();
+      const config = await server.services.instanceConfigCoreDomain.getServerConfig();
       const serverEnvs = getConfig();
 
       const hasOfflineLicense = server.services.licenseDomain.hasOfflineLicenseKey();
@@ -462,7 +461,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async () => {
-      const adminIntegrationsConfig = await server.services.superAdmin.getAdminIntegrationsConfig();
+      const adminIntegrationsConfig = await server.services.instanceConfigCoreDomain.getIntegrationCredentials();
 
       return adminIntegrationsConfig;
     }
@@ -499,7 +498,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async () => {
-      const envOverrides = await server.services.superAdmin.getEnvOverridesOrganized();
+      const envOverrides = await server.services.instanceConfigCoreDomain.getEnvOverridesOrganized();
       return envOverrides;
     }
   });
@@ -853,7 +852,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const appCfg = getConfig();
-      const serverCfg = await getServerCfg();
+      const serverCfg = await server.services.instanceConfigCoreDomain.getServerConfig();
       if (serverCfg.initialized) throw new BadRequestError({ message: "Admin account has already been set up" });
       const { user, token, organization } = await server.services.superAdmin.adminSignUp({
         ...req.body,

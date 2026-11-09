@@ -9,9 +9,7 @@ import {
   keyPrefixSchema,
   s3BucketNameSchema
 } from "@app/services/object-storage/object-storage-path-fns";
-import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
-import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger, logger as rootLogger } from "../logger/logger";
 import { ms } from "../ms";
@@ -877,7 +875,8 @@ export const getConfig = () => envCfg;
 export const getOriginalConfig = () => originalEnvConfig;
 
 // cannot import singleton logger directly as it needs config to load various transport
-export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logger?: CustomLogger) => {
+// fipsSetting comes from InstanceConfigCoreModule.readFipsSetting; leave it undefined to skip initializing cryptography.
+export const initEnvConfig = async (fipsSetting?: boolean | null, logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     (logger ?? console).error("Invalid environment variables. Check the error below");
@@ -892,8 +891,8 @@ export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logge
     originalEnvConfig = config;
   }
 
-  if (superAdminDAL) {
-    const fipsEnabled = await crypto.initialize(superAdminDAL);
+  if (fipsSetting !== undefined) {
+    const fipsEnabled = await crypto.initialize(fipsSetting);
 
     await initializePqcSupport();
 
@@ -1235,20 +1234,15 @@ export const overridableKeys = new Set(
   Object.values(overwriteSchema).flatMap(({ fields }) => fields.map(({ key }) => key))
 );
 
-export const validateOverrides = (config: Record<string, string>) => {
-  const allowedOverrides = Object.fromEntries(
-    Object.entries(config).filter(([key]) => overridableKeys.has(key as keyof z.input<typeof envSchema>))
-  );
-
-  const tempEnv: Record<string, unknown> = { ...process.env, ...allowedOverrides };
-  const parsedResult = envSchema.safeParse(tempEnv);
-
-  if (!parsedResult.success) {
-    const errorDetails = parsedResult.error.issues
-      .map((issue) => `Key: "${issue.path.join(".")}", Error: ${issue.message}`)
-      .join("\n");
-    throw new BadRequestError({ message: errorDetails });
-  }
+// Parses the process env with these overrides on top, without applying them. Instance Config Core validates
+// overrides with it before storing them.
+export const parseWithOverrides = (overrides: Record<string, string>) => {
+  const parsedResult = envSchema.safeParse({ ...process.env, ...overrides });
+  if (parsedResult.success) return { success: true as const };
+  return {
+    success: false as const,
+    issues: parsedResult.error.issues.map((issue) => ({ path: issue.path, message: issue.message }))
+  };
 };
 
 export const overrideEnvConfig = (config: Record<string, string>) => {

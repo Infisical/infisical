@@ -3,6 +3,7 @@ import "fastify";
 import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
@@ -428,6 +429,7 @@ declare module "fastify" {
     secretScanning: TSecretScanningServiceFactory;
     licenseDomain: TLicenseDomain;
     kmsCoreDomain: TKmsCoreDomain;
+    instanceConfigCoreDomain: TInstanceConfigCoreDomain;
     licenseV2: TLicenseV2ServiceFactory;
     trustedIp: TTrustedIpServiceFactory;
     secretBlindIndex: TSecretBlindIndexServiceFactory;

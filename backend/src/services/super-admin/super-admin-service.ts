@@ -1,12 +1,5 @@
-import {
-  AccessScope,
-  IdentityAuthMethod,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  TSuperAdmin,
-  TSuperAdminUpdate,
-  TUsers
-} from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrgMembershipRole, OrgMembershipStatus, TUsers } from "@app/db/schemas";
+import { TInstanceConfigCoreDomain, TInstanceConfigPatch } from "@app/domains/platform/instance-config-core/ce/module";
 import { RootKeyEncryptionStrategy, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -16,20 +9,11 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { withCache } from "@app/lib/cache/with-cache";
-import {
-  getConfig,
-  getOriginalConfig,
-  overrideEnvConfig,
-  overwriteSchema,
-  validateOverrides
-} from "@app/lib/config/env";
-import { startLocalRefresh } from "@app/lib/cron/local-refresh";
+import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TIp } from "@app/lib/ip";
-import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { OrgServiceActor } from "@app/lib/types";
@@ -58,10 +42,8 @@ import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
-import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
   CacheType,
-  EnvOverrides,
   LoginMethod,
   SuperAdminErrorCode,
   TAdminBootstrapInstanceDTO,
@@ -70,7 +52,6 @@ import {
   TAdminGetEmailDomainsDTO,
   TAdminGetIdentitiesDTO,
   TAdminGetUsersDTO,
-  TAdminIntegrationConfig,
   TAdminSignUpDTO,
   TCreateOrganizationDTO,
   TGetOrganizationsDTO,
@@ -82,7 +63,7 @@ type TSuperAdminServiceFactoryDep = {
   identityTokenAuthDAL: TIdentityTokenAuthDALFactory;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "issueIdentityAccessToken">;
   orgDAL: TOrgDALFactory;
-  serverCfgDAL: TSuperAdminDALFactory;
+  instanceConfigCoreDomain: TInstanceConfigCoreDomain;
   userDAL: TUserDALFactory;
   membershipUserDAL: TMembershipUserDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
@@ -109,44 +90,8 @@ type TSuperAdminServiceFactoryDep = {
 
 export type TSuperAdminServiceFactory = ReturnType<typeof superAdminServiceFactory>;
 
-// eslint-disable-next-line
-export let getServerCfg: () => Promise<
-  TSuperAdmin & {
-    defaultAuthOrgSlug: string | null;
-    defaultAuthOrgAuthEnforced?: boolean | null;
-    defaultAuthOrgAuthMethod?: string | null;
-  }
->;
-
-let adminIntegrationsConfig: TAdminIntegrationConfig = {
-  slack: {
-    clientSecret: "",
-    clientId: ""
-  },
-  microsoftTeams: {
-    appId: "",
-    clientSecret: "",
-    botId: ""
-  },
-  gitHubAppConnection: {
-    clientId: "",
-    clientSecret: "",
-    appSlug: "",
-    appId: "",
-    privateKey: ""
-  }
-};
-
-Object.freeze(adminIntegrationsConfig);
-
-export const getInstanceIntegrationsConfig = () => {
-  return adminIntegrationsConfig;
-};
-
-export const ADMIN_CONFIG_DB_UUID = "00000000-0000-0000-0000-000000000000";
-
 export const superAdminServiceFactory = ({
-  serverCfgDAL,
+  instanceConfigCoreDomain,
   userDAL,
   identityDAL,
   orgDAL,
@@ -174,177 +119,7 @@ export const superAdminServiceFactory = ({
   auditLogService,
   eventEmitter
 }: TSuperAdminServiceFactoryDep) => {
-  const initServerCfg = async () => {
-    // TODO(akhilmhdh): bad  pattern time less change this later to me itself
-    getServerCfg = async () => {
-      const serverCfg = await withCache({
-        keyStore,
-        key: KeyStorePrefixes.AdminConfig,
-        ttlSeconds: KeyStoreTtls.AdminConfigInSeconds,
-        fetcher: async () => {
-          const cfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-          if (!cfg) {
-            throw new NotFoundError({ message: "Admin config not found" });
-          }
-          return cfg;
-        }
-      });
-
-      // Normalize dates — on cache hit they arrive as ISO strings from JSON.parse,
-      // on miss they are already Date objects. new Date() handles both.
-      return {
-        ...serverCfg,
-        createdAt: new Date(serverCfg.createdAt),
-        updatedAt: new Date(serverCfg.updatedAt)
-      };
-    };
-
-    // reset on initialized
-    await keyStore.deleteItem(KeyStorePrefixes.AdminConfig);
-    const serverCfg = await serverCfgDAL.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SuperAdminInit]);
-      const serverCfgInDB = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-      if (serverCfgInDB) return serverCfgInDB;
-
-      const newCfg = await serverCfgDAL.create({
-        // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
-        id: ADMIN_CONFIG_DB_UUID,
-        fipsEnabled: crypto.isFipsModeEnabled(),
-        initialized: false,
-        allowSignUp: true,
-        defaultAuthOrgId: null
-      });
-      return newCfg;
-    });
-    return serverCfg;
-  };
-
-  const getAdminIntegrationsConfig = async () => {
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-
-    if (!serverCfg) {
-      throw new NotFoundError({ name: "AdminConfig", message: "Admin config not found" });
-    }
-
-    const decrypt = kmsCoreDomain.decryptWithRootKey();
-
-    const slackClientId = serverCfg.encryptedSlackClientId ? decrypt(serverCfg.encryptedSlackClientId).toString() : "";
-    const slackClientSecret = serverCfg.encryptedSlackClientSecret
-      ? decrypt(serverCfg.encryptedSlackClientSecret).toString()
-      : "";
-
-    const microsoftAppId = serverCfg.encryptedMicrosoftTeamsAppId
-      ? decrypt(serverCfg.encryptedMicrosoftTeamsAppId).toString()
-      : "";
-    const microsoftClientSecret = serverCfg.encryptedMicrosoftTeamsClientSecret
-      ? decrypt(serverCfg.encryptedMicrosoftTeamsClientSecret).toString()
-      : "";
-    const microsoftBotId = serverCfg.encryptedMicrosoftTeamsBotId
-      ? decrypt(serverCfg.encryptedMicrosoftTeamsBotId).toString()
-      : "";
-
-    const gitHubAppConnectionClientId = serverCfg.encryptedGitHubAppConnectionClientId
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionClientId).toString()
-      : "";
-    const gitHubAppConnectionClientSecret = serverCfg.encryptedGitHubAppConnectionClientSecret
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionClientSecret).toString()
-      : "";
-
-    const gitHubAppConnectionAppSlug = serverCfg.encryptedGitHubAppConnectionSlug
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionSlug).toString()
-      : "";
-
-    const gitHubAppConnectionAppId = serverCfg.encryptedGitHubAppConnectionId
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionId).toString()
-      : "";
-    const gitHubAppConnectionAppPrivateKey = serverCfg.encryptedGitHubAppConnectionPrivateKey
-      ? decrypt(serverCfg.encryptedGitHubAppConnectionPrivateKey).toString()
-      : "";
-
-    return {
-      slack: {
-        clientSecret: slackClientSecret,
-        clientId: slackClientId
-      },
-      microsoftTeams: {
-        appId: microsoftAppId,
-        clientSecret: microsoftClientSecret,
-        botId: microsoftBotId
-      },
-      gitHubAppConnection: {
-        clientId: gitHubAppConnectionClientId,
-        clientSecret: gitHubAppConnectionClientSecret,
-        appSlug: gitHubAppConnectionAppSlug,
-        appId: gitHubAppConnectionAppId,
-        privateKey: gitHubAppConnectionAppPrivateKey
-      }
-    };
-  };
-
-  const $syncAdminIntegrationConfig = async () => {
-    const config = await getAdminIntegrationsConfig();
-    Object.freeze(config);
-    adminIntegrationsConfig = config;
-  };
-
-  const getEnvOverrides = async () => {
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-
-    if (!serverCfg || !serverCfg.encryptedEnvOverrides) {
-      return {};
-    }
-
-    const decrypt = kmsCoreDomain.decryptWithRootKey();
-
-    const overrides = JSON.parse(decrypt(serverCfg.encryptedEnvOverrides).toString()) as Record<string, string>;
-
-    return overrides;
-  };
-
-  const getEnvOverridesOrganized = async (): Promise<EnvOverrides> => {
-    const overrides = await getEnvOverrides();
-    const ogConfig = getOriginalConfig();
-
-    return Object.fromEntries(
-      Object.entries(overwriteSchema).map(([groupKey, groupDef]) => [
-        groupKey,
-        {
-          name: groupDef.name,
-          fields: groupDef.fields.map(({ key, description }) => ({
-            key,
-            description,
-            value: overrides[key] || "",
-            hasEnvEntry: !!(ogConfig as unknown as Record<string, string | undefined>)[key]
-          }))
-        }
-      ])
-    );
-  };
-
-  const $syncEnvConfig = async () => {
-    const config = await getEnvOverrides();
-
-    overrideEnvConfig(config);
-  };
-
-  const updateServerCfg = async (
-    data: TSuperAdminUpdate & {
-      slackClientId?: string;
-      slackClientSecret?: string;
-      microsoftTeamsAppId?: string;
-      microsoftTeamsClientSecret?: string;
-      microsoftTeamsBotId?: string;
-      gitHubAppConnectionClientId?: string;
-      gitHubAppConnectionClientSecret?: string;
-      gitHubAppConnectionSlug?: string;
-      gitHubAppConnectionId?: string;
-      gitHubAppConnectionPrivateKey?: string;
-      envOverrides?: Record<string, string>;
-    },
-    userId: string
-  ) => {
-    const updatedData = data;
-
+  const updateServerCfg = async (data: TInstanceConfigPatch, userId: string) => {
     // The lockout guard protects a user admin. A machine identity admin signs in with none of these
     // login methods, so there is nothing to lock it out of and no user row to read.
     const superAdminUser = data.enabledLoginMethods ? await userDAL.findById(userId) : undefined;
@@ -395,139 +170,18 @@ export const superAdminServiceFactory = ({
       }
     }
 
-    const encryptWithRoot = kmsCoreDomain.encryptWithRootKey();
-    if (data.slackClientId) {
-      const encryptedClientId = encryptWithRoot(Buffer.from(data.slackClientId));
+    const updatedServerCfg = await instanceConfigCoreDomain.updateConfig(data);
 
-      updatedData.encryptedSlackClientId = encryptedClientId;
-      updatedData.slackClientId = undefined;
-    }
-
-    if (data.slackClientSecret) {
-      const encryptedClientSecret = encryptWithRoot(Buffer.from(data.slackClientSecret));
-
-      updatedData.encryptedSlackClientSecret = encryptedClientSecret;
-      updatedData.slackClientSecret = undefined;
-    }
-
-    let microsoftTeamsSettingsUpdated = false;
-    if (data.microsoftTeamsAppId) {
-      const encryptedClientId = encryptWithRoot(Buffer.from(data.microsoftTeamsAppId));
-
-      updatedData.encryptedMicrosoftTeamsAppId = encryptedClientId;
-      updatedData.microsoftTeamsAppId = undefined;
-      microsoftTeamsSettingsUpdated = true;
-    }
-
-    if (data.microsoftTeamsClientSecret) {
-      const encryptedClientSecret = encryptWithRoot(Buffer.from(data.microsoftTeamsClientSecret));
-
-      updatedData.encryptedMicrosoftTeamsClientSecret = encryptedClientSecret;
-      updatedData.microsoftTeamsClientSecret = undefined;
-      microsoftTeamsSettingsUpdated = true;
-    }
-
-    if (data.microsoftTeamsBotId) {
-      const encryptedBotId = encryptWithRoot(Buffer.from(data.microsoftTeamsBotId));
-
-      updatedData.encryptedMicrosoftTeamsBotId = encryptedBotId;
-      updatedData.microsoftTeamsBotId = undefined;
-      microsoftTeamsSettingsUpdated = true;
-    }
-
-    let gitHubAppConnectionSettingsUpdated = false;
-    if (data.gitHubAppConnectionClientId !== undefined) {
-      const encryptedClientId = encryptWithRoot(Buffer.from(data.gitHubAppConnectionClientId));
-      updatedData.encryptedGitHubAppConnectionClientId = encryptedClientId;
-      updatedData.gitHubAppConnectionClientId = undefined;
-      gitHubAppConnectionSettingsUpdated = true;
-    }
-
-    if (data.gitHubAppConnectionClientSecret !== undefined) {
-      const encryptedClientSecret = encryptWithRoot(Buffer.from(data.gitHubAppConnectionClientSecret));
-      updatedData.encryptedGitHubAppConnectionClientSecret = encryptedClientSecret;
-      updatedData.gitHubAppConnectionClientSecret = undefined;
-      gitHubAppConnectionSettingsUpdated = true;
-    }
-
-    if (data.gitHubAppConnectionSlug !== undefined) {
-      const encryptedAppSlug = encryptWithRoot(Buffer.from(data.gitHubAppConnectionSlug));
-      updatedData.encryptedGitHubAppConnectionSlug = encryptedAppSlug;
-      updatedData.gitHubAppConnectionSlug = undefined;
-      gitHubAppConnectionSettingsUpdated = true;
-    }
-
-    if (data.gitHubAppConnectionId !== undefined) {
-      const encryptedAppId = encryptWithRoot(Buffer.from(data.gitHubAppConnectionId));
-      updatedData.encryptedGitHubAppConnectionId = encryptedAppId;
-      updatedData.gitHubAppConnectionId = undefined;
-      gitHubAppConnectionSettingsUpdated = true;
-    }
-
-    if (data.gitHubAppConnectionPrivateKey !== undefined) {
-      const encryptedAppPrivateKey = encryptWithRoot(Buffer.from(data.gitHubAppConnectionPrivateKey));
-      updatedData.encryptedGitHubAppConnectionPrivateKey = encryptedAppPrivateKey;
-      updatedData.gitHubAppConnectionPrivateKey = undefined;
-      gitHubAppConnectionSettingsUpdated = true;
-    }
-
-    let envOverridesUpdated = false;
-    if (data.envOverrides !== undefined) {
-      // Verify input format
-      validateOverrides(data.envOverrides);
-
-      const encryptedEnvOverrides = encryptWithRoot(Buffer.from(JSON.stringify(data.envOverrides)));
-      updatedData.encryptedEnvOverrides = encryptedEnvOverrides;
-      updatedData.envOverrides = undefined;
-      envOverridesUpdated = true;
-    }
-
-    if (!Object.values(updatedData).some((value) => value !== undefined)) {
-      throw new BadRequestError({
-        message:
-          "No recognized instance configuration fields were provided. Settings that have been removed are no longer accepted."
-      });
-    }
-
-    const updatedServerCfg = await serverCfgDAL.updateById(ADMIN_CONFIG_DB_UUID, updatedData);
-
-    try {
-      await keyStore.setItemWithExpiry(
-        KeyStorePrefixes.AdminConfig,
-        KeyStoreTtls.AdminConfigInSeconds,
-        JSON.stringify(updatedServerCfg)
-      );
-    } catch (err) {
-      logger.warn(
-        { key: KeyStorePrefixes.AdminConfig, err },
-        `updateServerCfg: cache write failed [key=${KeyStorePrefixes.AdminConfig}]`
-      );
-    }
-
-    if (gitHubAppConnectionSettingsUpdated) {
-      await $syncAdminIntegrationConfig();
-    }
-
-    if (envOverridesUpdated) {
-      await $syncEnvConfig();
-    }
-
-    if (
-      updatedServerCfg.encryptedMicrosoftTeamsAppId &&
-      updatedServerCfg.encryptedMicrosoftTeamsClientSecret &&
-      updatedServerCfg.encryptedMicrosoftTeamsBotId &&
-      microsoftTeamsSettingsUpdated
-    ) {
-      const decryptWithRoot = kmsCoreDomain.decryptWithRootKey();
-      decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsBotId); // validate that we're able to decrypt the bot ID
-      const decryptedAppId = decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsAppId);
-      const decryptedAppPassword = decryptWithRoot(updatedServerCfg.encryptedMicrosoftTeamsClientSecret);
-
-      await microsoftTeamsService.initializeTeamsBot({
-        botAppId: decryptedAppId.toString(),
-        botAppPassword: decryptedAppPassword.toString(),
-        lastUpdatedAt: updatedServerCfg.updatedAt
-      });
+    // Teams keeps its bot in this process; the other pods rebuild theirs when their sync sees the new updatedAt.
+    if (data.microsoftTeamsAppId || data.microsoftTeamsClientSecret || data.microsoftTeamsBotId) {
+      const teams = await instanceConfigCoreDomain.getMicrosoftTeamsCredentials();
+      if (teams.appId && teams.clientSecret && teams.botId) {
+        await microsoftTeamsService.initializeTeamsBot({
+          botAppId: teams.appId,
+          botAppPassword: teams.clientSecret,
+          lastUpdatedAt: teams.updatedAt
+        });
+      }
     }
 
     return updatedServerCfg;
@@ -596,8 +250,8 @@ export const superAdminServiceFactory = ({
   const bootstrapInstance = async ({ email, password, organizationName }: TAdminBootstrapInstanceDTO) => {
     const appCfg = getConfig();
     const sanitizedEmail = email.trim().toLowerCase();
-    const serverCfg = await serverCfgDAL.findById(ADMIN_CONFIG_DB_UUID);
-    if (serverCfg?.initialized) {
+    const serverCfg = await instanceConfigCoreDomain.getServerConfig();
+    if (serverCfg.initialized) {
       throw new BadRequestError({ message: "Instance has already been set up" });
     }
 
@@ -844,8 +498,8 @@ export const superAdminServiceFactory = ({
       throw new NotFoundError({ name: "Identity", message: "Identity not found" });
     }
 
-    const currentAdminIdentityIds = (await getServerCfg()).adminIdentityIds ?? [];
-    if (!currentAdminIdentityIds?.includes(identityId)) {
+    const currentAdminIdentityIds = await instanceConfigCoreDomain.getAdminIdentityIds();
+    if (!currentAdminIdentityIds.includes(identityId)) {
       throw new BadRequestError({ name: "Identity", message: "Identity does not have super admin access" });
     }
 
@@ -1206,12 +860,12 @@ export const superAdminServiceFactory = ({
       searchTerm,
       sortBy: "name"
     });
-    const serverCfg = await getServerCfg();
+    const adminIdentityIds = await instanceConfigCoreDomain.getAdminIdentityIds();
 
     return {
       identities: result.identities.map((identity) => ({
         ...identity,
-        isInstanceAdmin: Boolean(serverCfg?.adminIdentityIds?.includes(identity.id))
+        isInstanceAdmin: adminIdentityIds.includes(identity.id)
       })),
       total: result.total
     };
@@ -1258,31 +912,6 @@ export const superAdminServiceFactory = ({
 
   const checkIfInvalidatingCache = async () => {
     return (await keyStore.getItem(KeyStorePrefixes.InvalidatingCache)) !== null;
-  };
-
-  const initializeAdminIntegrationConfigSync = async () => {
-    logger.info("Setting up background sync process for admin integrations config");
-
-    // initial sync upon startup
-    await $syncAdminIntegrationConfig();
-
-    return startLocalRefresh({
-      name: "admin-integration-config-sync",
-      intervalMs: 5 * 60 * 1000,
-      task: $syncAdminIntegrationConfig
-    });
-  };
-
-  const initializeEnvConfigSync = async () => {
-    logger.info("Setting up background sync process for environment overrides");
-
-    await $syncEnvConfig();
-
-    return startLocalRefresh({
-      name: "env-config-sync",
-      intervalMs: 5 * 60 * 1000,
-      task: $syncEnvConfig
-    });
   };
 
   const getEmailDomains = async ({ offset, limit, searchTerm }: TAdminGetEmailDomainsDTO) => {
@@ -1349,14 +978,12 @@ export const superAdminServiceFactory = ({
   };
 
   return {
-    initServerCfg,
     updateServerCfg,
     adminSignUp,
     bootstrapInstance,
     getUsers,
     deleteUser,
     getIdentities,
-    getAdminIntegrationsConfig,
     updateRootEncryptionStrategy,
     getConfiguredEncryptionStrategies,
     grantServerAdminAccessToUser,
@@ -1367,10 +994,6 @@ export const superAdminServiceFactory = ({
     getOrganizations,
     deleteOrganization,
     deleteOrganizationMembership,
-    initializeAdminIntegrationConfigSync,
-    initializeEnvConfigSync,
-    getEnvOverrides,
-    getEnvOverridesOrganized,
     deleteUsers,
     createOrganization,
     joinOrganization,

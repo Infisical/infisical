@@ -1,12 +1,12 @@
 import { PostHog } from "posthog-node";
 
 import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
 
-import { getServerCfg } from "../super-admin/super-admin-service";
 import { TTelemetryDALFactory } from "./telemetry-dal";
 import {
   TELEMETRY_SECRET_OPERATIONS_KEY,
@@ -19,6 +19,7 @@ const AGGREGATED_EVENTS_HANDLER_TIMEOUT_MS = 8 * 60 * 1000;
 const PKI_ORG_USAGE_HANDLER_TIMEOUT_MS = 15 * 60 * 1000;
 
 type TTelemetryQueueServiceFactoryDep = {
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
   cronJob: TCronJobFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "deleteItem">;
   telemetryDAL: TTelemetryDALFactory;
@@ -29,6 +30,7 @@ type TTelemetryQueueServiceFactoryDep = {
 export type TTelemetryQueueServiceFactory = ReturnType<typeof telemetryQueueServiceFactory>;
 
 export const telemetryQueueServiceFactory = ({
+  instanceConfigCoreDomain,
   cronJob,
   keyStore,
   telemetryDAL,
@@ -51,7 +53,7 @@ export const telemetryQueueServiceFactory = ({
       pattern: "0 0 * * *",
       runHashTtlS: 3 * 24 * 60 * 60,
       handler: async () => {
-        const { instanceId } = await getServerCfg();
+        const { instanceId } = await instanceConfigCoreDomain.getServerConfig();
         const telemetryStats = await telemetryDAL.getTelemetryInstanceStats();
         const numberOfSecretOperationsMade = parseInt(
           (await keyStore.getItem(TELEMETRY_SECRET_OPERATIONS_KEY)) || "0",

@@ -1,7 +1,6 @@
 import { Knex } from "knex";
 
 import { selectAllTableCols } from "@app/lib/knex";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
@@ -12,8 +11,7 @@ export async function up(knex: Knex) {
     .select(selectAllTableCols(TableName.SuperAdmin))
     .whereNotNull(`${TableName.SuperAdmin}.encryptedGitHubAppConnectionClientId`);
 
-  const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const envConfig = await getMigrationEnvConfig(knex);
   const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
   const decryptor = kmsCoreDomain.decryptWithRootKey();

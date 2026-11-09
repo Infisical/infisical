@@ -19,7 +19,7 @@ import { queueServiceFactory } from "@app/queue";
 import { keyStoreFactory } from "@app/keystore/keystore";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { buildRedisFromConfig } from "@app/lib/config/redis";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { bootstrapCheck } from "@app/server/boot-strap-check";
 
 dotenv.config({ path: path.join(__dirname, "../../.env.test"), debug: true });
@@ -36,9 +36,9 @@ export default {
       dbRootCert: databaseCredentials.dbRootCert
     });
 
-    const superAdminDAL = superAdminDALFactory(db);
+    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(db);
 
-    const envCfg = await initEnvConfig(superAdminDAL, logger);
+    const envCfg = await initEnvConfig(fipsSetting, logger);
 
     const redis = buildRedisFromConfig(envCfg);
     await redis.flushdb("SYNC");
@@ -72,13 +72,12 @@ export default {
         logger,
         queue,
         keyStore,
-        superAdminDAL,
         redis,
         clickhouse: clickhouseClient,
         envConfig: envCfg
       });
 
-      await bootstrapCheck({ db });
+      await bootstrapCheck({ db, instanceConfigCoreDomain: server.services.instanceConfigCoreDomain });
 
       // @ts-expect-error type
       globalThis.testServer = server;
@@ -93,7 +92,7 @@ export default {
       // @ts-expect-error type
       globalThis.testQueue = queue;
       // @ts-expect-error type
-      globalThis.testSuperAdminDAL = superAdminDAL;
+      globalThis.testInstanceConfigCoreDomain = server.services.instanceConfigCoreDomain;
       // @ts-expect-error type
       globalThis.jwtAuthToken = crypto.jwt().sign(
         {
@@ -128,7 +127,7 @@ export default {
         // @ts-expect-error type
         delete globalThis.testKeyStore;
         // @ts-expect-error type
-        delete globalThis.testSuperAdminDAL;
+        delete globalThis.testInstanceConfigCoreDomain;
         // @ts-expect-error type
         delete globalThis.jwtAuthToken;
         // @ts-expect-error type

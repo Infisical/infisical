@@ -4,6 +4,7 @@ import { gunzipSync } from "node:zlib";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { FakeInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-core-domain";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 
 import { PostHogEventTypes } from "./telemetry-types";
@@ -76,6 +77,7 @@ const createHarness = (payloads: Record<string, unknown>[]) => {
   const telemetryService = telemetryServiceFactory({
     keyStore: keyStore as never,
     licenseDomain: new FakeLicenseDomain(),
+    instanceConfigCoreDomain: new FakeInstanceConfigCoreDomain(),
     orgDAL: { findOrgById: vi.fn() } as never,
     emailDomainDAL: { find: vi.fn(async () => []) } as never
   });

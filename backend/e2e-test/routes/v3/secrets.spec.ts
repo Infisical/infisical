@@ -1,3 +1,4 @@
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { SecretType, TSecrets } from "@app/db/schemas";
 import { decryptSecret, encryptSecret, getUserPrivateKey, seedData1 } from "@app/db/seed-data";
 import { initEnvConfig } from "@app/lib/config/env";
@@ -200,7 +201,8 @@ describe("Secret V3 Router", async () => {
   let folderId = "";
   beforeAll(async () => {
     initLogger();
-    await initEnvConfig(testSuperAdminDAL, logger);
+    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
+    await initEnvConfig(fipsSetting, logger);
 
     const projectKeyRes = await testServer.inject({
       method: "GET",

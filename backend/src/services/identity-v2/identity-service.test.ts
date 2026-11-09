@@ -3,6 +3,7 @@ import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
+import { FakeInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-core-domain";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 
 import { identityV2ServiceFactory } from "./identity-service";
@@ -16,13 +17,8 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
 }));
 
-// `vi.mock` factories are hoisted above imports — the spy they reference must come from `vi.hoisted`.
-// Stubbing the config read rather than the guard itself keeps the real instance-admin check under test.
-const { getServerCfgMock } = vi.hoisted(() => ({ getServerCfgMock: vi.fn() }));
-
-vi.mock("@app/services/super-admin/super-admin-service", () => ({
-  getServerCfg: getServerCfgMock
-}));
+// Reassigned per test: the instance admin identities the service under test reads.
+let instanceConfigCoreDomain = new FakeInstanceConfigCoreDomain();
 
 const ORG_ID = "org-1";
 const PROJECT_ID = "project-1";
@@ -56,6 +52,7 @@ const createService = ({
   };
 
   const service = identityV2ServiceFactory({
+    instanceConfigCoreDomain,
     identityDAL: identityDAL as never,
     identityMembershipV2DAL: {} as never,
     permissionService: {
@@ -97,7 +94,7 @@ const createService = ({
 describe("deleteIdentity alert cleanup", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] });
+    instanceConfigCoreDomain = new FakeInstanceConfigCoreDomain({ adminIdentityIds: [] });
   });
 
   test("reaps the identity's alerts in every org, in the same transaction as the row delete", async () => {
@@ -179,7 +176,7 @@ describe("instance admin identities are protected on the v2 surface", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [IDENTITY_ID] });
+    instanceConfigCoreDomain = new FakeInstanceConfigCoreDomain({ adminIdentityIds: [IDENTITY_ID] });
   });
 
   test("delete is refused for a non instance admin actor, and nothing is reaped", async () => {
@@ -210,7 +207,7 @@ describe("instance admin identities are protected on the v2 surface", () => {
   });
 
   test("the guard is inert when no instance admin identities are configured", async () => {
-    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] });
+    instanceConfigCoreDomain = new FakeInstanceConfigCoreDomain({ adminIdentityIds: [] });
     const { service, identityDAL } = createService();
 
     await service.deleteIdentity(buildDto());
@@ -244,7 +241,7 @@ describe("updateIdentity name check", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] });
+    instanceConfigCoreDomain = new FakeInstanceConfigCoreDomain({ adminIdentityIds: [] });
   });
 
   const update = (service: ReturnType<typeof createService>["service"], data: Record<string, unknown>) =>

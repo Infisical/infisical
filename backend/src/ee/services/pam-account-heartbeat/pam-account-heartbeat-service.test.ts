@@ -101,7 +101,7 @@ const buildService = (
 
 describe("heartbeat: Windows", () => {
   beforeAll(async () => {
-    await crypto.initialize({} as never);
+    await crypto.initialize(null);
   });
 
   test("a Windows account is checked over WinRM, not by a reachability probe", async () => {
@@ -200,7 +200,7 @@ describe("heartbeat: Windows", () => {
 
 describe("heartbeat: SSH certificate", () => {
   beforeAll(async () => {
-    await crypto.initialize({} as never);
+    await crypto.initialize(null);
   });
 
   test("mints a short-lived certificate and logs in with it", async () => {
@@ -282,7 +282,7 @@ describe("heartbeat: manual check permissions", () => {
 
 describe("heartbeat: gateway binding check", () => {
   beforeAll(async () => {
-    await crypto.initialize({} as never);
+    await crypto.initialize(null);
   });
 
   test.each([

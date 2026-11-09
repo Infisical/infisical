@@ -3,7 +3,6 @@ import { Knex } from "knex";
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { initLogger } from "@app/lib/logger";
 import { ExternalMigrationProviders } from "@app/services/external-migration/external-migration-schemas";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
@@ -15,8 +14,7 @@ const VAULT_EXTERNAL_MIGRATION_CONFIGS = "vault_external_migration_configs";
 
 export async function up(knex: Knex): Promise<void> {
   initLogger();
-  const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const envConfig = await getMigrationEnvConfig(knex);
   const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
   if (!(await knex.schema.hasTable(TableName.ExternalMigrationConfig))) {

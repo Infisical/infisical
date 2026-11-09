@@ -2,7 +2,6 @@ import { Knex } from "knex";
 
 import { initLogger } from "@app/lib/logger";
 import { generateRecoveryCode } from "@app/services/mfa-recovery-code/mfa-recovery-code-fns";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
@@ -17,8 +16,7 @@ const RECOVERY_CODE_COUNT = 10;
 // migration, mirroring the runtime mfaRecoveryCodeService.
 const startRootEncryptor = async (knex: Knex) => {
   initLogger();
-  const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const envConfig = await getMigrationEnvConfig(knex);
   const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
   return kmsCoreDomain.encryptWithRootKey();
 };

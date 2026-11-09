@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { createS3Client } from "@app/lib/aws/s3";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -33,10 +34,11 @@ export const PAM_RECORDING_CONNECTION_APPS = [AppConnection.AWS, AppConnection.S
 
 export const resolveS3RecordingAccess = async (
   appConnection: TAppConnection,
-  region: string | undefined
+  region: string | undefined,
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">
 ): Promise<Pick<TPamRecordingResolvedConfig, "region" | "endpoint" | "getHttpsAgent" | "awsCredentials">> => {
   if (appConnection.app === AppConnection.S3Compatible) {
-    const s3Config = await getS3CompatibleConnectionConfig(appConnection);
+    const s3Config = await getS3CompatibleConnectionConfig(appConnection, instanceConfigCoreDomain);
     return {
       region: s3Config.region,
       endpoint: s3Config.endpoint,

@@ -2,12 +2,12 @@ import type { Agent } from "node:https";
 
 import { ListBucketsCommand, S3ServiceException } from "@aws-sdk/client-s3";
 
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { createS3Client } from "@app/lib/aws/s3";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { buildSsrfSafeAgent } from "@app/lib/validator";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { AppConnection } from "../app-connection-enums";
 import { S3CompatibleConnectionMethod, S3CompatibleProvider } from "./s3-compatible-connection-enums";
@@ -34,12 +34,15 @@ const buildCustomHostAgent = async (origin: string, host: string) =>
     }
   )) as Agent | undefined;
 
-export const getS3CompatibleConnectionConfig = async ({
-  credentials
-}: {
-  credentials: TS3CompatibleConnectionConfig["credentials"];
-}) => {
-  const { allowedStorageHostnames } = await getServerCfg();
+export const getS3CompatibleConnectionConfig = async (
+  {
+    credentials
+  }: {
+    credentials: TS3CompatibleConnectionConfig["credentials"];
+  },
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">
+) => {
+  const { allowedStorageHostnames } = await instanceConfigCoreDomain.getServerConfig();
   const parsed = parseS3CompatibleEndpoint(credentials.endpoint, allowedStorageHostnames ?? [], credentials.region);
   if (!parsed) {
     throw new BadRequestError({ message: S3_COMPATIBLE_ENDPOINT_ERROR });
@@ -62,8 +65,14 @@ export const getS3CompatibleConnectionConfig = async ({
   };
 };
 
-export const validateS3CompatibleConnectionCredentials = async (config: TS3CompatibleConnectionConfig) => {
-  const { providerName, getHttpsAgent, ...clientConfig } = await getS3CompatibleConnectionConfig(config);
+export const validateS3CompatibleConnectionCredentials = async (
+  config: TS3CompatibleConnectionConfig,
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">
+) => {
+  const { providerName, getHttpsAgent, ...clientConfig } = await getS3CompatibleConnectionConfig(
+    config,
+    instanceConfigCoreDomain
+  );
   const httpsAgent = await getHttpsAgent?.();
 
   try {

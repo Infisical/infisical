@@ -63,7 +63,7 @@ const signIamJwt = ({
 beforeAll(async () => {
   previousFipsEnabled = process.env.FIPS_ENABLED;
   process.env.FIPS_ENABLED = "false";
-  await infisicalCrypto.initialize({} as never);
+  await infisicalCrypto.initialize(null);
   signingKeyPair = generateRsaKeyPair();
   otherKeyPair = generateRsaKeyPair();
 });

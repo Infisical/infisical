@@ -120,6 +120,14 @@ Agent Vault is a normal project type that users create, like Secrets Management,
 
 Secret Scanning has one active project per organization (the newest). Like Certificate Manager, its URLs are `/organizations/$orgId/secret-scanning/…` with no `$projectId`; legacy orgs can still hold several projects, so the frontend pins the one being viewed (see `frontend/AGENTS.md`). New orgs and sub-orgs get it at creation (`bootstrapSecretScanningProject`), older orgs lazily from `GET /api/v2/secret-scanning/project`, and `projectId` is optional on its API (`inject-secret-scanning-project-id`). Do not add a project picker or a way to create more Secret Scanning projects.
 
+### Instance Config
+
+The `super_admin` row (instance settings, Slack and Teams app credentials, env overrides) belongs to Instance Config
+Core: read it through `instanceConfigCoreDomain` (`getServerConfig`, `getAdminIdentityIds`, `getSlackCredentials`,
+`getMicrosoftTeamsCredentials`) and save it with `updateConfig`. Never query `super_admin` or decrypt its columns
+elsewhere; its cached value is shared with pods of the previous release. See
+`backend/src/domains/platform/instance-config-core/AGENTS.md`.
+
 ### Service Factory + Manual DI (Backend)
 
 No IoC container in either backend. Every service is a factory function with explicit dependencies.

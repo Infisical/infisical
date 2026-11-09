@@ -1,3 +1,4 @@
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { keyStoreFactory } from "@app/keystore/keystore";
 import { buildClickHouseFromConfig } from "@app/lib/config/clickhouse";
@@ -54,7 +55,8 @@ describe("INFISICAL_RUN_MODES route registration", () => {
       // the env config here rebinds only this file's copy — the running test server is untouched.
       initLogger();
       process.env.INFISICAL_RUN_MODES = `${RunMode.GeneralWorkers},${RunMode.SecretScanning}`;
-      const envConfig = await initEnvConfig(testSuperAdminDAL);
+      const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
+      const envConfig = await initEnvConfig(fipsSetting);
 
       workerQueue = queueServiceFactory(envConfig);
       workerRedis = buildRedisFromConfig(envConfig);
@@ -71,7 +73,6 @@ describe("INFISICAL_RUN_MODES route registration", () => {
         keyStore: keyStoreFactory(envConfig, keyValueStoreDALFactory(testDb)),
         redis: workerRedis,
         clickhouse: buildClickHouseFromConfig(envConfig),
-        superAdminDAL: testSuperAdminDAL,
         envConfig
       });
 
@@ -89,7 +90,8 @@ describe("INFISICAL_RUN_MODES route registration", () => {
 
       if (originalRunModes === undefined) delete process.env.INFISICAL_RUN_MODES;
       else process.env.INFISICAL_RUN_MODES = originalRunModes;
-      await initEnvConfig(testSuperAdminDAL);
+      const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
+      await initEnvConfig(fipsSetting);
     });
 
     test("still serves the status endpoint so probes keep working", async () => {

@@ -1,7 +1,15 @@
 import type { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
+import {
+  getConfig,
+  getOriginalConfig,
+  overridableKeys,
+  overrideEnvConfig,
+  overwriteSchema,
+  parseWithOverrides,
+  TEnvConfig
+} from "@app/lib/config/env";
 import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { TQueueServiceFactory } from "@app/queue";
@@ -11,6 +19,7 @@ import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { DataAccessDb } from "./lib/data-access-db";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
+import { InstanceConfigCoreModule, TInstanceConfigEnv } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule, TKmsCoreDomain } from "./platform/kms-core/ce/module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
 import { LicenseModule } from "./platform/license/ce/module";
@@ -96,6 +105,16 @@ export const startStandaloneKmsCore = async ({
   return kmsCore.service;
 };
 
+// What Instance Config Core reads from and writes to the env holder in lib/config/env.ts.
+const instanceConfigEnv: TInstanceConfigEnv = {
+  getConfig,
+  getOriginalConfig,
+  overridableGroups: overwriteSchema,
+  overridableKeys: overridableKeys as ReadonlySet<string>,
+  parseWithOverrides,
+  overrideEnvConfig
+};
+
 export type TDomains = ReturnType<typeof createDomains>;
 
 // Builds every domain in dependency order. The only file that imports ee/ from outside a domain.
@@ -118,6 +137,15 @@ export const createDomains = (deps: TDomainDeps) => {
   const db = DataAccessDb.fromClient(deps.db);
   const { kmsCoreEe, kmsCore } = buildKmsCore({ db, envConfig: deps.envConfig, cronJob: deps.cronJob });
 
+  // Instance Config Core depends only on KMS Core, for the root key that encrypts credentials and env overrides.
+  const instanceConfigCore = new InstanceConfigCoreModule({
+    db,
+    keyStore: deps.keyStore,
+    kmsCoreDomain: kmsCore.service,
+    env: instanceConfigEnv,
+    startLocalRefresh
+  });
+
   const organizationsProjects = new OrganizationsProjectsModule({ db, licenseRegistry: license.registry });
   const productDeps = {
     organizationsProjectsDomain: organizationsProjects.service,
@@ -128,5 +156,15 @@ export const createDomains = (deps: TDomainDeps) => {
   const agentVault = new AgentVaultModule(productDeps);
   const certManager = new CertManagerModule({ db, ...productDeps });
 
-  return { license, kmsCoreEe, kmsCore, organizationsProjects, secrets, pam, agentVault, certManager };
+  return {
+    license,
+    kmsCoreEe,
+    kmsCore,
+    instanceConfigCore,
+    organizationsProjects,
+    secrets,
+    pam,
+    agentVault,
+    certManager
+  };
 };

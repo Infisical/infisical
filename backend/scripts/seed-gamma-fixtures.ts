@@ -33,10 +33,10 @@ import promptSync from "prompt-sync";
 import { startStandaloneKmsCore } from "@app/domains/domains";
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { SamlProviders } from "@app/ee/services/saml-config/saml-config-types";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "../src/db/schemas";
 import { AuthTokenType } from "../src/services/auth/auth-type";
@@ -119,8 +119,8 @@ const main = async () => {
 
   initLogger();
 
-  const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await initEnvConfig(superAdminDAL, logger);
+  const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(knex);
+  const envConfig = await initEnvConfig(fipsSetting, logger);
   // Loads only the root key, as a migration does: enough for createCipherPairWithDataKey against an org.
   const kmsCoreDomain = await startStandaloneKmsCore({ db: knex, envConfig });
 

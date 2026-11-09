@@ -4,7 +4,6 @@ import { Knex } from "knex";
 
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { SecretKeyEncoding, TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
@@ -26,8 +25,7 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     if (!hasEncryptedCredentials) {
-      const superAdminDAL = superAdminDALFactory(knex);
-      const envConfig = await getMigrationEnvConfig(superAdminDAL);
+      const envConfig = await getMigrationEnvConfig(knex);
 
       const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
 
@@ -128,8 +126,7 @@ export async function down(knex: Knex): Promise<void> {
     const hasEncryptedCredentials = await knex.schema.hasColumn(TableName.AuditLogStream, "encryptedCredentials");
 
     if (hasEncryptedCredentials) {
-      const superAdminDAL = superAdminDALFactory(knex);
-      const envConfig = await getMigrationEnvConfig(superAdminDAL);
+      const envConfig = await getMigrationEnvConfig(knex);
 
       const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
 

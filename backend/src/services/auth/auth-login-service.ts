@@ -8,6 +8,7 @@ import {
   TUsers,
   UserDeviceSchema
 } from "@app/db/schemas";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { EventType, TAuditLogServiceFactory, TMfaSatisfiedBy } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { FOREIGN_SSO_SESSION_ERROR_NAME } from "@app/ee/services/permission/permission-fns";
@@ -35,7 +36,6 @@ import {
 } from "@app/lib/telemetry/metrics";
 import { matchesAllowedEmailDomain, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
-import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TokenType } from "../auth-token/auth-token-types";
@@ -84,6 +84,7 @@ import { verifyCaptcha } from "./captcha-fns";
 import { TMfaLockoutServiceFactory } from "./mfa-lockout-service";
 
 type TAuthLoginServiceFactoryDep = {
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
   userDAL: TUserDALFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "create" | "updateById">;
   orgDAL: TOrgDALFactory;
@@ -104,6 +105,7 @@ type TAuthLoginServiceFactoryDep = {
 
 export type TAuthLoginFactory = ReturnType<typeof authLoginServiceFactory>;
 export const authLoginServiceFactory = ({
+  instanceConfigCoreDomain,
   userDAL,
   userAliasDAL,
   tokenService,
@@ -441,7 +443,7 @@ export const authLoginServiceFactory = ({
     const userEnc =
       usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
 
-    const serverCfg = await getServerCfg();
+    const serverCfg = await instanceConfigCoreDomain.getServerConfig();
 
     if (!userEnc || (userEnc && !userEnc.isAccepted)) {
       throw new Error("Failed to find user");
@@ -608,7 +610,7 @@ export const authLoginServiceFactory = ({
         throw new BadRequestError({ message: "Invalid credentials" });
       }
 
-      const serverCfg = await getServerCfg();
+      const serverCfg = await instanceConfigCoreDomain.getServerConfig();
       if (serverCfg.enabledLoginMethods && !serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL)) {
         const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
         if (!userOrgs.some((org) => org.userRole === OrgMembershipRole.Admin)) {
@@ -895,7 +897,7 @@ export const authLoginServiceFactory = ({
           ).length > 0
         : false;
 
-    const serverCfg = await getServerCfg();
+    const serverCfg = await instanceConfigCoreDomain.getServerConfig();
 
     const oauthAuthMethod = authMethod as OAuthAuthMethod;
     let canBypassDisabledLoginMethod = false;

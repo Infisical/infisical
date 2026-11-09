@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -37,6 +38,7 @@ export type TPamValidatorDeps = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findOne" | "findById">;
   kmsCoreDomain: TKmsCoreDomain;
+  instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
@@ -142,7 +144,10 @@ export const validateRecordingConnection = async (
 };
 
 export const validateRecordingS3Config = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsCoreDomain">,
+  deps: Pick<
+    TPamValidatorDeps,
+    "permissionService" | "appConnectionDAL" | "kmsCoreDomain" | "instanceConfigCoreDomain"
+  >,
   connectionId: string,
   s3Config: { bucket: string; region?: string; keyPrefix?: string },
   ctx: TActorContext
@@ -155,7 +160,7 @@ export const validateRecordingS3Config = async (
     backend: PamRecordingStorageBackend.AwsS3,
     bucket: s3Config.bucket,
     keyPrefix: s3Config.keyPrefix ?? null,
-    ...(await resolveS3RecordingAccess(appConnection, s3Config.region))
+    ...(await resolveS3RecordingAccess(appConnection, s3Config.region, deps.instanceConfigCoreDomain))
   };
 
   const provider = PAM_RECORDING_STORAGE_FACTORY_MAP[PamRecordingStorageBackend.AwsS3]();
@@ -169,7 +174,10 @@ export const getInheritedRecordingS3Config = (settingsOverrides: unknown, templa
   PamTemplateSettingsSchema.safeParse(templateSettings).data?.recordingS3Config;
 
 export const resolveOverridesS3Config = async (
-  deps: Pick<TPamValidatorDeps, "permissionService" | "appConnectionDAL" | "kmsCoreDomain">,
+  deps: Pick<
+    TPamValidatorDeps,
+    "permissionService" | "appConnectionDAL" | "kmsCoreDomain" | "instanceConfigCoreDomain"
+  >,
   settingsOverrides: TPamAccountSettingsOverrides | null | undefined,
   effectiveConnectionId: string | null | undefined,
   ctx: TActorContext,

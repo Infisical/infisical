@@ -6,7 +6,6 @@ import { initLogger, logger } from "@app/lib/logger";
 import { resolvePrincipalsInScope } from "@app/services/alert/alert-principal-scope-fns";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
-import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
 import { getMigrationEnvConfig } from "./utils/env-config";
@@ -75,7 +74,7 @@ export async function up(knex: Knex): Promise<void> {
   const hasReminders = await knex(TableName.Reminder).whereNotNull("secretId").first("id");
   if (!hasReminders) return;
 
-  const envConfig = await getMigrationEnvConfig(superAdminDALFactory(knex));
+  const envConfig = await getMigrationEnvConfig(knex);
   const { kmsCoreDomain } = await getMigrationEncryptionServices({ envConfig, db: knex });
   const cipherCache =
     createCircularCache<Awaited<ReturnType<(typeof kmsCoreDomain)["createCipherPairWithDataKey"]>>>(25);

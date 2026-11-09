@@ -1,4 +1,5 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
+import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
@@ -280,6 +281,7 @@ import { getRundeckConnectionListItem, RundeckConnectionMethod, validateRundeckC
 import {
   getS3CompatibleConnectionListItem,
   S3CompatibleConnectionMethod,
+  TS3CompatibleConnectionConfig,
   validateS3CompatibleConnectionCredentials
 } from "./s3-compatible";
 import {
@@ -657,6 +659,7 @@ export const validateAppConnectionCredentials = async (
     identityUaDAL: Pick<TIdentityUaDALFactory, "findOne">;
     gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
     kmsCoreDomain: TKmsCoreDomain;
+    instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
     keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
     oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
     actorId?: string;
@@ -776,7 +779,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Keeper]: validateKeeperConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.S3Compatible]: ((config: TAppConnectionConfig) =>
+      validateS3CompatibleConnectionCredentials(
+        config as TS3CompatibleConnectionConfig,
+        deps.instanceConfigCoreDomain
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.ClickHouse]: validateClickHouseConnectionCredentials as TAppConnectionCredentialsValidator
   };
