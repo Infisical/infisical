@@ -30,6 +30,8 @@ vi.mock("@app/services/secret-sync/secret-sync-fns", () => ({
 }));
 
 /* eslint-disable import/first */
+import { GatewayTransportError } from "@app/lib/errors";
+
 import { SecretSyncError } from "../secret-sync-errors";
 import { JenkinsSyncScope } from "./jenkins-sync-enums";
 import { buildJenkinsSecretTextCredentialXml, getJenkinsCredentialStorePath, JenkinsSyncFns } from "./jenkins-sync-fns";
@@ -158,6 +160,15 @@ describe("JenkinsSyncFns.syncSecrets", () => {
     );
     expect((error as SecretSyncError).shouldRetry).toBe(false);
   });
+
+  it("leaves a gateway tunnel failure to the queue's retries", async () => {
+    safeRequestMock.mockRejectedValue(new GatewayTransportError({ message: "Failed to reach the gateway" }));
+
+    const error = await sync(syncWith(), payloadOf({ NEW: "a" })).catch((err: unknown) => err);
+
+    expect((error as SecretSyncError).message).toBe("Failed to list Jenkins credentials: Failed to reach the gateway");
+    expect((error as SecretSyncError).shouldRetry).toBe(true);
+  });
 });
 
 describe("JenkinsSyncFns.removeSecrets", () => {
@@ -180,6 +191,17 @@ describe("JenkinsSyncFns.removeSecrets", () => {
     );
 
     expect(requestsWith("DELETE").map(({ url }) => url)).toEqual([`${GLOBAL_STORE}/credential/SYNCED/config.xml`]);
+  });
+
+  it("does not treat inherited object properties as synced secrets", async () => {
+    stubJenkins([
+      { id: "constructor", typeName: "Secret text" },
+      { id: "toString", typeName: "Secret text" }
+    ]);
+
+    await JenkinsSyncFns.removeSecrets(syncWith(), payloadOf({}), gatewayV2Service as any, gatewayPoolService as any);
+
+    expect(requestsWith("DELETE")).toHaveLength(0);
   });
 });
 

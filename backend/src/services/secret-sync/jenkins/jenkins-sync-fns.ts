@@ -4,7 +4,7 @@ import { isAxiosError } from "axios";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, GatewayTransportError } from "@app/lib/errors";
 import {
   getJenkinsErrorMessage,
   jenkinsRequest,
@@ -67,8 +67,9 @@ export const buildJenkinsSecretTextCredentialXml = (id: string, secret: string) 
   ].join("");
 
 const toSyncError = (error: unknown, message: string, secretKey?: string) => {
-  // A gateway that cannot be reached is a configuration problem a retry will not fix
-  if (error instanceof BadRequestError) {
+  // A gateway that is missing or not allowed is a configuration problem a retry will not fix, while a
+  // tunnel that could not be opened never reached Jenkins and is left to the queue's retries
+  if (error instanceof BadRequestError && !(error instanceof GatewayTransportError)) {
     return new SecretSyncError({ message: error.message, secretKey, shouldRetry: false });
   }
 
@@ -211,7 +212,7 @@ export const JenkinsSyncFns = {
       // Only remove credentials managed by this sync (respecting the configured key schema)
       if (!matchesSchema(credential.id, environment?.slug || "", keySchema)) continue;
 
-      if (!(credential.id in secretMap)) {
+      if (!Object.hasOwn(secretMap, credential.id)) {
         await deleteJenkinsCredential(connection, storePath, credential.id, deps);
       }
     }
@@ -232,7 +233,7 @@ export const JenkinsSyncFns = {
     const credentials = await listJenkinsCredentials(connection, storePath, deps);
 
     for (const credential of credentials) {
-      if (credential.typeName === JENKINS_SECRET_TEXT_TYPE_NAME && credential.id in secretMap) {
+      if (credential.typeName === JENKINS_SECRET_TEXT_TYPE_NAME && Object.hasOwn(secretMap, credential.id)) {
         await deleteJenkinsCredential(connection, storePath, credential.id, deps);
       }
     }
