@@ -32,6 +32,10 @@ The short video below walks through secret versioning and point-in-time recovery
 
 Similar to Git, a commit in Infisical represents a snapshot of changes made to your project's resources at a specific point in time. Each commit is scoped to an environment and [folder](./folder) within it. Unlike the legacy snapshot system, the new commits interface provides granular tracking of individual changes, allowing you to see exactly what was modified, added, or removed in each commit.
 
+<Note>
+  Commits track shared secrets only. [Personal overrides](/documentation/platform/secrets-mgmt/project#personal-overrides) don't appear in the commit history or in a commit's changes, and reverting changes or rolling back to a commit leaves them in place.
+</Note>
+
 ### Accessing commits
 
 From your secrets management interface, you can access the commits functionality by selecting the **Commits** button. This button sits at the right of the secrets table header and shows the number of commits for the current folder (e.g., **6 Commits**).
