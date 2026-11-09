@@ -230,6 +230,7 @@ func (o *Org) routes() *http.ServeMux {
 			writeJSON(w, http.StatusOK, map[string]any{})
 		})
 	}
+
 	return mux
 }
 

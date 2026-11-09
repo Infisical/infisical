@@ -21,8 +21,7 @@ export type OverviewProps = {
   subState: BillingV2RenderState;
   onManageSubscription: () => void;
   onUpgrade: (productId: string) => void;
-  onSetCommitment: (productId: string) => void;
-  onViewBreakdown: (productId: string, dimensionKey?: string) => void;
+  onRemove: (productId: string) => void;
   rootOrgs: BillingV2Organization[];
   rootOrgCount: number;
   isRootOrgsLoading: boolean;
@@ -51,8 +50,7 @@ export const Overview = ({
   subState,
   onManageSubscription,
   onUpgrade,
-  onSetCommitment,
-  onViewBreakdown,
+  onRemove,
   rootOrgs,
   rootOrgCount,
   isRootOrgsLoading,
@@ -146,8 +144,7 @@ export const Overview = ({
         breakdownOrgId={breakdownOrgId}
         breakdownScope={breakdownScope}
         onManage={onUpgrade}
-        onSetCommitment={onSetCommitment}
-        onViewBreakdown={onViewBreakdown}
+        onRemove={onRemove}
         onUpdatePayment={onUpdatePayment}
         onEditDetails={onEditDetails}
         onContact={onContact}

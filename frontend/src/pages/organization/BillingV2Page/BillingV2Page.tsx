@@ -43,7 +43,6 @@ import { Overview } from "./components/Overview";
 import { ProductSheet } from "./components/ProductSheet";
 import { RemoveProductModal } from "./components/RemoveProductModal";
 import { ALL_ORGS_VALUE } from "./components/RootOrgFilter";
-import { UsageBreakdownSheet } from "./components/UsageBreakdownSheet";
 import { useOfflineBilling } from "./useOfflineBilling";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
@@ -56,11 +55,7 @@ const PRICING_TRIAL_INTENTS: Record<string, UpgradeIntent> = {
   [BillingProduct.Pam]: PamUpgradeIntent
 };
 
-// `view` optionally opens the product sheet straight into a sub-view (e.g. the set-commitment flow
-// from the "commit and save" nudge) instead of the default plans view.
-type BillingV2Flow =
-  | { type: "sheet"; prodId: string; view?: "commitment" }
-  | { type: "breakdown"; prodId: string; dimensionKey?: string };
+type BillingV2Flow = { type: "sheet"; prodId: string };
 
 export const BillingV2Page = () => {
   const { t } = useTranslation();
@@ -238,15 +233,6 @@ export const BillingV2Page = () => {
     setFlow({ type: "sheet", prodId: productId });
   };
 
-  // Open the sheet directly into the set-commitment flow (from the "commit and save" nudge).
-  const onSetCommitment = (productId: string) => {
-    setFlow({ type: "sheet", prodId: productId, view: "commitment" });
-  };
-
-  const onViewBreakdown = (productId: string, dimensionKey?: string) => {
-    setFlow({ type: "breakdown", prodId: productId, dimensionKey });
-  };
-
   const hasActiveSubscription = overview?.subState === "active";
 
   const onUpdatePayment = () => {
@@ -340,8 +326,7 @@ export const BillingV2Page = () => {
               subState={subState}
               onManageSubscription={onManageSubscription}
               onUpgrade={onUpgrade}
-              onSetCommitment={onSetCommitment}
-              onViewBreakdown={onViewBreakdown}
+              onRemove={setRemoveProdId}
               rootOrgs={rootOrgs}
               rootOrgCount={orgPage?.totalCount ?? rootOrgCount}
               isRootOrgsLoading={isOrgSearchPending}
@@ -380,7 +365,6 @@ export const BillingV2Page = () => {
           prod={catalogById(catalog, flow.prodId)}
           entitlement={overview?.entitlements[flow.prodId]}
           hasActiveSubscription={hasActiveSubscription}
-          initialView={flow.view}
           returnPath={upgradeReturnPath ?? window.location.pathname}
           renewsOn={overview?.entitlements[flow.prodId]?.renewsOn ?? null}
           selfServe={overview?.selfServe ?? true}
@@ -395,17 +379,6 @@ export const BillingV2Page = () => {
             close();
             onContact();
           }}
-        />
-      )}
-
-      {flow?.type === "breakdown" && catalogById(catalog, flow.prodId) && (
-        <UsageBreakdownSheet
-          orgId={selectedOrgId}
-          scope={showOrgFilter ? breakdownScope : "organization"}
-          prod={catalogById(catalog, flow.prodId)!}
-          entitlement={overview?.entitlements[flow.prodId]}
-          initialDimensionKey={flow.dimensionKey}
-          onClose={close}
         />
       )}
 

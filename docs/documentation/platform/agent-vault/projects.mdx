@@ -14,19 +14,23 @@ To open a project, select **Agent Vault** on your organization's overview, then 
 
 ## Project and organization scope
 
-Some things in Agent Vault belong to a single project, and others belong to your whole organization:
+Each Agent Vault project has its own:
 
-| Belongs to each project | Belongs to your organization |
-| --- | --- |
-| Members and their [roles](/documentation/platform/agent-vault/access-control) | Users, groups, and machine identities, which you [add to each project they need](/documentation/platform/agent-vault/access-control#adding-members) |
-| [Access bundles](/documentation/platform/agent-vault/access-bundles), [services](/documentation/platform/agent-vault/services), and [variables](/documentation/platform/agent-vault/variables) | Organization roles, which control who can [create projects](#create-a-project) and who can [join any project as an admin](#join-as-an-organization-admin) |
-| [Personal variables](/documentation/platform/agent-vault/variables#personal-variables) and [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), which each member sets up separately in each project | |
-| [Skills](/documentation/platform/agent-vault/skills) | |
-| [Sessions](/documentation/platform/agent-vault/sessions) and [proxies](/documentation/platform/agent-vault/proxies) (a session only works through a proxy in the same project) | |
-| [Session log](/documentation/platform/agent-vault/session-logs) settings, including where the logs are stored | |
-| [Audit logs](/documentation/platform/audit-logs) | |
+- Members and their project [roles](/documentation/platform/agent-vault/access-control)
+- [Access bundles](/documentation/platform/agent-vault/access-bundles), [services](/documentation/platform/agent-vault/services), and [variables](/documentation/platform/agent-vault/variables)
+- [Personal variables](/documentation/platform/agent-vault/variables#personal-variables) and [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), which each member sets up separately in each project
+- [Skills](/documentation/platform/agent-vault/skills)
+- [Sessions](/documentation/platform/agent-vault/sessions) and [proxies](/documentation/platform/agent-vault/proxies) (a session only works through a proxy in the same project)
+- [Session log](/documentation/platform/agent-vault/session-logs) settings, including where the logs are stored
+- [Audit logs](/documentation/platform/audit-logs)
 
 If two projects need the same credential, add the credential to each project.
+
+<Note>
+  Users and groups belong to your organization, and you [add them to each project they need](/documentation/platform/agent-vault/access-control#adding-members). A machine identity can belong to your organization, or you can create one inside a single project.
+
+  Your organization role controls whether you can [create projects](#create-a-project) and whether you can [join any project as an admin](#join-as-an-organization-admin), while your project role controls what you can do inside a project.
+</Note>
 
 ## Create a project
 
