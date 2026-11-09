@@ -30,7 +30,7 @@ import type {
   TSecretReferenceTraceNode,
   TUpdateSecretsV3DTO
 } from "@app/hooks/api/secrets/types";
-import type { UserWsTags } from "@app/hooks/api/tags/types";
+import type { CreateTagDTO, UserWsTags, WsTag } from "@app/hooks/api/tags/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
 import type { SecretsFlowsAdapter } from "./contract-flows";
@@ -39,6 +39,7 @@ export type SecretsAdapter = SecretsFlowsAdapter & {
   useProject: (projectId: string) => V4QueryResult<Project> & { refetch?: () => unknown };
   useCreateEnvironment: V4Mutation<CreateEnvironmentDTO, ProjectEnv>;
   useTags: (projectId: string) => V4QueryResult<UserWsTags>;
+  useCreateTag: V4Mutation<CreateTagDTO, WsTag>;
   useOverview: (
     dto: TGetDashboardProjectSecretsOverviewDTO,
     options?: { enabled?: boolean }

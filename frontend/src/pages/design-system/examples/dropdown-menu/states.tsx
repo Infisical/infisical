@@ -25,6 +25,9 @@ export default function Example() {
               <UI.DropdownMenuCheckboxItem checked={checked} disabled>
                 Include deployment-client metadata and inherited environment permissions
               </UI.DropdownMenuCheckboxItem>
+              <UI.DropdownMenuCheckboxItem checked={checked} disabled description="Access denied">
+                Multi-line encoding
+              </UI.DropdownMenuCheckboxItem>
               <UI.DropdownMenuItem onSelect={() => setSelected(true)}>
                 Connection details
               </UI.DropdownMenuItem>
