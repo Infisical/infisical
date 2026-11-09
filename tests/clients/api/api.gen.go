@@ -6231,6 +6231,111 @@ func (e CreateAwsAppConnection500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsApp.
+const (
+	ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsAppAws ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsApp = "aws"
+)
+
+// Valid indicates whether the value is a known member of the ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsApp enum.
+func (e ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsApp) Valid() bool {
+	switch e {
+	case ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsAppAws:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAwsAvailableAppConnections400JSONResponseBodyStatusCode.
+const (
+	ListAwsAvailableAppConnections400JSONResponseBodyStatusCodeN400 ListAwsAvailableAppConnections400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the ListAwsAvailableAppConnections400JSONResponseBodyStatusCode enum.
+func (e ListAwsAvailableAppConnections400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAwsAvailableAppConnections400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAwsAvailableAppConnections401JSONResponseBodyStatusCode.
+const (
+	ListAwsAvailableAppConnections401JSONResponseBodyStatusCodeN401 ListAwsAvailableAppConnections401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the ListAwsAvailableAppConnections401JSONResponseBodyStatusCode enum.
+func (e ListAwsAvailableAppConnections401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAwsAvailableAppConnections401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAwsAvailableAppConnections403JSONResponseBodyStatusCode.
+const (
+	ListAwsAvailableAppConnections403JSONResponseBodyStatusCodeN403 ListAwsAvailableAppConnections403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the ListAwsAvailableAppConnections403JSONResponseBodyStatusCode enum.
+func (e ListAwsAvailableAppConnections403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAwsAvailableAppConnections403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAwsAvailableAppConnections404JSONResponseBodyStatusCode.
+const (
+	ListAwsAvailableAppConnections404JSONResponseBodyStatusCodeN404 ListAwsAvailableAppConnections404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the ListAwsAvailableAppConnections404JSONResponseBodyStatusCode enum.
+func (e ListAwsAvailableAppConnections404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAwsAvailableAppConnections404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAwsAvailableAppConnections422JSONResponseBodyStatusCode.
+const (
+	ListAwsAvailableAppConnections422JSONResponseBodyStatusCodeN422 ListAwsAvailableAppConnections422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the ListAwsAvailableAppConnections422JSONResponseBodyStatusCode enum.
+func (e ListAwsAvailableAppConnections422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAwsAvailableAppConnections422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAwsAvailableAppConnections500JSONResponseBodyStatusCode.
+const (
+	ListAwsAvailableAppConnections500JSONResponseBodyStatusCodeN500 ListAwsAvailableAppConnections500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the ListAwsAvailableAppConnections500JSONResponseBodyStatusCode enum.
+func (e ListAwsAvailableAppConnections500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case ListAwsAvailableAppConnections500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetAwsAppConnectionByName200JSONResponseBodyAppConnection0App.
 const (
 	GetAwsAppConnectionByName200JSONResponseBodyAppConnection0AppAws GetAwsAppConnectionByName200JSONResponseBodyAppConnection0App = "aws"
@@ -97335,6 +97440,33 @@ type CreateAwsAppConnection422JSONResponseBodyStatusCode float32
 // CreateAwsAppConnection500JSONResponseBodyStatusCode defines parameters for CreateAwsAppConnection.
 type CreateAwsAppConnection500JSONResponseBodyStatusCode float32
 
+// ListAwsAvailableAppConnectionsParams defines parameters for ListAwsAvailableAppConnections.
+type ListAwsAvailableAppConnectionsParams struct {
+	// ProjectId The ID of the project to list AWS Connections from.
+	ProjectId *string `form:"projectId,omitempty" json:"projectId,omitempty"`
+}
+
+// ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsApp defines parameters for ListAwsAvailableAppConnections.
+type ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsApp string
+
+// ListAwsAvailableAppConnections400JSONResponseBodyStatusCode defines parameters for ListAwsAvailableAppConnections.
+type ListAwsAvailableAppConnections400JSONResponseBodyStatusCode float32
+
+// ListAwsAvailableAppConnections401JSONResponseBodyStatusCode defines parameters for ListAwsAvailableAppConnections.
+type ListAwsAvailableAppConnections401JSONResponseBodyStatusCode float32
+
+// ListAwsAvailableAppConnections403JSONResponseBodyStatusCode defines parameters for ListAwsAvailableAppConnections.
+type ListAwsAvailableAppConnections403JSONResponseBodyStatusCode float32
+
+// ListAwsAvailableAppConnections404JSONResponseBodyStatusCode defines parameters for ListAwsAvailableAppConnections.
+type ListAwsAvailableAppConnections404JSONResponseBodyStatusCode float32
+
+// ListAwsAvailableAppConnections422JSONResponseBodyStatusCode defines parameters for ListAwsAvailableAppConnections.
+type ListAwsAvailableAppConnections422JSONResponseBodyStatusCode float32
+
+// ListAwsAvailableAppConnections500JSONResponseBodyStatusCode defines parameters for ListAwsAvailableAppConnections.
+type ListAwsAvailableAppConnections500JSONResponseBodyStatusCode float32
+
 // GetAwsAppConnectionByNameParams defines parameters for GetAwsAppConnectionByName.
 type GetAwsAppConnectionByNameParams struct {
 	// ProjectId The project ID of the AWS Connection is associated with. Leave unspecified to get organization-level connections.
@@ -164562,6 +164694,11 @@ type ClientInterface interface {
 	// Create an AWS Connection.
 	CreateAwsAppConnection(ctx context.Context, body CreateAwsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListAwsAvailableAppConnections performs a GET /api/v1/app-connections/aws/available (the `ListAwsAvailableAppConnections` operationId) request.
+	//
+	// List the AWS Connections the current user has permission to establish connections within this project.
+	ListAwsAvailableAppConnections(ctx context.Context, params *ListAwsAvailableAppConnectionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetAwsAppConnectionByName performs a GET /api/v1/app-connections/aws/connection-name/{connectionName} (the `GetAwsAppConnectionByName` operationId) request.
 	//
 	// Get the specified AWS Connection by name.
@@ -170316,6 +170453,21 @@ func (c *Client) CreateAwsAppConnectionWithBody(ctx context.Context, contentType
 // Create an AWS Connection.
 func (c *Client) CreateAwsAppConnection(ctx context.Context, body CreateAwsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateAwsAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListAwsAvailableAppConnections performs a GET /api/v1/app-connections/aws/available (the `ListAwsAvailableAppConnections` operationId) request.
+//
+// List the AWS Connections the current user has permission to establish connections within this project.
+func (c *Client) ListAwsAvailableAppConnections(ctx context.Context, params *ListAwsAvailableAppConnectionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAwsAvailableAppConnectionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -187431,6 +187583,60 @@ func NewCreateAwsAppConnectionRequestWithBody(server string, contentType string,
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListAwsAvailableAppConnectionsRequest constructs an http.Request for the ListAwsAvailableAppConnections method
+func NewListAwsAvailableAppConnectionsRequest(server string, params *ListAwsAvailableAppConnectionsParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/aws/available")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ProjectId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "projectId", *params.ProjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -219826,6 +220032,13 @@ type ClientWithResponsesInterface interface {
 	// Create an AWS Connection.
 	CreateAwsAppConnectionWithResponse(ctx context.Context, body CreateAwsAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateAwsAppConnectionResponse, error)
 
+	// ListAwsAvailableAppConnectionsWithResponse performs a GET /api/v1/app-connections/aws/available (the `ListAwsAvailableAppConnections` operationId) request.
+	//
+	// List the AWS Connections the current user has permission to establish connections within this project.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	ListAwsAvailableAppConnectionsWithResponse(ctx context.Context, params *ListAwsAvailableAppConnectionsParams, reqEditors ...RequestEditorFn) (*ListAwsAvailableAppConnectionsResponse, error)
+
 	// GetAwsAppConnectionByNameWithResponse performs a GET /api/v1/app-connections/aws/connection-name/{connectionName} (the `GetAwsAppConnectionByName` operationId) request.
 	//
 	// Get the specified AWS Connection by name.
@@ -235530,6 +235743,183 @@ func (r CreateAwsAppConnectionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateAwsAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListAwsAvailableAppConnectionsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnections []struct {
+			App           ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsApp `json:"app"`
+			GatewayId     *openapi_types.UUID                                                `json:"gatewayId,omitempty"`
+			GatewayPoolId *openapi_types.UUID                                                `json:"gatewayPoolId,omitempty"`
+			Id            openapi_types.UUID                                                 `json:"id"`
+			Name          string                                                             `json:"name"`
+			OrgId         string                                                             `json:"orgId"`
+			ProjectId     *string                                                            `json:"projectId,omitempty"`
+
+			// Provisioning The use cases recorded when the role was provisioned with Launch Stack. Null for other roles.
+			Provisioning *struct {
+				UseCases []string `json:"useCases"`
+			} `json:"provisioning,omitempty"`
+		} `json:"appConnections"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListAwsAvailableAppConnections400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListAwsAvailableAppConnections401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                 `json:"details,omitempty"`
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListAwsAvailableAppConnections403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListAwsAvailableAppConnections404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                      `json:"error"`
+		Message    interface{}                                                 `json:"message,omitempty"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListAwsAvailableAppConnections422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                      `json:"error"`
+		Message    string                                                      `json:"message"`
+		ReqId      string                                                      `json:"reqId"`
+		StatusCode ListAwsAvailableAppConnections500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListAwsAvailableAppConnectionsResponse) GetJSON200() *struct {
+	AppConnections []struct {
+		App           ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsApp `json:"app"`
+		GatewayId     *openapi_types.UUID                                                `json:"gatewayId,omitempty"`
+		GatewayPoolId *openapi_types.UUID                                                `json:"gatewayPoolId,omitempty"`
+		Id            openapi_types.UUID                                                 `json:"id"`
+		Name          string                                                             `json:"name"`
+		OrgId         string                                                             `json:"orgId"`
+		ProjectId     *string                                                            `json:"projectId,omitempty"`
+
+		// Provisioning The use cases recorded when the role was provisioned with Launch Stack. Null for other roles.
+		Provisioning *struct {
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"appConnections"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r ListAwsAvailableAppConnectionsResponse) GetJSON400() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListAwsAvailableAppConnections400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r ListAwsAvailableAppConnectionsResponse) GetJSON401() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListAwsAvailableAppConnections401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r ListAwsAvailableAppConnectionsResponse) GetJSON403() *struct {
+	Details    interface{}                                                 `json:"details,omitempty"`
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListAwsAvailableAppConnections403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r ListAwsAvailableAppConnectionsResponse) GetJSON404() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListAwsAvailableAppConnections404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r ListAwsAvailableAppConnectionsResponse) GetJSON422() *struct {
+	Error      string                                                      `json:"error"`
+	Message    interface{}                                                 `json:"message,omitempty"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListAwsAvailableAppConnections422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r ListAwsAvailableAppConnectionsResponse) GetJSON500() *struct {
+	Error      string                                                      `json:"error"`
+	Message    string                                                      `json:"message"`
+	ReqId      string                                                      `json:"reqId"`
+	StatusCode ListAwsAvailableAppConnections500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r ListAwsAvailableAppConnectionsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAwsAvailableAppConnectionsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAwsAvailableAppConnectionsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAwsAvailableAppConnectionsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -362974,6 +363364,19 @@ func (c *ClientWithResponses) CreateAwsAppConnectionWithResponse(ctx context.Con
 	return ParseCreateAwsAppConnectionResponse(rsp)
 }
 
+// ListAwsAvailableAppConnectionsWithResponse performs a GET /api/v1/app-connections/aws/available (the `ListAwsAvailableAppConnections` operationId) request.
+//
+// List the AWS Connections the current user has permission to establish connections within this project.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) ListAwsAvailableAppConnectionsWithResponse(ctx context.Context, params *ListAwsAvailableAppConnectionsParams, reqEditors ...RequestEditorFn) (*ListAwsAvailableAppConnectionsResponse, error) {
+	rsp, err := c.ListAwsAvailableAppConnections(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAwsAvailableAppConnectionsResponse(rsp)
+}
+
 // GetAwsAppConnectionByNameWithResponse performs a GET /api/v1/app-connections/aws/connection-name/{connectionName} (the `GetAwsAppConnectionByName` operationId) request.
 //
 // Get the specified AWS Connection by name.
@@ -381235,6 +381638,121 @@ func ParseCreateAwsAppConnectionResponse(rsp *http.Response) (*CreateAwsAppConne
 			Message    string                                              `json:"message"`
 			ReqId      string                                              `json:"reqId"`
 			StatusCode CreateAwsAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAwsAvailableAppConnectionsResponse parses an HTTP response from a ListAwsAvailableAppConnectionsWithResponse call
+func ParseListAwsAvailableAppConnectionsResponse(rsp *http.Response) (*ListAwsAvailableAppConnectionsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAwsAvailableAppConnectionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnections []struct {
+				App           ListAwsAvailableAppConnections200JSONResponseBodyAppConnectionsApp `json:"app"`
+				GatewayId     *openapi_types.UUID                                                `json:"gatewayId,omitempty"`
+				GatewayPoolId *openapi_types.UUID                                                `json:"gatewayPoolId,omitempty"`
+				Id            openapi_types.UUID                                                 `json:"id"`
+				Name          string                                                             `json:"name"`
+				OrgId         string                                                             `json:"orgId"`
+				ProjectId     *string                                                            `json:"projectId,omitempty"`
+
+				// Provisioning The use cases recorded when the role was provisioned with Launch Stack. Null for other roles.
+				Provisioning *struct {
+					UseCases []string `json:"useCases"`
+				} `json:"provisioning,omitempty"`
+			} `json:"appConnections"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListAwsAvailableAppConnections400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListAwsAvailableAppConnections401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                 `json:"details,omitempty"`
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListAwsAvailableAppConnections403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListAwsAvailableAppConnections404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    interface{}                                                 `json:"message,omitempty"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListAwsAvailableAppConnections422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                      `json:"error"`
+			Message    string                                                      `json:"message"`
+			ReqId      string                                                      `json:"reqId"`
+			StatusCode ListAwsAvailableAppConnections500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

@@ -22,7 +22,13 @@ export const registerAwsConnectionRouter = async (server: FastifyZodProvider) =>
     server,
     sanitizedResponseSchema: SanitizedAwsConnectionSchema,
     createSchema: CreateAwsConnectionSchema,
-    updateSchema: UpdateAwsConnectionSchema
+    updateSchema: UpdateAwsConnectionSchema,
+    availableConnectionFields: {
+      provisioning: z
+        .object({ useCases: z.string().array() })
+        .nullish()
+        .describe("The use cases recorded when the role was provisioned with Launch Stack. Null for other roles.")
+    }
   });
 
   // The below endpoints are not exposed and for Infisical App use

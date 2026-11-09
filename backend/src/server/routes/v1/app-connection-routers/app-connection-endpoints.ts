@@ -138,8 +138,9 @@ export const buildListAppConnectionsRoute = (
 export const buildListAvailableAppConnectionsRoute = (
   { server, app, appName, appNameForOpId, tags }: TAppConnectionRouteContext,
   {
-    description = `List the ${appName} Connections the current user has permission to establish connections within this project.`
-  }: { description?: string } = {}
+    description = `List the ${appName} Connections the current user has permission to establish connections within this project.`,
+    extraFields = {}
+  }: { description?: string; extraFields?: z.ZodRawShape } = {}
 ) => {
   server.route({
     method: "GET",
@@ -165,7 +166,8 @@ export const buildListAvailableAppConnectionsRoute = (
               projectId: z.string().nullish(),
               orgId: z.string(),
               gatewayId: z.string().uuid().nullish(),
-              gatewayPoolId: z.string().uuid().nullish()
+              gatewayPoolId: z.string().uuid().nullish(),
+              ...extraFields
             })
             .array()
         })
@@ -631,18 +633,20 @@ export const registerAppConnectionEndpoints = <I extends TAppConnectionInput>({
   app,
   createSchema,
   updateSchema,
-  sanitizedResponseSchema
+  sanitizedResponseSchema,
+  availableConnectionFields
 }: {
   app: AppConnection;
   server: FastifyZodProvider;
   createSchema: TAppConnectionCreateSchema<I>;
   updateSchema: TAppConnectionUpdateSchema<I>;
   sanitizedResponseSchema: z.ZodTypeAny;
+  availableConnectionFields?: z.ZodRawShape;
 }) => {
   const ctx = buildAppConnectionRouteContext({ server, app, sanitizedResponseSchema });
 
   buildListAppConnectionsRoute(ctx);
-  buildListAvailableAppConnectionsRoute(ctx);
+  buildListAvailableAppConnectionsRoute(ctx, { extraFields: availableConnectionFields });
   buildGetAppConnectionRoute(ctx);
   buildGetAppConnectionByNameRoute(ctx);
   buildCreateAppConnectionRoute(ctx, { createSchema });

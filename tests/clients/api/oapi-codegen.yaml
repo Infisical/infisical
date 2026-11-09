@@ -305,6 +305,7 @@ output-options:
     - listAvailableOrganizationUsers
     - listAvailableProjectIdentities
     - listAwsAppConnections
+    - listAwsAvailableAppConnections
     - listAwsParameterStoreSecretSyncs
     - listAwsSecretsManagerSecretSyncs
     - listDynamicSecretLeases

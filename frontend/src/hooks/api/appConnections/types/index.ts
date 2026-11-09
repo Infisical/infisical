@@ -292,6 +292,7 @@ export type TAppConnection =
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId"> & {
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
+  provisioning?: { useCases: string[] } | null;
 };
 
 export type TListAppConnections<T extends TAppConnection> = { appConnections: T[] };

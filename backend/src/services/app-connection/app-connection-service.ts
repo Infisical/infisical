@@ -27,10 +27,12 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
+import { logger } from "@app/lib/logger";
 import { DiscriminativePick, OrgServiceActor } from "@app/lib/types";
 import {
   addAppConnectionFederatedCredential,
   decryptAppConnection,
+  decryptAppConnectionConfiguration,
   decryptAppConnectionCredentials,
   encryptAppConnectionConfiguration,
   encryptAppConnectionCredentials,
@@ -70,7 +72,7 @@ import {
 } from "./app-connection-types";
 import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
 import { auth0ConnectionService } from "./auth0/auth0-connection-service";
-import { ValidateAwsConnectionCredentialsSchema } from "./aws";
+import { AwsConnectionConfigurationSchema, ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { ValidateAzureADCSConnectionCredentialsSchema } from "./azure-adcs/azure-adcs-connection-schemas";
 import { azureAdcsConnectionService } from "./azure-adcs/azure-adcs-connection-service";
@@ -250,6 +252,8 @@ export type TAppConnectionServiceFactoryDep = {
   >;
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
+
+type TRecordedProvisioning = { useCases: string[] } | null;
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
 
@@ -1343,7 +1347,28 @@ export const appConnectionServiceFactory = ({
     return appConnection;
   };
 
-  const listAvailableAppConnectionsForUser = async (app: AppConnection, actor: OrgServiceActor, projectId?: string) => {
+  const getRecordedProvisioning = async (connection: TAppConnections): Promise<TRecordedProvisioning> => {
+    try {
+      const configuration = await decryptAppConnectionConfiguration({
+        orgId: connection.orgId,
+        projectId: connection.projectId,
+        encryptedConfiguration: connection.encryptedConfiguration,
+        kmsService
+      });
+
+      const parsed = AwsConnectionConfigurationSchema.safeParse(configuration);
+      return parsed.success && parsed.data.provisioning ? { useCases: parsed.data.provisioning.useCases } : null;
+    } catch (error) {
+      logger.warn(error, `Could not read the recorded provisioning of App Connection [connectionId=${connection.id}]`);
+      return null;
+    }
+  };
+
+  const listAvailableAppConnectionsForUser = async (
+    app: AppConnection,
+    actor: OrgServiceActor,
+    projectId?: string
+  ): Promise<(Omit<TAppConnection, "credentials"> & { provisioning?: TRecordedProvisioning })[]> => {
     const { permission: orgPermission } = await permissionService.getOrgPermission({
       actorId: actor.id,
       actor: actor.type,
@@ -1393,9 +1418,18 @@ export const appConnectionServiceFactory = ({
       )
     );
 
-    return [...availableOrgConnections, ...availableProjectConnections].sort((a, b) =>
+    const availableConnections = [...availableOrgConnections, ...availableProjectConnections].sort((a, b) =>
       a.name.toLowerCase().localeCompare(b.name.toLowerCase())
     ) as Omit<TAppConnection, "credentials">[];
+
+    if (app !== AppConnection.AWS) return availableConnections;
+
+    return Promise.all(
+      availableConnections.map(async (connection) => ({
+        ...connection,
+        provisioning: await getRecordedProvisioning(connection as unknown as TAppConnections)
+      }))
+    );
   };
 
   const findAppConnectionUsageById = async (app: AppConnection, connectionId: string, actor: OrgServiceActor) => {
