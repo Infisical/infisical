@@ -18,7 +18,6 @@ import {
 import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v4/ui/hover-card";
 import { Icon } from "@app/components/v4/ui/icon";
 import { RowLink } from "@app/components/v4/ui/row-link";
 import {
@@ -553,44 +552,42 @@ function EnvironmentTable({
   return (
     <TableRow className={styles.nestedRow}>
       <TableCell pin="viewport" colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
-        <div>
-          <Table className={styles.nestedTable}>
-            <TableHeader>
-              <TableRow>
-                <ChildSelectHead resources={entries} label={label} ctx={ctx} />
-                <TableHead className={styles.envName}>Environment</TableHead>
-                <TableHead>{valueHeader}</TableHead>
-                <TableActionsHead slots={ROW_ACTION_SLOTS} />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {ctx.environments
-                .filter((environment) =>
-                  entries.some((entry) => entry.environment === environment.value)
-                )
-                .map((environment) => {
-                  const entry = entries.find((item) => item.environment === environment.value)!;
-                  const rowActions = actions(entry);
-                  return (
-                    <RowContextMenu key={environment.value} {...rowActions}>
-                      <TableRow className={styles.row}>
-                        <ChildSelectCell
-                          resource={entry}
-                          label={`${label} in ${environment.label}`}
-                          ctx={ctx}
-                        />
-                        <TableCell className={styles.envName}>{environment.label}</TableCell>
-                        <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
-                        <TableActionsCell slots={ROW_ACTION_SLOTS}>
-                          <RowActions lazy {...rowActions} />
-                        </TableActionsCell>
-                      </TableRow>
-                    </RowContextMenu>
-                  );
-                })}
-            </TableBody>
-          </Table>
-        </div>
+        <Table className={styles.nestedTable}>
+          <TableHeader>
+            <TableRow>
+              <ChildSelectHead resources={entries} label={label} ctx={ctx} />
+              <TableHead className={styles.envName}>Environment</TableHead>
+              <TableHead>{valueHeader}</TableHead>
+              <TableActionsHead slots={ROW_ACTION_SLOTS} />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {ctx.environments
+              .filter((environment) =>
+                entries.some((entry) => entry.environment === environment.value)
+              )
+              .map((environment) => {
+                const entry = entries.find((item) => item.environment === environment.value)!;
+                const rowActions = actions(entry);
+                return (
+                  <RowContextMenu key={environment.value} {...rowActions}>
+                    <TableRow className={styles.row}>
+                      <ChildSelectCell
+                        resource={entry}
+                        label={`${label} in ${environment.label}`}
+                        ctx={ctx}
+                      />
+                      <TableCell className={styles.envName}>{environment.label}</TableCell>
+                      <TableCell className={styles.nameCell}>{render(entry)}</TableCell>
+                      <TableActionsCell slots={ROW_ACTION_SLOTS}>
+                        <RowActions lazy {...rowActions} />
+                      </TableActionsCell>
+                    </TableRow>
+                  </RowContextMenu>
+                );
+              })}
+          </TableBody>
+        </Table>
       </TableCell>
     </TableRow>
   );
@@ -871,7 +868,6 @@ function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
   const [shown, setShown] = useState(sites.length);
   const [reserve, setReserve] = useState(0);
   const [listOpen, setListOpen] = useState(false);
-  const [cardOpen, setCardOpen] = useState(false);
   const signature = sites.map((site) => site.value).join("|");
   useLayoutEffect(() => {
     const box = fit.current;
@@ -913,28 +909,14 @@ function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
           <SiteLink key={site.value} site={site} />
         ))}
         {hidden > 0 && (
-          <HoverCard open={cardOpen && !listOpen} onOpenChange={setCardOpen}>
-            <HoverCardTrigger asChild>
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => {
-                  setCardOpen(false);
-                  setListOpen(true);
-                }}
-              >
-                {`+${hidden} more`}
-              </Button>
-            </HoverCardTrigger>
-            <HoverCardContent align="start">
-              <SiteList sites={sites} />
-            </HoverCardContent>
-          </HoverCard>
+          <Button variant="ghost" size="xs" onClick={() => setListOpen(true)}>
+            {`+${hidden} more`}
+          </Button>
         )}
       </span>
       <span ref={measure} className={styles.importedRuler} aria-hidden="true">
-        <Button variant="ghost" size="xs" tabIndex={-1}>
-          {`+${sites.length} more`}
+        <Button variant="ghost" size="xs" asChild>
+          <span>{`+${sites.length} more`}</span>
         </Button>
         {sites.map((site) => (
           <Badge key={site.value} tone="outline">
@@ -1080,7 +1062,11 @@ export function ImportRow({
             </div>
           </TableCell>
           {!ctx.single && expanded && (
-            <TableCell colSpan={ctx.environments.length} className={styles.importedInCell}>
+            <TableCell
+              pin="viewport"
+              colSpan={ctx.environments.length}
+              className={styles.importedInCell}
+            >
               <ImportedIn sites={sites} />
             </TableCell>
           )}
@@ -1134,41 +1120,39 @@ export function ImportRow({
             colSpan={ctx.environments.length + 3}
             className={styles.nestedCell}
           >
-            <div>
-              <Table className={styles.nestedTable}>
-                <TableHeader>
+            <Table className={styles.nestedTable}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead selection divider={false} />
+                  <TableHead className={styles.envName}>Name</TableHead>
+                  <TableHead>Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {first.revoked ? (
                   <TableRow>
-                    <TableHead selection divider={false} />
-                    <TableHead className={styles.envName}>Name</TableHead>
-                    <TableHead>Value</TableHead>
+                    <TableCell selection divider={false} />
+                    <TableCell colSpan={2} className={styles.subtle}>
+                      Access to this source was revoked, so its secrets are not shown.
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {first.revoked ? (
-                    <TableRow>
+                ) : (
+                  sourceSecrets(first).map((secret) => (
+                    <TableRow key={secret.id} className={styles.row}>
                       <TableCell selection divider={false} />
-                      <TableCell colSpan={2} className={styles.subtle}>
-                        Access to this source was revoked, so its secrets are not shown.
+                      <TableCell className={styles.envName}>
+                        <span className={styles.truncate}>{secret.name}</span>
+                      </TableCell>
+                      <TableCell className={styles.valueCell}>
+                        <code className={styles.value}>
+                          {readableValue(secret) === undefined ? "No access" : mask}
+                        </code>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    sourceSecrets(first).map((secret) => (
-                      <TableRow key={secret.id} className={styles.row}>
-                        <TableCell selection divider={false} />
-                        <TableCell className={styles.envName}>
-                          <span className={styles.truncate}>{secret.name}</span>
-                        </TableCell>
-                        <TableCell className={styles.valueCell}>
-                          <code className={styles.value}>
-                            {readableValue(secret) === undefined ? "No access" : mask}
-                          </code>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </TableCell>
         </TableRow>
       )}
