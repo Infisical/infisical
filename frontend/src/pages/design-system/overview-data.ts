@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "row-context-lazy",
+    title: "Lighter row menus",
+    description:
+      "Right-click row menus mount only when opened, so large tables carry no closed menus.",
+    date: "2026-11-07",
+    commit: "7a2ed78093",
+    page: "table"
+  },
+  {
     id: "viewport-cell-perf",
     title: "Faster table edits",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "072c1e484c",
     page: "overview"
-  },
-  {
-    id: "error-state-forbidden",
-    title: "Forbidden error state",
-    description:
-      "ErrorState adds You don't have access, and pages can slot their own flows such as Request access.",
-    date: "2026-11-07",
-    commit: "7b36bf4064",
-    page: "error-state"
   }
 ];
