@@ -49,6 +49,7 @@ export const tableDefinition = {
     "Nested tables: a body dims when it holds a focused row at any depth. The row that holds the nested table and the row just above it, the one it expands from, keep full strength, and the nested body dims only its own other rows, so focusing an environment row inside an expanded secret dims every other secret and environment row and nothing else.",
     "Row states are layers over the row's ground, which is surface, or row-done on a striped even row. The selected surface and the hover overlay (the shared hover token) stack over the ground on every cell, and a pinned cell or the sticky tail repaints the same ground and layers opaquely, so a striped, selected or hovered row reads as one band to the frame edge and scrolled cells never show through.",
     "DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.",
+    "Shared tooltips: Table, and so DataTable, wraps its rows in a TooltipScope. Every Tooltip inside (status marks through TooltipText, Button disabledReason, RowActions labels, selection reasons) renders only its trigger element and the table mounts one Radix tooltip on first use, instead of one root per trigger, about five per secrets row. Hover, focus, the skip delay between neighboring triggers, Escape and aria-describedby behave as with standalone tooltips. A controlled Tooltip (open, defaultOpen, onOpenChange or delayDuration) keeps its own root.",
     "Tables are framed by default: DataTable always sits in the shared tint frame, which suits nearly every standalone table. Use the native Table, which has no frame, only when the table is embedded in another surface that already draws an edge, such as a Card, a sheet or a dialog body.",
     "DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.",
     "A table embedded in a framed card is frameless. Inside a framed Card, List or other frame, DataTable drops its tint frame and the body's own border: the header row, pinned actions tail and pagination sit on the parent's inset surface with a line-soft rule under the header, so the header reads apart from the card's band. A flush framed Card keeps its bordered inset around the embedded table.",
@@ -166,6 +167,12 @@ export const tableDefinition = {
       id: "row-actions",
       title: "Row actions",
       module: "./examples/table/row-actions.tsx",
+      states: ["default", "disabled", "keyboard"]
+    },
+    {
+      id: "shared-tooltips",
+      title: "Shared tooltips",
+      module: "./examples/table/shared-tooltips.tsx",
       states: ["default", "disabled", "keyboard"]
     },
     {

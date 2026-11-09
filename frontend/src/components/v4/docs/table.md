@@ -301,6 +301,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Nested tables: a body dims when it holds a focused row at any depth. The row that holds the nested table and the row just above it, the one it expands from, keep full strength, and the nested body dims only its own other rows, so focusing an environment row inside an expanded secret dims every other secret and environment row and nothing else.
 - Row states are layers over the row's ground, which is surface, or row-done on a striped even row. The selected surface and the hover overlay (the shared hover token) stack over the ground on every cell, and a pinned cell or the sticky tail repaints the same ground and layers opaquely, so a striped, selected or hovered row reads as one band to the frame edge and scrolled cells never show through.
 - DataTable composes existing Table parts without imposing ARIA grid keyboard semantics.
+- Shared tooltips: Table, and so DataTable, wraps its rows in a TooltipScope. Every Tooltip inside (status marks through TooltipText, Button disabledReason, RowActions labels, selection reasons) renders only its trigger element and the table mounts one Radix tooltip on first use, instead of one root per trigger, about five per secrets row. Hover, focus, the skip delay between neighboring triggers, Escape and aria-describedby behave as with standalone tooltips. A controlled Tooltip (open, defaultOpen, onOpenChange or delayDuration) keeps its own root.
 - Tables are framed by default: DataTable always sits in the shared tint frame, which suits nearly every standalone table. Use the native Table, which has no frame, only when the table is embedded in another surface that already draws an edge, such as a Card, a sheet or a dialog body.
 - DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.
 - A table embedded in a framed card is frameless. Inside a framed Card, List or other frame, DataTable drops its tint frame and the body's own border: the header row, pinned actions tail and pagination sit on the parent's inset surface with a line-soft rule under the header, so the header reads apart from the card's band. A flush framed Card keeps its bordered inset around the embedded table.
@@ -1276,6 +1277,151 @@ export default function RowActions() {
         {status}
       </p>
     </>
+  );
+}
+```
+
+### Shared tooltips
+
+Save this example at `src/pages/design-system/examples/table/shared-tooltips.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
+
+Registry items used: @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/text, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableRowActions
+} from "../../../../components/v4/ui/data-table";
+import { DropdownMenuItem } from "../../../../components/v4/ui/dropdown-menu";
+import { Icon } from "../../../../components/v4/ui/icon";
+import { Inline } from "../../../../components/v4/ui/layout";
+import { StatusText } from "../../../../components/v4/ui/text";
+import { TooltipProvider, TooltipText } from "../../../../components/v4/ui/tooltip";
+
+type Row = {
+  id: string;
+  name: string;
+  rotated: string;
+  locked: boolean;
+  environments: Record<string, boolean>;
+};
+
+const environments = [
+  { id: "dev", label: "Development" },
+  { id: "staging", label: "Staging" },
+  { id: "prod", label: "Production" }
+];
+
+const names = [
+  "DATABASE_URL",
+  "LOG_LEVEL",
+  "JWT_SIGNING_KEY",
+  "STRIPE_WEBHOOK_SECRET",
+  "REDIS_URL",
+  "SMTP_PASSWORD"
+];
+
+const rows: Row[] = names.map((name, index) => ({
+  id: name.toLowerCase(),
+  name,
+  rotated: `2026-10-${String(29 - index).padStart(2, "0")} 14:02 UTC`,
+  locked: index % 3 === 2,
+  environments: { dev: true, staging: index % 2 === 0, prod: index % 4 !== 1 }
+}));
+
+export default function SharedTooltips() {
+  const [status, setStatus] = React.useState("");
+  const columns: DataTableColumn<Row>[] = [
+    {
+      id: "name",
+      header: "Name",
+      primary: true,
+      mono: true,
+      grow: true,
+      render: (row) => row.name
+    },
+    {
+      id: "rotation",
+      header: "Rotation",
+      render: (row) => (
+        <TooltipText
+          asChild
+          content={
+            <>
+              Last rotated <code>{row.rotated}</code>
+            </>
+          }
+        >
+          <StatusText icon={row.locked ? "lock" : "clock"}>
+            {row.locked ? "Locked" : "Scheduled"}
+          </StatusText>
+        </TooltipText>
+      )
+    },
+    {
+      id: "environments",
+      header: "Environments",
+      render: (row) => (
+        <Inline gap={8} wrap={false}>
+          {environments.map((env) => {
+            const present = row.environments[env.id];
+            return (
+              <TooltipText
+                key={env.id}
+                asChild
+                content={`${present ? "Present" : "Missing"} in ${env.label}`}
+              >
+                <span>
+                  <Icon
+                    name={present ? "check-c" : "minus"}
+                    label={`${env.label}: ${present ? "present" : "missing"}`}
+                  />
+                </span>
+              </TooltipText>
+            );
+          })}
+        </Inline>
+      )
+    }
+  ];
+  const actions: DataTableRowActions<Row> = {
+    inline: [
+      {
+        label: "Copy secret",
+        icon: "copy",
+        onSelect: (row) => setStatus(`Copied the fabricated value of ${row.name}.`)
+      },
+      {
+        label: "Rotate now",
+        icon: "sync",
+        disabledReason: (row) => (row.locked ? "Locked secrets can't be rotated" : undefined),
+        onSelect: (row) => setStatus(`Rotated ${row.name}.`)
+      }
+    ],
+    renderMenu: (row) => (
+      <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+        <Icon name="eye" />
+        Open secret
+      </DropdownMenuItem>
+    )
+  };
+  return (
+    <TooltipProvider>
+      <DataTable
+        label="Example secrets with status marks and row actions"
+        rows={rows}
+        columns={columns}
+        getRowId={(row) => row.id}
+        rowLabel={(row) => row.name}
+        rowActions={actions}
+      />
+      <p role="status" className="sr-only">
+        {status}
+      </p>
+    </TooltipProvider>
   );
 }
 ```

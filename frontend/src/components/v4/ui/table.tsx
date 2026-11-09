@@ -16,7 +16,7 @@ import {
 } from "./dropdown-menu";
 import { Icon, type IconName } from "./icon";
 import { Skeleton } from "./skeleton";
-import { Tooltip } from "./tooltip";
+import { Tooltip, TooltipScope } from "./tooltip";
 
 import styles from "./data.module.css";
 
@@ -24,6 +24,7 @@ function Table({
   className,
   containerClassName,
   containerRef,
+  children,
   ref,
   ...props
 }: React.ComponentProps<"table"> & {
@@ -44,7 +45,9 @@ function Table({
         data-slot="table"
         className={cn("w-full caption-bottom", styles.nativeTable, className)}
         {...props}
-      />
+      >
+        <TooltipScope>{children}</TooltipScope>
+      </table>
     </div>
   );
 }
