@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "row-focus",
+    title: "Row focus",
+    description:
+      "A row being edited can be marked focused, and every other row in the table fades until the edit ends.",
+    date: "2026-11-07",
+    commit: "0da7164369",
+    page: "table"
+  },
+  {
     id: "bulk-bar-window",
     title: "Bulk bar at the window",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "a7c26c60b7",
     page: "table"
-  },
-  {
-    id: "toggle-on",
-    title: "Toggles show their selection",
-    description:
-      "A toggle wrapped in a tooltip shows its selected item again, with the same indicator as segmented Tabs.",
-    date: "2026-11-07",
-    commit: "82f79f402f",
-    page: "toggle-group"
   }
 ];
