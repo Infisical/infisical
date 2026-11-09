@@ -39,6 +39,10 @@ export class InMemoryKmsKeyDataAccess implements TKmsKeyDataAccess {
       .map((row) => KmsKey.restore(row));
   }
 
+  findByIdForUpdate(id: string) {
+    return this.findById(id);
+  }
+
   findByIdForRotation(id: string) {
     return this.findById(id);
   }

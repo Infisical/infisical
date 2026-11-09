@@ -322,7 +322,16 @@ export class ScopeKeyService {
 
   private async projectDataKey(projectId: string, options?: TReadOptions): Promise<Buffer> {
     const project = await this.ensureProjectKmsKeyId(projectId, options);
-    return this.decryptProjectDataKey(projectId, project);
+    try {
+      return await this.decryptProjectDataKey(projectId, project);
+    } catch (error) {
+      // A key switch can commit, and delete the old reserved key, between reading the project and reading its key.
+      // Read both columns again from the primary, once.
+      if (!(error instanceof NotFoundError)) throw error;
+      const current = await this.ensureProjectKmsKeyId(projectId, PRIMARY);
+      if (current.kmsKeyId === project.kmsKeyId) throw error;
+      return this.decryptProjectDataKey(projectId, current);
+    }
   }
 
   private async decryptProjectDataKey(projectId: string, project: TScopeKeySnapshot): Promise<Buffer> {

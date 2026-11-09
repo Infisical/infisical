@@ -91,7 +91,7 @@ export const startStandaloneKmsCore = async ({
   envConfig: TKmsCoreEnvConfig;
 }): Promise<TKmsCoreDomain> => {
   const { kmsCoreEe, kmsCore } = buildKmsCore({ db: DataAccessDb.single(db), envConfig });
-  await kmsCoreEe.start({ hsmEntitled: true });
+  await kmsCoreEe.start({ isHsmEntitled: () => true });
   await kmsCore.start({ skipRotationState: true });
   return kmsCore.service;
 };

@@ -156,7 +156,7 @@ export class KmsKeyService {
 
   updateKeyAttributes(kmsId: string, attributes: TKmsKeyAttributes): Promise<TKmsKeyDetails> {
     return this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      const key = await dataAccess.kmsKeys.findById(kmsId);
+      const key = await dataAccess.kmsKeys.findByIdForUpdate(kmsId);
       if (!key) throw notFoundKey(kmsId);
       key.updateAttributes(attributes);
       await dataAccess.kmsKeys.saveAttributes(key);

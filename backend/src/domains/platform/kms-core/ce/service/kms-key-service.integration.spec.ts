@@ -16,6 +16,35 @@ describe("KmsKeyService on Postgres", () => {
     return module.service;
   };
 
+  // Saving writes every attribute it read, so an edit that read before a concurrent one committed would write
+  // that one's change back. The row lock makes the second edit read after the first commits.
+  test("should keep a concurrent edit to the key's attributes", async () => {
+    // Setup
+    const tn = await h.newTenant();
+    const kms = await startedKms();
+    const key = await kms.generateKmsKey({ orgId: tn.org.id, projectId: tn.project.id, isReserved: false, name: "k" });
+    const concurrent = await h.db.transaction();
+    await concurrent(TableName.KmsKey).where({ id: key.id }).forUpdate().first("id");
+    await concurrent(TableName.KmsKey).where({ id: key.id }).update({ isDisabled: true });
+
+    // Action
+    const rename = kms.updateKeyAttributes(key.id, { name: "renamed" });
+    let waiting = 0;
+    while (waiting === 0) {
+      // eslint-disable-next-line no-await-in-loop -- polls until the rename is blocked on the row lock
+      const { rows } = await h.db.raw<{ rows: { count: string }[] }>(
+        "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()"
+      );
+      waiting = Number(rows[0].count);
+    }
+    await concurrent.commit();
+    await rename;
+
+    // Assert
+    const stored = await h.db(TableName.KmsKey).where({ id: key.id }).first("name", "isDisabled");
+    expect(stored).toEqual({ name: "renamed", isDisabled: true });
+  });
+
   test("should give two concurrent rotations versions 2 and 3 and keep every ciphertext readable", async () => {
     // Setup
     const tn = await h.newTenant();

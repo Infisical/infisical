@@ -91,7 +91,7 @@ export class ExternalKmsService {
     }
 
     const updated = await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      const current = await dataAccess.kmsKeys.findById(kmsId);
+      const current = await dataAccess.kmsKeys.findByIdForUpdate(kmsId);
       if (!current?.isExternal) throw notFound(kmsId);
       if (name || description) {
         current.updateAttributes({ name: name ? slugify(name) : undefined, description });

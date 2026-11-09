@@ -33,6 +33,8 @@ export type TKmsKeyDataAccess = {
   // Takes the internal_kms row lock a rotation holds, then reads the key.
   // Always on the primary: a row lock exists only there.
   findByIdForRotation(id: string): Promise<KmsKey | undefined>;
+  // Takes the kms_keys row lock, so a read-modify-write of the key's attributes cannot overwrite a concurrent one.
+  findByIdForUpdate(id: string): Promise<KmsKey | undefined>;
   // Customer keys of a project (not reserved, with internal material), one page and the total.
   listProjectKeys(query: TKmsKeyPageQuery, options?: TReadOptions): Promise<{ keys: KmsKey[]; totalCount: number }>;
   saveMaterial(key: KmsKey): Promise<void>;
@@ -169,6 +171,15 @@ export class KmsKeyDataAccess implements TKmsKeyDataAccess {
       return await this.findById(id, PRIMARY);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find KMS key for rotation" });
+    }
+  }
+
+  async findByIdForUpdate(id: string): Promise<KmsKey | undefined> {
+    try {
+      await this.db.writer()(TableName.KmsKey).where({ id }).forUpdate().first("id");
+      return await this.findById(id, PRIMARY);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find KMS key for update" });
     }
   }
 

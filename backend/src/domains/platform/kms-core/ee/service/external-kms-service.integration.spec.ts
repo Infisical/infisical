@@ -41,7 +41,7 @@ describe("External KMS keys on Postgres", () => {
       hooks: ee.hooks,
       isFipsEnabled: () => false
     });
-    await ee.start({ hsmEntitled: false });
+    await ee.start({ isHsmEntitled: () => false });
     await core.start({ skipRotationState: true });
     return { fake, kms: core.service };
   };

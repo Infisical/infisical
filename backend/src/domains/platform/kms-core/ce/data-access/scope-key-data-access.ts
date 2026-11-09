@@ -129,8 +129,9 @@ export class ScopeKeyDataAccess implements TScopeKeyDataAccess {
     try {
       const project = await this.db
         .reader(options)(TableName.Project)
-        .where({ kmsSecretManagerKeyId: kmsKeyId })
-        .orWhere({ kmsCertificateKeyId: kmsKeyId })
+        .where((qb) => {
+          void qb.where({ kmsSecretManagerKeyId: kmsKeyId }).orWhere({ kmsCertificateKeyId: kmsKeyId });
+        })
         .first("id");
       if (project) return true;
       const org = await this.db

@@ -3,16 +3,17 @@ import { BadRequestError } from "@app/lib/errors";
 import { TRootKeyWrapper } from "../../ce/service/kms-core-hooks";
 import { THsmClient } from "../hsm-client/hsm-client";
 
-// Wraps the root key with the HSM, and holds the instance's HSM entitlement as read at boot.
+// Wraps the root key with the HSM, and asks the license for the instance's HSM entitlement each time it is checked.
 export class HsmRootKeyWrapper implements TRootKeyWrapper {
   private client: THsmClient | undefined;
 
-  private entitled = false;
+  private isEntitled: (() => boolean) | undefined;
 
-  // Called by KmsCoreEeModule.start, once the PKCS#11 library is initialised and the license is read.
-  attach(client: THsmClient, entitled: boolean) {
+  // Called by KmsCoreEeModule.start, once the PKCS#11 library is initialised. A getter, not a value: a license
+  // refreshed after boot can add HSM, and the strategy change must see it without a restart.
+  attach(client: THsmClient, isEntitled: () => boolean) {
     this.client = client;
-    this.entitled = entitled;
+    this.isEntitled = isEntitled;
   }
 
   async isConfigured() {
@@ -20,7 +21,7 @@ export class HsmRootKeyWrapper implements TRootKeyWrapper {
   }
 
   assertEntitled() {
-    if (!this.entitled) {
+    if (!this.isEntitled?.()) {
       throw new BadRequestError({
         message: "Your license does not include HSM integration. Please upgrade to the Enterprise plan to use HSM."
       });

@@ -4817,7 +4817,7 @@ export const registerRoutes = async (
   await superAdminService.initServerCfg();
 
   // HSM first, with the instance license's entitlement, then the root key.
-  await domains.kmsCoreEe.start({ hsmEntitled: licenseDomain.hasInstanceFeature("hsm") });
+  await domains.kmsCoreEe.start({ isHsmEntitled: () => licenseDomain.hasInstanceFeature("hsm") });
   await domains.kmsCore.start();
   server.addHook("onClose", async () => domains.kmsCoreEe.stop());
 

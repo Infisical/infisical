@@ -1,3 +1,4 @@
+import { ScopeKey } from "../model/scope-key";
 import { KmsDataKey, ReadFrom, TReadOptions } from "../module";
 import { buildInMemoryKmsCore } from "../testing/build-kms-core";
 
@@ -80,6 +81,31 @@ describe("ScopeKeyService reads", () => {
 
     // Assert
     await expect(result).rejects.toThrow("Project with ID 'project-new' not found");
+  });
+
+  // A key switch can commit, and delete the old reserved key, between reading the project and reading its key.
+  test("should read the project again from the primary when its key was removed after the first read", async () => {
+    // Setup
+    const built = await started();
+    const first = await built.kms.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: "project-1"
+    });
+    const { scopeKeys } = built.dataAccess;
+    const current = await scopeKeys.findProject("project-1");
+    const stale = ScopeKey.restore({ ...(current as ScopeKey).toJSON(), kmsKeyId: "a-key-that-was-deleted" });
+    const findProject = vi.spyOn(scopeKeys, "findProject").mockResolvedValueOnce(stale);
+
+    // Action
+    const second = await built.kms.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: "project-1"
+    });
+
+    // Assert
+    expect(findProject).toHaveBeenLastCalledWith("project-1", { readFrom: ReadFrom.Primary });
+    const { cipherTextBlob } = first.encryptor({ plainText: Buffer.from("v") });
+    expect(second.decryptor({ cipherTextBlob }).toString()).toBe("v");
   });
 
   // The key id and the encrypted data key must come from one row: two reads can straddle a key switch.

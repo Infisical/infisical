@@ -46,13 +46,13 @@ export class KmsCoreEeModule {
   }
 
   // Initialises the PKCS#11 library and creates the device keys when an HSM is configured. Called once at boot,
-  // before KmsCoreModule.start, with the instance license's HSM entitlement (migrations pass true: they run before
-  // the license is read).
-  async start({ hsmEntitled }: { hsmEntitled: boolean }): Promise<void> {
+  // before KmsCoreModule.start, with a way to read the instance license's HSM entitlement (migrations always answer
+  // true: they run before the license is read).
+  async start({ isHsmEntitled }: { isHsmEntitled: () => boolean }): Promise<void> {
     this.hsmModule = initializeHsmModule(this.deps.hsmConfig);
     const client = createHsmClient({ hsmModule: this.hsmModule, envConfig: this.deps.hsmConfig });
     await client.startService();
-    this.wrapper.attach(client, hsmEntitled);
+    this.wrapper.attach(client, isHsmEntitled);
   }
 
   // Releases the PKCS#11 library on shutdown.
