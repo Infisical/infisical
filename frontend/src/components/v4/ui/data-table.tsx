@@ -416,6 +416,7 @@ export function DataTable<Row>({
         {rowActions && (
           <TableActionsCell slots={slots} data-pin="true">
             <RowActions
+              lazy
               label={rowLabel(row)}
               inline={rowInline(row)}
               menu={rowActions.renderMenu?.(row)}
