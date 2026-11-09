@@ -34,6 +34,7 @@ export type ApprovalRequest = {
   steps: ApprovalStep[];
   decision?: Decision;
   awaitingYou: boolean;
+  leftQueue?: boolean;
 };
 
 export type Activity =

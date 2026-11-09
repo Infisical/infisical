@@ -42,6 +42,7 @@ export const pastTense = (request: ApprovalRequest) => {
   if (request.status === "rejected") return request.decision?.by === "You" ? "You denied" : `Denied by ${request.decision?.by}`;
   if (request.status === "expired") return "Expired with no decision";
   if (request.status === "cancelled") return "Cancelled by requester";
+  if (request.leftQueue) return "No longer waiting on you";
   if (!request.awaitingYou) return "Waiting on the next approval step";
   return "Waiting on you";
 };

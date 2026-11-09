@@ -38,14 +38,22 @@ export const LiveStoreProvider = ({ instance, generation, children }: Props) => 
           deciding.current.has(request.id) || (request.decision?.by === "You" && request.decision.at >= startedAt);
         const merged = fetched.map((request) => {
           const local = previous.get(request.id);
-          return local && keepLocal(local) ? local : request;
+          if (!local) return request;
+          if (keepLocal(local)) return local;
+          return local.decision?.by === "You" ? { ...request, decision: local.decision } : request;
         });
         const fetchedIds = new Set(fetched.map((request) => request.id));
-        const kept = prev.filter(
-          (request) =>
-            !fetchedIds.has(request.id) &&
-            (request.decision?.by === "You" || deciding.current.has(request.id) || request.id === focused.current)
-        );
+        const kept = prev
+          .filter(
+            (request) =>
+              !fetchedIds.has(request.id) &&
+              (request.decision?.by === "You" || deciding.current.has(request.id) || request.id === focused.current)
+          )
+          .map((request) =>
+            request.awaitingYou && !deciding.current.has(request.id)
+              ? { ...request, awaitingYou: false, leftQueue: true }
+              : request
+          );
         return [...merged, ...kept];
       });
       setInbox({ state: "ready" });

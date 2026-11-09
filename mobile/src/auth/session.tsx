@@ -159,18 +159,21 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const refreshAccessToken = useCallback(
     (sessionGeneration: number) => {
       if (sessionGeneration !== generation.current || !instance) return Promise.resolve(null);
-      if (refreshing.current?.generation === sessionGeneration) return refreshing.current.promise;
+      const host = hostOf(instance);
+      const withTimeout = (promise: Promise<string | null>) => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeout = new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new ApiError(`${host} took too long to renew your session. Try again in a moment.`)),
+            REFRESH_TIMEOUT_MS
+          );
+        });
+        return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+      };
+      if (refreshing.current?.generation === sessionGeneration) return withTimeout(refreshing.current.promise);
       const refreshToken = tokens.current?.refreshToken;
       if (!refreshToken) return Promise.resolve(null);
-      const host = hostOf(instance);
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const timeout = new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new ApiError(`${host} took too long to renew your session. Try again in a moment.`)),
-          REFRESH_TIMEOUT_MS
-        );
-      });
-      const promise = Promise.race([AuthSession.refreshAsync({ clientId: OAUTH_CLIENT_ID, refreshToken }, endpoints(instance)), timeout])
+      const promise: Promise<string | null> = AuthSession.refreshAsync({ clientId: OAUTH_CLIENT_ID, refreshToken }, endpoints(instance))
         .then(async (response) => {
           if (sessionGeneration !== generation.current) return null;
           tokens.current = {
@@ -183,15 +186,13 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         })
         .catch((error) => {
           if (error instanceof AuthSession.TokenError) return null;
-          if (error instanceof ApiError) throw error;
           throw new ApiError(`Couldn't reach ${host} to renew your session. Check your connection and try again.`);
         })
         .finally(() => {
-          clearTimeout(timer);
           if (refreshing.current?.promise === promise) refreshing.current = null;
         });
       refreshing.current = { generation: sessionGeneration, promise };
-      return promise;
+      return withTimeout(promise);
     },
     [instance]
   );
