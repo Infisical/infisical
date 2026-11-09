@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "leading-pin",
+    title: "Leading pins",
+    description:
+      "Selection and name columns can pin to the start of a wide table, and an expanded row's nested content stays in view while the table scrolls sideways.",
+    date: "2026-11-07",
+    commit: "cb490b4bba",
+    page: "table"
+  },
+  {
     id: "menu-item-description",
     title: "Reasons on checkbox items",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "522e7b336a",
     page: "error-state"
-  },
-  {
-    id: "row-ring",
-    title: "Even, keyboard-only row rings",
-    description:
-      "Row focus rings appear only after keyboard focus and draw the same width on all four edges, above pinned cells.",
-    date: "2026-11-07",
-    commit: "73aa450373",
-    page: "table"
   }
 ];
