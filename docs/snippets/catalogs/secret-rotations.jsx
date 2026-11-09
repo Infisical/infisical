@@ -169,6 +169,14 @@ export const secretRotations = [
     rotationType: "Dual-Phase",
   },
   {
+    name: "ClickHouse Credentials",
+    slug: "clickhouse-credentials",
+    path: "/documentation/platform/secret-rotation/clickhouse-credentials",
+    description: "Learn how to automatically rotate the passwords of ClickHouse users.",
+    category: "Databases",
+    rotationType: "Dual-Phase",
+  },
+  {
     name: "Windows Local Account",
     slug: "windows-local-account",
     path: "/documentation/platform/secret-rotation/windows-local-account",

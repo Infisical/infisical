@@ -48,6 +48,7 @@ import { resolveAccountByPath as resolveAccountByPathFn } from "../pam/pam-fns";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
+  getLaunchAccessRemainingMs,
   getResourceIdsWithActions,
   TActorContext,
   verifyProductMembership
@@ -103,7 +104,7 @@ type TPamSessionServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   userDAL: Pick<TUserDALFactory, "findById">;
   pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
   mfaSessionService: Pick<
@@ -529,6 +530,20 @@ export const pamSessionServiceFactory = ({
       sessionDurationMs = Math.min(parsed, maxDurationMs);
     }
 
+    const launchAccessRemainingMs = await getLaunchAccessRemainingMs(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      account,
+      actor
+    );
+    if (launchAccessRemainingMs !== null) {
+      if (launchAccessRemainingMs <= 0) {
+        throw new ForbiddenRequestError({ message: "Your access to this account is no longer active" });
+      }
+      sessionDurationMs = Math.min(sessionDurationMs, launchAccessRemainingMs);
+    }
+
     // The approval gate comes before the launch-reason check: a user without a grant should be
     // guided into requesting access (where the request reason is collected) rather than being
     // blocked on a launch reason for a session they cannot start yet.
@@ -692,6 +707,11 @@ export const pamSessionServiceFactory = ({
 
     enforceRecordingConfig(account);
 
+    await gatewayPoolService.assertGatewayBindingInOrg({
+      gatewayId: account.gatewayId ?? account.templateGatewayId,
+      gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
+      orgId: actor.actorOrgId
+    });
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
       gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId

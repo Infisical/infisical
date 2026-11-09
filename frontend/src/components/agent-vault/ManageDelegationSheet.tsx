@@ -60,6 +60,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { getInitials } from "@app/helpers/string";
 import { useDebounce } from "@app/hooks";
 import {
   useAddAgentVaultDelegationSubjects,
@@ -99,14 +101,6 @@ export type TDelegationSubjectRow = TAgentVaultActor & {
   missingAccessBundles: TAgentVaultMissingAccessBundle[];
 };
 
-const initialsOf = (value: string) =>
-  value
-    .split(/[\s@._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("") || "?";
-
 const SubjectIdentity = ({
   member,
   badge
@@ -120,7 +114,11 @@ const SubjectIdentity = ({
   return (
     <>
       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral/10 text-xs font-semibold text-accent">
-        {member.type === AgentVaultMemberType.User ? initialsOf(name) : <Icon className="size-4" />}
+        {member.type === AgentVaultMemberType.User ? (
+          getInitials(name)
+        ) : (
+          <Icon className="size-4" />
+        )}
         <span className="sr-only">{label}</span>
       </div>
       <div className="min-w-0 flex-1">
@@ -199,6 +197,7 @@ const ManageDelegationContent = ({
   identity: TIdentity;
   isOpen: boolean;
 }) => {
+  const { projectId } = useProject();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const [typeFilter, setTypeFilter] = useState<TSubjectType | null>(null);
@@ -207,7 +206,7 @@ const ManageDelegationContent = ({
   const hasPickedInitialSection = useRef(false);
 
   const searchParam = debouncedSearch.trim() || undefined;
-  const { data, isPending } = useGetAgentVaultDelegation(identity.id, isOpen);
+  const { data, isPending } = useGetAgentVaultDelegation(projectId, identity.id, isOpen);
   const delegation = data ?? null;
   const isAllMembers = delegation?.scope === AgentVaultDelegationScope.AllMembers;
 
@@ -218,15 +217,16 @@ const ManageDelegationContent = ({
     isError: isAvailableError,
     isFetching: isAvailableFetching
   } = useListAvailableAgentVaultDelegationSubjects(
+    projectId,
     identity.id,
     { actorType: typeFilter ?? undefined, search: searchParam, limit: AVAILABLE_PREVIEW_LIMIT },
     isOpen && !isAllMembers
   );
 
-  const setDelegation = useSetAgentVaultDelegation();
-  const deleteDelegation = useDeleteAgentVaultDelegation();
-  const addSubjects = useAddAgentVaultDelegationSubjects();
-  const removeSubjects = useRemoveAgentVaultDelegationSubjects();
+  const setDelegation = useSetAgentVaultDelegation(projectId);
+  const deleteDelegation = useDeleteAgentVaultDelegation(projectId);
+  const addSubjects = useAddAgentVaultDelegationSubjects(projectId);
+  const removeSubjects = useRemoveAgentVaultDelegationSubjects(projectId);
   // Every write's response replaces the cached delegation, so one at a time keeps a slower earlier
   // response from overwriting a later one.
   const isChanging =
@@ -303,7 +303,7 @@ const ManageDelegationContent = ({
           scope: AgentVaultDelegationScope.AllMembers
         });
         createNotification({
-          text: `"${identity.name}" now acts on behalf of every Agent Vault member`,
+          text: `"${identity.name}" now acts on behalf of every project member`,
           type: "success"
         });
       } else if (pendingChange.kind === "all-members-off") {
@@ -339,7 +339,7 @@ const ManageDelegationContent = ({
     if (pendingChange.kind === "all-members-on") {
       return {
         title: "Act on Behalf of All Members",
-        description: `"${identity.name}" can start sessions on behalf of every Agent Vault member, including Agent Vault admins and users added later. ${
+        description: `"${identity.name}" can start sessions on behalf of every project member, including project admins and users added later. ${
           subjects.length ? "This replaces the users and groups listed now. " : ""
         }Anyone who can log in as this machine identity can use their personal values.`,
         action: "Allow All Members"
@@ -391,7 +391,7 @@ const ManageDelegationContent = ({
         <p className="py-2.5 text-xs text-muted">
           {isFiltered
             ? "No users or groups outside the delegation match your search and filters."
-            : "Every Agent Vault user and group is already in the delegation."}
+            : "Every user and group in this project is already in the delegation."}
         </p>
       );
     }
@@ -509,9 +509,9 @@ const ManageDelegationContent = ({
       <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">
         <Field orientation="horizontal" className="rounded-md border border-border p-4">
           <FieldContent>
-            <FieldTitle>All Agent Vault Members</FieldTitle>
+            <FieldTitle>All Project Members</FieldTitle>
             <FieldDescription>
-              Act on behalf of every user in Agent Vault, including admins and users added later.
+              Act on behalf of every user in this project, including admins and users added later.
             </FieldDescription>
           </FieldContent>
           <Toggle
@@ -536,13 +536,13 @@ const ManageDelegationContent = ({
           <div className="flex items-center gap-2.5 rounded-md border border-border px-4 py-3">
             <UsersRoundIcon className="size-4 shrink-0 text-muted" />
             <p className="min-w-0 flex-1 text-sm text-muted">
-              Every Agent Vault member is covered. Turn this off to pick users and groups instead.
+              Every project member is covered. Turn this off to pick users and groups instead.
             </p>
             {delegation && (
               <MissingAccessBundlesHint
                 bundles={delegation.missingAccessBundles}
                 machineIdentityName={identity.name}
-                onBehalfOf="Agent Vault members"
+                onBehalfOf="project members"
               />
             )}
           </div>

@@ -27,7 +27,10 @@ import {
   FieldError,
   FieldLabel,
   IconButton,
-  Input
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
@@ -37,10 +40,8 @@ import {
 } from "@app/context";
 import { useGetCertificateById, useUpdateCertificate } from "@app/hooks/api";
 import { useGetPkiApplicationPermissions } from "@app/hooks/api/pkiApplications/queries";
-import {
-  PkiApplicationResourceActions,
-  PkiApplicationResourceSub
-} from "@app/hooks/api/pkiApplications/types";
+
+import { getApplicationCertificateAccess } from "../../CertificatesPage/components/CertificatesTable.utils";
 
 type Props = {
   certificateId: string;
@@ -71,9 +72,17 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
   const { data: appPermissionData } = useGetPkiApplicationPermissions(
     certificate?.applicationId ?? ""
   );
-  const canEditMetadata =
-    (certificate
-      ? permission.can(
+  const applicationAccess = certificate?.applicationId
+    ? getApplicationCertificateAccess({
+        applicationName: certificate.applicationName ?? "this application",
+        permission: appPermissionData?.permission
+      })
+    : undefined;
+  const canEditMetadata = applicationAccess
+    ? applicationAccess.canEdit
+    : Boolean(
+        certificate &&
+        permission.can(
           ProjectPermissionCertificateActions.Edit,
           subject(ProjectPermissionSub.Certificates, {
             commonName: certificate.commonName,
@@ -83,13 +92,8 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
             metadata: certificate.metadata
           })
         )
-      : false) ||
-    Boolean(
-      appPermissionData?.permission?.can(
-        PkiApplicationResourceActions.Edit,
-        PkiApplicationResourceSub.Certificates
-      )
-    );
+      );
+  const editMetadataBlockedReason = applicationAccess?.editMetadataBlockedReason;
 
   const { control, handleSubmit, reset, formState } = useForm<MetadataFormData>({
     resolver: zodResolver(metadataFormSchema),
@@ -154,18 +158,36 @@ export const CertificateMetadataSection = ({ certificateId }: Props) => {
           <CardDescription>Custom key-value pairs attached to this certificate</CardDescription>
           {!certificate?.deletedAt && (
             <CardAction>
-              <IconButton
-                aria-label="Edit certificate metadata"
-                variant="outline"
-                size="xs"
-                onClick={() => {
-                  reset({ metadata: metadata.length > 0 ? metadata : [] });
-                  setIsModalOpen(true);
-                }}
-                isDisabled={!canEditMetadata}
-              >
-                <PencilIcon />
-              </IconButton>
+              {editMetadataBlockedReason ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {/* Not natively disabled, so keyboard users can focus it and read why. */}
+                    <IconButton
+                      aria-label="Edit certificate metadata"
+                      aria-disabled
+                      variant="outline"
+                      size="xs"
+                      className="cursor-not-allowed opacity-50"
+                    >
+                      <PencilIcon />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-72">{editMetadataBlockedReason}</TooltipContent>
+                </Tooltip>
+              ) : (
+                <IconButton
+                  aria-label="Edit certificate metadata"
+                  variant="outline"
+                  size="xs"
+                  onClick={() => {
+                    reset({ metadata: metadata.length > 0 ? metadata : [] });
+                    setIsModalOpen(true);
+                  }}
+                  isDisabled={!canEditMetadata}
+                >
+                  <PencilIcon />
+                </IconButton>
+              )}
             </CardAction>
           )}
         </CardHeader>

@@ -23,6 +23,7 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
+import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -69,7 +70,8 @@ beforeAll(async () => {
     roleDAL: roleDALFactory(testDb),
     additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
     groupDAL: groupDALFactory(testDb),
-    secretFolderDAL: secretFolderDALFactory(testDb)
+    secretFolderDAL: secretFolderDALFactory(testDb),
+    orgDAL: orgDALFactory(testDb)
   });
 
   const username = `folder-rbac-${alphaNumericNanoId(8)}@example.com`.toLowerCase();

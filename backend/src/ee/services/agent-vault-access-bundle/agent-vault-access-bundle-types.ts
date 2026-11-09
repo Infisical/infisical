@@ -1,10 +1,12 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { AgentVaultOauthRegistration } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
+  AgentVaultMemberType,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
@@ -33,14 +35,28 @@ export type TAgentVaultCredentialInput =
       memberProvidedFields?: TAgentVaultBasicMemberField[];
     }
   | { type: AgentVaultCredentialType.Passthrough }
-  | { type: AgentVaultCredentialType.OAuth; authorizationId: string };
+  | {
+      type: AgentVaultCredentialType.OAuth;
+      // The admin's own sign-in. Absent when the sign-in is left to each member.
+      authorizationId?: string;
+      memberProvidedFields?: TAgentVaultBearerMemberField[];
+      // The client every member signs in with, only when the sign-in is left to them.
+      clientId?: string;
+      clientSecret?: string;
+      registration?: AgentVaultOauthRegistration.Dynamic;
+    };
 
 export type TAgentVaultCredentialUpdate = TAgentVaultCredentialInput;
 
 export type TAgentVaultOauthCredentialSummary = {
   type: AgentVaultCredentialType.OAuth;
-  status: AgentVaultOauthStatus;
+  memberProvidedFields: TAgentVaultBearerMemberField[];
+  // Absent when each member signs in: there is no shared connection to describe, and each member reads their own.
+  status?: AgentVaultOauthStatus;
   issuer: string;
+  // Only when each member signs in.
+  registration?: AgentVaultOauthRegistration;
+  clientId?: string | null;
   grantedScopes: string[];
   requiredScopes: string[];
   // Left out for members: they describe the admin's sign-in, not the service's setup.
@@ -124,6 +140,7 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   transport?: AgentVaultMcpTransport;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
+  allowedTools?: string[] | null;
   credential: TAgentVaultCredentialInput;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
@@ -141,9 +158,21 @@ export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   transport?: AgentVaultMcpTransport | null;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
+  allowedTools?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderUpdate[];
   substitutions?: TAgentVaultSubstitutionUpdate[];
+};
+
+// What the service sheet would save, so the tools are listed with the credential agents will use. On edit, a value
+// left out falls back to what the saved service stores, as on update.
+export type TListMcpToolsDTO = TAgentVaultProjectScoped & {
+  accessBundleId: string;
+  serviceId?: string;
+  serverUrl: string;
+  transport: AgentVaultMcpTransport;
+  credential?: TAgentVaultCredentialUpdate;
+  customHeaders?: TAgentVaultCustomHeaderUpdate[];
 };
 
 export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
@@ -153,6 +182,7 @@ export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
 
 export type TListMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
+  actorType?: AgentVaultMemberType;
   search?: string;
   limit: number;
   offset: number;

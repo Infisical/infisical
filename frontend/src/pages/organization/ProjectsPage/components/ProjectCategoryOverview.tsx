@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { PreviewBadge } from "@app/components/agent-vault/PreviewBadge";
-import { useEnterAgentVault } from "@app/components/agent-vault/useEnterAgentVault";
 import { createNotification } from "@app/components/notifications";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
 import { CertManagerSelectInstanceModal } from "@app/components/projects/CertManagerSelectInstanceModal";
@@ -137,7 +136,6 @@ export const ProjectCategoryOverview = () => {
   const { data: certManagerInstance } = useCertManagerInstanceState();
   const { data: productStats } = useGetOrgProductStats(currentOrg?.id ?? "");
   const orgAdminAccessProject = useOrgAdminAccessProject();
-  const { enterAgentVault, agentVaultAccessRequest } = useEnterAgentVault();
 
   const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
@@ -179,20 +177,6 @@ export const ProjectCategoryOverview = () => {
   );
   const isPamAccessBlocked =
     Boolean(currentOrg?.pamProjectId) && !isOrgAdmin && !canRequestAccess && !isPamMember;
-
-  const isAgentVaultMember = useMemo(
-    () =>
-      Boolean(
-        currentOrg?.agentVaultProjectId &&
-        projects.some((project) => project.id === currentOrg.agentVaultProjectId)
-      ),
-    [currentOrg?.agentVaultProjectId, projects]
-  );
-  const isAgentVaultAccessBlocked =
-    Boolean(currentOrg?.agentVaultProjectId) &&
-    !isOrgAdmin &&
-    !canRequestAccess &&
-    !isAgentVaultMember;
 
   const { data: secretScanningInstance } = useGetSecretScanningInstanceState(currentOrg?.id ?? "");
   const activeSecretScanningProjectId = secretScanningInstance?.activeProjectId ?? null;
@@ -262,7 +246,7 @@ export const ProjectCategoryOverview = () => {
         return [
           { label: "access bundles", value: productStats.agentVault.accessBundlesCount },
           { label: "services", value: productStats.agentVault.servicesCount },
-          { label: "proxies", value: productStats.agentVault.proxiesCount }
+          { label: "projects", value: productStats.agentVault.projectsCount }
         ];
       default:
         return [];
@@ -441,9 +425,6 @@ export const ProjectCategoryOverview = () => {
     if (type === ProjectType.PAM && isPamMember) {
       return { to: "/organizations/$orgId/pam/accounts", params: { orgId } } as const;
     }
-    if (type === ProjectType.AgentVault && isAgentVaultMember) {
-      return { to: "/organizations/$orgId/agent-vault", params: { orgId } } as const;
-    }
     return null;
   };
 
@@ -466,11 +447,6 @@ export const ProjectCategoryOverview = () => {
 
     if (type === ProjectType.PAM) {
       await enterPamProject();
-      return;
-    }
-
-    if (type === ProjectType.AgentVault) {
-      await enterAgentVault();
       return;
     }
 
@@ -596,7 +572,6 @@ export const ProjectCategoryOverview = () => {
           const isAccessBlocked =
             (type === ProjectType.CertificateManager && isCertManagerAccessBlocked) ||
             (type === ProjectType.PAM && isPamAccessBlocked) ||
-            (type === ProjectType.AgentVault && isAgentVaultAccessBlocked) ||
             (type === ProjectType.SecretScanning && isSecretScanningAccessBlocked);
 
           if (isAccessBlocked) {
@@ -630,7 +605,6 @@ export const ProjectCategoryOverview = () => {
           if (
             type === ProjectType.CertificateManager ||
             type === ProjectType.PAM ||
-            type === ProjectType.AgentVault ||
             type === ProjectType.SecretScanning
           ) {
             return (
@@ -688,8 +662,6 @@ export const ProjectCategoryOverview = () => {
         project={secretScanningRequestAccessProject}
         subTitle="Requesting access to Secret Scanning. You may include an optional note for admins to review your request."
       />
-
-      {agentVaultAccessRequest}
 
       <CertManagerNotConfiguredModal
         isOpen={isCertManagerSetupOpen}

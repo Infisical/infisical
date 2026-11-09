@@ -47,8 +47,9 @@ type TTerminatePamSessionsWithoutLaunchAccessDTO = {
   projectId: string;
   // The actors whose access just changed, users and machine identities alike.
   actors: TPamSessionActor[];
-  // The admin who made the access change; named as the terminating actor on the gateway signal.
-  actorId: string;
+  // The admin who made the access change; named as the terminating actor on the gateway signal. Absent when
+  // SCIM or an IdP group sync made it.
+  actorId?: string;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
@@ -145,15 +146,66 @@ export const terminatePamSessionsWithoutLaunchAccess = async ({
   });
   if (revoked.length === 0) return noop;
 
-  const actor = await userDAL.findById(actorId, tx);
+  const actor = actorId ? await userDAL.findById(actorId, tx) : undefined;
   return terminatePamSessions({
     sessions: revoked,
-    actorId,
+    actorId: actorId ?? "",
     actorEmail: actor?.email ?? "",
     pamSessionDAL,
     gatewayV2Service,
     tx
   });
+};
+
+type TTerminatePamSessionsLosingGroupAccessDTO = Omit<
+  TTerminatePamSessionsWithoutLaunchAccessDTO,
+  "projectId" | "actors"
+> & {
+  userIds: string[];
+  identityIds?: string[];
+};
+
+// A group can reach PAM projects in sub-orgs it is linked into, so this re-checks every project the actors hold a
+// live session in. Same transaction contract as terminatePamSessionsWithoutLaunchAccess.
+export const terminatePamSessionsLosingGroupAccess = async ({
+  userIds,
+  identityIds = [],
+  pamSessionDAL,
+  tx,
+  ...deps
+}: TTerminatePamSessionsLosingGroupAccessDTO): Promise<() => void> => {
+  const userSessions = userIds.length
+    ? await pamSessionDAL.find({ $in: { userId: userIds, status: LIVE_PAM_SESSION_STATUSES } }, { tx })
+    : [];
+  const identitySessions = identityIds.length
+    ? await pamSessionDAL.find({ $in: { identityId: identityIds, status: LIVE_PAM_SESSION_STATUSES } }, { tx })
+    : [];
+
+  const actorsByProject = new Map<string, Map<string, TPamSessionActor>>();
+  for (const session of [...userSessions, ...identitySessions]) {
+    const sessionActor = resolveSessionActor(session);
+    if (sessionActor) {
+      const projectActors = actorsByProject.get(session.projectId) ?? new Map<string, TPamSessionActor>();
+      projectActors.set(pamActorKey(sessionActor), sessionActor);
+      actorsByProject.set(session.projectId, projectActors);
+    }
+  }
+
+  const sendCancellations: (() => void)[] = [];
+  for (const [projectId, projectActors] of actorsByProject) {
+    sendCancellations.push(
+      // eslint-disable-next-line no-await-in-loop
+      await terminatePamSessionsWithoutLaunchAccess({
+        ...deps,
+        projectId,
+        actors: [...projectActors.values()],
+        pamSessionDAL,
+        tx
+      })
+    );
+  }
+
+  return () => sendCancellations.forEach((send) => send());
 };
 
 type TTerminatePamSessionsForUsersDTO = {

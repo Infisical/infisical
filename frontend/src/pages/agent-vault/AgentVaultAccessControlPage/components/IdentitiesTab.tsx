@@ -70,7 +70,7 @@ import { ProductRoleDialog } from "./ProductRoleDialog";
 type TMachineIdentityMember = TAgentVaultProductMemberOf<AgentVaultMemberType.MachineIdentity>;
 
 export const IdentitiesTab = () => {
-  const { currentProject } = useProject();
+  const { currentProject, projectId } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -80,13 +80,13 @@ export const IdentitiesTab = () => {
     getUserTablePreference("agentVaultAccessControlTable", PreferenceKey.PerPage, 20)
   );
 
-  const { data, isPending } = useListAgentVaultMembers({
+  const { data, isPending } = useListAgentVaultMembers(projectId, {
     actorType: AgentVaultMemberType.MachineIdentity,
     search: debouncedSearch.trim() || undefined,
     limit: perPage,
     offset: (page - 1) * perPage
   });
-  const revokeMembers = useRevokeAgentVaultMembers();
+  const revokeMembers = useRevokeAgentVaultMembers(projectId);
   const deleteIdentity = useDeleteProjectIdentity();
   const updateIdentity = useUpdateProjectIdentity();
 
@@ -144,7 +144,9 @@ export const IdentitiesTab = () => {
           identityId: toRemove.id,
           projectId: currentProject.id
         });
-        queryClient.invalidateQueries({ queryKey: agentVaultKeys.members(currentOrg.id) });
+        queryClient.invalidateQueries({
+          queryKey: agentVaultKeys.members(currentOrg.id, projectId)
+        });
         createNotification({ text: `"${toRemove.name}" deleted`, type: "success" });
       } else {
         await revokeMembers.mutateAsync({ machineIdentityIds: [toRemove.id] });
@@ -230,8 +232,8 @@ export const IdentitiesTab = () => {
                 <TableRow key={identity.id} linked>
                   <TableCell isTruncatable className="min-w-32" title={identity.name}>
                     <RowLink
-                      to="/organizations/$orgId/agent-vault/identities/$identityId"
-                      params={{ orgId: currentOrg.id, identityId: identity.id }}
+                      to="/organizations/$orgId/projects/agent-vault/$projectId/identities/$identityId"
+                      params={{ orgId: currentOrg.id, projectId, identityId: identity.id }}
                     >
                       <HighlightText text={identity.name} highlight={debouncedSearch} />
                     </RowLink>
@@ -306,7 +308,7 @@ export const IdentitiesTab = () => {
         description={
           toRemove && isAgentVaultManaged(toRemove)
             ? "This machine identity is managed by Agent Vault. Deleting it removes the identity along with its access. This cannot be undone."
-            : "It loses Agent Vault access, along with every access bundle granted to it. The machine identity won't be deleted because it isn't managed by Agent Vault."
+            : "It loses access to this project, along with every access bundle granted to it. The machine identity won't be deleted because it isn't managed by Agent Vault."
         }
         confirmKey={toRemove?.name ?? ""}
         confirmLabel={toRemove && isAgentVaultManaged(toRemove) ? "Delete" : "Remove"}

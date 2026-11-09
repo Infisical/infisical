@@ -6,6 +6,14 @@ import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   DiscardChangesAlertDialog,
   DocumentationLinkBadge,
@@ -28,6 +36,7 @@ import {
   StepperStep
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
+import { useProject } from "@app/context";
 import { hostError } from "@app/helpers/agentVaultHostPattern";
 import {
   AgentVaultHttpTemplate,
@@ -65,14 +74,23 @@ import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { McpCredentialFields } from "./McpCredentialFields";
 import { McpDetailsFields } from "./McpDetailsFields";
+import { McpToolsFields, TLoadedMcpTools } from "./McpToolsFields";
 import { ReviewFields } from "./ReviewFields";
-import { buildCreateServiceRequest, buildUpdateServiceRequest } from "./serviceRequest";
+import {
+  buildCreateServiceRequest,
+  buildUpdateServiceRequest,
+  membersClearedNotice,
+  TMembersClearedNotice
+} from "./serviceRequest";
 import {
   buildServiceSchema,
   displayHostPattern,
   HTTP_METHODS,
+  isCredentialMemberProvided,
   isOAuthAuthorizationMissing,
   MCP_SERVICE_STEP_FIELDS,
+  McpToolScope,
+  OAUTH_OWN_APP_REQUIRED_ERROR,
   SERVICE_STEP_FIELDS,
   SERVICE_TYPE_LABELS,
   ServiceStep,
@@ -87,6 +105,7 @@ import {
 } from "./ServiceVariablesContext";
 import { MCP_SERVICE_STEPS, SERVICE_DOCS_URL, SERVICE_STEPS } from "./stepMeta";
 import { ADVANCED_ITEM, TransformationsFields } from "./TransformationsFields";
+import { serverMessage } from "./useOAuthAuthorize";
 
 const BLANK_SERVICE_FORM: TServiceForm = {
   serviceType: AgentVaultServiceType.Http,
@@ -96,6 +115,8 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   hosts: [],
   hostDraft: "",
   pathDraft: "",
+  toolScope: McpToolScope.All,
+  allowedTools: [],
   credentialType: AgentVaultCredentialType.Passthrough,
   headerName: "Authorization",
   headerPrefix: "Bearer",
@@ -291,6 +312,22 @@ const rejectedAuthorizationMessage = (error: unknown) => {
   return isRejected ? message : null;
 };
 
+// Discovery runs on save when each member signs in, so a server it can't use is refused then, naming the server.
+const memberOAuthSetupMessage = (error: unknown) => {
+  if (
+    !axios.isAxiosError<{ details?: { oauthSetup?: unknown } }>(error) ||
+    error.response?.status !== 400 ||
+    error.response.data?.details?.oauthSetup !== true
+  ) {
+    return null;
+  }
+  return serverMessage(error) ?? null;
+};
+
+const isRegistrationRequired = (error: unknown) =>
+  axios.isAxiosError<{ details?: { registrationRequired?: unknown } }>(error) &&
+  error.response?.data?.details?.registrationRequired === true;
+
 export const ServiceSheet = ({
   isOpen,
   onOpenChange,
@@ -300,9 +337,10 @@ export const ServiceSheet = ({
   prefillPath,
   onSaved
 }: Props) => {
+  const { projectId } = useProject();
   const isUpdate = Boolean(service);
-  const createService = useCreateAgentVaultService();
-  const updateService = useUpdateAgentVaultService();
+  const createService = useCreateAgentVaultService(projectId);
+  const updateService = useUpdateAgentVaultService(projectId);
 
   const storedKeys = useMemo(() => storedVariableKeys(service), [service]);
   // One dialog for every field. The request settles once the dialog has closed, not when the variable is
@@ -369,6 +407,7 @@ export const ServiceSheet = ({
   }, [secret, username, customHeaders, substitutions]);
   const [debouncedReferencedKeys] = useDebounce(referencedKeys, 300);
   const { missing: missingKeys } = useAgentVaultVariableKeyStatus(
+    projectId,
     debouncedReferencedKeys ? debouncedReferencedKeys.split(",") : [],
     { enabled: isOpen }
   );
@@ -400,6 +439,8 @@ export const ServiceSheet = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const [openItem, setOpenItem] = useState(ADVANCED_ITEM);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  // Held here rather than in the Tools step, so going to Review and back doesn't drop the list.
+  const [loadedTools, setLoadedTools] = useState<TLoadedMcpTools | null>(null);
   // The stand-in for formState.submitCount, which only counts handleSubmit and so never moves for a
   // wizard that gates its steps with trigger. Without it a second Continue reveals nothing, because
   // the errors it finds are the ones already there.
@@ -443,20 +484,28 @@ export const ServiceSheet = ({
 
     setStep(0);
     setTemplate(null);
+    setLoadedTools(null);
     setOpenItem(service?.type === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
 
     if (service?.type === AgentVaultServiceType.Mcp) {
       const { credential } = service;
       const isBearer = credential.type === AgentVaultCredentialType.Bearer;
+      const memberProvidedFields = storedMemberFields(service);
       reset({
         ...BLANK_MCP_SERVICE_FORM,
         name: service.name,
         serverUrl: service.serverUrl,
         transport: service.transport,
+        toolScope: service.allowedTools ? McpToolScope.Selected : McpToolScope.All,
+        allowedTools: service.allowedTools ?? [],
         credentialType: isBearer ? AgentVaultCredentialType.Bearer : AgentVaultCredentialType.OAuth,
         headerName: isBearer ? credential.headerName : "Authorization",
         headerPrefix: isBearer ? credential.headerPrefix : "Bearer",
-        secret: isBearer ? UNCHANGED_SECRET : "",
+        secret: isBearer && !memberProvidedFields.length ? UNCHANGED_SECRET : "",
+        memberProvidedFields,
+        // The admin-entered client every member signs in with, shown so it can be kept or changed.
+        oauthClientId:
+          credential.type === AgentVaultCredentialType.OAuth ? (credential.clientId ?? "") : "",
         customHeaders: service.customHeaders.map((header) => ({
           id: header.id,
           name: header.name,
@@ -563,12 +612,20 @@ export const ServiceSheet = ({
       setStep(0);
     });
 
+  // A save that deletes members' values (or the admin's own sign-in) is confirmed first, then submitted again.
+  const [membersNotice, setMembersNotice] = useState<TMembersClearedNotice | null>(null);
+  const isMembersNoticeConfirmed = useRef(false);
+
   const onSubmit = async (data: TServiceForm) => {
+    const notice = membersClearedNotice(data, service);
+    if (notice && !isMembersNoticeConfirmed.current) {
+      setMembersNotice(notice);
+      return;
+    }
+    isMembersNoticeConfirmed.current = false;
     try {
       if (service) {
-        await updateService.mutateAsync(
-          buildUpdateServiceRequest(accessBundleId, service.id, data)
-        );
+        await updateService.mutateAsync(buildUpdateServiceRequest(accessBundleId, service, data));
       } else {
         await createService.mutateAsync(buildCreateServiceRequest(accessBundleId, data));
       }
@@ -594,6 +651,23 @@ export const ServiceSheet = ({
           message: serverResponse.message
         });
         setStep(stepKeys.indexOf(ServiceStep.Details));
+        return;
+      }
+
+      const isMemberOAuthSave =
+        isMcp &&
+        data.credentialType === AgentVaultCredentialType.OAuth &&
+        isCredentialMemberProvided(data);
+      const isOwnAppRequired = isMemberOAuthSave && isRegistrationRequired(error);
+      let memberOAuthSetupError: string | null = null;
+      if (isOwnAppRequired) memberOAuthSetupError = serverMessage(error);
+      else if (isMemberOAuthSave) memberOAuthSetupError = memberOAuthSetupMessage(error);
+      if (memberOAuthSetupError) {
+        setError("oauthAuthorizationId", {
+          type: isOwnAppRequired ? OAUTH_OWN_APP_REQUIRED_ERROR : "server",
+          message: memberOAuthSetupError
+        });
+        setStep(stepKeys.indexOf(ServiceStep.Credential));
         return;
       }
 
@@ -628,6 +702,7 @@ export const ServiceSheet = ({
           transport: ServiceStep.Details,
           allowedMethods: ServiceStep.Details,
           allowedPathPrefixes: ServiceStep.Details,
+          allowedTools: ServiceStep.Tools,
           credential: ServiceStep.Credential,
           customHeaders: ServiceStep.Credential,
           substitutions: ServiceStep.Credential
@@ -710,12 +785,23 @@ export const ServiceSheet = ({
   };
 
   const current = steps[step];
-  const [credentialType, serverUrl, oauthAuthorizationId, oauthAuthorizedUrl] = watch([
+  const [
+    credentialType,
+    serverUrl,
+    oauthAuthorizationId,
+    oauthAuthorizedUrl,
+    oauthAuthorizationRejection,
+    memberProvidedFields
+  ] = watch([
     "credentialType",
     "serverUrl",
     "oauthAuthorizationId",
-    "oauthAuthorizedUrl"
+    "oauthAuthorizedUrl",
+    "oauthAuthorizationRejection",
+    "memberProvidedFields"
   ]);
+  const isMcpCredentialMemberProvided =
+    isMcp && isCredentialMemberProvided({ memberProvidedFields });
 
   useEffect(() => {
     if (!oauthAuthorizationId) return undefined;
@@ -733,18 +819,25 @@ export const ServiceSheet = ({
     return () => window.clearTimeout(timeout);
   }, [oauthAuthorizationId, getValues, setValue, setError]);
 
-  const isAwaitingAuthorization =
-    current.step === ServiceStep.Credential &&
-    isOAuthAuthorizationMissing(
-      {
-        serviceType: isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http,
-        credentialType,
-        serverUrl,
-        oauthAuthorizationId,
-        oauthAuthorizedUrl
-      },
-      service
-    );
+  const isAuthorizationMissing = isOAuthAuthorizationMissing(
+    {
+      serviceType: isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http,
+      credentialType,
+      serverUrl,
+      oauthAuthorizationId,
+      oauthAuthorizedUrl,
+      memberProvidedFields
+    },
+    service
+  );
+  const isAwaitingAuthorization = current.step === ServiceStep.Credential && isAuthorizationMissing;
+  // Set once a sign-in expired or was refused, even when a saved login could stand in for it; only authorizing
+  // again or keeping the current login on the Credential step clears it.
+  const isAuthorizationRejected =
+    isMcp &&
+    credentialType === AgentVaultCredentialType.OAuth &&
+    !isMcpCredentialMemberProvided &&
+    Boolean(oauthAuthorizationRejection);
   const isTemplateStep = current.step === ServiceStep.Template;
   const saveLabel = isUpdate ? "Save" : "Add Service";
 
@@ -809,6 +902,11 @@ export const ServiceSheet = ({
                           index={index}
                           title={meta.name}
                           description={stepDescription(meta)}
+                          status={
+                            meta.step === ServiceStep.Credential && isAuthorizationRejected
+                              ? "error"
+                              : undefined
+                          }
                         />
                       ))}
                     </StepperList>
@@ -856,6 +954,19 @@ export const ServiceSheet = ({
                         <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
                       </div>
                     </ServiceVariablesContext.Provider>
+                  )}
+                  {current.step === ServiceStep.Tools && (
+                    <McpToolsFields
+                      accessBundleId={accessBundleId}
+                      service={service}
+                      loaded={loadedTools}
+                      onLoaded={setLoadedTools}
+                      isAuthorizationExpired={isAuthorizationRejected}
+                      isCredentialMemberProvided={isMcpCredentialMemberProvided}
+                      onGoToDetails={() => setStep(stepKeys.indexOf(ServiceStep.Details))}
+                      onGoToCredential={() => setStep(stepKeys.indexOf(ServiceStep.Credential))}
+                      onSignInChange={setIsSigningIn}
+                    />
                   )}
                   {current.step === ServiceStep.Review && (
                     <ReviewFields
@@ -936,6 +1047,35 @@ export const ServiceSheet = ({
             request.resolve(request.created);
           }}
         />
+
+        <AlertDialog
+          open={Boolean(membersNotice)}
+          onOpenChange={(open) => {
+            if (!open) setMembersNotice(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{membersNotice?.title}</AlertDialogTitle>
+              <AlertDialogDescription>{membersNotice?.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel variant="outline">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="danger"
+                onClick={() => {
+                  isMembersNoticeConfirmed.current = true;
+                  handleSubmit(onSubmit, (formErrors) => {
+                    isMembersNoticeConfirmed.current = false;
+                    onFormInvalid(formErrors);
+                  })();
+                }}
+              >
+                Remove and Save
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <DiscardChangesAlertDialog
           open={isDiscardDialogOpen}

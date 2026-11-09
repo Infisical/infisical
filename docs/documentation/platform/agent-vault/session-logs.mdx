@@ -14,14 +14,14 @@ The proxy encrypts the records before they leave your network, and Infisical sto
 
 ## Viewing session logs
 
-You can view a session's logs if you created the session or you're an Agent Vault admin, for up to 30 days after they're recorded if Infisical stores them (see [Retention](#retention)).
+You can view a session's logs if you created the session or you're an admin of its Agent Vault project, for up to 30 days after they're recorded if Infisical stores them (see [Retention](#retention)).
 
 <Tabs>
 <Tab title="In Infisical">
   Go to **Sessions** and select **View Session Logs** on the session's row. You can filter the requests by outcome and search them by host, path, method, tool, or service. While the session is active, new requests appear as the proxy uploads them.
 
   <Frame>
-    <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for an active session, listing each request's time, method, host, path, upstream status, and outcome" />
+    <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for the Review PR #1486 session, listing each request's time, method, host, path, upstream status, and outcome: brokered requests to GitHub, Anthropic, and Slack, a DELETE blocked by the service's method rules, and requests to registry.npmjs.org and pastebin.com blocked by the proxy's traffic policy" />
   </Frame>
 </Tab>
 <Tab title="Through the API" id="reading-session-logs-through-the-api">
@@ -74,7 +74,7 @@ You can view a session's logs if you created the session or you're an Agent Vaul
 
       - `serviceType`: `http` or `mcp`, or `null` if no service matched the request
       - `mcp`: left out for other requests to an MCP service, such as the `GET` that opens an event stream
-      - `mcp.parsed`: `false` if the proxy couldn't read the calls from the request body, such as a compressed body
+      - `mcp.parsed`: `false` if the proxy couldn't read the calls from the request body, such as a compressed body, or if a method or tool name holds characters other than letters, digits, and `_ . : / -` or is longer than 128 characters
       - `mcp.truncated`: `true` if the request held more than 8 calls and the rest weren't recorded (left out otherwise)
     </Step>
   </Steps>
@@ -169,7 +169,7 @@ You'll switch between Infisical and AWS during setup: Infisical generates the AW
 
 ### Prerequisites
 
-- The [Admin role](/documentation/platform/agent-vault/access-control) in Agent Vault
+- The [Admin role](/documentation/platform/agent-vault/access-control#product-membership) in your Agent Vault project
 - An [Amazon S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) to store the records in
 - Permission in AWS to edit the bucket's CORS configuration, create IAM roles, and attach policies to them
 
@@ -177,7 +177,11 @@ You'll switch between Infisical and AWS during setup: Infisical generates the AW
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Administration** > **Settings** and select **Configure** or **Set Up Session Logs** on the **Session Logs** card.
+    In your Agent Vault project, go to **Administration** > **Settings** > **Session Logs** and select **Configure** or **Set Up Session Logs**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/settings-session-logs.png" alt="The Session Logs settings page of the project, showing session logs enabled in default storage, and its Configure button" />
+    </Frame>
   </Step>
   <Step>
     Turn on **Enable**, then under **Storage**, select **External storage**.
@@ -187,9 +191,17 @@ You'll switch between Infisical and AWS during setup: Infisical generates the AW
   </Step>
   <Step>
     Optionally, enter a **Key Prefix** to store session logs under one path in a bucket you also use for other data.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-logs-start.png" alt="The Session Logs dialog with Enable turned on, External storage selected, no AWS connection yet, and a region, bucket, and key prefix filled in" />
+    </Frame>
   </Step>
   <Step>
     Select **View AWS Setup**. Infisical shows an **IAM policy** with your bucket and key prefix already filled in, so you can paste it into AWS as it is.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/session-logs-aws-setup.png" alt="The AWS Setup dialog on the IAM Policy tab, showing a policy that allows s3:PutObject and s3:GetObject under the agent-vault prefix and s3:ListBucket on the bucket" />
+    </Frame>
   </Step>
 </Steps>
 
@@ -216,7 +228,7 @@ Infisical assumes this role to write session logs to the bucket.
 <SelfHostedInstance />
 
 <Steps>
-  <CreateIamRole externalId="organization" />
+  <CreateIamRole externalId="agent-vault-project" />
 </Steps>
 
 #### Attach the IAM policy
@@ -250,7 +262,7 @@ Go back to the **Session Logs** dialog.
     </Note>
   </Step>
   <Step>
-     Enter a **Name**, keep the **Assume Role (Recommended)** method, paste the role's ARN into **Role ARN**, and select **Connect to AWS**. Infisical creates the connection in Agent Vault and selects it.
+     Enter a **Name**, keep the **Assume Role (Recommended)** method, paste the role's ARN into **Role ARN**, and select **Connect to AWS**. Infisical creates the connection in your Agent Vault project and selects it.
   </Step>
   <Step>
     Select **Save**.
@@ -258,7 +270,7 @@ Go back to the **Session Logs** dialog.
 </Steps>
 
 <Frame>
-  <img src="/images/platform/agent-vault/session-logs-setup.png" alt="The Session Logs dialog with Enable turned on and an AWS connection, region, bucket, and key prefix filled in" />
+  <img src="/images/platform/agent-vault/session-logs-setup.png" alt="The Session Logs dialog with Enable turned on, External storage selected, and the acme-session-logs AWS connection, us-east-1 region, acme-agent-vault bucket, and agent-vault key prefix filled in" />
 </Frame>
 
 When you save, Infisical checks that the bucket exists and that the IAM user or role can write to it. If either check fails, Infisical shows the error and doesn't save the settings. If your browser can't read from the bucket, the **Session Logs** card shows a warning after you save.
@@ -268,6 +280,12 @@ When you save, Infisical checks that the bucket exists and that the IAM user or 
 </Check>
 
 ## Managing session logs
+
+The **Session Logs** card on the **Settings** page shows the current settings:
+
+<Frame>
+  <img src="/images/platform/agent-vault/settings-session-logs-enabled.png" alt="The Session Logs settings page showing session logs enabled in external storage, with the acme-session-logs connection, us-east-1 region, acme-agent-vault bucket, and agent-vault key prefix" />
+</Frame>
 
 ### Turning session logs off
 
@@ -284,10 +302,10 @@ If you use external storage, session logs use one AWS connection at a time, whic
 
 To update the connection's AWS credentials, open the menu next to **Configure** on the **Session Logs** card and select **Edit AWS Credentials**. If the connection belongs to your organization, update its credentials under **Integrations** in your organization instead.
 
-To add or delete Agent Vault's AWS connections, select **Manage Connections** from the same menu:
+To add or delete the project's AWS connections, select **Manage Connections** from the same menu:
 
 <Frame>
-  <img src="/images/platform/agent-vault/session-logs-connections.png" alt="The Manage Connections sheet listing Agent Vault's AWS connections, with the one session logs use marked In Use" />
+  <img src="/images/platform/agent-vault/session-logs-connections.png" alt="The Manage Connections sheet listing the project's two Assume Role AWS connections, with acme-session-logs marked In Use" />
 </Frame>
 
 You can't delete a connection while session logs use it. To delete the connection, first turn session logs off, select a different connection, or switch to default storage in the **Session Logs** dialog.
@@ -309,6 +327,8 @@ If you use external storage, don't modify or add files in the folder that sessio
 
 ## Troubleshooting
 
-If the AWS connection returns an error, a red alert icon appears next to **Settings** in the Agent Vault sidebar, and the **Settings** page shows the error.
+If the AWS connection returns an error, a red alert icon appears next to **Settings** in the project's sidebar, and **Settings** > **Session Logs** shows the error.
+
+If you set up external storage before your organization had Agent Vault projects, the IAM role's trust policy may require your Organization ID as the External ID. Infisical now sends the ID of the Agent Vault project instead, so it can't assume the role. In AWS, change the `sts:ExternalId` value in the role's trust policy to the project's ID (see [Find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)).
 
 If you use default storage and session logs can't be read, contact Infisical support, or your server administrator if you self-host.

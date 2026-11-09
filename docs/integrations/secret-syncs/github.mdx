@@ -4,6 +4,8 @@ sidebarTitle: "GitHub"
 description: "Learn how to configure a GitHub Sync for Infisical."
 ---
 
+import GitHubPermissions from "/snippets/app-connections/github/permissions.mdx";
+
 **Prerequisites:**
 
         - Set up and add secrets to [Infisical Cloud](https://app.infisical.com)
@@ -12,23 +14,32 @@ description: "Learn how to configure a GitHub Sync for Infisical."
 
 ## Secret types
 
-A GitHub sync writes to one type of GitHub secret. Each type is read by a different part of GitHub, supports different scopes, and needs its own permission on the [GitHub Connection](/integrations/app-connections/github):
+A GitHub sync writes to one type of GitHub secret: Actions, Dependabot, or Codespaces. Each type needs its own permissions on the [GitHub Connection](/integrations/app-connections/github), and how you grant them depends on the connection's method:
 
-| Secret type | Read by | Scopes | Repository permission | Organization permission |
-| --- | --- | --- | --- | --- |
-| Actions | GitHub Actions workflows | Organization, Repository, Repository Environment | **Secrets** (and **Environments** for the Repository Environment scope) | **Secrets** |
-| Dependabot | Dependabot, for example to reach a private package registry | Organization, Repository | **Dependabot secrets** | **Organization dependabot secrets** |
-| Codespaces | GitHub Codespaces | Organization, Repository | **Codespaces secrets** | **Organization codespaces secrets** |
+<Tabs>
+    <Tab title="GitHub App (Recommended)">
+        <GitHubPermissions method="github-app" />
 
-How you grant those permissions depends on the connection:
+        <Note>
+            If you add a permission to an existing GitHub App, an owner of each installation has to approve the new permission on GitHub before Infisical can use it.
+        </Note>
+    </Tab>
+    <Tab title="OAuth">
+        When you create an OAuth connection, Infisical requests two scopes from GitHub. Together they cover every secret type, so you don't need to set any permissions yourself:
 
-- If your connection uses a GitHub App or a fine-grained personal access token, give each permission read and write access
-- If your connection uses OAuth or a classic personal access token, the `repo` and `admin:org` scopes already cover every secret type
-- If your connection is to GitHub Enterprise Server, you can't sync Codespaces secrets, because GitHub Enterprise Server doesn't include Codespaces
+        - `repo`: secrets in repositories and repository environments
+        - `admin:org`: secrets in organizations
 
-<Note>
-    If you add a permission to an existing GitHub App, an owner of each installation has to approve the new permission on GitHub before Infisical can use it.
-</Note>
+        GitHub Enterprise Server doesn't include Codespaces, so you can't sync Codespaces secrets through it.
+    </Tab>
+    <Tab title="Personal Access Token">
+        If you use a classic token, select the `repo` and `admin:org` scopes, which cover every secret type.
+
+        If you use a fine-grained token:
+
+        <GitHubPermissions method="personal-access-token" />
+    </Tab>
+</Tabs>
 
 ## Create a GitHub sync
 

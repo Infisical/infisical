@@ -10,11 +10,11 @@ import {
   type TConnectionController,
   type TTabScopedMessage
 } from "../pam-data-explorer-ws-types";
+import { DATA_EXPLORER_MAX_RESULT_BYTES } from "../pam-web-access-fns";
 import {
   clickhouseErrorFields,
   ClickhouseResultTooLargeError,
   isRelayGoneError,
-  MAX_RESULT_BYTES,
   openRelayClient,
   readStreamText,
   withOneShotClient
@@ -113,8 +113,8 @@ export const createClickhouseConnectionController = async (
       }
     });
 
-    const { text, truncated } = await readStreamText(stream, MAX_RESULT_BYTES);
-    if (truncated) throw new ClickhouseResultTooLargeError(MAX_RESULT_BYTES);
+    const { text, truncated } = await readStreamText(stream, DATA_EXPLORER_MAX_RESULT_BYTES);
+    if (truncated) throw new ClickhouseResultTooLargeError(DATA_EXPLORER_MAX_RESULT_BYTES);
 
     return parseStatementBody(text, summary);
   };

@@ -37,7 +37,8 @@ import {
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
-  useProjectPermission
+  useProjectPermission,
+  useProject
 } from "@app/context";
 import {
   AgentVaultSessionScope,
@@ -54,6 +55,7 @@ import { ServicesCard } from "./components/ServicesCard";
 import { SkillsCard } from "./components/SkillsCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
+  const { projectId } = useProject();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { hasProjectRole, permission } = useProjectPermission();
@@ -72,13 +74,14 @@ export const AgentVaultAccessBundleDetailPage = () => {
     select: (params) => params.accessBundleId as string
   });
 
-  const { data: accessBundle, isPending } = useGetAgentVaultAccessBundle(accessBundleId);
+  const { data: accessBundle, isPending } = useGetAgentVaultAccessBundle(projectId, accessBundleId);
   const [serviceToSetUp, setServiceToSetUp] = useState<TAgentVaultService | null>(null);
   const needsSetup = (accessBundle?.services ?? []).filter(
     (service) => service.personalValues && !service.personalValues.isConfigured
   );
   // Listing every session is admin-only, and only admins see the note that reads this.
   const { data: sessions } = useListAgentVaultSessions(
+    projectId,
     { scope: AgentVaultSessionScope.All, limit: 1 },
     {
       enabled: isAdmin,
@@ -118,8 +121,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
             </EmptyHeader>
             <Button variant="av" asChild>
               <Link
-                to="/organizations/$orgId/agent-vault/access-bundles"
-                params={{ orgId: currentOrg.id }}
+                to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
+                params={{ orgId: currentOrg.id, projectId }}
               >
                 Back to Access Bundles
               </Link>
@@ -141,8 +144,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
         description={accessBundle.description || "No description"}
         backLink={
           <Link
-            to="/organizations/$orgId/agent-vault/access-bundles"
-            params={{ orgId: currentOrg.id }}
+            to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
+            params={{ orgId: currentOrg.id, projectId }}
           >
             <ChevronLeftIcon aria-hidden className="size-4" />
             Access Bundles
@@ -203,8 +206,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
             <AlertAction>
               <Button variant="outline" size="sm" asChild>
                 <Link
-                  to="/organizations/$orgId/agent-vault/sessions"
-                  params={{ orgId: currentOrg.id }}
+                  to="/organizations/$orgId/projects/agent-vault/$projectId/sessions"
+                  params={{ orgId: currentOrg.id, projectId }}
                 >
                   Go to Sessions
                 </Link>
@@ -270,8 +273,8 @@ export const AgentVaultAccessBundleDetailPage = () => {
         onOpenChange={setIsDeleteOpen}
         onDeleted={() =>
           navigate({
-            to: "/organizations/$orgId/agent-vault/access-bundles",
-            params: { orgId: currentOrg.id }
+            to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles",
+            params: { orgId: currentOrg.id, projectId }
           })
         }
       />

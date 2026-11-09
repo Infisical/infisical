@@ -103,7 +103,7 @@ func TestOIDCLogin_ReturningUser(t *testing.T) {
 
 		// Setup
 		o := setup(t)
-		alice := signedUp(t, o)
+		alice := o.SignedUp(t)
 
 		// Action
 		res := o.Login(t, alice)
@@ -122,7 +122,7 @@ func TestOIDCLogin_ReturningUser(t *testing.T) {
 
 		// Setup
 		o := setup(t)
-		alice := signedUp(t, o)
+		alice := o.SignedUp(t)
 		m := fixture.MembershipOf(t, o.Tenant, alice.Email)
 		deactivated, err := o.Tenant.Admin.API.UpdateOrgMembershipWithResponse(t.Context(), o.Tenant.OrgID.String(), m.ID.String(),
 			api.UpdateOrgMembershipJSONRequestBody{IsActive: new(false)})

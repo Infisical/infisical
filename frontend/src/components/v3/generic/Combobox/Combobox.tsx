@@ -1232,7 +1232,10 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
                 variant === "default" &&
                   "rounded-md border border-border pl-2.5 hover:border-foreground/20 focus:border-ring focus:ring-[3px] focus:ring-ring/50 data-[invalid=true]:border-danger data-[invalid=true]:ring-danger/40",
                 variant === "input-group" && "rounded-none border-0 pl-2 shadow-none",
-                !isEditing && value != null && renderValue && "text-transparent",
+                !isEditing &&
+                  value != null &&
+                  renderValue &&
+                  "text-transparent selection:text-transparent",
                 className
               )}
               {...inputProps}

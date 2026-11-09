@@ -1,7 +1,16 @@
 import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
-import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
+import { fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
+import {
+  agentVaultRequester,
+  createAgentVaultProject,
+  deleteAgentVaultProject,
+  markAgentVaultProjectOriginal
+} from "e2e-test/testUtils/agent-vault";
+import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
+import { createIdentityActor } from "e2e-test/testUtils/identities";
+import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
 import { pollUntil } from "e2e-test/testUtils/poll";
 import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
@@ -16,11 +25,15 @@ import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "@app/ee/services/agent-vault-
 import { agentVaultPersonalValueDALFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import {
-  AGENT_VAULT_MAX_PROXIES_PER_ORG,
+  AGENT_VAULT_MAX_PROXIES_PER_PROJECT,
   agentVaultProxyServiceFactory
 } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
+import {
+  agentVaultSessionInlineServiceDALFactory,
+  DELETE_SECRETS_BATCH_SIZE
+} from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
@@ -33,7 +46,6 @@ import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger, logger } from "@app/lib/logger";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { ActorType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
@@ -59,8 +71,10 @@ initLogger();
 
 const authHeader = { authorization: `Bearer ${jwtAuthToken}` };
 
-const inject = (method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
-  testServer.inject({ method, url, headers: authHeader, ...(body ? { body } : {}) });
+// The spec's own Agent Vault project, created in the top-level beforeAll. Project-level requests name it.
+let agentVaultProjectId: string;
+
+const inject = agentVaultRequester(jwtAuthToken, () => agentVaultProjectId);
 
 const createOrgIdentity = async (name: string) => {
   const [identity] = (await testDb("identities").insert({ name, orgId: seedData1.organization.id }).returning("*")) as {
@@ -90,7 +104,8 @@ const buildPermissionService = () =>
     identityDAL: identityDALFactory(testDb),
     additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
     groupDAL: groupDALFactory(testDb),
-    secretFolderDAL: secretFolderDALFactory(testDb)
+    secretFolderDAL: secretFolderDALFactory(testDb),
+    orgDAL: orgDALFactory(testDb)
   });
 
 const grantRows = (
@@ -133,8 +148,7 @@ const createUaIdentity = async (name: string) => {
   expect(login.statusCode).toBe(200);
   const token = login.json().accessToken as string;
 
-  const asIdentity = (method: "GET" | "POST" | "DELETE", url: string, body?: Record<string, unknown>) =>
-    testServer.inject({ method, url, headers: { authorization: `Bearer ${token}` }, ...(body ? { body } : {}) });
+  const asIdentity = agentVaultRequester(token, () => agentVaultProjectId);
 
   return { id: identity.id, asIdentity };
 };
@@ -199,8 +213,7 @@ const makeCallerAdminOnlyThroughGroup = async (projectId: string) => {
   };
 };
 
-const getProjectId = async () =>
-  (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
+const getProjectId = async () => agentVaultProjectId;
 
 const createMemberIdentity = async (name: string) => {
   const created = await inject("POST", "/api/v1/identities", {
@@ -241,8 +254,7 @@ const createMemberIdentity = async (name: string) => {
 
   return {
     id: identity.id,
-    as: (method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
-      testServer.inject({ method, url, headers: { authorization: `Bearer ${token}` }, ...(body ? { body } : {}) }),
+    as: agentVaultRequester(token, () => agentVaultProjectId),
     cleanup: () => inject("DELETE", `/api/v1/identities/${identity.id}`)
   };
 };
@@ -301,78 +313,740 @@ const projectCipher = async (projectId: string) => {
 };
 
 describe("Agent Vault V1 Router", async () => {
-  // Tests create their own proxies, and an org can hold only AGENT_VAULT_MAX_PROXIES_PER_ORG.
+  beforeAll(async () => {
+    agentVaultProjectId = await createAgentVaultProject({
+      authToken: jwtAuthToken,
+      name: `agent-vault-e2e-${Date.now()}`
+    });
+    await markAgentVaultProjectOriginal({ orgId: seedData1.organization.id, projectId: agentVaultProjectId });
+  });
+
+  afterAll(async () => {
+    await deleteAgentVaultProject({ authToken: jwtAuthToken, projectId: agentVaultProjectId });
+  });
+
+  // Tests create their own proxies, and a project can hold only AGENT_VAULT_MAX_PROXIES_PER_PROJECT.
   beforeEach(async () => {
-    const project = await testDb("projects")
-      .where({ orgId: seedData1.organization.id, type: ProjectType.AgentVault })
-      .first();
-    if (project) await testDb("agent_vault_proxies").where({ projectId: project.id }).del();
+    await testDb("agent_vault_proxies").where({ projectId: agentVaultProjectId }).del();
   });
 
-  test("resolving the project bootstraps it empty, and an org admin joins through grant-admin-access", async () => {
-    const res = await inject("GET", "/api/v1/agent-vault/project");
-    expect(res.statusCode).toBe(200);
+  // Requests here name their project explicitly or leave it out on purpose, so they skip the spec's scoping.
+  const injectRaw = (
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+    url: string,
+    body?: Record<string, unknown>,
+    token = jwtAuthToken
+  ) => testServer.inject({ method, url, headers: { authorization: `Bearer ${token}` }, ...(body ? { body } : {}) });
 
-    const { projectId } = JSON.parse(res.payload) as { projectId: string };
-    expect(projectId).toBeTruthy();
+  describe("projects", async () => {
+    test("the creator becomes the project's admin, and the project gets no environments", async () => {
+      const create = await injectRaw("POST", "/api/v1/projects", {
+        projectName: `av-created-${Date.now()}`,
+        type: ProjectType.AgentVault
+      });
+      expect(create.statusCode, create.payload).toBe(200);
+      const project = create.json().project as { id: string; type: string; environments: unknown[] };
+      try {
+        expect(project.type).toBe(ProjectType.AgentVault);
+        expect(project.environments).toEqual([]);
 
-    const project = await testDb("projects").where({ id: projectId }).first();
-    expect(project.type).toBe(ProjectType.AgentVault);
-    expect(project.orgId).toBe(seedData1.organization.id);
-
-    const seeded = await testDb("memberships").where({ scope: AccessScope.Project, scopeProjectId: projectId });
-    expect(seeded).toHaveLength(0);
-
-    const denied = await inject("GET", `/api/v1/projects/${projectId}/permissions`);
-    expect(denied.statusCode).toBe(403);
-
-    const join = await inject("POST", `/api/v1/organization-admin/projects/${projectId}/grant-admin-access`);
-    expect(join.statusCode).toBe(200);
-
-    const membership = await testDb("memberships")
-      .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
-      .first();
-    expect(membership).toBeTruthy();
-
-    const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
-    expect(role.role).toBe(ProjectMembershipRole.Admin);
-
-    const again = await inject("GET", "/api/v1/agent-vault/project");
-    expect((JSON.parse(again.payload) as { projectId: string }).projectId).toBe(projectId);
-  });
-
-  test("the Agent Vault project cannot be created or deleted through the generic project routes", async () => {
-    const create = await testServer.inject({
-      method: "POST",
-      url: "/api/v1/projects",
-      headers: authHeader,
-      body: { projectName: "second agent vault", type: ProjectType.AgentVault }
+        const members = await injectRaw("GET", `/api/v1/agent-vault/members?projectId=${project.id}`);
+        expect(members.statusCode, members.payload).toBe(200);
+        expect(
+          (members.json().members as { type: string; id: string; role: string }[]).map(({ type, id, role }) => ({
+            type,
+            id,
+            role
+          }))
+        ).toEqual([{ type: "user", id: seedData1.id, role: ProjectMembershipRole.Admin }]);
+      } finally {
+        await deleteAgentVaultProject({ authToken: jwtAuthToken, projectId: project.id });
+      }
     });
-    expect(create.statusCode).toBe(400);
 
-    const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-      projectId: string;
-    };
-    const remove = await testServer.inject({
-      method: "DELETE",
-      url: `/api/v1/projects/${projectId}`,
-      headers: authHeader
+    test("a project template is refused", async () => {
+      const create = await injectRaw("POST", "/api/v1/projects", {
+        projectName: `av-template-${Date.now()}`,
+        type: ProjectType.AgentVault,
+        template: "some-template"
+      });
+      expect(create.statusCode).toBe(400);
+      expect(create.json().message).toBe("Agent Vault projects don't use project templates");
     });
-    expect(remove.statusCode).toBe(400);
+
+    test("an Agent Vault project does not count against the workspace limit", async () => {
+      const billable = (await testDb("projects")
+        .whereNotIn("type", ["cert-manager", "pam", "agent-vault", "ssh", "ai"])
+        .whereNull("deleteAfter")
+        .where({ orgId: seedData1.organization.id })
+        .select("id")) as { id: string }[];
+
+      expect(billable.map((row) => row.id)).not.toContain(agentVaultProjectId);
+    });
+
+    test("a project can be renamed, and once deleted nothing in it can be reached", async () => {
+      const projectId = await createAgentVaultProject({ authToken: jwtAuthToken, name: `av-rename-${Date.now()}` });
+      let deleted = false;
+      try {
+        const renamed = await injectRaw("PATCH", `/api/v1/projects/${projectId}`, { name: "Apollo" });
+        expect(renamed.statusCode, renamed.payload).toBe(200);
+        expect(renamed.json().project.name).toBe("Apollo");
+
+        const bundle = await injectRaw("POST", "/api/v1/agent-vault/access-bundles", { projectId, name: "doomed" });
+        expect(bundle.statusCode, bundle.payload).toBe(200);
+        const bundleId = bundle.json().accessBundle.id as string;
+
+        await deleteAgentVaultProject({ authToken: jwtAuthToken, projectId });
+        deleted = true;
+
+        const byId = await injectRaw("GET", `/api/v1/agent-vault/access-bundles/${bundleId}`);
+        expect(byId.statusCode).toBe(404);
+        expect(byId.json().message).toBe(`Access bundle with ID '${bundleId}' not found`);
+
+        const explicit = await injectRaw("GET", `/api/v1/agent-vault/access-bundles?projectId=${projectId}`);
+        expect(explicit.statusCode).toBe(404);
+        expect(explicit.json().message).toBe(
+          `Agent Vault project with ID '${projectId}' not found in this organization`
+        );
+      } finally {
+        if (!deleted) await deleteAgentVaultProject({ authToken: jwtAuthToken, projectId });
+      }
+    });
+
+    const NO_PROJECT_ID_MESSAGE =
+      "This request has no projectId. Pass the ID of the Agent Vault project to use as projectId, or update your Infisical CLI so it sends one.";
+
+    test("with no Agent Vault project, a request without projectId is refused with a 400", async () => {
+      const org = await createIsolatedOrgAndProject("av-none");
+      try {
+        const res = await injectRaw("GET", "/api/v1/agent-vault/access-bundles", undefined, org.authToken);
+        expect(res.statusCode).toBe(400);
+        expect(res.json().message).toBe(NO_PROJECT_ID_MESSAGE);
+      } finally {
+        await org.cleanup();
+      }
+    });
+
+    test("an org whose only Agent Vault project was created after the migration has no fallback", async () => {
+      const org = await createIsolatedOrgAndProject("av-unmarked");
+      try {
+        const projectId = await createAgentVaultProject({ authToken: org.authToken, name: "unmarked" });
+        const marked = await testDb("projects").where({ id: projectId }).first("isAgentVaultOriginal");
+        expect(marked.isAgentVaultOriginal).toBe(false);
+
+        const res = await injectRaw("GET", "/api/v1/agent-vault/access-bundles", undefined, org.authToken);
+        expect(res.statusCode).toBe(400);
+        expect(res.json().message).toBe(NO_PROJECT_ID_MESSAGE);
+      } finally {
+        await org.cleanup();
+      }
+    });
+
+    test("a project in another organization is 404 by projectId, and its rows are 404 by id", async () => {
+      const other = await createIsolatedOrgAndProject("av-cross-org");
+      try {
+        const foreignProjectId = await createAgentVaultProject({ authToken: other.authToken, name: "foreign" });
+        const foreignBundle = await injectRaw(
+          "POST",
+          "/api/v1/agent-vault/access-bundles",
+          { projectId: foreignProjectId, name: "foreign-bundle" },
+          other.authToken
+        );
+        expect(foreignBundle.statusCode, foreignBundle.payload).toBe(200);
+        const foreignBundleId = foreignBundle.json().accessBundle.id as string;
+
+        const explicit = await injectRaw("GET", `/api/v1/agent-vault/access-bundles?projectId=${foreignProjectId}`);
+        const missingId = crypto.randomUUID();
+        const missing = await injectRaw("GET", `/api/v1/agent-vault/access-bundles?projectId=${missingId}`);
+        expect([explicit.statusCode, missing.statusCode]).toEqual([404, 404]);
+        expect(explicit.json().message.replace(foreignProjectId, "<id>")).toBe(
+          missing.json().message.replace(missingId, "<id>")
+        );
+
+        const write = await injectRaw("POST", "/api/v1/agent-vault/access-bundles", {
+          projectId: foreignProjectId,
+          name: "smuggled"
+        });
+        expect(write.statusCode).toBe(404);
+
+        const byId = await injectRaw("GET", `/api/v1/agent-vault/access-bundles/${foreignBundleId}`);
+        expect(byId.statusCode).toBe(404);
+      } finally {
+        await other.cleanup();
+      }
+    });
+
+    test("a Secrets Management project id is not an Agent Vault project", async () => {
+      const res = await injectRaw("GET", `/api/v1/agent-vault/access-bundles?projectId=${seedData1.project.id}`);
+      expect(res.statusCode).toBe(404);
+    });
+
+    test("a projectId sent where the route doesn't read it is refused, not ignored", async () => {
+      const machineIdentityId = crypto.randomUUID();
+      const delegationUrl = `/api/v1/agent-vault/delegations/${machineIdentityId}`;
+
+      const put = await injectRaw("PUT", delegationUrl, { projectId: agentVaultProjectId, scope: "all-members" });
+      expect(put.statusCode).toBe(400);
+      expect(put.json().message).toBe("This route reads projectId from the query string");
+
+      const del = await injectRaw("DELETE", delegationUrl, { projectId: agentVaultProjectId });
+      expect(del.statusCode).toBe(400);
+      expect(del.json().message).toBe("This route reads projectId from the query string");
+
+      const identity = await createOrgIdentity(`av-misplaced-project-${Date.now()}`);
+      const memberRows = () =>
+        testDb("memberships").where({
+          scope: AccessScope.Project,
+          scopeProjectId: agentVaultProjectId,
+          actorIdentityId: identity.id
+        });
+      try {
+        const inQuery = await injectRaw("POST", `/api/v1/agent-vault/members?projectId=${agentVaultProjectId}`, {
+          machineIdentityIds: [identity.id],
+          role: ProjectMembershipRole.Member
+        });
+        expect(inQuery.statusCode).toBe(400);
+        expect(inQuery.json().message).toBe("This route reads projectId from the request body");
+        expect(await memberRows()).toHaveLength(0);
+
+        const inBody = await injectRaw("POST", "/api/v1/agent-vault/members", {
+          projectId: agentVaultProjectId,
+          machineIdentityIds: [identity.id],
+          role: ProjectMembershipRole.Member
+        });
+        expect(inBody.statusCode, inBody.payload).toBe(200);
+        expect(await memberRows()).toHaveLength(1);
+      } finally {
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("a request without projectId reaches only the original project, and none once it is deleted", async () => {
+      const org = await createIsolatedOrgAndProject("av-fallback-original");
+      try {
+        const original = await createAgentVaultProject({ authToken: org.authToken, name: "original" });
+        const later = await createAgentVaultProject({ authToken: org.authToken, name: "later" });
+        // The migration marks only projects that existed when it ran, so the mark is set outright here. The other
+        // project is made the older one, so the oldest-project rule this replaced would have picked it instead.
+        await markAgentVaultProjectOriginal({ orgId: org.orgId, projectId: original });
+        await testDb("projects")
+          .where({ id: later })
+          .update({ createdAt: new Date(Date.now() - 60 * 60 * 1000) });
+
+        const createBundle = async (projectId: string, name: string) => {
+          const res = await injectRaw(
+            "POST",
+            "/api/v1/agent-vault/access-bundles",
+            { projectId, name },
+            org.authToken
+          );
+          expect(res.statusCode, res.payload).toBe(200);
+        };
+        await createBundle(original, "in-original");
+        await createBundle(later, "in-later");
+
+        const fallbackList = () =>
+          injectRaw("GET", "/api/v1/agent-vault/access-bundles?limit=100", undefined, org.authToken);
+        const before = await fallbackList();
+        expect(before.statusCode, before.payload).toBe(200);
+        const names = (before.json().accessBundles as { name: string }[]).map((bundle) => bundle.name);
+        expect(names).toContain("in-original");
+        expect(names).not.toContain("in-later");
+
+        await deleteAgentVaultProject({ authToken: org.authToken, projectId: original });
+
+        const after = await fallbackList();
+        expect(after.statusCode).toBe(400);
+        expect(after.json().message).toBe(NO_PROJECT_ID_MESSAGE);
+      } finally {
+        await org.cleanup();
+      }
+    });
+
+    test("a request without projectId skips an original project that is pending deletion", async () => {
+      const org = await createIsolatedOrgAndProject("av-fallback-pending");
+      try {
+        const original = await createAgentVaultProject({ authToken: org.authToken, name: "original" });
+        const other = await createAgentVaultProject({ authToken: org.authToken, name: "other" });
+        await markAgentVaultProjectOriginal({ orgId: org.orgId, projectId: original });
+        const reached = await injectRaw("GET", "/api/v1/agent-vault/access-bundles", undefined, org.authToken);
+        expect(reached.statusCode, reached.payload).toBe(200);
+
+        await testDb("projects")
+          .where({ id: original })
+          .update({ deleteAfter: new Date(Date.now() + 24 * 60 * 60 * 1000) });
+
+        const res = await injectRaw("GET", "/api/v1/agent-vault/access-bundles", undefined, org.authToken);
+        expect(res.statusCode).toBe(400);
+        expect(res.json().message).toBe(NO_PROJECT_ID_MESSAGE);
+
+        const explicit = await injectRaw(
+          "GET",
+          `/api/v1/agent-vault/access-bundles?projectId=${other}`,
+          undefined,
+          org.authToken
+        );
+        expect(explicit.statusCode, explicit.payload).toBe(200);
+      } finally {
+        await org.cleanup();
+      }
+    });
+
+    test("hard-deleting a project row deletes every Agent Vault row in it", async () => {
+      const org = await createIsolatedOrgAndProject("av-cascade");
+      try {
+        const projectId = await createAgentVaultProject({ authToken: org.authToken, name: "cascade" });
+        const asOrg = agentVaultRequester(org.authToken, () => projectId);
+
+        const bundle = await asOrg("POST", "/api/v1/agent-vault/access-bundles", { name: "cascade-bundle" });
+        expect(bundle.statusCode, bundle.payload).toBe(200);
+        const variable = await asOrg("POST", "/api/v1/agent-vault/variables", {
+          scope: "global",
+          key: "CASCADE_KEY",
+          value: "cascade-value"
+        });
+        expect(variable.statusCode, variable.payload).toBe(200);
+        const proxy = await asOrg("POST", "/api/v1/agent-vault/proxies", { name: "cascade-proxy" });
+        expect(proxy.statusCode, proxy.payload).toBe(200);
+        const mint = await asOrg("POST", "/api/v1/agent-vault/sessions", {
+          ttl: "1h",
+          services: [
+            { type: "http", name: "openai", hostPattern: "api.openai.com", credential: { type: "bearer", value: "sk" } }
+          ]
+        });
+        expect(mint.statusCode, mint.payload).toBe(200);
+        const sessionId = mint.json().session.id as string;
+
+        // Every Agent Vault table keyed by project, so a table added later is covered without editing this test.
+        const projectTables = (
+          (await testDb("information_schema.columns")
+            .whereRaw("table_schema = current_schema()")
+            .where({ column_name: "projectId" })
+            .where("table_name", "like", "agent\\_vault\\_%")
+            .select("table_name")) as { table_name: string }[]
+        ).map((row) => row.table_name);
+        const countIn = async (table: string, where: Record<string, string>) => {
+          const [{ count }] = await testDb(table).where(where).count("* as count");
+          return Number(count);
+        };
+
+        for await (const table of [
+          "agent_vault_access_bundles",
+          "agent_vault_variables",
+          "agent_vault_proxies",
+          "agent_vault_sessions"
+        ]) {
+          expect(projectTables).toContain(table);
+          expect(await countIn(table, { projectId }), table).toBeGreaterThan(0);
+        }
+        expect(await countIn("agent_vault_session_inline_services", { sessionId })).toBe(1);
+
+        await testDb("projects").where({ id: projectId }).del();
+
+        for await (const table of projectTables) {
+          expect(await countIn(table, { projectId }), table).toBe(0);
+        }
+        expect(await countIn("agent_vault_session_inline_services", { sessionId })).toBe(0);
+      } finally {
+        await org.cleanup();
+      }
+    });
   });
 
-  test("an Agent Vault project does not count against the workspace limit", async () => {
-    const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-      projectId: string;
+  describe("a second project in the organization", async () => {
+    let secondProjectId: string;
+
+    beforeAll(async () => {
+      secondProjectId = await createAgentVaultProject({ authToken: jwtAuthToken, name: `av-second-${Date.now()}` });
+    });
+
+    afterAll(async () => {
+      await deleteAgentVaultProject({ authToken: jwtAuthToken, projectId: secondProjectId });
+    });
+
+    const inSecond = agentVaultRequester(jwtAuthToken, () => secondProjectId);
+
+    const bundleNames = async (projectId: string) => {
+      const res = await injectRaw("GET", `/api/v1/agent-vault/access-bundles?projectId=${projectId}&limit=100`);
+      expect(res.statusCode, res.payload).toBe(200);
+      return (res.json().accessBundles as { name: string }[]).map((bundle) => bundle.name);
     };
 
-    const billable = (await testDb("projects")
-      .whereNotIn("type", ["cert-manager", "pam", "agent-vault", "ssh", "ai"])
-      .whereNull("deleteAfter")
-      .where({ orgId: seedData1.organization.id })
-      .select("id")) as { id: string }[];
+    test("the fixture project is the original one, so it is what a request without projectId gets", async () => {
+      const name = `fallback-${Date.now()}`;
+      const created = await injectRaw("POST", "/api/v1/agent-vault/access-bundles", { name });
+      expect(created.statusCode, created.payload).toBe(200);
 
-    expect(billable.map((row) => row.id)).not.toContain(projectId);
+      expect(await bundleNames(agentVaultProjectId)).toContain(name);
+      expect(await bundleNames(secondProjectId)).not.toContain(name);
+
+      const listed = await injectRaw("GET", "/api/v1/agent-vault/access-bundles?limit=100");
+      expect(listed.statusCode).toBe(200);
+      expect((listed.json().accessBundles as { name: string }[]).map((bundle) => bundle.name)).toContain(name);
+    });
+
+    test("an explicit projectId writes to that project, and names only clash within one project", async () => {
+      const name = `shared-name-${Date.now()}`;
+      expect((await inject("POST", "/api/v1/agent-vault/access-bundles", { name })).statusCode).toBe(200);
+      const inOther = await inSecond("POST", "/api/v1/agent-vault/access-bundles", { name });
+      expect(inOther.statusCode, inOther.payload).toBe(200);
+
+      expect(await bundleNames(secondProjectId)).toContain(name);
+      expect(await bundleNames(agentVaultProjectId)).toContain(name);
+
+      const clash = await inSecond("POST", "/api/v1/agent-vault/access-bundles", { name });
+      expect(clash.statusCode).toBe(400);
+    });
+
+    test("a session minted by bundle name lands in the named project, and says which", async () => {
+      const name = `mint-target-${Date.now()}`;
+      expect((await inSecond("POST", "/api/v1/agent-vault/access-bundles", { name })).statusCode).toBe(200);
+
+      const elsewhere = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: name, ttl: "1h" });
+      expect(elsewhere.statusCode).toBe(400);
+      expect(elsewhere.json().error).toBe("AccessBundleNotGranted");
+      expect(elsewhere.json().message).toBe(
+        `No access bundle named '${name}' is granted to you. Check the name, or ask an Agent Vault admin to grant it.`
+      );
+
+      const mint = await inSecond("POST", "/api/v1/agent-vault/sessions", { accessBundle: name, ttl: "1h" });
+      expect(mint.statusCode, mint.payload).toBe(200);
+      const { session } = mint.json() as { session: { id: string; projectId: string } };
+      expect(session.projectId).toBe(secondProjectId);
+
+      const listedHere = await inSecond("GET", "/api/v1/agent-vault/sessions?limit=100");
+      expect((listedHere.json().sessions as { id: string }[]).map((row) => row.id)).toContain(session.id);
+      const listedThere = await inject("GET", "/api/v1/agent-vault/sessions?limit=100");
+      expect((listedThere.json().sessions as { id: string }[]).map((row) => row.id)).not.toContain(session.id);
+
+      // The by-id route finds the project from the row, wherever it lives.
+      expect((await inject("GET", `/api/v1/agent-vault/sessions/${session.id}`)).statusCode).toBe(200);
+    });
+
+    test("a member added to the second project is a member there only", async () => {
+      const identity = await createOrgIdentity(`av-second-member-${Date.now()}`);
+      try {
+        const added = await inSecond("POST", "/api/v1/agent-vault/members", {
+          machineIdentityIds: [identity.id],
+          role: ProjectMembershipRole.Member
+        });
+        expect(added.statusCode, added.payload).toBe(200);
+
+        const memberIds = async (as: typeof inject) => {
+          const res = await as("GET", "/api/v1/agent-vault/members?limit=100");
+          expect(res.statusCode, res.payload).toBe(200);
+          return (res.json().members as { id: string }[]).map((member) => member.id);
+        };
+        expect(await memberIds(inSecond)).toContain(identity.id);
+        expect(await memberIds(inject)).not.toContain(identity.id);
+      } finally {
+        await deleteOrgIdentity(identity.id);
+      }
+    });
+
+    test("session log settings saved in the second project leave the first one alone", async () => {
+      fakeDefaultStorage.set();
+      try {
+        const off = await inSecond("PATCH", "/api/v1/agent-vault/settings/session-logs", { enabled: false });
+        expect(off.statusCode, off.payload).toBe(200);
+        expect(off.json().settings).toEqual({ enabled: false, storage: { type: "default" } });
+
+        const second = await inSecond("GET", "/api/v1/agent-vault/settings/session-logs");
+        expect(second.json().settings).toEqual({ enabled: false, storage: { type: "default" } });
+        const first = await inject("GET", "/api/v1/agent-vault/settings/session-logs");
+        expect(first.json().settings).toEqual({ enabled: true, storage: { type: "default" } });
+      } finally {
+        fakeDefaultStorage.reset();
+        await testDb("agent_vault_session_log_configs").where({ projectId: secondProjectId }).del();
+      }
+    });
+
+    test("a row of one project can't be linked from the other", async () => {
+      const skill = await inSecond("POST", "/api/v1/agent-vault/skills", {
+        files: [
+          {
+            path: "SKILL.md",
+            mode: "0644",
+            contentBase64: Buffer.from("---\nname: other-project\ndescription: Elsewhere.\n---\nElsewhere.\n").toString(
+              "base64"
+            )
+          }
+        ]
+      });
+      expect(skill.statusCode, skill.payload).toBe(200);
+      const skillId = skill.json().skill.id as string;
+      try {
+        const bundle = await createAccessBundle(`cross-project-link-${Date.now()}`);
+        const linked = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/skills`, { skillId });
+        expect(linked.statusCode).toBe(404);
+      } finally {
+        await testDb("agent_vault_skills").where({ id: skillId }).del();
+      }
+    });
+
+    test("an OAuth authorization is read from the project its record names", async () => {
+      const authorizationId = crypto.randomUUID();
+      const record = (projectId: string) => ({
+        id: authorizationId,
+        projectId,
+        accessBundleId: crypto.randomUUID(),
+        serviceId: null,
+        actorUserId: seedData1.id,
+        serverUrl: "https://mcp.example.com",
+        state: "state",
+        redirectUri: "https://app.example.com/callback",
+        status: "pending",
+        error: null,
+        issuer: "https://auth.example.com",
+        issParameterSupported: false,
+        authorizationEndpoint: "https://auth.example.com/authorize",
+        tokenEndpoint: "https://auth.example.com/token",
+        resource: null,
+        clientId: "client",
+        registration: "manual",
+        tokenEndpointAuthMethod: "none",
+        compatibility: [],
+        requestedScopes: ["read"],
+        grantedScopes: [],
+        expiresAt: null,
+        accessTokenHash: null,
+        sealedPending: "",
+        sealedCredential: null
+      });
+      const key = KeyStorePrefixes.AgentVaultOauthAuthorization(authorizationId);
+      const url = `/api/v1/agent-vault/oauth/authorizations/${authorizationId}`;
+      try {
+        await testKeyStore.setItemWithExpiry(key, 60, JSON.stringify(record(secondProjectId)));
+        const found = await injectRaw("GET", url);
+        expect(found.statusCode, found.payload).toBe(200);
+        expect(found.json().authorization).toEqual({
+          id: authorizationId,
+          status: "pending",
+          error: null,
+          scopes: ["read"]
+        });
+
+        await testKeyStore.setItemWithExpiry(key, 60, JSON.stringify(record(seedData1.project.id)));
+        expect((await injectRaw("GET", url)).statusCode).toBe(404);
+      } finally {
+        await testKeyStore.deleteItem(key);
+      }
+    });
+
+    test("a member of only the first project gets the resource's 404 for rows of the second, never a 403", async () => {
+      const bundle = await inSecond("POST", "/api/v1/agent-vault/access-bundles", { name: `hidden-${Date.now()}` });
+      expect(bundle.statusCode, bundle.payload).toBe(200);
+      const bundleId = bundle.json().accessBundle.id as string;
+      const variable = await inSecond("POST", "/api/v1/agent-vault/variables", {
+        scope: "global",
+        key: `HIDDEN_${Date.now()}`,
+        value: "hidden"
+      });
+      expect(variable.statusCode, variable.payload).toBe(200);
+      const variableId = variable.json().variable.id as string;
+      const mint = await inSecond("POST", "/api/v1/agent-vault/sessions", {
+        ttl: "1h",
+        services: [
+          { type: "http", name: "openai", hostPattern: "api.openai.com", credential: { type: "bearer", value: "sk" } }
+        ]
+      });
+      expect(mint.statusCode, mint.payload).toBe(200);
+      const sessionId = mint.json().session.id as string;
+
+      const member = await createMemberIdentity(`av-first-only-${Date.now()}`);
+      try {
+        const bundleRead = await member.as("GET", `/api/v1/agent-vault/access-bundles/${bundleId}`);
+        expect(bundleRead.statusCode).toBe(404);
+        expect(bundleRead.json().message).toBe(`Access bundle with ID '${bundleId}' not found`);
+
+        const variableWrite = await member.as("PATCH", `/api/v1/agent-vault/variables/${variableId}`, {
+          value: "smuggled"
+        });
+        expect(variableWrite.statusCode).toBe(404);
+        expect(variableWrite.json().message).toBe(`Variable with ID '${variableId}' not found`);
+
+        const sessionRead = await member.as("GET", `/api/v1/agent-vault/sessions/${sessionId}`);
+        expect(sessionRead.statusCode).toBe(404);
+        expect(sessionRead.json().message).toBe(`Session with ID '${sessionId}' not found`);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("an OAuth start takes its project from the access bundle, not from a projectId", async () => {
+      const bundle = await inSecond("POST", "/api/v1/agent-vault/access-bundles", { name: `oauth-${Date.now()}` });
+      expect(bundle.statusCode, bundle.payload).toBe(200);
+      const bundleId = bundle.json().accessBundle.id as string;
+
+      // A client secret without its client ID is refused after the bundle is found in its project and before any
+      // discovery request, so reaching that 400 shows the start resolved the second project without a network call.
+      const start = await injectRaw("POST", "/api/v1/agent-vault/oauth/authorizations", {
+        accessBundleId: bundleId,
+        serverUrl: "https://mcp.example.com/mcp",
+        clientSecret: "secret"
+      });
+      expect(start.statusCode, start.payload).toBe(400);
+      expect(start.json().message).toBe("A client secret needs the client ID it belongs to.");
+
+      const missingId = crypto.randomUUID();
+      const missing = await injectRaw("POST", "/api/v1/agent-vault/oauth/authorizations", {
+        accessBundleId: missingId,
+        serverUrl: "https://mcp.example.com/mcp",
+        clientSecret: "secret"
+      });
+      expect(missing.statusCode).toBe(404);
+      expect(missing.json().message).toBe(`Access bundle with ID '${missingId}' not found`);
+    });
+
+    test("leaving a project drops the leaver's grants and the values they saved there", async () => {
+      const bundle = await inSecond("POST", "/api/v1/agent-vault/access-bundles", { name: `leave-${Date.now()}` });
+      expect(bundle.statusCode, bundle.payload).toBe(200);
+      const bundleId = bundle.json().accessBundle.id as string;
+      const service = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundleId}/services`, {
+        type: "http",
+        name: "openai",
+        hostPattern: "api.openai.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      expect(service.statusCode, service.payload).toBe(200);
+      const serviceId = service.json().service.id as string;
+
+      const { userId } = await createUser("av-leaver");
+      try {
+        await addUserMembership({ userId, orgId: seedData1.organization.id, role: OrgMembershipRole.Member });
+        expect(
+          (await inSecond("POST", "/api/v1/agent-vault/members", { userIds: [userId], role: "member" })).statusCode
+        ).toBe(200);
+        expect(
+          (await inject("POST", `/api/v1/agent-vault/access-bundles/${bundleId}/members`, { userIds: [userId] }))
+            .statusCode
+        ).toBe(200);
+        const token = await createUserAccessToken({ userId, orgId: seedData1.organization.id });
+        const asUser = agentVaultRequester(token, () => secondProjectId);
+        const saved = await asUser(
+          "PATCH",
+          `/api/v1/agent-vault/access-bundles/${bundleId}/services/${serviceId}/personal-values`,
+          { values: [{ field: "credential-value", value: "sk-leaver" }] }
+        );
+        expect(saved.statusCode, saved.payload).toBe(200);
+
+        const left = await asUser("DELETE", `/api/v1/projects/${secondProjectId}/leave`);
+        expect(left.statusCode, left.payload).toBe(200);
+
+        const members = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundleId}/members`);
+        expect((members.json().members as { id: string }[]).map((member) => member.id)).not.toContain(userId);
+        expect(await grantRows(bundleId, { actorUserId: userId })).toHaveLength(0);
+        // The leaver can no longer read the project, so only the table can show their saved value is gone.
+        expect(await testDb("agent_vault_personal_values").where({ userId })).toHaveLength(0);
+      } finally {
+        await deleteUsers([userId]);
+      }
+    });
+
+    test("removing a member through the generic project route drops their grants and saved values", async () => {
+      const bundle = await inSecond("POST", "/api/v1/agent-vault/access-bundles", { name: `removed-${Date.now()}` });
+      expect(bundle.statusCode, bundle.payload).toBe(200);
+      const bundleId = bundle.json().accessBundle.id as string;
+      const service = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundleId}/services`, {
+        type: "http",
+        name: "openai",
+        hostPattern: "api.openai.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      expect(service.statusCode, service.payload).toBe(200);
+      const serviceId = service.json().service.id as string;
+
+      const { userId } = await createUser("av-removed");
+      try {
+        await addUserMembership({ userId, orgId: seedData1.organization.id, role: OrgMembershipRole.Member });
+        expect(
+          (await inSecond("POST", "/api/v1/agent-vault/members", { userIds: [userId], role: "member" })).statusCode
+        ).toBe(200);
+        expect(
+          (await inject("POST", `/api/v1/agent-vault/access-bundles/${bundleId}/members`, { userIds: [userId] }))
+            .statusCode
+        ).toBe(200);
+        const token = await createUserAccessToken({ userId, orgId: seedData1.organization.id });
+        const saved = await agentVaultRequester(token, () => secondProjectId)(
+          "PATCH",
+          `/api/v1/agent-vault/access-bundles/${bundleId}/services/${serviceId}/personal-values`,
+          { values: [{ field: "credential-value", value: "sk-removed" }] }
+        );
+        expect(saved.statusCode, saved.payload).toBe(200);
+        expect(await testDb("agent_vault_personal_values").where({ userId })).toHaveLength(1);
+
+        const membership = await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: secondProjectId, actorUserId: userId })
+          .first();
+        const removed = await injectRaw("DELETE", `/api/v1/projects/${secondProjectId}/memberships/${membership.id}`);
+        expect(removed.statusCode, removed.payload).toBe(200);
+
+        expect(await grantRows(bundleId, { actorUserId: userId })).toHaveLength(0);
+        expect(await testDb("agent_vault_personal_values").where({ userId })).toHaveLength(0);
+      } finally {
+        await deleteUsers([userId]);
+      }
+    });
+
+    test("an org invite with the project in projectIds makes the invitee a member of it", async () => {
+      const inviteeEmail = `agent-vault-invite-${crypto.randomUUID()}@localhost.local`;
+      const res = await injectRaw("POST", "/api/v1/invite-org/signup", {
+        inviteeEmails: [inviteeEmail],
+        organizationId: seedData1.organization.id,
+        projectIds: [secondProjectId]
+      });
+      expect(res.statusCode, res.payload).toBe(200);
+      expect(res.json().grantFailures).toBeUndefined();
+
+      const user = await testDb("users").where({ username: inviteeEmail }).first();
+      expect(user).toBeTruthy();
+      const members = await inSecond("GET", "/api/v1/agent-vault/members?limit=100");
+      expect(
+        (members.json().members as { type: string; id: string; role: string }[]).find((member) => member.id === user.id)
+      ).toMatchObject({ type: "user", role: ProjectMembershipRole.Member });
+      const elsewhere = await inject("GET", "/api/v1/agent-vault/members?limit=100");
+      expect((elsewhere.json().members as { id: string }[]).map((member) => member.id)).not.toContain(user.id);
+    });
+
+    test("an invite into a project the inviter doesn't administer reports a grant failure", async () => {
+      const membership = await testDb("memberships")
+        .where({ scope: AccessScope.Project, scopeProjectId: secondProjectId, actorUserId: seedData1.id })
+        .first();
+      const cacheKeys = [
+        KeyStorePrefixes.ProjectPermissionMarker(
+          secondProjectId,
+          ActorType.USER,
+          seedData1.id,
+          ActionProjectType.AgentVault
+        ),
+        KeyStorePrefixes.ProjectPermissionData(
+          secondProjectId,
+          ActorType.USER,
+          seedData1.id,
+          ActionProjectType.AgentVault
+        )
+      ];
+      await testDb("membership_roles")
+        .where({ membershipId: membership.id })
+        .update({ role: ProjectMembershipRole.Member });
+      await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+
+      try {
+        const inviteeEmail = `agent-vault-invite-member-${crypto.randomUUID()}@localhost.local`;
+        const res = await injectRaw("POST", "/api/v1/invite-org/signup", {
+          inviteeEmails: [inviteeEmail],
+          organizationId: seedData1.organization.id,
+          projectIds: [secondProjectId]
+        });
+        expect(res.statusCode).toBe(200);
+        expect(res.json().grantFailures?.projectIds).toEqual([secondProjectId]);
+      } finally {
+        await testDb("membership_roles")
+          .where({ membershipId: membership.id })
+          .update({ role: ProjectMembershipRole.Admin });
+        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+      }
+    });
   });
 
   describe("access bundles", async () => {
@@ -926,7 +1600,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(moved.payload).service.hostPattern).toBe("mcp.linear.dev");
     });
 
-    test("an MCP service refuses member-provided credentials, on create and update", async () => {
+    test("an MCP service accepts a member-provided bearer token, on create and update", async () => {
       const bundle = await createAccessBundle("mcp-member-provided");
       const created = await inject("POST", servicesUrl(bundle.id), {
         type: "mcp",
@@ -935,16 +1609,16 @@ describe("Agent Vault V1 Router", async () => {
         transport: "streamable-http",
         credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
       });
-      expect(created.statusCode).toBe(422);
-      expect(created.payload).toContain("MCP services don't support member-provided credentials yet");
+      expect(created.statusCode).toBe(200);
+      expect(JSON.parse(created.payload).service.credential.memberProvidedFields).toEqual(["credential-value"]);
 
-      const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+      const service = await createMcpService(bundle.id, "github", "https://api.githubcopilot.com/mcp/");
       const updated = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
         type: "mcp",
         credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
       });
-      expect(updated.statusCode).toBe(422);
-      expect(updated.payload).toContain("MCP services don't support member-provided credentials yet");
+      expect(updated.statusCode).toBe(200);
+      expect(JSON.parse(updated.payload).service.credential.memberProvidedFields).toEqual(["credential-value"]);
     });
 
     test("a field that belongs to the other type is refused by name, on create and update", async () => {
@@ -1042,7 +1716,7 @@ describe("Agent Vault V1 Router", async () => {
     describe("credential refresh", async () => {
       // A real enrolled proxy on the real route, so the session and proxy checks run as they do in production.
       const proxyFor = async (bundle: { name: string }, proxyName: string) => {
-        const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+        const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
         expect(mint.statusCode).toBe(200);
         const { session } = JSON.parse(mint.payload) as { session: { token: string } };
 
@@ -1162,6 +1836,7 @@ describe("Agent Vault V1 Router", async () => {
         const { credential } = (JSON.parse(reached.payload) as TBundleRead).accessBundle.services[0];
         expect(credential).toEqual({
           type: "oauth",
+          memberProvidedFields: [],
           status: "connected",
           issuer: "https://mcp.linear.app",
           grantedScopes: ["read"],
@@ -1276,16 +1951,12 @@ describe("Agent Vault V1 Router", async () => {
     const variablesUrl = "/api/v1/agent-vault/variables";
     const servicesUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`;
 
-    // Keys are unique across the org's Agent Vault, and every test here shares it. A variable still referenced can't
-    // be deleted through the API, so the rows go straight from the database.
+    // Keys are unique within a project, and every test here shares the spec's project. A variable still referenced
+    // can't be deleted through the API, so the rows go straight from the database.
     beforeEach(async () => {
-      const project = await testDb("projects")
-        .where({ orgId: seedData1.organization.id, type: ProjectType.AgentVault })
-        .first();
-      if (!project) return;
-      const variableIds = testDb("agent_vault_variables").where({ projectId: project.id }).select("id");
+      const variableIds = testDb("agent_vault_variables").where({ projectId: agentVaultProjectId }).select("id");
       await testDb("agent_vault_service_variable_references").whereIn("variableId", variableIds).del();
-      await testDb("agent_vault_variables").where({ projectId: project.id }).del();
+      await testDb("agent_vault_variables").where({ projectId: agentVaultProjectId }).del();
     });
 
     type TReference = {
@@ -1319,7 +1990,7 @@ describe("Agent Vault V1 Router", async () => {
     // A real enrolled proxy on the real resolve route, unlike the stubbed resolvers elsewhere in this file,
     // so every value goes through the project's actual KMS key.
     const resolverFor = async (bundle: { name: string }, proxyName: string) => {
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
       expect(mint.statusCode).toBe(200);
       const { session } = JSON.parse(mint.payload) as { session: { token: string } };
 
@@ -2248,12 +2919,8 @@ describe("Agent Vault V1 Router", async () => {
 
     // Personal variable keys are unique per owner, and the seeded admin owns them across every test here.
     beforeEach(async () => {
-      const project = await testDb("projects")
-        .where({ orgId: seedData1.organization.id, type: ProjectType.AgentVault })
-        .first();
-      if (!project) return;
       const variableIds = testDb("agent_vault_variables")
-        .where({ projectId: project.id })
+        .where({ projectId: agentVaultProjectId })
         .where((owned) => {
           void owned.whereNotNull("userId").orWhereNotNull("identityId");
         })
@@ -2294,7 +2961,7 @@ describe("Agent Vault V1 Router", async () => {
       as: (method: "POST", url: string, body: Record<string, unknown>) => ReturnType<typeof inject>,
       accessBundleName: string
     ) => {
-      const mint = await as("POST", "/api/v1/agent-vault/sessions", { accessBundles: [accessBundleName], ttl: "1h" });
+      const mint = await as("POST", "/api/v1/agent-vault/sessions", { accessBundle: accessBundleName, ttl: "1h" });
       expect(mint.statusCode).toBe(200);
       return (JSON.parse(mint.payload) as { session: { token: string } }).session.token;
     };
@@ -2865,8 +3532,7 @@ describe("Agent Vault V1 Router", async () => {
         ).toBe(200);
         expect((await inject("POST", membersUrl(bundle.id), { userIds: [userId] })).statusCode).toBe(200);
         const token = await createUserAccessToken({ userId, orgId: seedData1.organization.id });
-        const asUser = (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
-          testServer.inject({ method, url, headers: { authorization: `Bearer ${token}` }, ...(body ? { body } : {}) });
+        const asUser = agentVaultRequester(token, () => agentVaultProjectId);
 
         expect((await pendingOf(asUser)).get(bundle.id)).toEqual(["openai"]);
         expect(
@@ -3129,13 +3795,7 @@ describe("Agent Vault V1 Router", async () => {
             (await inject("POST", "/api/v1/agent-vault/members", { userIds: [userId], role: "member" })).statusCode
           ).toBe(200);
           const token = await createUserAccessToken({ userId, orgId: seedData1.organization.id });
-          return (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
-            testServer.inject({
-              method,
-              url,
-              headers: { authorization: `Bearer ${token}` },
-              ...(body ? { body } : {})
-            });
+          return agentVaultRequester(token, () => agentVaultProjectId);
         };
         const directAs = await asUser(direct.userId);
         const groupAs = await asUser(viaGroup.userId);
@@ -3157,6 +3817,228 @@ describe("Agent Vault V1 Router", async () => {
         await group.cleanup();
         await deleteUsers([direct.userId, viaGroup.userId]);
       }
+    });
+
+    describe("leaving a group through the group API", async () => {
+      const valuesOf = (actor: { userId: string } | { identityId: string }) =>
+        testDb("agent_vault_personal_values").where(actor);
+
+      // A user who reaches the project only through the groups given, each of which is granted the bundle, with a
+      // value saved for the service.
+      const setUpGroupOnlyUser = async (label: string, groupCount: number) => {
+        const bundle = await createAccessBundle(`${label}-${Date.now()}`);
+        const service = await createService(bundle.id, {
+          name: "linear",
+          hostPattern: `${label}.example.com`,
+          credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+        });
+        const groups = await Promise.all(
+          Array.from({ length: groupCount }, (_, index) =>
+            createProjectGroup(agentVaultProjectId, `${label}-${index}`, ProjectMembershipRole.Member)
+          )
+        );
+        const user = await createUser(label);
+        await addUserMembership({
+          userId: user.userId,
+          orgId: seedData1.organization.id,
+          role: OrgMembershipRole.Member
+        });
+        for await (const group of groups) {
+          await testDb("user_group_membership").insert({ groupId: group.id, userId: user.userId });
+          expect((await inject("POST", membersUrl(bundle.id), { groupIds: [group.id] })).statusCode).toBe(200);
+        }
+        const token = await createUserAccessToken({ userId: user.userId, orgId: seedData1.organization.id });
+        const saved = await setValues(
+          agentVaultRequester(token, () => agentVaultProjectId),
+          bundle.id,
+          service.id,
+          { "credential-value": "lin" }
+        );
+        expect(saved.statusCode, saved.payload).toBe(200);
+        expect(await valuesOf({ userId: user.userId })).toHaveLength(1);
+
+        return {
+          ...user,
+          groups,
+          cleanup: async () => {
+            await testDb("user_group_membership").where({ userId: user.userId }).delete();
+            for await (const group of groups) await group.cleanup();
+            await deleteUsers([user.userId]);
+          }
+        };
+      };
+
+      // The values are no longer readable by their owner once the bundle is out of reach, so only the table shows them.
+      test("a user removed from the only group that gave them the bundle loses the values they saved", async () => {
+        const setup = await setUpGroupOnlyUser("mp-group-leave", 1);
+        try {
+          const removed = await inject(
+            "DELETE",
+            `/api/v1/groups/${setup.groups[0].id}/users/${encodeURIComponent(setup.username)}`
+          );
+          expect(removed.statusCode, removed.payload).toBe(200);
+          expect(await valuesOf({ userId: setup.userId })).toHaveLength(0);
+        } finally {
+          await setup.cleanup();
+        }
+      });
+
+      test("a user removed from one group keeps their values while another group still gives them the bundle", async () => {
+        const setup = await setUpGroupOnlyUser("mp-group-stay", 2);
+        try {
+          const removed = await inject(
+            "DELETE",
+            `/api/v1/groups/${setup.groups[0].id}/users/${encodeURIComponent(setup.username)}`
+          );
+          expect(removed.statusCode, removed.payload).toBe(200);
+          expect(await valuesOf({ userId: setup.userId })).toHaveLength(1);
+        } finally {
+          await setup.cleanup();
+        }
+      });
+
+      test("deleting the group that gave a user the bundle clears the values they saved", async () => {
+        const setup = await setUpGroupOnlyUser("mp-group-delete", 1);
+        // Deleting a group is a paid feature, unlike removing a member from one.
+        const restoreLicense = overrideLicenseFeatures({ groups: true });
+        try {
+          const deleted = await inject("DELETE", `/api/v1/groups/${setup.groups[0].id}`);
+          expect(deleted.statusCode, deleted.payload).toBe(200);
+          expect(await valuesOf({ userId: setup.userId })).toHaveLength(0);
+        } finally {
+          restoreLicense();
+          await setup.cleanup();
+        }
+      });
+
+      test("a machine identity removed from the group that gave it the bundle loses the values it saved", async () => {
+        const bundle = await createAccessBundle(`mp-group-identity-${Date.now()}`);
+        const service = await createService(bundle.id, {
+          name: "linear",
+          hostPattern: "mp-group-identity.example.com",
+          credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+        });
+        const group = await createProjectGroup(agentVaultProjectId, "mp-group-identity", ProjectMembershipRole.Member);
+        const member = await createMemberIdentity(`mp-group-identity-${Date.now()}`);
+        try {
+          await testDb("identity_group_membership").insert({ groupId: group.id, identityId: member.id });
+          expect((await inject("POST", membersUrl(bundle.id), { groupIds: [group.id] })).statusCode).toBe(200);
+          expect((await setValues(member.as, bundle.id, service.id, { "credential-value": "lin" })).statusCode).toBe(
+            200
+          );
+
+          const removed = await inject("DELETE", `/api/v1/groups/${group.id}/machine-identities/${member.id}`);
+          expect(removed.statusCode, removed.payload).toBe(200);
+          expect(await valuesOf({ identityId: member.id })).toHaveLength(0);
+        } finally {
+          await member.cleanup();
+          await group.cleanup();
+        }
+      });
+
+      // Only a parent-org identity leaves an org without being deleted, so the bundle lives in a sub-org it is linked
+      // into. The removal also takes it out of the sub-org's groups, which must happen before its values are cleared.
+      test("a machine identity removed from the org that owns the group giving it the bundle loses the values it saved", async () => {
+        const restoreLicense = overrideLicenseFeatures({ groups: true, subOrganization: true });
+        const root = await createIsolatedOrgAndProject("mp-org-exit-identity");
+        let identityId: string | undefined;
+        try {
+          const sub = await createSubOrgAndProject({ rootOrgId: root.orgId, namePrefix: "mp-org-exit-identity-sub" });
+          const subOrgRequest = (method: "POST" | "DELETE", url: string, body?: Record<string, unknown>) =>
+            testServer.inject({
+              method,
+              url,
+              headers: { authorization: `Bearer ${sub.authToken}` },
+              ...(body ? { body } : {})
+            });
+          const subProjectId = await createAgentVaultProject({
+            authToken: sub.authToken,
+            name: `mp-org-exit-identity-${Date.now()}`
+          });
+          const asSubAdmin = agentVaultRequester(sub.authToken, () => subProjectId);
+
+          ({ identityId } = await createIdentityActor({
+            orgId: root.orgId,
+            authToken: root.authToken,
+            role: OrgMembershipRole.NoAccess
+          }));
+          const linked = await subOrgRequest("POST", `/api/v1/organization/identity-memberships/${identityId}`, {
+            roles: [{ role: OrgMembershipRole.NoAccess }]
+          });
+          expect(linked.statusCode, linked.payload).toBe(200);
+
+          const group = await subOrgRequest("POST", "/api/v1/groups", { name: `mp-org-exit-identity-${Date.now()}` });
+          expect(group.statusCode, group.payload).toBe(200);
+          const groupId = group.json().id as string;
+          expect(
+            (await subOrgRequest("POST", `/api/v1/groups/${groupId}/machine-identities/${identityId}`)).statusCode
+          ).toBe(200);
+          expect(
+            (
+              await asSubAdmin("POST", "/api/v1/agent-vault/members", {
+                groupIds: [groupId],
+                role: ProjectMembershipRole.Member
+              })
+            ).statusCode
+          ).toBe(200);
+
+          const bundleRes = await asSubAdmin("POST", "/api/v1/agent-vault/access-bundles", { name: "mp-org-exit" });
+          expect(bundleRes.statusCode, bundleRes.payload).toBe(200);
+          const bundleId = (bundleRes.json() as { accessBundle: { id: string } }).accessBundle.id;
+          const serviceRes = await asSubAdmin("POST", servicesUrl(bundleId), {
+            type: "http",
+            name: "linear",
+            hostPattern: "mp-org-exit-identity.example.com",
+            credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+          });
+          expect(serviceRes.statusCode, serviceRes.payload).toBe(200);
+          const serviceId = (serviceRes.json() as { service: { id: string } }).service.id;
+          expect((await asSubAdmin("POST", membersUrl(bundleId), { groupIds: [groupId] })).statusCode).toBe(200);
+
+          const ua = await testServer.inject({
+            method: "GET",
+            url: `/api/v1/auth/universal-auth/identities/${identityId}`,
+            headers: { authorization: `Bearer ${root.authToken}` }
+          });
+          expect(ua.statusCode).toBe(200);
+          const secret = await testServer.inject({
+            method: "POST",
+            url: `/api/v1/auth/universal-auth/identities/${identityId}/client-secrets`,
+            headers: { authorization: `Bearer ${root.authToken}` },
+            body: {}
+          });
+          expect(secret.statusCode).toBe(200);
+          const subOrg = (await testDb("organizations").where({ id: sub.subOrgId }).first()) as { slug: string };
+          const login = await testServer.inject({
+            method: "POST",
+            url: "/api/v1/auth/universal-auth/login",
+            body: {
+              clientId: ua.json().identityUniversalAuth.clientId as string,
+              clientSecret: secret.json().clientSecret as string,
+              organizationSlug: subOrg.slug
+            }
+          });
+          expect(login.statusCode, login.payload).toBe(200);
+          const asIdentity = agentVaultRequester(login.json().accessToken as string, () => subProjectId);
+          const saved = await setValues(asIdentity, bundleId, serviceId, { "credential-value": "lin" });
+          expect(saved.statusCode, saved.payload).toBe(200);
+          expect(await valuesOf({ identityId })).toHaveLength(1);
+
+          const removed = await subOrgRequest("DELETE", `/api/v1/organization/identity-memberships/${identityId}`);
+          expect(removed.statusCode, removed.payload).toBe(200);
+          expect(await valuesOf({ identityId })).toHaveLength(0);
+        } finally {
+          if (identityId) {
+            await testServer.inject({
+              method: "DELETE",
+              url: `/api/v1/identities/${identityId}`,
+              headers: { authorization: `Bearer ${root.authToken}` }
+            });
+          }
+          await root.cleanup();
+          restoreLicense();
+        }
+      });
     });
 
     test("a save made against a stale credential type is refused, not stored under the new type", async () => {
@@ -3289,9 +4171,7 @@ describe("Agent Vault V1 Router", async () => {
     };
 
     test("one list answers for all three actor kinds, and each arm carries what its table renders", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+      const projectId = await getProjectId();
       const identity = await createOrgIdentity(`av-merged-list-${Date.now()}`);
       const group = await createProjectGroup(projectId, "av-merged-list-group", ProjectMembershipRole.Member);
 
@@ -3335,9 +4215,7 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("the list filters, searches and pages on the server, and the count follows the filter", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+      const projectId = await getProjectId();
       const identity = await createOrgIdentity(`av-paging-zzz-${Date.now()}`);
       const group = await createProjectGroup(projectId, "av-paging-group", ProjectMembershipRole.Member);
 
@@ -3443,9 +4321,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("removing a user from the organization takes their grants too", async () => {
       const bundle = await createAccessBundle("org-removal-reap");
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+      const projectId = await getProjectId();
 
       const [user] = (await testDb("users")
         .insert({ username: `av-org-reap-${Date.now()}@example.com`, isAccepted: true, isGhost: false })
@@ -3534,6 +4410,28 @@ describe("Agent Vault V1 Router", async () => {
         role: "member"
       });
       expect(tooMany.statusCode).toBe(422);
+    });
+
+    test("a member can be added by a username that isn't an email", async () => {
+      const username = `av-ldap-${crypto.randomUUID()}`;
+      const [user] = (await testDb("users")
+        .insert({ username, isAccepted: true, isGhost: false })
+        .returning("*")) as { id: string }[];
+      try {
+        await addUserMembership({ userId: user.id, orgId: seedData1.organization.id, role: OrgMembershipRole.Member });
+
+        const added = await inject("POST", membersUrl, { usernames: [username], role: "member" });
+        expect(added.statusCode, added.payload).toBe(200);
+        expect(added.json()).toMatchObject({ members: [{ type: "user", id: user.id }], skipped: [] });
+
+        const { members } = await listMembers("limit=100");
+        expect(members.find((member) => member.id === user.id)).toMatchObject({
+          type: "user",
+          role: ProjectMembershipRole.Member
+        });
+      } finally {
+        await deleteUsers([user.id]);
+      }
     });
 
     test("a deactivated member is refused even while one of their groups is still active", async () => {
@@ -3888,133 +4786,6 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("app connections", async () => {
-    test("an organization connection is out of reach here, and an Agent Vault one is not", async () => {
-      const projectId = await getProjectId();
-
-      const orgConnectionId = await createAwsAppConnection({
-        name: `av-scope-org-${Date.now()}`,
-        authToken: jwtAuthToken
-      });
-
-      const created = await inject("POST", "/api/v1/agent-vault/app-connections/aws", {
-        name: `av-scope-own-${Date.now()}`,
-        method: "access-key",
-        credentials: { accessKeyId: "AKIAFAKEACCESSKEYID", secretAccessKey: "fake-secret-access-key" },
-        projectId: seedData1.project.id
-      });
-      expect(created.statusCode, created.payload).toBe(200);
-      const ownConnection = created.json().appConnection as { id: string };
-      expect(ownConnection).not.toHaveProperty("projectId");
-      const ownRow = (await testDb("app_connections").where({ id: ownConnection.id }).first()) as
-        | { projectId: string }
-        | undefined;
-      expect(ownRow?.projectId).toBe(projectId);
-
-      const listed = await inject("GET", "/api/v1/agent-vault/app-connections/aws");
-      expect(listed.statusCode).toBe(200);
-      const listedIds = (listed.json().appConnections as { id: string }[]).map((row) => row.id);
-      expect(listedIds).toContain(ownConnection.id);
-      expect(listedIds).not.toContain(orgConnectionId);
-
-      const byId = (connectionId: string) => `/api/v1/agent-vault/app-connections/aws/${connectionId}`;
-      const reaching: ["GET" | "PATCH" | "DELETE", string, Record<string, unknown>?][] = [
-        ["GET", byId(orgConnectionId)],
-        ["PATCH", byId(orgConnectionId), { description: "reached from the wrong scope" }],
-        ["DELETE", byId(orgConnectionId)]
-      ];
-      for await (const [method, url, body] of reaching) {
-        const res = await inject(method, url, body);
-        expect([method, res.statusCode]).toEqual([method, 404]);
-      }
-
-      const survived = await inject("GET", `/api/v1/app-connections/aws/${orgConnectionId}`);
-      expect(survived.statusCode).toBe(200);
-
-      const missingId = crypto.randomUUID();
-      const outOfScope = await inject("GET", byId(orgConnectionId));
-      const missing = await inject("GET", byId(missingId));
-      expect(outOfScope.json().message.replace(orgConnectionId, "<id>")).toBe(
-        missing.json().message.replace(missingId, "<id>")
-      );
-
-      const [otherApp] = (await testDb("app_connections")
-        .insert({
-          name: `av-scope-gh-${Date.now()}`,
-          app: AppConnection.GitHub,
-          method: "pat",
-          encryptedCredentials: Buffer.from("never-decrypted"),
-          orgId: seedData1.organization.id
-        })
-        .returning("id")) as { id: string }[];
-      try {
-        expect((await inject("GET", byId(otherApp.id))).statusCode).toBe(404);
-      } finally {
-        await testDb("app_connections").where({ id: otherApp.id }).delete();
-      }
-
-      const member = await createMemberIdentity(`av-scope-member-${Date.now()}`);
-      try {
-        expect((await member.as("GET", byId(orgConnectionId))).statusCode).toBe(404);
-        expect((await member.as("GET", byId(ownConnection.id))).statusCode).toBe(403);
-      } finally {
-        await member.cleanup();
-      }
-
-      expect((await inject("GET", byId(ownConnection.id))).statusCode).toBe(200);
-      expect(
-        (await inject("PATCH", byId(ownConnection.id), { description: "reached from its own scope" })).statusCode
-      ).toBe(200);
-      expect((await inject("DELETE", byId(ownConnection.id))).statusCode).toBe(200);
-
-      await deleteAwsAppConnection({ connectionId: orgConnectionId, authToken: jwtAuthToken });
-    });
-
-    test("an update through another app's route is refused before it writes, like a delete", async () => {
-      const created = await inject("POST", "/api/v1/agent-vault/app-connections/aws", {
-        name: `av-wrong-app-own-${Date.now()}`,
-        method: "access-key",
-        credentials: { accessKeyId: "AKIAFAKEACCESSKEYID", secretAccessKey: "fake-secret-access-key" }
-      });
-      expect(created.statusCode, created.payload).toBe(200);
-      const ownAws = await testDb("app_connections").where({ id: created.json().appConnection.id }).first();
-      const orgAwsId = await createAwsAppConnection({
-        name: `av-wrong-app-org-${Date.now()}`,
-        authToken: jwtAuthToken
-      });
-      const orgAws = await testDb("app_connections").where({ id: orgAwsId }).first();
-
-      // Rows only, so a GitHub connection can sit where the create path would never put one.
-      const githubRow = (name: string, projectId: string | null, encryptedCredentials: Buffer) => ({
-        name,
-        app: AppConnection.GitHub,
-        method: "pat",
-        encryptedCredentials,
-        orgId: seedData1.organization.id,
-        projectId
-      });
-      const [inAgentVault] = (await testDb("app_connections")
-        .insert(githubRow(`av-wrong-app-gh-${Date.now()}`, ownAws.projectId, ownAws.encryptedCredentials))
-        .returning("*")) as { id: string }[];
-      const [inOrg] = (await testDb("app_connections")
-        .insert(githubRow(`org-wrong-app-gh-${Date.now()}`, null, orgAws.encryptedCredentials))
-        .returning("*")) as { id: string }[];
-
-      try {
-        const routes = [
-          [inAgentVault.id, `/api/v1/agent-vault/app-connections/aws/${inAgentVault.id}`],
-          [inOrg.id, `/api/v1/app-connections/aws/${inOrg.id}`]
-        ] as const;
-        for await (const [id, url] of routes) {
-          const res = await inject("PATCH", url, { description: "through the wrong route" });
-          expect([url, res.statusCode]).toEqual([url, 400]);
-          expect(res.json().message).toBe(`App Connection with ID ${id} is not for App "aws"`);
-          expect((await testDb("app_connections").where({ id }).first()).description).toBeNull();
-        }
-      } finally {
-        await testDb("app_connections").whereIn("id", [inAgentVault.id, inOrg.id, ownAws.id, orgAwsId]).delete();
-      }
-    });
-
     test("only AWS is offered under Agent Vault", async () => {
       const res = await inject("GET", `/api/v1/app-connections/options?projectType=${ProjectType.AgentVault}`);
       expect(res.statusCode).toBe(200);
@@ -4040,7 +4811,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a session reads by id, and one you may not see is indistinguishable from one that is not there", async () => {
       const bundle = await createAccessBundle(`session-by-id-${Date.now()}`);
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h"
       });
       expect(mint.statusCode).toBe(200);
@@ -4057,7 +4828,7 @@ describe("Agent Vault V1 Router", async () => {
           username: seedData1.username,
           email: seedData1.email
         }),
-        accessBundles: [expect.objectContaining({ name: bundle.name })]
+        accessBundle: { id: bundle.id, name: bundle.name }
       });
 
       const member = await createMemberIdentity(`session-by-id-member-${Date.now()}`);
@@ -4082,16 +4853,16 @@ describe("Agent Vault V1 Router", async () => {
       const notNamed = await createAccessBundle("session-not-named");
 
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [granted.name],
+        accessBundle: granted.name,
         ttl: "24h"
       });
       expect(mint.statusCode).toBe(200);
 
       const { session } = JSON.parse(mint.payload) as {
-        session: { id: string; token: string; accessBundles: { id: string; position: number }[] };
+        session: { id: string; token: string; accessBundle: { id: string; name: string } };
       };
       expect(session.token.startsWith("agv_")).toBe(true);
-      expect(session.accessBundles).toEqual([expect.objectContaining({ id: granted.id, position: 0 })]);
+      expect(session.accessBundle).toEqual({ id: granted.id, name: granted.name });
 
       const rows = (await testDb("agent_vault_session_access_bundles")
         .where({ sessionId: session.id })
@@ -4102,7 +4873,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("the token is stored only as a hash and is returned exactly once", async () => {
       const bundle = await createAccessBundle("session-token-hash");
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
 
       const row = await testDb("agent_vault_sessions").where({ id: session.id }).first();
@@ -4116,35 +4887,66 @@ describe("Agent Vault V1 Router", async () => {
 
     test("naming a bundle you cannot reach fails with that bundle named", async () => {
       const res = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: ["session-no-such-bundle"],
+        accessBundle: "session-no-such-bundle",
         ttl: "1h"
       });
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).message).toContain("session-no-such-bundle");
     });
 
-    test("a second access bundle is rejected", async () => {
-      const res = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: ["session-cap-alpha", "session-cap-beta"],
-        ttl: "1h"
-      });
-      expect(res.statusCode).toBe(422);
-      const issues = JSON.parse(res.payload).message as { path: string[] }[];
-      expect(issues.some((issue) => issue.path.join(".") === "accessBundles")).toBe(true);
+    test("the legacy accessBundles list still mints, with at most one name and never next to accessBundle", async () => {
+      const bundle = await createAccessBundle(`session-legacy-${Date.now()}`);
+
+      const legacy = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      expect(legacy.statusCode, legacy.payload).toBe(200);
+      expect(legacy.json().session.accessBundle).toEqual({ id: bundle.id, name: bundle.name });
+      expect(legacy.json().session).not.toHaveProperty("accessBundles");
+
+      const rejected = [
+        { why: "both fields", body: { accessBundle: bundle.name, accessBundles: [bundle.name] } },
+        { why: "two names", body: { accessBundles: [bundle.name, "session-legacy-other"] } },
+        { why: "not a list", body: { accessBundles: bundle.name } }
+      ];
+      for await (const { why, body } of rejected) {
+        const res = await inject("POST", "/api/v1/agent-vault/sessions", { ...body, ttl: "1h" });
+        expect(res.statusCode, why).toBe(400);
+        expect(res.json().message, why).toContain("accessBundle");
+      }
+
+      // An empty list reads as leaving the bundle out, which needs services of the session's own.
+      const empty = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [], ttl: "1h" });
+      expect(empty.statusCode).toBe(400);
+      expect(empty.json().message).toContain("or send the services it should reach");
+    });
+
+    test("a session whose bundle was deleted keeps its name and loses its id", async () => {
+      const bundle = await createAccessBundle(`session-deleted-bundle-${Date.now()}`);
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+      expect(mint.statusCode).toBe(200);
+      const { id } = (JSON.parse(mint.payload) as { session: { id: string } }).session;
+
+      expect((await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).statusCode).toBe(200);
+
+      const read = await inject("GET", `/api/v1/agent-vault/sessions/${id}`);
+      expect(read.json().session.accessBundle).toEqual({ id: null, name: bundle.name });
+
+      const list = await inject("GET", `/api/v1/agent-vault/sessions?search=${encodeURIComponent(bundle.name)}`);
+      const listed = (list.json() as { sessions: { id: string; accessBundle: unknown }[] }).sessions;
+      expect(listed.find((row) => row.id === id)?.accessBundle).toEqual({ id: null, name: bundle.name });
     });
 
     test("a label is optional, trimmed, returned on every read, and searchable", async () => {
       const bundle = await createAccessBundle(`session-label-${Date.now()}`);
 
       const unlabeled = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h"
       });
       expect(unlabeled.statusCode).toBe(200);
       expect(unlabeled.json().session.label).toBeNull();
 
       const labeled = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h",
         label: "  session-label nightly deploy  "
       });
@@ -4161,14 +4963,14 @@ describe("Agent Vault V1 Router", async () => {
       expect(found.sessions[0]).toMatchObject({ id: session.id, label: "session-label nightly deploy" });
 
       const tooLong = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h",
         label: "a".repeat(129)
       });
       expect(tooLong.statusCode).toBe(422);
 
       const withNewline = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h",
         label: "line one\nline two"
       });
@@ -4178,7 +4980,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a label that would read differently from what is stored is rejected", async () => {
       const bundle = await createAccessBundle(`session-label-chars-${Date.now()}`);
       const mint = (label: unknown) =>
-        inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h", label });
+        inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h", label });
 
       const rejected = {
         tab: "a\tb",
@@ -4212,7 +5014,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a label can be changed or removed later, only by someone who can see the session", async () => {
       const bundle = await createAccessBundle(`session-label-edit-${Date.now()}`);
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
       const { id } = mint.json().session as { id: string };
 
       const set = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "  first pass  " });
@@ -4259,7 +5061,7 @@ describe("Agent Vault V1 Router", async () => {
       const beta = await createAccessBundle("search-beta");
       for await (const bundle of [alpha, beta]) {
         const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           ttl: "1h"
         });
         expect(mint.statusCode).toBe(200);
@@ -4268,11 +5070,11 @@ describe("Agent Vault V1 Router", async () => {
       const byBundle = await inject("GET", "/api/v1/agent-vault/sessions?search=search-alpha");
       expect(byBundle.statusCode).toBe(200);
       const matched = JSON.parse(byBundle.payload) as {
-        sessions: { accessBundles: { name: string }[] }[];
+        sessions: { accessBundle: { name: string } }[];
         totalCount: number;
       };
       expect(matched.sessions).toHaveLength(1);
-      expect(matched.sessions[0].accessBundles[0].name).toBe("search-alpha");
+      expect(matched.sessions[0].accessBundle.name).toBe("search-alpha");
       // The count has to describe the filtered set, or the pager offers pages that do not exist.
       expect(matched.totalCount).toBe(1);
 
@@ -4297,7 +5099,7 @@ describe("Agent Vault V1 Router", async () => {
         const res = await inject("GET", `/api/v1/agent-vault/sessions?scope=all&${query}`);
         expect(res.statusCode).toBe(200);
         return JSON.parse(res.payload) as {
-          sessions: { id: string; actor: Record<string, unknown>; accessBundles: { name: string }[] }[];
+          sessions: { id: string; actor: Record<string, unknown>; accessBundle: { name: string } }[];
           totalCount: number;
         };
       };
@@ -4310,7 +5112,7 @@ describe("Agent Vault V1 Router", async () => {
         // Two sessions per bundle, so a match has to page rather than fit on one screen.
         for await (const attempt of [1, 2]) {
           const res = await inject("POST", "/api/v1/agent-vault/sessions", {
-            accessBundles: [bundle.name],
+            accessBundle: bundle.name,
             ttl: "1h"
           });
           expect(res.statusCode, `mint ${attempt} over ${bundle.name}`).toBe(200);
@@ -4327,7 +5129,7 @@ describe("Agent Vault V1 Router", async () => {
       // A deleted bundle: the junction keeps its snapshot name.
       const deletedBundle = await createAccessBundle("matrix-retired");
       const overRetired = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [deletedBundle.name],
+        accessBundle: deletedBundle.name,
         ttl: "1h"
       });
       expect(overRetired.statusCode).toBe(200);
@@ -4339,7 +5141,7 @@ describe("Agent Vault V1 Router", async () => {
           query: "search=matrix-stripe&limit=100",
           expect: (r) => {
             expect(r.totalCount).toBe(2);
-            expect(r.sessions.every((row) => row.accessBundles[0].name === "matrix-stripe")).toBe(true);
+            expect(r.sessions.every((row) => row.accessBundle.name === "matrix-stripe")).toBe(true);
           }
         },
         {
@@ -4463,7 +5265,7 @@ describe("Agent Vault V1 Router", async () => {
     test("a bundle name that is not a slug is rejected before the lookup", async () => {
       const bundle = await createAccessBundle("session-uppercase");
       const res = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name.toUpperCase()],
+        accessBundle: bundle.name.toUpperCase(),
         ttl: "1h"
       });
       expect(res.statusCode).toBe(422);
@@ -4472,7 +5274,7 @@ describe("Agent Vault V1 Router", async () => {
     test("ttl is a free-form duration with a one minute floor", async () => {
       const bundle = await createAccessBundle("session-ttl-free");
       const before = Date.now();
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "90m" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "90m" });
       expect(mint.statusCode).toBe(200);
       const { session } = JSON.parse(mint.payload) as { session: { expiresAt: string } };
       const lifetimeMs = new Date(session.expiresAt).getTime() - before;
@@ -4480,21 +5282,63 @@ describe("Agent Vault V1 Router", async () => {
       expect(lifetimeMs).toBeLessThanOrEqual(90 * 60 * 1000 + 60_000);
 
       const tooShort = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "30s"
       });
       expect(tooShort.statusCode).toBe(422);
       const garbage = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "soon"
       });
       expect(garbage.statusCode).toBe(422);
     });
 
+    test("a session token revokes its own session, once, and then stops working", async () => {
+      const bundle = await createAccessBundle(`session-revoke-by-token-${Date.now()}`);
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+      expect(mint.statusCode).toBe(200);
+      const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
+
+      const revokeWith = (authorization?: string) =>
+        testServer.inject({
+          method: "POST",
+          url: "/api/v1/agent-vault/session/revoke",
+          headers: authorization === undefined ? {} : { authorization }
+        });
+
+      const unknown = await revokeWith(`Bearer agv_${crypto.randomBytes(32).toString("base64url")}`);
+      expect(unknown.statusCode).toBe(401);
+      expect(unknown.json().message).toBe("This Agent Vault session token is not valid");
+      expect((await revokeWith()).statusCode).toBe(401);
+      // A user's token is not a session token, so it can't stand in for one.
+      expect((await revokeWith(`Bearer ${jwtAuthToken}`)).statusCode).toBe(401);
+
+      const first = await revokeWith(`Bearer ${session.token}`);
+      expect(first.statusCode, first.payload).toBe(200);
+      const firstRevokedAt = first.json().session.revokedAt as string;
+      expect(first.json().session).toEqual({ id: session.id, revokedAt: firstRevokedAt });
+      expect(firstRevokedAt).toBeTruthy();
+
+      const second = await revokeWith(`Bearer ${session.token}`);
+      expect(second.statusCode).toBe(200);
+      expect(second.json().session).toEqual({ id: session.id, revokedAt: firstRevokedAt });
+
+      const skills = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/agent-vault/session/skills",
+        headers: { authorization: `Bearer ${session.token}` }
+      });
+      expect(skills.statusCode).toBe(401);
+      expect(skills.json().message).toBe("This session has been revoked");
+
+      const read = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}`);
+      expect(read.json().session.status).toBe("revoked");
+    });
+
     test("ttl never stores a null expiry, and revoke is idempotent", async () => {
       const bundle = await createAccessBundle("session-never");
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "never"
       });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; expiresAt: string | null } };
@@ -4564,7 +5408,7 @@ describe("Agent Vault V1 Router", async () => {
     };
 
     const mintFor = (bot: TMember, onBehalfOf: Record<string, string>, accessBundle: string, ttl?: string) =>
-      bot.as("POST", sessionsUrl, { accessBundles: [accessBundle], onBehalfOf, ...(ttl ? { ttl } : {}) });
+      bot.as("POST", sessionsUrl, { accessBundle, onBehalfOf, ...(ttl ? { ttl } : {}) });
 
     test("only an identity whose delegation covers the user can start a session on their behalf", async () => {
       const projectId = await getProjectId();
@@ -4580,7 +5424,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(undelegated.json().message).toContain("isn't allowed to start sessions on behalf of users");
 
         const asUser = await inject("POST", sessionsUrl, {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           onBehalfOf: { userId: alice.userId }
         });
         expect(asUser.statusCode).toBe(400);
@@ -4632,7 +5476,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const direct = await inject("PUT", delegationUrl(bot.id), { scope: "selected", userIds: [carol.userId] });
         expect(direct.statusCode).toBe(400);
-        expect(direct.json().message).toContain("are in Agent Vault through a group. Name the group instead");
+        expect(direct.json().message).toContain("are in this project through a group. Name the group instead");
 
         const delegation = await delegate(bot, { scope: "selected", groupIds: [group.id] });
         expect(delegation.groups.map((row) => row.id)).toEqual([group.id]);
@@ -4836,7 +5680,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const outside = await mintFor(bot, { userId: outsider.userId }, bundle.name);
         expect(outside.statusCode).toBe(400);
-        expect(outside.json().message).toContain("doesn't have access to Agent Vault");
+        expect(outside.json().message).toContain("doesn't have access to this Agent Vault project");
       } finally {
         await bot.cleanup();
         await deleteUsers([alice.userId, outsider.userId]);
@@ -4866,7 +5710,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(unending.json().session.expiresAt).toBeNull();
 
         // A session the identity starts for itself keeps the usual default.
-        const own = await bot.as("POST", sessionsUrl, { accessBundles: [bundle.name] });
+        const own = await bot.as("POST", sessionsUrl, { accessBundle: bundle.name });
         expect(own.statusCode).toBe(200);
         expect(hoursFromNow(own.json().session.expiresAt as string)).toBeCloseTo(7 * 24, 0);
       } finally {
@@ -5177,12 +6021,8 @@ describe("Agent Vault V1 Router", async () => {
         const startedForAlice = (await mintFor(bot, { userId: alice.userId }, bundle.name)).json().session.id as string;
 
         const aliceToken = await createUserAccessToken({ userId: alice.userId, orgId: seedData1.organization.id });
-        const ownSession = await testServer.inject({
-          method: "POST",
-          url: sessionsUrl,
-          headers: { authorization: `Bearer ${aliceToken}` },
-          body: { accessBundles: [bundle.name] }
-        });
+        const asAlice = agentVaultRequester(aliceToken, () => projectId);
+        const ownSession = await asAlice("POST", sessionsUrl, { accessBundle: bundle.name });
         expect(ownSession.statusCode).toBe(200);
         const alicesOwn = ownSession.json().session.id as string;
 
@@ -5193,8 +6033,6 @@ describe("Agent Vault V1 Router", async () => {
         expect((await bot.as("GET", `${sessionsUrl}/${alicesOwn}`)).statusCode).toBe(404);
 
         // The session is the identity's, so to the user it reads exactly like one that doesn't exist.
-        const asAlice = (method: "GET" | "POST" | "PATCH", url: string, body?: Record<string, unknown>) =>
-          testServer.inject({ method, url, headers: { authorization: `Bearer ${aliceToken}` }, ...(body ? { body } : {}) });
         const alicesList = await asAlice("GET", `${sessionsUrl}?limit=100`);
         const alicesListIds = (alicesList.json().sessions as { id: string }[]).map((row) => row.id);
         expect(alicesListIds).toContain(alicesOwn);
@@ -5307,7 +6145,7 @@ describe("Agent Vault V1 Router", async () => {
         // An identity that isn't in Agent Vault has no candidates to offer, the same 404 as its other subject routes.
         const unknown = await inject("GET", `${delegationUrl(crypto.randomUUID())}/subjects/available`);
         expect(unknown.statusCode).toBe(404);
-        expect(unknown.json().message).toContain("is not a member of Agent Vault");
+        expect(unknown.json().message).toContain("is not a member of this Agent Vault project");
 
         // updatedAt moves only when someone is added or taken out, so a client can cache the delegation off it.
         const savedAt = (now.json().delegation as TDelegationDetail).updatedAt;
@@ -5317,7 +6155,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const stranger = await inject("POST", subjectsUrl, { userIds: [outsider.userId] });
         expect(stranger.statusCode).toBe(400);
-        expect(stranger.json().message).toContain("are not members of Agent Vault");
+        expect(stranger.json().message).toContain("are not members of this Agent Vault project");
         expect((await inject("POST", subjectsUrl, {})).statusCode).toBe(422);
 
         // A name the delegation doesn't hold is skipped, and taking out the last one ends the delegation.
@@ -5337,7 +6175,7 @@ describe("Agent Vault V1 Router", async () => {
         await delegate(bot, { scope: "all-members" });
         const addToAll = await inject("POST", subjectsUrl, { userIds: [alice.userId] });
         expect(addToAll.statusCode).toBe(400);
-        expect(addToAll.json().message).toContain("already acts on behalf of every Agent Vault member");
+        expect(addToAll.json().message).toContain("already acts on behalf of every project member");
         expect((await inject("DELETE", subjectsUrl, { userIds: [alice.userId] })).statusCode).toBe(400);
 
         const refused = await Promise.all([
@@ -5371,7 +6209,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const stranger = await inject("PUT", delegationUrl(bot.id), { scope: "selected", userIds: [outsider.userId] });
         expect(stranger.statusCode).toBe(400);
-        expect(stranger.json().message).toContain("are not members of Agent Vault");
+        expect(stranger.json().message).toContain("are not members of this Agent Vault project");
 
         const set = await delegate(bot, { scope: "selected", userIds: [alice.userId] });
         expect(set).toMatchObject({ scope: "selected", users: [expect.objectContaining({ id: alice.userId })] });
@@ -5502,7 +6340,7 @@ describe("Agent Vault V1 Router", async () => {
         });
         expect(readded.statusCode).toBe(400);
         expect(readded.json().message).toBe(
-          `User(s) '${carol.userId}' are not members of Agent Vault. Add them under Access Control first.`
+          `User(s) '${carol.userId}' are not members of this Agent Vault project. Add them under Access Control first.`
         );
         // An emptied delegation is replaced like any other.
         const replaced = await delegate(carolOnlyBot, { scope: "selected", userIds: [alice.userId] });
@@ -5544,7 +6382,7 @@ describe("Agent Vault V1 Router", async () => {
           inject("PUT", delegationUrl(bot.id), { scope: "selected", userIds: [alice.userId] })
         );
         expect(forAlice.statusCode).toBe(400);
-        expect(forAlice.json().message).toContain("are not members of Agent Vault");
+        expect(forAlice.json().message).toContain("are not members of this Agent Vault project");
 
         const ofBot = await saveDuringRemoval({ actorIdentityId: bot.id }, () =>
           inject("PUT", delegationUrl(bot.id), { scope: "all-members" })
@@ -5723,6 +6561,438 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
+  describe("inline services", async () => {
+    const sessionsUrl = "/api/v1/agent-vault/sessions";
+    const inlineServicesTable = "agent_vault_session_inline_services";
+
+    type TInlineSummary = {
+      id: string;
+      name: string | null;
+      hostPattern: string;
+      credential: Record<string, string>;
+      customHeaders: { name: string; prefix: string }[];
+      substitutions: { placeholder: string; surfaces: string[] }[];
+    };
+    type TResolvedService = {
+      name: string;
+      accessBundleName: string | null;
+      allowedMethods: string[] | null;
+      credential: Record<string, string>;
+      customHeaders: { name: string; prefix: string; value: string }[];
+      substitutions: { placeholder: string; surfaces: string[]; value: string }[];
+    };
+
+    // A real proxy on the real resolve route, so the inline secrets go through the project's actual KMS key.
+    const createResolver = async (name: string) => {
+      const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name });
+      expect(proxy.statusCode).toBe(200);
+      const proxyToken = proxy.json().proxyToken as string;
+      return (sessionToken: string) =>
+        testServer.inject({
+          method: "POST",
+          url: "/api/v1/agent-vault/proxy/resolve",
+          headers: { authorization: `Bearer ${proxyToken}`, "x-infisical-agent-session": sessionToken }
+        });
+    };
+
+    const openai = {
+      type: "http",
+      name: "openai",
+      hostPattern: "api.openai.com",
+      credential: { type: "bearer", value: "sk-inline-openai" }
+    };
+
+    test("an admin starts a session with inline services only, and resolve sends them exactly as sent", async () => {
+      const mint = await inject("POST", sessionsUrl, {
+        ttl: "1h",
+        services: [
+          openai,
+          {
+            type: "http",
+            hostPattern: "api.stripe.com,files.stripe.com",
+            allowedMethods: ["GET"],
+            credential: { type: "basic", username: "rk_inline_stripe" },
+            customHeaders: [{ name: "Stripe-Account", value: "acct_inline" }],
+            substitutions: [{ placeholder: "__STRIPE_ID__", surfaces: ["path"], value: "cus_inline" }]
+          }
+        ]
+      });
+      expect(mint.statusCode).toBe(200);
+      const { session } = mint.json() as {
+        session: { id: string; token: string; accessBundle: unknown; services: TInlineSummary[] };
+      };
+      expect(session.accessBundle).toBeNull();
+      expect(session.services).toMatchObject([
+        {
+          name: "openai",
+          hostPattern: "api.openai.com",
+          credential: { type: "bearer", headerName: "Authorization", headerPrefix: "Bearer" }
+        },
+        {
+          // Sent without a name, so it goes by its first host.
+          name: "api.stripe.com",
+          hostPattern: "api.stripe.com,files.stripe.com",
+          credential: { type: "basic" },
+          customHeaders: [{ name: "Stripe-Account", prefix: "" }],
+          substitutions: [{ placeholder: "__STRIPE_ID__", surfaces: ["path"] }]
+        }
+      ]);
+
+      const byId = await inject("GET", `${sessionsUrl}/${session.id}`);
+      expect(byId.json().session.services).toEqual(session.services);
+      const list = await inject("GET", `${sessionsUrl}?limit=100`);
+      expect(
+        (list.json().sessions as { id: string; services: TInlineSummary[] }[]).find(
+          (row) => row.id === session.id
+        )?.services
+      ).toEqual(session.services);
+
+      // No read returns a secret, and the rows hold them only sealed.
+      const rows = await testDb(inlineServicesTable).where({ sessionId: session.id }).orderBy("position");
+      expect(rows.map((row: { encryptedSecrets: Buffer | null }) => Boolean(row.encryptedSecrets))).toEqual([
+        true,
+        true
+      ]);
+      [mint.payload, byId.payload, list.payload, JSON.stringify(rows)].forEach((text) =>
+        ["sk-inline-openai", "rk_inline_stripe", "acct_inline", "cus_inline"].forEach((secret) =>
+          expect(text).not.toContain(secret)
+        )
+      );
+
+      const resolve = await createResolver(`inline-only-${Date.now()}`);
+      const resolved = await resolve(session.token);
+      expect(resolved.statusCode).toBe(200);
+      expect(resolved.json().services as TResolvedService[]).toMatchObject([
+        {
+          name: "openai",
+          accessBundleName: null,
+          credential: { type: "bearer", headerName: "Authorization", headerPrefix: "Bearer", value: "sk-inline-openai" }
+        },
+        {
+          name: "api.stripe.com",
+          accessBundleName: null,
+          allowedMethods: ["GET"],
+          credential: { type: "basic", username: "rk_inline_stripe", password: "" },
+          customHeaders: [{ name: "Stripe-Account", prefix: "", value: "acct_inline" }],
+          substitutions: [{ placeholder: "__STRIPE_ID__", surfaces: ["path"], value: "cus_inline" }]
+        }
+      ]);
+    });
+
+    test("a session needs an access bundle or inline services", async () => {
+      const res = await inject("POST", sessionsUrl, { ttl: "1h" });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toBe(
+        "Name the access bundle this session should carry, or send the services it should reach."
+      );
+    });
+
+    test("a value can't use a variable, by key or by the id it is stored as", async () => {
+      const key = `INLINE_PROBE_${Date.now()}`;
+      const created = await inject("POST", "/api/v1/agent-vault/variables", {
+        scope: "global",
+        key,
+        value: "variable-secret"
+      });
+      expect(created.statusCode).toBe(200);
+      const variableId = created.json().variable.id as string;
+      try {
+        for await (const value of [`{{${key}}}`, `Bearer {{${variableId}}}`]) {
+          const res = await inject("POST", sessionsUrl, {
+            ttl: "1h",
+            services: [{ ...openai, credential: { type: "bearer", value } }]
+          });
+          expect(res.statusCode).toBe(422);
+          expect(JSON.stringify(res.json().message)).toContain("Services sent with a session can't use variables");
+        }
+      } finally {
+        expect((await inject("DELETE", `/api/v1/agent-vault/variables/${variableId}`)).statusCode).toBe(200);
+      }
+    });
+
+    test("what an inline service can't take is refused by name", async () => {
+      const oauth = await inject("POST", sessionsUrl, {
+        ttl: "1h",
+        services: [{ ...openai, credential: { type: "oauth" } }]
+      });
+      expect(oauth.statusCode).toBe(400);
+      expect(oauth.json().message).toMatch(/^Service 'openai': Services sent with a session can't use OAuth/);
+
+      const memberField = await inject("POST", sessionsUrl, {
+        ttl: "1h",
+        services: [
+          {
+            ...openai,
+            name: undefined,
+            credential: { ...openai.credential, memberProvidedFields: ["credential-value"] }
+          }
+        ]
+      });
+      expect(memberField.statusCode).toBe(400);
+      expect(memberField.json().message).toMatch(/^Service at index 0: Services sent with a session can't leave a field/);
+    });
+
+    test("only an Agent Vault admin can start a session with inline services", async () => {
+      const member = await createMemberIdentity(`inline-member-${Date.now()}`);
+      try {
+        const refused = await member.as("POST", sessionsUrl, { ttl: "1h", services: [openai] });
+        expect(refused.statusCode).toBe(403);
+        expect(refused.json().message).toBe(
+          "Only an Agent Vault admin can send services with a session. Name an access bundle instead."
+        );
+      } finally {
+        await member.cleanup();
+      }
+    });
+
+    test("an admin adds inline services to a bundle session, but not one covering a pattern the bundle covers", async () => {
+      const bundle = await createAccessBundle(`inline-extend-${Date.now()}`);
+      const service = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
+        name: "github",
+        hostPattern: "api.github.com",
+        credential: { type: "bearer", value: "ghp_bundle" }
+      });
+      expect(service.statusCode).toBe(200);
+
+      const clash = await inject("POST", sessionsUrl, {
+        accessBundle: bundle.name,
+        ttl: "1h",
+        services: [{ ...openai, hostPattern: "api.github.com" }]
+      });
+      expect(clash.statusCode).toBe(400);
+      expect(clash.json().message).toBe(
+        `The service 'openai' covers api.github.com:443, which 'github' in the access bundle '${bundle.name}' already covers. Remove it from the service 'openai'.`
+      );
+
+      // A wildcard beside the bundle's exact host is how an override is written, as within one bundle.
+      const mint = await inject("POST", sessionsUrl, {
+        accessBundle: bundle.name,
+        ttl: "1h",
+        services: [openai, { ...openai, name: "github-other", hostPattern: "*.github.com" }]
+      });
+      expect(mint.statusCode).toBe(200);
+      const { session } = mint.json() as { session: { token: string; accessBundle: { id: string } } };
+      expect(session.accessBundle).toEqual(expect.objectContaining({ id: bundle.id }));
+
+      const resolve = await createResolver(`inline-extend-${Date.now()}`);
+      const resolved = (await resolve(session.token)).json().services as TResolvedService[];
+      expect(resolved.map((entry) => [entry.name, entry.accessBundleName, entry.credential.value])).toEqual([
+        ["github", bundle.name, "ghp_bundle"],
+        ["openai", null, "sk-inline-openai"],
+        ["github-other", null, "sk-inline-openai"]
+      ]);
+    });
+
+    test("an owner who stops being an admin keeps the bundle and loses the inline services until promoted again", async () => {
+      const bundle = await createAccessBundle(`inline-demote-${Date.now()}`);
+      expect(
+        (
+          await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+            type: "http",
+            name: "github",
+            hostPattern: "api.github.com",
+            credential: { type: "passthrough" }
+          })
+        ).statusCode
+      ).toBe(200);
+
+      const projectId = await getProjectId();
+      const owner = await createMemberIdentity(`inline-demote-${Date.now()}`);
+      // Resolve reads the role through the permission cache, so the cached entry goes with each change.
+      const setRole = async (role: string) => {
+        expect(
+          (await inject("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [owner.id], role })).statusCode
+        ).toBe(200);
+        await testKeyStore.deleteItemsByKeyIn([
+          KeyStorePrefixes.ProjectPermissionMarker(
+            projectId,
+            ActorType.IDENTITY,
+            owner.id,
+            ActionProjectType.AgentVault
+          ),
+          KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.IDENTITY, owner.id, ActionProjectType.AgentVault)
+        ]);
+      };
+      try {
+        await setRole("admin");
+        expect(
+          (
+            await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+              machineIdentityIds: [owner.id]
+            })
+          ).statusCode
+        ).toBe(200);
+        const mint = await owner.as("POST", sessionsUrl, {
+          accessBundle: bundle.name,
+          ttl: "1h",
+          services: [openai]
+        });
+        expect(mint.statusCode).toBe(200);
+        const token = mint.json().session.token as string;
+
+        const resolve = await createResolver(`inline-demote-${Date.now()}`);
+        const serviceNames = async () =>
+          ((await resolve(token)).json().services as TResolvedService[]).map((entry) => entry.name);
+        expect(await serviceNames()).toEqual(["github", "openai"]);
+
+        await setRole("member");
+        expect(await serviceNames()).toEqual(["github"]);
+        await setRole("admin");
+        expect(await serviceNames()).toEqual(["github", "openai"]);
+      } finally {
+        await owner.cleanup();
+      }
+    });
+
+    test("a machine identity that is an admin can send inline services with a session on a user's behalf", async () => {
+      const bot = await createMemberIdentity(`inline-obo-${Date.now()}`);
+      try {
+        expect(
+          (await inject("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [bot.id], role: "admin" }))
+            .statusCode
+        ).toBe(200);
+        expect(
+          (
+            await inject("PUT", `/api/v1/agent-vault/delegations/${bot.id}`, {
+              scope: "selected",
+              userIds: [seedData1.id]
+            })
+          ).statusCode
+        ).toBe(200);
+
+        const mint = await bot.as("POST", sessionsUrl, {
+          onBehalfOf: { userId: seedData1.id },
+          services: [openai]
+        });
+        expect(mint.statusCode).toBe(200);
+        const { session } = mint.json() as { session: { id: string; token: string } };
+
+        const read = await bot.as("GET", `${sessionsUrl}/${session.id}`);
+        expect(read.json().session).toMatchObject({
+          actor: { type: "machineIdentity", id: bot.id },
+          onBehalfOf: expect.objectContaining({ id: seedData1.id }),
+          accessBundle: null,
+          services: [expect.objectContaining({ name: "openai" })]
+        });
+
+        const resolve = await createResolver(`inline-obo-${Date.now()}`);
+        const resolved = await resolve(session.token);
+        expect(resolved.statusCode).toBe(200);
+        expect(resolved.json().services as TResolvedService[]).toMatchObject([
+          { name: "openai", credential: { value: "sk-inline-openai" } }
+        ]);
+      } finally {
+        await bot.cleanup();
+      }
+    });
+
+    test("revoking deletes the secrets and keeps what the session could reach", async () => {
+      const mint = await inject("POST", sessionsUrl, { ttl: "never", services: [openai] });
+      expect(mint.statusCode).toBe(200);
+      const { session } = mint.json() as { session: { id: string; expiresAt: string | null } };
+      expect(session.expiresAt).toBeNull();
+
+      expect((await inject("POST", `${sessionsUrl}/${session.id}/revoke`)).statusCode).toBe(200);
+
+      const [row] = await testDb(inlineServicesTable).where({ sessionId: session.id });
+      expect(row.encryptedSecrets).toBeNull();
+      const read = await inject("GET", `${sessionsUrl}/${session.id}`);
+      expect(read.json().session).toMatchObject({
+        status: "revoked",
+        services: [expect.objectContaining({ name: "openai", hostPattern: "api.openai.com" })]
+      });
+    });
+
+    test("revoking with the session's own token deletes the secrets too", async () => {
+      const mint = await inject("POST", sessionsUrl, { ttl: "never", services: [openai] });
+      expect(mint.statusCode).toBe(200);
+      const { session } = mint.json() as { session: { id: string; token: string } };
+
+      const revoked = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/agent-vault/session/revoke",
+        headers: { authorization: `Bearer ${session.token}` }
+      });
+      expect(revoked.statusCode, revoked.payload).toBe(200);
+
+      const [row] = await testDb(inlineServicesTable).where({ sessionId: session.id });
+      expect(row.encryptedSecrets).toBeNull();
+    });
+
+    test("the hourly cleanup deletes the secrets of sessions that ended without a revoke", async () => {
+      const mintInline = async () => {
+        const res = await inject("POST", sessionsUrl, { ttl: "1h", services: [openai] });
+        expect(res.statusCode).toBe(200);
+        return res.json().session as { id: string };
+      };
+      const [expired, revoked, ownerless, onBehalfOfDeletedUser, live] = await Promise.all(
+        Array.from({ length: 5 }, mintInline)
+      );
+      const bot = await createMemberIdentity(`inline-cleanup-${Date.now()}`);
+      try {
+        await testDb("agent_vault_sessions")
+          .where({ id: expired.id })
+          .update({ expiresAt: new Date(Date.now() - 1000) });
+        // Set directly, as a revoke from an older pod would, so only the cleanup can delete the secrets.
+        await testDb("agent_vault_sessions").where({ id: revoked.id }).update({ revokedAt: new Date() });
+        // What deleting the owner leaves behind.
+        await testDb("agent_vault_sessions").where({ id: ownerless.id }).update({ userId: null });
+        // What deleting the user a machine identity's session was on behalf of leaves behind.
+        await testDb("agent_vault_sessions").where({ id: onBehalfOfDeletedUser.id }).update({
+          userId: null,
+          identityId: bot.id,
+          actorType: "machineIdentity",
+          onBehalfOfUserName: "Deleted User",
+          onBehalfOfUserId: null
+        });
+
+        await agentVaultSessionInlineServiceDALFactory(testDb).deleteSecretsOfEndedSessions();
+
+        const secretsOf = async (sessionId: string) =>
+          ((await testDb(inlineServicesTable).where({ sessionId }).first()) as { encryptedSecrets: Buffer | null })
+            .encryptedSecrets;
+        expect(await secretsOf(expired.id)).toBeNull();
+        expect(await secretsOf(revoked.id)).toBeNull();
+        expect(await secretsOf(ownerless.id)).toBeNull();
+        expect(await secretsOf(onBehalfOfDeletedUser.id)).toBeNull();
+        expect(await secretsOf(live.id)).not.toBeNull();
+      } finally {
+        await bot.cleanup();
+      }
+    });
+
+    test("the hourly cleanup works through more ended services than one batch holds", async () => {
+      const res = await inject("POST", sessionsUrl, { ttl: "1h", services: [openai] });
+      expect(res.statusCode).toBe(200);
+      const { id: sessionId } = res.json().session as { id: string };
+      const [template] = await testDb(inlineServicesTable).where({ sessionId });
+      const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...copy } = template as Record<string, unknown>;
+      await testDb.batchInsert(
+        inlineServicesTable,
+        Array.from({ length: DELETE_SECRETS_BATCH_SIZE }, (_, index) => ({
+          ...copy,
+          position: index + 1,
+          customHeaders: JSON.stringify(copy.customHeaders),
+          substitutions: JSON.stringify(copy.substitutions)
+        })),
+        500
+      );
+      await testDb("agent_vault_sessions")
+        .where({ id: sessionId })
+        .update({ expiresAt: new Date(Date.now() - 1000) });
+
+      await agentVaultSessionInlineServiceDALFactory(testDb).deleteSecretsOfEndedSessions();
+
+      const [{ count }] = await testDb(inlineServicesTable)
+        .where({ sessionId })
+        .whereNotNull("encryptedSecrets")
+        .count("id as count");
+      expect(Number(count)).toBe(0);
+      await testDb("agent_vault_sessions").where({ id: sessionId }).delete();
+    });
+  });
+
   describe("session resolve", async () => {
     const buildResolver = (
       overrides: Partial<
@@ -5737,6 +7007,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
         agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultSessionInlineServiceDAL: agentVaultSessionInlineServiceDALFactory(testDb),
         agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -5755,7 +7026,7 @@ describe("Agent Vault V1 Router", async () => {
 
     const mintForResolve = async (name: string) => {
       const bundle = await createAccessBundle(name);
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
       expect(mint.statusCode).toBe(200);
       const { session } = JSON.parse(mint.payload) as { session: { token: string } };
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name });
@@ -5855,7 +7126,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(created.statusCode).toBe(200);
 
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "1h"
       });
       expect(mint.statusCode).toBe(200);
@@ -5875,6 +7146,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
         agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultSessionInlineServiceDAL: agentVaultSessionInlineServiceDALFactory(testDb),
         agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -5919,7 +7191,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(service.statusCode).toBe(200);
 
       const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
-        accessBundles: [bundle.name],
+        accessBundle: bundle.name,
         ttl: "never"
       });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
@@ -5964,7 +7236,7 @@ describe("Agent Vault V1 Router", async () => {
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
       });
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "never" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "never" });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-deleted-user" });
       const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
@@ -5996,7 +7268,7 @@ describe("Agent Vault V1 Router", async () => {
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
       });
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "never" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "never" });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-deleted-identity" });
       const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
@@ -6028,9 +7300,7 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("an expired time-limited role stops resolving even though its membership row remains", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+      const projectId = await getProjectId();
       const bundle = await createAccessBundle("resolve-temporary-role");
       await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
         type: "http",
@@ -6038,7 +7308,7 @@ describe("Agent Vault V1 Router", async () => {
         hostPattern: "echo.example.com",
         credential: { type: "passthrough" }
       });
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "never" });
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "never" });
       const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
       const proxyRes = await inject("POST", "/api/v1/agent-vault/proxies", { name: "resolve-temporary-role" });
       const { proxy } = JSON.parse(proxyRes.payload) as { proxy: { id: string } };
@@ -6051,6 +7321,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
         agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
         agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+        agentVaultSessionInlineServiceDAL: agentVaultSessionInlineServiceDALFactory(testDb),
         agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
@@ -6105,12 +7376,9 @@ describe("Agent Vault V1 Router", async () => {
     const skillsUrl = "/api/v1/agent-vault/skills";
     const bundleSkillsUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/skills`;
 
-    // Names are unique across the org's Agent Vault and every test here shares it.
+    // Names are unique within a project, and every test here shares the spec's project.
     beforeEach(async () => {
-      const project = await testDb("projects")
-        .where({ orgId: seedData1.organization.id, type: ProjectType.AgentVault })
-        .first();
-      if (project) await testDb("agent_vault_skills").where({ projectId: project.id }).del();
+      await testDb("agent_vault_skills").where({ projectId: agentVaultProjectId }).del();
     });
 
     type TSkill = { id: string; name: string; description: string; latestVersion: number };
@@ -6899,7 +8167,7 @@ describe("Agent Vault V1 Router", async () => {
         await member.cleanup();
       }
     });
-    test("Agent Vault holds at most 250 skills", async () => {
+    test("an Agent Vault project holds at most 250 skills", async () => {
       const projectId = await getProjectId();
       // Seeded directly: 250 creates through the API would be slow, and the cap counts skill rows only.
       await testDb("agent_vault_skills").insert(
@@ -6913,7 +8181,7 @@ describe("Agent Vault V1 Router", async () => {
         const over = await inject("POST", skillsUrl, { files: skillFiles("over-cap-skill") });
         expect(over.statusCode).toBe(400);
         expect(JSON.parse(over.payload).message).toBe(
-          "This organization already has 250 skills, the most allowed. Delete an unused one first."
+          "This project already has 250 skills, the most allowed. Delete an unused one first."
         );
         expect(await testDb("agent_vault_skills").where({ projectId, name: "over-cap-skill" })).toHaveLength(0);
 
@@ -7009,15 +8277,15 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("proxies", async () => {
-    test("an org can hold AGENT_VAULT_MAX_PROXIES_PER_ORG proxies, and the next create is refused", async () => {
-      for (let i = 0; i < AGENT_VAULT_MAX_PROXIES_PER_ORG; i += 1) {
+    test("a project can hold AGENT_VAULT_MAX_PROXIES_PER_PROJECT proxies, and the next create is refused", async () => {
+      for (let i = 0; i < AGENT_VAULT_MAX_PROXIES_PER_PROJECT; i += 1) {
         // eslint-disable-next-line no-await-in-loop
         expect((await inject("POST", "/api/v1/agent-vault/proxies", { name: `cap-${i}` })).statusCode).toBe(200);
       }
 
       const refused = await inject("POST", "/api/v1/agent-vault/proxies", { name: "cap-over" });
       expect(refused.statusCode).toBe(400);
-      expect(JSON.parse(refused.payload).message).toContain(`up to ${AGENT_VAULT_MAX_PROXIES_PER_ORG} proxies`);
+      expect(JSON.parse(refused.payload).message).toContain(`up to ${AGENT_VAULT_MAX_PROXIES_PER_PROJECT} proxies`);
     });
 
     test("a create that omits the settings gets the documented defaults", async () => {
@@ -7215,6 +8483,32 @@ describe("Agent Vault V1 Router", async () => {
       expect((await asProxy(created.proxyToken, "heartbeat")).statusCode).toBe(200);
     });
 
+    // A released CLI blocks only under bundle-hosts, so proxies keep getting that name until every CLI knows the new one.
+    test("service-hosts and its old name bundle-hosts are one policy, which proxies still get as bundle-hosts", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", {
+        name: "policy-service-hosts",
+        trafficPolicy: "service-hosts"
+      });
+      expect(created.statusCode).toBe(200);
+      const { proxy, proxyToken } = created.json() as { proxy: { id: string; trafficPolicy: string }; proxyToken: string };
+      expect(proxy.trafficPolicy).toBe("service-hosts");
+      expect((await testDb("agent_vault_proxies").where({ id: proxy.id }).first()).trafficPolicy).toBe("bundle-hosts");
+      expect((await asProxy(proxyToken, "bootstrap", {})).json().config.trafficPolicy).toBe("bundle-hosts");
+
+      const update = (trafficPolicy: string) =>
+        inject("PATCH", `/api/v1/agent-vault/proxies/${proxy.id}`, { trafficPolicy });
+      expect((await update("any-host")).json().proxy.trafficPolicy).toBe("any-host");
+      const oldName = await update("bundle-hosts");
+      expect(oldName.statusCode).toBe(200);
+      expect(oldName.json().proxy.trafficPolicy).toBe("service-hosts");
+
+      const listed = (await inject("GET", "/api/v1/agent-vault/proxies")).json() as {
+        proxies: { id: string; trafficPolicy: string }[];
+      };
+      expect(listed.proxies.find((listedProxy) => listedProxy.id === proxy.id)?.trafficPolicy).toBe("service-hosts");
+      expect((await asProxy(proxyToken, "heartbeat")).json().config.trafficPolicy).toBe("bundle-hosts");
+    });
+
     test("the generated CA is a P-256 CA valid for about ten years", async () => {
       const created = await createProxy("token-ca-shape");
       const { rootCa } = JSON.parse((await asProxy(created.proxyToken, "bootstrap", {})).payload) as {
@@ -7305,6 +8599,119 @@ describe("Agent Vault V1 Router", async () => {
       expect(row.encryptedRootCaPrivateKey).not.toBeNull();
     });
 
+    test("the CA download returns the CA the proxy serves, to members as well as admins", async () => {
+      const created = await createProxy("ca-download");
+      const { rootCa } = JSON.parse((await asProxy(created.proxyToken, "bootstrap", {})).payload) as {
+        rootCa: TRootCa;
+      };
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(200);
+      const { ca } = JSON.parse(res.payload) as { ca: { certificate: string; fingerprint: string; expiresAt: string } };
+      expect(ca.certificate).toBe(rootCa.certificate);
+      expect(ca.fingerprint).toBe(created.proxy.rootCaFingerprint);
+      expect(new Date(ca.expiresAt).getTime()).toBe(new x509.X509Certificate(rootCa.certificate).notAfter.getTime());
+      expect(res.payload).not.toContain("PRIVATE KEY");
+
+      const member = await createUaIdentity(`av-proxy-ca-member-${Date.now()}`);
+      try {
+        expect(
+          (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [member.id], role: "member" }))
+            .statusCode
+        ).toBe(200);
+        const asMember = await member.asIdentity("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+        expect(asMember.statusCode).toBe(200);
+        expect((JSON.parse(asMember.payload) as { ca: { certificate: string } }).ca.certificate).toBe(
+          rootCa.certificate
+        );
+      } finally {
+        await deleteUaIdentity(member.id);
+      }
+    });
+
+    test("after a rotation the CA download returns the new CA", async () => {
+      const created = await createProxy("ca-download-rotate");
+      const rotated = await rotate(created.proxy.id);
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(200);
+      const { ca } = JSON.parse(res.payload) as { ca: { fingerprint: string } };
+      expect(ca.fingerprint).toBe(rotated.proxy.rootCaFingerprint);
+      expect(ca.fingerprint).not.toBe(created.proxy.rootCaFingerprint);
+    });
+
+    test("the CA download is a 409 for a proxy serving its own CA, which Infisical doesn't hold", async () => {
+      const created = await createProxy("ca-download-own");
+      expect((await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: await caPem() })).statusCode).toBe(
+        200
+      );
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("--ca-cert");
+    });
+
+    test("a rotation keeps the CA download a 409 for a proxy serving its own CA", async () => {
+      const created = await createProxy("ca-download-own-rotate");
+      const own = await caPem();
+      expect((await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: own })).statusCode).toBe(200);
+
+      const rotated = await rotate(created.proxy.id);
+      expect(rotated.proxy.rootCaFingerprint).toBe(fingerprintOf(own));
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("--ca-cert");
+
+      // Started on the new token without its own CA, it takes the one the rotation stored.
+      const boot = await asProxy(rotated.proxyToken, "bootstrap", {});
+      expect(boot.statusCode).toBe(200);
+      const { rootCa } = JSON.parse(boot.payload) as { rootCa: TRootCa };
+      const after = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(after.statusCode).toBe(200);
+      expect((JSON.parse(after.payload) as { ca: { certificate: string } }).ca.certificate).toBe(rootCa.certificate);
+    });
+
+    test("a proxy enrolled before Infisical stored CAs is told about its ca.crt, and a rotation gives it a CA", async () => {
+      const created = await createProxy("ca-download-legacy");
+      const legacy = await caPem();
+      await agentVaultProxyDALFactory(testDb).updateById(created.proxy.id, {
+        rootCaCertificate: null,
+        encryptedRootCaPrivateKey: null,
+        rootCaFingerprint: fingerprintOf(legacy)
+      });
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("ca.crt");
+
+      // Its next start serves the CA the rotation stores, so the rotation records that CA's fingerprint.
+      const rotated = await rotate(created.proxy.id);
+      expect(rotated.proxy.rootCaFingerprint).not.toBe(fingerprintOf(legacy));
+      const after = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(after.statusCode).toBe(200);
+      expect((JSON.parse(after.payload) as { ca: { fingerprint: string } }).ca.fingerprint).toBe(
+        rotated.proxy.rootCaFingerprint
+      );
+    });
+
+    test("a proxy with no CA at all is told to rotate its token", async () => {
+      const created = await createProxy("ca-download-none");
+      await agentVaultProxyDALFactory(testDb).updateById(created.proxy.id, {
+        rootCaCertificate: null,
+        encryptedRootCaPrivateKey: null,
+        rootCaFingerprint: null
+      });
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("Rotate its proxy token");
+    });
+
+    test("the CA download is a 404 for a proxy that doesn't exist", async () => {
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${crypto.randomUUID()}/ca`);
+      expect(res.statusCode).toBe(404);
+    });
+
     test("a served CA that isn't a CA, or isn't a certificate, is refused and changes nothing", async () => {
       const created = await createProxy("token-bad-served-ca");
       const before = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
@@ -7367,9 +8774,7 @@ describe("Agent Vault V1 Router", async () => {
 
   describe("roles", async () => {
     test("the predefined roles are admin and member only", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+      const projectId = await getProjectId();
       const res = await inject("GET", `/api/v1/projects/${projectId}/roles`);
       expect(res.statusCode).toBe(200);
       const { roles } = JSON.parse(res.payload) as { roles: { slug: string }[] };
@@ -7383,8 +8788,7 @@ describe("Agent Vault V1 Router", async () => {
   describe("generic project routes", async () => {
     // The org-level pages reach the Agent Vault project through the platform's own membership routes, so the
     // last-admin rule has to hold there too, not only on the product routes.
-    const projectFor = async () =>
-      (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
+    const projectFor = getProjectId;
     const seedMembership = async (projectId: string) =>
       testDb("memberships")
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
@@ -7444,124 +8848,6 @@ describe("Agent Vault V1 Router", async () => {
     });
   });
 
-  describe("org invite", async () => {
-    test("grantAgentVaultAccess makes the invitee a member of the implicit project", async () => {
-      const inviteeEmail = `agent-vault-invite-${crypto.randomUUID()}@localhost.local`;
-      const res = await inject("POST", "/api/v1/invite-org/signup", {
-        inviteeEmails: [inviteeEmail],
-        organizationId: seedData1.organization.id,
-        grantAgentVaultAccess: true
-      });
-      expect(res.statusCode).toBe(200);
-      expect(JSON.parse(res.payload).grantFailures).toBeUndefined();
-
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
-      const user = await testDb("users").where({ username: inviteeEmail }).first();
-      expect(user).toBeTruthy();
-      const membership = await testDb("memberships")
-        .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: user.id })
-        .first();
-      expect(membership).toBeTruthy();
-      const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
-      expect(role.role).toBe(ProjectMembershipRole.Member);
-    });
-
-    test("an org admin who never opened Agent Vault is joined as admin by inviting with access", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
-      // getProjectPermission caches the membership rows for ten seconds, so the cache is cleared around
-      // each direct edit or the server keeps seeing the row that was just removed.
-      const cacheKeys = [
-        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault),
-        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
-      ];
-      const inviterMembership = () =>
-        testDb("memberships")
-          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
-          .first();
-
-      // Remove the inviter's own membership so they look like an org admin arriving fresh.
-      const before = await inviterMembership();
-      await testDb("memberships").where({ id: before.id }).del();
-      await testKeyStore.deleteItemsByKeyIn(cacheKeys);
-
-      try {
-        const inviteeEmail = `agent-vault-invite-fresh-${crypto.randomUUID()}@localhost.local`;
-        const res = await inject("POST", "/api/v1/invite-org/signup", {
-          inviteeEmails: [inviteeEmail],
-          organizationId: seedData1.organization.id,
-          grantAgentVaultAccess: true
-        });
-        expect(res.statusCode).toBe(200);
-        expect(JSON.parse(res.payload).grantFailures).toBeUndefined();
-
-        const inviter = await inviterMembership();
-        expect(inviter).toBeTruthy();
-        const inviterRole = await testDb("membership_roles").where({ membershipId: inviter.id }).first();
-        expect(inviterRole.role).toBe(ProjectMembershipRole.Admin);
-
-        const user = await testDb("users").where({ username: inviteeEmail }).first();
-        const invitee = await testDb("memberships")
-          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: user.id })
-          .first();
-        expect(invitee).toBeTruthy();
-      } finally {
-        // Later tests act as this admin, so put the membership back if the self-join did not.
-        if (!(await inviterMembership())) {
-          const [restored] = (await testDb("memberships")
-            .insert({
-              scope: AccessScope.Project,
-              scopeProjectId: projectId,
-              scopeOrgId: seedData1.organization.id,
-              actorUserId: seedData1.id
-            })
-            .returning("*")) as { id: string }[];
-          await testDb("membership_roles").insert({ membershipId: restored.id, role: ProjectMembershipRole.Admin });
-        }
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
-      }
-    });
-
-    test("an org admin who is an Agent Vault member is not promoted by inviting with access", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
-      const cacheKeys = [
-        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault),
-        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
-      ];
-      const membership = await testDb("memberships")
-        .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
-        .first();
-      await testDb("membership_roles")
-        .where({ membershipId: membership.id })
-        .update({ role: ProjectMembershipRole.Member });
-      await testKeyStore.deleteItemsByKeyIn(cacheKeys);
-
-      try {
-        const inviteeEmail = `agent-vault-invite-member-${crypto.randomUUID()}@localhost.local`;
-        const res = await inject("POST", "/api/v1/invite-org/signup", {
-          inviteeEmails: [inviteeEmail],
-          organizationId: seedData1.organization.id,
-          grantAgentVaultAccess: true
-        });
-        expect(res.statusCode).toBe(200);
-        expect(JSON.parse(res.payload).grantFailures?.agentVaultAccess).toBe(true);
-
-        const role = await testDb("membership_roles").where({ membershipId: membership.id }).first();
-        expect(role.role).toBe(ProjectMembershipRole.Member);
-      } finally {
-        await testDb("membership_roles")
-          .where({ membershipId: membership.id })
-          .update({ role: ProjectMembershipRole.Admin });
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
-      }
-    });
-  });
-
   describe("membership", async () => {
     test("a grant to someone outside the Agent Vault project is refused", async () => {
       const bundle = await createAccessBundle("member-outside-project");
@@ -7572,15 +8858,13 @@ describe("Agent Vault V1 Router", async () => {
         machineIdentityIds: [outsider.id]
       });
       expect(res.statusCode).toBe(400);
-      expect(JSON.parse(res.payload).message).toContain("not a member of Agent Vault");
+      expect(JSON.parse(res.payload).message).toContain("not a member of this Agent Vault project");
 
       await deleteOrgIdentity(outsider.id);
     });
 
     test("a grant to someone who is in the product only through a group says so", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+      const projectId = await getProjectId();
       const bundle = await createAccessBundle("member-via-group");
       const insider = await createOrgIdentity(`av-via-group-${Date.now()}`);
 
@@ -7672,7 +8956,7 @@ describe("Agent Vault V1 Router", async () => {
 
         expect(byType.group).toMatchObject({ type: "group", id: group.id, name: "av-arms-group" });
         expect(byType.machineIdentity).toMatchObject({ type: "machineIdentity", id: identity.id });
-        expect(byType.user).toMatchObject({ type: "user", id: seedData1.id });
+        expect(byType.user).toMatchObject({ type: "user", id: seedData1.id, isOrgMembershipPending: false });
         expect(byType.user.username).toBeTruthy();
 
         members.forEach((member) => {
@@ -7687,6 +8971,62 @@ describe("Agent Vault V1 Router", async () => {
           expect(member).not.toHaveProperty("identity");
           expect(member).not.toHaveProperty("group");
         });
+      } finally {
+        await deleteOrgIdentity(identity.id);
+        await group.cleanup();
+      }
+    });
+
+    test("the bundle member and candidate lists filter by actor type on the server", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle("member-type-filter");
+      const group = await createProjectGroup(projectId, "av-type-filter-group", ProjectMembershipRole.Member);
+      const identity = await createOrgIdentity(`av-type-filter-identity-${Date.now()}`);
+      const membersUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members`;
+      const list = async (url: string, query: string) => {
+        const res = await inject("GET", `${url}?limit=100&${query}`);
+        expect(res.statusCode).toBe(200);
+        return JSON.parse(res.payload) as { members: { type: string; id: string }[]; totalCount: number };
+      };
+      const idsOf = (listed: { members: { id: string }[] }) => listed.members.map((member) => member.id);
+
+      try {
+        expect(
+          (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [identity.id], role: "member" }))
+            .statusCode
+        ).toBe(200);
+
+        const groupCandidates = await list(`${membersUrl}/available`, "actorType=group");
+        expect(groupCandidates.members.every((member) => member.type === "group")).toBe(true);
+        expect(idsOf(groupCandidates)).toContain(group.id);
+        expect(groupCandidates.totalCount).toBe(groupCandidates.members.length);
+
+        const userCandidates = await list(`${membersUrl}/available`, "actorType=user");
+        expect(userCandidates.members.every((member) => member.type === "user")).toBe(true);
+        expect(idsOf(userCandidates)).not.toContain(group.id);
+
+        expect(
+          (await inject("POST", membersUrl, { groupIds: [group.id], machineIdentityIds: [identity.id] })).statusCode
+        ).toBe(200);
+
+        const groups = await list(membersUrl, "actorType=group");
+        expect(idsOf(groups)).toEqual([group.id]);
+        expect(groups.totalCount).toBe(1);
+
+        const identities = await list(membersUrl, "actorType=machineIdentity");
+        expect(idsOf(identities)).toEqual([identity.id]);
+        expect(identities.totalCount).toBe(1);
+
+        // The creator's own grant is the only user on the bundle.
+        const users = await list(membersUrl, "actorType=user");
+        expect(idsOf(users)).toEqual([seedData1.id]);
+        expect(users.totalCount).toBe(1);
+
+        expect(idsOf(await list(`${membersUrl}/available`, "actorType=group"))).not.toContain(group.id);
+        expect(idsOf(await list(`${membersUrl}/available`, "actorType=machineIdentity"))).not.toContain(identity.id);
+
+        expect((await inject("GET", `${membersUrl}?actorType=nonsense`)).statusCode).toBe(422);
+        expect((await inject("GET", `${membersUrl}/available?actorType=nonsense`)).statusCode).toBe(422);
       } finally {
         await deleteOrgIdentity(identity.id);
         await group.cleanup();
@@ -7823,9 +9163,7 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("a deactivated machine identity cannot be added", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+      const projectId = await getProjectId();
       const identityId = seedData1.machineIdentity.id;
       const orgMembership = await testDb("memberships")
         .where({ scope: AccessScope.Organization, scopeOrgId: seedData1.organization.id, actorIdentityId: identityId })
@@ -7947,7 +9285,7 @@ describe("Agent Vault V1 Router", async () => {
         ).toBe(200);
 
         const mint = await agent.asIdentity("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           ttl: "never"
         });
         expect(mint.statusCode).toBe(200);
@@ -7961,6 +9299,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
           agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+          agentVaultSessionInlineServiceDAL: agentVaultSessionInlineServiceDALFactory(testDb),
           agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
@@ -8004,7 +9343,7 @@ describe("Agent Vault V1 Router", async () => {
         expect((await resolve()).services).toHaveLength(0);
 
         const remint = await agent.asIdentity("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [bundle.name],
+          accessBundle: bundle.name,
           ttl: "never"
         });
         expect(remint.statusCode).toBe(400);
@@ -8051,7 +9390,7 @@ describe("Agent Vault V1 Router", async () => {
         KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.IDENTITY, agent.id, ActionProjectType.AgentVault)
       ];
       const mint = () =>
-        agent.asIdentity("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "never" });
+        agent.asIdentity("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "never" });
 
       try {
         const live = await mint();
@@ -8066,6 +9405,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultVariableDAL: agentVaultVariableDALFactory(testDb),
           agentVaultPersonalValueDAL: agentVaultPersonalValueDALFactory(testDb),
           agentVaultSessionDAL: agentVaultSessionDALFactory(testDb),
+          agentVaultSessionInlineServiceDAL: agentVaultSessionInlineServiceDALFactory(testDb),
           agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
@@ -8135,7 +9475,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(accessBundles.find((row) => row.id === accessBundle.id)?.memberCount).toBe(0);
 
         const mint = await admin.asIdentity("POST", "/api/v1/agent-vault/sessions", {
-          accessBundles: [accessBundle.name],
+          accessBundle: accessBundle.name,
           ttl: "1h"
         });
         expect(mint.statusCode).toBe(200);
@@ -8354,9 +9694,7 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("removing an actor from the project reaps their access bundle grants", async () => {
-      const { projectId } = JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as {
-        projectId: string;
-      };
+      const projectId = await getProjectId();
       const bundle = await createAccessBundle("grant-reaping");
 
       const [user] = (await testDb("users")
