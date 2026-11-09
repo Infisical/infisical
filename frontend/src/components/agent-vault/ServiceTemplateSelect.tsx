@@ -40,7 +40,7 @@ const NATIVE_SECTION_DESCRIPTION =
 const TYPE_FILTERS: { value: TTypeFilter; label: string }[] = [
   { value: "all", label: "All Types" },
   { value: AgentVaultServiceType.Mcp, label: "MCP Servers" },
-  { value: "native", label: "Other Protocols" },
+  { value: "native", label: "Databases and Other Protocols" },
   { value: AgentVaultServiceType.Http, label: "HTTP APIs" }
 ];
 
@@ -237,7 +237,10 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
   const nativeSection = (serviceTypes: readonly TAgentVaultNativeServiceType[]) =>
     serviceTypes.length > 0 && (
       <div>
-        <SectionHeader title="Other Protocols" description={NATIVE_SECTION_DESCRIPTION} />
+        <SectionHeader
+          title="Databases and Other Protocols"
+          description={NATIVE_SECTION_DESCRIPTION}
+        />
         <Grid>
           {serviceTypes.map((serviceType) => (
             <NativeCard

@@ -4680,7 +4680,10 @@ export const AGENT_VAULT = {
     limit: "The maximum number of access bundles to return.",
     offset: "How many access bundles to skip.",
     hostPatterns: "Every host pattern the access bundle's services cover.",
-    serviceTypes: "The types of the access bundle's services, each listed once.",
+    nativeServices:
+      "The access bundle's database and SSH services, by name. They cover no host pattern, so `hostPatterns` leaves them out.",
+    nativeServiceName: "The name of the service.",
+    nativeServiceType: "The type of the service: `postgres`, `mysql`, or `ssh`.",
     requiresSetup:
       "true lists only the access bundles you can reach that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
     granted:

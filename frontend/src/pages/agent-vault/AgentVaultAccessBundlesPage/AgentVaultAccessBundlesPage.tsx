@@ -323,7 +323,7 @@ export const AgentVaultAccessBundlesPage = () => {
                     <TableCell>
                       <ServiceIconStack
                         hostPatterns={bundle.hostPatterns}
-                        serviceTypes={bundle.serviceTypes}
+                        nativeServices={bundle.nativeServices}
                       />
                     </TableCell>
                     <TableCell>

@@ -10,6 +10,8 @@ import { AgentVaultServiceType, isNativeServiceType } from "@app/hooks/api/agent
 import { NATIVE_SERVICE_META } from "./nativeServiceMeta";
 
 type TServiceIcon = {
+  // Kept apart from the label, so a database named like a provider still gets its own chip.
+  key: string;
   label: string;
   image?: string;
   icon?: LucideIcon;
@@ -26,7 +28,8 @@ const labelOf = (pattern: string) => {
 
 const iconFromHostPattern = (hostPattern: string): TServiceIcon => {
   const template = findAnyTemplateForHostPattern(hostPattern);
-  return { label: template?.name ?? labelOf(hostPattern), image: template?.image };
+  const label = template?.name ?? labelOf(hostPattern);
+  return { key: `host:${label}`, label, image: template?.image };
 };
 
 // A database or SSH service has no host pattern, so its icon comes from its type.
@@ -39,27 +42,33 @@ const iconOf = ({
 }): TServiceIcon => {
   if (isNativeServiceType(serviceType)) {
     const meta = NATIVE_SERVICE_META[serviceType];
-    return { label: meta.label, image: meta.image, icon: meta.icon };
+    return { key: `type:${serviceType}`, label: meta.label, image: meta.image, icon: meta.icon };
   }
   if (hostPattern) return iconFromHostPattern(hostPattern);
-  return { label: "Service", icon: ServerIcon };
+  return { key: "service", label: "Service", icon: ServerIcon };
 };
 
+type TNativeService = { name: string; type: AgentVaultServiceType };
+
+// Host patterns collapse to one chip per provider. A database or SSH service has no provider to group by, so it
+// gets a chip of its own, named after the service.
 const iconsFromServices = (
   hostPatterns: string[],
-  serviceTypes: AgentVaultServiceType[]
+  nativeServices: TNativeService[]
 ): TServiceIcon[] => {
-  const byLabel = new Map<string, TServiceIcon>();
+  const byKey = new Map<string, TServiceIcon>();
   const add = (icon: TServiceIcon) => {
-    if (icon.label && !byLabel.has(icon.label)) byLabel.set(icon.label, icon);
+    if (icon.label && !byKey.has(icon.key)) byKey.set(icon.key, icon);
   };
 
   hostPatterns.forEach((pattern) => add(iconFromHostPattern(pattern)));
-  serviceTypes.forEach((serviceType) => {
-    if (isNativeServiceType(serviceType)) add(iconOf({ serviceType }));
+  nativeServices.forEach(({ name, type }) => {
+    if (isNativeServiceType(type)) {
+      add({ ...iconOf({ serviceType: type }), key: `native:${name}`, label: name });
+    }
   });
 
-  return [...byLabel.values()];
+  return [...byKey.values()];
 };
 
 const chipClassName =
@@ -109,25 +118,24 @@ export const ServiceIcon = ({
   return <ServiceChip icon={icon} className={className} />;
 };
 
-// Host patterns collapse to one chip per provider, and database and SSH services to one per type.
 type Props = {
   hostPatterns: string[];
-  serviceTypes?: AgentVaultServiceType[];
+  nativeServices?: TNativeService[];
   maxVisible?: number;
   className?: string;
 };
 
-const NO_SERVICE_TYPES: AgentVaultServiceType[] = [];
+const NO_NATIVE_SERVICES: TNativeService[] = [];
 
 export const ServiceIconStack = ({
   hostPatterns,
-  serviceTypes = NO_SERVICE_TYPES,
+  nativeServices = NO_NATIVE_SERVICES,
   maxVisible = 4,
   className
 }: Props) => {
   const icons = useMemo(
-    () => iconsFromServices(hostPatterns, serviceTypes),
-    [hostPatterns, serviceTypes]
+    () => iconsFromServices(hostPatterns, nativeServices),
+    [hostPatterns, nativeServices]
   );
 
   if (icons.length === 0) return <span className="text-muted">&mdash;</span>;
@@ -149,7 +157,7 @@ export const ServiceIconStack = ({
           spacing puts a negative margin on every child but the last, and the last has to stay a chip. */}
       <span className="sr-only">{icons.map((icon) => icon.label).join(", ")}</span>
       {visible.map((icon, index) => (
-        <Tooltip key={icon.label}>
+        <Tooltip key={icon.key}>
           <TooltipTrigger asChild>
             <ServiceChip
               icon={icon}
@@ -181,7 +189,7 @@ export const ServiceIconStack = ({
           <TooltipContent>
             <div className="flex flex-col">
               {hidden.map((icon) => (
-                <span key={icon.label}>{icon.label}</span>
+                <span key={icon.key}>{icon.label}</span>
               ))}
             </div>
           </TooltipContent>

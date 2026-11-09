@@ -321,8 +321,8 @@ export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
   serviceCount: number;
   memberCount: number;
   hostPatterns: string[];
-  // Each type once.
-  serviceTypes: AgentVaultServiceType[];
+  // Database and SSH services, which cover no host pattern.
+  nativeServices: { name: string; type: AgentVaultServiceType }[];
   servicesRequiringSetup: { id: string; name: string }[];
 };
 

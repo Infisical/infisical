@@ -113,7 +113,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
             memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
             hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns),
-            serviceTypes: z.nativeEnum(AgentVaultServiceType).array().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceTypes),
+            nativeServices: z
+              .object({
+                name: z.string().describe(AGENT_VAULT.ACCESS_BUNDLE.nativeServiceName),
+                type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.ACCESS_BUNDLE.nativeServiceType)
+              })
+              .array()
+              .describe(AGENT_VAULT.ACCESS_BUNDLE.nativeServices),
             servicesRequiringSetup: z
               .object({
                 id: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetupId),
