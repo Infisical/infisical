@@ -328,7 +328,6 @@ export const OrgIdentityDetail = () => {
           <BackLink orgId={orgId} />
           <PageHeader
             title={identity.name}
-            mono
             actions={
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

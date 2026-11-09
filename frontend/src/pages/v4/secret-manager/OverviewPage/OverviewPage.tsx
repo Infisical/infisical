@@ -1466,7 +1466,6 @@ export const OverviewPage = () => {
                     projectId
                   }
                   description={projectQuery.data?.description || undefined}
-                  mono
                 />
                 <div className={styles.toolbar}>
                   <div className={styles.envPicker}>

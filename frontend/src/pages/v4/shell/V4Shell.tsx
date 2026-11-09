@@ -213,13 +213,12 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
     product && at.projectId
       ? {
           label: project?.name ?? at.projectId,
-          mono: true,
           href: resolve(`${base}${projectHome(product.type, at.projectId)}`),
           switcher: {
             label: "Switch project",
             options: session.projects
               .filter((entry) => entry.type === product.type)
-              .map((entry) => ({ value: entry.id, label: entry.name, mono: true })),
+              .map((entry) => ({ value: entry.id, label: entry.name })),
             value: at.projectId,
             onChange: (id: string) => {
               const from = `${base}${projectBase(product.type, at.projectId!)}`;
