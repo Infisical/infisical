@@ -228,7 +228,12 @@ export function EnvironmentPicker({
               value={query}
               onValueChange={setQuery}
             />
-            <CommandList>
+            <CommandList
+              style={{
+                maxHeight:
+                  "calc(8 * var(--v4-size-control-sm) + 3 * var(--v4-space-3) + var(--v4-size-control-border))"
+              }}
+            >
               <CommandEmpty>No environment found</CommandEmpty>
               {environments.length > 0 && !query && (
                 <>
