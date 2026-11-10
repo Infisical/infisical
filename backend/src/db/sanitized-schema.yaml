@@ -104,6 +104,8 @@ tables:
     columns:
       - id
       - accessBundleId
+      - projectId
+      - sessionId
       - hostPattern
       - credentialType
       - allowedMethods
