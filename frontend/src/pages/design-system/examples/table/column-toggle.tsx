@@ -4,7 +4,7 @@ import { BanIcon, FilterIcon } from "lucide-react";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Meta } from "@app/components/v4/ui/text";
+import { toast } from "@app/components/v4/ui/sonner";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { ExampleStack } from "../../example-presentation";
@@ -72,7 +72,6 @@ const markFor = (action: Action) => (row: Policy) => {
 
 export default function ColumnToggle() {
   const [policies, setPolicies] = React.useState(initial);
-  const [status, setStatus] = React.useState("No changes yet.");
   const columns: DataTableColumn<Policy>[] = [
     {
       id: "subject",
@@ -103,7 +102,7 @@ export default function ColumnToggle() {
                 : row
             )
           );
-          setStatus(
+          toast(
             `${checked ? "Allowed" : "Removed"} ${action.header.toLowerCase()} on ${ids.length} ${ids.length === 1 ? "policy" : "policies"}.`
           );
         }
@@ -119,7 +118,6 @@ export default function ColumnToggle() {
         getRowId={(row) => row.id}
         rowLabel={(row) => row.subject}
       />
-      <Meta role="status">{status}</Meta>
     </ExampleStack>
   );
 }

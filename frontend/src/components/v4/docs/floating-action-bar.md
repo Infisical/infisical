@@ -122,20 +122,20 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/floating-action-bar/default.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
 
-Registry items used: @infisical/floating-action-bar, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/floating-action-bar, @infisical/list, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
 
 import { FloatingActionBar } from "../../../../components/v4/ui/floating-action-bar";
 import { List, ListRow } from "../../../../components/v4/ui/list";
+import { toast } from "../../../../components/v4/ui/sonner";
 
 const secrets = ["stripe_api_key", "database_url", "sentry_dsn", "redis_password", "jwt_secret"];
 
 export default function Example() {
   const [rows, setRows] = useState(secrets);
   const [selected, setSelected] = useState<string[]>(["stripe_api_key", "database_url"]);
-  const [message, setMessage] = useState("");
   return (
     <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
       <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
@@ -146,7 +146,6 @@ export default function Example() {
             selection="multiple"
             selectedIds={selected}
             onSelectionChange={setSelected}
-            footer={message || undefined}
           >
             {rows.map((key) => (
               <ListRow key={key} value={key} label={key} title={<code>{key}</code>} />
@@ -161,7 +160,7 @@ export default function Example() {
               {
                 label: "Move",
                 icon: "folder",
-                onClick: () => setMessage(`Ready to move ${selected.length}.`)
+                onClick: () => toast(`Ready to move ${selected.length}.`)
               },
               {
                 label: "Delete",
@@ -169,7 +168,7 @@ export default function Example() {
                 danger: true,
                 onClick: () => {
                   setRows(rows.filter((row) => !selected.includes(row)));
-                  setMessage(`Deleted ${selected.length} secrets.`);
+                  toast(`Deleted ${selected.length} secrets.`);
                   setSelected([]);
                 }
               }
@@ -185,7 +184,7 @@ export default function Example() {
                   link.download = "secret-names.txt";
                   link.click();
                   URL.revokeObjectURL(link.href);
-                  setMessage(`Downloaded ${selected.length} names.`);
+                  toast(`Downloaded ${selected.length} names.`);
                 }
               }
             ]}
@@ -202,13 +201,14 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/floating-action-bar/disabled-reason.tsx`; its relative imports are generated for that exact path. States: disabled, keyboard.
 
-Registry items used: @infisical/floating-action-bar, @infisical/list. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/floating-action-bar, @infisical/list, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
 
 import { FloatingActionBar } from "../../../../components/v4/ui/floating-action-bar";
 import { List, ListRow } from "../../../../components/v4/ui/list";
+import { toast } from "../../../../components/v4/ui/sonner";
 
 const secrets = [
   { key: "stripe_api_key", environment: "production" },
@@ -218,7 +218,6 @@ const secrets = [
 
 export default function Example() {
   const [selected, setSelected] = useState<string[]>(["stripe_api_key", "database_url"]);
-  const [message, setMessage] = useState("");
   const environments = new Set(
     secrets.filter((secret) => selected.includes(secret.key)).map((secret) => secret.environment)
   );
@@ -233,7 +232,6 @@ export default function Example() {
             selection="multiple"
             selectedIds={selected}
             onSelectionChange={setSelected}
-            footer={message || undefined}
           >
             {secrets.map((secret) => (
               <ListRow
@@ -253,20 +251,20 @@ export default function Example() {
                 label: "Copy to new source",
                 icon: "copy",
                 disabledReason: reason,
-                onClick: () => setMessage(`Ready to copy ${selected.length} secrets.`)
+                onClick: () => toast(`Ready to copy ${selected.length} secrets.`)
               },
               {
                 label: "Delete",
                 icon: "trash",
                 danger: true,
-                onClick: () => setMessage(`Ready to delete ${selected.length} secrets.`)
+                onClick: () => toast(`Ready to delete ${selected.length} secrets.`)
               }
             ]}
             moreActions={[
               {
                 label: "Export as .env",
                 disabledReason: reason && "Select secrets from one environment to export",
-                onClick: () => setMessage(`Ready to export ${selected.length} secrets.`)
+                onClick: () => toast(`Ready to export ${selected.length} secrets.`)
               }
             ]}
           />

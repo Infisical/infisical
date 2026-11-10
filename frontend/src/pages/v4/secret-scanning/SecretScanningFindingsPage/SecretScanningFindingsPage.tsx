@@ -342,7 +342,7 @@ const Findings = ({ projectId }: { projectId: string }) => {
         selectedIds={selected}
         onSelectionChange={setSelected}
         onRowActivate={(row) => setOpened(row)}
-        footer={
+        persistentStatus={
           totalCount > pageSize
             ? undefined
             : `${totalCount} ${statusLabel}${totalCount === 1 ? "finding" : "findings"}${scopeLabel ? ` in ${scopeLabel}` : ` across ${dataSources.length} data sources`}`

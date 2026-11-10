@@ -6,7 +6,9 @@ import {
   type ExternalToast,
   toast as sonnerToast,
   Toaster as Sonner,
-  type ToasterProps
+  type ToasterProps,
+  type ToastT,
+  useSonner
 } from "sonner";
 
 import { useV4Scheme, useV4ToastLayer } from "../scope";
@@ -27,7 +29,8 @@ export const toast = Object.assign(
   (message: Message, data?: ExternalToast) => sonnerToast(message, routed(data)),
   {
     success: (message: Message, data?: ExternalToast) => sonnerToast.success(message, routed(data)),
-    error: (message: Message, data?: ExternalToast) => sonnerToast.error(message, routed(data)),
+    error: (message: Message, data?: ExternalToast) =>
+      sonnerToast.error(message, routed({ duration: Infinity, ...data })),
     info: (message: Message, data?: ExternalToast) => sonnerToast.info(message, routed(data)),
     warning: (message: Message, data?: ExternalToast) => sonnerToast.warning(message, routed(data)),
     loading: (message: Message, data?: ExternalToast) => sonnerToast.loading(message, routed(data)),
@@ -75,44 +78,97 @@ const useOwnsToaster = (id: string) => {
   );
 };
 
+type Announcement = { key: string; text: string };
+const announcementKey = (item: ToastT) =>
+  `${item.id}:${item.type ?? "default"}:${spoken(item.title)}`;
+const spoken = (value: unknown) =>
+  typeof value === "string" || typeof value === "number" ? String(value) : "";
+const announce = (fresh: ToastT[]): Announcement | null =>
+  fresh.length
+    ? {
+        key: fresh.map(announcementKey).join("|"),
+        text: fresh
+          .map((item) => [spoken(item.title), spoken(item.description)].filter(Boolean).join(" "))
+          .join(" ")
+      }
+    : null;
+
+const ToastAnnouncer = ({ toasterId }: { toasterId: string }) => {
+  const keys = useSonner()
+    .toasts.filter((item) => (item.toasterId ?? undefined) === toasterId)
+    .map((item) => ({ item, key: announcementKey(item) }));
+  const joined = keys.map(({ key }) => key).join("\n");
+  const [previous, setPrevious] = React.useState(joined);
+  const [polite, setPolite] = React.useState<Announcement | null>(null);
+  const [assertive, setAssertive] = React.useState<Announcement | null>(null);
+  if (previous !== joined) {
+    setPrevious(joined);
+    const known = new Set(previous.split("\n"));
+    const fresh = keys.filter(({ key }) => !known.has(key)).map(({ item }) => item);
+    const errors = announce(fresh.filter((item) => item.type === "error"));
+    const others = announce(fresh.filter((item) => item.type !== "error"));
+    if (errors) setAssertive(errors);
+    if (others) setPolite(others);
+  }
+  return (
+    <>
+      <div role="status" className="sr-only" data-slot="toast-live-polite">
+        {polite && <p key={polite.key}>{polite.text}</p>}
+      </div>
+      <div role="alert" className="sr-only" data-slot="toast-live-assertive">
+        {assertive && <p key={assertive.key}>{assertive.text}</p>}
+      </div>
+    </>
+  );
+};
+
 const Toaster = ({ ...props }: ToasterProps) => {
   const resolvedTheme = useV4Scheme();
   const layer = useV4ToastLayer();
   const owns = useOwnsToaster(props.id ?? V4_TOASTER_ID);
   if (!owns) return null;
 
+  const toasterId = props.id ?? V4_TOASTER_ID;
   const toaster = (
-    <Sonner
-      theme={props.theme ?? resolvedTheme ?? "system"}
-      className={styles.toaster}
-      expand
-      gap={8}
-      icons={{
-        success: <Icon name="check-c" className="size-4" />,
-        info: <Icon name="info" className="size-4" />,
-        warning: <Icon name="alert" className="size-4" />,
-        error: <Icon name="alert-c" className="size-4" />,
-        loading: <Spinner />
-      }}
-      style={
-        {
-          "--width": "min(var(--v4-size-toast), calc(100vw - 2 * var(--v4-space-16)))"
-        } as React.CSSProperties
-      }
-      toastOptions={{
-        unstyled: true,
-        classNames: {
-          toast: styles.toast,
-          icon: styles.icon,
-          content: styles.content,
-          title: styles.title,
-          description: styles.description,
-          actionButton: styles.action
+    <>
+      <ToastAnnouncer toasterId={toasterId} />
+      <Sonner
+        ref={(node) => node?.setAttribute("aria-live", "off")}
+        theme={props.theme ?? resolvedTheme ?? "system"}
+        className={styles.toaster}
+        expand
+        closeButton
+        gap={8}
+        icons={{
+          success: <Icon name="check-c" className="size-4" />,
+          info: <Icon name="info" className="size-4" />,
+          warning: <Icon name="alert" className="size-4" />,
+          error: <Icon name="alert-c" className="size-4" />,
+          loading: <Spinner />,
+          close: <Icon name="x" />
+        }}
+        style={
+          {
+            "--width": "min(var(--v4-size-toast), calc(100vw - 2 * var(--v4-space-16)))"
+          } as React.CSSProperties
         }
-      }}
-      {...props}
-      id={props.id ?? V4_TOASTER_ID}
-    />
+        toastOptions={{
+          unstyled: true,
+          closeButtonAriaLabel: "Dismiss notification",
+          classNames: {
+            toast: styles.toast,
+            icon: styles.icon,
+            content: styles.content,
+            title: styles.title,
+            description: styles.description,
+            actionButton: styles.action,
+            closeButton: styles.close
+          }
+        }}
+        {...props}
+        id={toasterId}
+      />
+    </>
   );
   return layer ? createPortal(toaster, layer) : toaster;
 };

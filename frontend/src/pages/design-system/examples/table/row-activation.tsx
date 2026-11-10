@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v4/ui/dropdown-menu";
+import { toast } from "@app/components/v4/ui/sonner";
 import {
   RowActions,
   RowContextMenu,
@@ -20,7 +21,6 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v4/ui/table";
-import { Meta } from "@app/components/v4/ui/text";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
@@ -32,9 +32,8 @@ const certs: Cert[] = [
 ];
 
 export default function RowActivation() {
-  const [status, setStatus] = React.useState("Nothing opened yet.");
   const [selected, setSelected] = React.useState<string[]>([]);
-  const open = (cert: Cert) => setStatus(`Opened ${cert.cn}.`);
+  const open = (cert: Cert) => toast(`Opened ${cert.cn}.`);
   const columns: DataTableColumn<Cert>[] = [
     {
       id: "cn",
@@ -62,7 +61,7 @@ export default function RowActivation() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setStatus(`Renewal requested for ${row.cn}.`)}>
+            <DropdownMenuItem onSelect={() => toast(`Renewal requested for ${row.cn}.`)}>
               Renew
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -83,7 +82,6 @@ export default function RowActivation() {
           selectedIds={selected}
           onSelectionChange={setSelected}
           onRowActivate={open}
-          footer={<Meta mono={false}>{status}</Meta>}
         />
       </ExampleCell>
       <ExampleCell align="stretch" label="Native TableRow onClick ignores its portaled menu">
@@ -98,7 +96,7 @@ export default function RowActivation() {
           <TableBody>
             {certs.map((cert) => {
               const menu = (
-                <DropdownMenuItem onSelect={() => setStatus(`Renewal requested for ${cert.cn}.`)}>
+                <DropdownMenuItem onSelect={() => toast(`Renewal requested for ${cert.cn}.`)}>
                   Renew
                 </DropdownMenuItem>
               );

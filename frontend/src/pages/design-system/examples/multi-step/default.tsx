@@ -6,6 +6,7 @@ import { Checkbox } from "@app/components/v4/ui/checkbox";
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { MultiStep } from "@app/components/v4/ui/multi-step";
+import { toast } from "@app/components/v4/ui/sonner";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
@@ -73,26 +74,24 @@ const Connect = ({
 );
 
 export default function Example() {
-  const [done, setDone] = useState("");
   return (
     <ExampleGrid width="full">
       <ExampleCell label="dialog">
         <Connect
           variant="dialog"
-          onDone={() => setDone("Vercel connected from the dialog.")}
+          onDone={() => toast("Vercel connected from the dialog.")}
           trigger={<Button variant="outline">Connect Vercel</Button>}
         />
       </ExampleCell>
       <ExampleCell label="sheet">
         <Connect
           variant="sheet"
-          onDone={() => setDone("Vercel connected from the sheet.")}
+          onDone={() => toast("Vercel connected from the sheet.")}
           trigger={<Button variant="outline">Open in a sheet</Button>}
         />
       </ExampleCell>
       <ExampleCell label="page" align="stretch">
-        <Connect variant="page" onDone={() => setDone("Vercel connected from the page.")} />
-        {done && <p role="status">{done}</p>}
+        <Connect variant="page" onDone={() => toast("Vercel connected from the page.")} />
       </ExampleCell>
     </ExampleGrid>
   );

@@ -53,7 +53,7 @@ export default function Example() {
               : undefined
           }
           end="End of events"
-          footer={`Showing ${rows.length} of ${total} events`}
+          persistentStatus={`Showing ${rows.length} of ${total} events`}
         />
       </ExampleStage>
     </ExampleCell>

@@ -21,6 +21,7 @@ export const tableDefinition = {
     "TableBody",
     "TableRow",
     "TableHead",
+    "TableHeadButton",
     "TableCell",
     "TableFooter",
     "TableCaption",
@@ -45,7 +46,7 @@ export const tableDefinition = {
   behavior: [
     'Leading pins: pin="start" on TableHead and TableCell (selection cells included) renders data-pin="start", the same attribute DataTable\'s trailing pin sets to true, and sticks the cell at the inline start. A second pinned column stacks on the first through --v4-pin-offset: a cell after a pinned selection cell takes size-row on its own, and any later one passes pinOffset, a CSS length for the width of the pinned columns before it. DataTable columns take pin: "start" too; the selection column then pins with them and DataTable sets each offset from the declared widths. Pinned cells repaint the row\'s ground and its stripe, hover, selected and keyboard-ring layers through the same rules as the actions tail, keep row focus (a focused row stays full and a dimmed row dims a pinned cell\'s contents, not its ground), sit at z-index 4 over scrolled cells, and pinned header cells sit at 6 with the sticky DataTable header at 5. The last leading pinned column marks its edge with the pinned edge fade below, and the start scroll fade is off while leading pins hold that edge. Pin only the columns that identify the row, usually selection and Name, in wide matrices such as the secrets overview across many environments.',
     'Full-width cell: pin="viewport" on a TableCell with colSpan across every column makes its one child sticky at the inline start and as wide as the scroll container (100cqi; the container becomes an inline-size query container only while it holds such a cell), so an expanded row\'s nested table stays in view while the outer table scrolls sideways. The cell drops its padding; the child owns its insets. Use it for an expansion that belongs to the row, never for ordinary cells.',
-    "Pinned edge fade: scrolled cells fade into a pinned column instead of meeting a hard line. The last leading pinned cell (data-pin-edge) fades size-scroll-fade past its trailing edge while the scroll container has data-scroll-start-x, and the actions tail (or any data-pin true cell) fades the same depth past its leading edge while the container has data-scroll-end-x. The fade inherits the cell's own background, which is the row's ground and layers, so it takes the stripe, hover, selected and open-menu layers, the header band on header cells, and stays at full ground on a row dimmed by row focus like the pinned cell itself. It fades in on duration-moderate and is instant under reduced motion. The leading edge has no line at all; the actions tail keeps its line-soft divider only when nothing scrolls past it (no overflow, or scrolled to the end), and the divider turns transparent, keeping its width, while the fade shows. A container with an actions tail (data-has-end-pin) turns its own end scroll fade off, as leading pins do for the start fade, so the two never stack.",
+    "Pinned edge and fade: a pinned column carries a hard line-soft edge while content scrolls under it, and scrolled cells fade into it outside that edge. The last leading pinned cell (data-pin-edge) fades size-scroll-fade past its trailing edge while the scroll container has data-scroll-start-x, and the actions tail (or any data-pin true cell) fades the same depth past its leading edge while the container has data-scroll-end-x. The fade inherits the cell's own background, which is the row's ground and layers, so it takes the stripe, hover, selected and open-menu layers, the header band on header cells, and stays at full ground on a row dimmed by row focus like the pinned cell itself. It fades in on duration-moderate and is instant under reduced motion. The edge is painted inside the sticky cell (--v4-pin-edge, composed with DataTable's frame-pad cover in --v4-pin-frame), never a table border, which would stay with the scrolled columns: the last leading pinned cell draws it on its trailing side while data-scroll-start-x is set, and the actions tail on its leading side while data-scroll-end-x is set, when its own divider border turns transparent, keeping its width, so the line is never doubled. At rest the leading pin shows no line and the tail shows its divider. A full-width (pin viewport) row has no pinned cells, so it draws no edge, and a quick-add row that spans the tail draws only the leading edge. A container with an actions tail (data-has-end-pin) turns its own end scroll fade off, as leading pins do for the start fade, so the two never stack.",
     "Pinned cells that hold only text keep their text at full strength while other rows dim, because the dim would otherwise fade the cell's opaque ground; wrap the text in an element to dim it.",
     "Row focus: while a row is being edited (an annotation popover, an inline name or value edit), set focused on its TableRow, or pass DataTable focusedRowId (one id or several). The row renders data-focused and every other row in the same body fades its cell contents to opacity-row-dim (40%) through filter: opacity, so row grounds, borders, the selection ring, pinned cells and the header stay at full strength, and the dim composes with opacity reveals inside cells. Rows report focus to their TableBody, which marks itself data-has-focus, so there is no table-level prop. Hovering a dimmed row undims it where hover exists, dimmed rows stay interactive, and portalled popovers and menus never dim. The fade runs on duration-moderate and is instant under reduced motion. A selected row that is not focused still dims.",
     "Nested tables: a body dims when it holds a focused row at any depth. The row that holds the nested table and the row just above it, the one it expands from, keep full strength, and the nested body dims only its own other rows, so focusing an environment row inside an expanded secret dims every other secret and environment row and nothing else.",
@@ -56,6 +57,7 @@ export const tableDefinition = {
     "DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.",
     "A table embedded in a framed card is frameless. Inside a framed Card, List or other frame, DataTable drops its tint frame and the body's own border: the header row, pinned actions tail and pagination sit on the parent's inset surface with a line-soft rule under the header, so the header reads apart from the card's band. A flush framed Card keeps its bordered inset around the embedded table.",
     "Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.",
+    "Header rows never take a hover state: no row hover layer, no background change, on any header cell, pinned or not. Only an interactive header cell hovers, and only itself: TableHeadButton is the one header trigger, a sort or menu button that fills its TableHead edge to edge (it pulls through the head's space-row-inline padding to the full height) and takes the hover overlay on that cell alone. DataTable's sortable headers render it; a native Table uses it for a sort or column menu trigger. Never tint a header cell from row hover, and never wrap a small trigger inside a hovering cell.",
     "Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.",
     "Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.",
     "Rows are size-row (40px) through one variable, --v4-table-row-height, which falls back to the token; DataTable reads size-row at runtime as its default virtual metric, so the CSS row and the scroll model never disagree. Cells pad by space-row-inline (12px), the content edge text and glyphs share.",
@@ -527,6 +529,23 @@ export const tableDefinition = {
         detect: {
           by: "review",
           how: "ui:lint pagination-outside-frame flags a Pagination right after a DataTable and a slot Pagination without the compact variant. A slot node built in a helper is checked by hand."
+        }
+      },
+      {
+        id: "table-action-feedback",
+        when: "A row, bulk or toolbar action on a table finishes or fails.",
+        do: "Report the result with a toast, and keep DataTable's persistentStatus for state that must stay visible, such as Showing 5 of 120 after filter.",
+        avoid:
+          'Set a notice from the action and show it in persistentStatus, a footer beside the pagination or a role="status" line.',
+        reason:
+          "A footer result replaces the counts it sits in, is easy to miss bottom left and needs its own live region; the toast region already announces it.",
+        evidence: [
+          "src/components/v4/ui/data-table.tsx",
+          "src/pages/design-system/examples/table/row-activation.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: 'ui:lint action-feedback-in-status flags state set to sentence text and rendered in persistentStatus, a List or DataGrid footer or a role="status" element in the same file.'
         }
       },
       {

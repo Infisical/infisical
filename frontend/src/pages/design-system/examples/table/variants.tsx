@@ -1,7 +1,6 @@
-import * as React from "react";
-
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn, EnvMark } from "@app/components/v4/ui/data-table";
+import { toast } from "@app/components/v4/ui/sonner";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
@@ -11,7 +10,6 @@ const rows: Row[] = [
   { id: "staging", name: "Staging", count: 0, present: false }
 ];
 export default function Variants() {
-  const [opened, setOpened] = React.useState("");
   const columns: DataTableColumn<Row>[] = [
     {
       id: "name",
@@ -38,7 +36,7 @@ export default function Variants() {
         <Button
           variant="ghost"
           aria-label={`Open ${row.name}`}
-          onClick={() => setOpened(`${row.name} contains ${row.count} fabricated secrets.`)}
+          onClick={() => toast(`${row.name} contains ${row.count} fabricated secrets.`)}
         >
           Open
         </Button>
@@ -64,9 +62,6 @@ export default function Variants() {
           />
         </ExampleCell>
       ))}
-      <p role="status" className="sr-only">
-        {opened}
-      </p>
     </ExampleGrid>
   );
 }

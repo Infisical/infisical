@@ -9,8 +9,8 @@ import {
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Inline } from "@app/components/v4/ui/layout";
+import { toast } from "@app/components/v4/ui/sonner";
 import { RowActions } from "@app/components/v4/ui/table";
-import { Meta } from "@app/components/v4/ui/text";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
@@ -58,7 +58,6 @@ const tree: Node[] = resources.slice(0, 2).map((resource) => ({
 export default function GroupedRows() {
   const [sort, setSort] = React.useState<Sort>({ columnId: "name", direction: "asc" });
   const [selected, setSelected] = React.useState<string[]>([]);
-  const [status, setStatus] = React.useState("Nothing opened yet.");
   const groups: DataTableGroup<Account>[] = resources.map((resource) => ({
     id: resource.id,
     label: (
@@ -72,7 +71,7 @@ export default function GroupedRows() {
       <RowActions
         label={resource.name}
         menu={
-          <DropdownMenuItem onSelect={() => setStatus(`Copied the ID of ${resource.name}.`)}>
+          <DropdownMenuItem onSelect={() => toast(`Copied the ID of ${resource.name}.`)}>
             <Icon name="copy" />
             Copy resource ID
           </DropdownMenuItem>
@@ -136,23 +135,22 @@ export default function GroupedRows() {
           selectable
           selectedIds={selected}
           onSelectionChange={setSelected}
-          onRowActivate={(row) => setStatus(`Opened ${row.name}.`)}
+          onRowActivate={(row) => toast(`Opened ${row.name}.`)}
           rowActions={{
             inline: [
               {
                 label: "Launch session",
                 icon: "terminal",
-                onSelect: (row) => setStatus(`Launched a session as ${row.name}.`)
+                onSelect: (row) => toast(`Launched a session as ${row.name}.`)
               }
             ],
             renderMenu: (row) => (
-              <DropdownMenuItem onSelect={() => setStatus(`Copied the ID of ${row.name}.`)}>
+              <DropdownMenuItem onSelect={() => toast(`Copied the ID of ${row.name}.`)}>
                 <Icon name="copy" />
                 Copy account ID
               </DropdownMenuItem>
             )
           }}
-          footer={<Meta mono={false}>{status}</Meta>}
         />
       </ExampleCell>
       <ExampleCell align="stretch" label="Child rows under a parent row">

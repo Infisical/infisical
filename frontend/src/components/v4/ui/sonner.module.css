@@ -6,7 +6,7 @@
 .toast[data-sonner-toast] {
   width: var(--width);
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
   row-gap: var(--v4-space-8);
   padding: var(--v4-space-12);
@@ -19,6 +19,8 @@
   pointer-events: auto;
 }
 .icon[data-icon] {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   flex: none;
   align-items: center;
@@ -40,7 +42,8 @@
   color: var(--v4-toast-bad);
 }
 .content[data-content] {
-  grid-column: -2 / -1;
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -53,7 +56,7 @@
   font-weight: var(--v4-type-row-title-font-weight);
   letter-spacing: var(--v4-type-row-title-letter-spacing);
 }
-.description[data-description] {
+.toaster[data-sonner-toaster] .description[data-description] {
   font-family: var(--v4-type-small-font-family);
   font-size: var(--v4-type-small-font-size);
   line-height: var(--v4-type-small-line-height);
@@ -62,7 +65,8 @@
   color: var(--v4-toast-muted);
 }
 .action[data-button] {
-  grid-column: -2 / -1;
+  grid-column: 2;
+  grid-row: 2;
   justify-self: start;
   min-height: var(--v4-size-control-default);
   margin-inline-start: calc(-1 * var(--v4-space-control-inline-sm));
@@ -83,4 +87,36 @@
 .action[data-button]:focus-visible {
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);
   outline-offset: var(--v4-size-focus-ring);
+}
+.toaster[data-sonner-toaster] .close[data-close-button] {
+  position: static;
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-nested-md);
+  height: var(--v4-size-nested-md);
+  margin-block: calc((var(--v4-type-row-title-line-height) - var(--v4-size-nested-md)) / 2);
+  margin-inline-start: var(--v4-space-8);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--v4-toast-muted);
+  transform: none;
+  cursor: default;
+}
+.toaster[data-sonner-toaster] .close[data-close-button]:hover {
+  background: var(--v4-action-ghost-hover);
+  color: var(--v4-toast-text);
+}
+.toaster[data-sonner-toaster] .close[data-close-button]:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: var(--v4-size-focus-ring);
+  box-shadow: none;
+}
+.toaster[data-sonner-toaster] .close[data-close-button] svg {
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
 }

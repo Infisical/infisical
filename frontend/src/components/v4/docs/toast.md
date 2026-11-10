@@ -46,6 +46,24 @@ Source evidence:
 - src/components/v4/scope.tsx
 - src/pages/design-system/examples/toast/over-sheet.tsx
 
+### toast-action-result-default
+
+Owner: toast.
+
+When an action finishes: copied, saved, deleted, moved, uploaded or failed.
+
+Do: Call toast with the result by default, even when the action started from a table row, a bulk bar or a toolbar.
+
+Avoid: Show the result in a table or list footer, a status line beside the table or a hidden role="status" paragraph.
+
+Why: The toast region is aria-live, so one call shows and announces the result in the same place on every page.
+
+Checked by: review only. Look for: ui:lint action-feedback-in-status flags action state rendered in a footer slot or role="status" element; trigger the action and read the result in the toast region.
+
+Source evidence:
+- src/components/v4/ui/sonner.tsx
+- src/pages/design-system/examples/toast/parts.tsx
+
 ### toast-one-feedback-owner
 
 Owner: toast.
@@ -90,17 +108,20 @@ Exports: Toaster, toast, V4_TOASTER_ID, ToastStack, ToastItem. Source TypeScript
 
 ## Behavior
 
-- Toaster renders Sonner notifications with an explicit theme or V4Scope's resolved theme. ToastStack is a separate controlled items/onDismiss composition; pending and error items persist.
+- Toaster renders Sonner notifications with an explicit theme or V4Scope's resolved theme. ToastStack is a separate controlled items/onDismiss composition; in both, pending and error items persist.
 - The v4 Toaster has its own toaster id (V4_TOASTER_ID), and the toast exported beside it routes every call to that id. The app's v3 Toaster only shows toasts without an id, so a v4 toast and a v3 toast never render twice, even when both Toasters are mounted on one page.
 - AppShell mounts the one toast host, so every page inside the v4 shell calls toast() without mounting a Toaster. Toaster is idempotent per toaster id: when a page or example still mounts its own, the first mounted instance renders and the others render nothing, so no toast shows twice; when it unmounts, the next one takes over.
 - Toaster portals into the V4Scope toast layer, a sibling placed right after the overlay container, and sits on the shared overlay layer (z-50). It follows every sheet, dialog and menu in DOM order, so a toast paints above an open sheet or dialog without a higher z-index. Its toasts keep pointer events while a modal turns them off for the page, and a click on one never dismisses the overlay under it. The notifications region is aria-live, so a modal never hides it from assistive technology.
 - Toaster renders sonner unstyled and draws each toast with the v4 tokens: toast-bg, toast-line and shadow-pop on the card, the row-title type for the title and small type in toast-muted for the description, both in Archivo. The status icon sits at the top, centered on the title's first line, however many lines the description wraps to. The stack is always expanded with an 8px gap, newest at the bottom, so every toast shows its content.
 - Both owners use one anatomy: the status icon, then a text column with the title, the description and an actions row, then the close button. The title and description take the whole text column. The action sits on its own row under the text as a quiet sm button (a ghost Button in ToastStack), start-aligned with the title like Alert actions, so it never squeezes the title. The close button stays top-right, centered on the title's first line.
 - Width comes from the text: a ToastStack is as wide as its widest title or description, capped at size-toast, and every toast in the stack shares that width. The actions row does not add to it. The Sonner Toaster draws every toast at size-toast. ToastItem takes one action.
+- The shared toast() covers the ToastStack tones: toast.success for ok, toast.error for bad, toast.info for neutral and toast.loading for loading, which a later call with the same id resolves in place. Every call takes description, and action as { label, onClick }, which renders in the action row under the text. toast.error stays until it is dismissed, as ToastStack's bad items do; pass duration for one that should clear on its own. Every toast except loading has a close button top-right, centered on the title's first line, the same as ToastStack's.
 
 ## Accessibility
 
 - ToastStack exposes status feedback and named action/dismiss buttons. Its auto-dismiss timer pauses while hovered or keyboard-focused, then resumes the remaining duration.
+- ToastStack announces through two live regions that mount with the stack, before its first toast: a polite status region for ok, neutral and loading items and an assertive alert region for bad items. Each new item, or an item whose tone or title changes (loading resolving to ok), writes its title and description into one region, so it is announced once. The toast cards carry no live role, so nothing is announced twice. Items present when the stack mounts are not announced, so mount the stack empty and keep it mounted, the way FlowToasts and AccessToasts do.
+- Toaster announces the same way: it mounts its own polite status and assertive alert regions beside Sonner's list and turns Sonner's polite region (Notifications, alt+T) off, so toast.error is announced once and assertively and every other toast once and politely. The close button is named Dismiss notification.
 
 ## Use cases
 
@@ -185,7 +206,7 @@ const ToneDemo = ({ tone }: { tone: keyof typeof tones }) => {
         Show {tone} notice
       </Button>
       <div id={regionId} className="min-h-14 w-full">
-        {item && <ToastStack inline items={[item]} onDismiss={() => setItem(null)} />}
+        <ToastStack inline items={item ? [item] : []} onDismiss={() => setItem(null)} />
       </div>
     </div>
   );
@@ -346,6 +367,29 @@ export default function Example() {
           }
         >
           Show warning
+        </Button>
+        <Button variant="outline" onClick={() => toast.info("Version available")}>
+          Show notice
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() =>
+            toast.success("Secret deleted", {
+              description: "DATABASE_URL was removed from Production.",
+              action: { label: "Undo", onClick: () => toast.success("Secret restored") }
+            })
+          }
+        >
+          Show with action
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            const id = toast.loading("Checking provider");
+            window.setTimeout(() => toast.success("Provider connected", { id }), 1800);
+          }}
+        >
+          Show loading
         </Button>
       </div>
     </div>

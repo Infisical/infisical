@@ -80,10 +80,7 @@ function TableHeader({ className, ref, ...props }: React.ComponentProps<"thead">
       <thead
         ref={ref}
         data-slot="table-header"
-        className={cn(
-          "[&_tr]:border-b [&_tr]:border-[color:var(--v4-line-soft)] [&_tr]:hover:bg-transparent",
-          className
-        )}
+        className={cn("[&_tr]:border-b [&_tr]:border-[color:var(--v4-line-soft)]", className)}
         {...props}
       />
     </BodyFocusContext>
@@ -316,6 +313,25 @@ function TableHead({
   );
 }
 TableHead.displayName = "TableHead";
+
+/** The one interactive header: a sort or menu trigger that fills its TableHead and takes hover on that cell alone. */
+function TableHeadButton({
+  className,
+  type = "button",
+  ref,
+  ...props
+}: React.ComponentProps<"button">) {
+  return (
+    <button
+      ref={ref}
+      type={type}
+      data-slot="table-head-button"
+      className={cn(styles.tableSort, className)}
+      {...props}
+    />
+  );
+}
+TableHeadButton.displayName = "TableHeadButton";
 
 function TableCell({
   selection,
@@ -854,6 +870,7 @@ export {
   TableCell,
   TableFooter,
   TableHead,
+  TableHeadButton,
   TableHeader,
   TableLoadingRows,
   TableRow,

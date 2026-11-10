@@ -176,6 +176,24 @@ Source evidence:
 - src/components/v4/ui/data-table.tsx
 - src/pages/design-system/examples/table/pagination.tsx
 
+### table-action-feedback
+
+Owner: table.
+
+When a row, bulk or toolbar action on a table finishes or fails.
+
+Do: Report the result with a toast, and keep DataTable's persistentStatus for state that must stay visible, such as Showing 5 of 120 after filter.
+
+Avoid: Set a notice from the action and show it in persistentStatus, a footer beside the pagination or a role="status" line.
+
+Why: A footer result replaces the counts it sits in, is easy to miss bottom left and needs its own live region; the toast region already announces it.
+
+Checked by: review only. Look for: ui:lint action-feedback-in-status flags state set to sentence text and rendered in persistentStatus, a List or DataGrid footer or a role="status" element in the same file.
+
+Source evidence:
+- src/components/v4/ui/data-table.tsx
+- src/pages/design-system/examples/table/row-activation.tsx
+
 ### table-row-context-menu
 
 Owner: table.
@@ -291,13 +309,13 @@ Why: Stable lanes support comparison. Counts must describe actual loaded rows an
 - src/components/v4/ui/frame.module.css
 - src/components/v4/tokens.json
 
-Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, TableRowActions, TableRowIndicators, TableActionsHead, TableActionsCell, TableLoadingRows, TableLoadingColumn, RowActions, RowContextMenu, RowAction, RowActionList, DataTableColumn, DataTableToggle, DataTableRowAction, DataTableRowActions, DataTableGroup, EnvMark. Source TypeScript defines the API.
+Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableHeadButton, TableCell, TableFooter, TableCaption, TableRowActions, TableRowIndicators, TableActionsHead, TableActionsCell, TableLoadingRows, TableLoadingColumn, RowActions, RowContextMenu, RowAction, RowActionList, DataTableColumn, DataTableToggle, DataTableRowAction, DataTableRowActions, DataTableGroup, EnvMark. Source TypeScript defines the API.
 
 ## Behavior
 
 - Leading pins: pin="start" on TableHead and TableCell (selection cells included) renders data-pin="start", the same attribute DataTable's trailing pin sets to true, and sticks the cell at the inline start. A second pinned column stacks on the first through --v4-pin-offset: a cell after a pinned selection cell takes size-row on its own, and any later one passes pinOffset, a CSS length for the width of the pinned columns before it. DataTable columns take pin: "start" too; the selection column then pins with them and DataTable sets each offset from the declared widths. Pinned cells repaint the row's ground and its stripe, hover, selected and keyboard-ring layers through the same rules as the actions tail, keep row focus (a focused row stays full and a dimmed row dims a pinned cell's contents, not its ground), sit at z-index 4 over scrolled cells, and pinned header cells sit at 6 with the sticky DataTable header at 5. The last leading pinned column marks its edge with the pinned edge fade below, and the start scroll fade is off while leading pins hold that edge. Pin only the columns that identify the row, usually selection and Name, in wide matrices such as the secrets overview across many environments.
 - Full-width cell: pin="viewport" on a TableCell with colSpan across every column makes its one child sticky at the inline start and as wide as the scroll container (100cqi; the container becomes an inline-size query container only while it holds such a cell), so an expanded row's nested table stays in view while the outer table scrolls sideways. The cell drops its padding; the child owns its insets. Use it for an expansion that belongs to the row, never for ordinary cells.
-- Pinned edge fade: scrolled cells fade into a pinned column instead of meeting a hard line. The last leading pinned cell (data-pin-edge) fades size-scroll-fade past its trailing edge while the scroll container has data-scroll-start-x, and the actions tail (or any data-pin true cell) fades the same depth past its leading edge while the container has data-scroll-end-x. The fade inherits the cell's own background, which is the row's ground and layers, so it takes the stripe, hover, selected and open-menu layers, the header band on header cells, and stays at full ground on a row dimmed by row focus like the pinned cell itself. It fades in on duration-moderate and is instant under reduced motion. The leading edge has no line at all; the actions tail keeps its line-soft divider only when nothing scrolls past it (no overflow, or scrolled to the end), and the divider turns transparent, keeping its width, while the fade shows. A container with an actions tail (data-has-end-pin) turns its own end scroll fade off, as leading pins do for the start fade, so the two never stack.
+- Pinned edge and fade: a pinned column carries a hard line-soft edge while content scrolls under it, and scrolled cells fade into it outside that edge. The last leading pinned cell (data-pin-edge) fades size-scroll-fade past its trailing edge while the scroll container has data-scroll-start-x, and the actions tail (or any data-pin true cell) fades the same depth past its leading edge while the container has data-scroll-end-x. The fade inherits the cell's own background, which is the row's ground and layers, so it takes the stripe, hover, selected and open-menu layers, the header band on header cells, and stays at full ground on a row dimmed by row focus like the pinned cell itself. It fades in on duration-moderate and is instant under reduced motion. The edge is painted inside the sticky cell (--v4-pin-edge, composed with DataTable's frame-pad cover in --v4-pin-frame), never a table border, which would stay with the scrolled columns: the last leading pinned cell draws it on its trailing side while data-scroll-start-x is set, and the actions tail on its leading side while data-scroll-end-x is set, when its own divider border turns transparent, keeping its width, so the line is never doubled. At rest the leading pin shows no line and the tail shows its divider. A full-width (pin viewport) row has no pinned cells, so it draws no edge, and a quick-add row that spans the tail draws only the leading edge. A container with an actions tail (data-has-end-pin) turns its own end scroll fade off, as leading pins do for the start fade, so the two never stack.
 - Pinned cells that hold only text keep their text at full strength while other rows dim, because the dim would otherwise fade the cell's opaque ground; wrap the text in an element to dim it.
 - Row focus: while a row is being edited (an annotation popover, an inline name or value edit), set focused on its TableRow, or pass DataTable focusedRowId (one id or several). The row renders data-focused and every other row in the same body fades its cell contents to opacity-row-dim (40%) through filter: opacity, so row grounds, borders, the selection ring, pinned cells and the header stay at full strength, and the dim composes with opacity reveals inside cells. Rows report focus to their TableBody, which marks itself data-has-focus, so there is no table-level prop. Hovering a dimmed row undims it where hover exists, dimmed rows stay interactive, and portalled popovers and menus never dim. The fade runs on duration-moderate and is instant under reduced motion. A selected row that is not focused still dims.
 - Nested tables: a body dims when it holds a focused row at any depth. The row that holds the nested table and the row just above it, the one it expands from, keep full strength, and the nested body dims only its own other rows, so focusing an environment row inside an expanded secret dims every other secret and environment row and nothing else.
@@ -308,6 +326,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.
 - A table embedded in a framed card is frameless. Inside a framed Card, List or other frame, DataTable drops its tint frame and the body's own border: the header row, pinned actions tail and pagination sit on the parent's inset surface with a line-soft rule under the header, so the header reads apart from the card's band. A flush framed Card keeps its bordered inset around the embedded table.
 - Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.
+- Header rows never take a hover state: no row hover layer, no background change, on any header cell, pinned or not. Only an interactive header cell hovers, and only itself: TableHeadButton is the one header trigger, a sort or menu button that fills its TableHead edge to edge (it pulls through the head's space-row-inline padding to the full height) and takes the hover overlay on that cell alone. DataTable's sortable headers render it; a native Table uses it for a sort or column menu trigger. Never tint a header cell from row hover, and never wrap a small trigger inside a hovering cell.
 - Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.
 - Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.
 - Rows are size-row (40px) through one variable, --v4-table-row-height, which falls back to the token; DataTable reads size-row at runtime as its default virtual metric, so the CSS row and the scroll model never disagree. Cells pad by space-row-inline (12px), the content edge text and glyphs share.
@@ -425,13 +444,12 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/table/variants.tsx`; its relative imports are generated for that exact path. States: default, overflow.
 
-Registry items used: @infisical/button, @infisical/data-table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/data-table, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import * as React from "react";
-
 import { Button } from "../../../../components/v4/ui/button";
 import { DataTable, type DataTableColumn, EnvMark } from "../../../../components/v4/ui/data-table";
+import { toast } from "../../../../components/v4/ui/sonner";
 
 type Row = { id: string; name: string; count: number; present: boolean };
 const rows: Row[] = [
@@ -439,7 +457,6 @@ const rows: Row[] = [
   { id: "staging", name: "Staging", count: 0, present: false }
 ];
 export default function Variants() {
-  const [opened, setOpened] = React.useState("");
   const columns: DataTableColumn<Row>[] = [
     {
       id: "name",
@@ -466,7 +483,7 @@ export default function Variants() {
         <Button
           variant="ghost"
           aria-label={`Open ${row.name}`}
-          onClick={() => setOpened(`${row.name} contains ${row.count} fabricated secrets.`)}
+          onClick={() => toast(`${row.name} contains ${row.count} fabricated secrets.`)}
         >
           Open
         </Button>
@@ -494,9 +511,6 @@ export default function Variants() {
           <figcaption className="text-muted-foreground text-xs">{variant}</figcaption>
         </figure>
       ))}
-      <p role="status" className="sr-only">
-        {opened}
-      </p>
     </div>
   );
 }
@@ -575,7 +589,7 @@ export default function States() {
             }
             selectedIds={selected}
             onSelectionChange={setSelected}
-            footer={`${selected.length} eligible loaded identities selected`}
+            persistentStatus={`${selected.length} eligible loaded identities selected`}
           />
         </div>
         <figcaption className="text-muted-foreground text-xs">{"Protected selection"}</figcaption>
@@ -942,7 +956,7 @@ export default function Example() {
             height={320}
             virtual
             onSortChange={setSort}
-            footer={`${rows.length} resources. ${selected.length} selected.`}
+            persistentStatus={`${rows.length} resources. ${selected.length} selected.`}
           />
         </div>
       </div>
@@ -1012,7 +1026,7 @@ export default function Example() {
                 : undefined
             }
             end="End of events"
-            footer={`Showing ${rows.length} of ${total} events`}
+            persistentStatus={`Showing ${rows.length} of ${total} events`}
           />
         </div>
       </div>
@@ -1091,10 +1105,9 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/table/row-actions.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/table. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
+Registry items used: @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/sonner, @infisical/table. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
 
 ```tsx
-import * as React from "react";
 import { CodeXmlIcon, EditIcon, TagsIcon } from "lucide-react";
 
 import {
@@ -1105,6 +1118,7 @@ import {
 import { DropdownMenuItem } from "../../../../components/v4/ui/dropdown-menu";
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Inline } from "../../../../components/v4/ui/layout";
+import { toast } from "../../../../components/v4/ui/sonner";
 import {
   type RowActionList,
   RowActions as RowActionsGroup,
@@ -1128,7 +1142,6 @@ const rows: Row[] = [
 ];
 
 export default function RowActions() {
-  const [status, setStatus] = React.useState("");
   const columns: DataTableColumn<Row>[] = [
     { id: "name", header: "Name", primary: true, grow: true, render: (row) => row.name },
     {
@@ -1154,11 +1167,11 @@ export default function RowActions() {
   ];
   const menu = (row: Row) => (
     <>
-      <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+      <DropdownMenuItem onSelect={() => toast(`Opened ${row.name}.`)}>
         <Icon name="eye" />
         Open secret
       </DropdownMenuItem>
-      <DropdownMenuItem variant="destructive" onSelect={() => setStatus(`Deleted ${row.name}.`)}>
+      <DropdownMenuItem variant="destructive" onSelect={() => toast(`Deleted ${row.name}.`)}>
         <Icon name="trash" />
         Delete secret
       </DropdownMenuItem>
@@ -1168,20 +1181,20 @@ export default function RowActions() {
     label: "Copy secret",
     icon: "copy",
     disabledReason: (row: Row) => (row.rotated ? "Cannot copy rotated secret" : undefined),
-    onSelect: (row: Row) => setStatus(`Copied the fabricated value of ${row.name}.`)
+    onSelect: (row: Row) => toast(`Copied the fabricated value of ${row.name}.`)
   } as const;
   const reminder = {
     label: (row: Row) => (row.annotated ? "View reminder" : "Add reminder"),
     icon: "bell",
-    onSelect: (row: Row) => setStatus(`Opened the reminder for ${row.name}.`)
+    onSelect: (row: Row) => toast(`Opened the reminder for ${row.name}.`)
   } as const;
   const edit = {
     label: "Edit value",
     icon: EditIcon,
     disabledReason: (row: Row) => (row.rotated ? "Rotated secrets can't be edited" : undefined),
-    onSelect: (row: Row) => setStatus(`Editing ${row.name}.`)
+    onSelect: (row: Row) => toast(`Editing ${row.name}.`)
   } as const;
-  const say = (text: string) => () => setStatus(text);
+  const say = (text: string) => () => toast(text);
   const mixed: { name: string; inline: RowActionList }[] = [
     { name: "api", inline: [] },
     {
@@ -1217,70 +1230,65 @@ export default function RowActions() {
     }
   ];
   return (
-    <>
-      <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
-        {sets.map((set) => (
-          <figure key={set.label} className="m-0 flex w-full min-w-0 flex-col gap-3">
-            <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
-              <DataTable
-                label={`Example secrets, ${set.label.toLowerCase()}`}
-                rows={rows}
-                columns={columns}
-                getRowId={(row) => row.id}
-                rowLabel={(row) => row.name}
-                rowActions={set.actions}
-              />
-            </div>
-            <figcaption className="text-muted-foreground text-xs">{set.label}</figcaption>
-          </figure>
-        ))}
-        <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      {sets.map((set) => (
+        <figure key={set.label} className="m-0 flex w-full min-w-0 flex-col gap-3">
           <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
-            <Table aria-label="Example folders and secrets, mixed action counts">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableActionsHead slots={4}>Actions</TableActionsHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mixed.map((row) => {
-                  const rowMenu = (
-                    <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
-                      <Icon name="eye" />
-                      Open
-                    </DropdownMenuItem>
-                  );
-                  return (
-                    <RowContextMenu
-                      key={row.name}
-                      label={row.name}
-                      inline={row.inline}
-                      menu={rowMenu}
-                    >
-                      <TableRow>
-                        <TableCell>{row.name}</TableCell>
-                        <TableActionsCell slots={4}>
-                          <RowActionsGroup label={row.name} inline={row.inline} menu={rowMenu} />
-                        </TableActionsCell>
-                      </TableRow>
-                    </RowContextMenu>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <DataTable
+              label={`Example secrets, ${set.label.toLowerCase()}`}
+              rows={rows}
+              columns={columns}
+              getRowId={(row) => row.id}
+              rowLabel={(row) => row.name}
+              rowActions={set.actions}
+            />
           </div>
-          <figcaption className="text-muted-foreground text-xs">
-            {
-              "Mixed counts in one table, each row end-aligned; right-click a row for the same actions"
-            }
-          </figcaption>
+          <figcaption className="text-muted-foreground text-xs">{set.label}</figcaption>
         </figure>
-      </div>
-      <p role="status" className="sr-only">
-        {status}
-      </p>
-    </>
+      ))}
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Table aria-label="Example folders and secrets, mixed action counts">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableActionsHead slots={4}>Actions</TableActionsHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mixed.map((row) => {
+                const rowMenu = (
+                  <DropdownMenuItem onSelect={() => toast(`Opened ${row.name}.`)}>
+                    <Icon name="eye" />
+                    Open
+                  </DropdownMenuItem>
+                );
+                return (
+                  <RowContextMenu
+                    key={row.name}
+                    label={row.name}
+                    inline={row.inline}
+                    menu={rowMenu}
+                  >
+                    <TableRow>
+                      <TableCell>{row.name}</TableCell>
+                      <TableActionsCell slots={4}>
+                        <RowActionsGroup label={row.name} inline={row.inline} menu={rowMenu} />
+                      </TableActionsCell>
+                    </TableRow>
+                  </RowContextMenu>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {
+            "Mixed counts in one table, each row end-aligned; right-click a row for the same actions"
+          }
+        </figcaption>
+      </figure>
+    </div>
   );
 }
 ```
@@ -1289,11 +1297,9 @@ export default function RowActions() {
 
 Save this example at `src/pages/design-system/examples/table/shared-tooltips.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/text, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/sonner, @infisical/text, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import * as React from "react";
-
 import {
   DataTable,
   type DataTableColumn,
@@ -1302,6 +1308,7 @@ import {
 import { DropdownMenuItem } from "../../../../components/v4/ui/dropdown-menu";
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Inline } from "../../../../components/v4/ui/layout";
+import { toast } from "../../../../components/v4/ui/sonner";
 import { StatusText } from "../../../../components/v4/ui/text";
 import { TooltipProvider, TooltipText } from "../../../../components/v4/ui/tooltip";
 
@@ -1337,7 +1344,6 @@ const rows: Row[] = names.map((name, index) => ({
 }));
 
 export default function SharedTooltips() {
-  const [status, setStatus] = React.useState("");
   const columns: DataTableColumn<Row>[] = [
     {
       id: "name",
@@ -1396,17 +1402,17 @@ export default function SharedTooltips() {
       {
         label: "Copy secret",
         icon: "copy",
-        onSelect: (row) => setStatus(`Copied the fabricated value of ${row.name}.`)
+        onSelect: (row) => toast(`Copied the fabricated value of ${row.name}.`)
       },
       {
         label: "Rotate now",
         icon: "sync",
         disabledReason: (row) => (row.locked ? "Locked secrets can't be rotated" : undefined),
-        onSelect: (row) => setStatus(`Rotated ${row.name}.`)
+        onSelect: (row) => toast(`Rotated ${row.name}.`)
       }
     ],
     renderMenu: (row) => (
-      <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+      <DropdownMenuItem onSelect={() => toast(`Opened ${row.name}.`)}>
         <Icon name="eye" />
         Open secret
       </DropdownMenuItem>
@@ -1422,9 +1428,6 @@ export default function SharedTooltips() {
         rowLabel={(row) => row.name}
         rowActions={actions}
       />
-      <p role="status" className="sr-only">
-        {status}
-      </p>
     </TooltipProvider>
   );
 }
@@ -1434,13 +1437,12 @@ export default function SharedTooltips() {
 
 Save this example at `src/pages/design-system/examples/table/lazy-row-actions.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @infisical/dropdown-menu, @infisical/icon, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/dropdown-menu, @infisical/icon, @infisical/sonner, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import * as React from "react";
-
 import { DropdownMenuItem, DropdownMenuSeparator } from "../../../../components/v4/ui/dropdown-menu";
 import { Icon } from "../../../../components/v4/ui/icon";
+import { toast } from "../../../../components/v4/ui/sonner";
 import {
   type RowActionList,
   RowActions,
@@ -1467,71 +1469,65 @@ const names = [
 ];
 
 export default function LazyRowActions() {
-  const [status, setStatus] = React.useState("");
   return (
-    <>
-      <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
-        <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
-          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
-            <Table aria-label="Example secrets with lazy row actions">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Key</TableHead>
-                  <TableActionsHead slots={2}>Actions</TableActionsHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {names.map((name) => {
-                  const inline: RowActionList = [
-                    {
-                      label: "Copy secret",
-                      icon: "copy",
-                      disabledReason:
-                        name === "JWT_SIGNING_KEY" ? "Cannot copy rotated secret" : undefined,
-                      onSelect: () => setStatus(`Copied the fabricated value of ${name}.`)
-                    }
-                  ];
-                  const menu = (
-                    <>
-                      <DropdownMenuItem onSelect={() => setStatus(`Opened ${name}.`)}>
-                        <Icon name="eye" />
-                        Open secret
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onSelect={() => setStatus(`Deleted ${name}.`)}
-                      >
-                        <Icon name="trash" />
-                        Delete secret
-                      </DropdownMenuItem>
-                    </>
-                  );
-                  return (
-                    <RowContextMenu key={name} label={name} inline={inline} menu={menu}>
-                      <TableRow>
-                        <TableCell>{name}</TableCell>
-                        <TableActionsCell slots={2}>
-                          <RowActions lazy label={name} inline={inline} menu={menu} />
-                        </TableActionsCell>
-                      </TableRow>
-                    </RowContextMenu>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-          <figcaption className="text-muted-foreground text-xs">
-            {
-              "Lazy row actions: plain buttons until a row is hovered or focused, then tooltips and the More menu"
-            }
-          </figcaption>
-        </figure>
-      </div>
-      <p role="status" className="sr-only">
-        {status}
-      </p>
-    </>
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Table aria-label="Example secrets with lazy row actions">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Key</TableHead>
+                <TableActionsHead slots={2}>Actions</TableActionsHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {names.map((name) => {
+                const inline: RowActionList = [
+                  {
+                    label: "Copy secret",
+                    icon: "copy",
+                    disabledReason:
+                      name === "JWT_SIGNING_KEY" ? "Cannot copy rotated secret" : undefined,
+                    onSelect: () => toast(`Copied the fabricated value of ${name}.`)
+                  }
+                ];
+                const menu = (
+                  <>
+                    <DropdownMenuItem onSelect={() => toast(`Opened ${name}.`)}>
+                      <Icon name="eye" />
+                      Open secret
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => toast(`Deleted ${name}.`)}
+                    >
+                      <Icon name="trash" />
+                      Delete secret
+                    </DropdownMenuItem>
+                  </>
+                );
+                return (
+                  <RowContextMenu key={name} label={name} inline={inline} menu={menu}>
+                    <TableRow>
+                      <TableCell>{name}</TableCell>
+                      <TableActionsCell slots={2}>
+                        <RowActions lazy label={name} inline={inline} menu={menu} />
+                      </TableActionsCell>
+                    </TableRow>
+                  </RowContextMenu>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {
+            "Lazy row actions: plain buttons until a row is hovered or focused, then tooltips and the More menu"
+          }
+        </figcaption>
+      </figure>
+    </div>
   );
 }
 ```
@@ -1540,7 +1536,7 @@ export default function LazyRowActions() {
 
 Save this example at `src/pages/design-system/examples/table/row-activation.tsx`; its relative imports are generated for that exact path. States: default, keyboard, controlled.
 
-Registry items used: @infisical/button, @infisical/data-table, @infisical/dropdown-menu, @infisical/table, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/data-table, @infisical/dropdown-menu, @infisical/sonner, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -1553,6 +1549,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "../../../../components/v4/ui/dropdown-menu";
+import { toast } from "../../../../components/v4/ui/sonner";
 import {
   RowActions,
   RowContextMenu,
@@ -1565,7 +1562,6 @@ import {
   TableHeader,
   TableRow
 } from "../../../../components/v4/ui/table";
-import { Meta } from "../../../../components/v4/ui/text";
 
 type Cert = { id: string; cn: string; serial: string; expires: string };
 const certs: Cert[] = [
@@ -1575,9 +1571,8 @@ const certs: Cert[] = [
 ];
 
 export default function RowActivation() {
-  const [status, setStatus] = React.useState("Nothing opened yet.");
   const [selected, setSelected] = React.useState<string[]>([]);
-  const open = (cert: Cert) => setStatus(`Opened ${cert.cn}.`);
+  const open = (cert: Cert) => toast(`Opened ${cert.cn}.`);
   const columns: DataTableColumn<Cert>[] = [
     {
       id: "cn",
@@ -1605,7 +1600,7 @@ export default function RowActivation() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => setStatus(`Renewal requested for ${row.cn}.`)}>
+            <DropdownMenuItem onSelect={() => toast(`Renewal requested for ${row.cn}.`)}>
               Renew
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -1627,7 +1622,6 @@ export default function RowActivation() {
             selectedIds={selected}
             onSelectionChange={setSelected}
             onRowActivate={open}
-            footer={<Meta mono={false}>{status}</Meta>}
           />
         </div>
         <figcaption className="text-muted-foreground text-xs">
@@ -1647,7 +1641,7 @@ export default function RowActivation() {
             <TableBody>
               {certs.map((cert) => {
                 const menu = (
-                  <DropdownMenuItem onSelect={() => setStatus(`Renewal requested for ${cert.cn}.`)}>
+                  <DropdownMenuItem onSelect={() => toast(`Renewal requested for ${cert.cn}.`)}>
                     Renew
                   </DropdownMenuItem>
                 );
@@ -1845,7 +1839,7 @@ export default function Loading() {
 
 Save this example at `src/pages/design-system/examples/table/grouped-rows.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
 
-Registry items used: @infisical/badge, @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/table, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/badge, @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/sonner, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -1859,8 +1853,8 @@ import {
 import { DropdownMenuItem } from "../../../../components/v4/ui/dropdown-menu";
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Inline } from "../../../../components/v4/ui/layout";
+import { toast } from "../../../../components/v4/ui/sonner";
 import { RowActions } from "../../../../components/v4/ui/table";
-import { Meta } from "../../../../components/v4/ui/text";
 
 type Account = { id: string; name: string; type: string; lastAccess: string };
 type Resource = { id: string; name: string; accounts: Account[] };
@@ -1906,7 +1900,6 @@ const tree: Node[] = resources.slice(0, 2).map((resource) => ({
 export default function GroupedRows() {
   const [sort, setSort] = React.useState<Sort>({ columnId: "name", direction: "asc" });
   const [selected, setSelected] = React.useState<string[]>([]);
-  const [status, setStatus] = React.useState("Nothing opened yet.");
   const groups: DataTableGroup<Account>[] = resources.map((resource) => ({
     id: resource.id,
     label: (
@@ -1920,7 +1913,7 @@ export default function GroupedRows() {
       <RowActions
         label={resource.name}
         menu={
-          <DropdownMenuItem onSelect={() => setStatus(`Copied the ID of ${resource.name}.`)}>
+          <DropdownMenuItem onSelect={() => toast(`Copied the ID of ${resource.name}.`)}>
             <Icon name="copy" />
             Copy resource ID
           </DropdownMenuItem>
@@ -1985,23 +1978,22 @@ export default function GroupedRows() {
             selectable
             selectedIds={selected}
             onSelectionChange={setSelected}
-            onRowActivate={(row) => setStatus(`Opened ${row.name}.`)}
+            onRowActivate={(row) => toast(`Opened ${row.name}.`)}
             rowActions={{
               inline: [
                 {
                   label: "Launch session",
                   icon: "terminal",
-                  onSelect: (row) => setStatus(`Launched a session as ${row.name}.`)
+                  onSelect: (row) => toast(`Launched a session as ${row.name}.`)
                 }
               ],
               renderMenu: (row) => (
-                <DropdownMenuItem onSelect={() => setStatus(`Copied the ID of ${row.name}.`)}>
+                <DropdownMenuItem onSelect={() => toast(`Copied the ID of ${row.name}.`)}>
                   <Icon name="copy" />
                   Copy account ID
                 </DropdownMenuItem>
               )
             }}
-            footer={<Meta mono={false}>{status}</Meta>}
           />
         </div>
         <figcaption className="text-muted-foreground text-xs">
@@ -2032,7 +2024,7 @@ export default function GroupedRows() {
 
 Save this example at `src/pages/design-system/examples/table/column-toggle.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard, controlled.
 
-Registry items used: @infisical/button, @infisical/data-table, @infisical/icon, @infisical/text, @infisical/tooltip. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/data-table, @infisical/icon, @infisical/sonner, @infisical/tooltip. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -2041,7 +2033,7 @@ import { BanIcon, FilterIcon } from "lucide-react";
 import { Button } from "../../../../components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
 import { Icon } from "../../../../components/v4/ui/icon";
-import { Meta } from "../../../../components/v4/ui/text";
+import { toast } from "../../../../components/v4/ui/sonner";
 import { Tooltip } from "../../../../components/v4/ui/tooltip";
 
 type Action = "read" | "create" | "edit" | "delete";
@@ -2107,7 +2099,6 @@ const markFor = (action: Action) => (row: Policy) => {
 
 export default function ColumnToggle() {
   const [policies, setPolicies] = React.useState(initial);
-  const [status, setStatus] = React.useState("No changes yet.");
   const columns: DataTableColumn<Policy>[] = [
     {
       id: "subject",
@@ -2138,7 +2129,7 @@ export default function ColumnToggle() {
                 : row
             )
           );
-          setStatus(
+          toast(
             `${checked ? "Allowed" : "Removed"} ${action.header.toLowerCase()} on ${ids.length} ${ids.length === 1 ? "policy" : "policies"}.`
           );
         }
@@ -2154,7 +2145,6 @@ export default function ColumnToggle() {
         getRowId={(row) => row.id}
         rowLabel={(row) => row.subject}
       />
-      <Meta role="status">{status}</Meta>
     </div>
   );
 }
@@ -2164,7 +2154,7 @@ export default function ColumnToggle() {
 
 Save this example at `src/pages/design-system/examples/table/leading-pin.tsx`; its relative imports are generated for that exact path. States: default, controlled, overflow.
 
-Registry items used: @infisical/button, @infisical/checkbox, @infisical/data-table, @infisical/popover, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/checkbox, @infisical/data-table, @infisical/icon, @infisical/input, @infisical/popover, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -2172,6 +2162,8 @@ import * as React from "react";
 import { Button } from "../../../../components/v4/ui/button";
 import { Checkbox } from "../../../../components/v4/ui/checkbox";
 import { DataTable, type DataTableColumn, EnvMark } from "../../../../components/v4/ui/data-table";
+import { Icon } from "../../../../components/v4/ui/icon";
+import { Input } from "../../../../components/v4/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -2188,6 +2180,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TableHeadButton,
   TableHeader,
   TableRow
 } from "../../../../components/v4/ui/table";
@@ -2254,6 +2247,8 @@ function Matrix() {
   const [selected, setSelected] = React.useState<string[]>(["stripe"]);
   const [expanded, setExpanded] = React.useState<string | null>("database");
   const [editing, setEditing] = React.useState<string | null>(null);
+  const [descending, setDescending] = React.useState(false);
+  const ordered = [...secrets].sort((a, b) => a.name.localeCompare(b.name) * (descending ? -1 : 1));
   const allState = () => {
     if (selected.length === secrets.length) return true;
     return selected.length > 0 ? "indeterminate" : false;
@@ -2277,8 +2272,11 @@ function Matrix() {
               }
             />
           </TableHead>
-          <TableHead scope="col" pin="start">
-            Name
+          <TableHead scope="col" pin="start" aria-sort={descending ? "descending" : "ascending"}>
+            <TableHeadButton data-active onClick={() => setDescending(!descending)}>
+              Name
+              <Icon name={descending ? "arrow-down" : "arrow-up"} />
+            </TableHeadButton>
           </TableHead>
           {environments.map((environment) => (
             <TableHead key={environment} scope="col">
@@ -2289,7 +2287,7 @@ function Matrix() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {secrets.map((secret) => (
+        {ordered.map((secret) => (
           <React.Fragment key={secret.id}>
             <RowContextMenu label={secret.name} inline={[copyAction(secret.name)]}>
               <TableRow data-state={selected.includes(secret.id) ? "selected" : undefined}>
@@ -2360,6 +2358,15 @@ function Matrix() {
             )}
           </React.Fragment>
         ))}
+        <TableRow>
+          <TableCell selection pin="start" />
+          <TableCell pin="start">
+            <Input aria-label="New secret name" placeholder="Add a secret name" />
+          </TableCell>
+          <TableCell colSpan={environments.length + 1}>
+            <Input aria-label="New secret value" placeholder="Add a secret value" />
+          </TableCell>
+        </TableRow>
       </TableBody>
     </Table>
   );

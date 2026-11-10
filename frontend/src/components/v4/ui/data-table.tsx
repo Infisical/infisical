@@ -16,6 +16,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TableHeadButton,
   TableHeader,
   TableLoadingRows,
   TableRow,
@@ -101,7 +102,11 @@ interface DataTableBaseProps<Row> {
   rowHeight?: number;
   loadMore?: { label: string; onClick: () => void; loading?: boolean };
   end?: React.ReactNode;
-  footer?: React.ReactNode;
+  /**
+   * State that must stay visible under the rows, such as "Showing 5 of 120 after filter". Never an
+   * action result: copied, saved, deleted, moved, uploaded and failures go to a toast.
+   */
+  persistentStatus?: React.ReactNode;
   onRowActivate?: (row: Row) => void;
   pagination?: React.ReactNode;
   loading?: boolean;
@@ -152,7 +157,7 @@ export function DataTable<Row>({
   rowHeight,
   loadMore,
   end,
-  footer,
+  persistentStatus,
   onRowActivate,
   pagination,
   loading = false,
@@ -523,9 +528,7 @@ export function DataTable<Row>({
                   />
                 )}
                 {column.sortable && onSortChange ? (
-                  <button
-                    type="button"
-                    className={styles.tableSort}
+                  <TableHeadButton
                     data-active={sort?.columnId === column.id || undefined}
                     onClick={() =>
                       onSortChange({
@@ -543,7 +546,7 @@ export function DataTable<Row>({
                           : "arrow-up"
                       }
                     />
-                  </button>
+                  </TableHeadButton>
                 ) : (
                   <span className={column.hideHeader || column.actions ? styles.sr : undefined}>
                     {column.header}
@@ -654,7 +657,7 @@ export function DataTable<Row>({
     >
       <FrameScope framed>{scrollFrame}</FrameScope>
       {!height && more && <div className={styles.actions}>{more}</div>}
-      {footer && <div className={styles.status}>{footer}</div>}
+      {persistentStatus && <div className={styles.status}>{persistentStatus}</div>}
       <span className={styles.sr} role="status">
         {loading ? (
           "Loading rows"

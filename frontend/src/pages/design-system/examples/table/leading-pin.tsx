@@ -3,6 +3,8 @@ import * as React from "react";
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import { DataTable, type DataTableColumn, EnvMark } from "@app/components/v4/ui/data-table";
+import { Icon } from "@app/components/v4/ui/icon";
+import { Input } from "@app/components/v4/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -19,6 +21,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TableHeadButton,
   TableHeader,
   TableRow
 } from "@app/components/v4/ui/table";
@@ -87,6 +90,8 @@ function Matrix() {
   const [selected, setSelected] = React.useState<string[]>(["stripe"]);
   const [expanded, setExpanded] = React.useState<string | null>("database");
   const [editing, setEditing] = React.useState<string | null>(null);
+  const [descending, setDescending] = React.useState(false);
+  const ordered = [...secrets].sort((a, b) => a.name.localeCompare(b.name) * (descending ? -1 : 1));
   const allState = () => {
     if (selected.length === secrets.length) return true;
     return selected.length > 0 ? "indeterminate" : false;
@@ -110,8 +115,11 @@ function Matrix() {
               }
             />
           </TableHead>
-          <TableHead scope="col" pin="start">
-            Name
+          <TableHead scope="col" pin="start" aria-sort={descending ? "descending" : "ascending"}>
+            <TableHeadButton data-active onClick={() => setDescending(!descending)}>
+              Name
+              <Icon name={descending ? "arrow-down" : "arrow-up"} />
+            </TableHeadButton>
           </TableHead>
           {environments.map((environment) => (
             <TableHead key={environment} scope="col">
@@ -122,7 +130,7 @@ function Matrix() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {secrets.map((secret) => (
+        {ordered.map((secret) => (
           <React.Fragment key={secret.id}>
             <RowContextMenu label={secret.name} inline={[copyAction(secret.name)]}>
               <TableRow data-state={selected.includes(secret.id) ? "selected" : undefined}>
@@ -193,6 +201,15 @@ function Matrix() {
             )}
           </React.Fragment>
         ))}
+        <TableRow>
+          <TableCell selection pin="start" />
+          <TableCell pin="start">
+            <Input aria-label="New secret name" placeholder="Add a secret name" />
+          </TableCell>
+          <TableCell colSpan={environments.length + 1}>
+            <Input aria-label="New secret value" placeholder="Add a secret value" />
+          </TableCell>
+        </TableRow>
       </TableBody>
     </Table>
   );

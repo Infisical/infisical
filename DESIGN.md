@@ -397,6 +397,10 @@ and the voice reflects that.
   "Could not rotate secret — token lacks `secrets:write` permission."
 - **Destructive confirmation** — name the resource and the consequence "Delete "API_KEY" — this cannot be undone."
 - **Success toasts** — past tense, specific: "Secret "API_KEY" created".
+- **Action feedback**: report what an action did (copied, saved, deleted, moved,
+  uploaded, or failed) with a toast, always. Never put it in a table footer or a
+  status line; those show only state that must stay visible, such as "Showing 5
+  of 120 after filter".
 
 ### Secrets & sensitive values
 

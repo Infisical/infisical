@@ -87,6 +87,51 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "toast-errors",
+    title: "Error toasts stay put",
+    description:
+      "Error toasts are announced right away, stay until you close them, and every toast has a close button.",
+    date: "2026-11-07",
+    commit: "b2ff57a491",
+    page: "toast"
+  },
+  {
+    id: "header-no-hover",
+    title: "Headers stay still on hover",
+    description:
+      "Hovering a table header no longer tints the whole row. Only a full-cell header trigger, like a sort, takes a hover.",
+    date: "2026-11-07",
+    commit: "63eb87adc8",
+    page: "table"
+  },
+  {
+    id: "pinned-edge-line",
+    title: "Pinned edges hold their line",
+    description:
+      "Pinned name and action columns keep a hard edge as content scrolls under them, with the fade outside it.",
+    date: "2026-11-07",
+    commit: "c631c433d4",
+    page: "table"
+  },
+  {
+    id: "toast-live-regions",
+    title: "Toasts announce reliably",
+    description:
+      "Toast stacks announce every new toast through live regions that exist before the first one, errors assertively.",
+    date: "2026-11-07",
+    commit: "65a7781fb1",
+    page: "toast"
+  },
+  {
+    id: "action-feedback-toast",
+    title: "Action feedback in toasts",
+    description:
+      "Copy, save, delete and other action results show as toasts. The table footer only carries state that has to stay visible, like a filtered count.",
+    date: "2026-11-07",
+    commit: "878b79110b",
+    page: "toast"
+  },
+  {
     id: "toast-anatomy",
     title: "Toast layout",
     description:
@@ -175,50 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "9f6084dc3e",
     page: "tooltip"
-  },
-  {
-    id: "list-whole-rows",
-    title: "Lists end on a whole row",
-    description:
-      "Multi-select, combobox and command lists size to whole rows, so the last visible option is never cut.",
-    date: "2026-11-07",
-    commit: "dfbd72f4c0",
-    page: "multi-select"
-  },
-  {
-    id: "bulk-action-reason",
-    title: "Blocked bulk actions explain why",
-    description:
-      "A disabled bulk action stays focusable and shows its reason on hover and keyboard focus.",
-    date: "2026-11-07",
-    commit: "f2ee386887",
-    page: "floating-action-bar"
-  },
-  {
-    id: "leading-pin",
-    title: "Leading pins",
-    description:
-      "Selection and name columns can pin to the start of a wide table, and an expanded row's nested content stays in view while the table scrolls sideways.",
-    date: "2026-11-07",
-    commit: "cb490b4bba",
-    page: "table"
-  },
-  {
-    id: "menu-item-description",
-    title: "Reasons on checkbox items",
-    description:
-      "Checkbox and radio menu items take a description, so a disabled setting can say why it is unavailable.",
-    date: "2026-11-07",
-    commit: "804076293d",
-    page: "dropdown-menu"
-  },
-  {
-    id: "row-focus",
-    title: "Row focus",
-    description:
-      "A row being edited can be marked focused, and every other row in the table fades until the edit ends.",
-    date: "2026-11-07",
-    commit: "0da7164369",
-    page: "table"
   }
 ];

@@ -1,4 +1,3 @@
-import * as React from "react";
 import { CodeXmlIcon, EditIcon, TagsIcon } from "lucide-react";
 
 import {
@@ -9,6 +8,7 @@ import {
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Inline } from "@app/components/v4/ui/layout";
+import { toast } from "@app/components/v4/ui/sonner";
 import {
   type RowActionList,
   RowActions as RowActionsGroup,
@@ -34,7 +34,6 @@ const rows: Row[] = [
 ];
 
 export default function RowActions() {
-  const [status, setStatus] = React.useState("");
   const columns: DataTableColumn<Row>[] = [
     { id: "name", header: "Name", primary: true, grow: true, render: (row) => row.name },
     {
@@ -60,11 +59,11 @@ export default function RowActions() {
   ];
   const menu = (row: Row) => (
     <>
-      <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+      <DropdownMenuItem onSelect={() => toast(`Opened ${row.name}.`)}>
         <Icon name="eye" />
         Open secret
       </DropdownMenuItem>
-      <DropdownMenuItem variant="destructive" onSelect={() => setStatus(`Deleted ${row.name}.`)}>
+      <DropdownMenuItem variant="destructive" onSelect={() => toast(`Deleted ${row.name}.`)}>
         <Icon name="trash" />
         Delete secret
       </DropdownMenuItem>
@@ -74,20 +73,20 @@ export default function RowActions() {
     label: "Copy secret",
     icon: "copy",
     disabledReason: (row: Row) => (row.rotated ? "Cannot copy rotated secret" : undefined),
-    onSelect: (row: Row) => setStatus(`Copied the fabricated value of ${row.name}.`)
+    onSelect: (row: Row) => toast(`Copied the fabricated value of ${row.name}.`)
   } as const;
   const reminder = {
     label: (row: Row) => (row.annotated ? "View reminder" : "Add reminder"),
     icon: "bell",
-    onSelect: (row: Row) => setStatus(`Opened the reminder for ${row.name}.`)
+    onSelect: (row: Row) => toast(`Opened the reminder for ${row.name}.`)
   } as const;
   const edit = {
     label: "Edit value",
     icon: EditIcon,
     disabledReason: (row: Row) => (row.rotated ? "Rotated secrets can't be edited" : undefined),
-    onSelect: (row: Row) => setStatus(`Editing ${row.name}.`)
+    onSelect: (row: Row) => toast(`Editing ${row.name}.`)
   } as const;
-  const say = (text: string) => () => setStatus(text);
+  const say = (text: string) => () => toast(text);
   const mixed: { name: string; inline: RowActionList }[] = [
     { name: "api", inline: [] },
     {
@@ -123,62 +122,52 @@ export default function RowActions() {
     }
   ];
   return (
-    <>
-      <ExampleGrid width="full">
-        {sets.map((set) => (
-          <ExampleCell align="stretch" key={set.label} label={set.label}>
-            <DataTable
-              label={`Example secrets, ${set.label.toLowerCase()}`}
-              rows={rows}
-              columns={columns}
-              getRowId={(row) => row.id}
-              rowLabel={(row) => row.name}
-              rowActions={set.actions}
-            />
-          </ExampleCell>
-        ))}
-        <ExampleCell
-          align="stretch"
-          label="Mixed counts in one table, each row end-aligned; right-click a row for the same actions"
-        >
-          <Table aria-label="Example folders and secrets, mixed action counts">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableActionsHead slots={4}>Actions</TableActionsHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mixed.map((row) => {
-                const rowMenu = (
-                  <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
-                    <Icon name="eye" />
-                    Open
-                  </DropdownMenuItem>
-                );
-                return (
-                  <RowContextMenu
-                    key={row.name}
-                    label={row.name}
-                    inline={row.inline}
-                    menu={rowMenu}
-                  >
-                    <TableRow>
-                      <TableCell>{row.name}</TableCell>
-                      <TableActionsCell slots={4}>
-                        <RowActionsGroup label={row.name} inline={row.inline} menu={rowMenu} />
-                      </TableActionsCell>
-                    </TableRow>
-                  </RowContextMenu>
-                );
-              })}
-            </TableBody>
-          </Table>
+    <ExampleGrid width="full">
+      {sets.map((set) => (
+        <ExampleCell align="stretch" key={set.label} label={set.label}>
+          <DataTable
+            label={`Example secrets, ${set.label.toLowerCase()}`}
+            rows={rows}
+            columns={columns}
+            getRowId={(row) => row.id}
+            rowLabel={(row) => row.name}
+            rowActions={set.actions}
+          />
         </ExampleCell>
-      </ExampleGrid>
-      <p role="status" className="sr-only">
-        {status}
-      </p>
-    </>
+      ))}
+      <ExampleCell
+        align="stretch"
+        label="Mixed counts in one table, each row end-aligned; right-click a row for the same actions"
+      >
+        <Table aria-label="Example folders and secrets, mixed action counts">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableActionsHead slots={4}>Actions</TableActionsHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {mixed.map((row) => {
+              const rowMenu = (
+                <DropdownMenuItem onSelect={() => toast(`Opened ${row.name}.`)}>
+                  <Icon name="eye" />
+                  Open
+                </DropdownMenuItem>
+              );
+              return (
+                <RowContextMenu key={row.name} label={row.name} inline={row.inline} menu={rowMenu}>
+                  <TableRow>
+                    <TableCell>{row.name}</TableCell>
+                    <TableActionsCell slots={4}>
+                      <RowActionsGroup label={row.name} inline={row.inline} menu={rowMenu} />
+                    </TableActionsCell>
+                  </TableRow>
+                </RowContextMenu>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </ExampleCell>
+    </ExampleGrid>
   );
 }
