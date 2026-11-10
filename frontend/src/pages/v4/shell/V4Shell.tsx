@@ -37,7 +37,7 @@ import { ProjectGate } from "./project-gate";
 
 import styles from "./shell.module.css";
 
-const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: string) => void) => {
+export const routeInternalLinks = (event: MouseEvent<HTMLElement>, go: (href: string) => void) => {
   const anchor = (event.target as HTMLElement).closest("a");
   if (
     !anchor ||

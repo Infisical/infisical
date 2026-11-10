@@ -1,5 +1,6 @@
 import { accessLive } from "./access/live";
 import type { V4Adapters } from "./adapters";
+import { adminLive } from "./admin/live";
 import { agentVaultLive } from "./agent-vault/live";
 import { certificatesLive } from "./certificates/live";
 import { integrationsLive } from "./integrations/live";
@@ -20,5 +21,6 @@ export const liveAdapters: V4Adapters = {
   certificates: certificatesLive,
   access: accessLive,
   projects: projectsLive,
-  pam: pamLive
+  pam: pamLive,
+  admin: adminLive
 };
