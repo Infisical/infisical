@@ -10,6 +10,7 @@ import { pamDemo } from "./pam/demo";
 import { projectsDemo } from "./projects/demo";
 import { secretScanningDemo } from "./secret-scanning/demo";
 import { secretsDemo } from "./secrets/demo";
+import { ssoDemo } from "./sso/demo";
 
 export const demoAdapters: V4Adapters = {
   agentVault: agentVaultDemo,
@@ -22,5 +23,6 @@ export const demoAdapters: V4Adapters = {
   access: accessDemo,
   projects: projectsDemo,
   pam: pamDemo,
-  billing: billingDemo
+  billing: billingDemo,
+  sso: ssoDemo
 };
