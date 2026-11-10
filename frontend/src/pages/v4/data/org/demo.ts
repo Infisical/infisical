@@ -341,6 +341,7 @@ export const orgDemo: OrgAdapter = {
       error: null,
       hasNextPage: pages[pages.length - 1].length !== 0,
       isFetchingNextPage: current.fetching,
+      refetch: async () => undefined,
       fetchNextPage: () => {
         setPaging({ ...current, fetching: true });
         return new Promise<void>((resolve) => {

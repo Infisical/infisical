@@ -37,6 +37,7 @@ import { useGo } from "../navigation";
 import { useProjectPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED, usePagedList } from "../ui";
+import { accessLabel } from "./product";
 import { RoleListRoleSheet, type RoleSheetMode } from "./role-list-role-sheet";
 import { useProjectScope } from "./scope";
 
@@ -50,7 +51,7 @@ export const ProjectRolesTab = () => {
   const go = useGo();
   const access = useV4Adapter("access");
   const { permission } = useProjectPermission(projectId);
-  const { data: roles = [], isPending } = access.useProjectRoles(projectId);
+  const { data: roles = [], isPending } = access.useProjectRoles(projectId, scope.projectType);
   const deleteRole = access.useDeleteProjectRole();
   const [sheet, setSheet] = useState<{ open: boolean; mode: RoleSheetMode; key: number }>({
     open: false,
@@ -81,10 +82,10 @@ export const ProjectRolesTab = () => {
 
   const remove = async (role: ProjectRoleRow) => {
     try {
-      await deleteRole.mutateAsync({ projectId, id: role.id });
-      saved(`Project role "${role.name}" deleted`);
+      await deleteRole.mutateAsync({ projectId, projectType: scope.projectType, id: role.id });
+      saved(`${accessLabel(scope.projectType, "role")} "${role.name}" deleted`);
     } catch (error) {
-      failed("Failed to delete project role", error);
+      failed(`Failed to delete ${accessLabel(scope.projectType, "role").toLowerCase()}`, error);
     }
   };
 
@@ -167,15 +168,15 @@ export const ProjectRolesTab = () => {
   return (
     <Stack gap={16}>
       <FilterBar
-        label="Project role filters"
+        label={`${accessLabel(scope.projectType, "role")} filters`}
         fields={[]}
         value={[]}
         onChange={() => undefined}
         search={
           <Input
             icon="search"
-            aria-label="Search project roles..."
-            placeholder="Search project roles..."
+            aria-label={`Search ${accessLabel(scope.projectType, "roles").toLowerCase()}...`}
+            placeholder={`Search ${accessLabel(scope.projectType, "roles").toLowerCase()}...`}
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />
@@ -188,13 +189,13 @@ export const ProjectRolesTab = () => {
               disabled={!canCreate}
               onClick={() => openSheet({ kind: "create" })}
             >
-              Add project role
+              {`Add ${accessLabel(scope.projectType, "role").toLowerCase()}`}
             </Button>
           </Gate>
         }
       />
       <DataTable
-        label="Project roles"
+        label={`${accessLabel(scope.projectType, "roles")}`}
         rows={list.pageRows}
         columns={columns}
         rowActions={rowActions}
@@ -206,7 +207,11 @@ export const ProjectRolesTab = () => {
         onSortChange={list.setSort}
         empty={
           roles.length ? (
-            <EmptyState size="sm" icon="search" title="No project roles match search" />
+            <EmptyState
+              size="sm"
+              icon="search"
+              title={`No ${accessLabel(scope.projectType, "roles").toLowerCase()} match search`}
+            />
           ) : (
             <EmptyState size="sm" icon="lock" title="This project does not have any roles" />
           )
@@ -229,7 +234,7 @@ export const ProjectRolesTab = () => {
       >
         <AlertDialogContent tone="danger" confirmText={deleting?.slug ?? ""}>
           <AlertDialogHeader>
-            <AlertDialogTitle>{`Delete "${deleting?.name ?? "project role"}"?`}</AlertDialogTitle>
+            <AlertDialogTitle>{`Delete "${deleting?.name ?? `${accessLabel(scope.projectType, "role").toLowerCase()}`}"?`}</AlertDialogTitle>
             <AlertDialogDescription>
               Deletes the role and its policies. This cannot be undone.
             </AlertDialogDescription>

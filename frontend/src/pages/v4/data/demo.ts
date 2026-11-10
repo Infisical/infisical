@@ -3,6 +3,7 @@ import type { V4Adapters } from "./adapters";
 import { adminDemo } from "./admin/demo";
 import { agentVaultSettingsDemo } from "./agent-vault-settings/demo";
 import { agentVaultDemo } from "./agent-vault/demo";
+import { auditLogsDemo } from "./audit-logs/demo";
 import { billingDemo } from "./billing/demo";
 import { certManagerSettingsDemo } from "./cert-manager-settings/demo";
 import { certificatesDemo } from "./certificates/demo";
@@ -43,6 +44,7 @@ export const demoAdapters: V4Adapters = {
   projectEnvironments: projectEnvironmentsDemo,
   projectTags: projectTagsDemo,
   pam: pamDemo,
+  auditLogs: auditLogsDemo,
   admin: adminDemo,
   secretPolicies: secretPoliciesDemo,
   billing: billingDemo,

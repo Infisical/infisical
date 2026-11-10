@@ -151,6 +151,7 @@ export type AccessAdapter = {
   useOrganization: QueryOf<typeof useGetOrganizationById>;
   useUpdateOrganization: MutationOf<typeof useUpdateOrg>;
   useProject: QueryOf<typeof useGetWorkspaceById>;
+  usePamProjectId: (orgId: string) => V4QueryResult<string>;
 
   useOrgUsers: QueryOf<typeof useGetOrgUserAccess>;
   useOrgMembership: QueryOf<typeof useGetOrgMembership>;

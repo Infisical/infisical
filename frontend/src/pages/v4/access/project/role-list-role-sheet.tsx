@@ -22,6 +22,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { failed, saved } from "../toast";
+import { accessLabel } from "./product";
 import { useProjectScope } from "./scope";
 
 export type RoleSheetMode =
@@ -50,7 +51,8 @@ export const RoleListRoleSheet = ({
   const duplicate = mode.kind === "duplicate";
   const { data: source } = access.useProjectRole(
     projectId,
-    mode.kind === "duplicate" ? mode.source.slug : ""
+    mode.kind === "duplicate" ? mode.source.slug : "",
+    scope.projectType
   );
   const initialName = mode.kind === "duplicate" ? `${mode.source.name} Duplicate` : "";
   const [name, setName] = useState(initialName);
@@ -78,17 +80,22 @@ export const RoleListRoleSheet = ({
     try {
       const role = await createRole.mutateAsync({
         projectId,
+        projectType: scope.projectType,
         name,
         slug: parsedSlug.data,
         description,
         permissions: source ? sanitizeDuplicateRolePermissions(source.permissions) : []
       });
-      saved(`Project role "${name}" ${duplicate ? "duplicated" : "created"}`);
+      saved(
+        `${accessLabel(scope.projectType, "role")} "${name}" ${duplicate ? "duplicated" : "created"}`
+      );
       onOpenChange(false);
       go(accessLinks.projectRole(scope, role.slug));
     } catch (error) {
       failed(
-        duplicate ? "Failed to duplicate project role" : "Failed to create project role",
+        duplicate
+          ? `Failed to duplicate ${accessLabel(scope.projectType, "role").toLowerCase()}`
+          : `Failed to create ${accessLabel(scope.projectType, "role").toLowerCase()}`,
         error
       );
     } finally {

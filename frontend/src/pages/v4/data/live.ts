@@ -3,6 +3,7 @@ import type { V4Adapters } from "./adapters";
 import { adminLive } from "./admin/live";
 import { agentVaultSettingsLive } from "./agent-vault-settings/live";
 import { agentVaultLive } from "./agent-vault/live";
+import { auditLogsLive } from "./audit-logs/live";
 import { billingLive } from "./billing/live";
 import { certManagerSettingsLive } from "./cert-manager-settings/live";
 import { certificatesLive } from "./certificates/live";
@@ -43,6 +44,7 @@ export const liveAdapters: V4Adapters = {
   projectEnvironments: projectEnvironmentsLive,
   projectTags: projectTagsLive,
   pam: pamLive,
+  auditLogs: auditLogsLive,
   admin: adminLive,
   secretPolicies: secretPoliciesLive,
   billing: billingLive,

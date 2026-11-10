@@ -31,6 +31,7 @@ import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgId } from "../permissions";
 import { failed, saved } from "../toast";
+import { accessNoun } from "./product";
 import { useProjectScope } from "./scope";
 
 import styles from "./group.module.css";
@@ -64,10 +65,10 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
     setPending(true);
     try {
       await addGroup.mutateAsync({ projectId, projectType: scope.projectType, groupId, role });
-      saved("Successfully added group to project");
+      saved(`Successfully added group to ${accessNoun(scope.projectType)}`);
       onClose();
     } catch (error) {
-      failed("Failed to add group to project", error);
+      failed(`Failed to add group to ${accessNoun(scope.projectType)}`, error);
     } finally {
       setPending(false);
     }
@@ -175,7 +176,7 @@ const Content = ({ projectId, onClose }: { projectId: string; onClose: () => voi
   return (
     <DialogContent pending={pending}>
       <DialogHeader>
-        <DialogTitle>Add group to project</DialogTitle>
+        <DialogTitle>{`Add group to ${accessNoun(scope.projectType)}`}</DialogTitle>
       </DialogHeader>
       {body}
       <DialogFooter>{footer}</DialogFooter>
@@ -214,7 +215,7 @@ export const RemoveGroupDialog = ({
     <AlertDialog open={Boolean(group)} onOpenChange={onOpenChange}>
       <AlertDialogContent tone="danger" confirmText={group?.name ?? ""}>
         <AlertDialogHeader>
-          <AlertDialogTitle>{`Remove "${group?.name ?? ""}" from project?`}</AlertDialogTitle>
+          <AlertDialogTitle>{`Remove "${group?.name ?? ""}" from ${accessNoun(scope.projectType)}?`}</AlertDialogTitle>
           <AlertDialogDescription>
             Members lose access granted through this group. You can add it again later.
           </AlertDialogDescription>
@@ -232,10 +233,10 @@ export const RemoveGroupDialog = ({
                   projectId,
                   projectType: scope.projectType
                 });
-                saved("Successfully removed group from project");
+                saved(`Successfully removed group from ${accessNoun(scope.projectType)}`);
                 onRemoved?.();
               } catch (error) {
-                failed("Failed to remove group from project", error);
+                failed(`Failed to remove group from ${accessNoun(scope.projectType)}`, error);
               }
             }}
           >
