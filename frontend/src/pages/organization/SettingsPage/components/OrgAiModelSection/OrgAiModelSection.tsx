@@ -71,7 +71,11 @@ export const OrgAiModelSection = () => {
     isFetching: isModelsLoading,
     isError: isModelsError
   } = useListAnthropicModels(connectionId);
-  const models = getLatestModelPerFamily(allModels, model);
+  const latestModels = getLatestModelPerFamily(allModels, model);
+  const models =
+    model && !latestModels.some((option) => option.id === model)
+      ? [...latestModels, { id: model, displayName: model, family: null, createdAt: null }]
+      : latestModels;
   const updateConfig = useUpdateOrgAiConfig();
 
   const connectionCreation = useOrgConnectionCreation<TAvailableAppConnection>(
