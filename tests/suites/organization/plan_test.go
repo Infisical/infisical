@@ -105,16 +105,38 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		require.Equal(t, before+1, len(root.State(t).EntitlementFetches))
 	})
 
-	t.Run("should serve the OSS fallback and refuse a paid feature when the License Server fails, then recover", func(t *testing.T) {
+	t.Run("should keep the current plan and answer with an error when a refresh cannot reach the License Server", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), false)
+		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		root.Fail(t, http.MethodGet, "/v1/organizations/"+tn.OrgID.String()+"/entitlements", http.StatusServiceUnavailable, fakenet.Times(1))
+		refresh := api.GetOrganizationPlanParamsRefreshCache("true")
+
+		// Action
+		res, err := tn.Admin.API.GetOrganizationPlanWithResponse(t.Context(), tn.OrgID.String(), &api.GetOrganizationPlanParams{RefreshCache: &refresh})
+
+		// Assert
+		require.NoError(t, err)
+		requireStatus(t, http.StatusInternalServerError, res.StatusCode(), res.Body)
+		require.Contains(t, string(res.Body), "Your current plan stays in place")
+		require.Equal(t, "enterprise", fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), false)["slug"])
+	})
+
+	t.Run("should serve the OSS fallback and refuse a paid feature when the License Server fails on a cache miss, then recover", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
 		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		// The plan carries the project count, so creating a project drops the cached plan.
+		fixture.NewProject(t, tn)
 		root.Fail(t, http.MethodGet, "/v1/organizations/"+tn.OrgID.String()+"/entitlements", http.StatusServiceUnavailable, fakenet.Times(1))
 
 		// Action
-		fallback := fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), true)
+		fallback := fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), false)
 
 		// Assert
 		require.Nil(t, fallback["slug"])

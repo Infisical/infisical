@@ -119,10 +119,12 @@ export class LicenseService implements TLicenseService {
       const rootOrgId = await this.deps.organizations.findRootOrgId(orgId);
       if (!rootOrgId) return;
       // Fetched before the cached plan is replaced: a License Server failure keeps the plan the org has,
-      // rather than caching the fallback over it.
+      // rather than caching the fallback over it. The org is read outside the try, so a database error is not
+      // reported as the License Server being unreachable.
+      const rootOrg = await this.rootOrg(rootOrgId);
       let fetched: Plan;
       try {
-        fetched = await this.deps.provider.fetchPlan(await this.rootOrg(rootOrgId));
+        fetched = await this.deps.provider.fetchPlan(rootOrg);
       } catch (error) {
         throw new InternalServerError({
           name: "RefreshPlan",
@@ -316,9 +318,10 @@ export class LicenseService implements TLicenseService {
   // Only a License Server failure serves and caches the fallback: that is what the fallback marker records. A
   // database or key store error is thrown instead, so it can never overwrite a cached paid plan.
   private async fetchPlanOrFallback(rootOrgId: string): Promise<Plan> {
+    const rootOrg = await this.rootOrg(rootOrgId);
     let fetched: Plan;
     try {
-      fetched = await this.deps.provider.fetchPlan(await this.rootOrg(rootOrgId));
+      fetched = await this.deps.provider.fetchPlan(rootOrg);
     } catch (error) {
       logger.error(error, `getPlan: the License Server failed, serving the fallback plan [orgId=${rootOrgId}]`);
       const fallback = this.deps.provider.fallbackPlan();

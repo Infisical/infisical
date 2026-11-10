@@ -175,6 +175,26 @@ describe("LicenseService.getPlan", () => {
     expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBeNull();
   });
 
+  test("should throw and cache no fallback when reading the org's name fails on a cache miss", async () => {
+    // Setup
+    const { licenseService, licenseServer, keyStore } = await buildLicense({
+      organizations: {
+        findOrganization: async () => {
+          throw new Error("replica timeout");
+        }
+      }
+    });
+
+    // Action
+    const result = licenseService.getPlan(ROOT.id);
+
+    // Assert
+    await expect(result).rejects.toThrow("replica timeout");
+    expect(licenseServer.fetchedOrgs).toEqual([]);
+    expect(await keyStore.getItem(`infisical-cloud-plan-${ROOT.id}`)).toBeNull();
+    expect(await keyStore.getItem(`infisical-cloud-plan-fallback-${ROOT.id}`)).toBeNull();
+  });
+
   test("should serve the fallback for an org that does not exist", async () => {
     // Setup
     const { licenseService, licenseServer } = await buildLicense();
@@ -257,6 +277,24 @@ describe("LicenseService.refreshPlan", () => {
     await expect(result).rejects.toThrow("Your current plan stays in place");
     expect((await licenseService.getPlan(ROOT.id)).slug).toBe("enterprise");
     expect(await licenseService.isServingFallbackPlan(ROOT.id)).toBe(false);
+  });
+
+  test("should pass a database error through a refresh rather than blame the License Server", async () => {
+    // Setup
+    const { licenseService, licenseServer } = await buildLicense({
+      organizations: {
+        findOrganization: async () => {
+          throw new Error("replica timeout");
+        }
+      }
+    });
+
+    // Action
+    const result = licenseService.refreshPlan(ROOT.id);
+
+    // Assert
+    await expect(result).rejects.toThrow("replica timeout");
+    expect(licenseServer.fetchedOrgs).toEqual([]);
   });
 
   test("should read an online self-hosted license again and serve its new plan to every org", async () => {
