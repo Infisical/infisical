@@ -8,6 +8,7 @@ import type {
 } from "@app/hooks/api/secretSharing/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
+import { SAMPLE_BRAND_PRIMARY, SAMPLE_BRAND_SECONDARY } from "../../secret-sharing/public/shared";
 import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import type { SecretSharingAdapter, SecretSharingPublicAdapter } from "./contract";
 
@@ -172,10 +173,8 @@ const previewError = (statusCode: number, message: string) =>
 const brand: TBrandingConfig = {
   hasLogo: false,
   hasFavicon: false,
-  // v4-check-ignore raw-color -- a sample customer brand for the branded preview
-  primaryColor: "#14324a",
-  // v4-check-ignore raw-color -- a sample customer brand for the branded preview
-  secondaryColor: "#f4f1ea"
+  primaryColor: SAMPLE_BRAND_PRIMARY,
+  secondaryColor: SAMPLE_BRAND_SECONDARY
 };
 
 const details = (preview: SecretSharingPreview): TSharedSecretPublicDetails => ({

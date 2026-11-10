@@ -5,6 +5,12 @@ export const DEFAULT_FAVICON_URL = "/infisical.ico";
 export const DEFAULT_PRIMARY = "#0e1014";
 // v4-check-ignore raw-color -- customer brand colors from the org's branding config, not product chrome
 export const DEFAULT_SECONDARY = "#1e1f22";
+// v4-check-ignore raw-color -- customer brand colors from the org's branding config, not product chrome
+export const HEX_COLOR_EXAMPLE = "#FF5733";
+// v4-check-ignore raw-color -- customer brand colors from the org's branding config, not product chrome
+export const SAMPLE_BRAND_PRIMARY = "#14324a";
+// v4-check-ignore raw-color -- customer brand colors from the org's branding config, not product chrome
+export const SAMPLE_BRAND_SECONDARY = "#f4f1ea";
 
 const isLight = (hex: string) => {
   const value = hex.replace("#", "");

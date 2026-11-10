@@ -28,6 +28,7 @@ import type { Organization } from "@app/hooks/api/organization/types";
 import { failed, toast } from "../access/toast";
 import { useV4Adapter } from "../data/adapters";
 import type { BrandingAssetType } from "../data/secret-sharing/contract";
+import { DEFAULT_PRIMARY, DEFAULT_SECONDARY, HEX_COLOR_EXAMPLE } from "./public/shared";
 
 import styles from "./settings.module.css";
 
@@ -368,8 +369,7 @@ const Branding = ({ organization, canEdit }: Props) => {
       />
     );
   const colorError = (value: string) =>
-    // v4-check-ignore raw-color -- example of the hex format the field accepts
-    value && !HEX_COLOR.test(value) ? "Use a hex color, such as #FF5733" : undefined;
+    value && !HEX_COLOR.test(value) ? `Use a hex color, such as ${HEX_COLOR_EXAMPLE}` : undefined;
   const errors = {
     primary: colorError(draft.primaryColor),
     secondary: colorError(draft.secondaryColor)
@@ -421,8 +421,7 @@ const Branding = ({ organization, canEdit }: Props) => {
             <ColorField
               label="Primary color"
               description="Page background."
-              // v4-check-ignore raw-color -- the default brand color shared secret pages fall back to
-              placeholder="#0e1014"
+              placeholder={DEFAULT_PRIMARY}
               value={draft.primaryColor}
               error={errors.primary}
               onChange={(primaryColor) => setDraft({ ...draft, primaryColor })}
@@ -432,8 +431,7 @@ const Branding = ({ organization, canEdit }: Props) => {
             <ColorField
               label="Secondary color"
               description="Panel and component background."
-              // v4-check-ignore raw-color -- the default brand color shared secret pages fall back to
-              placeholder="#1e1f22"
+              placeholder={DEFAULT_SECONDARY}
               value={draft.secondaryColor}
               error={errors.secondary}
               onChange={(secondaryColor) => setDraft({ ...draft, secondaryColor })}
