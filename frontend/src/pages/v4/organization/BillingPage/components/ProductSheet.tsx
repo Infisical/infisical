@@ -17,7 +17,13 @@ import { Card } from "@app/components/v4/ui/card";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { Separator } from "@app/components/v4/ui/separator";
-import { Sheet, SheetBody, SheetContent, SheetFooter } from "@app/components/v4/ui/sheet";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetFooter,
+  SheetSections
+} from "@app/components/v4/ui/sheet";
 import {
   Table,
   TableBody,
@@ -60,12 +66,7 @@ import { ActivateView } from "./ActivateView";
 import { CancellationFeedbackDialog } from "./CancellationFeedbackDialog";
 import { CommitmentView } from "./CommitmentView";
 import { MeteredBandTable } from "./MeteredBandTable";
-import {
-  DimensionMeter,
-  MANAGED_BILLING_REASON,
-  ProductSheetHeader,
-  SheetSections
-} from "./sheet-shared";
+import { DimensionMeter, MANAGED_BILLING_REASON, ProductSheetHeader } from "./sheet-shared";
 import { UpgradeView } from "./UpgradeView";
 
 // prefix and metered carry the usage-based framing for metered dims; absent for per_unit and base
@@ -723,50 +724,6 @@ export const ProductSheet = ({
                   }
                 />
               }
-              body={
-                <SheetBody>
-                  <Stack gap={24}>
-                    {entitled && entitlement && <CurrentUsageCard entitlement={entitlement} />}
-
-                    {!selfServe && (
-                      <Alert tone="info" title="Managed billing">
-                        Contact your Infisical account manager to adjust products, commitments, or
-                        your subscription.
-                      </Alert>
-                    )}
-
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
-                      {plans.map((plan) => (
-                        <PlanCard
-                          key={plan.tier}
-                          plan={plan}
-                          cadence={displayCadence}
-                          entitled={entitled}
-                          isCurrent={entitled && plan.tier === currentTier}
-                          trialUsage={
-                            entitled && plan.tier === currentTier ? trialUsage : undefined
-                          }
-                          canChangeCommitment={showChangeCommitment}
-                          hasCommitment={hasCommitment}
-                          selfServe={selfServe}
-                          onActivate={openActivate}
-                          onStartTrial={setTrialConfirmTier}
-                          onUpgrade={openUpgrade}
-                          onChangeCommitment={() => setView("commitment")}
-                          onContact={() => onContact(prod)}
-                        />
-                      ))}
-                    </div>
-
-                    {showCompare && prod.compare ? (
-                      <CompareTable plans={plans} compare={prod.compare} />
-                    ) : (
-                      prod.includes &&
-                      prod.includes.length > 0 && <IncludesList includes={prod.includes} />
-                    )}
-                  </Stack>
-                </SheetBody>
-              }
               footer={
                 <SheetFooter>
                   <Inline justify="between">
@@ -777,7 +734,48 @@ export const ProductSheet = ({
                   </Inline>
                 </SheetFooter>
               }
-            />
+            >
+              <SheetBody>
+                <Stack gap={24}>
+                  {entitled && entitlement && <CurrentUsageCard entitlement={entitlement} />}
+
+                  {!selfServe && (
+                    <Alert tone="info" title="Managed billing">
+                      Contact your Infisical account manager to adjust products, commitments, or
+                      your subscription.
+                    </Alert>
+                  )}
+
+                  <div className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
+                    {plans.map((plan) => (
+                      <PlanCard
+                        key={plan.tier}
+                        plan={plan}
+                        cadence={displayCadence}
+                        entitled={entitled}
+                        isCurrent={entitled && plan.tier === currentTier}
+                        trialUsage={entitled && plan.tier === currentTier ? trialUsage : undefined}
+                        canChangeCommitment={showChangeCommitment}
+                        hasCommitment={hasCommitment}
+                        selfServe={selfServe}
+                        onActivate={openActivate}
+                        onStartTrial={setTrialConfirmTier}
+                        onUpgrade={openUpgrade}
+                        onChangeCommitment={() => setView("commitment")}
+                        onContact={() => onContact(prod)}
+                      />
+                    ))}
+                  </div>
+
+                  {showCompare && prod.compare ? (
+                    <CompareTable plans={plans} compare={prod.compare} />
+                  ) : (
+                    prod.includes &&
+                    prod.includes.length > 0 && <IncludesList includes={prod.includes} />
+                  )}
+                </Stack>
+              </SheetBody>
+            </SheetSections>
           )}
         </SheetContent>
       </Sheet>

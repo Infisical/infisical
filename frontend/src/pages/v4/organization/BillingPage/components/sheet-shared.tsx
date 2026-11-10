@@ -33,32 +33,6 @@ import { productIconName } from "./shared";
 export const MANAGED_BILLING_REASON =
   "Contact your Infisical account manager to change your subscription.";
 
-// SheetContent pins its header and footer only when the slots are its direct children, so a view
-// component that renders them would fall back to one scrolling column. This rebuilds the DOM
-// SheetContent builds for direct slots, so a view rendered inside the caller's SheetContent keeps
-// the pinned header, the single scroll region and both rules.
-export const SheetSections = ({
-  header,
-  body,
-  footer
-}: {
-  header: ReactNode;
-  body: ReactNode;
-  footer?: ReactNode;
-}) => (
-  <div data-sections="" className="flex min-h-0 flex-1 flex-col">
-    <div data-slot="sheet-head">{header}</div>
-    <div
-      data-slot="sheet-scroll"
-      data-scroll-fade="y"
-      data-before-footer={footer ? true : undefined}
-    >
-      {body}
-    </div>
-    {footer}
-  </div>
-);
-
 export const ProductSheetHeader = ({
   prod,
   title,

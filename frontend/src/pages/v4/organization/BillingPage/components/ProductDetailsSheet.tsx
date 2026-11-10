@@ -21,10 +21,11 @@ import { Button } from "@app/components/v4/ui/button";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import {
   Sheet,
-  SheetContent,
   SheetBody,
+  SheetContent,
   SheetFooter,
   SheetHeader,
+  SheetSections,
   SheetTitle
 } from "@app/components/v4/ui/sheet";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
@@ -58,7 +59,7 @@ import {
 import { CancellationFeedbackDialog } from "./CancellationFeedbackDialog";
 import { CommitmentView } from "./CommitmentView";
 import { useBillingSubscription } from "./shared";
-import { ProductSheetHeader, SheetSections } from "./sheet-shared";
+import { ProductSheetHeader } from "./sheet-shared";
 import {
   type Breakdown,
   BREAKDOWN_DIMENSIONS,
@@ -537,33 +538,6 @@ const DetailsView = ({
   return (
     <SheetSections
       header={<ProductSheetHeader prod={prod} title={prod.name} description={subtitle} />}
-      body={
-        <SheetBody>
-          <div className={styles.sheetSections}>
-            {dims.length === 0 && (
-              <span className={styles.secondary}>This plan has no usage-based limits.</span>
-            )}
-            {identity && (
-              <IdentitySection
-                dim={identity}
-                ent={ent}
-                breakdown={breakdown}
-                canChangePlan={canChangePlan}
-                isEnterprise={isEnterprise}
-                onSetCommitment={onSetCommitment}
-              />
-            )}
-            {others.length > 0 && (
-              <EntitlementsSection
-                prod={prod}
-                dims={others}
-                breakdown={breakdown}
-                isEnterprise={isEnterprise}
-              />
-            )}
-          </div>
-        </SheetBody>
-      }
       footer={
         <SheetFooter>
           {canChangePlan ? (
@@ -575,7 +549,33 @@ const DetailsView = ({
           )}
         </SheetFooter>
       }
-    />
+    >
+      <SheetBody>
+        <div className={styles.sheetSections}>
+          {dims.length === 0 && (
+            <span className={styles.secondary}>This plan has no usage-based limits.</span>
+          )}
+          {identity && (
+            <IdentitySection
+              dim={identity}
+              ent={ent}
+              breakdown={breakdown}
+              canChangePlan={canChangePlan}
+              isEnterprise={isEnterprise}
+              onSetCommitment={onSetCommitment}
+            />
+          )}
+          {others.length > 0 && (
+            <EntitlementsSection
+              prod={prod}
+              dims={others}
+              breakdown={breakdown}
+              isEnterprise={isEnterprise}
+            />
+          )}
+        </div>
+      </SheetBody>
+    </SheetSections>
   );
 };
 
@@ -719,43 +719,6 @@ const PlansView = ({
           </Inline>
         </SheetHeader>
       }
-      body={
-        <SheetBody>
-          <Stack gap={24}>
-            <Tabs
-              variant="segmented"
-              className="items-start"
-              label={`${prod.name} plans`}
-              value={selectedTier}
-              onValueChange={setSelectedTier}
-              tabs={plans.map((candidate) => ({
-                value: candidate.tier,
-                label:
-                  candidate.tier === ent.planTier ? `${candidate.name} (current)` : candidate.name
-              }))}
-            />
-            {features.length === 0 && plan?.feature && <span>{plan.feature}</span>}
-            {features.length > 0 && (
-              <section aria-label={`${plan?.name} features`} className={styles.sheetSection}>
-                <span className={styles.secondary}>{lede}</span>
-                <ul className={styles.featureList}>
-                  {features.map((feature) => (
-                    <li key={featureKey(feature)} className={styles.feature}>
-                      <PlanFeatureIcon value={feature.value} />
-                      <span className={styles.stacked}>
-                        <span className={styles.strong}>{formatPlanFeatureTitle(feature)}</span>
-                        {feature.description && (
-                          <span className={styles.secondary}>{feature.description}</span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </Stack>
-        </SheetBody>
-      }
       footer={
         summary || actions ? (
           <SheetFooter>
@@ -766,7 +729,43 @@ const PlansView = ({
           </SheetFooter>
         ) : undefined
       }
-    />
+    >
+      <SheetBody>
+        <Stack gap={24}>
+          <Tabs
+            variant="segmented"
+            className="items-start"
+            label={`${prod.name} plans`}
+            value={selectedTier}
+            onValueChange={setSelectedTier}
+            tabs={plans.map((candidate) => ({
+              value: candidate.tier,
+              label:
+                candidate.tier === ent.planTier ? `${candidate.name} (current)` : candidate.name
+            }))}
+          />
+          {features.length === 0 && plan?.feature && <span>{plan.feature}</span>}
+          {features.length > 0 && (
+            <section aria-label={`${plan?.name} features`} className={styles.sheetSection}>
+              <span className={styles.secondary}>{lede}</span>
+              <ul className={styles.featureList}>
+                {features.map((feature) => (
+                  <li key={featureKey(feature)} className={styles.feature}>
+                    <PlanFeatureIcon value={feature.value} />
+                    <span className={styles.stacked}>
+                      <span className={styles.strong}>{formatPlanFeatureTitle(feature)}</span>
+                      {feature.description && (
+                        <span className={styles.secondary}>{feature.description}</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </Stack>
+      </SheetBody>
+    </SheetSections>
   );
 };
 

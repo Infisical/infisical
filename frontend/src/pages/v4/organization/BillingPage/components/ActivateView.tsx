@@ -5,7 +5,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Field } from "@app/components/v4/ui/field";
 import { Item, Tile } from "@app/components/v4/ui/item";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { SheetBody, SheetFooter } from "@app/components/v4/ui/sheet";
+import { SheetBody, SheetFooter, SheetSections } from "@app/components/v4/ui/sheet";
 import { SmallText } from "@app/components/v4/ui/text";
 import {
   type BillingCadence,
@@ -28,7 +28,6 @@ import {
   PaymentActionRequiredNotice,
   PaymentApprovalNotice,
   ProductSheetHeader,
-  SheetSections,
   Stepper
 } from "./sheet-shared";
 
@@ -275,131 +274,6 @@ export const ActivateView = ({
   return (
     <SheetSections
       header={<ProductSheetHeader prod={prod} title={`Activate ${prod.name}`} />}
-      body={
-        <SheetBody>
-          <Stack gap={16}>
-            {supportsMonthly && supportsAnnual && (
-              <Field
-                group
-                wide
-                label="Billing cadence"
-                description={
-                  cadence === "monthly"
-                    ? "Pay for what you provision each month. No commitment, scale up or down freely."
-                    : "Pre-buy units for the year at the annual rate. Usage above your commitment is billed monthly on-demand."
-                }
-              >
-                <div className="grid grid-cols-2 gap-3">
-                  <Tile
-                    selected={cadence === "monthly"}
-                    title="Monthly"
-                    description="Usage-based"
-                    onClick={() => setCadence("monthly")}
-                  />
-                  <Tile
-                    selected={cadence === "annual"}
-                    title={
-                      <Inline gap={8}>
-                        Yearly
-                        {savingsPct && <Badge tone="ok">Save ~{savingsPct}%</Badge>}
-                      </Inline>
-                    }
-                    description="Commit & save"
-                    onClick={() => setCadence("annual")}
-                  />
-                </div>
-              </Field>
-            )}
-
-            {cadence === "annual" &&
-              committable.map((dim) => (
-                <Item
-                  key={dim.key}
-                  variant="outline"
-                  title={dim.label}
-                  description={`${fmtMoney(dim.annual / 12, 2)} / ${dim.noun} / month, billed annually`}
-                  actions={
-                    <Stepper
-                      label={dim.label}
-                      value={commitments[dim.key] ?? 0}
-                      min={0}
-                      onChange={(value) =>
-                        setCommitments((prev) => ({ ...prev, [dim.key]: value }))
-                      }
-                    />
-                  }
-                />
-              ))}
-
-            {(cadence === "monthly" || committable.length === 0) && (
-              <Item
-                variant="outline"
-                icon={productIconName(prod)}
-                title={prod.name}
-                badge={<Badge tone="soft">{plan.name}</Badge>}
-                description={plan.feature || undefined}
-                truncate={false}
-                actions={
-                  <div className="flex flex-col items-end">
-                    <span className="font-medium tabular-nums">{planPrice}</span>
-                    {cadence === "annual" && planPrice !== "Usage-based" && (
-                      <SmallText muted>billed annually</SmallText>
-                    )}
-                  </div>
-                }
-              />
-            )}
-
-            {meteredDims.map((dim) => (
-              <Item
-                key={dim.key}
-                variant="outline"
-                title={dim.label}
-                description={meteredDimNote(dim)}
-                truncate={false}
-              >
-                {dim.bands && dim.bands.tiers.length > 1 && (
-                  <div className="w-full">
-                    <MeteredBandTable bands={dim.bands} noun={dim.noun} />
-                  </div>
-                )}
-              </Item>
-            ))}
-
-            <CostSummary
-              rows={[
-                {
-                  label: trialFlow ? "Due today" : "Charged today",
-                  note: chargedNote,
-                  value: dueLabel,
-                  isCalculating: !trialFlow && isCalculating
-                },
-                {
-                  label: cadence === "annual" ? "New yearly total" : "New monthly total",
-                  note: recurringNote,
-                  value: recurringLabel,
-                  isCalculating
-                }
-              ]}
-            />
-
-            {hasActiveSubscription && !isCalculating && (
-              <ChargeBreakdown
-                prorationAmount={preview.data?.prorationAmount ?? 0}
-                additionalCharges={additionalCharges}
-                totalDueNow={preview.data?.totalDueNow ?? 0}
-              />
-            )}
-
-            {needsCommitmentAck && (
-              <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
-            )}
-
-            {showPaymentActionRequired && <PaymentActionRequiredNotice orgId={orgId} />}
-            {approvalUrl && <PaymentApprovalNotice paymentUrl={approvalUrl} />}
-          </Stack>
-        </SheetBody>
-      }
       footer={
         <SheetFooter>
           <Inline justify="between">
@@ -417,6 +291,128 @@ export const ActivateView = ({
           </Inline>
         </SheetFooter>
       }
-    />
+    >
+      <SheetBody>
+        <Stack gap={16}>
+          {supportsMonthly && supportsAnnual && (
+            <Field
+              group
+              wide
+              label="Billing cadence"
+              description={
+                cadence === "monthly"
+                  ? "Pay for what you provision each month. No commitment, scale up or down freely."
+                  : "Pre-buy units for the year at the annual rate. Usage above your commitment is billed monthly on-demand."
+              }
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <Tile
+                  selected={cadence === "monthly"}
+                  title="Monthly"
+                  description="Usage-based"
+                  onClick={() => setCadence("monthly")}
+                />
+                <Tile
+                  selected={cadence === "annual"}
+                  title={
+                    <Inline gap={8}>
+                      Yearly
+                      {savingsPct && <Badge tone="ok">Save ~{savingsPct}%</Badge>}
+                    </Inline>
+                  }
+                  description="Commit & save"
+                  onClick={() => setCadence("annual")}
+                />
+              </div>
+            </Field>
+          )}
+
+          {cadence === "annual" &&
+            committable.map((dim) => (
+              <Item
+                key={dim.key}
+                variant="outline"
+                title={dim.label}
+                description={`${fmtMoney(dim.annual / 12, 2)} / ${dim.noun} / month, billed annually`}
+                actions={
+                  <Stepper
+                    label={dim.label}
+                    value={commitments[dim.key] ?? 0}
+                    min={0}
+                    onChange={(value) => setCommitments((prev) => ({ ...prev, [dim.key]: value }))}
+                  />
+                }
+              />
+            ))}
+
+          {(cadence === "monthly" || committable.length === 0) && (
+            <Item
+              variant="outline"
+              icon={productIconName(prod)}
+              title={prod.name}
+              badge={<Badge tone="soft">{plan.name}</Badge>}
+              description={plan.feature || undefined}
+              truncate={false}
+              actions={
+                <div className="flex flex-col items-end">
+                  <span className="font-medium tabular-nums">{planPrice}</span>
+                  {cadence === "annual" && planPrice !== "Usage-based" && (
+                    <SmallText muted>billed annually</SmallText>
+                  )}
+                </div>
+              }
+            />
+          )}
+
+          {meteredDims.map((dim) => (
+            <Item
+              key={dim.key}
+              variant="outline"
+              title={dim.label}
+              description={meteredDimNote(dim)}
+              truncate={false}
+            >
+              {dim.bands && dim.bands.tiers.length > 1 && (
+                <div className="w-full">
+                  <MeteredBandTable bands={dim.bands} noun={dim.noun} />
+                </div>
+              )}
+            </Item>
+          ))}
+
+          <CostSummary
+            rows={[
+              {
+                label: trialFlow ? "Due today" : "Charged today",
+                note: chargedNote,
+                value: dueLabel,
+                isCalculating: !trialFlow && isCalculating
+              },
+              {
+                label: cadence === "annual" ? "New yearly total" : "New monthly total",
+                note: recurringNote,
+                value: recurringLabel,
+                isCalculating
+              }
+            ]}
+          />
+
+          {hasActiveSubscription && !isCalculating && (
+            <ChargeBreakdown
+              prorationAmount={preview.data?.prorationAmount ?? 0}
+              additionalCharges={additionalCharges}
+              totalDueNow={preview.data?.totalDueNow ?? 0}
+            />
+          )}
+
+          {needsCommitmentAck && (
+            <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
+          )}
+
+          {showPaymentActionRequired && <PaymentActionRequiredNotice orgId={orgId} />}
+          {approvalUrl && <PaymentApprovalNotice paymentUrl={approvalUrl} />}
+        </Stack>
+      </SheetBody>
+    </SheetSections>
   );
 };

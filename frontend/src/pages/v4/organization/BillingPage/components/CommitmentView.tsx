@@ -5,7 +5,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Item } from "@app/components/v4/ui/item";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { SheetBody, SheetFooter } from "@app/components/v4/ui/sheet";
+import { SheetBody, SheetFooter, SheetSections } from "@app/components/v4/ui/sheet";
 import {
   type BillingCatalogProduct,
   type BillingCommitmentChange,
@@ -24,7 +24,6 @@ import {
   PaymentActionRequiredNotice,
   PaymentApprovalNotice,
   ProductSheetHeader,
-  SheetSections,
   Stepper
 } from "./sheet-shared";
 
@@ -209,109 +208,6 @@ export const CommitmentView = ({
           description={`${hasExistingCommitment ? "Adjust the" : "Pre-buy"} units you commit for the year. Usage above your commitment is billed monthly on-demand.`}
         />
       }
-      body={
-        <SheetBody>
-          <Stack gap={16}>
-            {committable.map((dim) => {
-              const onDemandQty = Math.max(0, dim.used - quantities[dim.key]);
-              // Increase-only until the decrease window opens: a decrease outside it is rejected
-              // server side (commitment_decrease_locked), so the floor stays at the committed amount.
-              const stepperMin = dim.canDecreaseNow ? 0 : dim.committed;
-              return (
-                <Item
-                  key={dim.key}
-                  variant="outline"
-                  title={`${dim.label} committed for the year`}
-                  truncate={false}
-                  description={
-                    <>
-                      {fmtMoney(dim.committedRate)} / {dim.noun} / yr committed. Using{" "}
-                      {dim.used.toLocaleString()} now
-                      {onDemandQty > 0 && (
-                        <>
-                          , with{" "}
-                          <span className="text-[color:var(--v4-warn)]">
-                            {onDemandQty.toLocaleString()} on-demand
-                          </span>
-                          .{" "}
-                          <Button
-                            variant="link"
-                            size="xs"
-                            underline="hover"
-                            onClick={() =>
-                              setQuantities((prev) => ({ ...prev, [dim.key]: dim.used }))
-                            }
-                          >
-                            Raise to cover
-                          </Button>
-                        </>
-                      )}
-                    </>
-                  }
-                  actions={
-                    <Stepper
-                      label={dim.label}
-                      value={quantities[dim.key]}
-                      min={stepperMin}
-                      onChange={(value) => setQuantities((prev) => ({ ...prev, [dim.key]: value }))}
-                    />
-                  }
-                />
-              );
-            })}
-
-            {!isIncreasing && (
-              <Alert tone="info">
-                <Icon name="info" />
-                <AlertDescription>
-                  Committed units are pre-bought for the year at the annual rate. Usage above your
-                  commitment is billed monthly at the on-demand rate until your renewal. You can
-                  raise a commitment any time (charged now); lowering it is only allowed in the
-                  final window before renewal{decreaseLockNote}.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <CostSummary
-              rows={[
-                {
-                  label: "Charged today",
-                  note: chargedNote,
-                  value: fmtMoney(chargedToday, chargedToday ? 2 : 0),
-                  isCalculating
-                },
-                {
-                  label: "New annual commitment",
-                  note:
-                    annualDelta ?? `For ${prod.name}${renewsOn ? `, billed on ${renewsOn}` : ""}`,
-                  value: `${fmtMoney(newAnnual)} / year`
-                },
-                {
-                  label: "On-demand after change",
-                  note: onDemandDelta ?? "Billed monthly for usage above your commitment",
-                  value: `${fmtMoney(newOnDemand)} / mo`,
-                  tone: newOnDemand > 0 ? "warn" : "muted"
-                }
-              ]}
-            />
-
-            {hasChanges && previewFresh && (
-              <ChargeBreakdown
-                prorationAmount={preview.data?.prorationAmount ?? 0}
-                additionalCharges={additionalCharges}
-                totalDueNow={preview.data?.totalDueNow ?? 0}
-              />
-            )}
-
-            {isIncreasing && (
-              <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
-            )}
-
-            {showPaymentActionRequired && <PaymentActionRequiredNotice orgId={orgId} />}
-            {approvalUrl && <PaymentApprovalNotice paymentUrl={approvalUrl} />}
-          </Stack>
-        </SheetBody>
-      }
       footer={
         <SheetFooter>
           <Inline justify="between">
@@ -329,6 +225,107 @@ export const CommitmentView = ({
           </Inline>
         </SheetFooter>
       }
-    />
+    >
+      <SheetBody>
+        <Stack gap={16}>
+          {committable.map((dim) => {
+            const onDemandQty = Math.max(0, dim.used - quantities[dim.key]);
+            // Increase-only until the decrease window opens: a decrease outside it is rejected
+            // server side (commitment_decrease_locked), so the floor stays at the committed amount.
+            const stepperMin = dim.canDecreaseNow ? 0 : dim.committed;
+            return (
+              <Item
+                key={dim.key}
+                variant="outline"
+                title={`${dim.label} committed for the year`}
+                truncate={false}
+                description={
+                  <>
+                    {fmtMoney(dim.committedRate)} / {dim.noun} / yr committed. Using{" "}
+                    {dim.used.toLocaleString()} now
+                    {onDemandQty > 0 && (
+                      <>
+                        , with{" "}
+                        <span className="text-[color:var(--v4-warn)]">
+                          {onDemandQty.toLocaleString()} on-demand
+                        </span>
+                        .{" "}
+                        <Button
+                          variant="link"
+                          size="xs"
+                          underline="hover"
+                          onClick={() =>
+                            setQuantities((prev) => ({ ...prev, [dim.key]: dim.used }))
+                          }
+                        >
+                          Raise to cover
+                        </Button>
+                      </>
+                    )}
+                  </>
+                }
+                actions={
+                  <Stepper
+                    label={dim.label}
+                    value={quantities[dim.key]}
+                    min={stepperMin}
+                    onChange={(value) => setQuantities((prev) => ({ ...prev, [dim.key]: value }))}
+                  />
+                }
+              />
+            );
+          })}
+
+          {!isIncreasing && (
+            <Alert tone="info">
+              <Icon name="info" />
+              <AlertDescription>
+                Committed units are pre-bought for the year at the annual rate. Usage above your
+                commitment is billed monthly at the on-demand rate until your renewal. You can raise
+                a commitment any time (charged now); lowering it is only allowed in the final window
+                before renewal{decreaseLockNote}.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <CostSummary
+            rows={[
+              {
+                label: "Charged today",
+                note: chargedNote,
+                value: fmtMoney(chargedToday, chargedToday ? 2 : 0),
+                isCalculating
+              },
+              {
+                label: "New annual commitment",
+                note: annualDelta ?? `For ${prod.name}${renewsOn ? `, billed on ${renewsOn}` : ""}`,
+                value: `${fmtMoney(newAnnual)} / year`
+              },
+              {
+                label: "On-demand after change",
+                note: onDemandDelta ?? "Billed monthly for usage above your commitment",
+                value: `${fmtMoney(newOnDemand)} / mo`,
+                tone: newOnDemand > 0 ? "warn" : "muted"
+              }
+            ]}
+          />
+
+          {hasChanges && previewFresh && (
+            <ChargeBreakdown
+              prorationAmount={preview.data?.prorationAmount ?? 0}
+              additionalCharges={additionalCharges}
+              totalDueNow={preview.data?.totalDueNow ?? 0}
+            />
+          )}
+
+          {isIncreasing && (
+            <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
+          )}
+
+          {showPaymentActionRequired && <PaymentActionRequiredNotice orgId={orgId} />}
+          {approvalUrl && <PaymentApprovalNotice paymentUrl={approvalUrl} />}
+        </Stack>
+      </SheetBody>
+    </SheetSections>
   );
 };

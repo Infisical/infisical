@@ -4,7 +4,7 @@ import { Alert } from "@app/components/v4/ui/alert";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
-import { SheetBody, SheetFooter } from "@app/components/v4/ui/sheet";
+import { SheetBody, SheetFooter, SheetSections } from "@app/components/v4/ui/sheet";
 import { SmallText, Text } from "@app/components/v4/ui/text";
 import {
   type BillingCatalogPlan,
@@ -21,8 +21,7 @@ import {
   MANAGED_BILLING_REASON,
   PaymentActionRequiredNotice,
   PaymentApprovalNotice,
-  ProductSheetHeader,
-  SheetSections
+  ProductSheetHeader
 } from "./sheet-shared";
 
 // The server rejects a proration date older than 15 minutes. Re-price before that so a sheet left
@@ -161,56 +160,6 @@ export const UpgradeView = ({
           description="You'll only pay the difference for the rest of this billing period. Your renewal date doesn't change."
         />
       }
-      body={
-        <SheetBody>
-          <Stack gap={16}>
-            {isTrialConversion && (
-              <Alert tone="info" title="This ends your trial early">
-                You&apos;re already using {plan.name} on trial. Upgrading now moves you onto it for
-                good and charges the difference from today.
-              </Alert>
-            )}
-
-            <Stack gap={4}>
-              <Text>{prod.name}</Text>
-              <Inline gap={4}>
-                <SmallText muted>{fromPlanName}</SmallText>
-                <Icon name="chev-right" size={12} />
-                <SmallText>{plan.name}</SmallText>
-              </Inline>
-              {plan.feature && <SmallText muted>{plan.feature}</SmallText>}
-            </Stack>
-
-            <CostSummary
-              rows={[
-                {
-                  label: "Charged today",
-                  note: "Prorated for the rest of this billing period",
-                  value: dueLabel,
-                  isCalculating
-                },
-                {
-                  label: "New recurring total",
-                  note: renewsOn ? `Billed on ${renewsOn}` : undefined,
-                  value: fmtMoney(recurring),
-                  isCalculating
-                }
-              ]}
-            />
-
-            {!isCalculating && (
-              <ChargeBreakdown
-                prorationAmount={preview.data?.prorationAmount ?? 0}
-                additionalCharges={additionalCharges}
-                totalDueNow={preview.data?.totalDueNow ?? 0}
-              />
-            )}
-
-            {paymentActionRequired && <PaymentActionRequiredNotice orgId={orgId} />}
-            {approvalUrl && <PaymentApprovalNotice paymentUrl={approvalUrl} />}
-          </Stack>
-        </SheetBody>
-      }
       footer={
         <SheetFooter>
           <Inline justify="between">
@@ -228,6 +177,55 @@ export const UpgradeView = ({
           </Inline>
         </SheetFooter>
       }
-    />
+    >
+      <SheetBody>
+        <Stack gap={16}>
+          {isTrialConversion && (
+            <Alert tone="info" title="This ends your trial early">
+              You&apos;re already using {plan.name} on trial. Upgrading now moves you onto it for
+              good and charges the difference from today.
+            </Alert>
+          )}
+
+          <Stack gap={4}>
+            <Text>{prod.name}</Text>
+            <Inline gap={4}>
+              <SmallText muted>{fromPlanName}</SmallText>
+              <Icon name="chev-right" size={12} />
+              <SmallText>{plan.name}</SmallText>
+            </Inline>
+            {plan.feature && <SmallText muted>{plan.feature}</SmallText>}
+          </Stack>
+
+          <CostSummary
+            rows={[
+              {
+                label: "Charged today",
+                note: "Prorated for the rest of this billing period",
+                value: dueLabel,
+                isCalculating
+              },
+              {
+                label: "New recurring total",
+                note: renewsOn ? `Billed on ${renewsOn}` : undefined,
+                value: fmtMoney(recurring),
+                isCalculating
+              }
+            ]}
+          />
+
+          {!isCalculating && (
+            <ChargeBreakdown
+              prorationAmount={preview.data?.prorationAmount ?? 0}
+              additionalCharges={additionalCharges}
+              totalDueNow={preview.data?.totalDueNow ?? 0}
+            />
+          )}
+
+          {paymentActionRequired && <PaymentActionRequiredNotice orgId={orgId} />}
+          {approvalUrl && <PaymentApprovalNotice paymentUrl={approvalUrl} />}
+        </Stack>
+      </SheetBody>
+    </SheetSections>
   );
 };
