@@ -5,6 +5,7 @@ import {
   MAX_OAUTH_SCOPE_LENGTH,
   OAUTH_SCOPE_TOKEN_PATTERN
 } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-discovery-fns";
+import { getChunkDecisionProperties } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import {
   AgentVaultSessionLogChunkCreateResponseSchema,
   AgentVaultSessionLogChunkCreateSchema
@@ -324,10 +325,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             storageType,
             bytes: req.body.ciphertextBytes,
             ...(req.body.recordCount !== undefined && { records: req.body.recordCount }),
-            ...(req.body.brokeredCount !== undefined && { brokered: req.body.brokeredCount }),
-            ...(req.body.passthroughCount !== undefined && { passthrough: req.body.passthroughCount }),
-            ...(req.body.blockedCount !== undefined && { blocked: req.body.blockedCount }),
-            ...(req.body.errorCount !== undefined && { errored: req.body.errorCount })
+            ...getChunkDecisionProperties(req.body)
           }
         })
         .catch(() => {});

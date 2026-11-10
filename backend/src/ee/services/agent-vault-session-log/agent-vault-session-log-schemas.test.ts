@@ -68,43 +68,32 @@ describe("the chunk create body", () => {
 
   test("accepts a chunk from a CLI that doesn't send decision counts", () => {
     const parsed = AgentVaultSessionLogChunkCreateSchema.parse({ ...validChunk, recordCount: 7 });
-    expect(parsed).not.toHaveProperty("brokeredCount");
+    expect(parsed).not.toHaveProperty("decisionCounts");
   });
 
   test.each([0, AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS])("accepts %i for every decision count", (count) => {
-    const parsed = AgentVaultSessionLogChunkCreateSchema.parse({
-      ...validChunk,
-      brokeredCount: count,
-      passthroughCount: count,
-      blockedCount: count,
-      errorCount: count
-    });
-    expect(parsed).toMatchObject({
-      brokeredCount: count,
-      passthroughCount: count,
-      blockedCount: count,
-      errorCount: count
-    });
+    const decisionCounts = { brokered: count, passthrough: count, blocked: count, error: count };
+    expect(AgentVaultSessionLogChunkCreateSchema.parse({ ...validChunk, decisionCounts }).decisionCounts).toEqual(
+      decisionCounts
+    );
   });
 
   test("accepts decision counts that don't add up to recordCount, since a miscount must not cost the logs", () => {
-    const parsed = AgentVaultSessionLogChunkCreateSchema.parse({
-      ...validChunk,
-      recordCount: 7,
-      brokeredCount: 900,
-      passthroughCount: 900
-    });
-    expect(parsed).toMatchObject({ recordCount: 7, brokeredCount: 900, passthroughCount: 900 });
+    const decisionCounts = { brokered: 900, passthrough: 900, blocked: 0, error: 0 };
+    const parsed = AgentVaultSessionLogChunkCreateSchema.parse({ ...validChunk, recordCount: 7, decisionCounts });
+    expect(parsed).toMatchObject({ recordCount: 7, decisionCounts });
   });
 
   test.each(
-    ["brokeredCount", "passthroughCount", "blockedCount", "errorCount"].flatMap((field) => [
-      { field, value: -1 },
-      { field, value: AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS + 1 },
-      { field, value: 1.5 }
+    (["brokered", "passthrough", "blocked", "error"] as const).flatMap((decision) => [
+      { decision, value: -1 },
+      { decision, value: AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS + 1 },
+      { decision, value: 1.5 },
+      { decision, value: undefined }
     ])
-  )("rejects $field: $value", ({ field, value }) => {
-    expect(AgentVaultSessionLogChunkCreateSchema.safeParse({ ...validChunk, [field]: value }).success).toBe(false);
+  )("rejects decisionCounts.$decision: $value", ({ decision, value }) => {
+    const decisionCounts = { brokered: 1, passthrough: 1, blocked: 1, error: 1, [decision]: value };
+    expect(AgentVaultSessionLogChunkCreateSchema.safeParse({ ...validChunk, decisionCounts }).success).toBe(false);
   });
 });
 

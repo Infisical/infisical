@@ -18,7 +18,7 @@ const CiphertextSha256Schema = z
   .regex(/^[A-Za-z0-9+/]{43}$/, "Must be a SHA-256 digest as unpadded base64")
   .describe(AGENT_VAULT.SESSION_LOGS.ciphertextSha256);
 
-const DecisionCountSchema = z.number().int().min(0).max(AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS).optional();
+const DecisionCountSchema = z.number().int().min(0).max(AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS);
 
 export const AgentVaultSessionLogChunkCreateSchema = z.object({
   chunkId: z
@@ -40,10 +40,15 @@ export const AgentVaultSessionLogChunkCreateSchema = z.object({
     .max(AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS)
     .optional()
     .describe(AGENT_VAULT.SESSION_LOGS.recordCount),
-  brokeredCount: DecisionCountSchema.describe(AGENT_VAULT.SESSION_LOGS.brokeredCount),
-  passthroughCount: DecisionCountSchema.describe(AGENT_VAULT.SESSION_LOGS.passthroughCount),
-  blockedCount: DecisionCountSchema.describe(AGENT_VAULT.SESSION_LOGS.blockedCount),
-  errorCount: DecisionCountSchema.describe(AGENT_VAULT.SESSION_LOGS.errorCount),
+  decisionCounts: z
+    .object({
+      brokered: DecisionCountSchema,
+      passthrough: DecisionCountSchema,
+      blocked: DecisionCountSchema,
+      error: DecisionCountSchema
+    })
+    .optional()
+    .describe(AGENT_VAULT.SESSION_LOGS.decisionCounts),
   iv: z.string().max(64).optional().describe(AGENT_VAULT.SESSION_LOGS.legacyIv)
 });
 
