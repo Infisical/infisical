@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 
+import { wasErrorReported } from "@app/hooks/api/reactQuery";
 import { SecretType } from "@app/hooks/api/secrets/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 
@@ -45,6 +46,7 @@ export const useEnsureTags = (projectId: string, tags: readonly WsTag[]) => {
         createTag
           .mutateAsync({ projectId, tagSlug: slug, tagColor: "" })
           .catch((error: unknown) => {
+            if (wasErrorReported(error)) throw error;
             const reason = isAxiosError(error) ? errorMessage(error) : undefined;
             throw new Error(`Could not create the tag ${slug}.${reason ? ` ${reason}` : ""}`);
           })
@@ -68,10 +70,13 @@ export const useResourceApply = ({
   secretHooks?: SecretHooks;
 }) => {
   const adapter = useV4Adapter("secrets");
-  const createSecret = adapter.useCreateSecret();
-  const updateSecret = adapter.useUpdateSecret();
+  const loudCreateSecret = adapter.useCreateSecret();
+  const loudUpdateSecret = adapter.useUpdateSecret();
+  const quietCreateSecret = adapter.useCreateSecret({ meta: { skipErrorToast: true } });
+  const quietUpdateSecret = adapter.useUpdateSecret({ meta: { skipErrorToast: true } });
   const deleteSecret = adapter.useDeleteSecret();
-  const createSecretBatch = adapter.useCreateSecretBatch();
+  const loudCreateSecretBatch = adapter.useCreateSecretBatch();
+  const quietCreateSecretBatch = adapter.useCreateSecretBatch({ meta: { skipErrorToast: true } });
   const deleteSecretBatch = adapter.useDeleteSecretBatch();
   const moveSecrets = adapter.useMoveSecrets();
   const createFolder = adapter.useCreateFolder();
@@ -86,8 +91,11 @@ export const useResourceApply = ({
   return async (
     before: readonly Resource[],
     after: readonly Resource[],
-    { shouldOverwrite = false }: ResourceApplyOptions = {}
+    { shouldOverwrite = false, quiet = false }: ResourceApplyOptions = {}
   ): Promise<ApplyResult> => {
+    const createSecret = quiet ? quietCreateSecret : loudCreateSecret;
+    const updateSecret = quiet ? quietUpdateSecret : loudUpdateSecret;
+    const createSecretBatch = quiet ? quietCreateSecretBatch : loudCreateSecretBatch;
     const result: ApplyResult = { written: [], held: [] };
     const record = async (environment: string, path: string, pending?: Promise<unknown>) => {
       if (!pending) return;
