@@ -1,6 +1,5 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
-import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
@@ -31,7 +30,7 @@ import {
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, buildSsrfSafeAgent } from "@app/lib/validator";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import {
   emitIdentityAuthMethodChanged,
@@ -142,26 +141,22 @@ export const identityJwtAuthServiceFactory = ({
       let tokenData: Record<string, string | boolean | number> = {};
 
       if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
-        await blockLocalAndPrivateIpAddresses(identityJwtAuth.jwksUrl);
+        const decryptedJwksCaCert = orgDataKeyDecryptor({
+          cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
+        }).toString();
 
-        let client: JwksClient;
-        if (identityJwtAuth.jwksUrl.includes("https:")) {
-          const decryptedJwksCaCert = orgDataKeyDecryptor({
-            cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
-          }).toString();
+        // Pin the connection to the IPs validated here so the hostname cannot be re-resolved
+        // to an internal address when jwks-rsa connects (DNS-rebinding SSRF). buildSsrfSafeAgent
+        // performs the same private/internal-IP validation blockLocalAndPrivateIpAddresses did,
+        // so no separate guard call is needed before the fetch.
+        const requestAgent = await buildSsrfSafeAgent(identityJwtAuth.jwksUrl, {
+          ca: decryptedJwksCaCert || undefined
+        });
 
-          const requestAgent = decryptedJwksCaCert
-            ? new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: true })
-            : undefined;
-          client = new JwksClient({
-            jwksUri: identityJwtAuth.jwksUrl,
-            requestAgent
-          });
-        } else {
-          client = new JwksClient({
-            jwksUri: identityJwtAuth.jwksUrl
-          });
-        }
+        const client = new JwksClient({
+          jwksUri: identityJwtAuth.jwksUrl,
+          requestAgent
+        });
 
         const { kid } = decodedToken.header as { kid: string };
         let jwtSigningKey;
