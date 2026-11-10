@@ -15,7 +15,8 @@ export const codeDefinition = {
   behavior: [
     "In block mode, maxLines follows computed line height and the shared body inset, so text enlargement preserves the requested visible-line bound.",
     "Inline styling and block mode with wrapping, line numbers and highlighted lines.",
-    "All input renders as text; no HTML interpretation."
+    "Inline Code takes a node as children, so a search Highlight can mark matches inside a literal; keep the node's text the literal itself.",
+    "Block Code takes a string (children or code), because tokenizing and line numbering read the text. All input renders as text; no HTML interpretation."
   ],
   accessibility: [
     "Scrollable blocks are keyboard focusable named regions.",
@@ -36,6 +37,12 @@ export const codeDefinition = {
       id: "variants",
       title: "Formats and lexical families",
       module: "./examples/code/variants.tsx",
+      states: ["default"]
+    },
+    {
+      id: "search-matches",
+      title: "Search matches inside inline Code",
+      module: "./examples/code/search-matches.tsx",
       states: ["default"]
     }
   ],

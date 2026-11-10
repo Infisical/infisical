@@ -189,7 +189,8 @@ export const baselineForms = [
     referenceNames: ["Field"],
     behavior: [
       "Use label/description/error shorthand around one control for automatic ID, label, described-by and invalid-state association. Compound FieldLabel/FieldDescription/FieldError parts remain available for custom layouts. An error renders one way everywhere: a red alert icon and the message, several messages stacked under one icon. The label stays ink; the control's red border and the message carry the error. The label sits 6px above the control (the field-label space token). A stacked Field caps at the field measure (size-measure-field, 400px); wide lets it fill its column (size-measure-field-wide).",
-      "label accepts a node, so a label can carry an info tooltip beside its text. Everything inside the label becomes part of the control's accessible name, so give an info trigger a short name and keep long help in description."
+      "label accepts a node, so a label can carry an info tooltip beside its text. Everything inside the label becomes part of the control's accessible name, so give an info trigger a short name and keep long help in description.",
+      "description accepts a node, such as a search Highlight over the help text. It renders inside a paragraph, so pass phrasing content only. An error replaces it while one is set."
     ],
     accessibility: [
       "The short form connects the label, help and error to a single control. In a compound layout, match htmlFor to the control's id and point aria-describedby at the help and error. Grouped controls take a group with a legend."
@@ -215,6 +216,12 @@ export const baselineForms = [
         title: "Grouped fields",
         module: "./examples/field/grouping.tsx",
         states: ["default", "invalid"]
+      },
+      {
+        id: "search-matches",
+        title: "Search matches in label and description",
+        module: "./examples/field/search-matches.tsx",
+        states: ["default"]
       }
     ],
     coverage: [

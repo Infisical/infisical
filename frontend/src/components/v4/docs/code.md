@@ -51,7 +51,8 @@ Exports: Code. Source TypeScript defines the API.
 
 - In block mode, maxLines follows computed line height and the shared body inset, so text enlargement preserves the requested visible-line bound.
 - Inline styling and block mode with wrapping, line numbers and highlighted lines.
-- All input renders as text; no HTML interpretation.
+- Inline Code takes a node as children, so a search Highlight can mark matches inside a literal; keep the node's text the literal itself.
+- Block Code takes a string (children or code), because tokenizing and line numbering read the text. All input renders as text; no HTML interpretation.
 
 ## Accessibility
 
@@ -188,6 +189,38 @@ export default function Example() {
           />
         </div>
         <figcaption className="text-muted-foreground text-xs">{"Wrapped and bounded"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Search matches inside inline Code
+
+Save this example at `src/pages/design-system/examples/code/search-matches.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/code, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Code } from "../../../../components/v4/ui/code";
+import { Highlight } from "../../../../components/v4/ui/text";
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <p>
+            Set{" "}
+            <Code>
+              <Highlight text="DATABASE_REPLICA_URL" query="replica" />
+            </Code>{" "}
+            before the replica starts.
+          </p>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Inline Code with a search match"}
+        </figcaption>
       </figure>
     </div>
   );

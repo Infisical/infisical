@@ -73,6 +73,7 @@ Exports: Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLab
 
 - Use label/description/error shorthand around one control for automatic ID, label, described-by and invalid-state association. Compound FieldLabel/FieldDescription/FieldError parts remain available for custom layouts. An error renders one way everywhere: a red alert icon and the message, several messages stacked under one icon. The label stays ink; the control's red border and the message carry the error. The label sits 6px above the control (the field-label space token). A stacked Field caps at the field measure (size-measure-field, 400px); wide lets it fill its column (size-measure-field-wide).
 - label accepts a node, so a label can carry an info tooltip beside its text. Everything inside the label becomes part of the control's accessible name, so give an info trigger a short name and keep long help in description.
+- description accepts a node, such as a search Highlight over the help text. It renders inside a paragraph, so pass phrasing content only. An error replaces it while one is set.
 
 ## Accessibility
 
@@ -240,6 +241,54 @@ export default function Example() {
         />
       </Field>
     </FieldGroup>
+  );
+}
+```
+
+### Search matches in label and description
+
+Save this example at `src/pages/design-system/examples/field/search-matches.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/code, @infisical/field, @infisical/input, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+
+import { Code } from "../../../../components/v4/ui/code";
+import * as UI from "../../../../components/v4/ui/field";
+import { Input } from "../../../../components/v4/ui/input";
+import { Highlight } from "../../../../components/v4/ui/text";
+
+const variables = [
+  { key: "SMTP_HOST", description: "Hostname of the SMTP server that sends invites and alerts." },
+  { key: "SMTP_PORT", description: "Port the SMTP server listens on, usually 587." }
+];
+
+export default function Example() {
+  const [query, setQuery] = React.useState("smtp");
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      <Input
+        aria-label="Search keys and descriptions"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      <UI.FieldGroup>
+        {variables.map((variable) => (
+          <UI.Field
+            key={variable.key}
+            label={
+              <Code>
+                <Highlight text={variable.key} query={query} />
+              </Code>
+            }
+            description={<Highlight text={variable.description} query={query} />}
+          >
+            <Input defaultValue="" />
+          </UI.Field>
+        ))}
+      </UI.FieldGroup>
+    </div>
   );
 }
 ```

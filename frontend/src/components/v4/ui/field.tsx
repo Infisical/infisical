@@ -111,7 +111,7 @@ function Field({
 }: React.ComponentPropsWithoutRef<"div"> &
   VariantProps<typeof fieldVariants> & {
     label?: React.ReactNode;
-    description?: string;
+    description?: React.ReactNode;
     error?: string;
     optional?: boolean;
     group?: boolean;
