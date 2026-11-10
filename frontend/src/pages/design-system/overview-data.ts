@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "button-aria-expanded",
+    title: "Disclosure buttons stay quiet",
+    description:
+      "Expand and disclosure buttons keep aria-expanded without looking pressed; only menu and popover triggers show an open state.",
+    date: "2026-11-07",
+    commit: "610c85d040",
+    page: "button"
+  },
+  {
     id: "access-undo-toast",
     title: "Undo revokes from a toast",
     description:
@@ -210,15 +219,6 @@ export const recentChanges: {
       "Right-click row menus mount only when opened, so large tables carry no closed menus.",
     date: "2026-11-07",
     commit: "7a2ed78093",
-    page: "table"
-  },
-  {
-    id: "viewport-cell-perf",
-    title: "Faster table edits",
-    description:
-      "Editing inside a large table no longer pays for the full-width cell's styling when no row uses it.",
-    date: "2026-11-07",
-    commit: "3f2f553a29",
     page: "table"
   }
 ];
