@@ -15,6 +15,7 @@ export type PlanFeature = {
   label: string;
   value?: string;
   description?: string;
+  badge?: ReactNode;
 };
 
 type Props = {
@@ -54,7 +55,10 @@ export const PlanFeatureList = ({ features }: { features: PlanFeature[] }) => (
       <li key={feature.label} className={styles.feature}>
         <PlanFeatureIcon value={feature.value} />
         <div className="min-w-0">
-          <div className={styles.featureTitle}>{formatPlanFeatureTitle(feature)}</div>
+          <div className={styles.featureTitle}>
+            {formatPlanFeatureTitle(feature)}
+            {feature.badge && <span className={styles.featureBadge}>{feature.badge}</span>}
+          </div>
           {feature.description && (
             <div className={styles.featureDescription}>{feature.description}</div>
           )}
