@@ -34,6 +34,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission, useProject } from "@app/context";
+import { isInfisicalSessionEndpointRequest } from "@app/helpers/agentVaultSessionLogs";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
@@ -707,6 +708,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                 !record.service &&
                 (record.decision === AgentVaultSessionLogDecision.Blocked ||
                   record.decision === AgentVaultSessionLogDecision.Passthrough) &&
+                !isInfisicalSessionEndpointRequest(record) &&
                 !addedHosts.has(hostPatternFor(record));
               return (
                 <SessionLogRow

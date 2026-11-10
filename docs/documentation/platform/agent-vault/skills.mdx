@@ -5,7 +5,7 @@ description: "Instructions you keep in an Agent Vault project and install for ag
 
 A skill is a folder of instructions that an AI agent loads when a task needs it, such as how your team reviews pull requests or how to cut a release. Skills follow the [Agent Skills](https://agentskills.io) format, so the same folder works in Claude Code, Codex, and other agents that support it.
 
-An [access bundle](/documentation/platform/agent-vault/access-bundles) defines the services, such as external APIs or MCP servers, that an agent can access during a session. If you add a skill to an access bundle, the CLI installs the skill for each agent that you start with that access bundle through `infisical agent-vault run`. Agents that use the proxy without `infisical agent-vault run`, such as the [Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) and [OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) setups, don't get skills.
+An [access bundle](/documentation/platform/agent-vault/access-bundles) defines the services, such as external APIs or MCP servers, that an agent can access during a session. If you add a skill to an access bundle, the CLI installs the skill for each agent that you start with that access bundle through `infisical agent-vault run`. Agents that use the proxy without `infisical agent-vault run`, such as the [Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) and [OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) setups, don't get skills unless your own code installs them, as the [E2B guide](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox) does.
 
 <Info>
   [Members of an Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership) can view the latest version of each skill in the access bundles granted to them.
@@ -32,7 +32,7 @@ description: Reviews a pull request against the team checklist. Use when asked t
 2. Check each item in checklist.md.
 ```
 
-- `name`: the name agents know the skill by, with up to 64 lowercase letters, numbers, and single hyphens, not starting or ending with a hyphen
+- `name`: the name agents know the skill by, with up to 64 lowercase letters, numbers, and single hyphens, not starting or ending with a hyphen (you can't use `infisical-agent-vault`, the name of Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill))
 - `description`: the text an agent reads to decide when to use the skill (up to 1,024 characters)
 
 The folder can also hold other files that the instructions refer to, such as scripts, templates, or reference documents. Each skill can hold:
@@ -132,14 +132,25 @@ To remove a skill from an access bundle, open its actions menu in the **Skills**
 
 ## How agents get skills
 
-When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI downloads the latest version of each skill in the session's access bundle, and installs the skills before the agent starts. If you publish a new version or add a skill to the access bundle, restart the agent to pick up the change. Starting another agent on the same host also updates the skills there, including for agents already running.
+When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI gets the latest version of each skill in the session's access bundle through the proxy, and installs the skills before the agent starts. It also installs Agent Vault's [built-in skill](/documentation/platform/agent-vault/service-discovery#the-built-in-skill):
 
-### Reaching Infisical from the agent's host
+- To leave out only the built-in skill, pass [`--no-agent-vault-skill`](/cli/reference#agent-vault-run--flag-no-agent-vault-skill)
+- To start the agent without any skills, pass [`--no-skills`](/cli/reference#agent-vault-run--flag-no-skills)
 
-The CLI downloads the skills from Infisical with the session's token, so the agent's host needs to reach your Infisical instance:
+If you publish a new version or add a skill to the access bundle, restart the agent to pick up the change. Starting another agent on the same host also updates the skills there, including for agents already running.
 
-- If the host can't reach Infisical, or you don't want skills, pass [`--no-skills`](/cli/reference#agent-vault-run--flag-no-skills) to start the agent without them
+To install a session's skills without the CLI, such as in a sandbox you create from code, get them from the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint with the session's token. Also [set `INFISICAL_AGENT_VAULT_URL`](/documentation/platform/agent-vault/service-discovery#how-an-agent-gets-the-list) in the agent's environment, because without it, the agent ignores the built-in skill.
+
+### Where the CLI gets skills from
+
+The proxy asks Infisical for the skills with the session's token, so the agent's host only needs to reach the proxy.
+
+If the proxy runs an older version of the Infisical CLI that can't pass skills on, the CLI downloads the skills from Infisical directly. In that case:
+
+- The agent's host needs to reach your Infisical instance
 - If you start the agent with a session token and you use EU Cloud or self-host Infisical, pass your instance's URL to the CLI with [`--domain`](/cli/reference#global-flags--flag-domain)
+
+If the agent's host can't reach Infisical, the agent starts without skills, and the CLI warns you to update the Infisical CLI that runs the proxy.
 
 ### Where the CLI installs skills
 
@@ -306,6 +317,6 @@ Infisical removes the skill from every access bundle. The CLI doesn't delete cop
 
 ## Audit trail
 
-Infisical writes an audit event when someone creates, edits, renames, rolls back, or deletes a skill, adds a skill to an access bundle or removes it, or opens a version of a skill. When the CLI downloads a session's skills, Infisical also writes one event for the session that lists each skill's version and the version's SHA-256 checksum, so you can see which version each agent got.
+Infisical writes an audit event when someone creates, edits, renames, rolls back, or deletes a skill, adds a skill to an access bundle or removes it, or opens a version of a skill. When the CLI gets a session's skills, Infisical also writes one event for the session that lists each skill's version and the version's SHA-256 checksum, so you can see which version each agent got. If the CLI got the skills through the proxy, the event shows the proxy's IP address, not the agent host's.
 
 To review these events, open **Audit Logs** in your Agent Vault project, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.

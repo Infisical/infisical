@@ -442,7 +442,7 @@ func TestAccessApprovalPolicy_Delete(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, blocked.StatusCode())
-		require.Equal(t, "Environment is in use by an access approval policy", reply{blocked.StatusCode(), blocked.Body}.message(t))
+		require.Equal(t, "Environment is in use by a secret access approval policy", reply{blocked.StatusCode(), blocked.Body}.message(t))
 		require.Equal(t, []string{policyID}, policyIDs(t, g.proj))
 		deleted, err := g.tn.Admin.API.DeleteAccessApprovalPolicyWithResponse(t.Context(), policyID)
 		require.NoError(t, err)

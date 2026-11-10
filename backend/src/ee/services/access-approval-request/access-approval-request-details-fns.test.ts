@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 
 import { BypasserType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
   ApprovalRequestApprovalDecision,
@@ -22,7 +21,8 @@ import {
   toLegacyAccessApprovalRequest,
   toSecretAccessRequestListItem,
   TSecretAccessRequestListInput
-} from "./secret-access-approval-global-request-bridge-fns";
+} from "./access-approval-request-details-fns";
+import { ApprovalStatus } from "./access-approval-request-types";
 
 type TRequest = TSecretAccessRequestListInput["requests"][number];
 type TPolicy = TSecretAccessRequestListInput["policies"][number];
