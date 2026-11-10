@@ -741,10 +741,12 @@ export const OverviewPage = () => {
   const pinned =
     page === 1 ? quickAdded.flatMap((key) => sorted.filter(([entry]) => entry === key)) : [];
   const ordered = [...pinned, ...sorted.filter((row) => !pinned.includes(row))];
-  const importRows = matches.filter(([, entries]) => entries[0].kind === "import").length;
-  const importEntriesBeyondRows = (overview.data?.totalImportCount ?? 0) - importRows;
+  const unmatchedImports = query.trim()
+    ? [...groups.values()].filter((entries) => entries[0].kind === "import").length -
+      matches.filter(([, entries]) => entries[0].kind === "import").length
+    : 0;
   const totals: Record<ResourceKind, number> = {
-    import: importRows,
+    import: (overview.data?.totalImportCount ?? 0) - unmatchedImports,
     folder: overview.data?.totalFolderCount ?? 0,
     dynamic: overview.data?.totalDynamicSecretCount ?? 0,
     rotation: overview.data?.totalSecretRotationCount ?? 0,
@@ -752,10 +754,7 @@ export const OverviewPage = () => {
     proxy: overview.data?.totalProxiedServiceCount ?? 0,
     secret: overview.data?.totalSecretCount ?? 0
   };
-  const totalCount = Math.max(
-    (overview.data?.totalCount ?? 0) - importEntriesBeyondRows,
-    ordered.length
-  );
+  const totalCount = Math.max((overview.data?.totalCount ?? 0) - unmatchedImports, ordered.length);
   const pageCount = Math.max(1, Math.ceil(totalCount / perPage));
   const currentPage = Math.min(page, pageCount);
   const windowRows = ordered;
