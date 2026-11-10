@@ -73,11 +73,7 @@ import {
 } from "./app-connection-types";
 import { ValidateAuth0ConnectionCredentialsSchema } from "./auth0";
 import { auth0ConnectionService } from "./auth0/auth0-connection-service";
-import {
-  AwsConnectionConfigurationSchema,
-  AwsConnectionMethod,
-  ValidateAwsConnectionCredentialsSchema
-} from "./aws";
+import { AwsConnectionConfigurationSchema, AwsConnectionMethod, ValidateAwsConnectionCredentialsSchema } from "./aws";
 import { awsConnectionService } from "./aws/aws-connection-service";
 import { doesRoleArnBelongToStack } from "./aws/aws-role-arn-fns";
 import { ValidateAzureADCSConnectionCredentialsSchema } from "./azure-adcs/azure-adcs-connection-schemas";

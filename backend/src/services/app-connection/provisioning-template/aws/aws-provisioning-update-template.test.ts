@@ -60,7 +60,8 @@ describe("awsProvisioningTemplateProvider.getUpdateTemplate", () => {
 
     const updateUrl = template?.kind === ProvisioningTemplateKind.CloudFormationUpdate ? template.updateUrl : "";
 
-    expect(updateUrl).toMatch(/#\/stacks\/update\?stackId=infisical-aws-app-connection&templateURL=[^&]+$/);
+    expect(updateUrl).toContain("#/stacks/update?stackId=infisical-aws-app-connection&templateURL=");
+    expect(updateUrl).not.toContain("param_");
   });
 
   it("turns added use cases on and lists nothing for unchanged ones", async () => {
@@ -188,7 +189,7 @@ describe("AWS_USE_CASE_COMPANION_PARAMETERS", () => {
     Object.values(AWS_USE_CASE_COMPANION_PARAMETERS)
       .flat()
       .forEach((parameter) => {
-        expect(template).toMatch(new RegExp(`^  ${parameter}:`, "m"));
+        expect(template).toContain(`\n  ${parameter}:`);
       });
   });
 });
