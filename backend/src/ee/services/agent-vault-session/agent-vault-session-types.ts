@@ -19,6 +19,7 @@ export type TOnBehalfOfUser = { userId?: string; userEmail?: string };
 export type TAgentVaultInlineServiceInput = {
   type: AgentVaultServiceType;
   name?: string;
+  description?: string | null;
   hostPattern?: string;
   serverUrl?: string;
   transport?: AgentVaultMcpTransport;
@@ -51,6 +52,7 @@ export type TAgentVaultInlineServiceSummary = {
   id: string;
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
+  description: string | null;
   type: AgentVaultServiceType;
   serverUrl: string | null;
   transport: AgentVaultMcpTransport | null;

@@ -1356,6 +1356,56 @@ describe("Agent Vault V1 Router", async () => {
       expect((await inject("PATCH", url, { type: "http", allowedPathPrefixes: [] })).statusCode).toBe(422);
     });
 
+    test("a service's description reaches members, outlives other edits, and is removed by null or a blank one", async () => {
+      const bundle = await createAccessBundle("service-description");
+      const servicesUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/services`;
+      const created = await inject("POST", servicesUrl, {
+        type: "http",
+        name: "datadog",
+        description: "Read metrics and monitors for the US5 site",
+        hostPattern: "api.us5.datadoghq.com",
+        credential: { type: "passthrough" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = created.json() as { service: { id: string; description: string | null } };
+      expect(service.description).toBe("Read metrics and monitors for the US5 site");
+
+      type TBundleRead = { accessBundle: { services: { description: string | null }[] } };
+      const bundleUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}`;
+      const storedService = async () =>
+        ((await inject("GET", bundleUrl)).json() as TBundleRead).accessBundle.services[0];
+
+      const member = await createMemberIdentity(`service-description-${Date.now()}`);
+      try {
+        expect(
+          (await inject("POST", `${bundleUrl}/members`, { machineIdentityIds: [member.id] })).statusCode
+        ).toBe(200);
+        const read = await member.as("GET", bundleUrl);
+        expect(read.statusCode).toBe(200);
+        expect((read.json() as TBundleRead).accessBundle.services[0].description).toBe(
+          "Read metrics and monitors for the US5 site"
+        );
+      } finally {
+        await member.cleanup();
+      }
+
+      const url = `${servicesUrl}/${service.id}`;
+      expect((await inject("PATCH", url, { type: "http", name: "datadog-us5" })).statusCode).toBe(200);
+      expect((await storedService()).description).toBe("Read metrics and monitors for the US5 site");
+
+      // Agents read it, so a character that renders as nothing could hide text from whoever reviews the service.
+      expect((await inject("PATCH", url, { type: "http", description: "Read\u{200B} metrics" })).statusCode).toBe(422);
+
+      const changed = await inject("PATCH", url, { type: "http", description: "Read metrics only" });
+      expect(changed.json().service.description).toBe("Read metrics only");
+      const blanked = await inject("PATCH", url, { type: "http", description: "  " });
+      expect(blanked.json().service.description).toBeNull();
+
+      expect((await inject("PATCH", url, { type: "http", description: "Read metrics only" })).statusCode).toBe(200);
+      expect((await inject("PATCH", url, { type: "http", description: null })).statusCode).toBe(200);
+      expect((await storedService()).description).toBeNull();
+    });
+
     test("a path prefix that would need normalising to judge is rejected", async () => {
       const bundle = await createAccessBundle("path-grammar");
       const reject = async (prefix: string) =>
@@ -6568,6 +6618,7 @@ describe("Agent Vault V1 Router", async () => {
     type TInlineSummary = {
       id: string;
       name: string | null;
+      description: string | null;
       hostPattern: string;
       credential: Record<string, string>;
       customHeaders: { name: string; prefix: string }[];
@@ -6677,6 +6728,38 @@ describe("Agent Vault V1 Router", async () => {
           substitutions: [{ placeholder: "__STRIPE_ID__", surfaces: ["path"], value: "cus_inline" }]
         }
       ]);
+    });
+
+    test("an inline service's description is read back, and the services list sends it with an MCP server's URL and transport", async () => {
+      const mint = await inject("POST", sessionsUrl, {
+        ttl: "1h",
+        services: [
+          { ...openai, description: "Drafts the release notes" },
+          {
+            type: "mcp",
+            name: "docs-mcp",
+            serverUrl: "https://mcp.example.com/sse",
+            transport: "sse",
+            credential: { type: "bearer", value: "mcp-inline-token" }
+          }
+        ]
+      });
+      expect(mint.statusCode).toBe(200);
+      const { session } = mint.json() as { session: { id: string; token: string; services: TInlineSummary[] } };
+      expect(session.services.map((service) => service.description)).toEqual(["Drafts the release notes", null]);
+      expect((await inject("GET", `${sessionsUrl}/${session.id}`)).json().session.services).toEqual(session.services);
+
+      const listed = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/agent-vault/session/services",
+        headers: { authorization: `Bearer ${session.token}` }
+      });
+      expect(listed.statusCode).toBe(200);
+      expect(listed.json().services).toMatchObject([
+        { name: "openai", description: "Drafts the release notes", type: "http", url: "https://api.openai.com" },
+        { name: "docs-mcp", description: null, type: "mcp", url: "https://mcp.example.com/sse", transport: "sse" }
+      ]);
+      expect(listed.payload).not.toContain("mcp-inline-token");
     });
 
     test("a session needs an access bundle or inline services", async () => {
@@ -7180,6 +7263,86 @@ describe("Agent Vault V1 Router", async () => {
       ]);
     });
 
+    // What an agent reads about its session, over the real route so the response schema sends every field.
+    test("the services list describes the session, its services, and the traffic policy of a proxy in its project", async () => {
+      const bundle = await createAccessBundle("session-services-list");
+      const servicesUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/services`;
+      const mcp = await inject("POST", servicesUrl, {
+        type: "mcp",
+        name: "linear",
+        description: "Issues for the platform team",
+        serverUrl: "https://mcp.linear.app/sse",
+        transport: "sse",
+        credential: { type: "bearer", value: "lin_api_listing" }
+      });
+      expect(mcp.statusCode).toBe(200);
+      const http = await inject("POST", servicesUrl, {
+        type: "http",
+        name: "github",
+        hostPattern: "api.github.com",
+        credential: { type: "passthrough" }
+      });
+      expect(http.statusCode).toBe(200);
+
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundle: bundle.name,
+        ttl: "1h",
+        label: "Nightly triage"
+      });
+      expect(mint.statusCode).toBe(200);
+      const { session } = mint.json() as { session: { token: string } };
+
+      const proxy = await inject("POST", "/api/v1/agent-vault/proxies", {
+        name: "session-services-list",
+        trafficPolicy: "service-hosts"
+      });
+      expect(proxy.statusCode).toBe(200);
+      const list = (authorization: string, headers: Record<string, string> = {}) =>
+        testServer.inject({
+          method: "GET",
+          url: "/api/v1/agent-vault/session/services",
+          headers: { authorization, ...headers }
+        });
+
+      const viaProxy = await list(`Bearer ${session.token}`, {
+        "x-agent-vault-proxy-id": proxy.json().proxy.id as string,
+        "x-agent-vault-proxy-version": "0.44.0"
+      });
+      expect(viaProxy.statusCode).toBe(200);
+      // A bundle's services are listed in name order.
+      expect(viaProxy.json()).toMatchObject({
+        agentVault: { proxy: "session-services-list", version: "0.44.0", trafficPolicy: "service-hosts" },
+        session: { expiresAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/), accessBundle: bundle.name },
+        services: [
+          {
+            name: "github",
+            description: null,
+            type: "http",
+            url: "https://api.github.com",
+            credential: { type: "none", addedByProxy: false, memberProvided: false }
+          },
+          {
+            name: "linear",
+            description: "Issues for the platform team",
+            type: "mcp",
+            url: "https://mcp.linear.app/sse",
+            transport: "sse",
+            credential: { type: "bearer", header: "Authorization", addedByProxy: true, memberProvided: false }
+          }
+        ]
+      });
+      expect(viaProxy.payload).not.toContain("lin_api_listing");
+      // Someone's summary of the session could steer an agent away from its prompt, so the list leaves it out.
+      expect(viaProxy.json().session).not.toHaveProperty("label");
+
+      // A name that isn't a proxy only leaves the traffic policy out.
+      const unnamed = await list(`Bearer ${session.token}`, { "x-agent-vault-proxy-id": "not-a-proxy" });
+      expect(unnamed.statusCode).toBe(200);
+      expect(unnamed.json().agentVault).toEqual({ proxy: null, version: null, trafficPolicy: null });
+
+      expect((await list("Bearer agv_not_a_session_anyone_minted")).statusCode).toBe(401);
+    });
+
     test("a deactivated actor stops resolving, and resolves again once reactivated", async () => {
       const bundle = await createAccessBundle("resolve-deactivation");
       const service = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
@@ -7430,6 +7593,8 @@ describe("Agent Vault V1 Router", async () => {
         url: sessionSkillsUrl,
         headers: authorization === undefined ? {} : { authorization }
       });
+    // Every session also gets the built-in skill, which is never audited or counted; these tests are about the library's.
+    const librarySkills = <T extends { isBuiltin: boolean }>(skills: T[]) => skills.filter((row) => !row.isBuiltin);
 
     test("an admin creates, reads, lists and deletes a skill", async () => {
       const { skill, version } = await createSkill("crud-skill", "Reviews code");
@@ -7471,6 +7636,56 @@ describe("Agent Vault V1 Router", async () => {
       expect((await inject("GET", `${skillsUrl}/${skill.id}`)).statusCode).toBe(404);
       const bundleSkills = await inject("GET", bundleSkillsUrl(bundle.id));
       expect(JSON.parse(bundleSkills.payload).skills).toEqual([]);
+    });
+
+    test("the built-in skill is readable on its own, and matches the copy a session gets", async () => {
+      const res = await inject("GET", `${skillsUrl}/builtin`);
+      expect(res.statusCode).toBe(200);
+      const { skill } = JSON.parse(res.payload) as {
+        skill: { id: string; name: string; description: string; sha256: string; files: TFile[] };
+      };
+      expect(skill.name).toBe("infisical-agent-vault");
+      expect(skill.description).not.toBe("");
+      expect(skill.files.map((file) => file.path)).toEqual(["SKILL.md"]);
+      expect(Object.keys(skill).sort()).toEqual(["description", "files", "id", "name", "sha256"]);
+
+      const session = await mintFor([await createAccessBundle("skills-builtin-bundle")]);
+      const delivered = JSON.parse((await fetchSessionSkills(`Bearer ${session.token}`)).payload) as {
+        skills: { id: string; name: string; sha256: string; files: TFile[]; isBuiltin: boolean }[];
+      };
+      expect(delivered.skills.find((row) => row.isBuiltin)).toMatchObject({
+        id: skill.id,
+        name: skill.name,
+        sha256: skill.sha256,
+        files: skill.files
+      });
+      expect(JSON.parse((await inject("GET", skillsUrl)).payload)).toEqual({ skills: [], totalCount: 0 });
+    });
+
+    test("the built-in skill's name is refused for a library skill, on create and on update", async () => {
+      const reserved =
+        "'infisical-agent-vault' is reserved for the skill Agent Vault gives every agent. Choose another name in SKILL.md.";
+      const created = await inject("POST", skillsUrl, { files: skillFiles("infisical-agent-vault") });
+      expect(created.statusCode).toBe(400);
+      expect(JSON.parse(created.payload).message).toBe(reserved);
+
+      const { skill } = await createSkill("renamed-later");
+      const renamed = await publish(skill.id, skillFiles("infisical-agent-vault"));
+      expect(renamed.statusCode).toBe(400);
+      expect(JSON.parse(renamed.payload).message).toBe(reserved);
+      const kept = JSON.parse((await inject("GET", `${skillsUrl}/${skill.id}`)).payload) as { skill: TSkill };
+      expect(kept.skill).toMatchObject({ name: "renamed-later", latestVersion: 1 });
+    });
+
+    test("includeBuiltin=false leaves the built-in skill out of a session's skills", async () => {
+      const session = await mintFor([await createAccessBundle("skills-no-builtin-bundle")]);
+      const withoutBuiltin = await testServer.inject({
+        method: "GET",
+        url: `${sessionSkillsUrl}?includeBuiltin=false`,
+        headers: { authorization: `Bearer ${session.token}` }
+      });
+      expect(withoutBuiltin.statusCode).toBe(200);
+      expect(JSON.parse(withoutBuiltin.payload)).toEqual({ skills: [] });
     });
 
     test("a duplicate name is a 409", async () => {
@@ -7566,6 +7781,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const calls: [string, "GET" | "POST" | "PATCH" | "DELETE", string, number, Record<string, unknown>?][] = [
           ["list", "GET", skillsUrl, 200],
+          ["get built-in", "GET", `${skillsUrl}/builtin`, 200],
           ["get", "GET", `${skillsUrl}/${skill.id}`, 200],
           ["get unreachable", "GET", `${skillsUrl}/${hidden.id}`, 404],
           ["list versions", "GET", `${skillsUrl}/${skill.id}/versions`, 403],
@@ -8014,7 +8230,9 @@ describe("Agent Vault V1 Router", async () => {
       try {
         const empty = await asSession();
         expect(empty.statusCode).toBe(200);
-        expect(JSON.parse(empty.payload)).toEqual({ skills: [] });
+        expect(JSON.parse(empty.payload)).toEqual({
+          skills: [expect.objectContaining({ name: "infisical-agent-vault", isBuiltin: true })]
+        });
         expect(emptyAuditLogs).not.toHaveBeenCalled();
       } finally {
         emptyAuditLogs.mockRestore();
@@ -8064,13 +8282,15 @@ describe("Agent Vault V1 Router", async () => {
         auditLogs.mockRestore();
       }
       expect(delivered.statusCode).toBe(200);
-      const { skills } = JSON.parse(delivered.payload) as {
-        skills: { id: string; name: string; version: number; sha256: string; files: TFile[] }[];
+      const { skills: deliveredSkills } = JSON.parse(delivered.payload) as {
+        skills: { id: string; name: string; version: number; sha256: string; files: TFile[]; isBuiltin: boolean }[];
       };
-      expect(skills.map((row) => row.name)).toEqual(["alpha-skill", "zeta-skill"]);
+      expect(deliveredSkills.map((row) => row.name)).toEqual(["alpha-skill", "infisical-agent-vault", "zeta-skill"]);
+      const skills = librarySkills(deliveredSkills);
       expect(skills[0]).toEqual({
         id: alpha.id,
         name: "alpha-skill",
+        isBuiltin: false,
         version: 2,
         sha256: alphaV2.sha256,
         files: [
@@ -8082,8 +8302,8 @@ describe("Agent Vault V1 Router", async () => {
       expect(skills.some((row) => row.id === foreign.id)).toBe(false);
 
       expect((await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${alpha.id}`)).statusCode).toBe(200);
-      const afterRemove = JSON.parse((await asSession()).payload) as { skills: { id: string }[] };
-      expect(afterRemove.skills.map((row) => row.id)).toEqual([zeta.id]);
+      const afterRemove = JSON.parse((await asSession()).payload) as { skills: { id: string; isBuiltin: boolean }[] };
+      expect(librarySkills(afterRemove.skills).map((row) => row.id)).toEqual([zeta.id]);
 
       const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${session.id}/revoke`);
       expect(revoked.statusCode).toBe(200);
@@ -8154,15 +8374,17 @@ describe("Agent Vault V1 Router", async () => {
           auditLogs.mockRestore();
         }
         expect(before.statusCode).toBe(200);
-        expect((JSON.parse(before.payload) as { skills: { id: string }[] }).skills.map((row) => row.id)).toEqual([
-          skill.id
-        ]);
+        expect(
+          librarySkills((JSON.parse(before.payload) as { skills: { id: string; isBuiltin: boolean }[] }).skills).map(
+            (row) => row.id
+          )
+        ).toEqual([skill.id]);
 
         expect((await inject("DELETE", bundleMembersUrl, { machineIdentityIds: [member.id] })).statusCode).toBe(200);
 
         const after = await asSession();
         expect(after.statusCode).toBe(200);
-        expect(JSON.parse(after.payload)).toEqual({ skills: [] });
+        expect(librarySkills(JSON.parse(after.payload).skills)).toEqual([]);
       } finally {
         await member.cleanup();
       }
@@ -8258,7 +8480,7 @@ describe("Agent Vault V1 Router", async () => {
       try {
         const empty = await fetchSessionSkills(`Bearer ${emptySession.token}`);
         expect(empty.statusCode).toBe(200);
-        expect(JSON.parse(empty.payload)).toEqual({ skills: [] });
+        expect(librarySkills(JSON.parse(empty.payload).skills)).toEqual([]);
         expect(sent.mock.calls.filter(isSkillsDelivered)).toHaveLength(0);
 
         const delivered = await fetchSessionSkills(`Bearer ${session.token}`);

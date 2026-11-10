@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { AGENT_VAULT_INLINE_SERVICE_VARIABLE_MESSAGE } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 
-import { AgentVaultInlineServicesInputSchema } from "./agent-vault-schemas";
+import { AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE, AgentVaultInlineServicesInputSchema } from "./agent-vault-schemas";
 
 const bearer = (value: string, extra: Record<string, unknown> = {}) => ({
   type: "http",
@@ -67,6 +67,20 @@ describe("inline services request schema", () => {
       code: "too_big",
       message:
         "A session can have at most 20 services. Add the others to an access bundle and name it in accessBundles."
+    });
+  });
+
+  test("takes a description like a bundle service's, a blank one as none", () => {
+    const parsed = AgentVaultInlineServicesInputSchema.parse([
+      bearer("one", { description: "  Payments, read only  " }),
+      bearer("two", { hostPattern: "b.example.com", description: "   " }),
+      bearer("three", { hostPattern: "c.example.com" })
+    ]);
+    expect(parsed.map((service) => service.description)).toEqual(["Payments, read only", null, undefined]);
+
+    expect(issuesOf([bearer("token", { description: "zero\u{200B}width" })])[0]).toMatchObject({
+      path: [0, "description"],
+      message: AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE
     });
   });
 

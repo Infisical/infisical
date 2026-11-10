@@ -95,6 +95,9 @@ export type TAgentVaultServiceConfig =
 export const getServiceServerUrl = (config: unknown): string | null =>
   (config as TAgentVaultServiceConfig | null)?.serverUrl ?? null;
 
+export const getServiceTransport = (config: unknown): AgentVaultMcpTransport | null =>
+  (config as TAgentVaultServiceConfig | null)?.transport ?? null;
+
 export type TAgentVaultServiceTypeDefinition = {
   type: AgentVaultServiceType;
   label: string;
