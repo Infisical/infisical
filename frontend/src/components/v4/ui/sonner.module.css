@@ -1,3 +1,12 @@
+.toaster[data-sonner-toaster][data-y-position="bottom"] {
+  bottom: var(--v4-toast-bottom);
+  transition: bottom var(--v4-duration-moderate) var(--v4-ease-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+  .toaster[data-sonner-toaster][data-y-position="bottom"] {
+    transition-duration: 0s;
+  }
+}
 .toaster[data-sonner-toaster] {
   z-index: 50;
   font-family: var(--v4-type-row-title-font-family);

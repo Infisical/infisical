@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { type PresenceReport, usePresenceCount, useReportPresence } from "../lib/presence-count";
 import { v4Themes } from "../lib/theme-registry";
 import { cn } from "../lib/utils";
+import { useV4ActionBarReserve } from "../scope";
 import { Count } from "./badge";
 import { BandDivider, Breadcrumb, type BreadcrumbCrumb } from "./breadcrumb";
 import { Button } from "./button";
@@ -67,9 +68,11 @@ const ShellChromeContext = React.createContext<ShellChrome | null>(null);
 export const useShellChrome = () => React.useContext(ShellChromeContext);
 
 const InsetReserveContext = React.createContext<PresenceReport | null>(null);
-/** Pads AppInset by the floating action bar's height while active holds. */
-export const useActionBarReserve = (active: boolean) =>
+/** Pads AppInset by the floating action bar's height, and lifts the scope's toasts above it, while active holds. */
+export const useActionBarReserve = (active: boolean) => {
   useReportPresence(React.useContext(InsetReserveContext), active);
+  useReportPresence(useV4ActionBarReserve(), active);
+};
 
 const sizeOf = (element: HTMLElement, token: string) =>
   parseFloat(getComputedStyle(element).getPropertyValue(token)) || 0;
