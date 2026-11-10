@@ -260,11 +260,9 @@ export const ssoDemo: SsoAdapter = {
         ? ({
             ...current,
             ...Object.fromEntries(Object.entries(dto).filter(([, value]) => value !== undefined)),
-            hasClientKeyCertificate: clientKeyCertificate
-              ? true
-              : dto.clientCertificate === ""
-                ? false
-                : current.hasClientKeyCertificate
+            hasClientKeyCertificate:
+              Boolean(clientKeyCertificate) ||
+              (dto.clientCertificate !== "" && current.hasClientKeyCertificate)
           } as LdapConfig)
         : current
     );

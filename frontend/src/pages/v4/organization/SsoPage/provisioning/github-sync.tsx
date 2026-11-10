@@ -179,7 +179,7 @@ const GithubOrgSyncConfigDialog = ({
                     await deleteConfig.mutateAsync();
                     setDeleting(false);
                     onOpenChange(false);
-                    saved("GitHub organization sync removed");
+                    saved("GitHub organization sync deleted");
                   } catch (error) {
                     failed("Failed to remove GitHub organization sync", error);
                   }
