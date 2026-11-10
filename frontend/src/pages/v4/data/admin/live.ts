@@ -69,5 +69,6 @@ export const adminLive: AdminAdapter = {
   useIntegrationsConfig: useGetAdminIntegrationsConfig,
   useInvalidatingCacheStatus: useGetInvalidatingCacheStatus,
   useInvalidateCache,
-  useEnvOverrides: useGetEnvOverrides
+  useEnvOverrides: useGetEnvOverrides,
+  useCacheInvalidationStatus: useGetInvalidatingCacheStatus
 };

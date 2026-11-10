@@ -1,9 +1,12 @@
+import { AxiosError, AxiosHeaders } from "axios";
+
 import {
   type AdminEmailDomain,
   type AdminIntegrationsConfig,
   LoginMethod,
   type OrganizationWithProjects,
   RootKeyEncryptionStrategy,
+  SuperAdminErrorCode,
   type TEncryptionKeyRotation,
   type TEncryptionRootKey,
   type TGetEnvOverrides,
@@ -427,6 +430,25 @@ export const adminDemo: AdminAdapter = {
       envOverrides: overrides,
       ...rest
     } = dto;
+    const adminAuthMethods: string[] = userById("u-sarah").authMethods ?? [];
+    if (rest.enabledLoginMethods?.every((method) => !adminAuthMethods.includes(method))) {
+      throw new AxiosError(
+        "Request failed with status code 400",
+        "ERR_BAD_REQUEST",
+        undefined,
+        {},
+        {
+          status: 400,
+          statusText: "Bad Request",
+          headers: {},
+          config: { headers: new AxiosHeaders() },
+          data: {
+            error: SuperAdminErrorCode.AuthMethodLockout,
+            message: "You must configure at least one auth method to prevent account lockout"
+          }
+        }
+      );
+    }
     integrations.update((current) => ({
       slack: {
         clientId: slackClientId ?? current.slack.clientId,
@@ -616,7 +638,16 @@ export const adminDemo: AdminAdapter = {
   useIntegrationsConfig: () => ok(integrations.use()),
 
   useInvalidatingCacheStatus: () => ok(invalidating.use()),
-  useInvalidateCache: fixtureMutation(() => undefined),
+  useInvalidateCache: fixtureMutation(() => {
+    invalidating.update(() => true);
+    window.setTimeout(() => invalidating.update(() => false), 8000);
+  }),
 
-  useEnvOverrides: () => ok(envOverrides.use())
+  useEnvOverrides: () => ok(envOverrides.use()),
+
+  useCacheInvalidationStatus: () => ({
+    ...ok(invalidating.use()),
+    isFetching: false,
+    refetch: async () => ({ data: invalidating.get() })
+  })
 };
