@@ -13,13 +13,13 @@ import {
 } from "./data-access/instance-config-core-data-access";
 import { InstanceConfigDataAccess } from "./data-access/instance-config-data-access";
 import { ServerConfigCache } from "./data-access/server-config-cache";
-import { TIntegrationCredentialsProps } from "./model/integration-credentials";
 import { EnvOverridesService } from "./service/env-overrides-service";
 import { InstanceConfigService } from "./service/instance-config-service";
 import {
   TEnvOverridesView,
   TInstanceConfigEnv,
   TInstanceConfigPatch,
+  TIntegrationCredentials,
   TMicrosoftTeamsCredentials,
   TRootKeyCipher,
   TServerConfigView
@@ -28,11 +28,11 @@ import { IntegrationCredentialsHolder } from "./service/integration-credentials-
 import { IntegrationCredentialsService } from "./service/integration-credentials-service";
 
 export { INSTANCE_CONFIG_ID } from "./model/instance-config";
-export type { TIntegrationCredentialsProps as TIntegrationCredentials } from "./model/integration-credentials";
 export type {
   TEnvOverridesView,
   TInstanceConfigEnv,
   TInstanceConfigPatch,
+  TIntegrationCredentials,
   TMicrosoftTeamsCredentials,
   TServerConfigView
 } from "./service/instance-config-types";
@@ -47,7 +47,7 @@ export type TInstanceConfigCoreDomain = {
   getSlackCredentials: () => Promise<{ clientId: string; clientSecret: string }>;
   // updatedAt is the config row's: it changes on every config update.
   getMicrosoftTeamsCredentials: () => Promise<TMicrosoftTeamsCredentials>;
-  getIntegrationCredentials: () => Promise<TIntegrationCredentialsProps>;
+  getIntegrationCredentials: () => Promise<TIntegrationCredentials>;
   getEnvOverrides: () => Promise<Record<string, string>>;
   getEnvOverridesOrganized: () => Promise<TEnvOverridesView>;
 };
@@ -91,27 +91,19 @@ export class InstanceConfigCoreModule {
 
   constructor(private readonly deps: TInstanceConfigCoreDeps) {
     const { transactionRunner, dataAccess } = "db" in deps ? buildInstanceConfigCoreDataAccessDeps(deps.db) : deps;
-    const cache = new ServerConfigCache(deps.keyStore);
+    const cache = new ServerConfigCache(deps.keyStore, dataAccess.instanceConfig);
     const credentials = new IntegrationCredentialsHolder();
     const { kmsCoreDomain, env } = deps;
 
     this.instanceConfig = new InstanceConfigService({
       transactionRunner,
-      dataAccess,
       cache,
-      credentials,
       kmsCoreDomain,
       env,
       isFipsModeEnabled: deps.isFipsModeEnabled ?? (() => crypto.isFipsModeEnabled())
     });
     this.envOverrides = new EnvOverridesService({ dataAccess, kmsCoreDomain, env });
-    const integrationCredentials = new IntegrationCredentialsService({
-      dataAccess,
-      cache,
-      credentials,
-      kmsCoreDomain,
-      env
-    });
+    const integrationCredentials = new IntegrationCredentialsService({ cache, credentials, kmsCoreDomain, env });
 
     const { instanceConfig, envOverrides } = this;
     this.service = {

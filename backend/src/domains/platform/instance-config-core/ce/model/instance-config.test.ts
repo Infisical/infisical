@@ -1,5 +1,4 @@
 import { InstanceConfig, TInstanceConfigProps } from "./instance-config";
-import { InstanceConfigChange } from "./instance-config-change";
 
 const row = (overrides: Partial<TInstanceConfigProps> = {}): TInstanceConfigProps => ({
   id: "00000000-0000-0000-0000-000000000000",
@@ -41,15 +40,5 @@ describe("InstanceConfig.fromCached", () => {
     // Assert
     expect(config.updatedAt).toEqual(new Date("2026-01-02T00:00:00.000Z"));
     expect(config.encrypted("encryptedSlackClientId")).toEqual(cipherText);
-  });
-});
-
-describe("InstanceConfigChange.create", () => {
-  test("should refuse a change with no field set", () => {
-    // Action
-    const create = () => InstanceConfigChange.create({ allowSignUp: undefined });
-
-    // Assert
-    expect(create).toThrow("No recognized instance configuration fields were provided");
   });
 });

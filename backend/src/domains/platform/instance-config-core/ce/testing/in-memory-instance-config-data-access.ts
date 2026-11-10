@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { SuperAdminSchema, TSuperAdminInsert } from "@app/db/schemas";
 
-import { TInstanceConfigDataAccess } from "../data-access/instance-config-data-access";
+import { TInstanceConfigDataAccess, TInstanceConfigUpdate } from "../data-access/instance-config-data-access";
 import { InstanceConfig } from "../model/instance-config";
-import { InstanceConfigChange } from "../model/instance-config-change";
 import { InMemoryInstanceConfigCoreState } from "./in-memory-instance-config-core-state";
 
 // Postgres stamps updatedAt with a trigger. Each write here gets a strictly later time, so two writes in the same
@@ -30,24 +29,25 @@ export class InMemoryInstanceConfigDataAccess implements TInstanceConfigDataAcce
     });
   }
 
-  async createIfMissing(initial: TSuperAdminUpdate & { id: string }) {
+  // SuperAdminSchema applies the column defaults Postgres would.
+  async createIfMissing(initial: TSuperAdminInsert & { id: string }) {
     if (!this.state.tables.row) {
       const now = new Date();
-      this.state.tables.row = {
+      this.state.tables.row = SuperAdminSchema.parse({
         instanceId: randomUUID(),
-        fipsEnabled: false,
-        onboardingCompleted: false,
         ...initial,
         createdAt: now,
         updatedAt: now
-      } as TSuperAdmin;
+      });
     }
-    return (await this.findById()) as InstanceConfig;
+    const config = await this.findById();
+    if (!config) throw new Error("Instance config row missing after create");
+    return config;
   }
 
-  async update(change: InstanceConfigChange) {
+  async update(columns: TInstanceConfigUpdate) {
     const { row } = this.state.tables;
     if (!row) return;
-    this.state.tables.row = { ...row, ...change.toJSON(), updatedAt: nextUpdatedAt(row.updatedAt) } as TSuperAdmin;
+    this.state.tables.row = SuperAdminSchema.parse({ ...row, ...columns, updatedAt: nextUpdatedAt(row.updatedAt) });
   }
 }

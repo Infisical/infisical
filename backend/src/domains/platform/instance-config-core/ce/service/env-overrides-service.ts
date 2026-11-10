@@ -1,7 +1,6 @@
 import { NotFoundError } from "@app/lib/errors";
 
 import { TInstanceConfigCoreDataAccess } from "../data-access/instance-config-core-data-access";
-import { decryptEnvOverrides } from "./instance-config-fns";
 import { TEnvOverridesView, TInstanceConfigEnv, TRootKeyCipher } from "./instance-config-types";
 
 export type TEnvOverridesServiceDeps = {
@@ -18,12 +17,14 @@ export class EnvOverridesService {
   async getEnvOverrides(): Promise<Record<string, string>> {
     const config = await this.deps.dataAccess.instanceConfig.findById();
     if (!config) throw new NotFoundError({ message: "Admin config not found" });
-    return decryptEnvOverrides(config, this.deps.kmsCoreDomain);
+    const cipherText = config.encrypted("encryptedEnvOverrides");
+    if (!cipherText) return {};
+    return JSON.parse(this.deps.kmsCoreDomain.decryptWithRootKey()(cipherText).toString()) as Record<string, string>;
   }
 
   async getEnvOverridesOrganized(): Promise<TEnvOverridesView> {
     const overrides = await this.getEnvOverrides();
-    const original = (this.deps.env.getOriginalConfig() ?? {}) as Record<string, unknown>;
+    const original = this.deps.env.getOriginalConfig() ?? {};
     return Object.fromEntries(
       Object.entries(this.deps.env.overridableGroups).map(([groupKey, group]) => [
         groupKey,

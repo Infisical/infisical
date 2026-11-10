@@ -1,7 +1,9 @@
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { InstanceConfig, TInstanceConfigProps } from "../model/instance-config";
+import { InstanceConfig, TCachedInstanceConfig } from "../model/instance-config";
+import { TInstanceConfigDataAccess } from "./instance-config-data-access";
 
 // Frozen key, TTL and value shape: pods of the previous release read and write the same entry during a rolling
 // deploy, and their Slack code decrypts the encrypted columns straight from the cached row. So the full row is
@@ -9,14 +11,18 @@ import { InstanceConfig, TInstanceConfigProps } from "../model/instance-config";
 export const SERVER_CONFIG_CACHE_KEY = "infisical-admin-cfg";
 export const SERVER_CONFIG_CACHE_TTL_SECONDS = 60;
 
-// The instance config shared by every pod. Redis failures fall back to the database.
+// The instance config shared by every pod, read from the database on a miss. Redis failures fall back to the database.
 export class ServerConfigCache {
-  constructor(private readonly keyStore: TDomainKeyStore) {}
+  constructor(
+    private readonly keyStore: TDomainKeyStore,
+    private readonly instanceConfig: Pick<TInstanceConfigDataAccess, "findById">
+  ) {}
 
-  async get(fetch: () => Promise<InstanceConfig>): Promise<InstanceConfig> {
+  async get(): Promise<InstanceConfig> {
     const cached = await this.read();
     if (cached) return cached;
-    const config = await fetch();
+    const config = await this.instanceConfig.findById();
+    if (!config) throw new NotFoundError({ message: "Admin config not found" });
     await this.set(config);
     return config;
   }
@@ -40,7 +46,7 @@ export class ServerConfigCache {
   private async read(): Promise<InstanceConfig | null> {
     try {
       const raw = await this.keyStore.getItem(SERVER_CONFIG_CACHE_KEY);
-      return raw ? InstanceConfig.fromCached(JSON.parse(raw) as TInstanceConfigProps) : null;
+      return raw ? InstanceConfig.fromCached(JSON.parse(raw) as TCachedInstanceConfig) : null;
     } catch (err) {
       logger?.warn({ key: SERVER_CONFIG_CACHE_KEY, err }, "Instance config cache read failed");
       return null;

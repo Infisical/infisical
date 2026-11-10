@@ -110,7 +110,7 @@ const instanceConfigEnv: TInstanceConfigEnv = {
   getConfig,
   getOriginalConfig,
   overridableGroups: overwriteSchema,
-  overridableKeys: overridableKeys as ReadonlySet<string>,
+  overridableKeys,
   parseWithOverrides,
   overrideEnvConfig
 };

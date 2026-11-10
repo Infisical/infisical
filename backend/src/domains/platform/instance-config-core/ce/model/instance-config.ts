@@ -1,4 +1,4 @@
-import { TSuperAdmin, TSuperAdminUpdate } from "@app/db/schemas";
+import { TSuperAdmin, TSuperAdminInsert } from "@app/db/schemas";
 
 // The id of the one super_admin row. Pods of the previous release look the row up by it.
 export const INSTANCE_CONFIG_ID = "00000000-0000-0000-0000-000000000000";
@@ -29,12 +29,17 @@ export type TInstanceConfigProps = TSuperAdmin & {
 // What callers read: every setting, never a ciphertext.
 export type TServerConfigView = Omit<TInstanceConfigProps, TEncryptedColumn>;
 
-// A row as JSON.parse returns it from the cache: dates are strings and Buffers are { type: "Buffer", data }.
-const reviveBuffer = (value: unknown) => {
-  if (value && typeof value === "object" && (value as { type?: unknown }).type === "Buffer") {
-    return Buffer.from((value as { data: number[] }).data);
-  }
-  return value as Buffer | null | undefined;
+type TCachedBuffer = { type: "Buffer"; data: number[] } | Buffer | null | undefined;
+
+// The row as JSON.parse returns it from the cache: dates are strings and Buffers are { type: "Buffer", data }.
+export type TCachedInstanceConfig = Omit<TInstanceConfigProps, "createdAt" | "updatedAt" | TEncryptedColumn> & {
+  createdAt: string | Date;
+  updatedAt: string | Date;
+} & Partial<Record<TEncryptedColumn, TCachedBuffer>>;
+
+const reviveBuffer = (value: TCachedBuffer): Buffer | null => {
+  if (!value) return null;
+  return Buffer.isBuffer(value) ? value : Buffer.from(value.data);
 };
 
 // The instance's configuration: the single super_admin row.
@@ -46,16 +51,27 @@ export class InstanceConfig {
   }
 
   // A row read back from the cache, which pods of the previous release also write.
-  static fromCached(cached: TInstanceConfigProps): InstanceConfig {
-    const props = { ...cached, createdAt: new Date(cached.createdAt), updatedAt: new Date(cached.updatedAt) };
-    ENCRYPTED_COLUMNS.forEach((column) => {
-      props[column] = reviveBuffer(props[column]);
+  static fromCached(cached: TCachedInstanceConfig): InstanceConfig {
+    return InstanceConfig.restore({
+      ...cached,
+      createdAt: new Date(cached.createdAt),
+      updatedAt: new Date(cached.updatedAt),
+      encryptedSlackClientId: reviveBuffer(cached.encryptedSlackClientId),
+      encryptedSlackClientSecret: reviveBuffer(cached.encryptedSlackClientSecret),
+      encryptedMicrosoftTeamsAppId: reviveBuffer(cached.encryptedMicrosoftTeamsAppId),
+      encryptedMicrosoftTeamsClientSecret: reviveBuffer(cached.encryptedMicrosoftTeamsClientSecret),
+      encryptedMicrosoftTeamsBotId: reviveBuffer(cached.encryptedMicrosoftTeamsBotId),
+      encryptedGitHubAppConnectionClientId: reviveBuffer(cached.encryptedGitHubAppConnectionClientId),
+      encryptedGitHubAppConnectionClientSecret: reviveBuffer(cached.encryptedGitHubAppConnectionClientSecret),
+      encryptedGitHubAppConnectionSlug: reviveBuffer(cached.encryptedGitHubAppConnectionSlug),
+      encryptedGitHubAppConnectionId: reviveBuffer(cached.encryptedGitHubAppConnectionId),
+      encryptedGitHubAppConnectionPrivateKey: reviveBuffer(cached.encryptedGitHubAppConnectionPrivateKey),
+      encryptedEnvOverrides: reviveBuffer(cached.encryptedEnvOverrides)
     });
-    return InstanceConfig.restore(props);
   }
 
   // The row a new instance starts with.
-  static initial({ fipsEnabled }: { fipsEnabled: boolean }): TSuperAdminUpdate & { id: string } {
+  static initial({ fipsEnabled }: { fipsEnabled: boolean }): TSuperAdminInsert & { id: string } {
     return { id: INSTANCE_CONFIG_ID, fipsEnabled, initialized: false, allowSignUp: true, defaultAuthOrgId: null };
   }
 
@@ -72,11 +88,21 @@ export class InstanceConfig {
   }
 
   toView(): TServerConfigView {
-    const view: Partial<TInstanceConfigProps> = { ...this.props };
-    ENCRYPTED_COLUMNS.forEach((column) => {
-      delete view[column];
-    });
-    return view as TServerConfigView;
+    const {
+      encryptedSlackClientId,
+      encryptedSlackClientSecret,
+      encryptedMicrosoftTeamsAppId,
+      encryptedMicrosoftTeamsClientSecret,
+      encryptedMicrosoftTeamsBotId,
+      encryptedGitHubAppConnectionClientId,
+      encryptedGitHubAppConnectionClientSecret,
+      encryptedGitHubAppConnectionSlug,
+      encryptedGitHubAppConnectionId,
+      encryptedGitHubAppConnectionPrivateKey,
+      encryptedEnvOverrides,
+      ...view
+    } = this.props;
+    return view;
   }
 
   // The full row, the shape the shared cache has always held.

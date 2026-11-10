@@ -56,7 +56,7 @@ describe("InstanceConfigDataAccess on Postgres", () => {
     test("should return the stored FIPS setting", async () => {
       // Setup
       await h.db(TableName.SuperAdmin).del();
-      await h.db(TableName.SuperAdmin).insert({ ...InstanceConfig.initial({ fipsEnabled: true }) } as never);
+      await h.db(TableName.SuperAdmin).insert(InstanceConfig.initial({ fipsEnabled: true }));
 
       // Action
       const setting = await InstanceConfigDataAccess.readFipsSetting(h.db);

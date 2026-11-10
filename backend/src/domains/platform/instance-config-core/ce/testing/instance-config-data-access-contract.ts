@@ -1,5 +1,4 @@
 import { INSTANCE_CONFIG_ID, InstanceConfig } from "../model/instance-config";
-import { InstanceConfigChange } from "../model/instance-config-change";
 import { TInstanceConfigCoreDataAccessDeps } from "../module";
 
 export type TInstanceConfigContractHarness = {
@@ -40,7 +39,7 @@ export const describeInstanceConfigDataAccessContract = (
       await createRow(deps);
       const org = await h.addSamlOrg();
       await deps.transactionRunner.run(({ dataAccess }) =>
-        dataAccess.instanceConfig.update(InstanceConfigChange.create({ defaultAuthOrgId: org.id }))
+        dataAccess.instanceConfig.update({ defaultAuthOrgId: org.id })
       );
 
       // Action
@@ -58,9 +57,7 @@ export const describeInstanceConfigDataAccessContract = (
       const created = await createRow(deps);
 
       // Action
-      await deps.transactionRunner.run(({ dataAccess }) =>
-        dataAccess.instanceConfig.update(InstanceConfigChange.create({ allowSignUp: false }))
-      );
+      await deps.transactionRunner.run(({ dataAccess }) => dataAccess.instanceConfig.update({ allowSignUp: false }));
 
       // Assert
       const updated = await deps.dataAccess.instanceConfig.findById();

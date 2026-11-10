@@ -1,17 +1,19 @@
 import { Knex } from "knex";
 
-import { TableName, TSuperAdminUpdate } from "@app/db/schemas";
+import { TableName, TSuperAdminInsert, TSuperAdminUpdate } from "@app/db/schemas";
 import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
 import { INSTANCE_CONFIG_ID, InstanceConfig, TInstanceConfigProps } from "../model/instance-config";
-import { InstanceConfigChange } from "../model/instance-config-change";
+
+// The super_admin columns one update writes.
+export type TInstanceConfigUpdate = Omit<TSuperAdminUpdate, "id">;
 
 export type TInstanceConfigDataAccess = {
   findById(options?: TReadOptions): Promise<InstanceConfig | undefined>;
   // Returns the existing row, or inserts this one. Safe for any number of pods booting at once.
-  createIfMissing(initial: TSuperAdminUpdate & { id: string }): Promise<InstanceConfig>;
-  update(change: InstanceConfigChange): Promise<void>;
+  createIfMissing(initial: TSuperAdminInsert & { id: string }): Promise<InstanceConfig>;
+  update(columns: TInstanceConfigUpdate): Promise<void>;
 };
 
 // Owns super_admin. Its read also joins organizations, saml_configs and oidc_configs for the default auth org: a
@@ -22,25 +24,23 @@ export class InstanceConfigDataAccess implements TInstanceConfigDataAccess {
   // Before migrations and before any module exists: null when the table or the row is missing.
   static async readFipsSetting(knex: Knex): Promise<boolean | null> {
     if (!(await knex.schema.hasTable(TableName.SuperAdmin))) return null;
-    const row = (await knex(TableName.SuperAdmin).where({ id: INSTANCE_CONFIG_ID }).first("*")) as
-      | { fipsEnabled?: boolean | null }
-      | undefined;
+    // "*" rather than the column: an instance from before fipsEnabled existed has a row without it, and is not FIPS.
+    const row = await knex(TableName.SuperAdmin).where({ id: INSTANCE_CONFIG_ID }).first("*");
     return row ? Boolean(row.fipsEnabled) : null;
   }
 
   // For the boot banner, outside any module: false until an instance admin finished setup.
   static async readInitialized(knex: Knex): Promise<boolean> {
     if (!(await knex.schema.hasTable(TableName.SuperAdmin))) return false;
-    const row = (await knex(TableName.SuperAdmin).where({ id: INSTANCE_CONFIG_ID }).first("initialized")) as
-      | { initialized?: boolean | null }
-      | undefined;
+    const row = await knex(TableName.SuperAdmin).where({ id: INSTANCE_CONFIG_ID }).first("initialized");
     return Boolean(row?.initialized);
   }
 
   async findById(options?: TReadOptions): Promise<InstanceConfig | undefined> {
     try {
       const knex = this.db.reader(options);
-      const row = (await knex(TableName.SuperAdmin)
+      // The raw CASE column is beyond Knex's inference, so the joined row's type is declared on first().
+      const row = await knex(TableName.SuperAdmin)
         .where(`${TableName.SuperAdmin}.id`, INSTANCE_CONFIG_ID)
         .leftJoin(TableName.Organization, `${TableName.SuperAdmin}.defaultAuthOrgId`, `${TableName.Organization}.id`)
         .leftJoin(TableName.SamlConfig, (qb) => {
@@ -69,22 +69,18 @@ export class InstanceConfigDataAccess implements TInstanceConfigDataAccess {
             END as "defaultAuthOrgAuthMethod"
           `)
         )
-        .first()) as TInstanceConfigProps | undefined;
+        .first<TInstanceConfigProps | undefined>();
       return row ? InstanceConfig.restore(row) : undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find instance config" });
     }
   }
 
-  async createIfMissing(initial: TSuperAdminUpdate & { id: string }): Promise<InstanceConfig> {
+  async createIfMissing(initial: TSuperAdminInsert & { id: string }): Promise<InstanceConfig> {
     try {
       // A concurrent boot's insert waits for the first to commit and then does nothing; the read below runs as a new
       // statement, so under Read Committed it sees that row. Read-then-insert would fail one boot on the primary key.
-      await this.db
-        .writer()(TableName.SuperAdmin)
-        .insert(initial as never)
-        .onConflict("id")
-        .ignore();
+      await this.db.writer()(TableName.SuperAdmin).insert(initial).onConflict("id").ignore();
     } catch (error) {
       throw new DatabaseError({ error, name: "Create instance config" });
     }
@@ -95,12 +91,9 @@ export class InstanceConfigDataAccess implements TInstanceConfigDataAccess {
     return created;
   }
 
-  async update(change: InstanceConfigChange): Promise<void> {
+  async update(columns: TInstanceConfigUpdate): Promise<void> {
     try {
-      await this.db
-        .writer()(TableName.SuperAdmin)
-        .where({ id: INSTANCE_CONFIG_ID })
-        .update(change.toJSON() as never);
+      await this.db.writer()(TableName.SuperAdmin).where({ id: INSTANCE_CONFIG_ID }).update(columns);
     } catch (error) {
       throw new DatabaseError({ error, name: "Update instance config" });
     }

@@ -1,4 +1,4 @@
-import { TableName, TSuperAdmin } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { InMemoryKeyStore } from "@app/domains/lib/testing/in-memory-key-store";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
@@ -51,13 +51,11 @@ describe("InstanceConfigCoreModule on Postgres", () => {
     await module.service.updateConfig({ slackClientId: "slack-id", microsoftTeamsBotId: "bot-id" });
 
     // Assert
-    const row = (await h.db(TableName.SuperAdmin).first("*")) as TSuperAdmin;
-    expect(row.encryptedSlackClientId?.toString()).not.toContain("slack-id");
-    expect(
-      kmsCore.service
-        .decryptWithRootKey()(row.encryptedSlackClientId as Buffer)
-        .toString()
-    ).toBe("slack-id");
+    const row = await h.db(TableName.SuperAdmin).first("encryptedSlackClientId");
+    const cipherText = row?.encryptedSlackClientId;
+    if (!cipherText) throw new Error("Slack client id was not stored");
+    expect(cipherText.toString()).not.toContain("slack-id");
+    expect(kmsCore.service.decryptWithRootKey()(cipherText).toString()).toBe("slack-id");
     const credentials = await module.service.getIntegrationCredentials();
     expect(credentials.slack.clientId).toBe("slack-id");
     expect(credentials.microsoftTeams.botId).toBe("bot-id");

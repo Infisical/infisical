@@ -8,7 +8,7 @@ export type { TServerConfigView };
 export type TInstanceConfigEnv = {
   getConfig: () => { WORKFLOW_SLACK_CLIENT_ID?: string; WORKFLOW_SLACK_CLIENT_SECRET?: string };
   // The env as the process started, before any override.
-  getOriginalConfig: () => object | undefined;
+  getOriginalConfig: () => Readonly<Record<string, unknown>> | undefined;
   overridableGroups: Record<string, { name: string; fields: { key: string; description?: string }[] }>;
   overridableKeys: ReadonlySet<string>;
   // Parses the process env with these overrides on top, without applying them.
@@ -45,5 +45,12 @@ export type TEnvOverridesView = Record<
   string,
   { name: string; fields: { key: string; value: string; hasEnvEntry: boolean; description?: string }[] }
 >;
+
+// The instance's app credentials, decrypted. An unset value is "".
+export type TIntegrationCredentials = {
+  slack: { clientId: string; clientSecret: string };
+  microsoftTeams: { appId: string; clientSecret: string; botId: string };
+  gitHubAppConnection: { clientId: string; clientSecret: string; appSlug: string; appId: string; privateKey: string };
+};
 
 export type TMicrosoftTeamsCredentials = { appId: string; clientSecret: string; botId: string; updatedAt: Date };
