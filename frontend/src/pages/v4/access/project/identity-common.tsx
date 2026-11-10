@@ -20,6 +20,7 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { identityAuthToNameMap } from "@app/hooks/api/identities/constants";
 import type { IdentityAuthMethod } from "@app/hooks/api/identities/enums";
 import type { Identity, IdentityProjectMembershipV2 } from "@app/hooks/api/identities/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter } from "../../data/adapters";
 import { V4_DEMO_ORG_ID } from "../../mode";
@@ -151,6 +152,7 @@ export const IdentityRemovalDialog = ({
   const { projectType } = useProjectScope();
   const access = useV4Adapter("access");
   const removeMembership = access.useRemoveProjectIdentity();
+  const removePamMembership = useV4Adapter("pam").useRemoveProductIdentityMember();
   const deleteIdentity = access.useDeleteProjectManagedIdentity();
   const [pending, setPending] = useState(false);
   const isProjectIdentity = Boolean(identity && isProjectManaged(identity));
@@ -167,7 +169,10 @@ export const IdentityRemovalDialog = ({
         await deleteIdentity.mutateAsync({ projectId, identityId: identity.id });
         saved(`Successfully deleted ${accessLabel(projectType, "machine identity").toLowerCase()}`);
       } else {
-        await removeMembership.mutateAsync({ projectId, projectType, identityId: identity.id });
+        if (projectType === ProjectType.PAM)
+          await removePamMembership.mutateAsync({ projectId, identityId: identity.id });
+        else
+          await removeMembership.mutateAsync({ projectId, projectType, identityId: identity.id });
         saved(`Successfully removed machine identity from ${accessNoun(projectType)}`);
       }
       onOpenChange(false);
