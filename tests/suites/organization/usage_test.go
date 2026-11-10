@@ -17,6 +17,10 @@ import (
 // Reports sit behind a 5s debounce, so waits need extra room on top of the default.
 const reportWithin = 30 * time.Second
 
+// A retried report also waits out the job's first backoff (10s, see UsageQueue.emit), so it lands at
+// debounce + backoff plus queue latency, which already measured 26s locally under suite load.
+const retryWithin = reportWithin + 30*time.Second
+
 func TestUsageReport_Send(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -163,7 +167,7 @@ func TestUsageReport_Send(t *testing.T) {
 		tn.NewMachineIdentity(t)
 
 		// Assert
-		expectSnapshot(t, root, "user_identities", 1)
+		expectSnapshot(t, root, "user_identities", 1, fakenet.Within(retryWithin))
 	})
 
 	t.Run("should send a count again when the server refused it as not priced", func(t *testing.T) {
