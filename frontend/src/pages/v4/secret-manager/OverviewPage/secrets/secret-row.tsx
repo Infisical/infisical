@@ -61,6 +61,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
+import { failed } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import { useRequestBreadth } from "../bridge/scopes";
 import { useValueLoader } from "../bridge/values";
@@ -140,14 +141,14 @@ const popoverClass: Partial<Record<Overlay, string>> = {
 const copy = async (
   value: string,
   done: string,
-  failed: string,
+  failure: string,
   report: (message: string, tone: "ok" | "bad") => void
 ) => {
   try {
     await navigator.clipboard.writeText(value);
     report(done, "ok");
   } catch {
-    report(failed, "bad");
+    report(failure, "bad");
   }
 };
 
@@ -747,7 +748,11 @@ function SecretActionsRow({
                       "ok"
                     );
                   },
-                  () => undefined
+                  (error) =>
+                    failed(
+                      reminder ? "Failed to save the reminder" : "Failed to delete the reminder",
+                      error
+                    )
                 );
               }}
             />
@@ -781,7 +786,7 @@ function SecretActionsRow({
                   .then(
                     () =>
                       ctx.report(`Redacted version ${version.version} of ${secret.name}.`, "ok"),
-                    () => undefined
+                    (error) => failed("Failed to redact the version", error)
                   )
               }
             />

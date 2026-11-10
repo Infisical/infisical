@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { AxiosError } from "axios";
 
 import {
   ProjectPermissionSecretFolderActions,
@@ -13,6 +12,7 @@ import type {
 } from "@app/hooks/api/folderAccess/types";
 import { wasErrorReported } from "@app/hooks/api/reactQuery";
 
+import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import { MoveSecretsDialog } from "../bulk/move-secrets-dialog";
 import { childPath } from "../flows/shared";
@@ -132,9 +132,7 @@ export function FolderActions({
     !wasErrorReported(error) &&
     onToast("bad", {
       title: "Failed to update folder access",
-      description:
-        (error as AxiosError<{ message?: string }>)?.response?.data?.message ??
-        (error instanceof Error ? error.message : undefined)
+      description: errorMessage(error)
     });
   const save = (member: AccessMember, before?: FolderGrant, after?: FolderGrant) => {
     const scoped = { ...target, secretPath: folderPath };

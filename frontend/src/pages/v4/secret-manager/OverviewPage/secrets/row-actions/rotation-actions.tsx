@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import type { AxiosError } from "axios";
 
 import {
   AlertDialog,
@@ -31,6 +30,7 @@ import { wasErrorReported } from "@app/hooks/api/reactQuery";
 import type { SecretRotation as ApiSecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 import type { TReconcileLocalAccountRotationDTO } from "@app/hooks/api/secretRotationsV2/types";
 
+import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import type { Resource } from "../../secrets-model";
 import { SecretRotationFlow } from "../flows/secret-rotation-flow";
@@ -247,9 +247,7 @@ export function RotationActions({
     !wasErrorReported(error) &&
     onToast("bad", {
       title,
-      description:
-        (error as AxiosError<{ message?: string }>)?.response?.data?.message ??
-        (error instanceof Error ? error.message : undefined)
+      description: errorMessage(error)
     });
   const target = (rotation: RotationResource) => ({
     rotationId: rotation.id,

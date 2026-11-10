@@ -1,5 +1,4 @@
 import { type ReactNode, useState } from "react";
-import type { AxiosError } from "axios";
 import { format } from "date-fns";
 import {
   ArrowDownWideNarrowIcon,
@@ -45,6 +44,7 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 import type { Commit } from "@app/hooks/api/folderCommits/types";
 import { wasErrorReported } from "@app/hooks/api/reactQuery";
 
+import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import { environmentLabel, Gate } from "../flows/shared";
 import { ActionButton } from "../overview-cells";
@@ -291,9 +291,7 @@ export function CommitHistorySheet({
     !wasErrorReported(error) &&
     onToast("bad", {
       title,
-      description:
-        (error as AxiosError<{ message?: string }>)?.response?.data?.message ??
-        (error instanceof Error ? error.message : undefined)
+      description: errorMessage(error)
     });
 
   const resetCards = () => {

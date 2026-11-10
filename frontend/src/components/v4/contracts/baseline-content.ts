@@ -10,7 +10,8 @@ export const baselineContent = [
     exports: ["Accordion", "AccordionContent", "AccordionItem", "AccordionTrigger"],
     referenceNames: ["Accordion"],
     behavior: [
-      "Radix single mode uses a string value; multiple mode uses an array. onValueChange reports item values, and collapsible allows the open single item to close."
+      "Radix single mode uses a string value; multiple mode uses an array. onValueChange reports item values, and collapsible allows the open single item to close.",
+      "Hover underlines only the trigger's text: AccordionTrigger wraps each string or number child in a text span and underlines that span, so a Badge, count or icon beside the title never takes the underline. Pass the title as text, not wrapped in an element, to keep the hover cue."
     ],
     accessibility: [
       "Each trigger is a button inside a heading and controls its own panel. Arrow keys, Home and End move between triggers."
@@ -36,6 +37,12 @@ export const baselineContent = [
         title: "Controlled open section",
         module: "./examples/accordion/controlled.tsx",
         states: ["default", "controlled"]
+      },
+      {
+        id: "badges",
+        title: "Trigger with a badge",
+        module: "./examples/accordion/badges.tsx",
+        states: ["default"]
       }
     ],
     coverage: [
@@ -1612,7 +1619,8 @@ export const baselineContent = [
     ],
     referenceNames: ["Item", "Media", "Tile"],
     behavior: [
-      "Item composes rows with title, media, metadata, actions, error/unread states and actions below the text. ItemGroup keeps the requested semantic wrapper; Tile is a native selected button. Tile wraps its title (up to two lines), description and meta within the tile, so long text never runs under the trailing chevron or check."
+      "Item composes rows with title, media, metadata, actions, error/unread states and actions below the text. ItemGroup keeps the requested semantic wrapper; Tile is a native selected button. Tile wraps its title (up to two lines), description and meta within the tile, so long text never runs under the trailing chevron or check.",
+      "Tile always has its own ground, because its chevron sits at the far edge: a line-soft border on a bare surface, and the tint shade with no border inside a framed Card, List or DataTable, so the frames never nest. An unframed item puts its chevron right after its content instead (rule/chevron-tile-frame)."
     ],
     accessibility: [
       "Make only actionable rows interactive. Name a selected Tile and preserve aria-pressed instead of adding click handlers to a generic div."
@@ -1751,6 +1759,14 @@ export const baselineContent = [
             exampleId: "variants",
             label: "info"
           }
+        ]
+      },
+      {
+        axis: "Tile ground",
+        expected: ["border", "shade"],
+        shown: [
+          { value: "border", exampleId: "tiles", label: "On a surface: bordered" },
+          { value: "shade", exampleId: "tiles", label: "Inside a Card: shaded" }
         ]
       },
       {

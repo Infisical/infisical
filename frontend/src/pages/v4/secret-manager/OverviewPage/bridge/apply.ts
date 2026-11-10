@@ -4,6 +4,7 @@ import { wasErrorReported } from "@app/hooks/api/reactQuery";
 import { SecretType } from "@app/hooks/api/secrets/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 
+import { errorMessage } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import type { Resource, ResourceApplyOptions, Secret } from "../secrets-model";
 
@@ -46,9 +47,7 @@ export const useEnsureTags = (projectId: string, tags: readonly WsTag[]) => {
           .mutateAsync({ projectId, tagSlug: slug, tagColor: "" })
           .catch((error: unknown) => {
             if (wasErrorReported(error)) throw error;
-            const reason = isAxiosError<{ message?: string }>(error)
-              ? error.response?.data?.message
-              : undefined;
+            const reason = isAxiosError(error) ? errorMessage(error) : undefined;
             throw new Error(`Could not create the tag ${slug}.${reason ? ` ${reason}` : ""}`);
           })
       )
@@ -73,11 +72,11 @@ export const useResourceApply = ({
   const adapter = useV4Adapter("secrets");
   const loudCreateSecret = adapter.useCreateSecret();
   const loudUpdateSecret = adapter.useUpdateSecret();
-  const quietCreateSecret = adapter.useCreateSecret({ skipErrorToast: true });
-  const quietUpdateSecret = adapter.useUpdateSecret({ skipErrorToast: true });
+  const quietCreateSecret = adapter.useCreateSecret({ meta: { skipErrorToast: true } });
+  const quietUpdateSecret = adapter.useUpdateSecret({ meta: { skipErrorToast: true } });
   const deleteSecret = adapter.useDeleteSecret();
   const loudCreateSecretBatch = adapter.useCreateSecretBatch();
-  const quietCreateSecretBatch = adapter.useCreateSecretBatch({ skipErrorToast: true });
+  const quietCreateSecretBatch = adapter.useCreateSecretBatch({ meta: { skipErrorToast: true } });
   const deleteSecretBatch = adapter.useDeleteSecretBatch();
   const moveSecrets = adapter.useMoveSecrets();
   const createFolder = adapter.useCreateFolder();

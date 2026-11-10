@@ -19,6 +19,7 @@ import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 import { KmsKeyUsage, type TCmek } from "@app/hooks/api/cmeks/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
+import { failed } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 
@@ -254,17 +255,19 @@ export const OverviewPage = () => {
                 icon: "sync",
                 disabledReason: rotateBlock,
                 onSelect: (r) =>
-                  rotateKey.mutateAsync({ keyId: r.id, projectId }).catch(() => undefined)
+                  rotateKey
+                    .mutateAsync({ keyId: r.id, projectId })
+                    .catch((error) => failed("Failed to rotate key", error))
               }
             ],
             renderMenu: (r) => (
               <KeyMenu
                 item={r}
                 onToggle={() => {
-                  updateKey
-                    .mutateAsync({ keyId: r.id, projectId, isDisabled: !r.isDisabled })
-                    .catch(() => undefined);
-                  setSelected((current) => current.filter((id) => id !== r.id));
+                  updateKey.mutateAsync({ keyId: r.id, projectId, isDisabled: !r.isDisabled }).then(
+                    () => setSelected((current) => current.filter((id) => id !== r.id)),
+                    (error) => failed(`Failed to ${r.isDisabled ? "enable" : "disable"} key`, error)
+                  );
                 }}
               />
             )

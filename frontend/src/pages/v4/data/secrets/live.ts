@@ -28,6 +28,7 @@ import {
 } from "@app/hooks/api/secrets/queries";
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 
+import { withMutationMeta } from "../contract";
 import { useProjectById } from "../projectQuery";
 import type { SecretsAdapter } from "./contract";
 import { secretsFlowsLive } from "./live-flows";
@@ -37,16 +38,16 @@ export const secretsLive: SecretsAdapter = {
   useProject: useProjectById,
   useCreateEnvironment: useCreateWsEnvironment,
   useTags: useGetWsTags,
-  useCreateTag: () => useCreateWsTag({ meta: { skipErrorToast: true } }),
+  useCreateTag: (options) => useCreateWsTag({ meta: options?.meta }),
   useOverview: useGetProjectSecretsOverview,
   useSecretValue: useGetSecretValue,
   useSecretReferenceTree: useGetSecretReferenceTree,
   useSecretReferences: useGetSecretReferences,
   useExpandedSecretValue: useGetExpandedSecretValue,
-  useCreateSecret: (options) => useCreateSecretV3({ options: { meta: options } }),
-  useUpdateSecret: (options) => useUpdateSecretV3({ options: { meta: options } }),
-  useDeleteSecret: useDeleteSecretV3,
-  useDeleteSecretBatch,
+  useCreateSecret: withMutationMeta(useCreateSecretV3),
+  useUpdateSecret: withMutationMeta(useUpdateSecretV3),
+  useDeleteSecret: withMutationMeta(useDeleteSecretV3),
+  useDeleteSecretBatch: withMutationMeta(useDeleteSecretBatch),
   useCreateFolder,
   useUpdateFolder,
   useDeleteFolder,

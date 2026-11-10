@@ -95,7 +95,7 @@ import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { useProjectPermission } from "../../access/permissions";
-import { dismissToast, toast } from "../../access/toast";
+import { dismissToast, errorMessage, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
@@ -213,16 +213,9 @@ const parseList = (value?: string) =>
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
-const serverMessage = (error: unknown) => {
-  if (!isAxiosError<{ message?: unknown }>(error)) return undefined;
-  const message = error.response?.data?.message;
-  return typeof message === "string" ? message : undefined;
-};
-const errorText = (error: unknown) =>
-  serverMessage(error) ??
-  (error instanceof Error && error.message ? error.message : "Please try again.");
+const errorText = (error: unknown) => errorMessage(error) || "Please try again.";
 const fieldErrorText = (error: unknown) =>
-  isAxiosError(error) && error.response?.status === 400 ? serverMessage(error) : undefined;
+  isAxiosError(error) && error.response?.status === 400 ? errorMessage(error) : undefined;
 
 export const OverviewPage = () => {
   const { projectId } = useParams({ from: ROUTE });

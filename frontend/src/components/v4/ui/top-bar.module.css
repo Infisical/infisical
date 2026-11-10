@@ -275,10 +275,6 @@
   letter-spacing: var(--v4-type-eyebrow-letter-spacing);
   text-transform: uppercase;
 }
-.sheetThemeChoice {
-  width: 100%;
-}
 .sheetThemeChoice > * {
-  flex: 1 1 0;
   min-height: var(--v4-size-touch-row);
 }

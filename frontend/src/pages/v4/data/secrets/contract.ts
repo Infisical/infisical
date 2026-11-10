@@ -33,7 +33,7 @@ import type {
 } from "@app/hooks/api/secrets/types";
 import type { CreateTagDTO, UserWsTags, WsTag } from "@app/hooks/api/tags/types";
 
-import type { V4ConfigurableMutation, V4Mutation, V4QueryResult } from "../contract";
+import type { V4Mutation, V4QueryResult } from "../contract";
 import type { SecretsFlowsAdapter } from "./contract-flows";
 
 export type SecretsAdapter = SecretsFlowsAdapter & {
@@ -58,8 +58,8 @@ export type SecretsAdapter = SecretsFlowsAdapter & {
   useExpandedSecretValue: (
     dto: TGetExpandedSecretValueDTO
   ) => V4QueryResult<{ secretValue: string; secretValueHidden: boolean }>;
-  useCreateSecret: V4ConfigurableMutation<TCreateSecretsV3DTO>;
-  useUpdateSecret: V4ConfigurableMutation<TUpdateSecretsV3DTO>;
+  useCreateSecret: V4Mutation<TCreateSecretsV3DTO>;
+  useUpdateSecret: V4Mutation<TUpdateSecretsV3DTO>;
   useDeleteSecret: V4Mutation<TDeleteSecretsV3DTO>;
   useDeleteSecretBatch: V4Mutation<TDeleteSecretBatchDTO>;
   useCreateFolder: V4Mutation<TCreateFolderDTO>;

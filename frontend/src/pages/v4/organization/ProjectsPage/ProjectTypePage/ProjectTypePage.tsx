@@ -389,12 +389,14 @@ const MyProjects = ({
     .slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const toggleFavorite = (project: Project) =>
-    updateFavorites.mutateAsync({
-      orgId,
-      projectFavorites: isFavorite(project)
-        ? (favorites ?? []).filter((id) => id !== project.id)
-        : [...(favorites ?? []), project.id]
-    });
+    updateFavorites
+      .mutateAsync({
+        orgId,
+        projectFavorites: isFavorite(project)
+          ? (favorites ?? []).filter((id) => id !== project.id)
+          : [...(favorites ?? []), project.id]
+      })
+      .catch((error) => failed("Failed to update favorite projects", error));
   const favorite = (project: Project) => (
     <FavoriteButton
       project={project}
