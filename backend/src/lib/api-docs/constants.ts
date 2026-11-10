@@ -4724,7 +4724,7 @@ export const AGENT_VAULT = {
     databaseRead: "The database the proxy logs in to.",
     tls: "How the proxy connects to the database. `enabled` (default true) uses TLS, `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's.",
     updateTls:
-      "How the proxy connects to the database. `enabled` (default true) uses TLS, `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's. Send `ca: null` to remove a stored one.",
+      "How the proxy connects to the database. `enabled` uses TLS, `verify` checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's. A field you leave out keeps its saved value. Send `ca: null` to remove a stored one.",
     tlsRead: "How the proxy connects to the database.",
     tlsEnabled: "Whether the proxy connects to the database over TLS. Defaults to true.",
     tlsVerify: "Whether the proxy checks the database's certificate. Defaults to true.",
