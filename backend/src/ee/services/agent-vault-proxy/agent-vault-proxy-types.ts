@@ -116,4 +116,6 @@ export type TResolvedService = {
   // The service takes part of its credential from each member and the member whose values the session uses (its owner,
   // or the user it acts for) hasn't set them, so the proxy refuses its requests rather than sending them without one.
   personalValuesMissing: boolean;
+  // Some of the credential is each member's own, so a rejection is theirs to fix, not the admin's.
+  memberProvided: boolean;
 };
