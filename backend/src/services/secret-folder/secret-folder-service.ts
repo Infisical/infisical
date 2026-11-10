@@ -459,6 +459,21 @@ export const secretFolderServiceFactory = ({
         tx
       );
 
+      // lock every folder the batch can touch in one id-ordered statement, so two batches over the same
+      // folders queue behind each other instead of deadlocking on per-entry subtree locks
+      const renamedSubtrees = await folderDAL.findByEnvsDeep(
+        {
+          parentIds: entries
+            .filter(({ newFolder, folder }) => newFolder.name !== folder.name)
+            .map(({ folder }) => folder.id)
+        },
+        tx
+      );
+      await folderDAL.lockFoldersForUpdate(
+        [...new Set([...entries.map(({ folder }) => folder.id), ...renamedSubtrees.map((folder) => folder.id)])],
+        tx
+      );
+
       return Promise.all(
         entries.map(async ({ newFolder, parentFolder, env, folder, folderPath }) => {
           const { environment, id, name, description } = newFolder;
