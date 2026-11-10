@@ -1,4 +1,4 @@
-import { useRouteContext } from "@tanstack/react-router";
+import { useMatches } from "@tanstack/react-router";
 
 import type { V4Mode } from "../mode";
 import type { AccessAdapter } from "./access/contract";
@@ -53,12 +53,19 @@ export type V4Adapters = {
 
 type V4RouteContext = { v4Mode?: V4Mode; adapters?: V4Adapters };
 
-// Org pages and the admin console each set v4Mode and adapters on their own layout route.
-export const useV4Mode = (): V4Mode =>
-  useRouteContext({ strict: false, select: (context: V4RouteContext) => context.v4Mode })!;
+// Org pages and the admin console each set v4Mode and adapters in their layout route's beforeLoad.
+// Read them from that layout match, not the nearest one: when the router adds search defaults to
+// the URL on first load, a child match can keep the context it had before beforeLoad finished.
+const useV4LayoutContext = (): V4RouteContext =>
+  useMatches({
+    select: (matches) =>
+      matches.reduce<V4RouteContext>((found, match) => {
+        const context = match.context as V4RouteContext;
+        return context.v4Mode ? context : found;
+      }, {})
+  }) as V4RouteContext;
+
+export const useV4Mode = (): V4Mode => useV4LayoutContext().v4Mode!;
 
 export const useV4Adapter = <K extends keyof V4Adapters>(domain: K): V4Adapters[K] =>
-  useRouteContext({
-    strict: false,
-    select: (context: V4RouteContext) => context.adapters![domain]
-  }) as V4Adapters[K];
+  useV4LayoutContext().adapters![domain];
