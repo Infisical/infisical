@@ -29,16 +29,13 @@ const LoginMethodsCard = ({ enabled }: { enabled: LoginMethod[] }) => {
     <SettingsCard
       title="Login methods"
       description="Available to every user of this instance."
+      saveDisabledReason={draft.length ? undefined : "Enable at least one login method"}
       dirty={loginMethods.some(({ value }) => draft.includes(value) !== enabled.includes(value))}
       onDiscard={() => setDraft(enabled)}
       onSave={async () => {
         const enabledLoginMethods = Object.values(LoginMethod).filter((value) =>
           draft.includes(value)
         );
-        if (!enabledLoginMethods.length) {
-          failed("At least one login method should be enabled");
-          throw new Error("Enable at least one login method.");
-        }
         try {
           await update.mutateAsync({ enabledLoginMethods });
         } catch (error) {
@@ -47,9 +44,10 @@ const LoginMethodsCard = ({ enabled }: { enabled: LoginMethod[] }) => {
             : undefined;
           if (response?.error === SuperAdminErrorCode.AuthMethodLockout) {
             failed("Login methods not updated", new Error(response.message));
-            throw new Error("Keep a login method you can sign in with.");
+          } else {
+            failed("Login methods not updated", error);
           }
-          throw new Error(response?.message || "The change was not saved. Try again.");
+          throw error;
         }
         saved("Login methods have been successfully updated");
       }}

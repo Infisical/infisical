@@ -2,12 +2,14 @@ import { Controller, type Resolver, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouteContext, useRouter } from "@tanstack/react-router";
 import axios from "axios";
+import { Mail } from "lucide-react";
 import { z } from "zod";
 
 import { AnimatedCollapse } from "@app/components/v4/ui/animated-collapse";
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import { Field } from "@app/components/v4/ui/field";
+import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Media, Tile } from "@app/components/v4/ui/item";
 import { Label } from "@app/components/v4/ui/label";
@@ -73,11 +75,13 @@ const stepSchemas = {
   [SetupStep.Review]: formSchema
 };
 
+const logo = (src: string) => <img src={src} alt="" />;
+
 const loginMethods = [
-  { value: LoginMethod.EMAIL, label: "Email" },
-  { value: LoginMethod.GOOGLE, label: "Google" },
-  { value: LoginMethod.GITHUB, label: "GitHub" },
-  { value: LoginMethod.GITLAB, label: "GitLab" }
+  { value: LoginMethod.EMAIL, label: "Email", media: <Icon icon={Mail} /> },
+  { value: LoginMethod.GOOGLE, label: "Google", media: logo("/images/sso/Google.png") },
+  { value: LoginMethod.GITHUB, label: "GitHub", media: logo("/images/integrations/GitHub.png") },
+  { value: LoginMethod.GITLAB, label: "GitLab", media: logo("/images/integrations/GitLab.png") }
 ];
 
 const stepContent: Record<SetupStep, { title: string; description?: string }> = {
@@ -331,6 +335,7 @@ const SetupFlow = ({
                     <Checkbox
                       key={method.value}
                       label={method.label}
+                      media={method.media}
                       checked={field.value.includes(method.value)}
                       onChange={(checked) => {
                         clearErrors("enabledLoginMethods");
