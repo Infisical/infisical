@@ -15,7 +15,6 @@ import { Sidebar, type SidebarLevel, type SidebarSection } from "@app/components
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 import { keepInClassic, toV3Href } from "@app/helpers/v4Bridge";
 
-import { AccessToasts } from "../access/toast";
 import { useV4Session } from "../data/session/contract";
 import { orgHref } from "../links";
 import { V4_DEMO_ORG_ID } from "../mode";
@@ -283,7 +282,6 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
         <PageGutter className={styles.content}>{content}</PageGutter>
       </AppInset>
       {chrome.dialog}
-      <AccessToasts />
       <CommandPalette
         orgId={orgId}
         projectId={at.projectId}

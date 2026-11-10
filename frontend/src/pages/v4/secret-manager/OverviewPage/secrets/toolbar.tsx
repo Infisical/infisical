@@ -281,7 +281,7 @@ export function FolderBreadcrumbBar({
   actions?: ReactNode;
   onManageAccess?: () => void;
   onNavigate: (path: string) => void;
-  report: (message: string) => void;
+  report: (message: string, tone: "ok" | "bad") => void;
 }) {
   const segments = path.split("/").filter(Boolean);
   return (
@@ -316,9 +316,9 @@ export function FolderBreadcrumbBar({
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(path);
-                  report("Folder path copied to clipboard.");
+                  report("Folder path copied to clipboard.", "ok");
                 } catch {
-                  report("Failed to copy folder path to clipboard.");
+                  report("Failed to copy folder path to clipboard.", "bad");
                 }
               }}
             >

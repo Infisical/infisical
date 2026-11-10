@@ -141,13 +141,13 @@ const copy = async (
   value: string,
   done: string,
   failed: string,
-  report: (message: string) => void
+  report: (message: string, tone: "ok" | "bad") => void
 ) => {
   try {
     await navigator.clipboard.writeText(value);
-    report(done);
+    report(done, "ok");
   } catch {
-    report(failed);
+    report(failed, "bad");
   }
 };
 
@@ -400,7 +400,7 @@ function SecretActionsRow({
       const loaded =
         values[valueKey(secret.environment, secret.path, secret.name, false, secret.version)];
       if (typeof loaded === "string") run(loaded);
-      else ctx.report(`Could not read ${secret.name}.`);
+      else ctx.report(`Could not read ${secret.name}.`, "bad");
     });
   };
   const label = environmentLabel(secret.environment);
@@ -730,10 +730,11 @@ function SecretActionsRow({
                     ctx.report(
                       reminder
                         ? `${secret.reminder ? "Updated" : "Created"} the reminder on ${secret.name}.`
-                        : `Deleted the reminder on ${secret.name}.`
+                        : `Deleted the reminder on ${secret.name}.`,
+                      "ok"
                     );
                   },
-                  () => ctx.report(`Could not save the reminder on ${secret.name}.`)
+                  () => undefined
                 );
               }}
             />
@@ -765,8 +766,9 @@ function SecretActionsRow({
                 redactVersion
                   .mutateAsync({ versionId: version.id ?? "", secretId: secret.id })
                   .then(
-                    () => ctx.report(`Redacted version ${version.version} of ${secret.name}.`),
-                    () => ctx.report(`Could not redact version ${version.version}.`)
+                    () =>
+                      ctx.report(`Redacted version ${version.version} of ${secret.name}.`, "ok"),
+                    () => undefined
                   )
               }
             />

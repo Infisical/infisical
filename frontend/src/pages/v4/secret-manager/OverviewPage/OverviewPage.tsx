@@ -65,7 +65,6 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v4/ui/table";
-import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import {
   ProjectPermissionActions,
@@ -93,6 +92,7 @@ import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { useProjectPermission } from "../../access/permissions";
+import { dismissToast, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
@@ -128,7 +128,7 @@ import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
 import { CommitHistorySheet } from "./secrets/commits/commit-history-sheet";
 import { createdSecretsShare } from "./secrets/created-share";
 import { EnvironmentPicker } from "./secrets/environment-picker";
-import { addFlows, type FlowFeedback, FlowToasts, type NewResource } from "./secrets/flows";
+import { addFlows, type FlowFeedback, type NewResource } from "./secrets/flows";
 import { childPath } from "./secrets/flows/shared";
 import {
   type ImportSecretsRequest,
@@ -245,17 +245,25 @@ export const OverviewPage = () => {
   const [editingFolder, setEditingFolder] = useState<Of<"folder">>();
   const [deletingFolder, setDeletingFolder] = useState<Of<"folder">>();
   const [deleting, setDeleting] = useState<Editable[]>();
-  const [notice, setNotice] = useState("");
   const [flow, setFlow] = useState<{
     kind: ResourceKind;
     session: number;
     initial?: { environments?: string[]; name?: string };
   }>();
   const [flowOpen, setFlowOpen] = useState(false);
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [quickAddedState, setQuickAddedState] = useState({ scope: "", keys: [] as string[] });
   const [sharing, setSharing] = useState<string>();
+  const mounted = useRef(false);
+  const shareToasts = useRef<(string | number)[]>([]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      shareToasts.current.forEach(dismissToast);
+      shareToasts.current = [];
+    };
+  }, []);
   const [rowAction, setRowAction] = useState<RowAction>();
   const [importRequest, setImportRequest] = useState<ImportSecretsRequest>();
   const [copyInvocation, setCopyInvocation] = useState<CopySecretsInvocation>();
@@ -514,8 +522,6 @@ export const OverviewPage = () => {
       }
     }
   });
-  const pushToast = (item: Omit<ToastItem, "id">) =>
-    setToasts((current) => [...current, { ...item, id: crypto.randomUUID() }]);
   const pushCreatedToast = (feedback: FlowFeedback, created: Secret[]) => {
     const share = projectQuery.data?.secretSharing
       ? createdSecretsShare(created, (secret) =>
@@ -531,27 +537,22 @@ export const OverviewPage = () => {
           )
         )
       : undefined;
-    if (!share) {
-      pushToast({ tone: "ok", title: feedback.title, description: feedback.description });
+    if (!share || !mounted.current) {
+      toast({ tone: "ok", title: feedback.title, description: feedback.description });
       return;
     }
-    const id = crypto.randomUUID();
-    setToasts((current) => [
-      ...current,
-      {
-        id,
-        tone: "ok",
-        title: feedback.title,
-        description: feedback.description,
-        action: {
-          label: share.count === 1 ? "Share secret" : `Share ${share.count} secrets`,
-          onClick: () => {
-            setSharing(share.value);
-            setToasts((items) => items.filter((item) => item.id !== id));
-          }
+    const id = toast({
+      tone: "ok",
+      title: feedback.title,
+      description: feedback.description,
+      action: {
+        label: share.count === 1 ? "Share secret" : `Share ${share.count} secrets`,
+        onClick: () => {
+          setSharing(share.value);
         }
       }
-    ]);
+    });
+    shareToasts.current.push(id);
   };
   const setResources = (
     update: (current: Resource[]) => Resource[],
@@ -564,7 +565,7 @@ export const OverviewPage = () => {
       () => {
         if (!feedback) return;
         if (!feedback.share) {
-          pushToast({ tone: "ok", title: feedback.title, description: feedback.description });
+          toast({ tone: "ok", title: feedback.title, description: feedback.description });
           return;
         }
         const existing = new Set(before.map((resource) => resource.id));
@@ -577,7 +578,7 @@ export const OverviewPage = () => {
         );
       },
       (error: unknown) =>
-        pushToast({
+        toast({
           tone: "bad",
           title: feedback ? `Could not finish: ${feedback.title}` : "The change failed",
           description: errorText(error)
@@ -666,7 +667,6 @@ export const OverviewPage = () => {
   const resetView = () => {
     setPage(1);
     setSelected([]);
-    setNotice("");
     setRecent([]);
   };
   const [shownPath, setShownPath] = useState(path);
@@ -778,7 +778,8 @@ export const OverviewPage = () => {
     selectableKinds.includes(entries[0].kind) ? entries.map(selectionKey) : []
   );
   const selectedEntries = scoped.filter((resource) => selected.includes(selectionKey(resource)));
-  const report = (message: string) => setNotice(message);
+  const report = (message: string, tone: "ok" | "bad") =>
+    toast({ tone, title: message.replace(/\.$/, "") });
   const stage = (shownResource: Secret | Of<"folder">, next: Secret | Of<"folder">) => {
     setPending((current) => stagePending(current, shownResource, next, resources));
     setSelected([]);
@@ -808,8 +809,7 @@ export const OverviewPage = () => {
         (response) => {
           setPending((current) => current.filter((change) => !changes.includes(change)));
           setReviewOpen(false);
-          setNotice("");
-          pushToast(
+          toast(
             response.approval
               ? {
                   tone: "neutral",
@@ -820,7 +820,7 @@ export const OverviewPage = () => {
           );
         },
         (error: unknown) =>
-          pushToast({
+          toast({
             tone: "bad",
             title: "Failed to commit changes",
             description: errorText(error)
@@ -916,7 +916,6 @@ export const OverviewPage = () => {
       ],
       feedback
     );
-    setNotice("");
     setRecent([
       ...new Set(
         created
@@ -970,7 +969,7 @@ export const OverviewPage = () => {
       )
     );
     if (taken.length) {
-      pushToast({
+      toast({
         tone: "bad",
         title: single ? "Failed to update folder" : "Failed to rename folder across environments",
         description: `A folder named ${name} already exists in ${taken
@@ -1011,7 +1010,6 @@ export const OverviewPage = () => {
           : "Successfully renamed folder across environments"
       }
     );
-    setNotice("");
   };
   const remove = (selectedTargets: Editable[], title?: string) => {
     const targets = selectedTargets.map(
@@ -1039,7 +1037,6 @@ export const OverviewPage = () => {
         title: title ?? `Deleted ${[...new Set(targets.map((target) => target.name))].join(", ")}`
       }
     );
-    setNotice("");
     setDeleting(undefined);
     setSelected([]);
   };
@@ -1048,9 +1045,9 @@ export const OverviewPage = () => {
     const target = projectQuery.data?.environments.find((entry) => entry.slug === environment);
     if (!target) return;
     deleteEnvironmentMutation.mutateAsync({ projectId, id: target.id }).then(
-      () => pushToast({ tone: "ok", title: "Successfully removed environment" }),
+      () => toast({ tone: "ok", title: "Successfully removed environment" }),
       (error: unknown) =>
-        pushToast({
+        toast({
           tone: "bad",
           title: "Failed to remove environment",
           description: errorText(error)
@@ -1109,7 +1106,7 @@ export const OverviewPage = () => {
     try {
       if (action === "clipboard") {
         await navigator.clipboard.writeText(text);
-        setNotice("Secrets copied to clipboard. They are ready to paste.");
+        toast({ tone: "ok", title: "Secrets copied to clipboard. They are ready to paste" });
         return;
       }
       const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
@@ -1118,9 +1115,9 @@ export const OverviewPage = () => {
       link.download = `${environment}.env`;
       link.click();
       URL.revokeObjectURL(url);
-      setNotice(`Downloaded ${environment}.env.`);
+      toast({ tone: "ok", title: `Downloaded ${environment}.env` });
     } catch {
-      setNotice("Failed to export secrets. Please try again later.");
+      toast({ tone: "bad", title: "Failed to export secrets. Please try again later" });
     }
   };
   const exportBlock = (() => {
@@ -1251,7 +1248,6 @@ export const OverviewPage = () => {
           }),
         feedback
       );
-      setNotice("");
     },
     onNavigate: (environment, nextPath, key) => {
       navigate(nextPath);
@@ -1320,7 +1316,7 @@ export const OverviewPage = () => {
     );
   const copySelectionToClipboard = async () => {
     if (selectedSecrets.some((secret) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(secret.name))) {
-      pushToast({
+      toast({
         tone: "bad",
         title: "Cannot copy secrets as .env",
         description:
@@ -1345,9 +1341,9 @@ export const OverviewPage = () => {
       .join("\n");
     try {
       await navigator.clipboard.writeText(text);
-      pushToast({ tone: "ok", title: "Selected secrets copied to clipboard" });
+      toast({ tone: "ok", title: "Selected secrets copied to clipboard" });
     } catch {
-      pushToast({ tone: "bad", title: "Failed to copy selected secrets to clipboard" });
+      toast({ tone: "bad", title: "Failed to copy selected secrets to clipboard" });
     }
   };
   const clearFilters = () => {
@@ -1555,9 +1551,9 @@ export const OverviewPage = () => {
           onSelect={async () => {
             try {
               await navigator.clipboard.writeText(environment.value);
-              setNotice("Environment slug copied to clipboard.");
+              toast({ tone: "ok", title: "Environment slug copied to clipboard" });
             } catch {
-              setNotice("Failed to copy the environment slug.");
+              toast({ tone: "bad", title: "Failed to copy the environment slug" });
             }
           }}
         >
@@ -1595,7 +1591,7 @@ export const OverviewPage = () => {
       if (environment) setEnvironmentIds([environment]);
       setQuery(key ?? (nextPath !== undefined && nextPath !== path ? "" : query));
     },
-    report: (message) => pushToast({ tone: "bad", title: message })
+    report: (message) => toast({ tone: "bad", title: message })
   };
   return valueStore.provider(
     <BreadthContext value={holdBreadth}>
@@ -2003,15 +1999,9 @@ export const OverviewPage = () => {
                       </Table>
                     )}
                   </div>
-                  {(totalCount > 0 || notice) && (
+                  {totalCount > 0 && (
                     <div className={styles.footer}>
-                      {notice ? (
-                        <p role="status" className={styles.notice}>
-                          {notice}
-                        </p>
-                      ) : (
-                        <ResourceCount counts={totals} />
-                      )}
+                      <ResourceCount counts={totals} />
                       {!unavailableState && totalCount > 0 && (
                         <div className={styles.pagination}>
                           <Pagination
@@ -2196,10 +2186,9 @@ export const OverviewPage = () => {
                 options?: ResourceApplyOptions
               ) => {
                 setResources(update, feedback, options);
-                setNotice("");
               },
               onToast: (tone: "ok" | "bad" | "neutral", feedback: FlowFeedback) =>
-                pushToast({ tone, ...feedback })
+                toast({ tone, ...feedback })
             };
             const pick = <K extends RowAction["kind"]>(kind: K) =>
               rowAction?.kind === kind ? (rowAction as Extract<RowAction, { kind: K }>) : undefined;
@@ -2276,17 +2265,17 @@ export const OverviewPage = () => {
                 .then(
                   () => {
                     setSyncOpen(false);
-                    pushToast({ tone: "ok", ...feedback });
+                    toast({ tone: "ok", ...feedback });
                   },
                   (error: unknown) =>
-                    pushToast({
+                    toast({
                       tone: "bad",
                       title: "Failed to create secret sync",
                       description: errorText(error)
                     })
                 )
             }
-            onToast={(tone, feedback) => pushToast({ tone, ...feedback })}
+            onToast={(tone, feedback) => toast({ tone, ...feedback })}
           />
           <ReviewSheet
             open={reviewOpen}
@@ -2342,8 +2331,8 @@ export const OverviewPage = () => {
                     initial={flow.initial}
                     onCreate={insert}
                     onUploadSecrets={() => setImportRequest({ step: "upload" })}
-                    onError={(feedback) => pushToast({ tone: "bad", ...feedback })}
-                    onNotice={(feedback) => pushToast({ tone: "neutral", ...feedback })}
+                    onError={(feedback) => toast({ tone: "bad", ...feedback })}
+                    onNotice={(feedback) => toast({ tone: "neutral", ...feedback })}
                   />
                 )
               );
@@ -2354,10 +2343,6 @@ export const OverviewPage = () => {
             onOpenChange={(open) => {
               if (!open) setSharing(undefined);
             }}
-          />
-          <FlowToasts
-            items={toasts}
-            onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))}
           />
           {breadth.fetchers}
         </div>

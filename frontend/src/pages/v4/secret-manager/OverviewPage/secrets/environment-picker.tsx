@@ -53,7 +53,7 @@ function AddEnvironmentDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (slug: string) => void;
-  report: (message: string) => void;
+  report: (message: string, tone: "ok" | "bad") => void;
 }) {
   const create = useV4Adapter("secrets").useCreateEnvironment();
   const [name, setName] = useState("");
@@ -91,7 +91,7 @@ function AddEnvironmentDialog({
                 name: name.trim(),
                 slug: slug.trim()
               });
-              report(`Created the ${environment.name} environment.`);
+              report(`Created the ${environment.name} environment.`, "ok");
               onCreated(environment.slug);
               close(false);
             } catch (error) {
@@ -174,7 +174,7 @@ export function EnvironmentPicker({
   disabled?: boolean;
   onChange: (selected: string[]) => void;
   onCreated: () => void;
-  report: (message: string) => void;
+  report: (message: string, tone: "ok" | "bad") => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
