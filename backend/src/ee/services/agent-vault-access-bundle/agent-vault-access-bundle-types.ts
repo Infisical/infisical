@@ -103,15 +103,20 @@ export type TAgentVaultVariableReferenceSummary = { variableId: string; key: str
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
 );
 
+export type TAgentVaultCredentialReferenceSummary = Extract<
+  TAgentVaultVariableReferenceSummary,
+  { field: AgentVaultVariableReferenceField.CredentialValue | AgentVaultVariableReferenceField.CredentialUsername }
+>;
+
 type TAgentVaultCustomHeaderSummary = { id: string; name: string; prefix: string };
 
-// Each type carries only the credentials it accepts and the transformations it applies.
+// Each type carries only the credentials it accepts and the transformations it applies, and so only the variable
+// references those can hold.
 export type TAgentVaultServiceSummary = {
   id: string;
   accessBundleId: string;
   name: string;
   description: string | null;
-  variableReferences: TAgentVaultVariableReferenceSummary[];
   createdAt: Date;
   updatedAt: Date;
 } & (
@@ -124,17 +129,24 @@ export type TAgentVaultServiceSummary = {
       >;
       customHeaders: TAgentVaultCustomHeaderSummary[];
       substitutions: { id: string; placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
+      variableReferences: TAgentVaultVariableReferenceSummary[];
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & {
       allowedTools: string[] | null;
       credential: TAgentVaultBearerCredentialSummary | TAgentVaultOauthCredentialSummary;
       customHeaders: TAgentVaultCustomHeaderSummary[];
+      variableReferences: Exclude<
+        TAgentVaultVariableReferenceSummary,
+        { field: AgentVaultVariableReferenceField.Substitution }
+      >[];
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql }> & {
       credential: TAgentVaultBasicCredentialSummary;
+      variableReferences: TAgentVaultCredentialReferenceSummary[];
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Ssh }> & {
       credential: TAgentVaultBasicCredentialSummary | TAgentVaultSshKeyCredentialSummary;
+      variableReferences: TAgentVaultCredentialReferenceSummary[];
     })
 );
 

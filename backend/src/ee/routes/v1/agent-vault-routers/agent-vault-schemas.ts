@@ -252,6 +252,10 @@ const basicCredentialInput = z.object({
     .describe(AGENT_VAULT.SERVICE.password),
   memberProvidedFields: basicMemberProvidedFieldsSchema.optional()
 });
+const nativeBasicCredentialInput = basicCredentialInput.extend({
+  username: basicCredentialInput.shape.username.describe(AGENT_VAULT.SERVICE.nativeUsername),
+  password: basicCredentialInput.shape.password.describe(AGENT_VAULT.SERVICE.nativePassword)
+});
 const passthroughCredentialInput = z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) });
 
 // A key spans lines, so only tabs and line breaks are allowed among the control characters.
@@ -325,14 +329,14 @@ export const AgentVaultMcpCredentialInputSchema = credentialInputSchema({ mcp: t
 const nativeCredentialInputSchema = ({ ssh }: { ssh: boolean }) =>
   z
     .discriminatedUnion("type", [
-      basicCredentialInput.describe(docsTitle("Username and Password")),
+      nativeBasicCredentialInput.describe(docsTitle("Username and Password")),
       sshKeyCredentialInput.describe(docsTitle("SSH Key", !ssh)),
       bearerCredentialInput.describe(docsTitle("Bearer", true)),
       passthroughCredentialInput.describe(docsTitle("Pass-through", true)),
       oauthCredentialInput.describe(docsTitle("OAuth", true))
     ])
     .superRefine(checkCredentialFields({ requireValues: true }))
-    .describe(AGENT_VAULT.SERVICE.nativeCredential);
+    .describe(ssh ? AGENT_VAULT.SERVICE.sshCredential : AGENT_VAULT.SERVICE.databaseCredential);
 
 // Not derived from the create schema: its `.default()`s would turn an omitted field into a reset on a PATCH.
 const credentialUpdateSchema = ({
@@ -366,12 +370,12 @@ const credentialUpdateSchema = ({
             z.string().trim().max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
           )
             .optional()
-            .describe(AGENT_VAULT.SERVICE.updateUsername),
+            .describe(native ? AGENT_VAULT.SERVICE.updateNativeUsername : AGENT_VAULT.SERVICE.updateUsername),
           password: acceptsVariableReferences(
             z.string().max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
           )
             .optional()
-            .describe(AGENT_VAULT.SERVICE.updatePassword),
+            .describe(native ? AGENT_VAULT.SERVICE.updateNativePassword : AGENT_VAULT.SERVICE.updatePassword),
           memberProvidedFields: basicMemberProvidedFieldsSchema.optional()
         })
         .describe(docsTitle(native ? "Username and Password" : "Basic Auth", mcp)),
@@ -388,13 +392,13 @@ const credentialUpdateSchema = ({
         .object({
           type: z.literal(AgentVaultCredentialType.SshKey),
           username: sshUsernameSchema.optional().describe(AGENT_VAULT.SERVICE.sshUsername),
-          privateKey: sshPrivateKeySchema.optional().describe(AGENT_VAULT.SERVICE.sshPrivateKey),
+          privateKey: sshPrivateKeySchema.optional().describe(AGENT_VAULT.SERVICE.updateSshPrivateKey),
           // An emptied field is not a removal: only null removes the stored certificate.
           certificate: sshCertificateSchema
             .transform((value) => value || undefined)
             .nullable()
             .optional()
-            .describe(AGENT_VAULT.SERVICE.sshCertificate),
+            .describe(AGENT_VAULT.SERVICE.updateSshCertificate),
           memberProvidedFields: z
             .enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS)
             .array()
@@ -426,7 +430,9 @@ const credentialUpdateSchema = ({
 export const AgentVaultCredentialUpdateSchema = credentialUpdateSchema({ mcp: false });
 export const AgentVaultMcpCredentialUpdateSchema = credentialUpdateSchema({ mcp: true });
 const nativeCredentialUpdateSchema = ({ ssh }: { ssh: boolean }) =>
-  credentialUpdateSchema({ mcp: false, native: true, ssh }).describe(AGENT_VAULT.SERVICE.nativeCredential);
+  credentialUpdateSchema({ mcp: false, native: true, ssh }).describe(
+    ssh ? AGENT_VAULT.SERVICE.sshCredential : AGENT_VAULT.SERVICE.databaseCredential
+  );
 
 const bearerCredentialSummarySchema = z
   .object({
@@ -436,19 +442,21 @@ const bearerCredentialSummarySchema = z
     memberProvidedFields: z
       .enum([AgentVaultVariableReferenceField.CredentialValue])
       .array()
-      .describe(AGENT_VAULT.SERVICE.memberProvidedFields)
+      .describe(AGENT_VAULT.SERVICE.bearerMemberProvidedFieldsRead)
   })
   .describe(JSON.stringify({ title: "Bearer" }));
 
-const basicCredentialSummarySchema = z
-  .object({
-    type: z.literal(AgentVaultCredentialType.Basic),
-    memberProvidedFields: z
-      .enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS)
-      .array()
-      .describe(AGENT_VAULT.SERVICE.memberProvidedFields)
-  })
-  .describe(JSON.stringify({ title: "Basic Auth" }));
+// Titled as each type's request names the credential.
+const basicCredentialSummarySchema = (title: "Basic Auth" | "Username and Password") =>
+  z
+    .object({
+      type: z.literal(AgentVaultCredentialType.Basic),
+      memberProvidedFields: z
+        .enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS)
+        .array()
+        .describe(AGENT_VAULT.SERVICE.basicMemberProvidedFieldsRead)
+    })
+    .describe(JSON.stringify({ title }));
 
 const passthroughCredentialSummarySchema = z
   .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
@@ -467,7 +475,7 @@ const oauthCredentialSummarySchema = z
     memberProvidedFields: z
       .enum([AgentVaultVariableReferenceField.CredentialValue])
       .array()
-      .describe(AGENT_VAULT.SERVICE.memberProvidedFields),
+      .describe(AGENT_VAULT.SERVICE.oauthMemberProvidedFieldsRead),
     status: z.nativeEnum(AgentVaultOauthStatus).optional().describe(AGENT_VAULT.SERVICE.oauthSummaryStatus),
     issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
     registration: z
@@ -487,17 +495,17 @@ const oauthCredentialSummarySchema = z
 const credentialSummarySchemas = {
   [AgentVaultServiceType.Http]: z.discriminatedUnion("type", [
     bearerCredentialSummarySchema,
-    basicCredentialSummarySchema,
+    basicCredentialSummarySchema("Basic Auth"),
     passthroughCredentialSummarySchema
   ]),
   [AgentVaultServiceType.Mcp]: z.discriminatedUnion("type", [
     bearerCredentialSummarySchema,
     oauthCredentialSummarySchema
   ]),
-  [AgentVaultServiceType.Postgres]: basicCredentialSummarySchema,
-  [AgentVaultServiceType.Mysql]: basicCredentialSummarySchema,
+  [AgentVaultServiceType.Postgres]: basicCredentialSummarySchema("Username and Password"),
+  [AgentVaultServiceType.Mysql]: basicCredentialSummarySchema("Username and Password"),
   [AgentVaultServiceType.Ssh]: z.discriminatedUnion("type", [
-    basicCredentialSummarySchema,
+    basicCredentialSummarySchema("Username and Password"),
     sshKeyCredentialSummarySchema
   ])
 };
@@ -558,7 +566,8 @@ const nativeDatabaseSchema = (params?: z.RawCreateParams) =>
     .min(1, AGENT_VAULT_NATIVE_MESSAGES.databaseRequired)
     .max(AGENT_VAULT_NATIVE_MAX_DATABASE_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.databaseTooLong);
 const AgentVaultNativeDatabaseSchema = nativeDatabaseSchema();
-const nativeTlsSchema = (params?: z.RawCreateParams) =>
+// Create takes null for `ca` too, which only an update gives a meaning, so only the update's docs mention it.
+const nativeTlsSchema = ({ update = false, params }: { update?: boolean; params?: z.RawCreateParams } = {}) =>
   z.object(
     {
       enabled: z.boolean().optional().describe(AGENT_VAULT.SERVICE.tlsEnabled),
@@ -568,21 +577,32 @@ const nativeTlsSchema = (params?: z.RawCreateParams) =>
         .max(AGENT_VAULT_NATIVE_MAX_CA_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.caTooLong)
         .nullable()
         .optional()
-        .describe(AGENT_VAULT.SERVICE.tlsCa)
+        .describe(update ? AGENT_VAULT.SERVICE.updateTlsCa : AGENT_VAULT.SERVICE.tlsCa)
     },
     params
   );
 const AgentVaultNativeTlsSchema = nativeTlsSchema();
 
-const nativeCreateFields = {
-  host: AgentVaultNativeHostSchema.describe(AGENT_VAULT.SERVICE.host),
-  port: AgentVaultNativePortSchema.optional().describe(AGENT_VAULT.SERVICE.port)
-};
+type TNativeServiceType = AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql | AgentVaultServiceType.Ssh;
 
-const nativeDatabaseCreateFields = {
-  database: AgentVaultNativeDatabaseSchema.describe(AGENT_VAULT.SERVICE.database),
+const nativePortDocs = {
+  [AgentVaultServiceType.Postgres]: AGENT_VAULT.SERVICE.postgresPort,
+  [AgentVaultServiceType.Mysql]: AGENT_VAULT.SERVICE.mysqlPort,
+  [AgentVaultServiceType.Ssh]: AGENT_VAULT.SERVICE.sshPort
+} as const;
+
+const nativeDatabaseDocs = (type: TNativeServiceType) =>
+  type === AgentVaultServiceType.Mysql ? AGENT_VAULT.SERVICE.mysqlDatabase : AGENT_VAULT.SERVICE.postgresDatabase;
+
+const nativeCreateFields = (type: TNativeServiceType) => ({
+  host: AgentVaultNativeHostSchema.describe(AGENT_VAULT.SERVICE.host),
+  port: AgentVaultNativePortSchema.optional().describe(nativePortDocs[type])
+});
+
+const nativeDatabaseCreateFields = (type: TNativeServiceType) => ({
+  database: AgentVaultNativeDatabaseSchema.describe(nativeDatabaseDocs(type)),
   tls: AgentVaultNativeTlsSchema.optional().describe(AGENT_VAULT.SERVICE.tls)
-};
+});
 
 // What an HTTP or MCP service doesn't take, accepted hidden so the service refuses it by name.
 const hiddenNativeCreateFields = {
@@ -629,30 +649,22 @@ const nativeServiceTitles = {
   [AgentVaultServiceType.Ssh]: "SSH"
 } as const;
 
-const nativeCreateArm = <
-  T extends AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql | AgentVaultServiceType.Ssh
->(
-  type: T
-) =>
+const nativeCreateArm = <T extends TNativeServiceType>(type: T) =>
   z
     .object({
       ...hiddenHttpMcpCreateFields,
       ...(type === AgentVaultServiceType.Ssh
         ? { database: hiddenNativeCreateFields.database, tls: hiddenNativeCreateFields.tls }
-        : nativeDatabaseCreateFields),
+        : nativeDatabaseCreateFields(type)),
       type: z.literal(type).describe(AGENT_VAULT.SERVICE.type),
       name: AgentVaultNativeNameSchema.describe(AGENT_VAULT.SERVICE.nativeName),
       description: AgentVaultServiceDescriptionSchema.optional().describe(AGENT_VAULT.SERVICE.description),
-      ...nativeCreateFields,
+      ...nativeCreateFields(type),
       credential: nativeCredentialInputSchema({ ssh: type === AgentVaultServiceType.Ssh })
     })
     .describe(JSON.stringify({ title: nativeServiceTitles[type] }));
 
-const nativeUpdateArm = <
-  T extends AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql | AgentVaultServiceType.Ssh
->(
-  type: T
-) =>
+const nativeUpdateArm = <T extends TNativeServiceType>(type: T) =>
   z
     .object({
       ...hiddenHttpMcpUpdateFields,
@@ -662,7 +674,7 @@ const nativeUpdateArm = <
         .optional()
         .describe(AGENT_VAULT.SERVICE.updateDescription),
       host: AgentVaultNativeHostSchema.optional().describe(AGENT_VAULT.SERVICE.host),
-      port: AgentVaultNativePortSchema.optional().describe(AGENT_VAULT.SERVICE.port),
+      port: AgentVaultNativePortSchema.optional().describe(nativePortDocs[type]),
       // Null is only the read-back of an SSH service, which has neither. A database always has both, so null there
       // would silently change nothing.
       ...(type === AgentVaultServiceType.Ssh
@@ -672,13 +684,16 @@ const nativeUpdateArm = <
               invalid_type_error: `A ${nativeServiceTitles[type]} service always has a database. Send its name, or leave 'database' out to keep it.`
             })
               .optional()
-              .describe(AGENT_VAULT.SERVICE.database),
+              .describe(nativeDatabaseDocs(type)),
             tls: nativeTlsSchema({
-              invalid_type_error:
-                "Send the TLS settings to change, or leave 'tls' out to keep them. To turn TLS off, send 'tls': { 'enabled': false }."
+              update: true,
+              params: {
+                invalid_type_error:
+                  "Send the TLS settings to change, or leave 'tls' out to keep them. To turn TLS off, send 'tls': { 'enabled': false }."
+              }
             })
               .optional()
-              .describe(AGENT_VAULT.SERVICE.tls)
+              .describe(AGENT_VAULT.SERVICE.updateTls)
           }),
       credential: nativeCredentialUpdateSchema({ ssh: type === AgentVaultServiceType.Ssh }).optional()
     })
@@ -812,12 +827,12 @@ const inlineCredentialInputSchema = ({
             z.string().trim().max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
           )
             .optional()
-            .describe(AGENT_VAULT.SESSION.inlineServiceUsername),
+            .describe(native ? AGENT_VAULT.SESSION.inlineNativeUsername : AGENT_VAULT.SESSION.inlineServiceUsername),
           password: acceptsNoVariableReferences(
             z.string().max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
           )
             .optional()
-            .describe(AGENT_VAULT.SESSION.inlineServicePassword),
+            .describe(native ? AGENT_VAULT.SESSION.inlineNativePassword : AGENT_VAULT.SESSION.inlineServicePassword),
           memberProvidedFields: inlineMemberProvidedFieldsSchema
         })
         .describe(docsTitle(native ? "Username and Password" : "Basic Auth", mcp)),
@@ -865,11 +880,7 @@ const inlineServiceNameSchema = AgentVaultNameSchema.optional().describe(AGENT_V
 const inlineServiceDescriptionSchema = AgentVaultServiceDescriptionSchema.optional().describe(
   AGENT_VAULT.SERVICE.description
 );
-const nativeInlineArm = <
-  T extends AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql | AgentVaultServiceType.Ssh
->(
-  type: T
-) =>
+const nativeInlineArm = <T extends TNativeServiceType>(type: T) =>
   z
     .object({
       hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
@@ -882,17 +893,19 @@ const nativeInlineArm = <
       substitutions: AgentVaultInlineSubstitutionsInputSchema.optional().describe(openApiHidden()),
       ...(type === AgentVaultServiceType.Ssh
         ? { database: hiddenNativeCreateFields.database, tls: hiddenNativeCreateFields.tls }
-        : nativeDatabaseCreateFields),
+        : nativeDatabaseCreateFields(type)),
       type: z.literal(type).describe(AGENT_VAULT.SERVICE.type),
       // Required: the agent connects to the service by name.
       name: AgentVaultNativeNameSchema.describe(AGENT_VAULT.SERVICE.nativeName),
       description: inlineServiceDescriptionSchema,
-      ...nativeCreateFields,
+      ...nativeCreateFields(type),
       credential: inlineCredentialInputSchema({
         mcp: false,
         native: true,
         ssh: type === AgentVaultServiceType.Ssh
-      }).describe(AGENT_VAULT.SERVICE.nativeCredential)
+      }).describe(
+        type === AgentVaultServiceType.Ssh ? AGENT_VAULT.SERVICE.sshCredential : AGENT_VAULT.SERVICE.databaseCredential
+      )
     })
     .describe(JSON.stringify({ title: nativeServiceTitles[type] }));
 
@@ -980,7 +993,7 @@ const serviceResponseTypeFields = {
     type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
     serverUrl: z.string().describe(AGENT_VAULT.SERVICE.serverUrlRead),
     transport: z.nativeEnum(AgentVaultMcpTransport).describe(AGENT_VAULT.SERVICE.transportRead),
-    hostPattern: z.string().describe(AGENT_VAULT.SERVICE.hostPatternRead)
+    hostPattern: z.string().describe(AGENT_VAULT.SERVICE.mcpHostPatternRead)
   },
   [AgentVaultServiceType.Postgres]: {
     type: z.literal(AgentVaultServiceType.Postgres).describe(AGENT_VAULT.SERVICE.type),
@@ -1017,9 +1030,8 @@ const inlineBearerCredentialSummarySchema = z
     headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix)
   })
   .describe(JSON.stringify({ title: "Bearer" }));
-const inlineBasicCredentialSummarySchema = z
-  .object({ type: z.literal(AgentVaultCredentialType.Basic) })
-  .describe(JSON.stringify({ title: "Basic Auth" }));
+const inlineBasicCredentialSummarySchema = (title: "Basic Auth" | "Username and Password") =>
+  z.object({ type: z.literal(AgentVaultCredentialType.Basic) }).describe(JSON.stringify({ title }));
 
 const inlineCustomHeadersResponseSchema = z
   .object({
@@ -1034,7 +1046,7 @@ const inlineServiceResponseTypeExtras = {
   [AgentVaultServiceType.Http]: {
     credential: z.discriminatedUnion("type", [
       inlineBearerCredentialSummarySchema,
-      inlineBasicCredentialSummarySchema,
+      inlineBasicCredentialSummarySchema("Basic Auth"),
       passthroughCredentialSummarySchema
     ]),
     customHeaders: inlineCustomHeadersResponseSchema,
@@ -1050,10 +1062,13 @@ const inlineServiceResponseTypeExtras = {
     credential: inlineBearerCredentialSummarySchema,
     customHeaders: inlineCustomHeadersResponseSchema
   },
-  [AgentVaultServiceType.Postgres]: { credential: inlineBasicCredentialSummarySchema },
-  [AgentVaultServiceType.Mysql]: { credential: inlineBasicCredentialSummarySchema },
+  [AgentVaultServiceType.Postgres]: { credential: inlineBasicCredentialSummarySchema("Username and Password") },
+  [AgentVaultServiceType.Mysql]: { credential: inlineBasicCredentialSummarySchema("Username and Password") },
   [AgentVaultServiceType.Ssh]: {
-    credential: z.discriminatedUnion("type", [inlineBasicCredentialSummarySchema, sshKeyCredentialSummarySchema])
+    credential: z.discriminatedUnion("type", [
+      inlineBasicCredentialSummarySchema("Username and Password"),
+      sshKeyCredentialSummarySchema
+    ])
   }
 };
 
@@ -1124,35 +1139,75 @@ const variableReferenceBase = {
   key: z.string().describe(AGENT_VAULT.VARIABLE.key)
 };
 
-export const AgentVaultVariableReferenceSchema = z.discriminatedUnion("field", [
+const credentialReferenceSchema = (fieldDocs: string) =>
   z
     .object({
       ...variableReferenceBase,
-      field: z.enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS).describe(AGENT_VAULT.SERVICE.referenceField)
+      field: z.enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS).describe(fieldDocs)
     })
-    .describe(JSON.stringify({ title: "Credential" })),
+    .describe(JSON.stringify({ title: "Credential" }));
+
+const customHeaderReferenceSchema = (fieldDocs: string) =>
   z
     .object({
       ...variableReferenceBase,
-      field: z.literal(AgentVaultVariableReferenceField.CustomHeader).describe(AGENT_VAULT.SERVICE.referenceField),
+      field: z.literal(AgentVaultVariableReferenceField.CustomHeader).describe(fieldDocs),
       customHeaderId: z.string().uuid().describe(AGENT_VAULT.SERVICE.referenceCustomHeaderId)
     })
-    .describe(JSON.stringify({ title: "Custom Header" })),
+    .describe(JSON.stringify({ title: "Custom Header" }));
+
+const substitutionReferenceSchema = (fieldDocs: string) =>
   z
     .object({
       ...variableReferenceBase,
-      field: z.literal(AgentVaultVariableReferenceField.Substitution).describe(AGENT_VAULT.SERVICE.referenceField),
+      field: z.literal(AgentVaultVariableReferenceField.Substitution).describe(fieldDocs),
       substitutionId: z.string().uuid().describe(AGENT_VAULT.SERVICE.referenceSubstitutionId)
     })
-    .describe(JSON.stringify({ title: "Substitution" }))
-]);
+    .describe(JSON.stringify({ title: "Substitution" }));
+
+// The references each type can store: only an HTTP service takes substitutions, and a database or SSH service takes
+// neither them nor custom headers.
+const variableReferenceSchemas = {
+  [AgentVaultServiceType.Http]: z.discriminatedUnion("field", [
+    credentialReferenceSchema(AGENT_VAULT.SERVICE.referenceField),
+    customHeaderReferenceSchema(AGENT_VAULT.SERVICE.referenceField),
+    substitutionReferenceSchema(AGENT_VAULT.SERVICE.referenceField)
+  ]),
+  [AgentVaultServiceType.Mcp]: z.discriminatedUnion("field", [
+    credentialReferenceSchema(AGENT_VAULT.SERVICE.mcpReferenceField),
+    customHeaderReferenceSchema(AGENT_VAULT.SERVICE.mcpReferenceField)
+  ]),
+  [AgentVaultServiceType.Postgres]: credentialReferenceSchema(AGENT_VAULT.SERVICE.nativeReferenceField),
+  [AgentVaultServiceType.Mysql]: credentialReferenceSchema(AGENT_VAULT.SERVICE.nativeReferenceField),
+  [AgentVaultServiceType.Ssh]: credentialReferenceSchema(AGENT_VAULT.SERVICE.nativeReferenceField)
+};
+
+const variableReferencesDocs = {
+  [AgentVaultServiceType.Http]: AGENT_VAULT.SERVICE.variableReferences,
+  [AgentVaultServiceType.Mcp]: AGENT_VAULT.SERVICE.mcpVariableReferences,
+  [AgentVaultServiceType.Postgres]: AGENT_VAULT.SERVICE.databaseVariableReferences,
+  [AgentVaultServiceType.Mysql]: AGENT_VAULT.SERVICE.databaseVariableReferences,
+  [AgentVaultServiceType.Ssh]: AGENT_VAULT.SERVICE.sshVariableReferences
+} as const;
+
+// Optional where a member can read the service: they get no variableReferences rather than an empty list.
+const variableReferencesField = <TType extends AgentVaultServiceType, TOptional extends boolean>(
+  type: TType,
+  optional: TOptional
+) => {
+  const references = variableReferenceSchemas[type].array();
+  return (optional ? references.optional() : references).describe(
+    variableReferencesDocs[type]
+  ) as TOptional extends true
+    ? z.ZodOptional<z.ZodArray<(typeof variableReferenceSchemas)[TType]>>
+    : z.ZodArray<(typeof variableReferenceSchemas)[TType]>;
+};
 
 const serviceResponseBase = {
   id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
   description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
-  variableReferences: AgentVaultVariableReferenceSchema.array().describe(AGENT_VAULT.SERVICE.variableReferences),
   createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
   updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt)
 };
@@ -1166,7 +1221,7 @@ const customHeadersResponseSchema = z
   .array()
   .describe(AGENT_VAULT.SERVICE.customHeadersRead);
 
-const serviceResponseTypeExtras = {
+const serviceResponseTypeExtras = <TOptional extends boolean>(optionalReferences: TOptional) => ({
   [AgentVaultServiceType.Http]: {
     credential: credentialSummarySchemas[AgentVaultServiceType.Http],
     customHeaders: customHeadersResponseSchema,
@@ -1177,26 +1232,39 @@ const serviceResponseTypeExtras = {
         surfaces: z.nativeEnum(AgentVaultSubstitutionSurface).array().describe(AGENT_VAULT.SERVICE.surfaces)
       })
       .array()
-      .describe(AGENT_VAULT.SERVICE.substitutionsRead)
+      .describe(AGENT_VAULT.SERVICE.substitutionsRead),
+    variableReferences: variableReferencesField(AgentVaultServiceType.Http, optionalReferences)
   },
   [AgentVaultServiceType.Mcp]: {
     credential: credentialSummarySchemas[AgentVaultServiceType.Mcp],
     customHeaders: customHeadersResponseSchema,
-    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools)
+    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools),
+    variableReferences: variableReferencesField(AgentVaultServiceType.Mcp, optionalReferences)
   },
-  [AgentVaultServiceType.Postgres]: { credential: credentialSummarySchemas[AgentVaultServiceType.Postgres] },
-  [AgentVaultServiceType.Mysql]: { credential: credentialSummarySchemas[AgentVaultServiceType.Mysql] },
-  [AgentVaultServiceType.Ssh]: { credential: credentialSummarySchemas[AgentVaultServiceType.Ssh] }
-};
+  [AgentVaultServiceType.Postgres]: {
+    credential: credentialSummarySchemas[AgentVaultServiceType.Postgres],
+    variableReferences: variableReferencesField(AgentVaultServiceType.Postgres, optionalReferences)
+  },
+  [AgentVaultServiceType.Mysql]: {
+    credential: credentialSummarySchemas[AgentVaultServiceType.Mysql],
+    variableReferences: variableReferencesField(AgentVaultServiceType.Mysql, optionalReferences)
+  },
+  [AgentVaultServiceType.Ssh]: {
+    credential: credentialSummarySchemas[AgentVaultServiceType.Ssh],
+    variableReferences: variableReferencesField(AgentVaultServiceType.Ssh, optionalReferences)
+  }
+});
 
 // The sealed value is never in here. This schema is the last thing between the encrypted column and the
 // wire on every service route: the serializer emits `result.data`, so anything absent here is dropped,
 // and anything required here but missing from a projection is a 500 rather than a leak. `extra` adds or
 // replaces fields every type shares, as a discriminated union can't be extended afterwards.
-export const agentVaultServiceResponseSchema = <T extends z.ZodRawShape>(extra: T) =>
-  serviceResponseUnion({ ...serviceResponseBase, ...extra }, serviceResponseTypeExtras);
+export const agentVaultServiceResponseSchema = <T extends z.ZodRawShape, TOptional extends boolean>(
+  extra: T,
+  { optionalVariableReferences }: { optionalVariableReferences: TOptional }
+) => serviceResponseUnion({ ...serviceResponseBase, ...extra }, serviceResponseTypeExtras(optionalVariableReferences));
 
-export const AgentVaultServiceSchema = agentVaultServiceResponseSchema({});
+export const AgentVaultServiceSchema = agentVaultServiceResponseSchema({}, { optionalVariableReferences: false });
 
 export const AgentVaultVariableKeySchema = z
   .string()

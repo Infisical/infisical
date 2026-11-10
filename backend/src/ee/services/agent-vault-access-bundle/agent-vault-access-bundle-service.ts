@@ -475,6 +475,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
+  // A type's create and update refuse the fields it can't use, so it never stores another kind of reference. This
+  // only narrows the list to the kinds the type's response lists.
+  const isReferenceOfField =
+    <TField extends AgentVaultVariableReferenceField>(fields: readonly TField[]) =>
+    (
+      reference: TAgentVaultVariableReferenceSummary
+    ): reference is Extract<TAgentVaultVariableReferenceSummary, { field: TField }> =>
+      (fields as readonly AgentVaultVariableReferenceField[]).includes(reference.field);
+  const isCredentialReference = isReferenceOfField([
+    AgentVaultVariableReferenceField.CredentialValue,
+    AgentVaultVariableReferenceField.CredentialUsername
+  ]);
+
   // Built by hand rather than spread, so the sealed columns stay off the wire even if the response schema is
   // later loosened.
   const projectService = (
@@ -488,10 +501,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       accessBundleId: service.accessBundleId,
       name: service.name,
       description: service.description ?? null,
-      variableReferences: variableReferences.map(summarizeVariableReference),
       createdAt: service.createdAt,
       updatedAt: service.updatedAt
     };
+    const references = variableReferences.map(summarizeVariableReference);
     const credential = summarizeCredential(service);
     const customHeaderSummaries = customHeaders.map((header) => ({
       id: header.id,
@@ -520,6 +533,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         return {
           ...base,
           ...typeFields,
+          variableReferences: references,
           credential,
           customHeaders: customHeaderSummaries,
           substitutions: substitutions.map((substitution) => ({
@@ -535,6 +549,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         return {
           ...base,
           ...typeFields,
+          variableReferences: references.filter(
+            isReferenceOfField([
+              AgentVaultVariableReferenceField.CredentialValue,
+              AgentVaultVariableReferenceField.CredentialUsername,
+              AgentVaultVariableReferenceField.CustomHeader
+            ])
+          ),
           allowedTools: service.allowedTools ?? null,
           credential,
           customHeaders: customHeaderSummaries
@@ -543,10 +564,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey])) {
           throw unsupportedCredential();
         }
-        return { ...base, ...typeFields, credential };
+        return { ...base, ...typeFields, variableReferences: references.filter(isCredentialReference), credential };
       default:
         if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic])) throw unsupportedCredential();
-        return { ...base, ...typeFields, credential };
+        return { ...base, ...typeFields, variableReferences: references.filter(isCredentialReference), credential };
     }
   };
 

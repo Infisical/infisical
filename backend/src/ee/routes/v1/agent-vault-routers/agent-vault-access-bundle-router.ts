@@ -43,8 +43,7 @@ import {
   AgentVaultProjectIdSchema,
   agentVaultServiceResponseSchema,
   AgentVaultServiceSchema,
-  AgentVaultUpdateServiceBodySchema,
-  AgentVaultVariableReferenceSchema
+  AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
 const AccessBundleDescriptionSchema = AgentVaultDescriptionSchema.describe(AGENT_VAULT.ACCESS_BUNDLE.description);
@@ -219,12 +218,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       response: {
         200: z.object({
           accessBundle: AccessBundleSchema.extend({
-            services: agentVaultServiceResponseSchema({
-              variableReferences: AgentVaultVariableReferenceSchema.array()
-                .optional()
-                .describe(AGENT_VAULT.SERVICE.variableReferences),
-              personalValues: AgentVaultPersonalValuesSchema.nullable()
-            }).array()
+            services: agentVaultServiceResponseSchema(
+              { personalValues: AgentVaultPersonalValuesSchema.nullable() },
+              { optionalVariableReferences: true }
+            ).array()
           })
         })
       }

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { z } from "zod";
 
 import { toInlineServiceSummary } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-fns";
 import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
@@ -408,5 +409,92 @@ describe("service responses", () => {
     expect(parsed).not.toHaveProperty("hostPattern");
     expect(parsed).not.toHaveProperty("database");
     expect(parsed).not.toHaveProperty("allowedMethods");
+  });
+});
+
+const CREDENTIAL_REFERENCE = {
+  variableId: "00000000-0000-4000-8000-000000000005",
+  key: "DB_PASSWORD",
+  field: "credential-value"
+};
+const CUSTOM_HEADER_REFERENCE = {
+  variableId: "00000000-0000-4000-8000-000000000005",
+  key: "TEAM",
+  field: "custom-header",
+  customHeaderId: "00000000-0000-4000-8000-000000000003"
+};
+const SUBSTITUTION_REFERENCE = {
+  variableId: "00000000-0000-4000-8000-000000000005",
+  key: "TOKEN",
+  field: "substitution",
+  substitutionId: "00000000-0000-4000-8000-000000000004"
+};
+
+describe("a service's variable references", () => {
+  test.each([
+    [AgentVaultServiceType.Http, [CREDENTIAL_REFERENCE, CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE], []],
+    [AgentVaultServiceType.Mcp, [CREDENTIAL_REFERENCE, CUSTOM_HEADER_REFERENCE], [SUBSTITUTION_REFERENCE]],
+    [AgentVaultServiceType.Postgres, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]],
+    [AgentVaultServiceType.Mysql, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]],
+    [AgentVaultServiceType.Ssh, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]]
+  ])("a %s service lists only the kinds it can store", (type, kept, refused) => {
+    const row = STORED_TYPES.find((stored) => stored.type === type)!;
+    const parse = (variableReferences: unknown[]) =>
+      AgentVaultServiceSchema.safeParse(
+        bundleService({
+          ...toServiceTypeFields(row),
+          credential: { ...row.credential, memberProvidedFields: [] },
+          variableReferences
+        })
+      );
+    expect(parse(kept).success).toBe(true);
+    refused.forEach((reference) => expect(parse([reference]).success).toBe(false));
+  });
+});
+
+const titleOf = (schema: z.ZodTypeAny) => (JSON.parse(schema.description ?? "{}") as { title?: string }).title;
+
+const unwrap = (schema: z.ZodTypeAny): z.ZodTypeAny => {
+  if (schema instanceof z.ZodOptional) return unwrap(schema.unwrap() as z.ZodTypeAny);
+  if (schema instanceof z.ZodEffects) return unwrap(schema.innerType() as z.ZodTypeAny);
+  return schema;
+};
+
+// The title of each credential type an option documents, keyed by credential type.
+const credentialTitlesOf = (union: z.ZodTypeAny, type: AgentVaultServiceType) => {
+  const option = (unwrap(union) as unknown as { options: z.ZodObject<z.ZodRawShape>[] }).options.find(
+    (candidate) => (candidate.shape.type as z.ZodLiteral<string>).value === type
+  )!;
+  const credential = unwrap(option.shape.credential as z.ZodTypeAny);
+  const arms =
+    credential instanceof z.ZodDiscriminatedUnion
+      ? (credential.options as z.ZodObject<z.ZodRawShape>[])
+      : [credential as z.ZodObject<z.ZodRawShape>];
+  return Object.fromEntries(
+    arms
+      .filter((arm) => !(JSON.parse(arm.description ?? "{}") as { "x-hidden"?: boolean })["x-hidden"])
+      .map((arm) => [(arm.shape.type as z.ZodLiteral<string>).value, titleOf(arm)])
+  );
+};
+
+describe("credential titles", () => {
+  test.each(Object.values(AgentVaultServiceType))(
+    "a %s service's response names each credential as its create request does",
+    (type) => {
+      const requested = credentialTitlesOf(AgentVaultCreateServiceBodySchema, type);
+      const returned = credentialTitlesOf(AgentVaultServiceSchema, type);
+      Object.entries(returned).forEach(([credentialType, title]) => {
+        if (credentialType in requested) expect(title).toBe(requested[credentialType]);
+      });
+      const inline = credentialTitlesOf(AgentVaultInlineServiceSchema, type);
+      Object.entries(inline).forEach(([credentialType, title]) => expect(title).toBe(returned[credentialType]));
+    }
+  );
+
+  test("a basic credential is Basic Auth for HTTP and Username and Password for a database or SSH", () => {
+    expect(credentialTitlesOf(AgentVaultServiceSchema, AgentVaultServiceType.Http).basic).toBe("Basic Auth");
+    [AgentVaultServiceType.Postgres, AgentVaultServiceType.Mysql, AgentVaultServiceType.Ssh].forEach((type) =>
+      expect(credentialTitlesOf(AgentVaultServiceSchema, type).basic).toBe("Username and Password")
+    );
   });
 });

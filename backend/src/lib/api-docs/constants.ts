@@ -4712,28 +4712,41 @@ export const AGENT_VAULT = {
       "The service's type, `http`, `mcp`, `postgres`, `mysql` or `ssh`. Must match the type the service was created with.",
     nativeName:
       "The name of the service. The agent connects to it by this name with `infisical agent-vault connect`, so it can be at most 63 characters.",
-    host: "The database or SSH server's host name or IP address, as the Agent Vault proxy reaches it. No scheme, port or path.",
-    hostRead: "The database or SSH server's host name or IP address.",
-    port: "The server's port. Defaults to 5432 for `postgres`, 3306 for `mysql` and 22 for `ssh`.",
-    portRead: "The database or SSH server's port.",
-    database:
-      "The database the proxy logs in to. For `postgres` the agent can only use this database. For `mysql` it is the default database, and the account's grants decide which others the agent can switch to.",
+    host: "The server's host name or IP address, as the Agent Vault proxy reaches it. No scheme, port or path.",
+    hostRead: "The server's host name or IP address.",
+    postgresPort: "The PostgreSQL server's port. Defaults to 5432.",
+    mysqlPort: "The MySQL server's port. Defaults to 3306.",
+    sshPort: "The SSH server's port. Defaults to 22.",
+    portRead: "The server's port.",
+    postgresDatabase: "The database the proxy logs in to. The agent can only use this database.",
+    mysqlDatabase:
+      "The database the proxy logs in to. It is the agent's default database, and the account's grants decide which others the agent can switch to.",
     databaseRead: "The database the proxy logs in to.",
-    tls: "How the proxy connects to the database. `enabled` (default true) uses TLS, `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's. Send `ca: null` to remove a stored one.",
+    tls: "How the proxy connects to the database. `enabled` (default true) uses TLS, `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's.",
+    updateTls:
+      "How the proxy connects to the database. `enabled` (default true) uses TLS, `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's. Send `ca: null` to remove a stored one.",
     tlsRead: "How the proxy connects to the database.",
     tlsEnabled: "Whether the proxy connects to the database over TLS. Defaults to true.",
     tlsVerify: "Whether the proxy checks the database's certificate. Defaults to true.",
     tlsCa:
+      "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on.",
+    updateTlsCa:
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Send null to remove a stored one.",
     tlsCaRead:
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Null when none is stored.",
-    nativeCredential:
-      "The account the proxy logs in as. A username and password for `postgres` and `mysql`, and a username with a password or an SSH key for `ssh`.",
+    databaseCredential: "The account the proxy logs in to the database as, a username and password.",
+    sshCredential: "The account the proxy logs in to the SSH server as, a username with a password or an SSH key.",
+    nativeUsername: `The user the proxy logs in as. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    nativePassword: `The password the proxy logs in with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    updateNativeUsername: `The user the proxy logs in as. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored username.`,
+    updateNativePassword: `The password the proxy logs in with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored password; send an empty string to remove it.`,
     sshUsername: "The user the proxy logs in to the SSH server as.",
-    sshPrivateKey:
-      "The SSH private key, in OpenSSH or PEM format and without a passphrase. Never returned once saved. Omit on update to keep the stored key.",
-    sshCertificate:
-      "An SSH certificate for the key: the contents of its `-cert.pub` file. Never returned once saved. Omit on update to keep the stored certificate; send null to remove it.",
+    sshPrivateKey: "The SSH private key, in OpenSSH or PEM format and without a passphrase. Never returned once saved.",
+    updateSshPrivateKey:
+      "The SSH private key, in OpenSSH or PEM format and without a passphrase. Never returned once saved. Omit to keep the stored key.",
+    sshCertificate: "An SSH certificate for the key: the contents of its `-cert.pub` file. Never returned once saved.",
+    updateSshCertificate:
+      "An SSH certificate for the key: the contents of its `-cert.pub` file. Never returned once saved. Omit to keep the stored certificate; send null to remove it.",
     sshHasCertificate: "Whether an SSH certificate is stored with the key.",
     serverUrlRead: "The MCP server's full URL.",
     transportRead:
@@ -4761,7 +4774,8 @@ export const AGENT_VAULT = {
     hostPattern:
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
     hostPatternRead:
-      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). For an `mcp` service, the host of its server URL.",
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`).",
+    mcpHostPatternRead: "The host of the MCP server's URL, with its port if the URL has one.",
     headerName: "The header the credential is written to. Defaults to `Authorization`.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. Can't contain `{{` or `}}`. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
@@ -4806,16 +4820,28 @@ export const AGENT_VAULT = {
     updateSubstitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored.`,
     variableReferences:
       "The global variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+    mcpVariableReferences:
+      "The global variables this service's credential and custom header values use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+    databaseVariableReferences:
+      "The global variables this service's username and password use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+    sshVariableReferences:
+      "The global variables this service's username and password use. An SSH key uses none. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
     referenceField:
       "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
+    mcpReferenceField: "Which value uses the variable: credential-value (the bearer token) or custom-header.",
+    nativeReferenceField: "Which value uses the variable: credential-username or credential-value (the password).",
     referenceCustomHeaderId: "The custom header whose value uses the variable.",
     referenceSubstitutionId: "The substitution whose value uses the variable.",
     bearerMemberProvidedFields:
       "Leave the token to each member: send `credential-value` here and no `value`. Every member sets their own, and a session uses the token of the member who started it. A session a machine identity started on behalf of a user uses that user's token instead. Omit on update to keep the current setting; send an empty list to set the token yourself again, which then needs a `value`. Changing this clears every member's saved values for the service.",
     basicMemberProvidedFields:
       "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of the member who started it. A session a machine identity started on behalf of a user uses that user's values instead. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
-    memberProvidedFields:
-      "The credential fields each member sets for themselves: credential-value (a bearer token, a basic password, or an OAuth sign-in) and credential-username. Empty when the admin sets the whole credential.",
+    bearerMemberProvidedFieldsRead:
+      "The credential fields each member sets for themselves: credential-value (the token). Empty when the admin sets the whole credential.",
+    basicMemberProvidedFieldsRead:
+      "The credential fields each member sets for themselves: credential-username and credential-value (the password). Empty when the admin sets the whole credential.",
+    oauthMemberProvidedFieldsRead:
+      "The credential fields each member sets for themselves: credential-value (the OAuth sign-in). Empty when the admin sets the whole credential.",
     oauthMemberProvidedFields:
       "Leave the OAuth sign-in to each member: send `credential-value` here and no `authorizationId`. Each member connects their own account, and a session uses the account of the member who started it, or of the user a machine identity started it on behalf of. When you save, Infisical checks that the server supports OAuth, and refuses the save if the server doesn't let Infisical register as an OAuth client and you didn't send `clientId`. To go back to one account for every session, send an empty list and an `authorizationId`. Turning this on removes the stored connection, and turning it off removes every member's connection.",
     oauthClientId:
@@ -5129,6 +5155,10 @@ export const AGENT_VAULT = {
       "The username half of the basic credential, sent exactly as given. May be empty if a password is set. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
     inlineServicePassword:
       "The password half of the basic credential, sent exactly as given. May be empty if a username is set. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
+    inlineNativeUsername:
+      "The user the proxy logs in as, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
+    inlineNativePassword:
+      "The password the proxy logs in with, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
     inlineMcpCredential: "The credential the proxy attaches to requests to the MCP server, a bearer token.",
     inlineCustomHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Up to 20.",
