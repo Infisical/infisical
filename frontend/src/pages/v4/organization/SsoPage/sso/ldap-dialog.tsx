@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -15,19 +14,20 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from "@app/components/v4/ui/dialog";
 import { DocumentationLinkBadge } from "@app/components/v4/ui/documentation-link-badge";
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { SecretInput } from "@app/components/v4/ui/secret-input";
+import {
+  Sheet,
+  SheetBody,
+  SheetClose,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v4/ui/sheet";
 import { Textarea } from "@app/components/v4/ui/textarea";
 
 import { useOrgId } from "../../../access/permissions";
@@ -39,8 +39,8 @@ const LDAPFormSchema = z
   .object({
     url: z.string().trim().min(1, "URL is required"),
     bindDN: z.string().trim().min(1, "Bind DN is required"),
-    bindPass: z.string().min(1, "Bind Pass is required"),
-    searchBase: z.string().trim().min(1, "User Search Base is required"),
+    bindPass: z.string().min(1, "Bind pass is required"),
+    searchBase: z.string().trim().min(1, "User search base is required"),
     groupSearchBase: z.string().default(""),
     searchFilter: z.string().default(""),
     uniqueUserAttribute: z.string().default(""),
@@ -59,7 +59,7 @@ const LDAPFormSchema = z
       return hasCert && hasKey;
     },
     {
-      message: "Client Certificate and Client Private Key are required when mTLS is enabled.",
+      message: "Client certificate and client private key are required when mTLS is enabled.",
       path: ["clientKeyCertificate"]
     }
   );
@@ -108,6 +108,7 @@ export const LdapConfigDialog = ({
   const test = sso.useTestLdapConnection();
   const formId = useId();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { control, handleSubmit, reset, watch } = useForm<TLDAPFormData>({
     resolver: zodResolver(LDAPFormSchema),
@@ -128,6 +129,7 @@ export const LdapConfigDialog = ({
   const watchEnableMtls = watch("enableMtls");
 
   const handleLdapSoftDelete = async () => {
+    setDeleting(true);
     try {
       await update.mutateAsync({
         organizationId: orgId,
@@ -145,8 +147,11 @@ export const LdapConfigDialog = ({
         clientKeyCertificate: ""
       });
       saved("Successfully deleted LDAP configuration");
+      setIsDeleteOpen(false);
     } catch (error) {
       failed("Failed to delete LDAP configuration", error);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -215,7 +220,7 @@ export const LdapConfigDialog = ({
         return;
       }
       if (!watchClientCertificate?.trim() || !watchClientKeyCertificate?.trim()) {
-        failed("Client Certificate and Client Private Key are required when mTLS is enabled.");
+        failed("Client certificate and client private key are required when mTLS is enabled.");
         return;
       }
     }
@@ -250,7 +255,7 @@ export const LdapConfigDialog = ({
       control={control}
       name={name}
       render={({ field, fieldState: { error } }) => (
-        <Field label={label} optional={optional} error={error?.message}>
+        <Field wide label={label} optional={optional} error={error?.message}>
           <Input
             mono
             placeholder={placeholder}
@@ -266,165 +271,179 @@ export const LdapConfigDialog = ({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent pending={isPending}>
-          <DialogHeader>
-            <DialogTitle>
-              <Inline gap={8}>
-                Manage LDAP configuration
-                <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
-              </Inline>
-            </DialogTitle>
-          </DialogHeader>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent size="lg" pending={isPending}>
           <form id={formId} noValidate onSubmit={handleSubmit(onSubmit)}>
-            <Stack gap={16}>
-              {textField("url", "URL", "ldaps://ldap.myorg.com:636")}
-              {textField("bindDN", "Bind DN", "cn=infisical,ou=Users,dc=example,dc=com")}
-              <Controller
-                control={control}
-                name="bindPass"
-                render={({ field, fieldState: { error } }) => (
-                  <Field label="Bind pass" error={error?.message}>
-                    <SecretInput
-                      placeholder="********"
-                      invalid={Boolean(error)}
-                      name={field.name}
-                      ref={field.ref}
-                      onBlur={field.onBlur}
-                      value={field.value ?? ""}
+            <SheetHeader>
+              <SheetTitle>
+                <Inline gap={8} wrap={false}>
+                  Manage LDAP configuration
+                  <DocumentationLinkBadge href="https://infisical.com/docs/integrations/user-authentication" />
+                </Inline>
+              </SheetTitle>
+            </SheetHeader>
+            <SheetBody>
+              <Stack gap={16}>
+                {textField("url", "URL", "ldaps://ldap.myorg.com:636")}
+                {textField("bindDN", "Bind DN", "cn=infisical,ou=Users,dc=example,dc=com")}
+                <Controller
+                  control={control}
+                  name="bindPass"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field wide label="Bind pass" error={error?.message}>
+                      <SecretInput
+                        placeholder="********"
+                        invalid={Boolean(error)}
+                        name={field.name}
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                      />
+                    </Field>
+                  )}
+                />
+                {textField("searchBase", "User search base / user DN", "ou=people,dc=acme,dc=com")}
+                {textField("uniqueUserAttribute", "Unique user attribute", "uidNumber", true)}
+                {textField("searchFilter", "User search filter", "(uid={{username}})", true)}
+                {textField(
+                  "groupSearchBase",
+                  "Group search base / group DN",
+                  "ou=groups,dc=acme,dc=com",
+                  true
+                )}
+                {textField(
+                  "groupSearchFilter",
+                  "Group filter",
+                  "(&(objectClass=posixGroup)(memberUid={{.Username}}))",
+                  true
+                )}
+                <Controller
+                  control={control}
+                  name="caCert"
+                  render={({ field, fieldState: { error } }) => (
+                    <Field wide label="CA certificate" optional error={error?.message}>
+                      <Textarea
+                        mono
+                        placeholder="-----BEGIN CERTIFICATE----- ..."
+                        aria-invalid={Boolean(error) || undefined}
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </Field>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="enableMtls"
+                  render={({ field }) => (
+                    <Checkbox
+                      label="Mutual TLS (mTLS)"
+                      description="Present a client certificate during the TLS handshake."
+                      checked={field.value}
                       onChange={field.onChange}
                     />
-                  </Field>
-                )}
-              />
-              {textField("searchBase", "User search base / user DN", "ou=people,dc=acme,dc=com")}
-              {textField("uniqueUserAttribute", "Unique user attribute", "uidNumber", true)}
-              {textField("searchFilter", "User search filter", "(uid={{username}})", true)}
-              {textField(
-                "groupSearchBase",
-                "Group search base / group DN",
-                "ou=groups,dc=acme,dc=com",
-                true
-              )}
-              {textField(
-                "groupSearchFilter",
-                "Group filter",
-                "(&(objectClass=posixGroup)(memberUid={{.Username}}))",
-                true
-              )}
-              <Controller
-                control={control}
-                name="caCert"
-                render={({ field, fieldState: { error } }) => (
-                  <Field label="CA certificate" optional error={error?.message}>
-                    <Textarea
-                      mono
-                      placeholder="-----BEGIN CERTIFICATE----- ..."
-                      aria-invalid={Boolean(error) || undefined}
-                      {...field}
-                      value={field.value ?? ""}
+                  )}
+                />
+                {watchEnableMtls && (
+                  <>
+                    <Controller
+                      control={control}
+                      name="clientCertificate"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field
+                          wide
+                          label="Client certificate"
+                          error={error?.message}
+                          description="PEM-encoded client certificate used for mutual TLS (mTLS)."
+                        >
+                          <Textarea
+                            mono
+                            placeholder="-----BEGIN CERTIFICATE----- ..."
+                            aria-invalid={Boolean(error) || undefined}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </Field>
+                      )}
                     />
-                  </Field>
+                    <Controller
+                      control={control}
+                      name="clientKeyCertificate"
+                      render={({ field, fieldState: { error } }) => (
+                        <Field
+                          wide
+                          label="Client private key"
+                          error={error?.message}
+                          description="PEM-encoded private key matching the client certificate. Stored encrypted server-side and never returned to the browser after save."
+                        >
+                          <SecretInput
+                            multiline
+                            placeholder={
+                              watchHasStoredClientKey
+                                ? "Key is configured. Paste a new value to replace it."
+                                : "-----BEGIN PRIVATE KEY----- ..."
+                            }
+                            invalid={Boolean(error)}
+                            name={field.name}
+                            ref={field.ref}
+                            onBlur={field.onBlur}
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                          />
+                        </Field>
+                      )}
+                    />
+                  </>
                 )}
-              />
-              <Controller
-                control={control}
-                name="enableMtls"
-                render={({ field }) => (
-                  <Checkbox
-                    label="Mutual TLS (mTLS)"
-                    description="Present a client certificate during the TLS handshake."
-                    checked={field.value}
-                    onChange={field.onChange}
-                  />
+                <Inline>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    loading={test.isPending}
+                    disabledReason={
+                      canTest
+                        ? undefined
+                        : "Enter the URL, bind DN and bind pass to test the connection"
+                    }
+                    onClick={handleTestLDAPConnection}
+                  >
+                    Test connection
+                  </Button>
+                </Inline>
+              </Stack>
+            </SheetBody>
+            <SheetFooter>
+              <Inline justify="between">
+                <Inline gap={8}>
+                  <Button
+                    type="submit"
+                    loading={isPending}
+                    disabledReason={
+                      test.isPending ? "Wait for the connection test to finish" : undefined
+                    }
+                  >
+                    {isExistingConfig ? "Update" : "Configure LDAP"}
+                  </Button>
+                  <SheetClose asChild>
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                  </SheetClose>
+                </Inline>
+                {!hideDelete && (
+                  <Button type="button" variant="destructive" onClick={() => setIsDeleteOpen(true)}>
+                    Delete
+                  </Button>
                 )}
-              />
-              {watchEnableMtls && (
-                <>
-                  <Controller
-                    control={control}
-                    name="clientCertificate"
-                    render={({ field, fieldState: { error } }) => (
-                      <Field
-                        label="Client certificate"
-                        error={error?.message}
-                        description="PEM-encoded client certificate used for mutual TLS (mTLS)."
-                      >
-                        <Textarea
-                          mono
-                          placeholder="-----BEGIN CERTIFICATE----- ..."
-                          aria-invalid={Boolean(error) || undefined}
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                      </Field>
-                    )}
-                  />
-                  <Controller
-                    control={control}
-                    name="clientKeyCertificate"
-                    render={({ field, fieldState: { error } }) => (
-                      <Field
-                        label="Client private key"
-                        error={error?.message}
-                        description="PEM-encoded private key matching the client certificate. Stored encrypted server-side and never returned to the browser after save."
-                      >
-                        <SecretInput
-                          multiline
-                          placeholder={
-                            watchHasStoredClientKey
-                              ? "Key is configured. Paste a new value to replace it."
-                              : "-----BEGIN PRIVATE KEY----- ..."
-                          }
-                          invalid={Boolean(error)}
-                          name={field.name}
-                          ref={field.ref}
-                          onBlur={field.onBlur}
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                        />
-                      </Field>
-                    )}
-                  />
-                </>
-              )}
-            </Stack>
+              </Inline>
+            </SheetFooter>
           </form>
-          <DialogFooter>
-            {!hideDelete && (
-              <div className="mr-auto">
-                <Button variant="danger-ghost" onClick={() => setIsDeleteOpen(true)}>
-                  Delete
-                </Button>
-              </div>
-            )}
-            <Button
-              variant="outline"
-              loading={test.isPending}
-              disabledReason={
-                canTest ? undefined : "Enter the URL, bind DN and bind pass to test the connection"
-              }
-              onClick={handleTestLDAPConnection}
-            >
-              Test connection
-            </Button>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button
-              type="submit"
-              form={formId}
-              loading={isPending}
-              disabledReason={test.isPending ? "Wait for the connection test to finish" : undefined}
-            >
-              {isExistingConfig ? "Update" : "Configure LDAP"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <AlertDialogContent tone="danger">
+        <AlertDialogContent tone="danger" pending={deleting}>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete LDAP configuration?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -434,9 +453,9 @@ export const LdapConfigDialog = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleLdapSoftDelete}>
+            <Button variant="destructive" loading={deleting} onClick={handleLdapSoftDelete}>
               Delete
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

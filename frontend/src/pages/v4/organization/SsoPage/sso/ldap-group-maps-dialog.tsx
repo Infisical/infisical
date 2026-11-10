@@ -5,7 +5,6 @@ import { z } from "zod";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -15,7 +14,6 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@app/components/v4/ui/dialog";
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
@@ -23,6 +21,13 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
 import { Select } from "@app/components/v4/ui/select";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v4/ui/sheet";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
 import type { LDAPGroupMap } from "@app/hooks/api/ldapConfig/types";
 
@@ -32,8 +37,8 @@ import { useV4Adapter } from "../../../data/adapters";
 import { orgHref, useGo } from "../../../links";
 
 const schema = z.object({
-  ldapGroupCN: z.string().min(1, "LDAP Group CN is required"),
-  groupSlug: z.string().min(1, "Group Slug is required")
+  ldapGroupCN: z.string().min(1, "LDAP group CN is required"),
+  groupSlug: z.string().min(1, "Infisical group is required")
 });
 
 type TFormData = z.infer<typeof schema>;
@@ -73,6 +78,7 @@ export const LdapGroupMapsDialog = ({
   const deleteMapping = sso.useDeleteLdapGroupMap();
   const formId = useId();
   const [removing, setRemoving] = useState<LDAPGroupMap | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const { control, handleSubmit, reset, setValue } = useForm<TFormData>({
     resolver: zodResolver(schema),
@@ -96,15 +102,18 @@ export const LdapGroupMapsDialog = ({
   };
 
   const onDeleteGroupMap = async (groupMap: LDAPGroupMap) => {
-    setRemoving(null);
+    setDeleting(true);
     try {
       await deleteMapping.mutateAsync({
         ldapConfigId: ldapConfig?.id ?? "",
         ldapGroupMapId: groupMap.id
       });
       saved(`Successfully deleted LDAP group mapping ${groupMap.ldapGroupCN}`);
+      setRemoving(null);
     } catch (error) {
       failed(`Failed to delete LDAP group mapping ${groupMap.ldapGroupCN}`, error);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -206,23 +215,23 @@ export const LdapGroupMapsDialog = ({
 
   return (
     <>
-      <Dialog
+      <Sheet
         open={open}
         onOpenChange={(next) => {
           onOpenChange(next);
           reset();
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Manage LDAP group mappings</DialogTitle>
-          </DialogHeader>
-          {body}
-        </DialogContent>
-      </Dialog>
+        <SheetContent size="lg">
+          <SheetHeader>
+            <SheetTitle>Manage LDAP group mappings</SheetTitle>
+          </SheetHeader>
+          <SheetBody>{body}</SheetBody>
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={Boolean(removing)} onOpenChange={(next) => !next && setRemoving(null)}>
-        <AlertDialogContent tone="danger">
+        <AlertDialogContent tone="danger" pending={deleting}>
           <AlertDialogHeader>
             <AlertDialogTitle>
               Delete group mapping for &quot;{removing?.ldapGroupCN ?? ""}&quot;?
@@ -233,14 +242,15 @@ export const LdapGroupMapsDialog = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            <Button
               variant="destructive"
+              loading={deleting}
               onClick={() => {
                 if (removing) onDeleteGroupMap(removing);
               }}
             >
               Delete
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
