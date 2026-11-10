@@ -42,10 +42,10 @@ export const AgentVaultSessionLogChunkCreateSchema = z.object({
     .describe(AGENT_VAULT.SESSION_LOGS.recordCount),
   decisionCounts: z
     .object({
-      brokered: DecisionCountSchema,
-      passthrough: DecisionCountSchema,
-      blocked: DecisionCountSchema,
-      error: DecisionCountSchema
+      brokered: DecisionCountSchema.describe(AGENT_VAULT.SESSION_LOGS.brokeredCount),
+      passthrough: DecisionCountSchema.describe(AGENT_VAULT.SESSION_LOGS.passthroughCount),
+      blocked: DecisionCountSchema.describe(AGENT_VAULT.SESSION_LOGS.blockedCount),
+      error: DecisionCountSchema.describe(AGENT_VAULT.SESSION_LOGS.errorCount)
     })
     .optional()
     .describe(AGENT_VAULT.SESSION_LOGS.decisionCounts),
