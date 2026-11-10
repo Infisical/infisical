@@ -87,6 +87,33 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "head-button-menu",
+    title: "Header menus attach",
+    description:
+      "A header cell's menu trigger stays filled while its menu is open, and its focus ring draws inside the cell.",
+    date: "2026-11-07",
+    commit: "b83b077298",
+    page: "table"
+  },
+  {
+    id: "toast-offset",
+    title: "Toasts clear the footer",
+    description:
+      "Toasts sit above pagination and move up while the bulk bar is showing, so they never cover either.",
+    date: "2026-11-07",
+    commit: "d1dd13b1ca",
+    page: "toast"
+  },
+  {
+    id: "button-aria-expanded",
+    title: "Disclosure buttons stay quiet",
+    description:
+      "Expand and disclosure buttons keep aria-expanded without looking pressed; only menu and popover triggers show an open state.",
+    date: "2026-11-07",
+    commit: "610c85d040",
+    page: "button"
+  },
+  {
     id: "access-undo-toast",
     title: "Undo revokes from a toast",
     description:
@@ -193,32 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "7b78041dbe",
     page: "button"
-  },
-  {
-    id: "row-actions-lazy",
-    title: "Lazy row actions",
-    description:
-      "Row actions can render as plain buttons until a row is hovered or focused, and pages can open the More menu themselves.",
-    date: "2026-11-07",
-    commit: "b7ba7061e7",
-    page: "table"
-  },
-  {
-    id: "row-context-lazy",
-    title: "Lighter row menus",
-    description:
-      "Right-click row menus mount only when opened, so large tables carry no closed menus.",
-    date: "2026-11-07",
-    commit: "7a2ed78093",
-    page: "table"
-  },
-  {
-    id: "viewport-cell-perf",
-    title: "Faster table edits",
-    description:
-      "Editing inside a large table no longer pays for the full-width cell's styling when no row uses it.",
-    date: "2026-11-07",
-    commit: "3f2f553a29",
-    page: "table"
   }
 ];

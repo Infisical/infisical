@@ -1141,7 +1141,11 @@ tbody > .nativeTableRow[data-loading] {
     background-color: var(--v4-hover);
   }
 }
-.tableSort:not([data-active]) > svg {
+/* An open menu keeps its header filled so the menu reads as attached; aria-expanded counts because a wrapping Tooltip overwrites data-state, and only on a popup trigger. */
+.tableSort[aria-haspopup]:is([data-state="open"], [aria-expanded="true"]) {
+  background-color: var(--v4-hover);
+}
+.tableSort:not([data-active], [aria-haspopup]) > svg {
   opacity: 0;
 }
 :is(th:hover, th:focus-within) > .tableSort > svg {
@@ -1152,9 +1156,10 @@ tbody > .nativeTableRow[data-loading] {
   width: calc((var(--v4-size-icon-xs) + var(--v4-size-icon-sm)) / 2);
   height: calc((var(--v4-size-icon-xs) + var(--v4-size-icon-sm)) / 2);
 }
+/* The trigger fills its cell, so the ring sits inside it where neighbouring cells, pinned columns and the scroll edge cannot clip it. */
 .tableSort:focus-visible {
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);
-  outline-offset: var(--v4-size-focus-ring);
+  outline-offset: calc(-1 * var(--v4-size-focus-ring));
 }
 /* The overflow that truncates a cell would clip the ring of a control rendered in it, so the box
    reaches --v4-focus-clearance past the text on every side and gives it back as negative margin.

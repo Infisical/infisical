@@ -2,6 +2,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { MotionConfig } from "motion/react";
 
+import { type PresenceReport, usePresenceCount } from "./lib/presence-count";
 import { watchScrollEdges } from "./lib/scroll-edges";
 import { defaultV4Theme, toV4Theme, v4ThemeScheme } from "./lib/theme-registry";
 import type { V4Scheme } from "./lib/themes";
@@ -11,6 +12,7 @@ const PortalContainerContext = React.createContext<HTMLElement | null | undefine
 const ThemeContext = React.createContext<string | undefined>(undefined);
 const CollisionBoundaryContext = React.createContext<HTMLElement | undefined>(undefined);
 const ToastLayerContext = React.createContext<HTMLElement | null>(null);
+const ActionBarReserveContext = React.createContext<PresenceReport | null>(null);
 
 export const useV4PortalContainer = () => React.useContext(PortalContainerContext);
 export const useV4CollisionBoundary = () => React.useContext(CollisionBoundaryContext);
@@ -20,6 +22,8 @@ export const useV4Scheme = (): V4Scheme | undefined => {
   return theme ? v4ThemeScheme(theme) : undefined;
 };
 export const useV4ToastLayer = () => React.useContext(ToastLayerContext);
+/** A shown FloatingActionBar reports here, so every node of the scope, toast layer included, lifts its toasts clear of the bar. */
+export const useV4ActionBarReserve = () => React.useContext(ActionBarReserveContext);
 
 function inheritedTheme(node: HTMLElement, fallback: string | undefined): string {
   let ancestor = node.parentElement;
@@ -49,6 +53,8 @@ export function V4Scope({
   const [container, setContainer] = React.useState<HTMLDivElement | null>(null);
   const [toastLayer, setToastLayer] = React.useState<HTMLDivElement | null>(null);
   const [inherited, setInherited] = React.useState<string>();
+  const [actionBarReserve, reportActionBar] = usePresenceCount();
+  const reserve = actionBarReserve || undefined;
   const resolvedTheme = toV4Theme(theme) ?? inherited ?? parentTheme ?? defaultV4Theme.light;
   const scheme = v4ThemeScheme(resolvedTheme);
   const assignWrapper = React.useCallback(
@@ -98,37 +104,42 @@ export function V4Scope({
       <ThemeContext value={resolvedTheme}>
         <PortalContainerContext value={container}>
           <ToastLayerContext value={toastLayer}>
-            <CollisionBoundaryContext value={portalContainer ?? undefined}>
-              <div
-                {...props}
-                ref={assignWrapper}
-                className={cn("v4", className)}
-                data-theme={resolvedTheme}
-                data-scheme={scheme}
-              >
-                {children}
-              </div>
-              {portalContainer !== null &&
-                createPortal(
-                  <>
-                    <div
-                      ref={setContainer}
-                      className="v4"
-                      data-theme={resolvedTheme}
-                      data-scheme={scheme}
-                    />
-                    {/* After the overlay container, so a toast paints above every sheet and dialog on the same z-50 layer. */}
-                    <div
-                      ref={setToastLayer}
-                      className="v4"
-                      data-theme={resolvedTheme}
-                      data-scheme={scheme}
-                      data-slot="v4-toast-layer"
-                    />
-                  </>,
-                  portalContainer ?? document.body
-                )}
-            </CollisionBoundaryContext>
+            <ActionBarReserveContext value={reportActionBar}>
+              <CollisionBoundaryContext value={portalContainer ?? undefined}>
+                <div
+                  {...props}
+                  ref={assignWrapper}
+                  className={cn("v4", className)}
+                  data-theme={resolvedTheme}
+                  data-scheme={scheme}
+                  data-action-bar-reserve={reserve}
+                >
+                  {children}
+                </div>
+                {portalContainer !== null &&
+                  createPortal(
+                    <>
+                      <div
+                        ref={setContainer}
+                        className="v4"
+                        data-theme={resolvedTheme}
+                        data-scheme={scheme}
+                        data-action-bar-reserve={reserve}
+                      />
+                      {/* After the overlay container, so a toast paints above every sheet and dialog on the same z-50 layer. */}
+                      <div
+                        ref={setToastLayer}
+                        className="v4"
+                        data-theme={resolvedTheme}
+                        data-scheme={scheme}
+                        data-action-bar-reserve={reserve}
+                        data-slot="v4-toast-layer"
+                      />
+                    </>,
+                    portalContainer ?? document.body
+                  )}
+              </CollisionBoundaryContext>
+            </ActionBarReserveContext>
           </ToastLayerContext>
         </PortalContainerContext>
       </ThemeContext>

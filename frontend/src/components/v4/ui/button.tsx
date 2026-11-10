@@ -25,15 +25,15 @@ const buttonVariants = cva(
         "danger-ghost": "text-destructive hover:bg-destructive/10",
         default: styles.ink,
         outline: [
-          "border-[color:var(--v4-action-outline-border)] bg-[color:var(--v4-action-outline-surface)] hover:bg-[color:var(--v4-action-outline-hover)] hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
+          "border-[color:var(--v4-action-outline-border)] bg-[color:var(--v4-action-outline-surface)] hover:bg-[color:var(--v4-action-outline-hover)] hover:text-foreground [&[aria-haspopup]:is([data-state=open],[aria-expanded=true])]:bg-muted [&[aria-haspopup]:is([data-state=open],[aria-expanded=true])]:text-foreground",
           styles.neutralSelection
         ],
         secondary: [
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] [&[aria-haspopup]:is([data-state=open],[aria-expanded=true])]:bg-secondary [&[aria-haspopup]:is([data-state=open],[aria-expanded=true])]:text-secondary-foreground",
           styles.neutralSelection
         ],
         ghost: [
-          "hover:bg-[color:var(--v4-action-ghost-hover)] hover:text-foreground aria-expanded:bg-[color:var(--v4-action-ghost-hover)] aria-expanded:text-foreground",
+          "hover:bg-[color:var(--v4-action-ghost-hover)] hover:text-foreground [&[aria-haspopup]:is([data-state=open],[aria-expanded=true])]:bg-[color:var(--v4-action-ghost-hover)] [&[aria-haspopup]:is([data-state=open],[aria-expanded=true])]:text-foreground",
           styles.neutralSelection
         ],
         destructive: styles.danger,
