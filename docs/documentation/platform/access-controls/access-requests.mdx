@@ -103,6 +103,8 @@ Once access policies are configured, users can request access to resources cover
 
 You can request access to any folder inside an access policy's secret path, not only to the secret path itself. For example, if a policy covers `/**` in the Development environment, you can request access to `/aws/rds` alone.
 
+- If no policy in the environment uses a glob, **Secret Path** is a list of the policies' paths, and you can only request one of those paths
+- The path must match at least one existing folder in the environment
 - To request a folder and every folder inside it, end the path with `/**` (for example, `/payments/**`), or select the `/**` suggestion for that folder
 - If you request `/**`, the request covers every folder in the environment, including folders created later, and approvers see it marked as **Entire Scope**
 - If more than one policy covers the path, the request goes to the policy with the most specific secret path (for example, `/apps/**` rather than `/**`), and that policy's approvers and **Max Time Period** apply
@@ -125,7 +127,7 @@ The access requests dashboard shows two tabs:
 
 ### Reviewing a request
 
-Select any request to open the review modal with full details. **Secret Path** shows the path the user asked for, which can be narrower than the secret path of the **Policy** next to it. If the path is a glob, **Matching Folders** lists the folders the path matches today, and approving the request also grants access to matching folders created later.
+Select any request to open the review modal with full details. **Requested Scope** shows the path the user asked for, which can be narrower than the secret path of the **Policy** above it. If the path is a glob, **Requested Scope** lists the folders the path matches today, and approving the request also grants access to matching folders created later.
 
 ![Review Request Modal](/images/platform/access-controls/access-request/review-request-modal.png)
 

@@ -301,6 +301,7 @@ export const AccessApprovalRequest = ({
         return (
           environmentName?.toLowerCase().includes(searchValue) ||
           environmentDisplayName?.toLowerCase().includes(searchValue) ||
+          getRequestedSecretPath(request).toLowerCase().includes(searchValue) ||
           `${requestedByUser?.email ?? ""} ${requestedByUser?.firstName ?? ""} ${requestedByUser?.lastName ?? ""}`
             .toLowerCase()
             .includes(searchValue)
@@ -666,7 +667,7 @@ export const AccessApprovalRequest = ({
               <InputGroupInput
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by requesting user or environment..."
+                placeholder="Search by requesting user, environment or path..."
               />
             </InputGroup>
             <div className="flex shrink-0 items-center">
@@ -928,9 +929,12 @@ export const AccessApprovalRequest = ({
                       </TableCell>
                       <TableCell title={requestedSecretPath}>
                         <div className="flex items-center gap-2">
-                          <span className="truncate">{requestedSecretPath}</span>
+                          <span className="truncate font-mono">{requestedSecretPath}</span>
                           {requestedSecretPath === ENTIRE_SCOPE_PATH && (
-                            <Badge variant="warning">Entire Scope</Badge>
+                            <Badge variant="warning">
+                              <TriangleAlertIcon />
+                              Entire Scope
+                            </Badge>
                           )}
                         </div>
                       </TableCell>

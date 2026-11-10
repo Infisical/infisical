@@ -4,6 +4,7 @@ import {
   BanIcon,
   CheckIcon,
   FilterIcon,
+  FolderTreeIcon,
   HourglassIcon,
   InfoIcon,
   RefreshCwIcon,
@@ -114,11 +115,11 @@ import {
 } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 
 import {
+  ENTIRE_SCOPE_PATH,
   getAccessDurationLabel,
-  getRequestedSecretPath,
-  isGlobPath
+  getRequestedSecretPath
 } from "../AccessApprovalRequest.utils";
-import { AccessRequestFolderList } from "./AccessRequestFolderList";
+import { AccessRequestScope } from "./AccessRequestScope";
 
 // The four basic CRUD actions render with clean labels rather than the role editor's
 // granular secret labels (e.g. "read" maps to "Read (legacy)" there), so existing
@@ -292,12 +293,14 @@ export const ReviewAccessRequestModal = ({
     }
   };
 
-  // Collapse the details grid to a single column when the environment name or secret
-  // path is long enough that two side-by-side columns would feel cramped.
+  // Collapse the details grid to a single column when the environment name or policy
+  // is long enough that side-by-side columns would feel cramped.
   const DETAILS_COLLAPSE_THRESHOLD = 30;
   const shouldCollapseDetails =
     (accessDetails.env?.length ?? 0) > DETAILS_COLLAPSE_THRESHOLD ||
-    (accessDetails.secretPath?.length ?? 0) > DETAILS_COLLAPSE_THRESHOLD;
+    request.policy.name.length + (request.policy.secretPath?.length ?? 0) >
+      DETAILS_COLLAPSE_THRESHOLD;
+  const isEntireScope = accessDetails.secretPath === ENTIRE_SCOPE_PATH;
 
   const permissionGroups = useMemo(() => {
     // Group rules by subject + effect (allow/deny) + conditions: rules that differ only in
@@ -894,14 +897,12 @@ export const ReviewAccessRequestModal = ({
                   <DetailValue className="break-words">{accessDetails.env}</DetailValue>
                 </Detail>
                 <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
-                  <DetailLabel>Secret Path</DetailLabel>
-                  <DetailValue className="break-words">{accessDetails.secretPath}</DetailValue>
-                </Detail>
-                <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
                   <DetailLabel>Policy</DetailLabel>
                   <DetailValue className="break-words">
                     {request.policy.name}{" "}
-                    <span className="text-muted">{request.policy.secretPath}</span>
+                    <code className="font-mono text-xs text-muted">
+                      {request.policy.secretPath}
+                    </code>
                   </DetailValue>
                 </Detail>
                 <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
@@ -915,15 +916,6 @@ export const ReviewAccessRequestModal = ({
                     </div>
                   </DetailValue>
                 </Detail>
-                {isGlobPath(accessDetails.secretPath) && (
-                  <Detail className="w-full flex-none">
-                    <DetailLabel>Matching Folders</DetailLabel>
-                    <AccessRequestFolderList
-                      secretPath={accessDetails.secretPath}
-                      environment={request.environmentName}
-                    />
-                  </Detail>
-                )}
                 {request.note && (
                   <Detail className="w-full flex-none">
                     <DetailLabel>Note</DetailLabel>
@@ -947,6 +939,31 @@ export const ReviewAccessRequestModal = ({
                   )}
               </div>
             </div>
+
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-normal text-foreground">Requested Scope</h3>
+                {isEntireScope && (
+                  <Badge variant="warning">
+                    <TriangleAlertIcon />
+                    Entire Scope
+                  </Badge>
+                )}
+              </div>
+              {isEntireScope && (
+                <Alert variant="warning">
+                  <FolderTreeIcon />
+                  <AlertDescription>
+                    <code className="font-mono">{ENTIRE_SCOPE_PATH}</code> grants every folder in{" "}
+                    {accessDetails.env}, including folders created later.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <AccessRequestScope
+                secretPath={accessDetails.secretPath}
+                environment={request.environmentName}
+              />
+            </section>
 
             <section className="flex flex-col gap-3">
               <h3 className="text-sm font-normal text-foreground">Requested Permissions</h3>

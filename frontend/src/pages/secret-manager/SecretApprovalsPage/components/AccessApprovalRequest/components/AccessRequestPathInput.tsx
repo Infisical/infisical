@@ -1,10 +1,15 @@
 import { useMemo, useRef, useState } from "react";
 import { FolderIcon, FolderTreeIcon } from "lucide-react";
 
-import { Input, Popover, PopoverAnchor, PopoverContent } from "@app/components/v3";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  Popover,
+  PopoverAnchor,
+  PopoverContent
+} from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { useProject } from "@app/context";
-import { useListProjectEnvironmentsFolders } from "@app/hooks/api/secretFolders/queries";
 import { isGlobSubsetOfGlob } from "@app/lib/fn/glob";
 
 import { ENTIRE_SCOPE_PATH } from "../AccessApprovalRequest.utils";
@@ -17,10 +22,9 @@ type Props = {
   onChange: (value: string) => void;
   onFocus: () => void;
   onBlur: () => void;
-  environment: string;
+  folderPaths: string[];
   policyPaths: string[];
   isError: boolean;
-  disabled: boolean;
 };
 
 export const AccessRequestPathInput = ({
@@ -29,23 +33,13 @@ export const AccessRequestPathInput = ({
   onChange,
   onFocus,
   onBlur,
-  environment,
+  folderPaths,
   policyPaths,
-  isError,
-  disabled
+  isError
 }: Props) => {
-  const { currentProject } = useProject();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const { data: environmentFolders } = useListProjectEnvironmentsFolders(currentProject.id, {
-    environment
-  });
-
-  const folderPaths = useMemo(
-    () => environmentFolders?.[environment]?.folders.map((folder) => folder.path) ?? [],
-    [environmentFolders, environment]
-  );
 
   // A folder outside every policy is still offered when a covered folder sits below it, so the
   // requester can drill down to a policy that only covers a nested path.
@@ -98,6 +92,8 @@ export const AccessRequestPathInput = ({
     return folderSuggestions;
   }, [value, navigableFolders, folderPaths, policyPaths]);
 
+  const isEntireScope = value.trim() === ENTIRE_SCOPE_PATH;
+
   const selectSuggestion = (suggestion: TSuggestion) => {
     onChange(suggestion.path);
     setHighlightedIndex(-1);
@@ -120,43 +116,55 @@ export const AccessRequestPathInput = ({
 
   return (
     <Popover
-      open={isFocused && suggestions.length > 0 && !disabled}
+      open={isFocused && suggestions.length > 0}
       onOpenChange={(open) => {
         if (!open) setIsFocused(false);
         setHighlightedIndex(-1);
       }}
     >
-      <PopoverAnchor asChild ref={inputRef}>
-        <Input
-          id={id}
-          type="text"
-          autoComplete="off"
-          placeholder="/"
-          value={value}
-          isError={isError}
-          disabled={disabled}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-            setIsFocused(true);
-            onFocus();
-          }}
-          onBlur={() => {
-            setIsFocused(false);
-            onBlur();
-          }}
-          onChange={(e) => {
-            setIsFocused(true);
-            setHighlightedIndex(-1);
-            onChange(e.target.value);
-          }}
-        />
+      <PopoverAnchor asChild>
+        <InputGroup
+          ref={anchorRef}
+          className={cn(isEntireScope && !isError && "border-warning/50")}
+        >
+          <InputGroupAddon>
+            {isEntireScope ? (
+              <FolderTreeIcon className="text-warning" />
+            ) : (
+              <FolderIcon className="text-folder" />
+            )}
+          </InputGroupAddon>
+          <InputGroupInput
+            id={id}
+            type="text"
+            autoComplete="off"
+            placeholder="/folder/subfolder"
+            className="font-mono"
+            value={value}
+            isError={isError}
+            onKeyDown={handleKeyDown}
+            onFocus={() => {
+              setIsFocused(true);
+              onFocus();
+            }}
+            onBlur={() => {
+              setIsFocused(false);
+              onBlur();
+            }}
+            onChange={(e) => {
+              setIsFocused(true);
+              setHighlightedIndex(-1);
+              onChange(e.target.value);
+            }}
+          />
+        </InputGroup>
       </PopoverAnchor>
       <PopoverContent
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={(e) => {
-          if (e.target === inputRef.current) e.preventDefault();
+          if (anchorRef.current?.contains(e.target as Node)) e.preventDefault();
         }}
         className="p-1"
         style={{
@@ -174,16 +182,16 @@ export const AccessRequestPathInput = ({
                 selectSuggestion(suggestion);
               }}
               className={cn(
-                "flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-sm text-foreground transition-colors hover:bg-foreground/10",
+                "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-foreground transition-colors hover:bg-foreground/10",
                 highlightedIndex === i && "bg-foreground/10"
               )}
             >
               {suggestion.hint ? (
                 <FolderTreeIcon className="size-3.5 shrink-0 text-muted" />
               ) : (
-                <FolderIcon className="size-3.5 shrink-0 text-warning" />
+                <FolderIcon className="size-3.5 shrink-0 text-folder" />
               )}
-              <span className="truncate">{suggestion.path}</span>
+              <span className="truncate font-mono text-sm">{suggestion.path}</span>
               {suggestion.hint && (
                 <span className="ml-auto shrink-0 text-xs text-muted">{suggestion.hint}</span>
               )}
