@@ -68,6 +68,7 @@ Exports: Item, ItemActions, ItemContent, ItemDescription, ItemFooter, ItemGroup,
 ## Behavior
 
 - Item composes rows with title, media, metadata, actions, error/unread states and actions below the text. ItemGroup keeps the requested semantic wrapper; Tile is a native selected button. Tile wraps its title (up to two lines), description and meta within the tile, so long text never runs under the trailing chevron or check.
+- Tile always has its own ground, because its chevron sits at the far edge: a line-soft border on a bare surface, and the tint shade with no border inside a framed Card, List or DataTable, so the frames never nest. An unframed item puts its chevron right after its content instead (rule/chevron-tile-frame).
 
 ## Accessibility
 
@@ -113,6 +114,11 @@ Source declarations and review criteria only. Generation checks references and c
 - warn: example `variants`, visible label "warn".
 - bad: example `variants`, visible label "bad".
 - info: example `variants`, visible label "info".
+
+### Tile ground
+
+- border: example `tiles`, visible label "On a surface: bordered".
+- shade: example `tiles`, visible label "Inside a Card: shaded".
 
 ### Media.size
 
@@ -402,26 +408,52 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/item/tiles.tsx`; its relative imports are generated for that exact path. States: default, controlled.
 
-Registry items used: @infisical/item. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/card, @infisical/item, @infisical/layout. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
 
+import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/v4/ui/card";
 import { Media, Tile } from "../../../../components/v4/ui/item";
+import { Grid } from "../../../../components/v4/ui/layout";
 
 export default function Example() {
   const [selected, setSelected] = useState(false);
   return (
-    <div className="flex w-full min-w-0 flex-col items-start gap-6">
-      <Tile selected={selected} onClick={() => setSelected(!selected)}>
-        <span className="flex items-center gap-3">
-          <Media icon="machine" />
-          Machine identity
-        </span>
-      </Tile>
-      <p role="status" className="sr-only">
-        {selected ? "Machine identity selected" : "No identity selected"}
-      </p>
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Tile selected={selected} onClick={() => setSelected(!selected)}>
+            <span className="flex items-center gap-3">
+              <Media icon="machine" />
+              Machine identity
+            </span>
+          </Tile>
+          <p role="status" className="sr-only">
+            {selected ? "Machine identity selected" : "No identity selected"}
+          </p>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"On a surface: bordered"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Card variant="framed">
+            <CardHeader>
+              <CardTitle>Billing</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Grid columns={3} gap={8}>
+                <Tile title="Card on file" description="VISA ending in 4242" />
+                <Tile title="Invoices" description="$10,800, Mar 14, 2026" />
+                <Tile title="Billing details" description="Acme Corp" />
+              </Grid>
+            </CardContent>
+          </Card>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Inside a Card: shaded"}</figcaption>
+      </figure>
     </div>
   );
 }

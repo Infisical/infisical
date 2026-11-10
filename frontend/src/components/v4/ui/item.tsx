@@ -5,6 +5,7 @@ import { Slot } from "radix-ui";
 import { Separator } from "@app/components/v4/ui/separator";
 
 import { useDescendantFlags } from "../lib/descendant-flags";
+import { useInFrame } from "../lib/frame-context";
 import { cn } from "../lib/utils";
 import { Icon, type IconName } from "./icon";
 
@@ -400,11 +401,13 @@ export function Tile({
   description?: React.ReactNode;
   media?: React.ReactNode;
 } & { ref?: React.Ref<HTMLButtonElement> }) {
+  const inFrame = useInFrame("Tile");
   return (
     <button
       ref={ref}
       type={type}
       data-slot="tile"
+      data-in-frame={inFrame || undefined}
       aria-pressed={selected}
       className={cn(helperStyles.tile, className)}
       {...props}

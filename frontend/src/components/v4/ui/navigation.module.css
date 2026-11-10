@@ -11,6 +11,13 @@
 .tabsTrack[data-variant="underline"] {
   border-bottom: 1px solid var(--v4-line);
 }
+.tabsTrack[data-width="content"] {
+  width: fit-content;
+}
+.tabsTrack[data-width="full"],
+.tabsTrack[data-rule-spans] {
+  width: 100%;
+}
 /* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .tabsList {
   position: relative;
@@ -94,6 +101,9 @@
 }
 .tabsList[data-variant="segmented"][data-orientation="horizontal"] [role="tab"] {
   min-height: calc(var(--v4-size-control-default) - 2 * var(--v4-space-2));
+}
+.tabsList[data-width="full"][data-orientation="horizontal"] [role="tab"] {
+  flex: 1 1 0;
 }
 .tabsList[data-variant="underline"] .tabIndicator.tabIndicator {
   background: transparent;

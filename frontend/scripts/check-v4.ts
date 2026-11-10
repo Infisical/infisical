@@ -383,6 +383,18 @@ export const pointerOutsideLinks = (selector: string, body: string) => {
   return declarations.map((match) => match[1].trim());
 };
 
+const tabWidthSubject =
+  /\[role=["']?tab["']?\]|\[data-slot=["']?(?:tabs-(?:list|trigger)|toggle-group(?:-item)?)["']?\]/;
+
+/** Width or growth set on a tab list, tab, toggle group or toggle item outside the primitive, which sizes the list and its triggers together from one width prop. */
+export const tabWidthDeclarations = (selector: string, body: string) => {
+  const subjects = topLevelParts(selector).map((part) => part.split(/\s*[\s>+~]\s*/).pop() ?? "");
+  if (!subjects.some((subject) => tabWidthSubject.test(subject))) return [];
+  return [
+    ...body.matchAll(/(?:^|;|\n)\s*((?:width|inline-size|flex|flex-grow|flex-basis)\s*:[^;]+)/g)
+  ].map((match) => match[1].trim());
+};
+
 const classCallee = /(?:^|[^\w.$])(?:cn|cva|cx|clsx|twMerge)\s*$/;
 
 /** String literals that hold classes: className attributes and cn/cva/clsx call arguments, at any depth. */
@@ -423,6 +435,36 @@ export const classStringLiterals = (text: string) => {
     }
   }
   return found;
+};
+
+const tabWidthUtility =
+  /^(?:w-|min-w-full$|flex-(?:1|auto|\[)|grow|basis-|justify-(?:between|around|evenly|stretch)$)/;
+const tabWidthVariant = /role=tab|tabs-(?:list|trigger)|toggle-group/;
+
+/** Width or growth classes on Tabs, TabsList, TabsTrigger, ToggleGroup or ToggleGroupItem, or aimed at their parts through an arbitrary variant. */
+export const tabWidthClasses = (text: string) => {
+  const found = new Map<number, string>();
+  [...text.matchAll(/<(Tabs|TabsList|TabsTrigger|ToggleGroup|ToggleGroupItem)(?=[\s>/])/g)].forEach(
+    (open) => {
+      const at = open.index ?? 0;
+      const { values } = tagAttributes(text.slice(at + open[0].length, jsxTagEnd(text, at) + 1));
+      const offending = (values.get("className") ?? "")
+        .split(/[\s"'`]+/)
+        .filter((token) => tabWidthUtility.test(splitVariant(token).utility));
+      if (offending.length) found.set(at, offending.join(" "));
+    }
+  );
+  classStringLiterals(text).forEach(({ value, index }) => {
+    const offending = value
+      .split(/\s+/)
+      .map(splitVariant)
+      .filter(
+        ({ variant, utility }) => tabWidthVariant.test(variant) && tabWidthUtility.test(utility)
+      );
+    if (offending.length)
+      found.set(index, offending.map(({ variant, utility }) => variant + utility).join(" "));
+  });
+  return [...found].map(([index, match]) => ({ index, text: match }));
 };
 
 const isPage = (file: string) => file.startsWith("src/pages/v4/");
@@ -906,6 +948,21 @@ export const v4Checks: readonly V4Check[] = [
       "A natively disabled Button gets no pointer or focus events, so a Tooltip around it never opens. Pass the reason as disabledReason, which keeps the Button focusable and shows the reason in its own tooltip.",
     appliesTo: isAuthored,
     source: disabledButtonsInTooltips
+  },
+  {
+    id: "tab-width",
+    rule: "tab-width",
+    message:
+      'Tabs and ToggleGroup size the list and its triggers together: width="full" stretches the track and every trigger to fill it, and the default width="content" fits both to the labels. Pass width instead of setting a width, flex or grow on the list, the track or a trigger, so a full-width track never holds content-width triggers.',
+    appliesTo: isAuthored,
+    exempt: [
+      "src/components/v4/ui/tabs.tsx",
+      "src/components/v4/ui/navigation.module.css",
+      "src/components/v4/ui/toggle-group.tsx",
+      "src/components/v4/ui/controls.module.css"
+    ],
+    cssBlock: tabWidthDeclarations,
+    source: tabWidthClasses
   },
   {
     id: "trigger-start-aligned",

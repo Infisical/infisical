@@ -29,6 +29,7 @@ function ToggleGroup({
   spacing = 0,
   orientation = "horizontal",
   bare = false,
+  width = "content",
   children,
   ref,
   ...props
@@ -37,6 +38,7 @@ function ToggleGroup({
     spacing?: number;
     orientation?: "horizontal" | "vertical";
     bare?: boolean;
+    width?: "content" | "full";
   } & { ref?: React.Ref<React.ComponentRef<typeof ToggleGroupPrimitive.Root>> }) {
   const list = React.useRef<HTMLDivElement | null>(null);
   const attach = React.useCallback(
@@ -63,6 +65,7 @@ function ToggleGroup({
       data-size={size}
       data-spacing={spacing}
       data-bare={bare || undefined}
+      data-width={width}
       data-indicator={sliding || undefined}
       orientation={orientation}
       className={cn(controlStyles.toggleGroup, className)}
