@@ -8,7 +8,7 @@ export type V4OrganizationGroup =
   | "Other organizations";
 
 export type V4Session = {
-  user: { name: string; email: string };
+  user: { id: string; name: string; email: string; superAdmin: boolean };
   organization: { id: string; name: string; isSubOrganization: boolean };
   organizations: readonly { id: string; name: string; group: V4OrganizationGroup }[];
   projects: readonly { id: string; name: string; type: ProjectType }[];

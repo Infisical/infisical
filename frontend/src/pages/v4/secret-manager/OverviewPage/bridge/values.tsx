@@ -8,6 +8,7 @@ import {
   useState
 } from "react";
 
+import { errorMessage } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import type { Secret } from "../secrets-model";
 import { type LoadedValues, valueKey } from "./view-model";
@@ -69,7 +70,7 @@ const ValueFetcher = ({
     if (data) onResult(keyOf(request), value ?? "");
     else if (error)
       onResult(keyOf(request), {
-        error: error instanceof Error ? error.message : "Could not read the value"
+        error: errorMessage(error) ?? "Could not read the value"
       });
   }, [data, error, isFetching]);
   return null;

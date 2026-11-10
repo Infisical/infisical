@@ -1,6 +1,6 @@
 import type { HoneyTokenManagedBy } from "@app/hooks/api/honeyTokens/enums";
 
-export type ResourceApplyOptions = { shouldOverwrite?: boolean };
+export type ResourceApplyOptions = { shouldOverwrite?: boolean; quiet?: boolean };
 
 export type ResourceKind =
   | "folder"

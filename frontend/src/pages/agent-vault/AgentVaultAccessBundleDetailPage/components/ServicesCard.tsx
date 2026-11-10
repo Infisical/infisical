@@ -188,6 +188,7 @@ export const ServicesCard = ({
     const filtered = services.filter((service) =>
       [
         service.name,
+        service.description ?? "",
         service.hostPattern,
         targetOf(service),
         service.type,
@@ -297,6 +298,8 @@ export const ServicesCard = ({
           <TableHeader>
             <TableRow>
               <TableHead
+                isTruncatable
+                className="w-2/5"
                 sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
                 onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
               >
@@ -331,15 +334,25 @@ export const ServicesCard = ({
           <TableBody>
             {displayed.map((service) => (
               <TableRow key={service.id}>
-                <TableCell>
+                <TableCell isTruncatable className="min-w-64">
                   <div className="flex items-center gap-2">
                     <ServiceIcon hostPattern={service.hostPattern} />
-                    {service.name}
+                    <span className="truncate" title={service.name}>
+                      {service.name}
+                    </span>
                     {service.credential.type === AgentVaultCredentialType.OAuth &&
                       service.credential.status &&
                       service.credential.status !== AgentVaultOauthStatus.Connected && (
                         <OAuthStatusBadge status={service.credential.status} />
                       )}
+                    {service.description && (
+                      <span
+                        className="min-w-0 flex-1 truncate text-sm text-muted"
+                        title={service.description}
+                      >
+                        {service.description}
+                      </span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>

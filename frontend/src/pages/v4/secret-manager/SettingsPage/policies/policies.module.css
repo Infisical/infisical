@@ -1,0 +1,55 @@
+.valueRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--v4-space-8);
+  width: 100%;
+  max-width: var(--v4-size-measure-field-wide);
+}
+.firstRowAction {
+  margin-top: calc(var(--v4-type-field-label-line-height) + var(--v4-space-field-label));
+}
+.fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.groupLabel {
+  font-family: var(--v4-type-field-label-font-family);
+  font-size: var(--v4-type-field-label-font-size);
+  font-weight: var(--v4-type-field-label-font-weight);
+  line-height: var(--v4-type-field-label-line-height);
+  color: var(--v4-ink);
+}
+.secondary {
+  color: var(--v4-muted);
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+}
+.constraintFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--v4-space-12);
+}
+.pathRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--v4-space-8);
+  color: var(--v4-muted);
+}
+.pathValue {
+  overflow: hidden;
+  color: var(--v4-ink);
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pathAdder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--v4-space-8);
+}

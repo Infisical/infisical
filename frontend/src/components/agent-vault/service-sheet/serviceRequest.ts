@@ -215,32 +215,39 @@ const buildMcpFields = (data: TServiceForm) => ({
 export const buildCreateServiceRequest = (
   accessBundleId: string,
   data: TServiceForm
-): TCreateAgentVaultServiceDTO =>
-  data.serviceType === AgentVaultServiceType.Mcp
+): TCreateAgentVaultServiceDTO => {
+  const description = data.description.trim() || undefined;
+  return data.serviceType === AgentVaultServiceType.Mcp
     ? {
         accessBundleId,
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
+        description,
         credential: buildMcpCredential(data)
       }
     : {
         accessBundleId,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
+        description,
         credential: buildHttpCredential(data)
       };
+};
 
 export const buildUpdateServiceRequest = (
   accessBundleId: string,
   service: TAgentVaultService,
   data: TServiceForm
-): TUpdateAgentVaultServiceDTO =>
-  data.serviceType === AgentVaultServiceType.Mcp
+): TUpdateAgentVaultServiceDTO => {
+  // Null rather than left out, so clearing the field removes the saved description.
+  const description = data.description.trim() || null;
+  return data.serviceType === AgentVaultServiceType.Mcp
     ? {
         accessBundleId,
         serviceId: service.id,
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
+        description,
         ...withCredential(buildMcpCredentialPatch(data, service))
       }
     : {
@@ -248,8 +255,10 @@ export const buildUpdateServiceRequest = (
         serviceId: service.id,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
+        description,
         credential: buildHttpCredentialPatch(data)
       };
+};
 
 /** The admin's own token or sign-in, used once to list the tools of a service whose members each provide theirs. */
 export type TMcpToolsOwnCredential = { token: string } | { authorizationId: string };
