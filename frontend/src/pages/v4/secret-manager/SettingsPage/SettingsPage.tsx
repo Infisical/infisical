@@ -7,6 +7,9 @@ import { useV4Adapter } from "../../data/adapters";
 import { orgHref } from "../../links";
 import { ProjectGeneralSettings } from "../../project/SettingsPage/general";
 import { ProjectSettingsLayout, type ProjectSettingsTab } from "../../project/SettingsPage/layout";
+import { EncryptionSettings } from "./encryption";
+import { WebhooksSettings } from "./webhooks";
+import { WorkflowIntegrationsSettings } from "./workflow-integrations";
 
 export const SettingsPage = () => {
   const { selectedTab } = useSearch({
@@ -22,10 +25,17 @@ export const SettingsPage = () => {
     {
       key: "tab-project-encryption",
       name: "Encryption",
-      hidden: project?.version !== ProjectVersion.V3
+      hidden: project?.version !== ProjectVersion.V3,
+      Body: EncryptionSettings
     },
-    { key: "tab-workflow-integrations", name: "Workflow integrations" },
-    { key: "tab-project-webhooks", name: "Webhooks" }
+    {
+      key: "tab-workflow-integrations",
+      name: "Workflow integrations",
+      description:
+        "Send access request, secret approval and secret sync error notifications to Slack or Microsoft Teams.",
+      Body: WorkflowIntegrationsSettings
+    },
+    { key: "tab-project-webhooks", name: "Webhooks", Body: WebhooksSettings }
   ];
   return (
     <ProjectSettingsLayout

@@ -6,6 +6,7 @@ import { integrationsLive } from "./integrations/live";
 import { kmsLive } from "./kms/live";
 import { orgLive } from "./org/live";
 import { pamLive } from "./pam/live";
+import { projectIntegrationsLive } from "./project-integrations/live";
 import { projectSettingsLive } from "./project-settings/live";
 import { projectsLive } from "./projects/live";
 import { secretScanningLive } from "./secret-scanning/live";
@@ -22,5 +23,6 @@ export const liveAdapters: V4Adapters = {
   access: accessLive,
   projects: projectsLive,
   projectSettings: projectSettingsLive,
+  projectIntegrations: projectIntegrationsLive,
   pam: pamLive
 };

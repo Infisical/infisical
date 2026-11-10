@@ -9,7 +9,7 @@ export const Route = createFileRoute(
 )({
   staticData: {
     readiness: "partial",
-    missing: ["Environments", "Tags", "Policies", "Encryption", "Workflow integrations", "Webhooks"]
+    missing: ["Environments", "Tags", "Policies"]
   },
   component: SettingsPage,
   validateSearch: zodValidator(z.object({ selectedTab: z.string().catch("tab-project-general") })),
