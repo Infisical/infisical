@@ -350,7 +350,12 @@ const rootKey = createFixtureStore<TEncryptionRootKey>({
   encryptionStrategy: RootKeyEncryptionStrategy.Software,
   active: { label: "root-2026-08", activatedAt: "2026-08-01T09:00:00Z" },
   staged: null,
-  expiring: null
+  expiring: {
+    label: "root-2026-02",
+    supersededAt: "2026-08-01T09:00:00Z",
+    lastResolvedAt: "2026-08-03T14:20:00Z",
+    expiresAt: "2026-12-01T09:00:00Z"
+  }
 });
 
 const rotations = createFixtureStore<TEncryptionKeyRotation[]>([
@@ -364,7 +369,7 @@ const rotations = createFixtureStore<TEncryptionKeyRotation[]>([
     label: "root-2026-02",
     activatedAt: "2026-02-01T09:00:00Z",
     supersededAt: "2026-08-01T09:00:00Z",
-    retiredAt: "2026-08-31T09:00:00Z"
+    retiredAt: null
   },
   {
     label: "root-2025-08",
@@ -598,17 +603,30 @@ export const adminDemo: AdminAdapter = {
   },
   useCreateEncryptionKeyRotation: fixtureMutation(() => {
     const label = `root-${new Date().toISOString().slice(0, 7)}-staged`;
+    const { expiring } = rootKey.get();
     rootKey.update((current) => ({
       ...current,
       staged: { label, createdAt: new Date().toISOString() }
     }));
-    return { label, key: "ZGVtby1zdGFnZWQtcm9vdC1rZXktbWF0ZXJpYWwtZm9yLXRoZS1kZW1v" };
+    return {
+      label,
+      key: "ZGVtby1zdGFnZWQtcm9vdC1rZXktbWF0ZXJpYWwtZm9yLXRoZS1kZW1v",
+      ...(expiring
+        ? {
+            removesExpiringKey: { label: expiring.label, lastResolvedAt: expiring.lastResolvedAt }
+          }
+        : {})
+    };
   }),
   useDeleteStagedEncryptionKey: fixtureMutation(() => {
     rootKey.update((current) => ({ ...current, staged: null }));
     return {};
   }),
-  useDeleteExpiringEncryptionKey: fixtureMutation(() => {
+  useDeleteExpiringEncryptionKey: fixtureMutation(({ label }) => {
+    const retiredAt = new Date().toISOString();
+    rotations.update((current) =>
+      current.map((entry) => (entry.label === label ? { ...entry, retiredAt } : entry))
+    );
     rootKey.update((current) => ({ ...current, expiring: null }));
     return {};
   }),
