@@ -18,6 +18,7 @@ export interface TabDefinition {
   content?: React.ReactNode;
   disabled?: boolean;
 }
+type TabsWidth = "content" | "full";
 export type TabsProps = Omit<
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root>,
   "onChange"
@@ -25,8 +26,16 @@ export type TabsProps = Omit<
   tabs?: TabDefinition[];
   label?: string;
   variant?: "underline" | "segmented";
+  width?: TabsWidth;
   onChange?: (value: string) => void;
 };
+
+const UNDERLINE_RULE_SPANS = true;
+
+const TabsWidthContext = React.createContext<{
+  width: TabsWidth;
+  orientation: TabsProps["orientation"];
+}>({ width: "content", orientation: "horizontal" });
 
 function Tabs({
   className,
@@ -34,6 +43,7 @@ function Tabs({
   tabs,
   label,
   variant = "underline",
+  width = "content",
   onChange,
   onValueChange,
   value,
@@ -55,36 +65,39 @@ function Tabs({
       ref={ref}
       data-slot="tabs"
       data-variant={variant}
+      data-width={width}
       orientation={orientation}
       value={selected}
       onValueChange={setSelected}
       className={cn(styles.tabs, className)}
       {...props}
     >
-      {tabs ? (
-        <>
-          <TabsList aria-label={label} variant={variant}>
-            {tabs.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled}>
-                {tab.label}
-                {tab.count !== undefined && (
-                  <Count tone="neutral" className={styles.tabCount}>
-                    {tab.count}
-                  </Count>
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          {tabs.some((tab) => tab.content != null) &&
-            tabs.map((tab) => (
-              <TabsContent key={tab.value} value={tab.value}>
-                {tab.content}
-              </TabsContent>
-            ))}
-        </>
-      ) : (
-        children
-      )}
+      <TabsWidthContext value={{ width, orientation }}>
+        {tabs ? (
+          <>
+            <TabsList aria-label={label} variant={variant}>
+              {tabs.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled}>
+                  {tab.label}
+                  {tab.count !== undefined && (
+                    <Count tone="neutral" className={styles.tabCount}>
+                      {tab.count}
+                    </Count>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {tabs.some((tab) => tab.content != null) &&
+              tabs.map((tab) => (
+                <TabsContent key={tab.value} value={tab.value}>
+                  {tab.content}
+                </TabsContent>
+              ))}
+          </>
+        ) : (
+          children
+        )}
+      </TabsWidthContext>
     </TabsPrimitive.Root>
   );
 }
@@ -115,6 +128,7 @@ function TabsList({
   VariantProps<typeof tabsListVariants> & {
     ref?: React.Ref<React.ComponentRef<typeof TabsPrimitive.List>>;
   }) {
+  const { width, orientation } = React.useContext(TabsWidthContext);
   const list = React.useRef<HTMLDivElement | null>(null);
   const [edge, setEdge] = React.useState({ before: false, after: false });
   const wheelCancelled = React.useRef(false);
@@ -197,11 +211,19 @@ function TabsList({
     return () => node.removeEventListener("wheel", wheel);
   }, []);
   return (
-    <div className={styles.tabsTrack} data-variant={variant}>
+    <div
+      className={styles.tabsTrack}
+      data-variant={variant}
+      data-width={width}
+      data-rule-spans={
+        (variant === "underline" && orientation !== "vertical" && UNDERLINE_RULE_SPANS) || undefined
+      }
+    >
       <TabsPrimitive.List
         ref={attach}
         data-slot="tabs-list"
         data-variant={variant}
+        data-width={width}
         data-moving
         data-before={edge.before || undefined}
         data-after={edge.after || undefined}

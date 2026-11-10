@@ -4,6 +4,7 @@ import type { V4Mode } from "../mode";
 import type { AccessAdapter } from "./access/contract";
 import type { AdminAdapter } from "./admin/contract";
 import type { AgentVaultAdapter } from "./agent-vault/contract";
+import type { BillingAdapter } from "./billing/contract";
 import type { CertificatesAdapter } from "./certificates/contract";
 import type { IntegrationsAdapter } from "./integrations/contract";
 import type { KmsAdapter } from "./kms/contract";
@@ -12,6 +13,7 @@ import type { PamAdapter } from "./pam/contract";
 import type { ProjectsAdapter } from "./projects/contract";
 import type { SecretScanningAdapter } from "./secret-scanning/contract";
 import type { SecretsAdapter } from "./secrets/contract";
+import type { SsoAdapter } from "./sso/contract";
 
 export type V4Adapters = {
   kms: KmsAdapter;
@@ -25,6 +27,8 @@ export type V4Adapters = {
   pam: PamAdapter;
   agentVault: AgentVaultAdapter;
   admin: AdminAdapter;
+  billing: BillingAdapter;
+  sso: SsoAdapter;
 };
 
 type V4RouteContext = { v4Mode?: V4Mode; adapters?: V4Adapters };

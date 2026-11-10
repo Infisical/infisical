@@ -44,7 +44,7 @@ import type {
   TSecretScanningFinding
 } from "@app/hooks/api/secretScanningV2/types";
 
-import { toast } from "../../access/toast";
+import { failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
@@ -153,9 +153,14 @@ const Findings = ({ projectId }: { projectId: string }) => {
   }, [data, isPlaceholderData, page, pageSize]);
 
   const setStatusFor = async (ids: readonly string[], next: SecretScanningFindingStatus) => {
-    await updateFindings.mutateAsync(
-      ids.map((findingId) => ({ findingId, projectId, status: next }))
-    );
+    try {
+      await updateFindings.mutateAsync(
+        ids.map((findingId) => ({ findingId, projectId, status: next }))
+      );
+    } catch (error) {
+      failed(`Failed to update ${ids.length === 1 ? "finding" : "findings"}`, error);
+      return;
+    }
     setOpened((current) =>
       current && ids.includes(current.id) ? { ...current, status: next } : current
     );

@@ -6,6 +6,7 @@ import { Button } from "@app/components/v4/ui/button";
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { SettingsCard } from "@app/components/v4/ui/settings-card";
+import { toast } from "@app/components/v4/ui/sonner";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
@@ -29,14 +30,43 @@ export default function Example() {
           onDiscard={() => setName(saved)}
           onSave={async () => {
             await wait(800);
-            if (!name.trim()) throw new Error("Enter a project name, then save again.");
+            if (!name.trim()) {
+              toast.error("Enter a project name, then save again.");
+              return;
+            }
             setSaved(name);
+            toast.success("Project name saved");
           }}
         >
           <Field label="Name">
             <Input value={name} onChange={(event) => setName(event.target.value)} />
           </Field>
         </SettingsCard>
+      </ExampleCell>
+      <ExampleCell label="Save blocked with a reason" align="stretch">
+        <SettingsCard
+          title="Default role"
+          description="The role new members get when they join."
+          dirty
+          saveDisabledReason="Billing is managed by your reseller, so roles can't change here."
+          onSave={() => undefined}
+        >
+          <Field label="Role">
+            <Input value="Developer" readOnly />
+          </Field>
+        </SettingsCard>
+      </ExampleCell>
+      <ExampleCell label="No body" align="stretch">
+        <SettingsCard
+          tone="danger"
+          title="Leave organization"
+          description="You lose access to every project in Acme Corp."
+          actions={
+            <Button variant="destructive" size="sm">
+              Leave Acme Corp
+            </Button>
+          }
+        />
       </ExampleCell>
       <ExampleCell label="Locked for non-admins" align="stretch">
         <SettingsCard

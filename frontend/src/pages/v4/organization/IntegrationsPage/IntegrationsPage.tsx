@@ -21,6 +21,7 @@ import type { TAppConnection } from "@app/hooks/api/appConnections/types";
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
+import { failed } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { projectBase } from "../../shell/navigation";
@@ -261,8 +262,16 @@ const AppConnectionsTab = ({ rows, isPending }: { rows: TAppConnection[]; isPend
           renderMenu: (r) => (
             <ConnectionMenu
               row={r}
-              onRotate={() => rotateCredentials.mutateAsync({ app: r.app, connectionId: r.id })}
-              onDelete={() => deleteConnection.mutateAsync({ app: r.app, connectionId: r.id })}
+              onRotate={() =>
+                rotateCredentials
+                  .mutateAsync({ app: r.app, connectionId: r.id })
+                  .catch((error) => failed("Failed to rotate credentials", error))
+              }
+              onDelete={() =>
+                deleteConnection
+                  .mutateAsync({ app: r.app, connectionId: r.id })
+                  .catch((error) => failed("Failed to delete connection", error))
+              }
             />
           )
         }}

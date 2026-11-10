@@ -45,6 +45,7 @@ import type { Organization } from "@app/hooks/api/organization/types";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
+import { failed, saved as savedToast } from "../../access/toast";
 import { ListToolbar } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
@@ -87,14 +88,23 @@ const OrganizationDetails = ({
       dirty={dirty}
       onDiscard={() => setDraft(saved)}
       onSave={async () => {
-        if (issues) throw new Error("Fix the highlighted fields, then save again.");
-        await updateOrganization.mutateAsync({
-          orgId: organization.id,
-          name: draft.name,
-          slug: draft.slug,
-          defaultMembershipRoleSlug: draft.role || undefined
-        });
+        if (issues) {
+          failed("Fix the highlighted fields, then save again.");
+          return;
+        }
+        try {
+          await updateOrganization.mutateAsync({
+            orgId: organization.id,
+            name: draft.name,
+            slug: draft.slug,
+            defaultMembershipRoleSlug: draft.role || undefined
+          });
+        } catch (error) {
+          failed("Failed to save organization details", error);
+          return;
+        }
         setSaved(draft);
+        savedToast("Organization details saved");
       }}
     >
       <Stack gap={16}>
@@ -315,7 +325,10 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (removing) deleteContact.mutateAsync({ orgId, incidentContactId: removing.id });
+                if (removing)
+                  deleteContact
+                    .mutateAsync({ orgId, incidentContactId: removing.id })
+                    .catch((error) => failed("Failed to remove incident contact", error));
                 setRemoving(null);
               }}
             >

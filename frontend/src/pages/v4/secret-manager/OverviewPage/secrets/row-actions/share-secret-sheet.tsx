@@ -30,6 +30,7 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { EMAIL_LIST_DELIMITER, isValidEmail } from "@app/helpers/email";
 import { SecretSharingAccessType } from "@app/hooks/api/secretSharing/types";
 
+import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import { DiscardDialog } from "../flows/shared";
 
@@ -139,7 +140,7 @@ export function ShareSecretSheet({
       });
       setForm(blank);
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : "Could not create the secret link.");
+      setFailure(errorMessage(error) ?? "Could not create the secret link.");
     }
   };
   return (

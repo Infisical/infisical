@@ -1,5 +1,6 @@
 import { Button } from "@app/components/v4/ui/button";
 import { Container, Grid, Inline, Measure, Stack } from "@app/components/v4/ui/layout";
+import { Heading, SmallText } from "@app/components/v4/ui/text";
 
 import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
@@ -21,6 +22,14 @@ export default function Example() {
             <Button variant="outline">Form guide</Button>
             <Button variant="outline">Input guide</Button>
             <Button variant="outline">Typography</Button>
+          </Inline>
+        </ExampleCell>
+        <ExampleCell align="stretch" label="Inline, baseline">
+          <Inline gap={6} align="baseline">
+            <Heading level={3} size="display">
+              $1,240
+            </Heading>
+            <SmallText muted>per month</SmallText>
           </Inline>
         </ExampleCell>
         <ExampleCell align="stretch" label="3 columns">

@@ -701,7 +701,8 @@ export const baselineActions = [
     referenceNames: ["ToggleGroup"],
     behavior: [
       "Radix type=single uses a string and type=multiple uses a string array with onValueChange. Items are joined into one segmented control by default (spacing 0), drawn like segmented Tabs: a tint track with 2px inset, borderless segments 4px shorter than the requested size, and the on item as the same raised chip as the segmented Tabs indicator. bare drops the track so the segments can sit on a track the host already draws, such as a toolbar; the host supplies the tint and padding. spacing={n} separates the items by n times 4px as standalone Toggles with the pressed fill. Shared size, variant and orientation apply to the group; sizes follow Button.",
-      "The group never shrinks below its items in a flex row (flex-shrink 0), so a sibling such as a full-width Select trigger takes the leftover space instead of sliding over the last segments."
+      "The group never shrinks below its items in a flex row (flex-shrink 0), so a sibling such as a full-width Select trigger takes the leftover space instead of sliding over the last segments.",
+      "width sizes the group and its items together, as on Tabs: the default, content, fits the track to its items, and full stretches the track to its container and gives every horizontal item an equal share. There is no full-width track with content-width items (rule/tab-width)."
     ],
     accessibility: [
       "Name the group and each item. Each item announces whether it is pressed, arrow keys move between items and disabled items stay unavailable."
@@ -761,6 +762,14 @@ export const baselineActions = [
         shown: [
           { value: "single", exampleId: "default", label: "single" },
           { value: "multiple", exampleId: "permissions", label: "multiple" }
+        ]
+      },
+      {
+        axis: "width",
+        expected: ["content", "full"],
+        shown: [
+          { value: "content", exampleId: "default", label: "single" },
+          { value: "full", exampleId: "default", label: "single, full width" }
         ]
       },
       {

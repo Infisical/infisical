@@ -1,5 +1,3 @@
-import type { AxiosError } from "axios";
-
 import { connectionCreation } from "@app/components/v4/patterns/app-connection-form";
 import {
   ProjectPermissionAppConnectionActions,
@@ -9,6 +7,7 @@ import type { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
 
 import { useProjectPermission } from "../../../../access/permissions";
+import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import { CONNECTION_PRESETS } from "../../../../data/integrations/connection-presets";
 
@@ -40,8 +39,8 @@ export const useConnectionCreation = (
           description: (description as string | undefined)?.trim() || null,
           projectId
         } as TCreateAppConnectionDTO)
-        .catch((error: AxiosError<{ message?: string }>) => {
-          throw new Error(error.response?.data?.message ?? error.message);
+        .catch((error: unknown) => {
+          throw new Error(errorMessage(error));
         });
       onCreated({ id: created.id, name: created.name, app });
       return created;

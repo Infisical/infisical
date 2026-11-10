@@ -55,6 +55,7 @@ Exports: Textarea. Source TypeScript defines the API.
 
 - Textarea forwards native value/defaultValue, onChange events and the textarea ref. Field association and invalid state reach the leaf; content sizing keeps a minimum editing area.
 - mono sets the mono type style (14/20) and a 2-space tab size, for machine text such as policies, HCL or JSON.
+- rows sets the starting height: that many lines plus the field's padding and border (field-sizing content would otherwise ignore the attribute). Content still grows the field past it, and without rows the minimum editing area stays two space-32 steps.
 
 ## Accessibility
 
@@ -178,6 +179,42 @@ export default function Example() {
         </div>
         <figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption>
       </figure>
+    </div>
+  );
+}
+```
+
+### Starting height from rows
+
+Save this example at `src/pages/design-system/examples/textarea/rows.tsx`; its relative imports are generated for that exact path. States: default, controlled.
+
+Registry items used: @infisical/label, @infisical/textarea. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+
+import { Label } from "../../../../components/v4/ui/label";
+import { Textarea } from "../../../../components/v4/ui/textarea";
+
+export default function Example() {
+  const [value, setValue] = React.useState("");
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] items-start gap-x-6 gap-y-8">
+      <div className="space-y-2">
+        <Label htmlFor="rows-default">Note</Label>
+        <Textarea id="rows-default" placeholder="Add a note" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="rows-six">Certificate chain</Label>
+        <Textarea
+          id="rows-six"
+          rows={6}
+          mono
+          placeholder="Paste a PEM certificate chain"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+        />
+      </div>
     </div>
   );
 }

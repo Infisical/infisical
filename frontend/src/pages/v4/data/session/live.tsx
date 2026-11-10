@@ -1,5 +1,5 @@
 import { type ReactNode, useRef } from "react";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 
 import { userKeys } from "@app/hooks/api";
 import {
@@ -11,6 +11,7 @@ import { useGetUserProjects } from "@app/hooks/api/projects/queries";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 
 import { V4PageLoader } from "../../V4PageLoader";
+import { liveQueryClient } from "../live-query-client";
 import { type V4Session, V4SessionContext } from "./contract";
 
 export const LiveSessionProvider = ({
@@ -58,5 +59,9 @@ export const LiveSessionProvider = ({
     };
   }
   if (!last.current) return <V4PageLoader />;
-  return <V4SessionContext value={last.current}>{children}</V4SessionContext>;
+  return (
+    <QueryClientProvider client={liveQueryClient}>
+      <V4SessionContext value={last.current}>{children}</V4SessionContext>
+    </QueryClientProvider>
+  );
 };
