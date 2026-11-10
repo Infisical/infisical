@@ -9,8 +9,6 @@ import { logger } from "@app/lib/logger";
 
 import {
   buildInstanceConfigCoreDataAccess,
-  noInstanceConfigCoreLocks,
-  PostgresInstanceConfigCoreLocks,
   TInstanceConfigCoreDataAccess
 } from "./data-access/instance-config-core-data-access";
 import { InstanceConfigDataAccess } from "./data-access/instance-config-data-access";
@@ -76,10 +74,8 @@ export type TInstanceConfigCoreDeps = (
 };
 
 export const buildInstanceConfigCoreDataAccessDeps = (db: DataAccessDb): TInstanceConfigCoreDataAccessDeps => ({
-  transactionRunner: new TransactionRunner(db, (trxDb) =>
-    buildInstanceConfigCoreDataAccess(trxDb, new PostgresInstanceConfigCoreLocks(trxDb.writer()))
-  ),
-  dataAccess: buildInstanceConfigCoreDataAccess(db, noInstanceConfigCoreLocks)
+  transactionRunner: new TransactionRunner(db, (trxDb) => buildInstanceConfigCoreDataAccess(trxDb)),
+  dataAccess: buildInstanceConfigCoreDataAccess(db)
 });
 
 // The instance configuration: the super_admin row (settings, Slack and Teams credentials, env overrides), cached for

@@ -9,7 +9,7 @@ import { InstanceConfigChange } from "../model/instance-config-change";
 
 export type TInstanceConfigDataAccess = {
   findById(options?: TReadOptions): Promise<InstanceConfig | undefined>;
-  // Run inside a transaction holding the init lock: returns the existing row or inserts this one.
+  // Returns the existing row, or inserts this one. Safe for any number of pods booting at once.
   createIfMissing(initial: TSuperAdminUpdate & { id: string }): Promise<InstanceConfig>;
   update(change: InstanceConfigChange): Promise<void>;
 };
@@ -77,10 +77,9 @@ export class InstanceConfigDataAccess implements TInstanceConfigDataAccess {
   }
 
   async createIfMissing(initial: TSuperAdminUpdate & { id: string }): Promise<InstanceConfig> {
-    const existing = await this.findById();
-    if (existing) return existing;
     try {
-      // A pod of the previous release creates the row without this conflict clause, under the same lock.
+      // A concurrent boot's insert waits for the first to commit and then does nothing; the read below runs as a new
+      // statement, so under Read Committed it sees that row. Read-then-insert would fail one boot on the primary key.
       await this.db
         .writer()(TableName.SuperAdmin)
         .insert(initial as never)

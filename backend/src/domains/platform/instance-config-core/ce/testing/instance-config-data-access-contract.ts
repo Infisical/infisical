@@ -10,10 +10,9 @@ export type TInstanceConfigContractHarness = {
 };
 
 const createRow = (deps: TInstanceConfigCoreDataAccessDeps, fipsEnabled = false) =>
-  deps.transactionRunner.run(async ({ dataAccess }) => {
-    await dataAccess.locks.init();
-    return dataAccess.instanceConfig.createIfMissing(InstanceConfig.initial({ fipsEnabled }));
-  });
+  deps.transactionRunner.run(({ dataAccess }) =>
+    dataAccess.instanceConfig.createIfMissing(InstanceConfig.initial({ fipsEnabled }))
+  );
 
 // What every InstanceConfigDataAccess, in memory or on Postgres, must do.
 export const describeInstanceConfigDataAccessContract = (

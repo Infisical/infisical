@@ -34,8 +34,8 @@ saves through `updateConfig`.
   missing (a new instance), otherwise `fipsEnabled`. Any other error is thrown, so a database failure at boot can never
   be mistaken for a new FIPS deployment. `crypto.initialize` and `initEnvConfig` take the result; neither touches the
   database.
-- **The init lock id is frozen**: `pg_advisory_xact_lock(2024)` (`PgSqlLock.SuperAdminInit`), which pods of the
-  previous release take before they create the row. The insert also ignores a conflict on `id`.
+- **Create the row with `INSERT ... ON CONFLICT (id) DO NOTHING`, then read it** (`createIfMissing`). Concurrent
+  boots each get the one row; read-then-insert would fail all but one of them on the primary key.
 - **Keep `ce/module.ts` cheap to import.** `main.ts` imports it before anything else boots. `lib/config/env.ts` reaches
   the domain only as `TInstanceConfigEnv`, built in `domains.ts`; `@app/lib/cron/*` and the key store come in through
   deps.

@@ -24,12 +24,9 @@ export class InstanceConfigService {
   // Creates the row on a new instance. Runs before KMS Core starts, so it never encrypts or decrypts.
   async initialize(): Promise<void> {
     await this.deps.cache.clear();
-    await this.deps.transactionRunner.run(async ({ dataAccess }) => {
-      await dataAccess.locks.init();
-      return dataAccess.instanceConfig.createIfMissing(
-        InstanceConfig.initial({ fipsEnabled: this.deps.isFipsModeEnabled() })
-      );
-    });
+    await this.deps.transactionRunner.run(({ dataAccess }) =>
+      dataAccess.instanceConfig.createIfMissing(InstanceConfig.initial({ fipsEnabled: this.deps.isFipsModeEnabled() }))
+    );
   }
 
   async getServerConfig(): Promise<TServerConfigView> {
