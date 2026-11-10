@@ -36,7 +36,6 @@ export const registerServeUI = async (
   }: {
     standaloneMode?: boolean;
     dir: string;
-    // Passed in: this plugin is registered beside the routes plugin, so it cannot see server.services.
     instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
   }
 ) => {

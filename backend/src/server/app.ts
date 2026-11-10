@@ -15,11 +15,13 @@ import fastify from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
-import type { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
+import { createDomains } from "@app/domains/domains";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
+import { cronJobFactory } from "@app/lib/cron/cron-job";
 import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { Redlock } from "@app/lib/red-lock";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TQueueServiceFactory } from "@app/queue";
@@ -156,24 +158,37 @@ export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore, redi
       })
     });
 
-    let instanceConfigCoreDomain: TInstanceConfigCoreDomain | undefined;
+    const redlock = new Redlock([redis], { retryCount: 0 });
+    const cronJob = cronJobFactory({
+      redis,
+      redlock,
+      schedulingEnabled: envConfig.isGeneralWorkerRunModeEnabled,
+      maxJitterMs: envConfig.isDevelopmentMode ? 0 : undefined
+    });
+    if (envConfig.isGeneralWorkerRunModeEnabled) {
+      cronJob.start();
+    }
+
+    // Before the routes: legacy services depend on the domains, and queue workers read the license as soon as they
+    // start. Built here rather than in registerRoutes so plugins registered beside it (serve-ui) can use them too.
+    const domains = createDomains({ db, keyStore, queueService: queue, cronJob, envConfig });
+    await domains.license.start();
+
     await server.register(registerRoutes, {
       smtp,
       queue,
       db,
       auditLogDb,
       keyStore,
-      redis,
       clickhouse,
       envConfig,
-      onInstanceConfigCore: (domain) => {
-        instanceConfigCoreDomain = domain;
-      }
+      domains,
+      cronJob
     });
 
-    if (appCfg.isApiRunModeEnabled && instanceConfigCoreDomain) {
+    if (appCfg.isApiRunModeEnabled) {
       await server.register(registerServeUI, {
-        instanceConfigCoreDomain,
+        instanceConfigCoreDomain: domains.instanceConfigCore.service,
         standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
         dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
       });

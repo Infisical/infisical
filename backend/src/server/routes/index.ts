@@ -1,13 +1,11 @@
 import type { ClickHouseClient } from "@clickhouse/client";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
-import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
-import { createDomains } from "@app/domains/domains";
-import type { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
+import { TDomains } from "@app/domains/domains";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
@@ -245,12 +243,11 @@ import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
-import { cronJobFactory } from "@app/lib/cron/cron-job";
+import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { logger } from "@app/lib/logger";
-import { Redlock } from "@app/lib/red-lock";
 import { RunMode } from "@app/lib/types";
 import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbeat";
 import { TQueueServiceFactory } from "@app/queue";
@@ -640,50 +637,28 @@ export const registerRoutes = async (
     smtp: smtpService,
     queue: queueService,
     keyStore,
-    redis,
     clickhouse,
     envConfig,
-    onInstanceConfigCore
+    domains,
+    cronJob
   }: {
     auditLogDb?: Knex;
     db: Knex;
     smtp: TSmtpService;
     queue: TQueueServiceFactory;
     keyStore: TKeyStoreFactory;
-    redis: Redis | Cluster;
     clickhouse: ClickHouseClient | null;
     envConfig: TEnvConfig;
-    // Hands Instance Config Core to plugins app.ts registers beside this one, which cannot see server.services.
-    onInstanceConfigCore?: (instanceConfigCoreDomain: TInstanceConfigCoreDomain) => void;
+    // Built in main(), before this plugin, so plugins registered beside it can use them too.
+    domains: TDomains;
+    cronJob: TCronJobFactory;
   }
 ) => {
   const appCfg = getConfig();
 
-  const redlock = new Redlock([redis], { retryCount: 0 });
-  const cronJob = cronJobFactory({
-    redis,
-    redlock,
-    schedulingEnabled: envConfig.isGeneralWorkerRunModeEnabled,
-    maxJitterMs: envConfig.isDevelopmentMode ? 0 : undefined
-  });
-  if (envConfig.isGeneralWorkerRunModeEnabled) {
-    cronJob.start();
-  }
-
-  // Before any service: legacy services depend on the domains, and queue workers read the license as
-  // soon as they start.
-  const domains = createDomains({
-    db,
-    keyStore,
-    queueService,
-    cronJob,
-    envConfig
-  });
-  await domains.license.start();
   const licenseDomain = domains.license.service;
   const kmsCoreDomain = domains.kmsCore.service;
   const instanceConfigCoreDomain = domains.instanceConfigCore.service;
-  onInstanceConfigCore?.(instanceConfigCoreDomain);
   const organizationsProjectsDomain = domains.organizationsProjects.service;
   const certManagerDomain = domains.certManager.service;
 
