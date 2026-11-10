@@ -8,6 +8,7 @@ import { orgLive } from "./org/live";
 import { pamLive } from "./pam/live";
 import { projectSettingsLive } from "./project-settings/live";
 import { projectsLive } from "./projects/live";
+import { secretPoliciesLive } from "./secret-policies/live";
 import { secretScanningLive } from "./secret-scanning/live";
 import { secretsLive } from "./secrets/live";
 
@@ -22,5 +23,6 @@ export const liveAdapters: V4Adapters = {
   access: accessLive,
   projects: projectsLive,
   projectSettings: projectSettingsLive,
-  pam: pamLive
+  pam: pamLive,
+  secretPolicies: secretPoliciesLive
 };

@@ -9,6 +9,7 @@ import type { OrgAdapter } from "./org/contract";
 import type { PamAdapter } from "./pam/contract";
 import type { ProjectSettingsAdapter } from "./project-settings/contract";
 import type { ProjectsAdapter } from "./projects/contract";
+import type { SecretPoliciesAdapter } from "./secret-policies/contract";
 import type { SecretScanningAdapter } from "./secret-scanning/contract";
 import type { SecretsAdapter } from "./secrets/contract";
 
@@ -23,6 +24,7 @@ export type V4Adapters = {
   projects: ProjectsAdapter;
   projectSettings: ProjectSettingsAdapter;
   pam: PamAdapter;
+  secretPolicies: SecretPoliciesAdapter;
   agentVault: AgentVaultAdapter;
 };
 

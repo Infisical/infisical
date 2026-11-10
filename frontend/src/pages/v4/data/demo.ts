@@ -8,6 +8,7 @@ import { orgDemo } from "./org/demo";
 import { pamDemo } from "./pam/demo";
 import { projectSettingsDemo } from "./project-settings/demo";
 import { projectsDemo } from "./projects/demo";
+import { secretPoliciesDemo } from "./secret-policies/demo";
 import { secretScanningDemo } from "./secret-scanning/demo";
 import { secretsDemo } from "./secrets/demo";
 
@@ -22,5 +23,6 @@ export const demoAdapters: V4Adapters = {
   access: accessDemo,
   projects: projectsDemo,
   projectSettings: projectSettingsDemo,
-  pam: pamDemo
+  pam: pamDemo,
+  secretPolicies: secretPoliciesDemo
 };

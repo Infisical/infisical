@@ -7,6 +7,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { orgHref } from "../../links";
 import { ProjectGeneralSettings } from "../../project/SettingsPage/general";
 import { ProjectSettingsLayout, type ProjectSettingsTab } from "../../project/SettingsPage/layout";
+import { PoliciesSettings } from "./policies";
 
 export const SettingsPage = () => {
   const { selectedTab } = useSearch({
@@ -18,7 +19,7 @@ export const SettingsPage = () => {
     { key: "tab-project-general", name: "General", Body: ProjectGeneralSettings },
     { key: "tab-secret-environments", name: "Environments" },
     { key: "tab-secret-tags", name: "Tags" },
-    { key: "tab-secret-policies", name: "Policies" },
+    { key: "tab-secret-policies", name: "Policies", Body: PoliciesSettings },
     {
       key: "tab-project-encryption",
       name: "Encryption",
