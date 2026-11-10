@@ -466,7 +466,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
               </>
             )
           }}
-          footer={notice || undefined}
+          persistentStatus={notice || undefined}
           empty={
             isFiltered && dataSources.length ? (
               <EmptyState

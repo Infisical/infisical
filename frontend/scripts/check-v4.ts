@@ -571,6 +571,57 @@ export const rawTablesInCards = (text: string) => {
   });
 };
 
+const sentenceLiteral = /(["'`])[^"'`\n]*[A-Za-z]\s[^"'`\n]*\1/;
+
+/** State set to sentence text by a handler and rendered in a table or list status footer or in a role="status" element. */
+export const actionFeedbackInStatus = (text: string) => {
+  const feedback = [
+    ...text.matchAll(/\[\s*(\w+)\s*,\s*(set\w+)\s*\]\s*=\s*(?:React\.)?useState\b/g)
+  ]
+    .filter((state) =>
+      [...text.matchAll(new RegExp("\\b" + state[2] + "\\(", "g"))].some((call) => {
+        const open = (call.index ?? 0) + call[0].length - 1;
+        let argument = text.slice(open, braceEnd(text, open));
+        while (/\$\{[^{}]*\}/.test(argument)) argument = argument.replace(/\$\{[^{}]*\}/g, "");
+        return sentenceLiteral.test(argument);
+      })
+    )
+    .map((state) => new RegExp("\\b" + state[1] + "\\b"));
+  if (!feedback.length) return [];
+  const shows = (value: string) => feedback.some((name) => name.test(value));
+  const found: { index: number; text: string }[] = [];
+  const slots: { start: number; end: number }[] = [];
+  [...text.matchAll(/<(DataTable|DataGrid|List)(?=[\s>/])/g)].forEach((match) => {
+    const start = match.index ?? 0;
+    const tag = text.slice(start, jsxTagEnd(text, start) + 1);
+    const slot = tag.match(/\s(persistentStatus|footer)=\{/);
+    if (!slot) return;
+    const open = start + (slot.index ?? 0) + slot[0].length - 1;
+    const value = text.slice(open, braceEnd(text, open) + 1);
+    if (!shows(value)) return;
+    slots.push({ start: open, end: open + value.length });
+    found.push({ index: open - slot[1].length - 1, text: slot[1] + "=" + value.split("\n")[0] });
+  });
+  [
+    ...text.matchAll(/<(ListFooter)(?=[\s>/])|\srole=(?:"status"|\{\s*["'`]status["'`]\s*\})/g)
+  ].forEach((match) => {
+    const at = match.index ?? 0;
+    const start = match[1] ? at : text.lastIndexOf("<", at);
+    const name = text.slice(start + 1).match(/^[\w.]+/)?.[0];
+    if (!name || slots.some((slot) => slot.start < start && slot.end > start)) return;
+    const content = text.slice(jsxTagEnd(text, start) + 1, elementEnd(text, name, start));
+    if (shows(content))
+      found.push({
+        index: start,
+        text: text
+          .slice(start, jsxTagEnd(text, start) + 1)
+          .split("\n")[0]
+          .trim()
+      });
+  });
+  return found;
+};
+
 /** Tailwind has-* variants, including group-has, peer-has, not-has and arbitrary :has() variants. */
 export const hasVariants = (value: string): string[] =>
   value
@@ -964,6 +1015,14 @@ export const v4Checks: readonly V4Check[] = [
     appliesTo: (file) =>
       isComposition(file) && !file.startsWith("src/pages/v4/secret-manager/OverviewPage/"),
     source: rawTablesInCards
+  },
+  {
+    id: "action-feedback-in-status",
+    rule: "toast-action-feedback",
+    message:
+      'Report an action result (copied, saved, deleted, moved, uploaded, failed) with a toast, never in a table or list status footer or a role="status" line. persistentStatus and footer hold state that must stay visible, such as Showing 5 of 120 after filter.',
+    appliesTo: (file) => isComposition(file) || file.startsWith("src/components/v4/patterns/"),
+    source: actionFeedbackInStatus
   },
   {
     id: "v4-path-literal",

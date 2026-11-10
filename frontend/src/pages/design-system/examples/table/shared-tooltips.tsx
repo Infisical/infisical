@@ -1,5 +1,3 @@
-import * as React from "react";
-
 import {
   DataTable,
   type DataTableColumn,
@@ -8,6 +6,7 @@ import {
 import { DropdownMenuItem } from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Inline } from "@app/components/v4/ui/layout";
+import { toast } from "@app/components/v4/ui/sonner";
 import { StatusText } from "@app/components/v4/ui/text";
 import { TooltipProvider, TooltipText } from "@app/components/v4/ui/tooltip";
 
@@ -43,7 +42,6 @@ const rows: Row[] = names.map((name, index) => ({
 }));
 
 export default function SharedTooltips() {
-  const [status, setStatus] = React.useState("");
   const columns: DataTableColumn<Row>[] = [
     {
       id: "name",
@@ -102,17 +100,17 @@ export default function SharedTooltips() {
       {
         label: "Copy secret",
         icon: "copy",
-        onSelect: (row) => setStatus(`Copied the fabricated value of ${row.name}.`)
+        onSelect: (row) => toast(`Copied the fabricated value of ${row.name}.`)
       },
       {
         label: "Rotate now",
         icon: "sync",
         disabledReason: (row) => (row.locked ? "Locked secrets can't be rotated" : undefined),
-        onSelect: (row) => setStatus(`Rotated ${row.name}.`)
+        onSelect: (row) => toast(`Rotated ${row.name}.`)
       }
     ],
     renderMenu: (row) => (
-      <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+      <DropdownMenuItem onSelect={() => toast(`Opened ${row.name}.`)}>
         <Icon name="eye" />
         Open secret
       </DropdownMenuItem>
@@ -128,9 +126,6 @@ export default function SharedTooltips() {
         rowLabel={(row) => row.name}
         rowActions={actions}
       />
-      <p role="status" className="sr-only">
-        {status}
-      </p>
     </TooltipProvider>
   );
 }

@@ -501,7 +501,7 @@ export const PamAccountsPage = () => {
                 <AccountMenu row={row} onCopy={copyId} />
               )
           }}
-          footer={notice || undefined}
+          persistentStatus={notice || undefined}
           empty={empty}
         />
       </Stack>

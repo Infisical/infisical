@@ -63,12 +63,14 @@ const Toast = ({ item, onDismiss }: { item: ToastItem; onDismiss?: (id: string) 
       <div className={styles.toastBody}>
         <div className={styles.toastTitle}>{item.title}</div>
         {item.description && <div className={styles.toastDescription}>{item.description}</div>}
+        {item.action && (
+          <div className={styles.toastActions}>
+            <Button type="button" size="sm" variant="ghost" onClick={item.action.onClick}>
+              {item.action.label}
+            </Button>
+          </div>
+        )}
       </div>
-      {item.action && (
-        <Button type="button" size="sm" variant="link" onClick={item.action.onClick}>
-          {item.action.label}
-        </Button>
-      )}
       {onDismiss && item.tone !== "loading" && (
         <Button
           type="button"

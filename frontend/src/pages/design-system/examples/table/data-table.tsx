@@ -54,7 +54,7 @@ export default function Example() {
           height={320}
           virtual
           onSortChange={setSort}
-          footer={`${rows.length} resources. ${selected.length} selected.`}
+          persistentStatus={`${rows.length} resources. ${selected.length} selected.`}
         />
       </ExampleStage>
     </ExampleCell>

@@ -5,10 +5,11 @@
 }
 .toast[data-sonner-toast] {
   width: var(--width);
-  display: flex;
-  align-items: flex-start;
-  gap: var(--v4-space-8);
-  padding: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  row-gap: var(--v4-space-8);
+  padding: var(--v4-space-12);
   border: 1px solid var(--v4-toast-line);
   border-radius: 0;
   background: var(--v4-toast-bg);
@@ -25,6 +26,7 @@
   position: relative;
   width: var(--v4-size-icon);
   height: var(--v4-type-row-title-line-height);
+  margin-inline-end: var(--v4-space-8);
   color: var(--v4-toast-muted);
 }
 .icon[data-icon] svg {
@@ -38,8 +40,8 @@
   color: var(--v4-toast-bad);
 }
 .content[data-content] {
+  grid-column: -2 / -1;
   display: flex;
-  flex: 1 1 auto;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
@@ -59,17 +61,26 @@
   letter-spacing: var(--v4-type-small-letter-spacing);
   color: var(--v4-toast-muted);
 }
-/* v4-check-ignore cursor-pointer -- the toast action is unstyled accent text, so it reads as a link */
 .action[data-button] {
-  flex: none;
-  margin-inline-start: auto;
+  grid-column: -2 / -1;
+  justify-self: start;
+  min-height: var(--v4-size-control-default);
+  margin-inline-start: calc(-1 * var(--v4-space-control-inline-sm));
   border: 0;
-  padding: 0;
+  padding-block: 0;
+  padding-inline: var(--v4-space-control-inline-sm);
   background: none;
-  cursor: pointer;
-  color: var(--v4-accent-fg);
-  font-family: var(--v4-type-row-title-font-family);
-  font-size: var(--v4-type-row-title-font-size);
-  line-height: var(--v4-type-row-title-line-height);
-  font-weight: var(--v4-type-row-title-font-weight);
+  color: var(--v4-toast-text);
+  font-family: var(--v4-type-label-font-family);
+  font-size: var(--v4-type-label-font-size);
+  line-height: var(--v4-type-label-line-height);
+  font-weight: var(--v4-type-label-font-weight);
+  letter-spacing: var(--v4-type-label-letter-spacing);
+}
+.action[data-button]:hover {
+  background: var(--v4-action-ghost-hover);
+}
+.action[data-button]:focus-visible {
+  outline: var(--v4-size-focus-ring) solid var(--v4-ink);
+  outline-offset: var(--v4-size-focus-ring);
 }
