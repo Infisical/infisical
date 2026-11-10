@@ -27,7 +27,7 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
 ## Prerequisites
 
 - A Secrets Management project on Infisical with Access Requests available
-- A ServiceNow instance where you can install a scoped application, create users, edit groups, and activate flows in Flow Designer (the `flow_designer` role)
+- A ServiceNow instance where you can install a scoped application, create users, create groups, and activate flows in Flow Designer (the `flow_designer` role)
 - A ServiceNow instance that Infisical can reach (if your instance restricts inbound traffic, allow [Infisical's IP addresses](/documentation/setup/networking) on its IP access control list)
 - Outbound HTTPS access from your ServiceNow instance to your Infisical URL
 - If you self-host Infisical, a [`SITE_URL`](/self-hosting/configuration/envars) that starts with `https://`, because ServiceNow notifies Infisical at that address
@@ -53,7 +53,7 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
     | Role | Assign it to |
     | --- | --- |
     | `x_infis_approvals.admin` | The people who manage the integration. The role grants full access to every request, including delete, and the **Admin Console**. |
-    | `x_infis_approvals.approver` | Every approver in a flow you build. Members of the **Infisical Approvers** group, which you set up in [Step 3](#step-3-set-up-the-approval-flow), get the role from the group. |
+    | `x_infis_approvals.approver` | Every approver. Members of the approvers group you create in [Step 3](#create-a-group-for-your-approvers) get the role from the group. |
     | `x_infis_approvals.viewer` | People who only need to read requests and their audit trail. |
     | `x_infis_approvals.secret-manager-integration` | Only the integration user that Infisical signs in as, which you create in [Step 2](#step-2-connect-infisical-to-servicenow). |
 
@@ -68,11 +68,11 @@ Infisical uses this connection to create each record and to read each decision b
 
 ## Step 3: Set up the approval flow
 
-The Infisical application includes an approval flow, **Infisical - Default Approval**, and a group of approvers, **Infisical Approvers**. The flow asks the members of the group to approve each new request, so the first member who approves or rejects the request decides it. In the final step, the flow then notifies Infisical of the decision.
+The Infisical application includes an approval flow, **Infisical - Default Approval**. The flow asks every user with the `x_infis_approvals.approver` role to approve each new request, so the first approver who approves or rejects the request decides it. In the final step, the flow notifies Infisical of the decision.
 
-When you install the application, the group has no members and the flow is inactive. Add your approvers to the group, then activate the flow.
+When you install the application, the flow is inactive. Create a group for your approvers, then activate the flow.
 
-### Add your approvers to the group
+### Create a group for your approvers
 
 <Steps>
   <Step>
@@ -82,28 +82,39 @@ When you install the application, the group has no members and the flow is inact
 
   </Step>
   <Step>
-    Search the list for `Infisical Approvers` and open the group.
+    Select **New**.
 
-    ![Infisical Approvers Group](/images/platform/workflow-integrations/servicenow-integration/infisical-approvers-search.png)
-
-  </Step>
-  <Step>
-    Select **Edit...** on the **Group Members** tab.
-
-    ![Group Members Tab](/images/platform/workflow-integrations/servicenow-integration/infisical-approvers-members-tab.png)
+    ![New Group](/images/platform/workflow-integrations/servicenow-integration/groups-new.png)
 
   </Step>
   <Step>
-    Move each approver from **Collection** to **Group Members List**, then select **Save**.
+    Enter a **Name** for the group, such as `Infisical Approvers Group`, then select **Submit**.
 
-    ![Edit Group Members](/images/platform/workflow-integrations/servicenow-integration/infisical-approvers-edit-members.png)
+    ![Create the Group](/images/platform/workflow-integrations/servicenow-integration/approvers-group-create.png)
 
+  </Step>
+  <Step>
+    Search the list for the name you entered and open the group.
+
+    ![Approvers Group in the Groups List](/images/platform/workflow-integrations/servicenow-integration/approvers-group-search.png)
+
+  </Step>
+  <Step>
+    Select **Edit...** on the **Roles** tab.
+
+    ![Roles Tab](/images/platform/workflow-integrations/servicenow-integration/approvers-group-roles-tab.png)
+
+  </Step>
+  <Step>
+    Move `x_infis_approvals.approver` from **Collection** to **Roles List**, then select **Save**.
+
+    ![Edit Group Roles](/images/platform/workflow-integrations/servicenow-integration/approvers-group-edit-roles.png)
+
+  </Step>
+  <Step>
+    Select **Edit...** on the **Group Members** tab, move each approver from **Collection** to **Group Members List**, then select **Save**.
   </Step>
 </Steps>
-
-<Note>
-  The **Infisical Approvers** group already has the `x_infis_approvals.approver` role. Add other roles on the **Roles** tab if you need them.
-</Note>
 
 ### Activate the flow
 
@@ -144,7 +155,7 @@ To route requests with a flow of your own, such as one with different approvers 
     Trigger the flow when a record is created in **Infisical Access Request [x_infis_approvals_access_request]**. To handle only some requests, add a trigger condition such as `Environment is prod` or `Secret Path contains /payments`.
   </Step>
   <Step>
-    Route the record with **Ask for Approval** steps. Every approver needs the `x_infis_approvals.approver` role, which members of the **Infisical Approvers** group already have.
+    Route the record with **Ask for Approval** steps. Every approver needs the `x_infis_approvals.approver` role, which members of the [group you created](#create-a-group-for-your-approvers) already have.
   </Step>
   <Step>
     End every branch, approved and rejected alike, with the **Infisical - Notify Decision** action.
