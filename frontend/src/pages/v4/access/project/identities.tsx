@@ -265,7 +265,7 @@ export const ProjectIdentitiesTab = () => {
               disabled={!canCreate}
               onClick={() => setAdding(true)}
             >
-              Add machine identity to project
+              {`Add machine identity to ${accessNoun(scope.projectType)}`}
             </Button>
           </Gate>
         }

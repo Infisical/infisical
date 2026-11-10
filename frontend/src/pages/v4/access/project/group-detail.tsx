@@ -444,7 +444,7 @@ export const ProjectGroupDetail = () => {
                   onSelect={() => setRemoving(true)}
                 >
                   <Icon name="trash" />
-                  Remove from project
+                  {`Remove from ${accessNoun(scope.projectType)}`}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

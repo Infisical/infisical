@@ -189,7 +189,7 @@ export const ProjectRolesTab = () => {
               disabled={!canCreate}
               onClick={() => openSheet({ kind: "create" })}
             >
-              Add project role
+              {`Add ${accessLabel(scope.projectType, "role").toLowerCase()}`}
             </Button>
           </Gate>
         }

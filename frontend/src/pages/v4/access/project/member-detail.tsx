@@ -143,7 +143,7 @@ export const ProjectMemberDetail = () => {
             >
               <Badge tone="info">
                 <Icon name="info" size={12} />
-                Your project membership
+                {`Your ${accessNoun(scope.projectType)} membership`}
               </Badge>
             </Tooltip>
           ) : (
@@ -179,7 +179,7 @@ export const ProjectMemberDetail = () => {
                   onSelect={() => setRemoving(true)}
                 >
                   <Icon name="trash" />
-                  Remove user from project
+                  {`Remove user from ${accessNoun(scope.projectType)}`}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

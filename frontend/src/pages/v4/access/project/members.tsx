@@ -143,7 +143,7 @@ export const ProjectMembersTab = () => {
           onSelect={() => setRemoving(member)}
         >
           <Icon icon={UserXIcon} />
-          Remove user from project
+          {`Remove user from ${accessNoun(scope.projectType)}`}
         </DropdownMenuItem>
       </>
     )
@@ -205,7 +205,7 @@ export const ProjectMembersTab = () => {
               disabled={!canCreate}
               onClick={() => setAdding(true)}
             >
-              Add users to project
+              {`Add users to ${accessNoun(scope.projectType)}`}
             </Button>
           </Gate>
         }

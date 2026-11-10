@@ -28,7 +28,7 @@ import { formatDate } from "../roles";
 import { Gate, RESTRICTED, usePagedList } from "../ui";
 import { GroupModal, RemoveGroupDialog } from "./group-modal";
 import { GroupRoles } from "./group-roles";
-import { accessLabel } from "./product";
+import { accessLabel, accessNoun } from "./product";
 import { useProjectScope } from "./scope";
 
 export const ProjectGroupsTab = () => {
@@ -92,7 +92,7 @@ export const ProjectGroupsTab = () => {
         onSelect={() => setRemoving(group)}
       >
         <Icon icon={UserRoundXIcon} />
-        Remove group from project
+        {`Remove group from ${accessNoun(scope.projectType)}`}
       </DropdownMenuItem>
     )
   };
@@ -121,7 +121,7 @@ export const ProjectGroupsTab = () => {
               disabled={!canCreate}
               onClick={() => setAdding(true)}
             >
-              Add group to project
+              {`Add group to ${accessNoun(scope.projectType)}`}
             </Button>
           </Gate>
         }
