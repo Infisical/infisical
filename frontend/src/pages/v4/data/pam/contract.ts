@@ -2,11 +2,22 @@ import type {
   TPamAccountListItem,
   TPamAccountTypeMetadata,
   TPamFolderWithCount,
+  TPamIdentityMember,
+  useAddPamProductGroupMember,
+  useAddPamProductIdentityMember,
+  useAddPamProductUserMember,
   useGetPamAccessCapabilities,
   useListPamAccounts,
-  useListPamFolders
+  useListPamFolders,
+  useRemovePamProductGroupMember,
+  useRemovePamProductIdentityMember,
+  useRemovePamProductUserMember,
+  useUpdatePamProductGroupMember,
+  useUpdatePamProductIdentityMember,
+  useUpdatePamProductUserMember
 } from "@app/hooks/api/pam";
 
+import type { MutationOf } from "../access/contract";
 import type { V4QueryResult } from "../contract";
 
 export type TPamFoldersParams = NonNullable<Parameters<typeof useListPamFolders>[0]>;
@@ -26,4 +37,14 @@ export type PamAdapter = {
     options?: { enabled?: boolean }
   ) => V4QueryResult<TPamAccountListItem[]>;
   useAccountTypes: () => V4QueryResult<TPamAccountTypeMetadata[]>;
+  useProductIdentities: () => V4QueryResult<TPamIdentityMember[]>;
+  useAddProductUserMember: MutationOf<typeof useAddPamProductUserMember>;
+  useUpdateProductUserMember: MutationOf<typeof useUpdatePamProductUserMember>;
+  useRemoveProductUserMember: MutationOf<typeof useRemovePamProductUserMember>;
+  useAddProductGroupMember: MutationOf<typeof useAddPamProductGroupMember>;
+  useUpdateProductGroupMember: MutationOf<typeof useUpdatePamProductGroupMember>;
+  useRemoveProductGroupMember: MutationOf<typeof useRemovePamProductGroupMember>;
+  useAddProductIdentityMember: MutationOf<typeof useAddPamProductIdentityMember>;
+  useUpdateProductIdentityMember: MutationOf<typeof useUpdatePamProductIdentityMember>;
+  useRemoveProductIdentityMember: MutationOf<typeof useRemovePamProductIdentityMember>;
 };
