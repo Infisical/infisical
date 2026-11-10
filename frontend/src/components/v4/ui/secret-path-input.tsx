@@ -128,13 +128,15 @@ export function SecretPathInput({
             }}
             onKeyDown={(event) => {
               onKeyDown?.(event);
-              if (
-                event.defaultPrevented ||
-                !open ||
-                event.nativeEvent.isComposing ||
-                event.keyCode === 229
-              )
+              if (event.defaultPrevented || event.nativeEvent.isComposing || event.keyCode === 229)
                 return;
+              const arrow = event.key === "ArrowDown" || event.key === "ArrowUp";
+              if (!open && arrow && dismissed && suggestions.length > 0) {
+                event.preventDefault();
+                setDismissed(false);
+                return;
+              }
+              if (!open) return;
               const count = suggestions.length;
               if (event.key === "ArrowDown") {
                 event.preventDefault();
