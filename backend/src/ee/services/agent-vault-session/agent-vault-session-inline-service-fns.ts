@@ -15,7 +15,6 @@ import {
 } from "../agent-vault/agent-vault-enums";
 import {
   isNativeServiceType,
-  TAgentVaultNativeServiceConfig,
   toNativeTlsConfigInput,
   toResolvedNativeTarget
 } from "../agent-vault/agent-vault-native-config-schemas";
@@ -28,7 +27,8 @@ import {
   getServiceServerUrl,
   getServiceTransport,
   resolveServiceHostPattern,
-  TAgentVaultServiceConfig
+  TAgentVaultServiceConfig,
+  toServiceTypeFields
 } from "../agent-vault/agent-vault-service-type-fns";
 import { TAgentVaultInlineServiceInput, TAgentVaultInlineServiceSummary } from "./agent-vault-session-types";
 
@@ -312,22 +312,11 @@ const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCred
 export const toInlineServiceSummary = (
   row: TAgentVaultSessionInlineServiceSummaryRow
 ): TAgentVaultInlineServiceSummary => {
-  const config = (row.config ?? {}) as TAgentVaultServiceConfig;
-  const native = isNativeServiceType(row.type) ? (config as TAgentVaultNativeServiceConfig) : null;
   return {
     id: row.id,
     name: inlineServiceDisplayName(row),
     description: row.description ?? null,
-    type: row.type as AgentVaultServiceType,
-    serverUrl: config.serverUrl ?? null,
-    transport: config.transport ?? null,
-    hostPattern: row.hostPattern ?? null,
-    host: native?.host ?? null,
-    port: native?.port ?? null,
-    database: native?.database ?? null,
-    tls: native?.tls ? { enabled: native.tls.enabled, verify: native.tls.verify, ca: native.tls.ca ?? null } : null,
-    allowedMethods: (row.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
-    allowedPathPrefixes: row.allowedPathPrefixes ?? null,
+    ...toServiceTypeFields(row),
     credential: toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig),
     customHeaders: row.customHeaders as TInlineCustomHeader[],
     substitutions: row.substitutions as TInlineSubstitution[]

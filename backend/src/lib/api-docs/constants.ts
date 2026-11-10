@@ -4713,14 +4713,14 @@ export const AGENT_VAULT = {
     nativeName:
       "The name of the service. The agent connects to it by this name with `infisical agent-vault connect`, so it can be at most 63 characters.",
     host: "The database or SSH server's host name or IP address, as the Agent Vault proxy reaches it. No scheme, port or path.",
-    hostRead: "The database or SSH server's host name or IP address. Null for an `http` or `mcp` service.",
+    hostRead: "The database or SSH server's host name or IP address.",
     port: "The server's port. Defaults to 5432 for `postgres`, 3306 for `mysql` and 22 for `ssh`.",
-    portRead: "The server's port. Null for an `http` or `mcp` service.",
+    portRead: "The database or SSH server's port.",
     database:
       "The database the proxy logs in to. For `postgres` the agent can only use this database. For `mysql` it is the default database, and the account's grants decide which others the agent can switch to.",
-    databaseRead: "The database the proxy logs in to. Null for an `ssh`, `http` or `mcp` service.",
+    databaseRead: "The database the proxy logs in to.",
     tls: "How the proxy connects to the database. `enabled` (default true) uses TLS, `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's. Send `ca: null` to remove a stored one.",
-    tlsRead: "How the proxy connects to the database. Null for an `ssh`, `http` or `mcp` service.",
+    tlsRead: "How the proxy connects to the database.",
     tlsEnabled: "Whether the proxy connects to the database over TLS. Defaults to true.",
     tlsVerify: "Whether the proxy checks the database's certificate. Defaults to true.",
     tlsCa:
@@ -4735,9 +4735,9 @@ export const AGENT_VAULT = {
     sshCertificate:
       "An SSH certificate for the key: the contents of its `-cert.pub` file. Never returned once saved. Omit on update to keep the stored certificate; send null to remove it.",
     sshHasCertificate: "Whether an SSH certificate is stored with the key.",
-    serverUrlRead: "The MCP server's full URL. Null for every other type.",
+    serverUrlRead: "The MCP server's full URL.",
     transportRead:
-      "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport. Null for every other type.",
+      "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
     serverUrl:
       "The MCP server's URL, such as `https://mcp.example.com/mcp`. Must use `https`, with no username, password, query string or fragment.",
     transport: "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
@@ -4761,7 +4761,7 @@ export const AGENT_VAULT = {
     hostPattern:
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
     hostPatternRead:
-      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). Null for a `postgres`, `mysql` or `ssh` service, whose server is set with `host` and `port`.",
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). For an `mcp` service, the host of its server URL.",
     headerName: "The header the credential is written to. Defaults to `Authorization`.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. Can't contain `{{` or `}}`. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",

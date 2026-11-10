@@ -1,10 +1,19 @@
 import { describe, expect, test } from "vitest";
 
+import { toInlineServiceSummary } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-fns";
 import { AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
+import {
+  AgentVaultCredentialType,
+  AgentVaultMcpTransport,
+  AgentVaultServiceType
+} from "@app/ee/services/agent-vault/agent-vault-enums";
+import { toServiceTypeFields } from "@app/ee/services/agent-vault/agent-vault-service-type-fns";
 
 import {
   AGENT_VAULT_SERVICE_DESCRIPTION_MESSAGE,
   AgentVaultCreateServiceBodySchema,
+  AgentVaultInlineServiceSchema,
+  AgentVaultServiceSchema,
   AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
@@ -147,5 +156,132 @@ describe("service description", () => {
       "Read-only analytics"
     );
     expect(AgentVaultUpdateServiceBodySchema.parse({ type: "ssh", description: null }).description).toBeNull();
+  });
+});
+
+const TLS = { enabled: true, verify: true, ca: undefined };
+
+// What each type keeps, stored as it is in a row, with every other type's columns set the way the database leaves them.
+const STORED_TYPES = [
+  {
+    type: AgentVaultServiceType.Http,
+    config: {},
+    hostPattern: "api.example.com",
+    allowedMethods: ["GET"],
+    allowedPathPrefixes: ["/v1"],
+    fields: ["hostPattern", "allowedMethods", "allowedPathPrefixes"]
+  },
+  {
+    type: AgentVaultServiceType.Mcp,
+    config: { serverUrl: "https://mcp.example.com/mcp", transport: AgentVaultMcpTransport.StreamableHttp },
+    hostPattern: "mcp.example.com",
+    allowedMethods: null,
+    allowedPathPrefixes: null,
+    fields: ["serverUrl", "transport", "hostPattern"]
+  },
+  {
+    type: AgentVaultServiceType.Postgres,
+    config: { host: "db.internal", port: 5432, database: "app", tls: TLS },
+    hostPattern: null,
+    allowedMethods: null,
+    allowedPathPrefixes: null,
+    fields: ["host", "port", "database", "tls"]
+  },
+  {
+    type: AgentVaultServiceType.Mysql,
+    config: { host: "db.internal", port: 3306, database: "app", tls: TLS },
+    hostPattern: null,
+    allowedMethods: null,
+    allowedPathPrefixes: null,
+    fields: ["host", "port", "database", "tls"]
+  },
+  {
+    type: AgentVaultServiceType.Ssh,
+    config: { host: "bastion.internal", port: 22 },
+    hostPattern: null,
+    allowedMethods: null,
+    allowedPathPrefixes: null,
+    fields: ["host", "port"]
+  }
+];
+
+const keysOf = (value: unknown) => Object.keys(value as object).sort();
+
+describe("service responses", () => {
+  test.each(STORED_TYPES)("a bundle $type service carries only its own fields", ({ fields, ...row }) => {
+    const parsed = AgentVaultServiceSchema.parse({
+      id: "00000000-0000-4000-8000-000000000001",
+      accessBundleId: "00000000-0000-4000-8000-000000000002",
+      name: "service",
+      description: null,
+      ...toServiceTypeFields(row),
+      ...(row.type === AgentVaultServiceType.Mcp ? { allowedTools: null } : {}),
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      customHeaders: [],
+      substitutions: [],
+      variableReferences: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+    expect(keysOf(parsed)).toEqual(
+      [
+        "id",
+        "accessBundleId",
+        "name",
+        "description",
+        "type",
+        ...fields,
+        ...(row.type === AgentVaultServiceType.Mcp ? ["allowedTools"] : []),
+        "credential",
+        "customHeaders",
+        "substitutions",
+        "variableReferences",
+        "createdAt",
+        "updatedAt"
+      ].sort()
+    );
+  });
+
+  test.each(STORED_TYPES)("a session's own $type service carries only its own fields", ({ fields, ...row }) => {
+    const parsed = AgentVaultInlineServiceSchema.parse(
+      toInlineServiceSummary({
+        ...row,
+        id: "00000000-0000-4000-8000-000000000001",
+        sessionId: "session-1",
+        position: 0,
+        name: "service",
+        credentialType: AgentVaultCredentialType.Passthrough,
+        credentialConfig: { type: AgentVaultCredentialType.Passthrough },
+        customHeaders: [],
+        substitutions: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+    );
+    expect(keysOf(parsed)).toEqual(
+      ["id", "name", "description", "type", ...fields, "credential", "customHeaders", "substitutions"].sort()
+    );
+  });
+
+  test("another type's fields are left off the wire", () => {
+    const parsed = AgentVaultInlineServiceSchema.parse({
+      id: "00000000-0000-4000-8000-000000000001",
+      name: "bastion",
+      description: null,
+      type: AgentVaultServiceType.Ssh,
+      host: "bastion.internal",
+      port: 22,
+      hostPattern: null,
+      serverUrl: null,
+      database: null,
+      tls: null,
+      allowedMethods: null,
+      credential: { type: AgentVaultCredentialType.Passthrough },
+      customHeaders: [],
+      substitutions: []
+    });
+    expect(parsed).not.toHaveProperty("hostPattern");
+    expect(parsed).not.toHaveProperty("database");
+    expect(parsed).not.toHaveProperty("allowedMethods");
   });
 });

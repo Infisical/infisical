@@ -10,6 +10,7 @@ import {
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultServiceTypeFields } from "../agent-vault/agent-vault-service-type-fns";
 
 /** Exactly one of the two names the user. */
 export type TOnBehalfOfUser = { userId?: string; userEmail?: string };
@@ -53,21 +54,11 @@ export type TAgentVaultInlineServiceInput = {
 };
 
 /** An inline service as every read returns it: everything but its secrets. */
-export type TAgentVaultInlineServiceSummary = {
+export type TAgentVaultInlineServiceSummary = TAgentVaultServiceTypeFields & {
   id: string;
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
-  type: AgentVaultServiceType;
-  serverUrl: string | null;
-  transport: AgentVaultMcpTransport | null;
-  hostPattern: string | null;
-  host: string | null;
-  port: number | null;
-  database: string | null;
-  tls: { enabled: boolean; verify: boolean; ca: string | null } | null;
-  allowedMethods: AgentVaultHttpMethod[] | null;
-  allowedPathPrefixes: string[] | null;
   credential:
     | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
     | { type: AgentVaultCredentialType.Basic }

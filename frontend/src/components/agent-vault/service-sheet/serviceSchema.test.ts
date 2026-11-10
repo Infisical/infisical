@@ -77,12 +77,6 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
     type: AgentVaultServiceType.Mcp,
     serverUrl,
     transport: AgentVaultMcpTransport.StreamableHttp,
-    host: null,
-    port: null,
-    database: null,
-    tls: null,
-    allowedMethods: null,
-    allowedPathPrefixes: null,
     allowedTools: null,
     credential: {
       type: AgentVaultCredentialType.OAuth,

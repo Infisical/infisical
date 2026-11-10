@@ -27,6 +27,7 @@ import {
   isMemberProvidedOAuthService,
   McpToolScope,
   newOAuthAuthorizationId,
+  serverUrlOf,
   storedMemberFields,
   TServiceForm,
   UNCHANGED_SECRET
@@ -428,7 +429,8 @@ export const membersClearedNotice = (
   const storedFields = storedMemberFields(service);
   const isMcp = data.serviceType === AgentVaultServiceType.Mcp;
   const typeChanged = storedType !== data.credentialType;
-  const storedHost = service.serverUrl ? hostOf(service.serverUrl) : "";
+  const storedServerUrl = serverUrlOf(service);
+  const storedHost = storedServerUrl ? hostOf(storedServerUrl) : "";
   const wasMemberOAuth = isMemberProvidedOAuthService(service);
 
   if (wasMemberOAuth) {
@@ -445,7 +447,7 @@ export const membersClearedNotice = (
         description: `Every member's connection to ${storedHost} will be removed, and sessions will use your account.`
       };
     }
-    const isServerChanged = isMcp && data.serverUrl.trim() !== service.serverUrl;
+    const isServerChanged = isMcp && data.serverUrl.trim() !== storedServerUrl;
     if (isServerChanged || isMemberOAuthClientChanged(data, service)) {
       return {
         title: connectionsRemoved,

@@ -13,6 +13,7 @@ import {
   AgentVaultVariableReferenceField,
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultServiceTypeFields } from "../agent-vault/agent-vault-service-type-fns";
 import { TAgentVaultAccessBundleOrderBy } from "./agent-vault-access-bundle-dal";
 
 export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.CredentialValue;
@@ -92,6 +93,22 @@ export type TAgentVaultVariableReferenceSummary = { variableId: string; key: str
   | { field: AgentVaultVariableReferenceField.CustomHeader; customHeaderId: string }
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
 );
+
+export type TAgentVaultServiceSummary = (
+  | Exclude<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }>
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & { allowedTools: string[] | null })
+) & {
+  id: string;
+  accessBundleId: string;
+  name: string;
+  description: string | null;
+  credential: TAgentVaultCredentialSummary;
+  customHeaders: { id: string; name: string; prefix: string }[];
+  substitutions: { id: string; placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
+  variableReferences: TAgentVaultVariableReferenceSummary[];
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermission };
 

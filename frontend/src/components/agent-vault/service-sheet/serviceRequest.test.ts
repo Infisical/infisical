@@ -233,12 +233,6 @@ const storedMcp = (
   type: AgentVaultServiceType.Mcp,
   serverUrl: SERVER_URL,
   transport: AgentVaultMcpTransport.StreamableHttp,
-  host: null,
-  port: null,
-  database: null,
-  tls: null,
-  allowedMethods: null,
-  allowedPathPrefixes: null,
   allowedTools: null,
   credential,
   customHeaders: [],
@@ -267,16 +261,18 @@ const sharedOAuth = storedMcp({
   requiredScopes: []
 });
 
+const { serverUrl, transport, allowedTools, ...storedBase } = storedMcp({
+  type: AgentVaultCredentialType.Bearer,
+  headerName: "Authorization",
+  headerPrefix: "Bearer",
+  memberProvidedFields: []
+});
+
 const storedHttp = {
-  ...storedMcp({
-    type: AgentVaultCredentialType.Bearer,
-    headerName: "Authorization",
-    headerPrefix: "Bearer",
-    memberProvidedFields: []
-  }),
+  ...storedBase,
   type: AgentVaultServiceType.Http,
-  serverUrl: null,
-  transport: null
+  allowedMethods: null,
+  allowedPathPrefixes: null
 } satisfies TAgentVaultService;
 
 describe("buildUpdateServiceRequest", () => {
@@ -648,10 +644,11 @@ describe("membersClearedNotice", () => {
   });
 });
 
+const { hostPattern, ...storedNativeBase } = storedBase;
+
 const storedPostgres = {
-  ...storedHttp,
+  ...storedNativeBase,
   type: AgentVaultServiceType.Postgres,
-  hostPattern: null,
   host: "db.internal",
   port: 5432,
   database: "orders",
@@ -660,9 +657,8 @@ const storedPostgres = {
 } satisfies TAgentVaultService;
 
 const storedSsh = {
-  ...storedHttp,
+  ...storedNativeBase,
   type: AgentVaultServiceType.Ssh,
-  hostPattern: null,
   host: "build.internal",
   port: 22,
   credential: { type: AgentVaultCredentialType.SshKey, hasCertificate: true }

@@ -23,6 +23,7 @@ import {
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultService,
+  TAgentVaultSessionInlineService,
   TAgentVaultSharedOauthCredentialSummary
 } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
@@ -68,6 +69,20 @@ export const storedMemberFields = (
 export const isMemberProvidedOAuthService = (service?: TAgentVaultService | null) =>
   service?.credential.type === AgentVaultCredentialType.OAuth &&
   storedMemberFields(service).length > 0;
+
+export const isNativeService = (
+  service?: TAgentVaultService | null
+): service is Extract<TAgentVaultService, { type: TAgentVaultNativeServiceType }> =>
+  isNativeServiceType(service?.type);
+
+/** A database or SSH service is reached by name, so only an HTTP or MCP service has a host pattern. */
+export const hostPatternOf = (service: TAgentVaultService | TAgentVaultSessionInlineService) =>
+  service.type === AgentVaultServiceType.Http || service.type === AgentVaultServiceType.Mcp
+    ? service.hostPattern
+    : null;
+
+export const serverUrlOf = (service?: TAgentVaultService | null) =>
+  service?.type === AgentVaultServiceType.Mcp ? service.serverUrl : null;
 
 export const hostOf = (serverUrl: string) => {
   try {

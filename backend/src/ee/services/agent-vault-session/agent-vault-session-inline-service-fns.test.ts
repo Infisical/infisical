@@ -442,7 +442,9 @@ describe("database and SSH services sent with a session", () => {
       privateKey: KEY
     });
     expect(resolved?.native).toEqual({ host: "bastion.internal", port: 22, database: null, tls: null });
-    expect(toInlineServiceSummary(row)).toMatchObject({ host: "bastion.internal", port: 22, hostPattern: null });
+    const summary = toInlineServiceSummary(row);
+    expect(summary).toMatchObject({ type: AgentVaultServiceType.Ssh, host: "bastion.internal", port: 22 });
+    expect(summary).not.toHaveProperty("hostPattern");
   });
 
   test("a basic secret is never read as an SSH key", () => {

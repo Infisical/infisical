@@ -17,6 +17,8 @@ import { nativeTargetText } from "@app/components/agent-vault/nativeServiceMeta"
 import { OAuthStatusBadge } from "@app/components/agent-vault/service-sheet/OAuthAuthorizeCard";
 import {
   displayHostPattern,
+  hostPatternOf,
+  isNativeService,
   SERVICE_TYPE_LABELS
 } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
@@ -73,12 +75,13 @@ enum SortColumn {
 }
 
 const targetOf = (service: TAgentVaultService) => {
-  if (service.hostPattern === null) return nativeTargetText(service);
+  if (isNativeService(service)) return nativeTargetText(service);
   return service.type === AgentVaultServiceType.Mcp ? service.serverUrl : service.hostPattern;
 };
 
 // The host, not the shown URL, so MCP servers sort among the HTTP hosts instead of together under "https".
-const sortTargetOf = (service: TAgentVaultService) => service.hostPattern ?? service.host;
+const sortTargetOf = (service: TAgentVaultService) =>
+  isNativeService(service) ? service.host : service.hostPattern;
 
 const SORT_COMPARATORS: Record<
   SortColumn,
@@ -204,7 +207,7 @@ export const ServicesCard = ({
       [
         service.name,
         service.description ?? "",
-        service.hostPattern ?? "",
+        hostPatternOf(service) ?? "",
         targetOf(service),
         service.type,
         SERVICE_TYPE_LABELS[service.type]
@@ -351,7 +354,7 @@ export const ServicesCard = ({
               <TableRow key={service.id}>
                 <TableCell isTruncatable className="min-w-64">
                   <div className="flex items-center gap-2">
-                    <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
+                    <ServiceIcon hostPattern={hostPatternOf(service)} serviceType={service.type} />
                     <span className="truncate" title={service.name}>
                       {service.name}
                     </span>

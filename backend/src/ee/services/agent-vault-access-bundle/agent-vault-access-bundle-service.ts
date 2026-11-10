@@ -71,7 +71,6 @@ import { TAgentVaultCredentialConfig } from "../agent-vault/agent-vault-credenti
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
-  AgentVaultHttpMethod,
   AgentVaultMemberType,
   AgentVaultOauthStatus,
   AgentVaultResourceRole,
@@ -83,7 +82,6 @@ import {
 import {
   describeNativeTlsCaChange,
   isNativeServiceType,
-  TAgentVaultNativeServiceConfig,
   toNativeTlsConfigInput
 } from "../agent-vault/agent-vault-native-config-schemas";
 import { ownerOrNullOf } from "../agent-vault/agent-vault-owner-fns";
@@ -100,7 +98,8 @@ import {
   getAgentVaultServiceType,
   getServiceServerUrl,
   resolveServiceHostPattern,
-  TAgentVaultServiceConfig
+  TAgentVaultServiceConfig,
+  toServiceTypeFields
 } from "../agent-vault/agent-vault-service-type-fns";
 import {
   AGENT_VAULT_SSH_KEY_VARIABLE_MESSAGE,
@@ -123,6 +122,7 @@ import {
   TAgentVaultCredentialSummary,
   TAgentVaultCredentialUpdate,
   TAgentVaultCustomHeaderUpdate,
+  TAgentVaultServiceSummary,
   TAgentVaultVariableReferenceSummary,
   TCreateAccessBundleDTO,
   TCreateServiceDTO,
@@ -481,27 +481,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     customHeaders: TAgentVaultServiceCustomHeaders[],
     substitutions: TAgentVaultServiceSubstitutions[],
     variableReferences: TAgentVaultVariableReferenceWithKey[]
-  ) => {
-    const config = (service.config ?? {}) as TAgentVaultServiceConfig;
-    const native = isNativeServiceType(service.type) ? (config as TAgentVaultNativeServiceConfig) : null;
+  ): TAgentVaultServiceSummary => {
+    const typeFields = toServiceTypeFields(service);
     return {
       id: service.id,
       accessBundleId: service.accessBundleId,
       name: service.name,
       description: service.description ?? null,
-      type: service.type as AgentVaultServiceType,
-      // Flat, like the create and update bodies, so a client can send back what it read (all but the credential, whose
-      // secret is never returned). Null where the type doesn't take the field.
-      serverUrl: config.serverUrl ?? null,
-      transport: config.transport ?? null,
-      host: native?.host ?? null,
-      port: native?.port ?? null,
-      database: native?.database ?? null,
-      tls: native?.tls ? { enabled: native.tls.enabled, verify: native.tls.verify, ca: native.tls.ca ?? null } : null,
-      hostPattern: service.hostPattern ?? null,
-      allowedMethods: (service.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
-      allowedPathPrefixes: service.allowedPathPrefixes ?? null,
-      allowedTools: service.allowedTools ?? null,
+      // Only the fields of the service's own type. A client that sends back what it read still gets through an
+      // update, which drops the read-only fields it echoes.
+      ...(typeFields.type === AgentVaultServiceType.Mcp
+        ? { ...typeFields, allowedTools: service.allowedTools ?? null }
+        : typeFields),
       credential: summarizeCredential(service),
       customHeaders: customHeaders.map((header) => ({ id: header.id, name: header.name, prefix: header.prefix })),
       substitutions: substitutions.map((substitution) => ({

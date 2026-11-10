@@ -154,27 +154,25 @@ export type TAgentVaultVariableReference = {
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
 );
 
-type TAgentVaultNoNativeConfig = { host: null; port: null; database: null; tls: null };
-
-// A database or SSH service is reached by name, so it has no host pattern.
+// Each type carries only its own fields. A database or SSH service is reached by name, so it has no host pattern.
 export type TAgentVaultServiceConfig =
-  | ({
+  | {
       type: AgentVaultServiceType.Http;
-      serverUrl: null;
-      transport: null;
       hostPattern: string;
-    } & TAgentVaultNoNativeConfig)
-  | ({
+      // null means unrestricted.
+      allowedMethods: AgentVaultHttpMethod[] | null;
+      allowedPathPrefixes: string[] | null;
+    }
+  | {
       type: AgentVaultServiceType.Mcp;
       serverUrl: string;
       transport: AgentVaultMcpTransport;
       hostPattern: string;
-    } & TAgentVaultNoNativeConfig)
+      // null means every tool.
+      allowedTools: string[] | null;
+    }
   | {
       type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql;
-      serverUrl: null;
-      transport: null;
-      hostPattern: null;
       host: string;
       port: number;
       database: string;
@@ -182,13 +180,8 @@ export type TAgentVaultServiceConfig =
     }
   | {
       type: AgentVaultServiceType.Ssh;
-      serverUrl: null;
-      transport: null;
-      hostPattern: null;
       host: string;
       port: number;
-      database: null;
-      tls: null;
     };
 
 export type TAgentVaultService = TAgentVaultServiceConfig & {
@@ -196,11 +189,6 @@ export type TAgentVaultService = TAgentVaultServiceConfig & {
   accessBundleId: string;
   name: string;
   description: string | null;
-  // null means unrestricted.
-  allowedMethods: AgentVaultHttpMethod[] | null;
-  allowedPathPrefixes: string[] | null;
-  // Only an MCP service ever has a list.
-  allowedTools: string[] | null;
   credential: TAgentVaultCredentialSummary;
   customHeaders: TAgentVaultCustomHeaderSummary[];
   substitutions: TAgentVaultSubstitutionSummary[];
@@ -337,22 +325,14 @@ export type TAgentVaultSessionAccessBundle = {
 };
 
 /** A service an admin sent with the session itself. Its secrets are never returned. */
-export type TAgentVaultSessionInlineService = {
+export type TAgentVaultSessionInlineService = (
+  | Exclude<TAgentVaultServiceConfig, { type: AgentVaultServiceType.Mcp }>
+  | Omit<Extract<TAgentVaultServiceConfig, { type: AgentVaultServiceType.Mcp }>, "allowedTools">
+) & {
   id: string;
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
-  type: AgentVaultServiceType;
-  serverUrl: string | null;
-  transport: AgentVaultMcpTransport | null;
-  host: string | null;
-  port: number | null;
-  database: string | null;
-  tls: TAgentVaultNativeTls | null;
-  // null for a database or SSH service.
-  hostPattern: string | null;
-  allowedMethods: AgentVaultHttpMethod[] | null;
-  allowedPathPrefixes: string[] | null;
   credential:
     | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
     | { type: AgentVaultCredentialType.Basic }

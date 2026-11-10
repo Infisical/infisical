@@ -93,6 +93,7 @@ import {
   displayHostPattern,
   HTTP_METHODS,
   isCredentialMemberProvided,
+  isNativeService,
   isOAuthAuthorizationMissing,
   MCP_SERVICE_STEP_FIELDS,
   McpToolScope,
@@ -537,8 +538,9 @@ export const ServiceSheet = ({
         : ADVANCED_ITEM
     );
 
-    if (service && isNativeServiceType(service.type)) {
+    if (isNativeService(service)) {
       const { credential } = service;
+      const databaseService = service.type === AgentVaultServiceType.Ssh ? null : service;
       const memberProvidedFields = storedMemberFields(service);
       const storedValue = (field: TAgentVaultMemberProvidedField) =>
         memberProvidedFields.includes(field) ? "" : UNCHANGED_SECRET;
@@ -546,12 +548,12 @@ export const ServiceSheet = ({
       reset({
         ...blankNativeForm(service.type),
         name: service.name,
-        host: service.host ?? "",
-        port: String(service.port ?? AGENT_VAULT_NATIVE_DEFAULT_PORTS[service.type]),
-        database: service.database ?? "",
-        tlsEnabled: service.tls?.enabled ?? true,
-        tlsVerify: service.tls?.verify ?? true,
-        tlsCa: service.tls?.ca ?? "",
+        host: service.host,
+        port: String(service.port),
+        database: databaseService?.database ?? "",
+        tlsEnabled: databaseService?.tls.enabled ?? true,
+        tlsVerify: databaseService?.tls.verify ?? true,
+        tlsCa: databaseService?.tls.ca ?? "",
         credentialType: credential.type,
         username:
           credential.type === AgentVaultCredentialType.Basic
@@ -602,7 +604,7 @@ export const ServiceSheet = ({
         ...BLANK_SERVICE_FORM,
         name: service.name,
         description: service.description ?? "",
-        hosts: service.hostPattern ? displayHostPattern(service.hostPattern).split(", ") : [],
+        hosts: displayHostPattern(service.hostPattern).split(", "),
         credentialType: credential.type,
         // Seeded even for a credential that has no header, so switching the type to Bearer starts from
         // the same defaults a new service gets. Left undefined, the submit would send an empty

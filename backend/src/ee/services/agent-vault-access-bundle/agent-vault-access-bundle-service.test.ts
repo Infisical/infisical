@@ -179,6 +179,34 @@ describe("updateService, an SSH key save that writes no secret", () => {
   });
 });
 
+describe("updateService, the service it returns", () => {
+  test("an SSH service carries only its own type's fields", async () => {
+    const stored = sshService({ hasCertificate: false, secret: "key" });
+    const { service } = buildService({ firstRead: stored, locked: stored });
+
+    const result = await updatePort(service, { type: AgentVaultCredentialType.SshKey });
+
+    expect(Object.keys(result.service).sort()).toEqual(
+      [
+        "id",
+        "accessBundleId",
+        "name",
+        "description",
+        "type",
+        "host",
+        "port",
+        "credential",
+        "customHeaders",
+        "substitutions",
+        "variableReferences",
+        "createdAt",
+        "updatedAt"
+      ].sort()
+    );
+    expect(result.service).toMatchObject({ type: AgentVaultServiceType.Ssh, host: "bastion.internal", port: 2222 });
+  });
+});
+
 describe("updateService, what the audit is told changed", () => {
   test("an empty certificate with none stored writes no secret and replaces no credential", async () => {
     const stored = sshService({ hasCertificate: false, secret: "key" });

@@ -9,14 +9,20 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_RE,
   hasLoneSurrogate
 } from "./agent-vault-credential-schemas";
-import { AgentVaultCredentialType, AgentVaultMcpTransport, AgentVaultServiceType } from "./agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultHttpMethod,
+  AgentVaultMcpTransport,
+  AgentVaultServiceType
+} from "./agent-vault-enums";
 import { AGENT_VAULT_DEFAULT_PORT, parseHostPatterns } from "./agent-vault-host-pattern-fns";
 import {
   AgentVaultMysqlServiceConfigSchema,
   AgentVaultPostgresServiceConfigSchema,
   AgentVaultSshServiceConfigSchema,
   isNativeServiceType,
-  TAgentVaultNativeServiceConfig
+  TAgentVaultNativeServiceConfig,
+  TAgentVaultNativeTls
 } from "./agent-vault-native-config-schemas";
 
 export const AGENT_VAULT_MAX_SERVER_URL_LENGTH = 2048;
@@ -231,9 +237,9 @@ export const findUnsupportedServiceFields = (
   return Object.keys(supported).filter((field) => !supported[field] && fields[field] !== undefined);
 };
 
-// GET returns the fields a type doesn't use as null or empty, and an MCP service's host pattern derived from its
-// server URL. Sending those back unchanged is not an attempt to set them, so they are dropped before the
-// unsupported-field check refuses anything else.
+// A client may send a read back as an update: an MCP service's host pattern, derived from its server URL, and from
+// clients built on older reads, every other type's fields as null or empty. Neither is an attempt to set them, so they
+// are dropped before the unsupported-field check refuses anything else.
 export const dropReadBackServiceFields = <T extends TAgentVaultServiceTypedFields>(
   definition: TAgentVaultServiceTypeDefinition,
   fields: T,
@@ -327,4 +333,70 @@ export const resolveServiceHostPattern = (
   if (definition.deriveHostPattern) return definition.deriveHostPattern(config);
   if (!hostPattern) throw new BadRequestError({ message: `${describeServiceType(definition)} needs a host pattern.` });
   return hostPattern;
+};
+
+type TServiceResponseTls = { enabled: boolean; verify: boolean; ca: string | null };
+
+export type TAgentVaultServiceTypeFields =
+  | {
+      type: AgentVaultServiceType.Http;
+      hostPattern: string;
+      allowedMethods: AgentVaultHttpMethod[] | null;
+      allowedPathPrefixes: string[] | null;
+    }
+  | {
+      type: AgentVaultServiceType.Mcp;
+      serverUrl: string;
+      transport: AgentVaultMcpTransport;
+      hostPattern: string;
+    }
+  | {
+      type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql;
+      host: string;
+      port: number;
+      database: string;
+      tls: TServiceResponseTls;
+    }
+  | { type: AgentVaultServiceType.Ssh; host: string; port: number };
+
+const toResponseTls = (tls: TAgentVaultNativeTls): TServiceResponseTls => ({
+  enabled: tls.enabled,
+  verify: tls.verify,
+  ca: tls.ca ?? null
+});
+
+// Only the fields of the service's own type, so a response never carries another type's fields as nulls.
+export const toServiceTypeFields = (row: {
+  type: string;
+  config?: unknown;
+  hostPattern?: string | null;
+  allowedMethods?: string[] | null;
+  allowedPathPrefixes?: string[] | null;
+}): TAgentVaultServiceTypeFields => {
+  // The type check constraint allows only these types, and the host pattern check sets a host pattern on every http
+  // and mcp service.
+  const type = row.type as AgentVaultServiceType;
+  const hostPattern = row.hostPattern!;
+  switch (type) {
+    case AgentVaultServiceType.Http:
+      return {
+        type,
+        hostPattern,
+        allowedMethods: (row.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
+        allowedPathPrefixes: row.allowedPathPrefixes ?? null
+      };
+    case AgentVaultServiceType.Mcp: {
+      const { serverUrl, transport } = row.config as z.infer<typeof AgentVaultMcpServiceConfigSchema>;
+      return { type, serverUrl, transport, hostPattern };
+    }
+    case AgentVaultServiceType.Postgres:
+    case AgentVaultServiceType.Mysql: {
+      const { host, port, database, tls } = row.config as z.infer<typeof AgentVaultPostgresServiceConfigSchema>;
+      return { type, host, port, database, tls: toResponseTls(tls) };
+    }
+    default: {
+      const { host, port } = row.config as z.infer<typeof AgentVaultSshServiceConfigSchema>;
+      return { type: AgentVaultServiceType.Ssh, host, port };
+    }
+  }
 };

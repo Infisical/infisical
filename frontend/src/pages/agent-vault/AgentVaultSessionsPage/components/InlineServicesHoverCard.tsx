@@ -1,5 +1,6 @@
 import { ReactNode, useState } from "react";
 
+import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   HoverCard,
@@ -33,7 +34,7 @@ export const InlineServicesList = ({ services }: ListProps) => (
         return (
           <div key={service.id} className="flex min-w-0 items-center gap-2">
             <ServiceIcon
-              hostPattern={service.hostPattern}
+              hostPattern={hostPatternOf(service)}
               serviceType={service.type}
               className="size-5"
             />

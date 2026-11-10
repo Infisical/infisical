@@ -939,28 +939,54 @@ export const AgentVaultInlineServicesInputSchema = AgentVaultInlineServiceInputS
   })
   .describe(AGENT_VAULT.SESSION.inlineServices);
 
+// Each type returns only its own fields, read the same way by bundle services and a session's own services.
+const serviceResponseTlsSchema = z
+  .object({
+    enabled: z.boolean().describe(AGENT_VAULT.SERVICE.tlsEnabled),
+    verify: z.boolean().describe(AGENT_VAULT.SERVICE.tlsVerify),
+    ca: z.string().nullable().describe(AGENT_VAULT.SERVICE.tlsCaRead)
+  })
+  .describe(AGENT_VAULT.SERVICE.tlsRead);
+
+const serviceResponseTypeFields = {
+  [AgentVaultServiceType.Http]: {
+    type: z.literal(AgentVaultServiceType.Http).describe(AGENT_VAULT.SERVICE.type),
+    hostPattern: z.string().describe(AGENT_VAULT.SERVICE.hostPatternRead),
+    allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
+    allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes)
+  },
+  [AgentVaultServiceType.Mcp]: {
+    type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
+    serverUrl: z.string().describe(AGENT_VAULT.SERVICE.serverUrlRead),
+    transport: z.nativeEnum(AgentVaultMcpTransport).describe(AGENT_VAULT.SERVICE.transportRead),
+    hostPattern: z.string().describe(AGENT_VAULT.SERVICE.hostPatternRead)
+  },
+  [AgentVaultServiceType.Postgres]: {
+    type: z.literal(AgentVaultServiceType.Postgres).describe(AGENT_VAULT.SERVICE.type),
+    host: z.string().describe(AGENT_VAULT.SERVICE.hostRead),
+    port: z.number().describe(AGENT_VAULT.SERVICE.portRead),
+    database: z.string().describe(AGENT_VAULT.SERVICE.databaseRead),
+    tls: serviceResponseTlsSchema
+  },
+  [AgentVaultServiceType.Mysql]: {
+    type: z.literal(AgentVaultServiceType.Mysql).describe(AGENT_VAULT.SERVICE.type),
+    host: z.string().describe(AGENT_VAULT.SERVICE.hostRead),
+    port: z.number().describe(AGENT_VAULT.SERVICE.portRead),
+    database: z.string().describe(AGENT_VAULT.SERVICE.databaseRead),
+    tls: serviceResponseTlsSchema
+  },
+  [AgentVaultServiceType.Ssh]: {
+    type: z.literal(AgentVaultServiceType.Ssh).describe(AGENT_VAULT.SERVICE.type),
+    host: z.string().describe(AGENT_VAULT.SERVICE.hostRead),
+    port: z.number().describe(AGENT_VAULT.SERVICE.portRead)
+  }
+};
+
 // The sealed values are never in here, and the serializer emits only what this schema lists.
-export const AgentVaultInlineServiceSchema = z.object({
+const inlineServiceResponseBase = {
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.inlineServiceId),
   name: z.string().describe(AGENT_VAULT.SESSION.inlineServiceNameRead),
   description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
-  type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
-  serverUrl: z.string().nullable().describe(AGENT_VAULT.SERVICE.serverUrlRead),
-  transport: z.nativeEnum(AgentVaultMcpTransport).nullable().describe(AGENT_VAULT.SERVICE.transportRead),
-  host: z.string().nullable().describe(AGENT_VAULT.SERVICE.hostRead),
-  port: z.number().nullable().describe(AGENT_VAULT.SERVICE.portRead),
-  database: z.string().nullable().describe(AGENT_VAULT.SERVICE.databaseRead),
-  tls: z
-    .object({
-      enabled: z.boolean().describe(AGENT_VAULT.SERVICE.tlsEnabled),
-      verify: z.boolean().describe(AGENT_VAULT.SERVICE.tlsVerify),
-      ca: z.string().nullable().describe(AGENT_VAULT.SERVICE.tlsCaRead)
-    })
-    .nullable()
-    .describe(AGENT_VAULT.SERVICE.tlsRead),
-  hostPattern: z.string().nullable().describe(AGENT_VAULT.SERVICE.hostPatternRead),
-  allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
-  allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes),
   credential: z.discriminatedUnion("type", [
     z
       .object({
@@ -994,7 +1020,29 @@ export const AgentVaultInlineServiceSchema = z.object({
     })
     .array()
     .describe(AGENT_VAULT.SESSION.inlineSubstitutionsRead)
-});
+};
+
+// One arm per type, from the fields every type shares. Arms are listed rather than mapped so each keeps its own type.
+const serviceResponseUnion = <TBase extends z.ZodRawShape, TMcp extends z.ZodRawShape>(base: TBase, mcpOnly: TMcp) =>
+  z.discriminatedUnion("type", [
+    z
+      .object({ ...base, ...serviceResponseTypeFields[AgentVaultServiceType.Http] })
+      .describe(JSON.stringify({ title: "HTTP service" })),
+    z
+      .object({ ...base, ...serviceResponseTypeFields[AgentVaultServiceType.Mcp], ...mcpOnly })
+      .describe(JSON.stringify({ title: "MCP service" })),
+    z
+      .object({ ...base, ...serviceResponseTypeFields[AgentVaultServiceType.Postgres] })
+      .describe(JSON.stringify({ title: nativeServiceTitles[AgentVaultServiceType.Postgres] })),
+    z
+      .object({ ...base, ...serviceResponseTypeFields[AgentVaultServiceType.Mysql] })
+      .describe(JSON.stringify({ title: nativeServiceTitles[AgentVaultServiceType.Mysql] })),
+    z
+      .object({ ...base, ...serviceResponseTypeFields[AgentVaultServiceType.Ssh] })
+      .describe(JSON.stringify({ title: nativeServiceTitles[AgentVaultServiceType.Ssh] }))
+  ]);
+
+export const AgentVaultInlineServiceSchema = serviceResponseUnion(inlineServiceResponseBase, {});
 
 // The service sheet's unsaved values, so the tools are listed with the credential a save would store. `serviceId`
 // names the saved service whose stored values fill in what is left out.
@@ -1034,32 +1082,11 @@ export const AgentVaultVariableReferenceSchema = z.discriminatedUnion("field", [
     .describe(JSON.stringify({ title: "Substitution" }))
 ]);
 
-// The sealed value is never in here. This schema is the last thing between the encrypted column and the
-// wire on every service route: the serializer emits `result.data`, so anything absent here is dropped,
-// and anything required here but missing from a projection is a 500 rather than a leak.
-export const AgentVaultServiceSchema = z.object({
+const serviceResponseBase = {
   id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
   description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
-  type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
-  serverUrl: z.string().nullable().describe(AGENT_VAULT.SERVICE.serverUrlRead),
-  transport: z.nativeEnum(AgentVaultMcpTransport).nullable().describe(AGENT_VAULT.SERVICE.transportRead),
-  host: z.string().nullable().describe(AGENT_VAULT.SERVICE.hostRead),
-  port: z.number().nullable().describe(AGENT_VAULT.SERVICE.portRead),
-  database: z.string().nullable().describe(AGENT_VAULT.SERVICE.databaseRead),
-  tls: z
-    .object({
-      enabled: z.boolean().describe(AGENT_VAULT.SERVICE.tlsEnabled),
-      verify: z.boolean().describe(AGENT_VAULT.SERVICE.tlsVerify),
-      ca: z.string().nullable().describe(AGENT_VAULT.SERVICE.tlsCaRead)
-    })
-    .nullable()
-    .describe(AGENT_VAULT.SERVICE.tlsRead),
-  hostPattern: z.string().nullable().describe(AGENT_VAULT.SERVICE.hostPatternRead),
-  allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
-  allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes),
-  allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools),
   credential: AgentVaultCredentialSummarySchema,
   customHeaders: z
     .object({
@@ -1080,7 +1107,20 @@ export const AgentVaultServiceSchema = z.object({
   variableReferences: AgentVaultVariableReferenceSchema.array().describe(AGENT_VAULT.SERVICE.variableReferences),
   createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
   updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt)
-});
+};
+
+const serviceResponseMcpOnly = {
+  allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools)
+};
+
+// The sealed value is never in here. This schema is the last thing between the encrypted column and the
+// wire on every service route: the serializer emits `result.data`, so anything absent here is dropped,
+// and anything required here but missing from a projection is a 500 rather than a leak. `extra` adds or
+// replaces fields on every type, as a discriminated union can't be extended afterwards.
+export const agentVaultServiceResponseSchema = <T extends z.ZodRawShape>(extra: T) =>
+  serviceResponseUnion({ ...serviceResponseBase, ...extra }, serviceResponseMcpOnly);
+
+export const AgentVaultServiceSchema = agentVaultServiceResponseSchema({});
 
 export const AgentVaultVariableKeySchema = z
   .string()
