@@ -62,6 +62,7 @@ import { AccessRestricted, ListToolbar, RESTRICTED, type Sort } from "../ui";
 import { RemoveGroupDialog } from "./group-modal";
 import { GroupRoles } from "./group-roles";
 import { personName } from "./member-access";
+import { accessLabel, accessNoun } from "./product";
 import { useProjectScope } from "./scope";
 
 import styles from "./group.module.css";
@@ -365,13 +366,16 @@ const CopyGroupId = ({ id }: { id: string }) => {
   );
 };
 
-const BackLink = ({ href }: { href: string }) => (
-  <div>
-    <Button variant="link" icon="chev-left" asChild>
-      <a href={href}>Project groups</a>
-    </Button>
-  </div>
-);
+const BackLink = ({ href }: { href: string }) => {
+  const scope = useProjectScope();
+  return (
+    <div>
+      <Button variant="link" icon="chev-left" asChild>
+        <a href={href}>{`${accessLabel(scope.projectType, "groups")}`}</a>
+      </Button>
+    </div>
+  );
+};
 
 export const ProjectGroupDetail = () => {
   const scope = useProjectScope();
@@ -440,7 +444,7 @@ export const ProjectGroupDetail = () => {
                   onSelect={() => setRemoving(true)}
                 >
                   <Icon name="trash" />
-                  Remove from project
+                  {`Remove from ${accessNoun(scope.projectType)}`}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -464,7 +468,7 @@ export const ProjectGroupDetail = () => {
                   </span>
                 ],
                 [
-                  "Project role",
+                  `${accessLabel(scope.projectType, "role")}`,
                   <GroupRoles
                     key="roles"
                     projectId={projectId}
@@ -473,7 +477,7 @@ export const ProjectGroupDetail = () => {
                     roles={membership.roles}
                   />
                 ],
-                ["Joined project", formatDateTime(membership.createdAt)]
+                [`Joined ${accessNoun(scope.projectType)}`, formatDateTime(membership.createdAt)]
               ]}
             />
           </Card>

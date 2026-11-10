@@ -28,6 +28,7 @@ import { formatDate } from "../roles";
 import { Gate, RESTRICTED, usePagedList } from "../ui";
 import { GroupModal, RemoveGroupDialog } from "./group-modal";
 import { GroupRoles } from "./group-roles";
+import { accessLabel, accessNoun } from "./product";
 import { useProjectScope } from "./scope";
 
 export const ProjectGroupsTab = () => {
@@ -65,7 +66,7 @@ export const ProjectGroupsTab = () => {
     },
     {
       id: "role",
-      header: "Project role",
+      header: `${accessLabel(scope.projectType, "role")}`,
       render: (row) => (
         <GroupRoles
           projectId={projectId}
@@ -91,7 +92,7 @@ export const ProjectGroupsTab = () => {
         onSelect={() => setRemoving(group)}
       >
         <Icon icon={UserRoundXIcon} />
-        Remove group from project
+        {`Remove group from ${accessNoun(scope.projectType)}`}
       </DropdownMenuItem>
     )
   };
@@ -99,15 +100,15 @@ export const ProjectGroupsTab = () => {
   return (
     <Stack gap={16}>
       <FilterBar
-        label="Project group filters"
+        label={`${accessLabel(scope.projectType, "group")} filters`}
         fields={[]}
         value={[]}
         onChange={() => undefined}
         search={
           <Input
             icon="search"
-            aria-label="Search project groups..."
-            placeholder="Search project groups..."
+            aria-label={`Search ${accessLabel(scope.projectType, "groups").toLowerCase()}...`}
+            placeholder={`Search ${accessLabel(scope.projectType, "groups").toLowerCase()}...`}
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />
@@ -120,13 +121,13 @@ export const ProjectGroupsTab = () => {
               disabled={!canCreate}
               onClick={() => setAdding(true)}
             >
-              Add group to project
+              {`Add group to ${accessNoun(scope.projectType)}`}
             </Button>
           </Gate>
         }
       />
       <DataTable
-        label="Project groups"
+        label={`${accessLabel(scope.projectType, "groups")}`}
         rows={list.pageRows}
         columns={columns}
         rowActions={rowActions}
@@ -137,11 +138,22 @@ export const ProjectGroupsTab = () => {
         sort={list.sort}
         onSortChange={list.setSort}
         empty={
-          list.search.trim() ? (
-            <EmptyState size="sm" icon="search" title="No project groups match search" />
+          (Boolean(groups.error) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load groups" />
+          )) ||
+          (list.search.trim() ? (
+            <EmptyState
+              size="sm"
+              icon="search"
+              title={`No ${accessLabel(scope.projectType, "groups").toLowerCase()} match search`}
+            />
           ) : (
-            <EmptyState size="sm" icon="user" title="No project groups found" />
-          )
+            <EmptyState
+              size="sm"
+              icon="user"
+              title={`No ${accessLabel(scope.projectType, "groups").toLowerCase()} found`}
+            />
+          ))
         }
         pagination={groups.isPending ? undefined : list.pagination}
       />

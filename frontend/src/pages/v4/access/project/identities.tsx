@@ -46,6 +46,7 @@ import {
   ManagedByBadge,
   type ProjectIdentityMembership
 } from "./identity-common";
+import { accessLabel, accessNoun, accessThis } from "./product";
 import { useProjectScope } from "./scope";
 
 import accessStyles from "../access.module.css";
@@ -65,7 +66,7 @@ export const ProjectIdentitiesTab = () => {
   const { orgId, projectId } = scope;
   const access = useV4Adapter("access");
   const { permission } = useProjectPermission(projectId);
-  const { data: projectRoles = [] } = access.useProjectRoles(projectId);
+  const { data: projectRoles = [] } = access.useProjectRoles(projectId, scope.projectType);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search);
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
@@ -76,8 +77,13 @@ export const ProjectIdentitiesTab = () => {
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
-  const { data, isPending } = access.useProjectIdentities({
+  const {
+    data,
+    isPending,
+    error: identitiesError
+  } = access.useProjectIdentities({
     projectId,
+    projectType: scope.projectType,
     offset: (page - 1) * perPage,
     limit: perPage,
     orderBy: ProjectIdentityOrderBy.Name,
@@ -134,7 +140,7 @@ export const ProjectIdentitiesTab = () => {
     },
     {
       id: "role",
-      header: "Project role",
+      header: `${accessLabel(scope.projectType, "role")}`,
       grow: true,
       render: (row) => <RoleBadges roles={row.roles} />
     },
@@ -215,7 +221,9 @@ export const ProjectIdentitiesTab = () => {
             onSelect={() => setRemoving(row)}
           >
             <Icon name="trash" />
-            {isProjectManaged(identity) ? "Delete machine identity" : "Remove from project"}
+            {isProjectManaged(identity)
+              ? "Delete machine identity"
+              : `Remove from ${accessNoun(scope.projectType)}`}
           </DropdownMenuItem>
         </>
       );
@@ -227,11 +235,11 @@ export const ProjectIdentitiesTab = () => {
   return (
     <Stack gap={16}>
       <FilterBar
-        label="Project machine identity filters"
+        label={`${accessLabel(scope.projectType, "machine identity")} filters`}
         fields={[
           {
             key: "role",
-            label: "Project role",
+            label: `${accessLabel(scope.projectType, "role")}`,
             type: "multi-select",
             options: projectRoles.map((role) => ({ value: role.slug, label: role.name }))
           }
@@ -244,8 +252,8 @@ export const ProjectIdentitiesTab = () => {
         search={
           <Input
             icon="search"
-            aria-label="Search project machine identities by name..."
-            placeholder="Search project machine identities by name..."
+            aria-label={`Search ${accessLabel(scope.projectType, "machine identities").toLowerCase()} by name...`}
+            placeholder={`Search ${accessLabel(scope.projectType, "machine identities").toLowerCase()} by name...`}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -261,13 +269,13 @@ export const ProjectIdentitiesTab = () => {
               disabled={!canCreate}
               onClick={() => setAdding(true)}
             >
-              Add machine identity to project
+              {`Add machine identity to ${accessNoun(scope.projectType)}`}
             </Button>
           </Gate>
         }
       />
       <DataTable
-        label="Project machine identities"
+        label={`${accessLabel(scope.projectType, "machine identities")}`}
         rows={rows}
         columns={columns}
         rowActions={rowActions}
@@ -281,15 +289,18 @@ export const ProjectIdentitiesTab = () => {
           setPage(1);
         }}
         empty={
-          searching ? (
+          (Boolean(identitiesError) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load machine identities" />
+          )) ||
+          (searching ? (
             <EmptyState size="sm" icon="search" title="No machine identities match search" />
           ) : (
             <EmptyState
               size="sm"
               icon="machine"
-              title="No machine identities have been added to this project"
+              title={`No machine identities have been added to ${accessThis(scope.projectType)}`}
             />
-          )
+          ))
         }
         pagination={
           !isPending && totalCount > 0 ? (
