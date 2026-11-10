@@ -1,5 +1,6 @@
 import { accessLive } from "./access/live";
 import type { V4Adapters } from "./adapters";
+import { adminLive } from "./admin/live";
 import { agentVaultSettingsLive } from "./agent-vault-settings/live";
 import { agentVaultLive } from "./agent-vault/live";
 import { billingLive } from "./billing/live";
@@ -40,6 +41,7 @@ export const liveAdapters: V4Adapters = {
   projectEnvironments: projectEnvironmentsLive,
   projectTags: projectTagsLive,
   pam: pamLive,
+  admin: adminLive,
   secretPolicies: secretPoliciesLive,
   billing: billingLive,
   sso: ssoLive

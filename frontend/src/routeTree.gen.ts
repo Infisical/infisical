@@ -25,6 +25,7 @@ import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/
 import { Route as designSystemRoutesOverviewImport } from './pages/design-system/routes/overview'
 import { Route as v4UserPersonalSettingsPageRouteImport } from './pages/v4/user/PersonalSettingsPage/route'
 import { Route as v4AuthPasswordSetupPageRouteImport } from './pages/v4/auth/PasswordSetupPage/route'
+import { Route as v4AdminRouteImport } from './pages/v4/admin/route'
 import { Route as v4AuthRouteImport } from './pages/v4/auth/route'
 import { Route as publicShareSecretPageRouteImport } from './pages/public/ShareSecretPage/route'
 import { Route as authSignUpInvitePageRouteImport } from './pages/auth/SignUpInvitePage/route'
@@ -42,6 +43,9 @@ import { Route as v4AuthOrgOnboardingPageRouteImport } from './pages/v4/auth/Org
 import { Route as v4AuthNoOrgPageRouteImport } from './pages/v4/auth/NoOrgPage/route'
 import { Route as v4OrganizationRouteImport } from './pages/v4/organization/route'
 import { Route as v4AuthMfaSessionPageRouteImport } from './pages/v4/auth/MfaSessionPage/route'
+import { Route as v4AdminWelcomePageRouteImport } from './pages/v4/admin/WelcomePage/route'
+import { Route as v4AdminSetupPageRouteImport } from './pages/v4/admin/SetupPage/route'
+import { Route as v4AdminAdminShellRouteImport } from './pages/v4/admin/AdminShell/route'
 import { Route as v4AuthSignUpInvitePageRouteImport } from './pages/v4/auth/SignUpInvitePage/route'
 import { Route as v4AuthRequestNewInvitePageRouteImport } from './pages/v4/auth/RequestNewInvitePage/route'
 import { Route as v4AuthEmailNotVerifiedPageRouteImport } from './pages/v4/auth/EmailNotVerifiedPage/route'
@@ -72,6 +76,12 @@ import { Route as v4OrganizationIntegrationsPageRouteImport } from './pages/v4/o
 import { Route as v4OrganizationAuditLogsPageRouteImport } from './pages/v4/organization/AuditLogsPage/route'
 import { Route as v4OrganizationAccessManagementPageRouteImport } from './pages/v4/organization/AccessManagementPage/route'
 import { Route as v4OrganizationNotPortedPageRouteImport } from './pages/v4/organization/NotPortedPage/route'
+import { Route as v4AdminIntegrationsPageRouteImport } from './pages/v4/admin/IntegrationsPage/route'
+import { Route as v4AdminEnvironmentPageRouteImport } from './pages/v4/admin/EnvironmentPage/route'
+import { Route as v4AdminEncryptionPageRouteImport } from './pages/v4/admin/EncryptionPage/route'
+import { Route as v4AdminCachingPageRouteImport } from './pages/v4/admin/CachingPage/route'
+import { Route as v4AdminAuthenticationPageRouteImport } from './pages/v4/admin/AuthenticationPage/route'
+import { Route as v4AdminAccessManagementPageRouteImport } from './pages/v4/admin/AccessManagementPage/route'
 import { Route as v4AuthSignUpSsoPageRouteImport } from './pages/v4/auth/SignUpSsoPage/route'
 import { Route as v4AuthSelectOrgPageRouteImport } from './pages/v4/auth/SelectOrgPage/route'
 import { Route as v4AuthSsoLoginPageSamlRouteImport } from './pages/v4/auth/SsoLoginPage/saml/route'
@@ -83,6 +93,7 @@ import { Route as authProviderErrorPageRouteImport } from './pages/auth/Provider
 import { Route as agentVaultAgentVaultOAuthCallbackPageRouteImport } from './pages/agent-vault/AgentVaultOAuthCallbackPage/route'
 import { Route as adminWelcomePageRouteImport } from './pages/admin/WelcomePage/route'
 import { Route as adminSetupPageRouteImport } from './pages/admin/SetupPage/route'
+import { Route as v4AdminGeneralPageRouteImport } from './pages/v4/admin/GeneralPage/route'
 import { Route as v4AuthSignUpPageRouteImport } from './pages/v4/auth/SignUpPage/route'
 import { Route as v4AuthLoginPageRouteImport } from './pages/v4/auth/LoginPage/route'
 import { Route as userPersonalSettingsPageRouteImport } from './pages/user/PersonalSettingsPage/route'
@@ -96,6 +107,7 @@ import { Route as v4OrganizationGroupDetailsByIDPageRouteImport } from './pages/
 import { Route as v4CertManagerSettingsPageRouteImport } from './pages/v4/cert-manager/SettingsPage/route'
 import { Route as v4CertManagerDashboardPageRouteImport } from './pages/v4/cert-manager/DashboardPage/route'
 import { Route as v4CertManagerInventoryPageRouteImport } from './pages/v4/cert-manager/InventoryPage/route'
+import { Route as v4AdminResourceOverviewPageRouteImport } from './pages/v4/admin/ResourceOverviewPage/route'
 import { Route as v4AuthProviderErrorPageRouteImport } from './pages/v4/auth/ProviderErrorPage/route'
 import { Route as adminIntegrationsPageRouteImport } from './pages/admin/IntegrationsPage/route'
 import { Route as adminEnvironmentPageRouteImport } from './pages/admin/EnvironmentPage/route'
@@ -607,6 +619,12 @@ const v4AuthPasswordSetupPageRouteRoute =
     getParentRoute: () => v4RouteRoute,
   } as any)
 
+const v4AdminRouteRoute = v4AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => v4RouteRoute,
+} as any)
+
 const v4AuthRouteRoute = v4AuthRouteImport.update({
   id: '/_v4-auth',
   getParentRoute: () => v4RouteRoute,
@@ -734,6 +752,23 @@ const v4AuthMfaSessionPageRouteRoute = v4AuthMfaSessionPageRouteImport.update({
   id: '/mfa-session/$mfaSessionId',
   path: '/mfa-session/$mfaSessionId',
   getParentRoute: () => v4RouteRoute,
+} as any)
+
+const v4AdminWelcomePageRouteRoute = v4AdminWelcomePageRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => v4AdminRouteRoute,
+} as any)
+
+const v4AdminSetupPageRouteRoute = v4AdminSetupPageRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => v4AdminRouteRoute,
+} as any)
+
+const v4AdminAdminShellRouteRoute = v4AdminAdminShellRouteImport.update({
+  id: '/_v4-admin-shell',
+  getParentRoute: () => v4AdminRouteRoute,
 } as any)
 
 const v4AuthSignUpInvitePageRouteRoute =
@@ -951,6 +986,48 @@ const v4OrganizationNotPortedPageRouteRoute =
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
+const v4AdminIntegrationsPageRouteRoute =
+  v4AdminIntegrationsPageRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => v4AdminAdminShellRouteRoute,
+  } as any)
+
+const v4AdminEnvironmentPageRouteRoute =
+  v4AdminEnvironmentPageRouteImport.update({
+    id: '/environment',
+    path: '/environment',
+    getParentRoute: () => v4AdminAdminShellRouteRoute,
+  } as any)
+
+const v4AdminEncryptionPageRouteRoute = v4AdminEncryptionPageRouteImport.update(
+  {
+    id: '/encryption',
+    path: '/encryption',
+    getParentRoute: () => v4AdminAdminShellRouteRoute,
+  } as any,
+)
+
+const v4AdminCachingPageRouteRoute = v4AdminCachingPageRouteImport.update({
+  id: '/caching',
+  path: '/caching',
+  getParentRoute: () => v4AdminAdminShellRouteRoute,
+} as any)
+
+const v4AdminAuthenticationPageRouteRoute =
+  v4AdminAuthenticationPageRouteImport.update({
+    id: '/authentication',
+    path: '/authentication',
+    getParentRoute: () => v4AdminAdminShellRouteRoute,
+  } as any)
+
+const v4AdminAccessManagementPageRouteRoute =
+  v4AdminAccessManagementPageRouteImport.update({
+    id: '/access-management',
+    path: '/access-management',
+    getParentRoute: () => v4AdminAdminShellRouteRoute,
+  } as any)
+
 const v4AuthSignUpSsoPageRouteRoute = v4AuthSignUpSsoPageRouteImport.update({
   id: '/sso',
   path: '/sso',
@@ -1022,6 +1099,12 @@ const adminSetupPageRouteRoute = adminSetupPageRouteImport.update({
   id: '/setup',
   path: '/setup',
   getParentRoute: () => AuthenticateInjectOrgDetailsAdminRoute,
+} as any)
+
+const v4AdminGeneralPageRouteRoute = v4AdminGeneralPageRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => v4AdminAdminShellRouteRoute,
 } as any)
 
 const v4AuthSignUpPageRouteRoute = v4AuthSignUpPageRouteImport.update({
@@ -1118,6 +1201,13 @@ const v4CertManagerInventoryPageRouteRoute =
     id: '/cert-manager/inventory',
     path: '/cert-manager/inventory',
     getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
+const v4AdminResourceOverviewPageRouteRoute =
+  v4AdminResourceOverviewPageRouteImport.update({
+    id: '/resources/overview',
+    path: '/resources/overview',
+    getParentRoute: () => v4AdminAdminShellRouteRoute,
   } as any)
 
 const v4AuthProviderErrorPageRouteRoute =
@@ -3503,6 +3593,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4AuthRouteImport
       parentRoute: typeof v4RouteImport
     }
+    '/v4/admin': {
+      id: '/v4/admin'
+      path: '/admin'
+      fullPath: '/v4/admin'
+      preLoaderRoute: typeof v4AdminRouteImport
+      parentRoute: typeof v4RouteImport
+    }
     '/v4/password-setup': {
       id: '/v4/password-setup'
       path: '/password-setup'
@@ -3699,6 +3796,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4AuthSignUpInvitePageRouteImport
       parentRoute: typeof v4AuthRouteImport
     }
+    '/v4/admin/_v4-admin-shell': {
+      id: '/v4/admin/_v4-admin-shell'
+      path: ''
+      fullPath: '/v4/admin'
+      preLoaderRoute: typeof v4AdminAdminShellRouteImport
+      parentRoute: typeof v4AdminRouteImport
+    }
+    '/v4/admin/setup': {
+      id: '/v4/admin/setup'
+      path: '/setup'
+      fullPath: '/v4/admin/setup'
+      preLoaderRoute: typeof v4AdminSetupPageRouteImport
+      parentRoute: typeof v4AdminRouteImport
+    }
+    '/v4/admin/welcome': {
+      id: '/v4/admin/welcome'
+      path: '/welcome'
+      fullPath: '/v4/admin/welcome'
+      preLoaderRoute: typeof v4AdminWelcomePageRouteImport
+      parentRoute: typeof v4AdminRouteImport
+    }
     '/v4/mfa-session/$mfaSessionId': {
       id: '/v4/mfa-session/$mfaSessionId'
       path: '/mfa-session/$mfaSessionId'
@@ -3804,6 +3922,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4AuthSignUpPageRouteImport
       parentRoute: typeof V4V4AuthSignupImport
     }
+    '/v4/admin/_v4-admin-shell/': {
+      id: '/v4/admin/_v4-admin-shell/'
+      path: '/'
+      fullPath: '/v4/admin/'
+      preLoaderRoute: typeof v4AdminGeneralPageRouteImport
+      parentRoute: typeof v4AdminAdminShellRouteImport
+    }
     '/_authenticate/_inject-org-details/admin/setup': {
       id: '/_authenticate/_inject-org-details/admin/setup'
       path: '/setup'
@@ -3880,6 +4005,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/v4/signup/sso'
       preLoaderRoute: typeof v4AuthSignUpSsoPageRouteImport
       parentRoute: typeof V4V4AuthSignupImport
+    }
+    '/v4/admin/_v4-admin-shell/access-management': {
+      id: '/v4/admin/_v4-admin-shell/access-management'
+      path: '/access-management'
+      fullPath: '/v4/admin/access-management'
+      preLoaderRoute: typeof v4AdminAccessManagementPageRouteImport
+      parentRoute: typeof v4AdminAdminShellRouteImport
+    }
+    '/v4/admin/_v4-admin-shell/authentication': {
+      id: '/v4/admin/_v4-admin-shell/authentication'
+      path: '/authentication'
+      fullPath: '/v4/admin/authentication'
+      preLoaderRoute: typeof v4AdminAuthenticationPageRouteImport
+      parentRoute: typeof v4AdminAdminShellRouteImport
+    }
+    '/v4/admin/_v4-admin-shell/caching': {
+      id: '/v4/admin/_v4-admin-shell/caching'
+      path: '/caching'
+      fullPath: '/v4/admin/caching'
+      preLoaderRoute: typeof v4AdminCachingPageRouteImport
+      parentRoute: typeof v4AdminAdminShellRouteImport
+    }
+    '/v4/admin/_v4-admin-shell/encryption': {
+      id: '/v4/admin/_v4-admin-shell/encryption'
+      path: '/encryption'
+      fullPath: '/v4/admin/encryption'
+      preLoaderRoute: typeof v4AdminEncryptionPageRouteImport
+      parentRoute: typeof v4AdminAdminShellRouteImport
+    }
+    '/v4/admin/_v4-admin-shell/environment': {
+      id: '/v4/admin/_v4-admin-shell/environment'
+      path: '/environment'
+      fullPath: '/v4/admin/environment'
+      preLoaderRoute: typeof v4AdminEnvironmentPageRouteImport
+      parentRoute: typeof v4AdminAdminShellRouteImport
+    }
+    '/v4/admin/_v4-admin-shell/integrations': {
+      id: '/v4/admin/_v4-admin-shell/integrations'
+      path: '/integrations'
+      fullPath: '/v4/admin/integrations'
+      preLoaderRoute: typeof v4AdminIntegrationsPageRouteImport
+      parentRoute: typeof v4AdminAdminShellRouteImport
     }
     '/v4/organizations/$orgId/$': {
       id: '/v4/organizations/$orgId/$'
@@ -4048,6 +4215,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/v4/login/provider/error'
       preLoaderRoute: typeof v4AuthProviderErrorPageRouteImport
       parentRoute: typeof V4V4AuthLoginImport
+    }
+    '/v4/admin/_v4-admin-shell/resources/overview': {
+      id: '/v4/admin/_v4-admin-shell/resources/overview'
+      path: '/resources/overview'
+      fullPath: '/v4/admin/resources/overview'
+      preLoaderRoute: typeof v4AdminResourceOverviewPageRouteImport
+      parentRoute: typeof v4AdminAdminShellRouteImport
     }
     '/v4/organizations/$orgId/cert-manager/inventory': {
       id: '/v4/organizations/$orgId/cert-manager/inventory'
@@ -6213,6 +6387,52 @@ const v4AuthRouteRouteWithChildren = v4AuthRouteRoute._addFileChildren(
   v4AuthRouteRouteChildren,
 )
 
+interface v4AdminAdminShellRouteRouteChildren {
+  v4AdminGeneralPageRouteRoute: typeof v4AdminGeneralPageRouteRoute
+  v4AdminAccessManagementPageRouteRoute: typeof v4AdminAccessManagementPageRouteRoute
+  v4AdminAuthenticationPageRouteRoute: typeof v4AdminAuthenticationPageRouteRoute
+  v4AdminCachingPageRouteRoute: typeof v4AdminCachingPageRouteRoute
+  v4AdminEncryptionPageRouteRoute: typeof v4AdminEncryptionPageRouteRoute
+  v4AdminEnvironmentPageRouteRoute: typeof v4AdminEnvironmentPageRouteRoute
+  v4AdminIntegrationsPageRouteRoute: typeof v4AdminIntegrationsPageRouteRoute
+  v4AdminResourceOverviewPageRouteRoute: typeof v4AdminResourceOverviewPageRouteRoute
+}
+
+const v4AdminAdminShellRouteRouteChildren: v4AdminAdminShellRouteRouteChildren =
+  {
+    v4AdminGeneralPageRouteRoute: v4AdminGeneralPageRouteRoute,
+    v4AdminAccessManagementPageRouteRoute:
+      v4AdminAccessManagementPageRouteRoute,
+    v4AdminAuthenticationPageRouteRoute: v4AdminAuthenticationPageRouteRoute,
+    v4AdminCachingPageRouteRoute: v4AdminCachingPageRouteRoute,
+    v4AdminEncryptionPageRouteRoute: v4AdminEncryptionPageRouteRoute,
+    v4AdminEnvironmentPageRouteRoute: v4AdminEnvironmentPageRouteRoute,
+    v4AdminIntegrationsPageRouteRoute: v4AdminIntegrationsPageRouteRoute,
+    v4AdminResourceOverviewPageRouteRoute:
+      v4AdminResourceOverviewPageRouteRoute,
+  }
+
+const v4AdminAdminShellRouteRouteWithChildren =
+  v4AdminAdminShellRouteRoute._addFileChildren(
+    v4AdminAdminShellRouteRouteChildren,
+  )
+
+interface v4AdminRouteRouteChildren {
+  v4AdminAdminShellRouteRoute: typeof v4AdminAdminShellRouteRouteWithChildren
+  v4AdminSetupPageRouteRoute: typeof v4AdminSetupPageRouteRoute
+  v4AdminWelcomePageRouteRoute: typeof v4AdminWelcomePageRouteRoute
+}
+
+const v4AdminRouteRouteChildren: v4AdminRouteRouteChildren = {
+  v4AdminAdminShellRouteRoute: v4AdminAdminShellRouteRouteWithChildren,
+  v4AdminSetupPageRouteRoute: v4AdminSetupPageRouteRoute,
+  v4AdminWelcomePageRouteRoute: v4AdminWelcomePageRouteRoute,
+}
+
+const v4AdminRouteRouteWithChildren = v4AdminRouteRoute._addFileChildren(
+  v4AdminRouteRouteChildren,
+)
+
 interface V4OrganizationsOrgIdProjectsRouteChildren {
   v4OrganizationProjectsPageRouteRoute: typeof v4OrganizationProjectsPageRouteRoute
   v4OrganizationNotPortedPageProjectsRouteRoute: typeof v4OrganizationNotPortedPageProjectsRouteRoute
@@ -6370,6 +6590,7 @@ const v4OrganizationRouteRouteWithChildren =
 
 interface v4RouteRouteChildren {
   v4AuthRouteRoute: typeof v4AuthRouteRouteWithChildren
+  v4AdminRouteRoute: typeof v4AdminRouteRouteWithChildren
   v4AuthPasswordSetupPageRouteRoute: typeof v4AuthPasswordSetupPageRouteRoute
   v4UserPersonalSettingsPageRouteRoute: typeof v4UserPersonalSettingsPageRouteRoute
   v4AuthMfaSessionPageRouteRoute: typeof v4AuthMfaSessionPageRouteRoute
@@ -6380,6 +6601,7 @@ interface v4RouteRouteChildren {
 
 const v4RouteRouteChildren: v4RouteRouteChildren = {
   v4AuthRouteRoute: v4AuthRouteRouteWithChildren,
+  v4AdminRouteRoute: v4AdminRouteRouteWithChildren,
   v4AuthPasswordSetupPageRouteRoute: v4AuthPasswordSetupPageRouteRoute,
   v4UserPersonalSettingsPageRouteRoute: v4UserPersonalSettingsPageRouteRoute,
   v4AuthMfaSessionPageRouteRoute: v4AuthMfaSessionPageRouteRoute,
@@ -7781,6 +8003,7 @@ export interface FileRoutesByFullPath {
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/shared/new': typeof publicShareSecretPageRouteRoute
+  '/v4/admin': typeof v4AdminAdminShellRouteRouteWithChildren
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
   '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
   '/design-system/': typeof designSystemRoutesOverviewRoute
@@ -7808,6 +8031,8 @@ export interface FileRoutesByFullPath {
   '/v4/email-not-verified': typeof v4AuthEmailNotVerifiedPageRouteRoute
   '/v4/requestnewinvite': typeof v4AuthRequestNewInvitePageRouteRoute
   '/v4/signupinvite': typeof v4AuthSignUpInvitePageRouteRoute
+  '/v4/admin/setup': typeof v4AdminSetupPageRouteRoute
+  '/v4/admin/welcome': typeof v4AdminWelcomePageRouteRoute
   '/v4/mfa-session/$mfaSessionId': typeof v4AuthMfaSessionPageRouteRoute
   '/v4/organizations/$orgId': typeof v4OrganizationRouteRouteWithChildren
   '/v4/organizations/none': typeof v4AuthNoOrgPageRouteRoute
@@ -7821,6 +8046,7 @@ export interface FileRoutesByFullPath {
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
   '/v4/login/': typeof v4AuthLoginPageRouteRoute
   '/v4/signup/': typeof v4AuthSignUpPageRouteRoute
+  '/v4/admin/': typeof v4AdminGeneralPageRouteRoute
   '/admin/setup': typeof adminSetupPageRouteRoute
   '/admin/welcome': typeof adminWelcomePageRouteRoute
   '/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
@@ -7832,6 +8058,12 @@ export interface FileRoutesByFullPath {
   '/v4/login/saml': typeof v4AuthSsoLoginPageSamlRouteRoute
   '/v4/login/select-organization': typeof v4AuthSelectOrgPageRouteRoute
   '/v4/signup/sso': typeof v4AuthSignUpSsoPageRouteRoute
+  '/v4/admin/access-management': typeof v4AdminAccessManagementPageRouteRoute
+  '/v4/admin/authentication': typeof v4AdminAuthenticationPageRouteRoute
+  '/v4/admin/caching': typeof v4AdminCachingPageRouteRoute
+  '/v4/admin/encryption': typeof v4AdminEncryptionPageRouteRoute
+  '/v4/admin/environment': typeof v4AdminEnvironmentPageRouteRoute
+  '/v4/admin/integrations': typeof v4AdminIntegrationsPageRouteRoute
   '/v4/organizations/$orgId/$': typeof v4OrganizationNotPortedPageRouteRoute
   '/v4/organizations/$orgId/access-management': typeof v4OrganizationAccessManagementPageRouteRoute
   '/v4/organizations/$orgId/audit-logs': typeof v4OrganizationAuditLogsPageRouteRoute
@@ -7855,6 +8087,7 @@ export interface FileRoutesByFullPath {
   '/admin/environment': typeof adminEnvironmentPageRouteRoute
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/v4/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
+  '/v4/admin/resources/overview': typeof v4AdminResourceOverviewPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
@@ -8160,6 +8393,7 @@ export interface FileRoutesByTo {
   '/requestnewinvite': typeof authRequestNewInvitePageRouteRoute
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/shared/new': typeof publicShareSecretPageRouteRoute
+  '/v4/admin': typeof v4AdminGeneralPageRouteRoute
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
   '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
   '/design-system': typeof designSystemRoutesOverviewRoute
@@ -8185,6 +8419,8 @@ export interface FileRoutesByTo {
   '/v4/email-not-verified': typeof v4AuthEmailNotVerifiedPageRouteRoute
   '/v4/requestnewinvite': typeof v4AuthRequestNewInvitePageRouteRoute
   '/v4/signupinvite': typeof v4AuthSignUpInvitePageRouteRoute
+  '/v4/admin/setup': typeof v4AdminSetupPageRouteRoute
+  '/v4/admin/welcome': typeof v4AdminWelcomePageRouteRoute
   '/v4/mfa-session/$mfaSessionId': typeof v4AuthMfaSessionPageRouteRoute
   '/v4/organizations/$orgId': typeof v4OrganizationRouteRouteWithChildren
   '/v4/organizations/none': typeof v4AuthNoOrgPageRouteRoute
@@ -8206,6 +8442,12 @@ export interface FileRoutesByTo {
   '/v4/login/saml': typeof v4AuthSsoLoginPageSamlRouteRoute
   '/v4/login/select-organization': typeof v4AuthSelectOrgPageRouteRoute
   '/v4/signup/sso': typeof v4AuthSignUpSsoPageRouteRoute
+  '/v4/admin/access-management': typeof v4AdminAccessManagementPageRouteRoute
+  '/v4/admin/authentication': typeof v4AdminAuthenticationPageRouteRoute
+  '/v4/admin/caching': typeof v4AdminCachingPageRouteRoute
+  '/v4/admin/encryption': typeof v4AdminEncryptionPageRouteRoute
+  '/v4/admin/environment': typeof v4AdminEnvironmentPageRouteRoute
+  '/v4/admin/integrations': typeof v4AdminIntegrationsPageRouteRoute
   '/v4/organizations/$orgId/$': typeof v4OrganizationNotPortedPageRouteRoute
   '/v4/organizations/$orgId/access-management': typeof v4OrganizationAccessManagementPageRouteRoute
   '/v4/organizations/$orgId/audit-logs': typeof v4OrganizationAuditLogsPageRouteRoute
@@ -8227,6 +8469,7 @@ export interface FileRoutesByTo {
   '/admin/environment': typeof adminEnvironmentPageRouteRoute
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/v4/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
+  '/v4/admin/resources/overview': typeof v4AdminResourceOverviewPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
@@ -8511,6 +8754,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/shared/new': typeof publicShareSecretPageRouteRoute
   '/v4/_v4-auth': typeof v4AuthRouteRouteWithChildren
+  '/v4/admin': typeof v4AdminRouteRouteWithChildren
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
   '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
   '/design-system/': typeof designSystemRoutesOverviewRoute
@@ -8539,6 +8783,9 @@ export interface FileRoutesById {
   '/v4/_v4-auth/email-not-verified': typeof v4AuthEmailNotVerifiedPageRouteRoute
   '/v4/_v4-auth/requestnewinvite': typeof v4AuthRequestNewInvitePageRouteRoute
   '/v4/_v4-auth/signupinvite': typeof v4AuthSignUpInvitePageRouteRoute
+  '/v4/admin/_v4-admin-shell': typeof v4AdminAdminShellRouteRouteWithChildren
+  '/v4/admin/setup': typeof v4AdminSetupPageRouteRoute
+  '/v4/admin/welcome': typeof v4AdminWelcomePageRouteRoute
   '/v4/mfa-session/$mfaSessionId': typeof v4AuthMfaSessionPageRouteRoute
   '/v4/organizations/$orgId': typeof v4OrganizationRouteRouteWithChildren
   '/v4/organizations/none': typeof v4AuthNoOrgPageRouteRoute
@@ -8554,6 +8801,7 @@ export interface FileRoutesById {
   '/_authenticate/personal-settings/_layout/': typeof userPersonalSettingsPageRouteRoute
   '/v4/_v4-auth/login/': typeof v4AuthLoginPageRouteRoute
   '/v4/_v4-auth/signup/': typeof v4AuthSignUpPageRouteRoute
+  '/v4/admin/_v4-admin-shell/': typeof v4AdminGeneralPageRouteRoute
   '/_authenticate/_inject-org-details/admin/setup': typeof adminSetupPageRouteRoute
   '/_authenticate/_inject-org-details/admin/welcome': typeof adminWelcomePageRouteRoute
   '/_authenticate/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
@@ -8565,6 +8813,12 @@ export interface FileRoutesById {
   '/v4/_v4-auth/login/saml': typeof v4AuthSsoLoginPageSamlRouteRoute
   '/v4/_v4-auth/login/select-organization': typeof v4AuthSelectOrgPageRouteRoute
   '/v4/_v4-auth/signup/sso': typeof v4AuthSignUpSsoPageRouteRoute
+  '/v4/admin/_v4-admin-shell/access-management': typeof v4AdminAccessManagementPageRouteRoute
+  '/v4/admin/_v4-admin-shell/authentication': typeof v4AdminAuthenticationPageRouteRoute
+  '/v4/admin/_v4-admin-shell/caching': typeof v4AdminCachingPageRouteRoute
+  '/v4/admin/_v4-admin-shell/encryption': typeof v4AdminEncryptionPageRouteRoute
+  '/v4/admin/_v4-admin-shell/environment': typeof v4AdminEnvironmentPageRouteRoute
+  '/v4/admin/_v4-admin-shell/integrations': typeof v4AdminIntegrationsPageRouteRoute
   '/v4/organizations/$orgId/$': typeof v4OrganizationNotPortedPageRouteRoute
   '/v4/organizations/$orgId/access-management': typeof v4OrganizationAccessManagementPageRouteRoute
   '/v4/organizations/$orgId/audit-logs': typeof v4OrganizationAuditLogsPageRouteRoute
@@ -8589,6 +8843,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/_admin-layout/environment': typeof adminEnvironmentPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/integrations': typeof adminIntegrationsPageRouteRoute
   '/v4/_v4-auth/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
+  '/v4/admin/_v4-admin-shell/resources/overview': typeof v4AdminResourceOverviewPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
@@ -8903,6 +9158,7 @@ export interface FileRouteTypes {
     | '/requestnewinvite'
     | '/signupinvite'
     | '/shared/new'
+    | '/v4/admin'
     | '/v4/password-setup'
     | '/v4/personal-settings'
     | '/design-system/'
@@ -8930,6 +9186,8 @@ export interface FileRouteTypes {
     | '/v4/email-not-verified'
     | '/v4/requestnewinvite'
     | '/v4/signupinvite'
+    | '/v4/admin/setup'
+    | '/v4/admin/welcome'
     | '/v4/mfa-session/$mfaSessionId'
     | '/v4/organizations/$orgId'
     | '/v4/organizations/none'
@@ -8943,6 +9201,7 @@ export interface FileRouteTypes {
     | '/personal-settings/'
     | '/v4/login/'
     | '/v4/signup/'
+    | '/v4/admin/'
     | '/admin/setup'
     | '/admin/welcome'
     | '/agent-vault/oauth/callback'
@@ -8954,6 +9213,12 @@ export interface FileRouteTypes {
     | '/v4/login/saml'
     | '/v4/login/select-organization'
     | '/v4/signup/sso'
+    | '/v4/admin/access-management'
+    | '/v4/admin/authentication'
+    | '/v4/admin/caching'
+    | '/v4/admin/encryption'
+    | '/v4/admin/environment'
+    | '/v4/admin/integrations'
     | '/v4/organizations/$orgId/$'
     | '/v4/organizations/$orgId/access-management'
     | '/v4/organizations/$orgId/audit-logs'
@@ -8977,6 +9242,7 @@ export interface FileRouteTypes {
     | '/admin/environment'
     | '/admin/integrations'
     | '/v4/login/provider/error'
+    | '/v4/admin/resources/overview'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/cert-manager/settings'
@@ -9281,6 +9547,7 @@ export interface FileRouteTypes {
     | '/requestnewinvite'
     | '/signupinvite'
     | '/shared/new'
+    | '/v4/admin'
     | '/v4/password-setup'
     | '/v4/personal-settings'
     | '/design-system'
@@ -9306,6 +9573,8 @@ export interface FileRouteTypes {
     | '/v4/email-not-verified'
     | '/v4/requestnewinvite'
     | '/v4/signupinvite'
+    | '/v4/admin/setup'
+    | '/v4/admin/welcome'
     | '/v4/mfa-session/$mfaSessionId'
     | '/v4/organizations/$orgId'
     | '/v4/organizations/none'
@@ -9327,6 +9596,12 @@ export interface FileRouteTypes {
     | '/v4/login/saml'
     | '/v4/login/select-organization'
     | '/v4/signup/sso'
+    | '/v4/admin/access-management'
+    | '/v4/admin/authentication'
+    | '/v4/admin/caching'
+    | '/v4/admin/encryption'
+    | '/v4/admin/environment'
+    | '/v4/admin/integrations'
     | '/v4/organizations/$orgId/$'
     | '/v4/organizations/$orgId/access-management'
     | '/v4/organizations/$orgId/audit-logs'
@@ -9348,6 +9623,7 @@ export interface FileRouteTypes {
     | '/admin/environment'
     | '/admin/integrations'
     | '/v4/login/provider/error'
+    | '/v4/admin/resources/overview'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/cert-manager/settings'
@@ -9630,6 +9906,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/signupinvite'
     | '/shared/new'
     | '/v4/_v4-auth'
+    | '/v4/admin'
     | '/v4/password-setup'
     | '/v4/personal-settings'
     | '/design-system/'
@@ -9658,6 +9935,9 @@ export interface FileRouteTypes {
     | '/v4/_v4-auth/email-not-verified'
     | '/v4/_v4-auth/requestnewinvite'
     | '/v4/_v4-auth/signupinvite'
+    | '/v4/admin/_v4-admin-shell'
+    | '/v4/admin/setup'
+    | '/v4/admin/welcome'
     | '/v4/mfa-session/$mfaSessionId'
     | '/v4/organizations/$orgId'
     | '/v4/organizations/none'
@@ -9673,6 +9953,7 @@ export interface FileRouteTypes {
     | '/_authenticate/personal-settings/_layout/'
     | '/v4/_v4-auth/login/'
     | '/v4/_v4-auth/signup/'
+    | '/v4/admin/_v4-admin-shell/'
     | '/_authenticate/_inject-org-details/admin/setup'
     | '/_authenticate/_inject-org-details/admin/welcome'
     | '/_authenticate/agent-vault/oauth/callback'
@@ -9684,6 +9965,12 @@ export interface FileRouteTypes {
     | '/v4/_v4-auth/login/saml'
     | '/v4/_v4-auth/login/select-organization'
     | '/v4/_v4-auth/signup/sso'
+    | '/v4/admin/_v4-admin-shell/access-management'
+    | '/v4/admin/_v4-admin-shell/authentication'
+    | '/v4/admin/_v4-admin-shell/caching'
+    | '/v4/admin/_v4-admin-shell/encryption'
+    | '/v4/admin/_v4-admin-shell/environment'
+    | '/v4/admin/_v4-admin-shell/integrations'
     | '/v4/organizations/$orgId/$'
     | '/v4/organizations/$orgId/access-management'
     | '/v4/organizations/$orgId/audit-logs'
@@ -9708,6 +9995,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/_admin-layout/environment'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/integrations'
     | '/v4/_v4-auth/login/provider/error'
+    | '/v4/admin/_v4-admin-shell/resources/overview'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/cert-manager/settings'
@@ -10079,6 +10367,7 @@ export const routeTree = rootRoute
       "filePath": "v4/route.tsx",
       "children": [
         "/v4/_v4-auth",
+        "/v4/admin",
         "/v4/password-setup",
         "/v4/personal-settings",
         "/v4/mfa-session/$mfaSessionId",
@@ -10155,6 +10444,15 @@ export const routeTree = rootRoute
         "/v4/_v4-auth/login",
         "/v4/_v4-auth/signup",
         "/v4/_v4-auth/admin/signup"
+      ]
+    },
+    "/v4/admin": {
+      "filePath": "v4/admin/route.tsx",
+      "parent": "/v4",
+      "children": [
+        "/v4/admin/_v4-admin-shell",
+        "/v4/admin/setup",
+        "/v4/admin/welcome"
       ]
     },
     "/v4/password-setup": {
@@ -10292,6 +10590,28 @@ export const routeTree = rootRoute
       "filePath": "v4/auth/SignUpInvitePage/route.tsx",
       "parent": "/v4/_v4-auth"
     },
+    "/v4/admin/_v4-admin-shell": {
+      "filePath": "v4/admin/AdminShell/route.tsx",
+      "parent": "/v4/admin",
+      "children": [
+        "/v4/admin/_v4-admin-shell/",
+        "/v4/admin/_v4-admin-shell/access-management",
+        "/v4/admin/_v4-admin-shell/authentication",
+        "/v4/admin/_v4-admin-shell/caching",
+        "/v4/admin/_v4-admin-shell/encryption",
+        "/v4/admin/_v4-admin-shell/environment",
+        "/v4/admin/_v4-admin-shell/integrations",
+        "/v4/admin/_v4-admin-shell/resources/overview"
+      ]
+    },
+    "/v4/admin/setup": {
+      "filePath": "v4/admin/SetupPage/route.tsx",
+      "parent": "/v4/admin"
+    },
+    "/v4/admin/welcome": {
+      "filePath": "v4/admin/WelcomePage/route.tsx",
+      "parent": "/v4/admin"
+    },
     "/v4/mfa-session/$mfaSessionId": {
       "filePath": "v4/auth/MfaSessionPage/route.tsx",
       "parent": "/v4"
@@ -10404,6 +10724,10 @@ export const routeTree = rootRoute
       "filePath": "v4/auth/SignUpPage/route.tsx",
       "parent": "/v4/_v4-auth/signup"
     },
+    "/v4/admin/_v4-admin-shell/": {
+      "filePath": "v4/admin/GeneralPage/route.tsx",
+      "parent": "/v4/admin/_v4-admin-shell"
+    },
     "/_authenticate/_inject-org-details/admin/setup": {
       "filePath": "admin/SetupPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/admin"
@@ -10447,6 +10771,30 @@ export const routeTree = rootRoute
     "/v4/_v4-auth/signup/sso": {
       "filePath": "v4/auth/SignUpSsoPage/route.tsx",
       "parent": "/v4/_v4-auth/signup"
+    },
+    "/v4/admin/_v4-admin-shell/access-management": {
+      "filePath": "v4/admin/AccessManagementPage/route.tsx",
+      "parent": "/v4/admin/_v4-admin-shell"
+    },
+    "/v4/admin/_v4-admin-shell/authentication": {
+      "filePath": "v4/admin/AuthenticationPage/route.tsx",
+      "parent": "/v4/admin/_v4-admin-shell"
+    },
+    "/v4/admin/_v4-admin-shell/caching": {
+      "filePath": "v4/admin/CachingPage/route.tsx",
+      "parent": "/v4/admin/_v4-admin-shell"
+    },
+    "/v4/admin/_v4-admin-shell/encryption": {
+      "filePath": "v4/admin/EncryptionPage/route.tsx",
+      "parent": "/v4/admin/_v4-admin-shell"
+    },
+    "/v4/admin/_v4-admin-shell/environment": {
+      "filePath": "v4/admin/EnvironmentPage/route.tsx",
+      "parent": "/v4/admin/_v4-admin-shell"
+    },
+    "/v4/admin/_v4-admin-shell/integrations": {
+      "filePath": "v4/admin/IntegrationsPage/route.tsx",
+      "parent": "/v4/admin/_v4-admin-shell"
     },
     "/v4/organizations/$orgId/$": {
       "filePath": "v4/organization/NotPortedPage/route.tsx",
@@ -10591,6 +10939,10 @@ export const routeTree = rootRoute
     "/v4/_v4-auth/login/provider/error": {
       "filePath": "v4/auth/ProviderErrorPage/route.tsx",
       "parent": "/v4/_v4-auth/login"
+    },
+    "/v4/admin/_v4-admin-shell/resources/overview": {
+      "filePath": "v4/admin/ResourceOverviewPage/route.tsx",
+      "parent": "/v4/admin/_v4-admin-shell"
     },
     "/v4/organizations/$orgId/cert-manager/inventory": {
       "filePath": "v4/cert-manager/InventoryPage/route.tsx",
