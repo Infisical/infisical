@@ -68,7 +68,7 @@ const AiTrace = ({ ai }: { ai: TAutoApprovalAiOutcome }) => {
           ))}
         </ol>
       )}
-      {ai.model && <p className="text-muted">Decided by {ai.model}</p>}
+      {ai.model && !ai.error && <p className="text-muted">Decided by {ai.model}</p>}
     </div>
   );
 };

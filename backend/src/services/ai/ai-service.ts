@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { isAxiosError } from "axios";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -164,7 +165,11 @@ export const aiServiceFactory = ({
         describeError: (error) => {
           if (controller.signal.aborted) return `The AI didn't decide within ${AI_JUDGE_TIMEOUT_MS / 1000} seconds`;
           logger.warn(
-            { message: getAnthropicErrorMessage(error) },
+            {
+              message: getAnthropicErrorMessage(error),
+              code: isAxiosError(error) ? error.code : undefined,
+              status: isAxiosError(error) ? error.response?.status : undefined
+            },
             `AI judge model call failed [orgId=${orgId}] [connectionId=${connection.id}]`
           );
           return getAnthropicErrorMessage(error);

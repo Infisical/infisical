@@ -51,7 +51,9 @@ export const validateAnthropicConnectionCredentials = async (config: TAnthropicC
 export const getAnthropicErrorMessage = (error: unknown) => {
   if (!isAxiosError(error)) return "Couldn't reach Anthropic";
 
-  if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") return "Anthropic didn't respond in time";
+  if (error.code === "ETIMEDOUT" || (error.code === "ECONNABORTED" && error.message.includes("timeout"))) {
+    return "Anthropic didn't respond in time";
+  }
   if (error.code === "ERR_CANCELED") return "The request to Anthropic was cancelled";
 
   const status = error.response?.status;
@@ -64,7 +66,7 @@ export const getAnthropicErrorMessage = (error: unknown) => {
   if (typeof detail === "string" && detail.trim()) return detail.slice(0, ANTHROPIC_MAX_ERROR_DETAIL_LENGTH);
 
   if (status) return `Anthropic responded with status ${status}`;
-  return "Couldn't reach Anthropic";
+  return error.code ? `Couldn't reach Anthropic (${error.code})` : "Couldn't reach Anthropic";
 };
 
 // "Claude Opus 4.5" and "Claude 3.5 Sonnet" both belong to "Claude Opus" / "Claude Sonnet"
