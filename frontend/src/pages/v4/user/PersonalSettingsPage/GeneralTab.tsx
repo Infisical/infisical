@@ -134,9 +134,7 @@ const Sessions = () => {
       render: (row) => (
         <Stack gap={0}>
           <span>{row.ip || "Unknown IP"}</span>
-          <Meta title={row.id}>
-            {row.id}
-          </Meta>
+          <Meta title={row.id}>{row.id}</Meta>
         </Stack>
       )
     },
