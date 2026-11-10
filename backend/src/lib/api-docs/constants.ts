@@ -1647,8 +1647,7 @@ export const DASHBOARD = {
   },
   SECRET_OVERVIEW_LIST: {
     projectId: "The ID of the project to list secrets/folders from.",
-    environments:
-      "The slugs of the environments to list secrets/folders from (comma separated, ie 'environments=dev,staging,prod').",
+    environments: "The slugs of the environments to list secrets/folders from.",
     secretPath: "The secret path to list secrets/folders from.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th secret/folder.",
     limit: "The number of secrets/folders to return.",
@@ -1657,7 +1656,7 @@ export const DASHBOARD = {
     sortEnvironment:
       "The environment slug whose secret timestamps determine recency ordering. Required for multi-environment recency sorting.",
     search: "The text string to filter secret keys and folder names by.",
-    tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
+    tags: "The slugs of the tags to filter secrets by.",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeDynamicSecrets: "Whether to include dynamic project secrets in the response.",
@@ -1675,7 +1674,7 @@ export const DASHBOARD = {
     orderBy: "The column to order secrets/folders by.",
     orderDirection: "The direction to order secrets/folders in.",
     search: "The text string to filter secret keys and folder names by.",
-    tags: "The tags to filter secrets by (comma separated, ie 'tags=billing,engineering').",
+    tags: "The slugs of the tags to filter secrets by.",
     includeSecrets: "Whether to include project secrets in the response.",
     includeFolders: "Whether to include project folders in the response.",
     includeImports: "Whether to include project secret imports in the response.",
@@ -2439,6 +2438,8 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get.",
     includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
+    canRenewFromCsr:
+      "Whether Infisical can renew this certificate on its existing key pair from a CSR it holds, without its private key: a CSR the request that produced it carried or one supplied at import, a certificate enrolled through the API, and a profile whose certificate authority issues from a CSR. When true, renewing with renewalKeySource 'reuse' renews from that CSR, and auto-renewal can be turned on.",
     externalMetadata:
       "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
@@ -2466,7 +2467,7 @@ export const CERTIFICATES = {
     hasOriginatingRequest:
       "Whether the certificate has a recorded originating request. When false the preview falls back to the issued certificate, which is the case for imported and discovered certificates.",
     hasOriginatingCsr:
-      "Whether the request that produced this certificate carried a CSR. When Infisical holds neither the private key nor this CSR, renewing with the existing key pair is refused.",
+      "Whether Infisical holds a CSR for this certificate's key pair: the one the request that produced it carried, or the one supplied when it was imported. When Infisical holds neither the private key nor this CSR, renewing with the existing key pair is refused.",
     request:
       "The values a renewal will request, taken from the request that produced this certificate including any profile defaults it recorded.",
     issuerModifiedFields:
@@ -2504,6 +2505,7 @@ export const CERTIFICATES = {
     certificatePem: "The PEM-encoded leaf certificate.",
     privateKeyPem: "Optional PEM-encoded private key associated with the certificate.",
     chainPem: "Optional PEM-encoded chain of intermediate certificates.",
+    csr: "Optional PEM-encoded certificate signing request generated from the certificate's private key, typically the one it was issued from. Lets renewal reuse the existing key pair, including automatic renewal, without Infisical holding the private key. Requires a profile backed by a certificate authority that issues from a CSR (not AWS Certificate Manager). The CSR must carry the certificate's public key, can't name anything the certificate doesn't, and must satisfy the profile's certificate policy.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
     profileId:
@@ -4698,6 +4700,11 @@ export const AGENT_VAULT = {
   SERVICE: {
     serviceId: "The ID of the service.",
     name: "The name of the service.",
+    description:
+      "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it.",
+    updateDescription:
+      "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it. Send null or an empty string to remove it.",
+    descriptionRead: "What the service is for, or null if it has no description. Agents in a session can read it.",
     type: "The service type: `http` for an HTTP API, or `mcp` for a remote MCP server. Can't be changed after the service is created.",
     updateType: "The service's type, `http` or `mcp`. Must match the type the service was created with.",
     serverUrlRead: "The MCP server's full URL. Null for an `http` service.",
@@ -4714,6 +4721,8 @@ export const AGENT_VAULT = {
       "The ID of a completed OAuth authorization, to reauthorize the service or switch it to OAuth. To keep the stored tokens, leave `credential` out.",
     oauthStatus:
       "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks).",
+    oauthSummaryStatus:
+      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks). Absent when each member signs in for themselves.",
     oauthIssuer: "The OAuth authorization server that issued the tokens.",
     oauthGrantedScopes: "The scopes the authorization server granted.",
     oauthRequiredScopes: "Scopes the MCP server asked for that the connection lacks. Reauthorize to request them.",
@@ -4772,7 +4781,18 @@ export const AGENT_VAULT = {
     basicMemberProvidedFields:
       "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of the member who started it. A session a machine identity started on behalf of a user uses that user's values instead. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
     memberProvidedFields:
-      "The credential fields each member sets for themselves: credential-value (a bearer token or a basic password) and credential-username. Empty when the admin sets the whole credential."
+      "The credential fields each member sets for themselves: credential-value (a bearer token, a basic password, or an OAuth sign-in) and credential-username. Empty when the admin sets the whole credential.",
+    oauthMemberProvidedFields:
+      "Leave the OAuth sign-in to each member: send `credential-value` here and no `authorizationId`. Each member connects their own account, and a session uses the account of the member who started it, or of the user a machine identity started it on behalf of. When you save, Infisical checks that the server supports OAuth, and refuses the save if the server doesn't let Infisical register as an OAuth client and you didn't send `clientId`. To go back to one account for every session, send an empty list and an `authorizationId`. Turning this on removes the stored connection, and turning it off removes every member's connection.",
+    oauthClientId:
+      "With the sign-in left to members: the client ID of your own OAuth app, which every member signs in with, for a server that doesn't support dynamic client registration. Register the app with the redirect URI `<your Infisical URL>/agent-vault/oauth/callback`. Omit on update to keep the current client. Changing it removes every member's connection.",
+    oauthClientSecret:
+      "With the sign-in left to members: the client secret of your own OAuth app, if it has one. Never returned once saved. Sending it on update replaces the stored one and removes every member's connection.",
+    oauthRegistration:
+      "With the sign-in left to members: send `dynamic` to stop using your own OAuth app and have each member's sign-in register its own client. Removes every member's connection.",
+    oauthRegistrationMode:
+      "With the sign-in left to members: `manual` when every member signs in with your own OAuth app, `dynamic` when each sign-in registers its own client.",
+    oauthSummaryClientId: "With the sign-in left to members and your own OAuth app: its client ID."
   },
   PERSONAL_VALUE: {
     credentialType:
@@ -4783,13 +4803,21 @@ export const AGENT_VAULT = {
       "Whether you have set every value this service requires from you. Until you do, the proxy refuses this service's requests from your sessions.",
     fields: "Each value the service requires from you, and whether you have set it.",
     field:
-      "Which value: credential-value (a bearer token or a basic password) or credential-username (a basic username).",
+      "Which value: credential-value (a bearer token, a basic password, or an OAuth sign-in) or credential-username (a basic username).",
     isSet: "Whether you have set this value.",
-    updatedAt: "When you last set this value, or null if you haven't.",
+    updatedAt: "When this value last changed, or null if you haven't set it.",
     variableReferences: "Your personal variables that this value uses.",
     values:
       "The values to set, at most one per field the service leaves to its members. A field you leave out keeps its saved value, so after a field becomes member provided you only need to send that one.",
-    value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`
+    value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`,
+    oauth:
+      "For the credential-value field of a service that leaves its OAuth sign-in to members: your connection's status, or null if you haven't connected. Null for every other field.",
+    oauthStatus:
+      "`connected`, `needs-reauthorization` (your login is no longer accepted, so connect again; until then your sessions can't use the service), or `needs-additional-scopes` (the MCP server asked for scopes your connection lacks; connect again to grant them).",
+    oauthRequiredScopes: "Scopes the MCP server asked for that your connection lacks. Connect again to grant them.",
+    oauthExpiresAt: "When your current access token expires, or null if the server didn't say.",
+    oauthAuthorizedAt: "When you last connected your account.",
+    oauthLastError: "The last refresh failure for your connection, if any. Never contains a token."
   },
   OAUTH: {
     authorization: "The OAuth authorization, or null when an OAuth client must be registered first.",
@@ -4803,6 +4831,8 @@ export const AGENT_VAULT = {
     clientSecret: "The client secret of your own OAuth app, if it has one.",
     registration:
       "Send `dynamic` to register a new client with the server, even when the service being reauthorized uses your own OAuth app.",
+    personal:
+      "Send `true` to connect your own account to a service that leaves its OAuth sign-in to each member, then save the authorization as your personal value for the service. Needs only access to the service's access bundle. `serviceId` is required, and the client is the one the service's admin set up, so leave `clientId`, `clientSecret` and `registration` out.",
     registrationRequired:
       "True when the server can't register Infisical as a client by itself, or refused to. Send `clientId` (and `clientSecret`) of your own OAuth app.",
     redirectUri:
@@ -4894,7 +4924,13 @@ export const AGENT_VAULT = {
     offset: "How many skills to skip.",
     totalCount: "How many skills match the filters, across every page.",
     sessionSkills:
-      "The latest version of each skill on the session's access bundles that the session's owner can still reach, ordered by name."
+      "The latest version of each skill on the session's access bundles that the session's owner can still reach, plus the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name.",
+    includeBuiltin:
+      "Whether to include infisical-agent-vault, the built-in skill that tells an agent how to work behind the Agent Vault proxy. Defaults to true.",
+    isBuiltin:
+      "Whether this is the built-in infisical-agent-vault skill, which Agent Vault provides, rather than a skill from the library.",
+    builtinName: "The name of the built-in skill, `infisical-agent-vault`. A skill in the library can't use this name.",
+    builtinDescription: "What the built-in skill is for, taken from the `description` in its SKILL.md."
   },
   MEMBER: {
     grantedAt: "When the access bundle was granted.",
@@ -5000,6 +5036,12 @@ export const AGENT_VAULT = {
     ciphertextSha256:
       "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
     recordCount: "The number of requests recorded in the chunk.",
+    decisionCounts: "How many of the chunk's requests had each outcome. Sent only by CLI versions that count them.",
+    brokeredCount: "The number of requests in the chunk the proxy added a credential, header or substituted value to.",
+    passthroughCount: "The number of requests in the chunk the proxy forwarded without changing them.",
+    blockedCount: "The number of requests in the chunk the proxy refused.",
+    errorCount:
+      "The number of requests in the chunk the proxy couldn't forward, such as when it couldn't reach the destination host. An error response from the destination counts as brokered or passthrough.",
     legacyIv:
       "Sent only by Infisical CLI versions that can't record session logs. A request that includes it is refused.",
     uploadUrl:
@@ -5102,6 +5144,42 @@ export const AGENT_VAULT = {
       "The user the machine identity in actor started this session on behalf of, or null when the session is the actor's own.",
     onBehalfOfType: "Always user: a machine identity starts sessions only on behalf of users.",
     onBehalfOfUserIdRead: "The ID of the user, or null once the user is deleted."
+  },
+  SESSION_SERVICES: {
+    agentVault:
+      "The proxy the request came through: its name, its Infisical CLI version, and its traffic policy. Each is null when the request didn't come through a proxy in the session's project.",
+    trafficPolicy:
+      "any-host if the proxy forwards requests to hosts no service covers, service-hosts if it refuses them, apart from the exception hosts the notes name.",
+    session: "The session's expiry as an RFC 3339 time, and the name of its access bundle.",
+    services: "The services the session can use, bundle services first, then the session's own.",
+    hosts: "The host patterns the service covers, as an admin wrote them.",
+    url: "The URL to call: an MCP server's URL, or for an HTTP service with exactly one host that isn't a wildcard, that host's URL.",
+    status:
+      "ready, or needs-personal-values if the session's owner, or the user it was started on behalf of, hasn't set every personal value the service needs or connected their account. The proxy refuses requests to the service until they do.",
+    credential:
+      "What the proxy adds to each request: its type, the header it sets, and whether it adds one at all. Never the credential itself.",
+    customHeaders: "The names of the headers the proxy adds. Never their values.",
+    placeholders: "Text the agent writes where a secret goes, and the parts of a request the proxy replaces it in.",
+    howToUse: "One paragraph that tells an agent how to call the service.",
+    notes: "Facts about working behind the proxy that apply to every service.",
+    proxyName: "The name of the proxy the request came through.",
+    proxyVersion: "The version of the Infisical CLI that runs the proxy, as the proxy reported it.",
+    sessionExpiresAt: "When the session expires, as an RFC 3339 time, or null if it doesn't expire.",
+    sessionAccessBundle: "The name of the session's access bundle, or null if its owner can no longer reach one.",
+    serviceName: "The service's name.",
+    serviceDescription: "What the service is for, as an admin wrote it, or null if it has no description.",
+    serviceType: "http for an HTTP API, or mcp for a remote MCP server.",
+    transport: "The MCP server's transport, streamable-http or sse. Only set for an MCP service.",
+    credentialType: "The kind of credential the proxy adds: bearer, oauth, basic, or none.",
+    credentialHeader: "The header the proxy sets the credential in.",
+    credentialAddedByProxy: "Whether the proxy adds a credential to the service's requests.",
+    credentialMemberProvided:
+      "Whether some part of the credential is a personal value of the session's owner, or the user it was started on behalf of, so that person, not an admin, fixes it when the service rejects it.",
+    placeholder: "The text the agent writes where the secret goes.",
+    placeholderSurfaces: "The parts of a request the proxy replaces the placeholder in: path, query, header, or body.",
+    allowedMethods: "The HTTP methods the service allows, or null if it allows every method.",
+    allowedPathPrefixes: "The path prefixes the service allows, or null if it allows every path.",
+    allowedTools: "The MCP tools the agent can call, or null if it can call every tool."
   },
   DELEGATION: {
     machineIdentityId: "The ID of the machine identity the delegation belongs to.",

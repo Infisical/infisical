@@ -201,6 +201,9 @@ export const KeyStorePrefixes = {
   AgentVaultOauthAuthorizationCompleteLock: (authorizationId: string) =>
     `agent-vault-oauth-authorization:${authorizationId}:complete` as const,
   AgentVaultOauthRefreshLock: (serviceId: string) => `agent-vault-oauth-refresh-lock:${serviceId}` as const,
+  // By service and owner, not row id: a reconnect replaces the member's row.
+  AgentVaultOauthPersonalRefreshLock: (serviceId: string, ownerId: string) =>
+    `agent-vault-oauth-refresh-lock:${serviceId}:${ownerId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
 

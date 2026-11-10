@@ -1,7 +1,6 @@
 package sharing_test
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -134,14 +133,8 @@ func importedSecrets(t *testing.T, reader *harness.Principal, proj *fixture.Proj
 // which is the only reply that says whether an import's grant was revoked.
 func dashboardImports(t *testing.T, proj *fixture.Project) map[string]bool {
 	t.Helper()
-	includeImports := func(_ context.Context, req *http.Request) error {
-		q := req.URL.Query()
-		q.Set("includeImports", "true")
-		req.URL.RawQuery = q.Encode()
-		return nil
-	}
 	res, err := proj.Tenant().Admin.API.ListProjectSecretsDetailsWithResponse(t.Context(),
-		&api.ListProjectSecretsDetailsParams{ProjectId: proj.ID, Environment: "dev"}, includeImports)
+		api.ListProjectSecretsDetailsJSONRequestBody{ProjectId: proj.ID, Environment: "dev", IncludeImports: new(true)})
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "dashboard listing returned %s", apierr.Body(res.Body))
 

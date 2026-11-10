@@ -605,6 +605,7 @@
                     "root": "documentation/platform/pam/accounts/account-types",
                     "pages": [
                       "documentation/platform/pam/accounts/postgresql",
+                      "documentation/platform/pam/accounts/cockroachdb",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
                       "documentation/platform/pam/accounts/oracledb",
@@ -700,7 +701,6 @@
                   "documentation/platform/agent-vault/quickstart",
                   "documentation/platform/agent-vault/why-agent-vault",
                   "documentation/platform/agent-vault/how-it-works",
-                  "documentation/platform/agent-vault/projects",
                   "documentation/platform/agent-vault/plan-your-setup"
                 ]
               },
@@ -725,6 +725,7 @@
               {
                 "group": "Concepts",
                 "pages": [
+                  "documentation/platform/agent-vault/projects",
                   "documentation/platform/agent-vault/access-bundles",
                   {
                     "group": "Services",
@@ -736,6 +737,7 @@
                   },
                   "documentation/platform/agent-vault/variables",
                   "documentation/platform/agent-vault/skills",
+                  "documentation/platform/agent-vault/service-discovery",
                   {
                     "group": "Sessions",
                     "root": "documentation/platform/agent-vault/sessions",
@@ -4601,6 +4603,7 @@
                     "pages": [
                       "api-reference/endpoints/agent-vault-skills/list",
                       "api-reference/endpoints/agent-vault-skills/get",
+                      "api-reference/endpoints/agent-vault-skills/get-builtin",
                       "api-reference/endpoints/agent-vault-skills/create",
                       "api-reference/endpoints/agent-vault-skills/delete",
                       "api-reference/endpoints/agent-vault-skills/list-versions",
@@ -4608,6 +4611,7 @@
                       "api-reference/endpoints/agent-vault-skills/update",
                       "api-reference/endpoints/agent-vault-skills/restore-version",
                       "api-reference/endpoints/agent-vault-skills/list-bundle-skills",
+                      "api-reference/endpoints/agent-vault-skills/list-session-skills",
                       "api-reference/endpoints/agent-vault-skills/add",
                       "api-reference/endpoints/agent-vault-skills/remove"
                     ]
@@ -4664,6 +4668,7 @@
                       "api-reference/endpoints/agent-vault-sessions/update",
                       "api-reference/endpoints/agent-vault-sessions/revoke",
                       "api-reference/endpoints/agent-vault-sessions/revoke-by-token",
+                      "api-reference/endpoints/agent-vault-sessions/list-session-services",
                       "api-reference/endpoints/agent-vault-session-logs/list",
                       "api-reference/endpoints/agent-vault-session-logs/tail"
                     ]

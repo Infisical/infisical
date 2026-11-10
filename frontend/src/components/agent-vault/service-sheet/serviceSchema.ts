@@ -4,6 +4,7 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/helpers/agentVaultControlChars";
+import { agentVaultServiceDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
 import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import { variableReferenceError } from "@app/helpers/agentVaultVariables";
@@ -18,8 +19,8 @@ import {
   TAgentVaultMemberProvidedField
 } from "@app/hooks/api/agentVault";
 import {
-  TAgentVaultOauthCredentialSummary,
-  TAgentVaultService
+  TAgentVaultService,
+  TAgentVaultSharedOauthCredentialSummary
 } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
@@ -28,6 +29,9 @@ import { slugSchema } from "@app/lib/schemas";
  * returning it. Never sent: the sheet maps it back to an omitted key.
  */
 export const UNCHANGED_SECRET = "__INFISICAL_UNCHANGED__";
+
+/** The type of a save error on `oauthAuthorizationId` that the OAuth card answers by showing its own-app fields. */
+export const OAUTH_OWN_APP_REQUIRED_ERROR = "own-app-required";
 
 /** The API stores :443 explicitly, so it is stripped wherever a host pattern is shown and put back on save. */
 export const displayHostPattern = (hostPattern: string) =>
@@ -52,11 +56,21 @@ export const FORM_FIELD_OF_CREDENTIAL_FIELD: Record<
 export const storedMemberFields = (
   service?: TAgentVaultService | null
 ): TAgentVaultMemberProvidedField[] =>
-  service &&
-  (service.credential.type === AgentVaultCredentialType.Bearer ||
-    service.credential.type === AgentVaultCredentialType.Basic)
-    ? service.credential.memberProvidedFields
+  service && service.credential.type !== AgentVaultCredentialType.Passthrough
+    ? (service.credential.memberProvidedFields ?? [])
     : [];
+
+export const isMemberProvidedOAuthService = (service?: TAgentVaultService | null) =>
+  service?.credential.type === AgentVaultCredentialType.OAuth &&
+  storedMemberFields(service).length > 0;
+
+export const hostOf = (serverUrl: string) => {
+  try {
+    return new URL(serverUrl.trim()).host;
+  } catch {
+    return "the server";
+  }
+};
 
 export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "Bearer",
@@ -216,7 +230,15 @@ export enum ServiceStep {
 
 export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
-  [ServiceStep.Details]: ["name", "hosts", "hostDraft", "methods", "pathPrefixes", "pathDraft"],
+  [ServiceStep.Details]: [
+    "name",
+    "description",
+    "hosts",
+    "hostDraft",
+    "methods",
+    "pathPrefixes",
+    "pathDraft"
+  ],
   [ServiceStep.Credential]: [
     "credentialType",
     "headerName",
@@ -233,12 +255,13 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
 
 export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
-  [ServiceStep.Details]: ["name", "serverUrl", "transport"],
+  [ServiceStep.Details]: ["name", "description", "serverUrl", "transport"],
   [ServiceStep.Credential]: [
     "credentialType",
     "headerName",
     "headerPrefix",
     "secret",
+    "memberProvidedFields",
     "oauthAuthorizationId",
     "oauthClientId",
     "oauthClientSecret",
@@ -253,22 +276,33 @@ type TOAuthFormState = {
   serverUrl: string;
   oauthAuthorizationId: string;
   oauthAuthorizedUrl: string;
+  memberProvidedFields: TAgentVaultMemberProvidedField[];
 };
 
+/** For an MCP service, credential-value stands for the whole credential: the bearer token or the OAuth sign-in. */
+export const isCredentialMemberProvided = (form: {
+  memberProvidedFields: TAgentVaultMemberProvidedField[];
+}) => form.memberProvidedFields.includes(AgentVaultVariableReferenceField.CredentialValue);
+
 // Reusing an authorization after the server URL changes could attach its tokens to another host.
-export const newOAuthAuthorizationId = (form: TOAuthFormState) =>
+export const newOAuthAuthorizationId = (
+  form: Pick<TOAuthFormState, "serverUrl" | "oauthAuthorizationId" | "oauthAuthorizedUrl">
+) =>
   form.oauthAuthorizationId && form.oauthAuthorizedUrl === form.serverUrl.trim()
     ? form.oauthAuthorizationId
     : undefined;
 
+// The admin's own sign-in. A service that leaves the sign-in to each member stores none.
 export const storedOAuthCredential = (
   service: TAgentVaultService | null | undefined,
   serverUrl: string
-): TAgentVaultOauthCredentialSummary | null =>
+): TAgentVaultSharedOauthCredentialSummary | null =>
   service?.type === AgentVaultServiceType.Mcp &&
   service.credential.type === AgentVaultCredentialType.OAuth &&
+  service.credential.status !== undefined &&
+  !isMemberProvidedOAuthService(service) &&
   service.serverUrl === serverUrl.trim()
-    ? service.credential
+    ? (service.credential as TAgentVaultSharedOauthCredentialSummary)
     : null;
 
 export const isOAuthAuthorizationMissing = (
@@ -280,7 +314,8 @@ export const isOAuthAuthorizationMissing = (
 ) => {
   if (
     form.serviceType !== AgentVaultServiceType.Mcp ||
-    form.credentialType !== AgentVaultCredentialType.OAuth
+    form.credentialType !== AgentVaultCredentialType.OAuth ||
+    isCredentialMemberProvided(form)
   ) {
     return false;
   }
@@ -288,6 +323,7 @@ export const isOAuthAuthorizationMissing = (
 };
 
 export const oauthStatusLabel = (form: TOAuthFormState, service?: TAgentVaultService | null) => {
+  if (isCredentialMemberProvided(form)) return "Each member connects their own account";
   const stored = storedOAuthCredential(service, form.serverUrl);
   if (newOAuthAuthorizationId(form)) return stored ? "Reauthorized" : "Authorized";
   return stored ? OAUTH_STATUS_LABELS[stored.status] : "Not authorized";
@@ -305,6 +341,7 @@ export const buildServiceSchema = (
     .object({
       serviceType: z.nativeEnum(AgentVaultServiceType),
       name: slugSchema({ max: 64, field: "Name" }),
+      description: agentVaultServiceDescriptionSchema,
       serverUrl: z.string(),
       transport: z.nativeEnum(AgentVaultMcpTransport),
       hosts: z.array(z.string()),
@@ -383,7 +420,15 @@ export const buildServiceSchema = (
           });
         }
         if (data.credentialType === AgentVaultCredentialType.OAuth) {
-          if (data.oauthAuthorizationRejection && !data.oauthAuthorizationId) {
+          if (isCredentialMemberProvided(data)) {
+            if (data.oauthClientSecret && !data.oauthClientId?.trim()) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["oauthClientId"],
+                message: "Enter the client ID this secret belongs to."
+              });
+            }
+          } else if (data.oauthAuthorizationRejection && !data.oauthAuthorizationId) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ["oauthAuthorizationId"],

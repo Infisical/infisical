@@ -38,12 +38,12 @@ const credentialPreview = (form: {
 }): string | null => {
   if (form.credentialType === AgentVaultCredentialType.Passthrough) return null;
   if (form.credentialType === AgentVaultCredentialType.Basic) return `Authorization: Basic ${MASK}`;
-  if (form.credentialType === AgentVaultCredentialType.OAuth)
-    return `Authorization: Bearer ${MASK}`;
-  const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
   const value = form.memberProvidedFields.includes(AgentVaultVariableReferenceField.CredentialValue)
     ? "<member value>"
     : MASK;
+  if (form.credentialType === AgentVaultCredentialType.OAuth)
+    return `Authorization: Bearer ${value}`;
+  const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
   return `${form.headerName || "Authorization"}: ${prefix}${value}`;
 };
 
@@ -150,6 +150,12 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
               </DetailValue>
             </Detail>
           </div>
+        )}
+        {form.description.trim() && (
+          <Detail>
+            <DetailLabel>Description</DetailLabel>
+            <DetailValue>{form.description.trim()}</DetailValue>
+          </Detail>
         )}
       </DetailGroup>
 

@@ -5,6 +5,7 @@ import {
   MAX_OAUTH_SCOPE_LENGTH,
   OAUTH_SCOPE_TOKEN_PATTERN
 } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-discovery-fns";
+import { getChunkDecisionProperties } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import {
   AgentVaultSessionLogChunkCreateResponseSchema,
   AgentVaultSessionLogChunkCreateSchema
@@ -185,7 +186,9 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               substitutions: z
                 .object({ placeholder: z.string(), surfaces: z.string().array(), value: z.string() })
                 .array(),
-              personalValuesMissing: z.boolean()
+              personalValuesMissing: z.boolean(),
+              // Proxies use it to tell the agent that a rejected credential is the member's own to fix.
+              memberProvided: z.boolean()
             })
             .array(),
           sessionLogs: z.object({
@@ -321,7 +324,8 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             orgId,
             storageType,
             bytes: req.body.ciphertextBytes,
-            ...(req.body.recordCount !== undefined && { records: req.body.recordCount })
+            ...(req.body.recordCount !== undefined && { records: req.body.recordCount }),
+            ...getChunkDecisionProperties(req.body)
           }
         })
         .catch(() => {});

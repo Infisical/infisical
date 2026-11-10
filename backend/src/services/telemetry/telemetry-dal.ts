@@ -2,6 +2,7 @@ import { TDbClient } from "@app/db";
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { buildGatewayReachableSql } from "@app/ee/services/gateway-v2/gateway-v2-transport-fns";
 import { DatabaseError } from "@app/lib/errors";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
 const BUILT_IN_ROLE_SLUGS = [...Object.values(OrgMembershipRole), ...Object.values(ProjectMembershipRole)] as string[];
 
@@ -111,7 +112,12 @@ export const telemetryDALFactory = (db: TDbClient) => {
         countTable(db, TableName.PkiAlertsV2),
         countTable(db, TableName.DynamicSecret),
         countTable(db, TableName.Groups),
-        countTable(db, TableName.SecretApprovalPolicy),
+        (async () => {
+          const result = (
+            await db(TableName.ApprovalPolicies).where({ type: ApprovalPolicyType.SecretChange }).count().first()
+          )?.count as string;
+          return parseInt(result || "0", 10);
+        })(),
         // new counts
         countTable(db, TableName.SamlConfig),
         countTable(db, TableName.OidcConfig),
@@ -135,7 +141,12 @@ export const telemetryDALFactory = (db: TDbClient) => {
         countTable(db, TableName.KmipClient),
         countTable(db, TableName.PamResource),
         countTable(db, TableName.PamAccount),
-        countTable(db, TableName.AccessApprovalPolicy),
+        (async () => {
+          const result = (
+            await db(TableName.ApprovalPolicies).where({ type: ApprovalPolicyType.SecretAccess }).count().first()
+          )?.count as string;
+          return parseInt(result || "0", 10);
+        })(),
         countTable(db, TableName.HoneyToken),
         countTable(db, TableName.ProxiedService),
         (async () => {

@@ -1,11 +1,19 @@
 import { TAgentVaultServices } from "@app/db/schemas";
 
-import { AgentVaultCredentialType } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultOauthRegistration,
+  TAgentVaultOauthMemberConfig
+} from "../agent-vault-oauth/agent-vault-oauth-types";
+import { AgentVaultCredentialType, TAgentVaultMemberProvidedField } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultCredentialUpdate } from "./agent-vault-access-bundle-types";
 import {
   isStoredSecretReplaced,
+  memberFieldsOf,
+  memberOauthChangeOf,
   mergeCredential,
   needsStoredSecretFor,
+  nextMemberFieldsOf,
+  personalValuesToClearOf,
   splitCredential
 } from "./agent-vault-credential-write-fns";
 
@@ -256,5 +264,79 @@ describe("needsStoredSecretFor", () => {
     expect(needsStoredSecretFor(credential(update), storedService(stored as Parameters<typeof storedService>[0]))).toBe(
       needed
     );
+  });
+});
+
+describe("an OAuth sign-in left to members", () => {
+  const OAUTH = AgentVaultCredentialType.OAuth;
+
+  test("is the token field, credential-value", () => {
+    expect(memberFieldsOf(credential({ type: OAUTH, memberProvidedFields: [VALUE] }))).toEqual([VALUE]);
+    expect(memberFieldsOf(credential({ type: OAUTH, authorizationId: "a" }))).toBeNull();
+  });
+
+  test("an update that leaves the list out keeps it, unless it brings the admin's own authorization", () => {
+    const stored = storedService({ type: OAUTH, memberProvidedFields: [VALUE], sealed: false });
+    expect(nextMemberFieldsOf(credential({ type: OAUTH, clientSecret: "s" }), stored)).toEqual([VALUE]);
+    expect(nextMemberFieldsOf(credential({ type: OAUTH, authorizationId: "a" }), stored)).toBeNull();
+    expect(
+      nextMemberFieldsOf(credential({ type: OAUTH, memberProvidedFields: [VALUE] }), storedService({ type: OAUTH }))
+    ).toEqual([VALUE]);
+  });
+});
+
+describe("which admin saves end every member's OAuth connection", () => {
+  const stored: TAgentVaultOauthMemberConfig = {
+    type: AgentVaultCredentialType.OAuth,
+    serverUrl: "https://mcp.example.com/mcp",
+    issuer: "https://auth.example.com",
+    registration: AgentVaultOauthRegistration.Manual,
+    clientId: "app"
+  };
+
+  test.each([
+    ["nothing changed", {}, false, { sameClient: true, membersRebound: false }],
+    ["a new client secret, even for the same client", {}, true, { sameClient: true, membersRebound: true }],
+    [
+      "a new server URL",
+      { serverUrl: "https://mcp.example.com/v2" },
+      false,
+      { sameClient: true, membersRebound: true }
+    ],
+    ["a new issuer", { issuer: "https://other.example.com" }, false, { sameClient: false, membersRebound: true }],
+    ["a new client ID", { clientId: "other" }, false, { sameClient: false, membersRebound: true }],
+    [
+      "a switch to registration at each sign-in",
+      { registration: AgentVaultOauthRegistration.Dynamic, clientId: null },
+      false,
+      { sameClient: false, membersRebound: true }
+    ]
+  ])("%s", (_, change, clientSecretSent, expected) => {
+    expect(memberOauthChangeOf({ next: { ...stored, ...change }, stored, clientSecretSent })).toEqual(expected);
+  });
+
+  test("turning member sign-in on, with nothing stored, rebinds", () => {
+    expect(memberOauthChangeOf({ next: stored, stored: undefined, clientSecretSent: false }).membersRebound).toBe(true);
+  });
+});
+
+describe("which personal values an admin save deletes", () => {
+  const fields = (...f: string[]) => f as TAgentVaultMemberProvidedField[];
+  const base = {
+    credentialTypeChanged: false,
+    memberFieldsChanged: false,
+    nextMemberFields: fields(VALUE),
+    oauthMembersRebound: false
+  };
+
+  test.each([
+    ["nothing about members changed", {}, "none"],
+    ["the credential type changed", { credentialTypeChanged: true, memberFieldsChanged: true }, "all"],
+    ["the credential type changed with the same member fields", { credentialTypeChanged: true }, "all"],
+    ["every member field was taken back", { memberFieldsChanged: true, nextMemberFields: null }, "all"],
+    ["the member OAuth sign-in was rebound", { oauthMembersRebound: true }, "all"],
+    ["one field was taken back", { memberFieldsChanged: true, nextMemberFields: fields(VALUE) }, "fields-taken-back"]
+  ])("%s", (_, change, expected) => {
+    expect(personalValuesToClearOf({ ...base, ...change })).toBe(expected);
   });
 });

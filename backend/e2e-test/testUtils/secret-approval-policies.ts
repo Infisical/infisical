@@ -1,3 +1,4 @@
+import { LightMyRequestResponse } from "fastify";
 import { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
@@ -58,4 +59,87 @@ export const createSecretApprovalPolicy = (dto: {
       expect(res.statusCode).toBe(200);
       return res.json<{ approval: { id: string } }>().approval;
     }
+  );
+
+type TSecretChangePolicy = { id: string; name: string; secretPath: string; deletedAt: string | null };
+
+const parseSecretChangePolicy = (res: LightMyRequestResponse) => {
+  expect(res.statusCode, res.payload).toBe(200);
+  return res.json<{ approval: TSecretChangePolicy }>().approval;
+};
+
+export const createSecretChangePolicy = (dto: { body: Record<string, unknown>; authToken: string }) =>
+  request(
+    {
+      method: "POST",
+      url: "/api/v2/secret-approvals",
+      headers: { authorization: `Bearer ${dto.authToken}` },
+      body: dto.body
+    },
+    parseSecretChangePolicy
+  );
+
+export const getSecretChangePolicy = (dto: { policyId: string; authToken: string }) =>
+  request(
+    {
+      method: "GET",
+      url: `/api/v2/secret-approvals/${dto.policyId}`,
+      headers: { authorization: `Bearer ${dto.authToken}` }
+    },
+    parseSecretChangePolicy
+  );
+
+export const listSecretChangePolicies = (dto: { projectId: string; authToken: string }) =>
+  request(
+    {
+      method: "GET",
+      url: "/api/v2/secret-approvals",
+      headers: { authorization: `Bearer ${dto.authToken}` },
+      query: { projectId: dto.projectId }
+    },
+    (res) => {
+      expect(res.statusCode, res.payload).toBe(200);
+      return res.json<{ approvals: TSecretChangePolicy[] }>().approvals;
+    }
+  );
+
+// The policy that applies to a secret path, the same lookup a secret write makes.
+export const getSecretChangePolicyForPath = (dto: {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  authToken: string;
+}) =>
+  request(
+    {
+      method: "GET",
+      url: "/api/v2/secret-approvals/board",
+      headers: { authorization: `Bearer ${dto.authToken}` },
+      query: { projectId: dto.projectId, environment: dto.environment, secretPath: dto.secretPath }
+    },
+    (res) => {
+      expect(res.statusCode, res.payload).toBe(200);
+      return res.json<{ policy?: TSecretChangePolicy }>().policy;
+    }
+  );
+
+export const updateSecretChangePolicy = (dto: { policyId: string; body: Record<string, unknown>; authToken: string }) =>
+  request(
+    {
+      method: "PATCH",
+      url: `/api/v2/secret-approvals/${dto.policyId}`,
+      headers: { authorization: `Bearer ${dto.authToken}` },
+      body: dto.body
+    },
+    parseSecretChangePolicy
+  );
+
+export const deleteSecretChangePolicy = (dto: { policyId: string; authToken: string }) =>
+  request(
+    {
+      method: "DELETE",
+      url: `/api/v2/secret-approvals/${dto.policyId}`,
+      headers: { authorization: `Bearer ${dto.authToken}` }
+    },
+    parseSecretChangePolicy
   );

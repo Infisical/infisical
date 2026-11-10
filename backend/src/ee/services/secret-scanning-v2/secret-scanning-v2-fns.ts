@@ -397,7 +397,8 @@ export const scanGitRepositoryAndGetFindings = async (
     details: toFindingDetails(finding),
     fingerprint: `${finding.Fingerprint}:${finding.StartColumn}`,
     severity: SecretScanningFindingSeverity.High,
-    rule: finding.RuleID
+    rule: finding.RuleID,
+    secretValue: finding.Secret
   }));
 };
 

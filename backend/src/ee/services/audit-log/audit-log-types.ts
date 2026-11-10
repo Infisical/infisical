@@ -85,7 +85,7 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
-import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import { ApprovalStatus } from "../secret-change-request/secret-change-request-types";
 import type { AuditLogEventClass } from "./audit-log-event-classes";
 
 export type TListProjectAuditLogDTO = {
@@ -3323,6 +3323,7 @@ interface ImportCert {
     profileName?: string;
     caId?: string;
     caName?: string;
+    hasCsr?: boolean;
   };
 }
 
@@ -6673,6 +6674,7 @@ interface AgentVaultServiceCreateEvent {
     accessBundleName: string;
     serviceId: string;
     name: string;
+    description?: string | null;
     serviceType: string;
     // MCP services only.
     serverUrl?: string;
@@ -6703,6 +6705,8 @@ interface AgentVaultServiceUpdateEvent {
     accessBundleName: string;
     serviceId: string;
     name?: string;
+    // Null when the update removed it.
+    description?: string | null;
     // The service's type, which never changes, so present on every update.
     serviceType: string;
     serverUrl?: string;
@@ -6724,6 +6728,8 @@ interface AgentVaultServiceUpdateEvent {
     substitutionPlaceholders?: string[];
     substitutionsReplaced?: string[];
     credentialReplaced: boolean;
+    // Whether the update deleted what members saved for the service: their typed values or their OAuth connections.
+    personalValuesCleared?: boolean;
     // Every key the service uses after the update, present when the update wrote a value that can hold one.
     variableKeys?: string[];
   };
@@ -6805,6 +6811,9 @@ interface AgentVaultPersonalValuesSetEvent {
     // The fields this update set. A field it left out kept its saved value.
     fields: string[];
     variableKeys: string[];
+    // Set when the member connected their own OAuth account.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
   };
 }
 
@@ -6998,6 +7007,7 @@ interface AgentVaultSessionMintEvent {
       serviceId: string;
       // The name it was sent with, or its first host when it was sent without one.
       name: string;
+      description?: string | null;
       serviceType: string;
       serverUrl?: string;
       hostPattern: string;
