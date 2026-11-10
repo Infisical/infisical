@@ -24,6 +24,7 @@ import type {
   TCreateSecretsV3DTO,
   TDeleteSecretBatchDTO,
   TDeleteSecretsV3DTO,
+  TGetExpandedSecretValueDTO,
   TGetSecretReferencesDTO,
   TGetSecretReferenceTreeDTO,
   TSecretDependencyTreeNode,
@@ -54,6 +55,9 @@ export type SecretsAdapter = SecretsFlowsAdapter & {
   useSecretReferences: (
     dto: TGetSecretReferencesDTO
   ) => V4QueryResult<{ tree: TSecretDependencyTreeNode }>;
+  useExpandedSecretValue: (
+    dto: TGetExpandedSecretValueDTO
+  ) => V4QueryResult<{ secretValue: string; secretValueHidden: boolean }>;
   useCreateSecret: V4ConfigurableMutation<TCreateSecretsV3DTO>;
   useUpdateSecret: V4ConfigurableMutation<TUpdateSecretsV3DTO>;
   useDeleteSecret: V4Mutation<TDeleteSecretsV3DTO>;

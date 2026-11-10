@@ -21,7 +21,11 @@ import {
   useDeleteSecretV3,
   useUpdateSecretV3
 } from "@app/hooks/api/secrets/mutations";
-import { useGetSecretReferences, useGetSecretReferenceTree } from "@app/hooks/api/secrets/queries";
+import {
+  useGetExpandedSecretValue,
+  useGetSecretReferences,
+  useGetSecretReferenceTree
+} from "@app/hooks/api/secrets/queries";
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 
 import { useProjectById } from "../projectQuery";
@@ -38,6 +42,7 @@ export const secretsLive: SecretsAdapter = {
   useSecretValue: useGetSecretValue,
   useSecretReferenceTree: useGetSecretReferenceTree,
   useSecretReferences: useGetSecretReferences,
+  useExpandedSecretValue: useGetExpandedSecretValue,
   useCreateSecret: (options) => useCreateSecretV3({ options: { meta: options } }),
   useUpdateSecret: (options) => useUpdateSecretV3({ options: { meta: options } }),
   useDeleteSecret: useDeleteSecretV3,

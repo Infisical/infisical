@@ -1,6 +1,7 @@
 import { type ComponentProps, memo, type ReactNode, useEffect, useRef, useState } from "react";
 import {
   BellIcon,
+  BracesIcon,
   CodeXmlIcon,
   CopyPlusIcon,
   EditIcon,
@@ -97,12 +98,7 @@ import { ReferencesDialog } from "./row-actions/references-dialog";
 import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
 import type { SecretUpdate } from "./row-actions/types";
 import { VersionHistorySheet } from "./row-actions/version-history-sheet";
-import {
-  hasReference,
-  ReferenceEditor,
-  ReferenceText,
-  ResolvedValueButton
-} from "./secret-references";
+import { hasReference, ReferenceEditor, ReferenceText, ResolvedValue } from "./secret-references";
 
 import styles from "./overview.module.css";
 
@@ -133,8 +129,13 @@ type Overlay =
   | "history"
   | "references"
   | "access"
-  | "share";
-const popovers: Overlay[] = ["comment", "tags", "metadata"];
+  | "share"
+  | "resolved";
+const popovers: Overlay[] = ["comment", "tags", "metadata", "resolved"];
+const popoverClass: Partial<Record<Overlay, string>> = {
+  metadata: styles.metadataPopover,
+  resolved: styles.resolvedPopover
+};
 
 const copy = async (
   value: string,
@@ -150,19 +151,10 @@ const copy = async (
   }
 };
 
-function SecretValue({
-  secret,
-  visible,
-  pending
-}: {
-  secret?: Secret;
-  visible: boolean;
-  pending?: boolean;
-}) {
+function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean }) {
   const [focused, setFocused] = useState(false);
-  const [resolving, setResolving] = useState(false);
   const loader = useValueLoader();
-  const shown = visible || focused || resolving;
+  const shown = visible || focused;
   const loading = secret?.value.status === "loading";
   useEffect(() => {
     if (secret && shown && loading) loader.request([secret]);
@@ -181,29 +173,18 @@ function SecretValue({
       </span>
     );
   return (
-    <>
-      {(focused || resolving) && !loading && hasReference(value) && (
-        <ResolvedValueButton
-          secret={secret}
-          disabledReason={pending ? "Save pending changes to view resolved value" : undefined}
-          open={resolving}
-          onOpenChange={setResolving}
-        />
-      )}
-      <span
-        className={styles.value}
-        role="textbox"
-        aria-readonly
-        tabIndex={0}
-        aria-label={`Value of ${secret.name}, focus to reveal`}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-      >
-        {value === "" && <span className={styles.emptyValue}>Empty</span>}
-        {value !== "" &&
-          (shown && !loading ? <ReferenceText value={value} scope={secret} /> : mask)}
-      </span>
-    </>
+    <span
+      className={styles.value}
+      role="textbox"
+      aria-readonly
+      tabIndex={0}
+      aria-label={`Value of ${secret.name}, focus to reveal`}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+    >
+      {value === "" && <span className={styles.emptyValue}>Empty</span>}
+      {value !== "" && (shown && !loading ? <ReferenceText value={value} scope={secret} /> : mask)}
+    </span>
   );
 }
 
@@ -395,7 +376,6 @@ function SecretActionsRow({
   children: ReactNode;
 }) {
   const pending = useRef<() => void>(undefined);
-  const keepFocus = useRef(false);
   const [seen, setSeen] = useState<Overlay[]>([]);
   if (open && !seen.includes(open)) setSeen([...seen, open]);
   const loader = useValueLoader();
@@ -476,6 +456,10 @@ function SecretActionsRow({
   if (secret.honeyToken) copySecretBlock = "Cannot copy honey token secret";
   if (secret.managedBy) copySecretBlock = "Cannot copy rotated secret";
   copySecretBlock ??= describeDenied(secret.tags);
+  let resolvedBlock: string | undefined;
+  if (unreadable) resolvedBlock = "Access denied";
+  else if (pendingType) resolvedBlock = "Save pending changes to view resolved value";
+  else if (value !== undefined && !hasReference(value)) resolvedBlock = "No references to resolve";
   let referencesBlock: string | undefined;
   if (unreadable) referencesBlock = "Access denied";
   else if (value === "") referencesBlock = "Create secret to view references";
@@ -551,6 +535,20 @@ function SecretActionsRow({
         </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Insights</DropdownMenuLabel>
+        <DropdownMenuItem
+          disabled={Boolean(resolvedBlock)}
+          description={resolvedBlock}
+          onSelect={later(() =>
+            withValue((loaded) =>
+              hasReference(loaded)
+                ? setOpen("resolved")
+                : ctx.report(`${secret.name} has no references to resolve.`, "ok")
+            )
+          )}
+        >
+          <Icon icon={BracesIcon} />
+          View resolved value
+        </DropdownMenuItem>
         <DropdownMenuItem
           disabled={Boolean(referencesBlock)}
           description={referencesBlock}
@@ -651,23 +649,21 @@ function SecretActionsRow({
                 {...rowActions}
                 menuLabel="More secret actions"
                 onOpenChange={(next) => {
-                  const run = pending.current;
-                  pending.current = undefined;
-                  if (next || !run) return;
-                  keepFocus.current = true;
-                  setTimeout(run, 0);
+                  if (next) pending.current = undefined;
                 }}
                 onMenuCloseAutoFocus={(event) => {
-                  if (!keepFocus.current) return;
-                  keepFocus.current = false;
+                  const run = pending.current;
+                  pending.current = undefined;
+                  if (!run) return;
                   event.preventDefault();
+                  run();
                 }}
               />
             </PopoverAnchor>
             <PopoverContent
               draggable
               align="end"
-              className={popover === "metadata" ? styles.metadataPopover : styles.annotationPopover}
+              className={(popover && popoverClass[popover]) ?? styles.annotationPopover}
               onCloseAutoFocus={(event) => event.preventDefault()}
             >
               {popover === "comment" && (
@@ -692,6 +688,7 @@ function SecretActionsRow({
                   }
                 />
               )}
+              {popover === "resolved" && <ResolvedValue secret={secret} />}
               {popover === "metadata" && (
                 <MetadataForm
                   metadata={secret.metadata}
@@ -1056,11 +1053,7 @@ function SecretRowView({
           </TableCell>
           <TableCell className={styles.valueCell}>
             <div className={styles.nameLine}>
-              <SecretValue
-                secret={first}
-                visible={revealAll}
-                pending={Boolean(ctx.pending?.[first.id])}
-              />
+              <SecretValue secret={first} visible={revealAll} />
               <Indicators secret={first} />
             </div>
           </TableCell>
@@ -1257,11 +1250,7 @@ function SecretRowView({
                           />
                         ) : (
                           <div className={styles.nameLine}>
-                            <SecretValue
-                              secret={secret}
-                              visible={rowVisible}
-                              pending={Boolean(secret && ctx.pending?.[secret.id])}
-                            />
+                            <SecretValue secret={secret} visible={rowVisible} />
                             {secret && <Indicators secret={secret} />}
                           </div>
                         )}
