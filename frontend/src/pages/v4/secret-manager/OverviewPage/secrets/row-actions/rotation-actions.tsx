@@ -27,6 +27,7 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { wasErrorReported } from "@app/hooks/api/reactQuery";
 import type { SecretRotation as ApiSecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 import type { TReconcileLocalAccountRotationDTO } from "@app/hooks/api/secretRotationsV2/types";
 
@@ -243,6 +244,7 @@ export function RotationActions({
     setSession(session + 1);
   }
   const failed = (title: string) => (error: unknown) =>
+    !wasErrorReported(error) &&
     onToast("bad", {
       title,
       description:

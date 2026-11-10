@@ -43,6 +43,7 @@ import {
 } from "@app/components/v4/ui/sheet";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import type { Commit } from "@app/hooks/api/folderCommits/types";
+import { wasErrorReported } from "@app/hooks/api/reactQuery";
 
 import { useV4Adapter } from "../../../../data/adapters";
 import { environmentLabel, Gate } from "../flows/shared";
@@ -287,6 +288,7 @@ export function CommitHistorySheet({
     deepRollback: deep
   });
   const failed = (title: string) => (error: unknown) =>
+    !wasErrorReported(error) &&
     onToast("bad", {
       title,
       description:

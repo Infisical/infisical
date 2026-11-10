@@ -1123,6 +1123,7 @@ export const OverviewPage = () => {
     deleteEnvironmentMutation.mutateAsync({ projectId, id: target.id }).then(
       () => toast({ tone: "ok", title: "Successfully removed environment" }),
       (error: unknown) =>
+        !wasErrorReported(error) &&
         toast({
           tone: "bad",
           title: "Failed to remove environment",
@@ -2346,6 +2347,7 @@ export const OverviewPage = () => {
                     toast({ tone: "ok", ...feedback });
                   },
                   (error: unknown) =>
+                    !wasErrorReported(error) &&
                     toast({
                       tone: "bad",
                       title: "Failed to create secret sync",

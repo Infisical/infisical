@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 
+import { wasErrorReported } from "@app/hooks/api/reactQuery";
 import { SecretType } from "@app/hooks/api/secrets/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 
@@ -44,6 +45,7 @@ export const useEnsureTags = (projectId: string, tags: readonly WsTag[]) => {
         createTag
           .mutateAsync({ projectId, tagSlug: slug, tagColor: "" })
           .catch((error: unknown) => {
+            if (wasErrorReported(error)) throw error;
             const reason = isAxiosError<{ message?: string }>(error)
               ? error.response?.data?.message
               : undefined;

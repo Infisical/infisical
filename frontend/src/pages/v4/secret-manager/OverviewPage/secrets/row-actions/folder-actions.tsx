@@ -11,6 +11,7 @@ import type {
   TFolderAccessUser,
   TFolderGrantType
 } from "@app/hooks/api/folderAccess/types";
+import { wasErrorReported } from "@app/hooks/api/reactQuery";
 
 import { useV4Adapter } from "../../../../data/adapters";
 import { MoveSecretsDialog } from "../bulk/move-secrets-dialog";
@@ -128,6 +129,7 @@ export function FolderActions({
   };
 
   const failed = (error: unknown) =>
+    !wasErrorReported(error) &&
     onToast("bad", {
       title: "Failed to update folder access",
       description:

@@ -18,7 +18,6 @@ import {
   secretAt,
   updateSecrets,
   useStore,
-  assertUniqueValues,
   within
 } from "./demo-store";
 import type { DemoSecret, DemoVersion, SecretsFixtures } from "./fixtures";
@@ -486,11 +485,6 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
     };
   },
   useCreateSecretBatch: demoMutation((store, dto) => {
-    assertUniqueValues(
-      store,
-      { projectId: dto.projectId, environment: dto.environment, path: dto.secretPath },
-      dto.secrets.map((secret) => ({ key: secret.secretKey, value: secret.secretValue }))
-    );
     upsertSecrets(
       store,
       { projectId: dto.projectId, environment: dto.environment, path: dto.secretPath },
@@ -616,20 +610,6 @@ export const secretsFlowsDemo: SecretsFlowsAdapter = {
       type: "secret" as const,
       before: change.type === PendingAction.Create ? undefined : snapshotOf(change.secretKey)
     }));
-    assertUniqueValues(
-      store,
-      scope,
-      dto.pendingChanges.secrets.flatMap((change) =>
-        change.type === PendingAction.Delete || change.secretValue === undefined
-          ? []
-          : [
-              {
-                key: ("newSecretName" in change && change.newSecretName) || change.secretKey,
-                value: change.secretValue
-              }
-            ]
-      )
-    );
     dto.pendingChanges.secrets.forEach((change) => {
       const match = secretAt(dto.projectId, dto.environment, dto.secretPath, change.secretKey);
       if (change.type === PendingAction.Create) {

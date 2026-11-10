@@ -30,7 +30,6 @@ import {
   updateSecrets,
   useScenario,
   useStore,
-  assertUniqueValues,
   within
 } from "./demo-store";
 import { DEMO_USER, type DemoSecret, type SecretsFixtures } from "./fixtures";
@@ -440,11 +439,6 @@ export const secretsDemo: SecretsAdapter = {
           );
           return {};
         }
-        assertUniqueValues(
-          store,
-          { projectId: dto.projectId, environment: dto.environment, path: dto.secretPath },
-          [{ key: dto.secretKey, value: dto.secretValue }]
-        );
         const timestamp = now();
         const { tags } = store.get();
         const secret: DemoSecret = {
@@ -478,12 +472,6 @@ export const secretsDemo: SecretsAdapter = {
         const existing = store
           .get()
           .secrets.find(secretAt(dto.projectId, dto.environment, dto.secretPath, dto.secretKey));
-        if (dto.type !== SecretType.Personal && dto.secretValue !== existing?.value)
-          assertUniqueValues(
-            store,
-            { projectId: dto.projectId, environment: dto.environment, path: dto.secretPath },
-            [{ key: dto.newSecretName ?? dto.secretKey, value: dto.secretValue }]
-          );
         if (
           existing &&
           dto.type !== SecretType.Personal &&

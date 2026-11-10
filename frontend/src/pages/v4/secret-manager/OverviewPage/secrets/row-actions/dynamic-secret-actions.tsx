@@ -18,6 +18,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { DynamicSecretLeaseStatus } from "@app/hooks/api/dynamicSecretLease/types";
+import { wasErrorReported } from "@app/hooks/api/reactQuery";
 
 import { useV4Adapter } from "../../../../data/adapters";
 import {
@@ -124,6 +125,7 @@ export function DynamicSecretActions({
   const revokeLease = adapter.useRevokeDynamicSecretLease();
   const deleteDynamicSecret = adapter.useDeleteDynamicSecret();
   const failed = (title: string) => (error: unknown) =>
+    !wasErrorReported(error) &&
     onToast("bad", {
       title,
       description:
