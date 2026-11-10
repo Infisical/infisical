@@ -18,7 +18,6 @@ import {
 import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@app/components/v4/ui/dropdown-menu";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v4/ui/hover-card";
 import { Icon } from "@app/components/v4/ui/icon";
 import { RowLink } from "@app/components/v4/ui/row-link";
 import {
@@ -26,7 +25,8 @@ import {
   SheetBody,
   SheetContent,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  SheetTrigger
 } from "@app/components/v4/ui/sheet";
 import {
   type RowActionList,
@@ -552,7 +552,7 @@ function EnvironmentTable({
 }) {
   return (
     <TableRow className={styles.nestedRow}>
-      <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
+      <TableCell pin="viewport" colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
         <Table className={styles.nestedTable}>
           <TableHeader>
             <TableRow>
@@ -635,7 +635,12 @@ function KindRowView({
             ctx={ctx}
             selectable={selectableKinds.includes(kind)}
           />
-          <TableCell colSpan={2} className={styles.nameCell}>
+          <TableCell
+            pin="start"
+            pinOffset="var(--v4-size-row)"
+            colSpan={2}
+            className={styles.nameCell}
+          >
             {line(first, true)}
           </TableCell>
           <TableActionsCell slots={ROW_ACTION_SLOTS}>
@@ -661,7 +666,7 @@ function KindRowView({
           label={first.name}
           onToggle={() => setExpanded(!expanded)}
         />
-        <TableCell className={styles.nameCell}>
+        <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
           <div className={styles.nameLine}>
             <span className={styles.nameKind}>
               <KindIcon kind={kind} />
@@ -780,7 +785,12 @@ function FolderRowView({
           ctx={ctx}
           selectable
         />
-        <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
+        <TableCell
+          pin="start"
+          pinOffset="var(--v4-size-row)"
+          colSpan={ctx.single ? 2 : undefined}
+          className={styles.nameCell}
+        >
           <div className={styles.nameLine}>
             <RowLink
               from={OVERVIEW_ROUTE}
@@ -859,12 +869,11 @@ function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
   const [shown, setShown] = useState(sites.length);
   const [reserve, setReserve] = useState(0);
   const [listOpen, setListOpen] = useState(false);
-  const [cardOpen, setCardOpen] = useState(false);
   const signature = sites.map((site) => site.value).join("|");
   useLayoutEffect(() => {
     const box = fit.current;
     const ruler = measure.current;
-    if (!box || !ruler) return undefined;
+    if (listOpen || !box || !ruler) return undefined;
     const update = () => {
       const [more, ...items] = [...ruler.children].map(
         (child) => (child as HTMLElement).offsetWidth
@@ -891,47 +900,35 @@ function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
     const observer = new ResizeObserver(update);
     observer.observe(box);
     return () => observer.disconnect();
-  }, [signature]);
+  }, [signature, listOpen]);
   const hidden = sites.length - shown;
   return (
-    <span className={styles.importedIn}>
-      <span className={styles.subtle}>Imported in</span>
-      <span ref={fit} className={styles.importedBadges} style={{ minWidth: reserve }}>
-        {sites.slice(0, shown).map((site) => (
-          <SiteLink key={site.value} site={site} />
-        ))}
-        {hidden > 0 && (
-          <HoverCard open={cardOpen && !listOpen} onOpenChange={setCardOpen}>
-            <HoverCardTrigger asChild>
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => {
-                  setCardOpen(false);
-                  setListOpen(true);
-                }}
-              >
+    <Sheet open={listOpen} onOpenChange={setListOpen}>
+      <span className={styles.importedIn}>
+        <span className={styles.subtle}>Imported in</span>
+        <span ref={fit} className={styles.importedBadges} style={{ minWidth: reserve }}>
+          {sites.slice(0, shown).map((site) => (
+            <SiteLink key={site.value} site={site} />
+          ))}
+          {hidden > 0 && (
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="xs">
                 {`+${hidden} more`}
               </Button>
-            </HoverCardTrigger>
-            <HoverCardContent align="start">
-              <SiteList sites={sites} />
-            </HoverCardContent>
-          </HoverCard>
-        )}
-      </span>
-      <span ref={measure} className={styles.importedRuler} aria-hidden="true">
-        <Button variant="ghost" size="xs" tabIndex={-1}>
-          {`+${sites.length} more`}
-        </Button>
-        {sites.map((site) => (
-          <Badge key={site.value} tone="outline">
-            <Icon icon={LayersIcon} />
-            {site.label}
-          </Badge>
-        ))}
-      </span>
-      <Sheet open={listOpen} onOpenChange={setListOpen}>
+            </SheetTrigger>
+          )}
+        </span>
+        <span ref={measure} className={styles.importedRuler} aria-hidden="true">
+          <Button variant="ghost" size="xs" asChild>
+            <span>{`+${sites.length} more`}</span>
+          </Button>
+          {sites.map((site) => (
+            <Badge key={site.value} tone="outline">
+              <Icon icon={LayersIcon} />
+              {site.label}
+            </Badge>
+          ))}
+        </span>
         <SheetContent>
           <SheetHeader>
             <SheetTitle>{`Imported in ${sites.length} environments`}</SheetTitle>
@@ -940,8 +937,8 @@ function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
             <SiteList sites={sites} />
           </SheetBody>
         </SheetContent>
-      </Sheet>
-    </span>
+      </span>
+    </Sheet>
   );
 }
 
@@ -1045,7 +1042,12 @@ export function ImportRow({
             label={`secret import ${first.source.path}`}
             onToggle={() => setExpanded(!expanded)}
           />
-          <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
+          <TableCell
+            pin="start"
+            pinOffset="var(--v4-size-row)"
+            colSpan={ctx.single ? 2 : undefined}
+            className={styles.nameCell}
+          >
             <div className={styles.nameLine}>
               <span className={styles.nameKind}>
                 <KindIcon kind="import" />
@@ -1063,7 +1065,11 @@ export function ImportRow({
             </div>
           </TableCell>
           {!ctx.single && expanded && (
-            <TableCell colSpan={ctx.environments.length} className={styles.importedInCell}>
+            <TableCell
+              pin="viewport"
+              colSpan={ctx.environments.length}
+              className={styles.importedInCell}
+            >
               <ImportedIn sites={sites} />
             </TableCell>
           )}
@@ -1079,8 +1085,10 @@ export function ImportRow({
       </RowContextMenu>
       {ctx.single && expanded && !first.revoked && (
         <TableRow className={styles.nestedHead}>
-          <TableCell selection divider={false} />
-          <TableCell className={styles.nameCell}>Name</TableCell>
+          <TableCell pin="start" selection divider={false} />
+          <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
+            <span>Name</span>
+          </TableCell>
           <TableCell colSpan={2} className={styles.valueCell}>
             Value
           </TableCell>
@@ -1089,8 +1097,8 @@ export function ImportRow({
       {ctx.single &&
         keys.map((secret) => (
           <TableRow key={secret.id} className={styles.importedRow}>
-            <TableCell selection divider={false} />
-            <TableCell className={styles.nameCell}>
+            <TableCell pin="start" selection divider={false} />
+            <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
               <span className={styles.truncate}>{secret.name}</span>
             </TableCell>
             <TableCell colSpan={2} className={styles.valueCell}>
@@ -1102,7 +1110,7 @@ export function ImportRow({
         ))}
       {ctx.single && expanded && first.revoked && (
         <TableRow className={styles.importedRow}>
-          <TableCell selection divider={false} />
+          <TableCell pin="start" selection divider={false} />
           <TableCell colSpan={3} className={styles.subtle}>
             Access to this source was revoked, so its secrets are not shown.
           </TableCell>
@@ -1110,7 +1118,11 @@ export function ImportRow({
       )}
       {!ctx.single && expanded && (
         <TableRow className={styles.nestedRow}>
-          <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
+          <TableCell
+            pin="viewport"
+            colSpan={ctx.environments.length + 3}
+            className={styles.nestedCell}
+          >
             <Table className={styles.nestedTable}>
               <TableHeader>
                 <TableRow>
