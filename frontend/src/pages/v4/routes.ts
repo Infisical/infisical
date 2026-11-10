@@ -24,7 +24,11 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
   ]),
   layout("v4-public", "v4/secret-sharing/public/route.tsx", [
     route("/shared/secret/$secretId", "v4/secret-sharing/public/ViewSharedSecretPage/route.tsx"),
-    route("/shared/new", "v4/secret-sharing/public/ShareSecretPage/route.tsx")
+    route("/shared/new", "v4/secret-sharing/public/ShareSecretPage/route.tsx"),
+    route(
+      "/secret-request/secret/$secretRequestId",
+      "v4/secret-sharing/public/ViewSecretRequestPage/route.tsx"
+    )
   ]),
   route("/organizations/onboarding", "v4/auth/OrgOnboardingPage/route.tsx"),
   route("/organizations/none", "v4/auth/NoOrgPage/route.tsx"),

@@ -10,11 +10,13 @@ import {
   useDeleteSecretRequest,
   useDeleteSharedSecret,
   useRevealSecretRequestValue,
+  useSetSecretRequestValue,
   useUploadBrandingAsset
 } from "@app/hooks/api/secretSharing/mutations";
 import {
   secretSharingKeys,
   useGetBrandingConfig,
+  useGetSecretRequestById,
   useGetSecretRequests,
   useGetSharedSecretBranding,
   useGetSharedSecretById,
@@ -72,5 +74,9 @@ export const secretSharingPublicLive: SecretSharingPublicAdapter = {
   useAccessSharedSecret,
   useCreatePublicSharedSecret,
   brandingAssetUrl: (sharedSecretId, assetType) =>
-    `/api/v1/shared-secrets/public/${sharedSecretId}/branding/${assetType}`
+    `/api/v1/shared-secrets/public/${sharedSecretId}/branding/${assetType}`,
+  useSecretRequest: (secretRequestId) => useGetSecretRequestById({ secretRequestId }),
+  useSetSecretRequestValue,
+  requestBrandingAssetUrl: (secretRequestId, assetType) =>
+    `/api/v1/shared-secrets/requests/${secretRequestId}/branding/${assetType}`
 };

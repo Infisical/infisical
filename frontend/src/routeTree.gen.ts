@@ -95,6 +95,7 @@ import { Route as v4OrganizationGroupDetailsByIDPageRouteImport } from './pages/
 import { Route as v4CertManagerDashboardPageRouteImport } from './pages/v4/cert-manager/DashboardPage/route'
 import { Route as v4CertManagerInventoryPageRouteImport } from './pages/v4/cert-manager/InventoryPage/route'
 import { Route as v4SecretSharingPublicViewSharedSecretPageRouteImport } from './pages/v4/secret-sharing/public/ViewSharedSecretPage/route'
+import { Route as v4SecretSharingPublicViewSecretRequestPageRouteImport } from './pages/v4/secret-sharing/public/ViewSecretRequestPage/route'
 import { Route as v4AuthProviderErrorPageRouteImport } from './pages/v4/auth/ProviderErrorPage/route'
 import { Route as adminIntegrationsPageRouteImport } from './pages/admin/IntegrationsPage/route'
 import { Route as adminEnvironmentPageRouteImport } from './pages/admin/EnvironmentPage/route'
@@ -1100,6 +1101,13 @@ const v4SecretSharingPublicViewSharedSecretPageRouteRoute =
   v4SecretSharingPublicViewSharedSecretPageRouteImport.update({
     id: '/shared/secret/$secretId',
     path: '/shared/secret/$secretId',
+    getParentRoute: () => v4SecretSharingPublicRouteRoute,
+  } as any)
+
+const v4SecretSharingPublicViewSecretRequestPageRouteRoute =
+  v4SecretSharingPublicViewSecretRequestPageRouteImport.update({
+    id: '/secret-request/secret/$secretRequestId',
+    path: '/secret-request/secret/$secretRequestId',
     getParentRoute: () => v4SecretSharingPublicRouteRoute,
   } as any)
 
@@ -3965,6 +3973,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4AuthProviderErrorPageRouteImport
       parentRoute: typeof V4V4AuthLoginImport
     }
+    '/v4/_v4-public/secret-request/secret/$secretRequestId': {
+      id: '/v4/_v4-public/secret-request/secret/$secretRequestId'
+      path: '/secret-request/secret/$secretRequestId'
+      fullPath: '/v4/secret-request/secret/$secretRequestId'
+      preLoaderRoute: typeof v4SecretSharingPublicViewSecretRequestPageRouteImport
+      parentRoute: typeof v4SecretSharingPublicRouteImport
+    }
     '/v4/_v4-public/shared/secret/$secretId': {
       id: '/v4/_v4-public/shared/secret/$secretId'
       path: '/shared/secret/$secretId'
@@ -6082,6 +6097,7 @@ const v4AuthRouteRouteWithChildren = v4AuthRouteRoute._addFileChildren(
 
 interface v4SecretSharingPublicRouteRouteChildren {
   v4SecretSharingPublicShareSecretPageRouteRoute: typeof v4SecretSharingPublicShareSecretPageRouteRoute
+  v4SecretSharingPublicViewSecretRequestPageRouteRoute: typeof v4SecretSharingPublicViewSecretRequestPageRouteRoute
   v4SecretSharingPublicViewSharedSecretPageRouteRoute: typeof v4SecretSharingPublicViewSharedSecretPageRouteRoute
 }
 
@@ -6089,6 +6105,8 @@ const v4SecretSharingPublicRouteRouteChildren: v4SecretSharingPublicRouteRouteCh
   {
     v4SecretSharingPublicShareSecretPageRouteRoute:
       v4SecretSharingPublicShareSecretPageRouteRoute,
+    v4SecretSharingPublicViewSecretRequestPageRouteRoute:
+      v4SecretSharingPublicViewSecretRequestPageRouteRoute,
     v4SecretSharingPublicViewSharedSecretPageRouteRoute:
       v4SecretSharingPublicViewSharedSecretPageRouteRoute,
   }
@@ -7709,6 +7727,7 @@ export interface FileRoutesByFullPath {
   '/admin/environment': typeof adminEnvironmentPageRouteRoute
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/v4/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
+  '/v4/secret-request/secret/$secretRequestId': typeof v4SecretSharingPublicViewSecretRequestPageRouteRoute
   '/v4/shared/secret/$secretId': typeof v4SecretSharingPublicViewSharedSecretPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
@@ -8071,6 +8090,7 @@ export interface FileRoutesByTo {
   '/admin/environment': typeof adminEnvironmentPageRouteRoute
   '/admin/integrations': typeof adminIntegrationsPageRouteRoute
   '/v4/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
+  '/v4/secret-request/secret/$secretRequestId': typeof v4SecretSharingPublicViewSecretRequestPageRouteRoute
   '/v4/shared/secret/$secretId': typeof v4SecretSharingPublicViewSharedSecretPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
@@ -8424,6 +8444,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/admin/_admin-layout/environment': typeof adminEnvironmentPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/integrations': typeof adminIntegrationsPageRouteRoute
   '/v4/_v4-auth/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
+  '/v4/_v4-public/secret-request/secret/$secretRequestId': typeof v4SecretSharingPublicViewSecretRequestPageRouteRoute
   '/v4/_v4-public/shared/secret/$secretId': typeof v4SecretSharingPublicViewSharedSecretPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
@@ -8802,6 +8823,7 @@ export interface FileRouteTypes {
     | '/admin/environment'
     | '/admin/integrations'
     | '/v4/login/provider/error'
+    | '/v4/secret-request/secret/$secretRequestId'
     | '/v4/shared/secret/$secretId'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
@@ -9163,6 +9185,7 @@ export interface FileRouteTypes {
     | '/admin/environment'
     | '/admin/integrations'
     | '/v4/login/provider/error'
+    | '/v4/secret-request/secret/$secretRequestId'
     | '/v4/shared/secret/$secretId'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
@@ -9514,6 +9537,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/admin/_admin-layout/environment'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/integrations'
     | '/v4/_v4-auth/login/provider/error'
+    | '/v4/_v4-public/secret-request/secret/$secretRequestId'
     | '/v4/_v4-public/shared/secret/$secretId'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
@@ -9961,6 +9985,7 @@ export const routeTree = rootRoute
       "parent": "/v4",
       "children": [
         "/v4/_v4-public/shared/new",
+        "/v4/_v4-public/secret-request/secret/$secretRequestId",
         "/v4/_v4-public/shared/secret/$secretId"
       ]
     },
@@ -10375,6 +10400,10 @@ export const routeTree = rootRoute
     "/v4/_v4-auth/login/provider/error": {
       "filePath": "v4/auth/ProviderErrorPage/route.tsx",
       "parent": "/v4/_v4-auth/login"
+    },
+    "/v4/_v4-public/secret-request/secret/$secretRequestId": {
+      "filePath": "v4/secret-sharing/public/ViewSecretRequestPage/route.tsx",
+      "parent": "/v4/_v4-public"
     },
     "/v4/_v4-public/shared/secret/$secretId": {
       "filePath": "v4/secret-sharing/public/ViewSharedSecretPage/route.tsx",

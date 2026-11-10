@@ -7,8 +7,10 @@ import type {
   TCreateSharedSecretRequest,
   TDeleteSecretRequestDTO,
   TDeleteSharedSecretRequestDTO,
+  TGetSecretRequestByIdResponse,
   TRevealedSecretRequest,
   TRevealSecretRequestValueRequest,
+  TSetSecretRequestValueRequest,
   TSharedSecret,
   TSharedSecretPublicDetails
 } from "@app/hooks/api/secretSharing/types";
@@ -52,4 +54,7 @@ export type SecretSharingPublicAdapter = {
   };
   useCreatePublicSharedSecret: V4Mutation<TCreateSharedSecretRequest, TCreatedSharedSecret>;
   brandingAssetUrl: (sharedSecretId: string, assetType: BrandingAssetType) => string;
+  useSecretRequest: (secretRequestId: string) => V4QueryResult<TGetSecretRequestByIdResponse>;
+  useSetSecretRequestValue: V4Mutation<TSetSecretRequestValueRequest, unknown>;
+  requestBrandingAssetUrl: (secretRequestId: string, assetType: BrandingAssetType) => string;
 };

@@ -2,6 +2,7 @@ import { SecretSharingAccessType } from "@app/hooks/api/secretSharing/types";
 import type {
   TAccessSharedSecretResponse,
   TBrandingConfig,
+  TGetSecretRequestByIdResponse,
   TSharedSecret,
   TSharedSecretPublicDetails
 } from "@app/hooks/api/secretSharing/types";
@@ -163,10 +164,19 @@ export const secretSharingDemo: SecretSharingAdapter = {
   )
 };
 
-export type SecretSharingPreview = "secret" | "password" | "error" | "branded";
+export type SecretSharingPreview = "secret" | "password" | "error" | "branded" | "answered";
 
 const previewError = (statusCode: number, message: string) =>
   Object.assign(new Error(message), { response: { data: { statusCode, message } } });
+
+const brand: TBrandingConfig = {
+  hasLogo: false,
+  hasFavicon: false,
+  // v4-check-ignore raw-color -- a sample customer brand for the branded preview
+  primaryColor: "#14324a",
+  // v4-check-ignore raw-color -- a sample customer brand for the branded preview
+  secondaryColor: "#f4f1ea"
+};
 
 const details = (preview: SecretSharingPreview): TSharedSecretPublicDetails => ({
   id: "demo",
@@ -190,6 +200,16 @@ const accessed: TAccessSharedSecretResponse = {
   expiresAfterViews: 3
 };
 
+const secretRequest: TGetSecretRequestByIdResponse = {
+  request: {
+    id: "demo",
+    orgId: V4_DEMO_ORG_ID,
+    accessType: SecretSharingAccessType.Anyone,
+    requester: { organizationName: "Acme", username: "maya@acme.dev" }
+  },
+  isSecretValueSet: false
+};
+
 const accessStore = createFixtureStore<{
   data: TAccessSharedSecretResponse | undefined;
   error: unknown;
@@ -208,17 +228,7 @@ export const secretSharingPublicDemo = (
         }
       : { data: details(preview), isPending: false, error: null },
   useSharedSecretBranding: () => ({
-    data:
-      preview === "branded"
-        ? {
-            hasLogo: false,
-            hasFavicon: false,
-            // v4-check-ignore raw-color -- a sample customer brand for the branded preview
-            primaryColor: "#14324a",
-            // v4-check-ignore raw-color -- a sample customer brand for the branded preview
-            secondaryColor: "#f4f1ea"
-          }
-        : { hasLogo: false, hasFavicon: false },
+    data: preview === "branded" ? brand : { hasLogo: false, hasFavicon: false },
     isPending: false,
     error: null
   }),
@@ -238,5 +248,26 @@ export const secretSharingPublicDemo = (
     };
   },
   useCreatePublicSharedSecret: fixtureMutation(() => ({ id: crypto.randomUUID() })),
-  brandingAssetUrl: () => ""
+  brandingAssetUrl: () => "",
+  useSecretRequest: () =>
+    preview === "error"
+      ? {
+          data: {
+            ...secretRequest,
+            error: "The secret request you are looking for is missing or has expired."
+          },
+          isPending: false,
+          error: null
+        }
+      : {
+          data: {
+            ...secretRequest,
+            isSecretValueSet: preview === "answered",
+            brandingConfig: preview === "branded" ? brand : undefined
+          },
+          isPending: false,
+          error: null
+        },
+  useSetSecretRequestValue: fixtureMutation(() => undefined),
+  requestBrandingAssetUrl: () => ""
 });

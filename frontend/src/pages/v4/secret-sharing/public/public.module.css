@@ -82,7 +82,12 @@
   --v4-line-soft: var(--brand-line);
   --v4-inset: var(--brand-inset);
   --v4-surface: var(--brand-inset);
+  --v4-control-surface: var(--brand-inset);
+  --v4-control-surface-hover: var(--brand-inset);
 }
 .panelTitle {
   font-size: var(--v4-type-title-sm-font-size);
+}
+.requestValue.requestValue {
+  min-height: calc(var(--v4-size-control-lg) * 4);
 }

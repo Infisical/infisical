@@ -16,12 +16,7 @@ export const ShareSecretPage = () => {
   const form = useShareSecretForm({ isPublic: true, create, formId });
   if (config.isPublicSecretSharingDisabled) return <V4NotFoundPage />;
   return (
-    <AuthPage
-      variant="focused"
-      pageTitle="Securely Share Secrets"
-      title="Share a secret"
-      description="Create an encrypted link that expires on your terms."
-    >
+    <AuthPage variant="focused" pageTitle="Securely Share Secrets" title="Share a secret">
       <Stack gap={24}>
         {form.body}
         <Inline gap={8} justify="end">

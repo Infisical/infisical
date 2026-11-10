@@ -184,6 +184,12 @@ export const productSections = (product: ShellProduct): readonly ShellNavSection
     items.push(
       { id: "product-insights", label: "Insights", icon: "globe", path: `${base}/insights` },
       {
+        id: "secret-sharing",
+        label: "Secret sharing",
+        icon: "link",
+        path: `${base}/secret-sharing`
+      },
+      {
         id: "product-settings",
         label: "Product settings",
         icon: "settings",

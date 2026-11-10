@@ -9,7 +9,10 @@ import { PublicLayout } from "./PublicLayout";
 export const Route = createFileRoute("/v4/_v4-public")({
   validateSearch: zodValidator(
     z.object({
-      preview: z.enum(["secret", "password", "error", "branded"]).optional().catch(undefined)
+      preview: z
+        .enum(["secret", "password", "error", "branded", "answered"])
+        .optional()
+        .catch(undefined)
     })
   ),
   beforeLoad: async ({ context, location, search }) => {
