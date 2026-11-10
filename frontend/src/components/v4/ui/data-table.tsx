@@ -16,6 +16,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TableHeadButton,
   TableHeader,
   TableLoadingRows,
   TableRow,
@@ -527,9 +528,7 @@ export function DataTable<Row>({
                   />
                 )}
                 {column.sortable && onSortChange ? (
-                  <button
-                    type="button"
-                    className={styles.tableSort}
+                  <TableHeadButton
                     data-active={sort?.columnId === column.id || undefined}
                     onClick={() =>
                       onSortChange({
@@ -547,7 +546,7 @@ export function DataTable<Row>({
                           : "arrow-up"
                       }
                     />
-                  </button>
+                  </TableHeadButton>
                 ) : (
                   <span className={column.hideHeader || column.actions ? styles.sr : undefined}>
                     {column.header}

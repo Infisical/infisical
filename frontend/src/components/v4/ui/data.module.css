@@ -1120,7 +1120,11 @@ tbody > .nativeTableRow[data-loading] {
   display: inline-flex;
   align-items: center;
   gap: var(--v4-space-4);
-  padding: 0;
+  box-sizing: border-box;
+  width: calc(100% + 2 * var(--v4-space-row-inline));
+  height: 100%;
+  margin-inline: calc(-1 * var(--v4-space-row-inline));
+  padding: 0 var(--v4-space-row-inline);
   font: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
@@ -1131,6 +1135,11 @@ tbody > .nativeTableRow[data-loading] {
 }
 .tableSort[data-active] {
   color: var(--v4-ink);
+}
+@media (hover: hover) {
+  .tableSort:hover {
+    background-color: var(--v4-hover);
+  }
 }
 .tableSort:not([data-active]) > svg {
   opacity: 0;
