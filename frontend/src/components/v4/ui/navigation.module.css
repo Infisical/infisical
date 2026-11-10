@@ -14,7 +14,8 @@
 .tabsTrack[data-width="content"] {
   width: fit-content;
 }
-.tabsTrack[data-width="full"] {
+.tabsTrack[data-width="full"],
+.tabsTrack[data-rule-spans] {
   width: 100%;
 }
 /* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */

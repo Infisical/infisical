@@ -30,6 +30,8 @@ export type TabsProps = Omit<
   onChange?: (value: string) => void;
 };
 
+const UNDERLINE_RULE_SPANS = true;
+
 const TabsWidthContext = React.createContext<TabsWidth>("content");
 
 function Tabs({
@@ -206,7 +208,12 @@ function TabsList({
     return () => node.removeEventListener("wheel", wheel);
   }, []);
   return (
-    <div className={styles.tabsTrack} data-variant={variant} data-width={width}>
+    <div
+      className={styles.tabsTrack}
+      data-variant={variant}
+      data-width={width}
+      data-rule-spans={(variant === "underline" && UNDERLINE_RULE_SPANS) || undefined}
+    >
       <TabsPrimitive.List
         ref={attach}
         data-slot="tabs-list"
