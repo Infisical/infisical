@@ -4,21 +4,19 @@ import { TDbClient } from "@app/db";
 import { AccessScope, ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
+import { TBillableActorDataAccess, TIdentityOwnership } from "../service/dependencies";
+
 // A user/identity occupies a billable seat only when it is (a) an org member, and (b) either a member
 // of a Secret-Management-flavoured project (Secret Manager or KMS) or not a member of any project at
 // all. Actors that only live in other project types (PAM, PKI, ...) do not count. Membership can be
 // direct or inherited through a group.
 const COUNTED_PROJECT_TYPES = [ProjectType.SecretManager, ProjectType.KMS];
 
-// One metered machine identity resolved to where it was created: the project that owns it, or the org
-// itself (projectId null) when it is org-owned.
-export type TIdentityOwnershipRow = { orgId: string; projectId: string | null; count: number };
-
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
 // Reads tables a future domain will own (memberships, group memberships, users, identities, projects,
 // organizations); see ../../AGENTS.md.
-export class BillableActorDataAccess {
+export class BillableActorDataAccess implements TBillableActorDataAccess {
   constructor(private readonly db: TDbClient) {}
 
   // Billable users and machine identities. A null orgId counts the whole instance.
@@ -59,7 +57,7 @@ export class BillableActorDataAccess {
   // membership would count one identity several times; identities.projectId is a single column, so
   // grouping on ownership partitions the billed total exactly once across the tree.
   // orgId null means the whole instance, matching countBillableOrgActors and the meter it feeds.
-  async getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnershipRow[]> {
+  async getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]> {
     try {
       const knex = this.db.replicaNode();
 
@@ -116,10 +114,7 @@ export class BillableActorDataAccess {
   // that owns it, or the org itself when org-owned. Seats are held by membership, which is
   // many-to-many, so grouping on membership would count one identity once per project it sits in;
   // identities.projectId is a single column and partitions the metered total exactly once.
-  async getProjectIdentityOwnershipBreakdown(
-    projectType: ProjectType,
-    orgId?: string
-  ): Promise<TIdentityOwnershipRow[]> {
+  async getProjectIdentityOwnershipBreakdown(projectType: ProjectType, orgId?: string): Promise<TIdentityOwnership[]> {
     const rows = (await this.db
       .replicaNode()({ i: TableName.Identity })
       .whereIn(

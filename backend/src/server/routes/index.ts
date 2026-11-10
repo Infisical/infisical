@@ -696,7 +696,7 @@ export const registerRoutes = async (
     envConfig
   });
   await domains.license.start();
-  const licenseDomain = domains.license.service;
+  const licenseService = domains.license.service;
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
   // the fleet reports itself in Redis and every api pod complains when the reports stop.
@@ -946,9 +946,10 @@ export const registerRoutes = async (
     envConfig,
     orgDAL,
     permissionService,
-    licenseDomain,
-    organizationsProjectsDomain: domains.organizationsProjects.service,
-    certManagerDomain: domains.certManager.service,
+    licenseService,
+    licenseBilling: domains.license.billing,
+    organizationsProjectsService: domains.organizationsProjects.service,
+    certManagerService: domains.certManager.service,
     breakdownDAL: licenseV2BreakdownDAL
   });
 
@@ -956,7 +957,7 @@ export const registerRoutes = async (
   const projectEventsSSEService = projectEventsSSEServiceFactory({
     projectEventsService,
     permissionService,
-    licenseDomain,
+    licenseService,
     keyStore,
     projectEnvDAL
   });
@@ -1010,7 +1011,7 @@ export const registerRoutes = async (
     permissionService,
     orgDAL,
     groupDAL,
-    licenseDomain,
+    licenseService,
     applicationMembershipCleanupService,
     projectDAL,
     alertChannelRecipientDAL,
@@ -1034,7 +1035,7 @@ export const registerRoutes = async (
     userDAL,
     externalGroupOrgRoleMappingDAL,
     membershipRoleDAL,
-    licenseDomain
+    licenseService
   });
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
@@ -1050,7 +1051,7 @@ export const registerRoutes = async (
     secretFolderDAL: folderDAL,
     permissionService,
     folderPermissionDAL,
-    licenseDomain,
+    licenseService,
     keyStore
   });
 
@@ -1103,11 +1104,11 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     externalKmsDAL,
-    licenseDomain
+    licenseService
   });
 
   const trustedIpService = trustedIpServiceFactory({
-    licenseDomain,
+    licenseService,
     projectDAL,
     trustedIpDAL,
     permissionService
@@ -1153,14 +1154,14 @@ export const registerRoutes = async (
     certManagerApplicationAlertProviderFactory({
       certManagerCertificateAlertDAL,
       permissionService,
-      licenseDomain
+      licenseService
     })
   );
   alertProviderRegistry.register(
     certManagerAlertProviderFactory({
       certManagerCertificateAlertDAL,
       permissionService,
-      licenseDomain,
+      licenseService,
       certManagerProjectResolver
     })
   );
@@ -1168,7 +1169,7 @@ export const registerRoutes = async (
     certManagerSignerAlertProviderFactory({
       certManagerSignerAlertDAL: certManagerSignerAlertDALFactory(db),
       permissionService,
-      licenseDomain,
+      licenseService,
       certManagerProjectResolver
     })
   );
@@ -1176,7 +1177,7 @@ export const registerRoutes = async (
     pamFolderAlertProviderFactory({
       pamFolderAlertDAL: pamFolderAlertDALFactory(db),
       permissionService,
-      licenseDomain
+      licenseService
     })
   );
   const alertRecipientResolver = alertRecipientResolverFactory({
@@ -1250,7 +1251,7 @@ export const registerRoutes = async (
   });
 
   const auditLogStreamService = auditLogStreamServiceFactory({
-    licenseDomain,
+    licenseService,
     permissionService,
     auditLogStreamDAL,
     kmsService
@@ -1277,7 +1278,7 @@ export const registerRoutes = async (
     orgDAL,
     projectDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     keyStore
   });
 
@@ -1285,7 +1286,7 @@ export const registerRoutes = async (
     auditLogDAL,
     queueService,
     projectDAL,
-    licenseDomain,
+    licenseService,
     auditLogSettingsService,
     auditLogStreamOutboxService,
     clickhouseClient: clickhouse,
@@ -1304,7 +1305,7 @@ export const registerRoutes = async (
     permissionService,
     auditLogQueue,
     auditLogSettingsService,
-    licenseDomain,
+    licenseService,
     queueService,
     keyStore,
     smtpService,
@@ -1329,7 +1330,7 @@ export const registerRoutes = async (
     permissionService,
     roleDAL,
     additionalPrivilegeDAL,
-    licenseDomain,
+    licenseService,
     applicationMembershipCleanupService,
     projectDAL,
     keyStore,
@@ -1343,7 +1344,7 @@ export const registerRoutes = async (
   const oidcIssuerService = oidcIssuerServiceFactory({ kmsDAL, kmsService, keyStore, auditLogService });
 
   const membershipUserService = membershipUserServiceFactory({
-    licenseDomain,
+    licenseService,
     membershipRoleDAL,
     alertChannelRecipientDAL,
     membershipUserDAL,
@@ -1392,7 +1393,7 @@ export const registerRoutes = async (
     projectDAL,
     userDAL,
     permissionService,
-    licenseDomain
+    licenseService
   });
 
   const secretApprovalPolicyService = secretApprovalPolicyServiceFactory({
@@ -1402,7 +1403,7 @@ export const registerRoutes = async (
     secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL,
     permissionService,
     secretApprovalPolicyDAL,
-    licenseDomain,
+    licenseService,
     projectDAL,
     userDAL,
     secretApprovalRequestDAL,
@@ -1423,7 +1424,7 @@ export const registerRoutes = async (
     projectKeyDAL,
     additionalPrivilegeDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     oidcConfigDAL,
     membershipGroupDAL,
     membershipRoleDAL,
@@ -1480,25 +1481,25 @@ export const registerRoutes = async (
 
   const telemetryService = telemetryServiceFactory({
     keyStore,
-    licenseDomain,
+    licenseService,
     orgDAL,
     emailDomainDAL
   });
   const telemetryQueue = telemetryQueueServiceFactory({
     keyStore,
     telemetryDAL,
-    certManagerDomain: domains.certManager.service,
+    certManagerService: domains.certManager.service,
     cronJob,
     telemetryService
   });
   const updateCheckService = updateCheckServiceFactory({
     cronJob,
     keyStore,
-    licenseDomain
+    licenseService
   });
 
   const scimService = scimServiceFactory({
-    licenseDomain,
+    licenseService,
     scimDAL,
     scimEventsDAL,
     userDAL,
@@ -1531,7 +1532,7 @@ export const registerRoutes = async (
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
-    licenseDomain,
+    licenseService,
     githubOrgSyncDAL,
     kmsService,
     permissionService,
@@ -1581,7 +1582,7 @@ export const registerRoutes = async (
     totpConfigDAL,
     webAuthnCredentialDAL,
     mfaRecoveryCodeService,
-    licenseDomain,
+    licenseService,
     alertChannelRecipientDAL,
     emailDomainDAL,
     pamSessionDAL,
@@ -1649,7 +1650,7 @@ export const registerRoutes = async (
     projectDAL,
     projectBotDAL,
     projectKeyDAL,
-    licenseDomain,
+    licenseService,
     tokenService,
     smtpService,
     kmsService,
@@ -1683,7 +1684,7 @@ export const registerRoutes = async (
     userDAL,
     userAliasDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     tokenService,
     smtpService,
     kmsService,
@@ -1738,7 +1739,7 @@ export const registerRoutes = async (
     secretDAL,
     secretV2BridgeDAL,
     folderDAL,
-    licenseDomain,
+    licenseService,
     samlConfigDAL,
     permissionService,
     orgDAL,
@@ -1770,7 +1771,7 @@ export const registerRoutes = async (
   });
 
   const subOrgService = subOrgServiceFactory({
-    licenseDomain,
+    licenseService,
     membershipDAL,
     membershipRoleDAL,
     orgDAL,
@@ -1791,7 +1792,7 @@ export const registerRoutes = async (
     emailDomainDAL,
     signupOnboardingResponseDAL,
     emailDispatchGuard,
-    licenseDomain
+    licenseService
   });
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({
@@ -1815,7 +1816,7 @@ export const registerRoutes = async (
     orgService,
     keyStore,
     orgDAL,
-    licenseDomain,
+    licenseService,
     kmsService,
     microsoftTeamsService,
     invalidateCacheQueue,
@@ -1835,7 +1836,7 @@ export const registerRoutes = async (
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({
     offlineUsageReportDAL,
-    licenseDomain
+    licenseService
   });
 
   const orgProductStatsService = orgProductStatsServiceFactory({
@@ -1852,7 +1853,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     projectMembershipDAL,
-    licenseDomain
+    licenseService
   });
 
   const secretScanningQueue = secretScanningQueueFactory({
@@ -1882,7 +1883,7 @@ export const registerRoutes = async (
     projectKeyDAL,
     groupProjectDAL,
     secretReminderRecipientsDAL,
-    licenseDomain,
+    licenseService,
     notificationService,
     membershipUserDAL,
     additionalPrivilegeDAL,
@@ -2001,7 +2002,6 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     permissionService
-    // license
   });
 
   const certificateTemplateService = certificateTemplateServiceFactory({
@@ -2011,7 +2011,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     projectDAL,
-    licenseDomain
+    licenseService
   });
 
   const certificatePolicyService = certificatePolicyServiceFactory({
@@ -2184,7 +2184,7 @@ export const registerRoutes = async (
     userAliasDAL,
     orgDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     agentVaultPersonalValueDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
@@ -2196,7 +2196,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     keyStore,
-    licenseDomain
+    licenseService
   });
 
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
@@ -2226,7 +2226,7 @@ export const registerRoutes = async (
   });
 
   const projectTemplateService = projectTemplateServiceFactory({
-    licenseDomain,
+    licenseService,
     permissionService,
     projectTemplateDAL,
     projectTemplateUserMembershipDAL,
@@ -2265,7 +2265,7 @@ export const registerRoutes = async (
     agentVaultProxyDAL,
     identityDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     gatewayProxyRegistry
   });
 
@@ -2286,7 +2286,7 @@ export const registerRoutes = async (
     userDAL,
     permissionService,
     kmsService,
-    licenseDomain,
+    licenseService,
     resourceAuthMethodService,
     agentVaultOauthService
   });
@@ -2336,7 +2336,7 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayV2Service,
     permissionService,
-    licenseDomain,
+    licenseService,
     identityKubernetesAuthDAL,
     pkiDiscoveryConfigDAL,
     appConnectionDAL,
@@ -2383,7 +2383,7 @@ export const registerRoutes = async (
     identityDAL,
     permissionService,
     gatewayV2Service,
-    licenseDomain
+    licenseService
   });
 
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
@@ -2400,7 +2400,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     keyStore,
-    licenseDomain,
+    licenseService,
     gatewayV2Service,
     gatewayPoolService,
     gatewayV2DAL,
@@ -2435,7 +2435,7 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     appConnectionDAL,
     gitHubAppDAL,
-    licenseDomain,
+    licenseService,
     gatewayV2Service,
     gatewayPoolService,
     notificationService,
@@ -2484,7 +2484,7 @@ export const registerRoutes = async (
     folderCommitService,
     secretSyncQueue,
     reminderService,
-    licenseDomain,
+    licenseService,
     membershipRoleDAL,
     membershipUserDAL,
     telemetryService,
@@ -2533,7 +2533,7 @@ export const registerRoutes = async (
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
-    organizationsProjectsDomain: domains.organizationsProjects.service,
+    organizationsProjectsService: domains.organizationsProjects.service,
     projectQueue: projectQueueService,
     secretValueTrackingService,
     userDAL,
@@ -2541,7 +2541,7 @@ export const registerRoutes = async (
     orgDAL,
     projectMembershipDAL,
     folderDAL,
-    licenseDomain,
+    licenseService,
     pkiSubscriberDAL,
     certificateAuthorityDAL,
     certificateDAL,
@@ -2585,7 +2585,7 @@ export const registerRoutes = async (
     permissionService,
     projectEnvDAL,
     keyStore,
-    licenseDomain,
+    licenseService,
     folderDAL,
     accessApprovalPolicyEnvironmentDAL,
     secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL,
@@ -2605,7 +2605,7 @@ export const registerRoutes = async (
   });
   const secretImportService = secretImportServiceFactory({
     eventEmitter: eventOutboxService,
-    licenseDomain,
+    licenseService,
     projectBotService,
     projectFolderGrantDAL,
     orgDAL,
@@ -2626,7 +2626,7 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     secretV2BridgeDAL,
-    licenseDomain
+    licenseService
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
     permissionService,
@@ -2646,7 +2646,7 @@ export const registerRoutes = async (
     secretApprovalRequestSecretDAL,
     secretChangeGlobalPolicyBridgeService,
     permissionService,
-    licenseDomain,
+    licenseService,
     userGroupMembershipDAL,
     folderDAL,
     projectDAL,
@@ -2725,7 +2725,7 @@ export const registerRoutes = async (
     smtpService,
     projectEnvDAL,
     userDAL,
-    licenseDomain,
+    licenseService,
     projectSlackConfigDAL,
     resourceMetadataDAL,
     projectMicrosoftTeamsConfigDAL,
@@ -2756,7 +2756,7 @@ export const registerRoutes = async (
     secretApprovalRequestCreationFns,
     secretV2BridgeService,
     secretApprovalRequestService,
-    licenseDomain,
+    licenseService,
     reminderService,
     secretVersionV2DAL: secretVersionV2BridgeDAL,
     secretV2BridgeDAL,
@@ -2806,7 +2806,7 @@ export const registerRoutes = async (
     smtpService,
     userDAL,
     identityDAL,
-    licenseDomain
+    licenseService
   });
 
   const secretAccessApprovalGlobalResource = secretAccessApprovalGlobalResourceFactory({
@@ -2879,7 +2879,7 @@ export const registerRoutes = async (
     identityDAL,
     identityOrgMembershipDAL,
     identityProjectDAL,
-    licenseDomain,
+    licenseService,
     identityMetadataDAL,
     keyStore,
     orgDAL,
@@ -2894,7 +2894,7 @@ export const registerRoutes = async (
     membershipIdentityDAL,
     membershipRoleDAL,
     identityMetadataDAL,
-    licenseDomain,
+    licenseService,
     permissionService,
     identityDAL: identityV2DAL,
     identityMembershipV2DAL,
@@ -2922,7 +2922,7 @@ export const registerRoutes = async (
     gatewayPoolDAL,
     permissionService,
     kmsService,
-    licenseDomain,
+    licenseService,
     auditLogService
   });
 
@@ -2931,7 +2931,7 @@ export const registerRoutes = async (
     identityTokenAuthDAL,
     identityAccessTokenDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     orgDAL,
     keyStore,
     membershipIdentityDAL,
@@ -2944,7 +2944,7 @@ export const registerRoutes = async (
     permissionService,
     identityUaClientSecretDAL,
     identityUaDAL,
-    licenseDomain,
+    licenseService,
     keyStore,
     orgDAL,
     membershipIdentityDAL,
@@ -2958,7 +2958,7 @@ export const registerRoutes = async (
     identityAuthTemplateDAL,
     identityAccessTokenDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     orgDAL,
     gatewayV2Service,
     gatewayV2DAL,
@@ -2976,7 +2976,7 @@ export const registerRoutes = async (
     orgDAL,
     identityAccessTokenDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
@@ -2988,7 +2988,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     orgDAL,
     identityAliCloudAuthDAL,
-    licenseDomain,
+    licenseService,
     permissionService,
     keyStore,
     membershipIdentityDAL,
@@ -3000,7 +3000,7 @@ export const registerRoutes = async (
     identityDAL,
     identityAccessTokenDAL,
     identityTlsCertAuthDAL,
-    licenseDomain,
+    licenseService,
     permissionService,
     kmsService,
     keyStore,
@@ -3015,7 +3015,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     orgDAL,
     identityAwsAuthDAL,
-    licenseDomain,
+    licenseService,
     permissionService,
     keyStore,
     membershipIdentityDAL,
@@ -3029,7 +3029,7 @@ export const registerRoutes = async (
     orgDAL,
     identityAccessTokenDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     keyStore,
     membershipIdentityDAL,
     identityAccessTokenService
@@ -3041,7 +3041,7 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     orgDAL,
     identityOciAuthDAL,
-    licenseDomain,
+    licenseService,
     permissionService,
     keyStore,
     membershipIdentityDAL,
@@ -3071,7 +3071,7 @@ export const registerRoutes = async (
     orgDAL,
     identityAccessTokenDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     kmsService,
     keyStore,
     membershipIdentityDAL,
@@ -3085,7 +3085,7 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     identityAccessTokenDAL,
-    licenseDomain,
+    licenseService,
     kmsService,
     keyStore,
     membershipIdentityDAL,
@@ -3099,7 +3099,7 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     identityAccessTokenDAL,
-    licenseDomain,
+    licenseService,
     kmsService,
     keyStore,
     membershipIdentityDAL,
@@ -3113,7 +3113,7 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     identityAccessTokenDAL,
-    licenseDomain,
+    licenseService,
     identityDAL,
     identityAuthTemplateDAL,
     keyStore,
@@ -3133,7 +3133,7 @@ export const registerRoutes = async (
     pkiAlertChannelDAL,
     pkiAlertHistoryDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     smtpService,
     kmsService,
     notificationService,
@@ -3175,7 +3175,7 @@ export const registerRoutes = async (
     dynamicSecretProviders,
     folderDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     kmsService,
     gatewayV2DAL,
     gatewayPoolService,
@@ -3190,7 +3190,7 @@ export const registerRoutes = async (
     dynamicSecretLeaseDAL,
     dynamicSecretProviders,
     folderDAL,
-    licenseDomain,
+    licenseService,
     kmsService,
     userDAL,
     identityDAL,
@@ -3200,7 +3200,7 @@ export const registerRoutes = async (
   const emailDomainService = emailDomainServiceFactory({
     emailDomainDAL,
     permissionService,
-    licenseDomain
+    licenseService
   });
 
   // DAILY
@@ -3244,7 +3244,7 @@ export const registerRoutes = async (
       orgDAL,
       projectAccessRevokeService,
       auditLogService,
-      licenseDomain
+      licenseService
     })
   );
   const orgAccessSweepQueue = orgAccessSweepQueueFactory({
@@ -3285,7 +3285,7 @@ export const registerRoutes = async (
     orgDAL,
     userDAL,
     userAliasDAL,
-    licenseDomain,
+    licenseService,
     tokenService,
     smtpService,
     kmsService,
@@ -3339,11 +3339,11 @@ export const registerRoutes = async (
     kmsDAL,
     kmsService,
     permissionService,
-    licenseDomain
+    licenseService
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
-    licenseDomain,
+    licenseService,
     eventEmitter: eventOutboxService,
     projectEnvService,
     projectDAL,
@@ -3368,7 +3368,7 @@ export const registerRoutes = async (
 
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({
     permissionService,
-    licenseDomain,
+    licenseService,
     externalGroupOrgRoleMappingDAL,
     roleDAL,
     orgDAL
@@ -3389,7 +3389,7 @@ export const registerRoutes = async (
     appConnectionDAL,
     permissionService,
     kmsService,
-    licenseDomain,
+    licenseService,
     gatewayV2Service,
     gatewayPoolService,
     gatewayV2DAL,
@@ -3426,7 +3426,7 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     appConnectionDAL,
     appConnectionService,
-    licenseDomain,
+    licenseService,
     eventEmitter: eventOutboxService
   });
 
@@ -3553,7 +3553,7 @@ export const registerRoutes = async (
     appConnectionService,
     permissionService,
     kmsService,
-    licenseDomain,
+    licenseService,
     keyStore,
     objectStorage: objectStorageService
   });
@@ -3567,7 +3567,7 @@ export const registerRoutes = async (
     gatewayPoolService,
     gatewayV2DAL,
     gatewayPoolDAL,
-    licenseDomain
+    licenseService
   });
 
   const caKeySourceService = caKeySourceServiceFactory({
@@ -3578,7 +3578,7 @@ export const registerRoutes = async (
     appConnectionService,
     kmsService,
     projectDAL,
-    licenseDomain
+    licenseService
   });
 
   const projectCleanupQueue = projectCleanupQueueFactory({
@@ -3592,7 +3592,7 @@ export const registerRoutes = async (
     caKeySourceService,
     keyStore,
     auditLogService,
-    licenseDomain
+    licenseService
   });
 
   const certificateProfileService = certificateProfileServiceFactory({
@@ -3622,7 +3622,7 @@ export const registerRoutes = async (
     honeyTokenConfigDAL,
     permissionService,
     kmsService,
-    licenseDomain,
+    licenseService,
     appConnectionDAL,
     appConnectionService
   });
@@ -3633,7 +3633,7 @@ export const registerRoutes = async (
     honeyTokenConfigDAL,
     honeyTokenEventDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     kmsService,
     appConnectionDAL,
     orgDAL,
@@ -3662,7 +3662,7 @@ export const registerRoutes = async (
     folderDAL,
     secretV2BridgeService,
     permissionService,
-    licenseDomain,
+    licenseService,
     dynamicSecretDAL,
     projectDAL,
     keyStore
@@ -3671,7 +3671,7 @@ export const registerRoutes = async (
   const agentProxyCaService = agentProxyCaServiceFactory({
     orgAgentProxyConfigDAL,
     kmsService,
-    licenseDomain,
+    licenseService,
     permissionService
   });
 
@@ -3699,7 +3699,7 @@ export const registerRoutes = async (
     secretSyncQueue,
     projectBotService,
     keyStore,
-    licenseDomain
+    licenseService
   });
 
   const kmipService = kmipServiceFactory({
@@ -3709,7 +3709,7 @@ export const registerRoutes = async (
     kmipOrgConfigDAL,
     kmsService,
     kmipOrgServerCertificateDAL,
-    licenseDomain
+    licenseService
   });
 
   const kmipOperationService = kmipOperationServiceFactory({
@@ -3726,7 +3726,7 @@ export const registerRoutes = async (
     appConnectionService,
     folderDAL,
     projectBotService,
-    licenseDomain,
+    licenseService,
     kmsService,
     auditLogService,
     secretV2BridgeDAL,
@@ -3757,7 +3757,7 @@ export const registerRoutes = async (
 
   const secretReadActivityService = secretReadActivityServiceFactory({
     permissionService,
-    licenseDomain,
+    licenseService,
     secretReadActivityDAL,
     secretReadActivityQueue,
     folderDAL,
@@ -3776,7 +3776,7 @@ export const registerRoutes = async (
 
   const insightsService = insightsServiceFactory({
     permissionService,
-    licenseDomain,
+    licenseService,
     auditLogDAL,
     clickhouseAuditLogDAL,
     secretRotationV2DAL,
@@ -3799,7 +3799,7 @@ export const registerRoutes = async (
   const auditReportDAL = auditReportDALFactory(db);
   const auditReportService = auditReportServiceFactory({
     permissionService,
-    licenseDomain,
+    licenseService,
     auditReportDAL,
     projectDAL,
     projectBotService,
@@ -3867,7 +3867,7 @@ export const registerRoutes = async (
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    licenseDomain,
+    licenseService,
     auditLogService,
     telemetryService
   });
@@ -3962,7 +3962,7 @@ export const registerRoutes = async (
     internalCertificateAuthorityDAL,
     kmsService,
     permissionService,
-    licenseDomain,
+    licenseService,
     caSigningConfigDAL,
     caKeySourceService
   });
@@ -3974,7 +3974,7 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     permissionService,
-    licenseDomain
+    licenseService
   });
 
   const caAutoRenewalQueue = caAutoRenewalQueueFactory({
@@ -3994,7 +3994,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     internalCertificateAuthorityDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     appConnectionService,
     caAutoRenewalQueue
   });
@@ -4020,7 +4020,7 @@ export const registerRoutes = async (
     resourceMetadataDAL,
     gatewayV2Service,
     gatewayPoolService,
-    licenseDomain,
+    licenseService,
     caKeySourceService,
     certificateAuthoritySecretDAL,
     telemetryService,
@@ -4038,7 +4038,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     projectDAL,
     kmsService,
-    licenseDomain
+    licenseService
   });
 
   const certManagerExportService = certManagerExportServiceFactory({
@@ -4081,7 +4081,7 @@ export const registerRoutes = async (
   });
 
   const certificateService = certificateServiceFactory({
-    certManagerDomain: domains.certManager.service,
+    certManagerService: domains.certManager.service,
     keyStore,
     certificateDAL,
     certificateRequestDAL,
@@ -4110,7 +4110,7 @@ export const registerRoutes = async (
     apiEnrollmentConfigDAL,
     digicertFns: digicertCaFns,
     certificatePolicyService,
-    licenseDomain,
+    licenseService,
     caKeySourceService,
     internalCertificateAuthorityDAL,
     signerDAL,
@@ -4176,8 +4176,8 @@ export const registerRoutes = async (
   });
 
   const certificateApprovalService = certificateApprovalServiceFactory({
-    licenseDomain,
-    certManagerDomain: domains.certManager.service,
+    licenseService,
+    certManagerService: domains.certManager.service,
     keyStore,
     certificateRequestDAL,
     certificateProfileDAL,
@@ -4247,7 +4247,7 @@ export const registerRoutes = async (
     approvalPolicyStepApproversDAL,
     approvalPolicyBypassersDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     projectMembershipDAL,
     membershipDAL,
     pkiApplicationDAL,
@@ -4276,7 +4276,7 @@ export const registerRoutes = async (
     acmeEnrollmentConfigDAL,
     scepEnrollmentConfigDAL,
     appConnectionService,
-    licenseDomain,
+    licenseService,
     approvalPolicyService,
     certificateProfileDAL,
     certificateAuthorityDAL,
@@ -4336,7 +4336,7 @@ export const registerRoutes = async (
     gatewayPoolService,
     appConnectionDAL,
     pamAccessRequestService,
-    licenseDomain
+    licenseService
   });
 
   const pamDiscoverySourceRunDAL = pamDiscoverySourceRunDALFactory(db);
@@ -4432,7 +4432,7 @@ export const registerRoutes = async (
 
   const certificateV3Service = certificateV3ServiceFactory({
     caKeySourceService,
-    certManagerDomain: domains.certManager.service,
+    certManagerService: domains.certManager.service,
     pkiApplicationDAL,
     keyStore,
     certificateDAL,
@@ -4461,7 +4461,7 @@ export const registerRoutes = async (
     certificateAlertEventEmitter,
     pkiApplicationProfileDAL,
     apiEnrollmentConfigDAL,
-    licenseDomain,
+    licenseService,
     telemetryService,
     auditLogService
   });
@@ -4523,7 +4523,7 @@ export const registerRoutes = async (
     certificateDAL,
     projectDAL,
     kmsService,
-    licenseDomain,
+    licenseService,
     certificateProfileDAL,
     estEnrollmentConfigDAL,
     certificatePolicyDAL,
@@ -4535,7 +4535,7 @@ export const registerRoutes = async (
   const pkiScepService = pkiScepServiceFactory({
     keyStore,
     pkiApplicationDAL,
-    certManagerDomain: domains.certManager.service,
+    certManagerService: domains.certManager.service,
     certificateV3Service,
     certificateProfileDAL,
     scepEnrollmentConfigDAL,
@@ -4549,7 +4549,7 @@ export const registerRoutes = async (
     projectDAL,
     kmsService,
     appConnectionDAL,
-    licenseDomain,
+    licenseService,
     certificatePolicyDAL,
     certificatePolicyService,
     certificateRequestService,
@@ -4571,8 +4571,8 @@ export const registerRoutes = async (
 
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
-    licenseDomain,
-    certManagerDomain: domains.certManager.service,
+    licenseService,
+    certManagerService: domains.certManager.service,
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
@@ -4626,7 +4626,7 @@ export const registerRoutes = async (
     pkiSubscriberDAL,
     appConnectionService,
     permissionService,
-    licenseDomain,
+    licenseService,
     keyStore,
     pkiSyncQueue,
     pkiSyncHealthCheckQueue,
@@ -4661,7 +4661,7 @@ export const registerRoutes = async (
     pkiDiscoveryConfigDAL,
     pkiDiscoveryScanHistoryDAL,
     permissionService,
-    licenseDomain,
+    licenseService,
     gatewayV2DAL,
     gatewayPoolDAL,
     gatewayPoolService,
@@ -4713,7 +4713,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     hsmConnectorService,
-    licenseDomain,
+    licenseService,
     orgDAL
   });
 
@@ -4834,7 +4834,7 @@ export const registerRoutes = async (
   const secretScanningV2Service = secretScanningV2ServiceFactory({
     permissionService,
     appConnectionService,
-    licenseDomain,
+    licenseService,
     secretScanningV2DAL,
     secretScanningV2Queue,
     kmsService,
@@ -4858,7 +4858,7 @@ export const registerRoutes = async (
   });
 
   // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
-  crypto.verifyFipsLicense(licenseDomain.getInstanceEntitlements().features.fips);
+  crypto.verifyFipsLicense(licenseService.getInstanceEntitlements().features.fips);
 
   await superAdminService.initServerCfg();
 
@@ -4868,7 +4868,7 @@ export const registerRoutes = async (
   const hsmStatus = await isHsmActiveAndEnabled({
     hsmService,
     kmsRootConfigDAL,
-    instanceHasHsm: licenseDomain.getInstanceEntitlements().features.hsm
+    instanceHasHsm: licenseService.getInstanceEntitlements().features.hsm
   });
 
   // if the encryption strategy is software - user needs to provide an encryption key
@@ -5060,7 +5060,7 @@ export const registerRoutes = async (
     pkiSigner: signerService,
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
-    licenseDomain,
+    licenseService,
     licenseV2: licenseV2Service,
     trustedIp: trustedIpService,
     scim: scimService,

@@ -1,6 +1,6 @@
 # Organizations and projects domain
 
-Holds only what License and billing need for now: the `identities` and `user_identities` counters, root-org lookup and the workspace count it registers with License (`countWorkspaces`, also used by project create and restore), the billable-actor queries the billing portal breaks down, and the per-project-type identity counts that `secrets-manager/secrets`, `pam/pam` and `agent-vault/agent-vault` build their counters on. It grows as Organizations and projects moves into domains.
+Holds only what License and billing need for now: the `identities` and `user_identities` counters, root-org lookup and the workspace count License takes from its service (`countWorkspaces`, also used by project create and restore), the billable-actor queries the billing portal breaks down, and the per-project-type identity counts that `secrets-manager/secrets`, `pam/pam` and `agent-vault/agent-vault` build their usage counters on. It grows as Organizations and projects moves into domains.
 
 - **Declared exception:** its queries read tables this domain does not own yet (`organizations`, `projects`, `memberships`, `users`, `identities`, `groups`, `user_group_membership`, `identity_group_memberships`). When the owning
   domain exists, these reads move behind that domain's service.

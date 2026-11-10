@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
 import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
@@ -51,7 +51,7 @@ type TAuditLogServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -74,7 +74,7 @@ export const auditLogServiceFactory = ({
   clickhouseAuditLogDAL,
   auditLogQueue,
   auditLogSettingsService,
-  licenseDomain,
+  licenseService,
   permissionService,
   queueService,
   keyStore,
@@ -311,7 +311,7 @@ export const auditLogServiceFactory = ({
 
       if (!isAuditLogEventEnabled(settings, EventType.PERMISSION_DENIED, projectId)) return;
 
-      const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseDomain.getPlan(orgId));
+      const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
       if (!plan || !hasAuditLogRetention(plan)) return;
 
       const actorIdKey = ACTOR_TYPE_TO_METADATA_ID_KEY[auditLogInfo.actor.type];

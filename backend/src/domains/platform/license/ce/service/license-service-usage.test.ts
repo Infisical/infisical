@@ -1,7 +1,8 @@
 import { InstanceType } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
+import { SeatUsage } from "../model/seat-usage";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID } from "../testing/build-license";
-import { FakeLicenseHooks } from "../testing/fake-license-hooks";
+import { FakeLicenseServer } from "../testing/fake-license-server";
 import { FakeUsageCounter } from "../testing/fake-usage-counter";
 import { enterprisePlan } from "../testing/test-features";
 import { UsageReportError } from "./license-server-types/usage-reports";
@@ -10,29 +11,29 @@ vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
 }));
 
-const snapshotsFor = (hooks: FakeLicenseHooks, dimension: string) =>
-  hooks.snapshots.filter((s) => s.snapshot.dimension_key === dimension).map((s) => [s.orgId, s.snapshot.value]);
+const snapshotsFor = (licenseServer: FakeLicenseServer, dimension: string) =>
+  licenseServer.snapshots.filter((s) => s.snapshot.dimension_key === dimension).map((s) => [s.orgId, s.snapshot.value]);
 
-describe("UsageService.handleUsageEvent", () => {
+describe("LicenseService.handleUsageEvent", () => {
   test("should report the counter's value and record it", async () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
-    const { licenseDomain, queue, hooks } = await buildLicense({ counters: [counter] });
+    const { licenseService, queue, licenseServer } = await buildLicense({ counters: [counter] });
 
     // Action
-    licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
+    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
-    expect(snapshotsFor(hooks, Meter.UserIdentities.key)).toEqual([[ROOT.id, 4]]);
+    expect(snapshotsFor(licenseServer, Meter.UserIdentities.key)).toEqual([[ROOT.id, 4]]);
   });
 
   test("should send a recount under a new idempotency key when a retry follows a lost reply", async () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.ActiveCerts).set(ROOT.id, 9);
-    const { licenseDomain, queue, hooks } = await buildLicense({ counters: [counter] });
-    hooks.loseNextReplies = 1;
-    licenseDomain.emit(ROOT.id, Meter.ActiveCerts.key);
+    const { licenseService, queue, licenseServer } = await buildLicense({ counters: [counter] });
+    licenseServer.loseNextReplies = 1;
+    licenseService.emit(ROOT.id, Meter.ActiveCerts.key);
     await new Promise((resolve) => {
       setImmediate(resolve);
     });
@@ -47,7 +48,7 @@ describe("UsageService.handleUsageEvent", () => {
     await run().finally(() => vi.useRealTimers());
 
     // Assert
-    const sent = hooks.snapshots.map((s) => s.snapshot);
+    const sent = licenseServer.snapshots.map((s) => s.snapshot);
     expect(sent.map((s) => s.value)).toEqual([9, 8]);
     expect(new Set(sent.map((s) => s.idempotency_key)).size).toBe(2);
   });
@@ -55,75 +56,79 @@ describe("UsageService.handleUsageEvent", () => {
   test("should not report a value the server already has", async () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
-    const { licenseDomain, queue, hooks } = await buildLicense({ counters: [counter] });
-    licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
+    const { licenseService, queue, licenseServer } = await buildLicense({ counters: [counter] });
+    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Action
-    licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
+    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
-    expect(snapshotsFor(hooks, Meter.UserIdentities.key)).toHaveLength(1);
+    expect(snapshotsFor(licenseServer, Meter.UserIdentities.key)).toHaveLength(1);
   });
 
   test("should report nothing for an org on cloud whose plan has no slug", async () => {
     // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.plans.set(ROOT.id, { ...enterprisePlan(), slug: null });
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), slug: null });
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
-    const { licenseDomain, queue } = await buildLicense({ hooks, counters: [counter] });
+    const { licenseService, queue } = await buildLicense({ licenseServer, counters: [counter] });
 
     // Action
-    licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
+    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
-    expect(hooks.snapshots).toEqual([]);
+    expect(licenseServer.snapshots).toEqual([]);
   });
 
   test("should report an org-tree meter at the root, and an org meter at the org that changed", async () => {
     // Setup
     const certs = new FakeUsageCounter(Meter.ActiveCerts).set(ROOT.id, 9);
     const users = new FakeUsageCounter(Meter.UserIdentities).set(SUB_ORG_ID, 2);
-    const { licenseDomain, queue, hooks } = await buildLicense({ counters: [certs, users] });
+    const { licenseService, queue, licenseServer } = await buildLicense({ counters: [certs, users] });
 
     // Action
-    licenseDomain.emit(SUB_ORG_ID, Meter.ActiveCerts.key);
-    licenseDomain.emit(SUB_ORG_ID, Meter.UserIdentities.key);
+    licenseService.emit(SUB_ORG_ID, Meter.ActiveCerts.key);
+    licenseService.emit(SUB_ORG_ID, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
-    expect(snapshotsFor(hooks, Meter.ActiveCerts.key)).toEqual([[ROOT.id, 9]]);
-    expect(snapshotsFor(hooks, Meter.UserIdentities.key)).toEqual([[SUB_ORG_ID, 2]]);
+    expect(snapshotsFor(licenseServer, Meter.ActiveCerts.key)).toEqual([[ROOT.id, 9]]);
+    expect(snapshotsFor(licenseServer, Meter.UserIdentities.key)).toEqual([[SUB_ORG_ID, 2]]);
   });
 
   test("should report under the instance on self-hosted, counting the whole instance", async () => {
     // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.instance = { ...hooks.instance, instanceType: InstanceType.EnterpriseOnPrem, features: enterprisePlan() };
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.instance = {
+      ...licenseServer.instance,
+      instanceType: InstanceType.EnterpriseOnPrem,
+      features: enterprisePlan()
+    };
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(null, 12);
-    const { licenseDomain, queue } = await buildLicense({ hooks, counters: [counter] });
+    const { licenseService, queue } = await buildLicense({ licenseServer, counters: [counter] });
 
     // Action
-    licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
+    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
-    expect(snapshotsFor(hooks, Meter.UserIdentities.key)).toEqual([["self-hosted", 12]]);
-    expect(hooks.snapshots[0].snapshot.source).toBe("self-hosted");
+    expect(snapshotsFor(licenseServer, Meter.UserIdentities.key)).toEqual([["self-hosted", 12]]);
+    expect(licenseServer.snapshots[0].snapshot.source).toBe("self-hosted");
   });
 
   test("should drop an event for a dimension nothing counts", async () => {
     // Setup
-    const { licenseDomain, queue, hooks } = await buildLicense();
+    const { licenseService, queue, licenseServer } = await buildLicense();
 
     // Action
-    licenseDomain.emit(ROOT.id, "unknown_dimension");
+    licenseService.emit(ROOT.id, "unknown_dimension");
     await queue.drain();
 
     // Assert
-    expect(hooks.snapshots).toEqual([]);
+    expect(licenseServer.snapshots).toEqual([]);
   });
 
   test.each([
@@ -133,29 +138,29 @@ describe("UsageService.handleUsageEvent", () => {
     "should drop a %i the server gives as its final answer, and send the value again next time",
     async (status, message) => {
       // Setup
-      const hooks = new FakeLicenseHooks();
-      hooks.failNextReports.push(new UsageReportError(status, message));
+      const licenseServer = new FakeLicenseServer();
+      licenseServer.failNextReports.push(new UsageReportError(status, message));
       const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
-      const { licenseDomain, queue } = await buildLicense({ hooks, counters: [counter] });
-      licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
+      const { licenseService, queue } = await buildLicense({ licenseServer, counters: [counter] });
+      licenseService.emit(ROOT.id, Meter.UserIdentities.key);
       await queue.drain();
 
       // Action
-      licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
+      licenseService.emit(ROOT.id, Meter.UserIdentities.key);
       await queue.drain();
 
       // Assert
-      expect(snapshotsFor(hooks, Meter.UserIdentities.key)).toEqual([[ROOT.id, 4]]);
+      expect(snapshotsFor(licenseServer, Meter.UserIdentities.key)).toEqual([[ROOT.id, 4]]);
     }
   );
 
   test("should fail the job on any other error, so the queue retries it", async () => {
     // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.failNextReports.push(new UsageReportError(500, "boom"));
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.failNextReports.push(new UsageReportError(500, "boom"));
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
-    const { licenseDomain, queue } = await buildLicense({ hooks, counters: [counter] });
-    licenseDomain.emit(ROOT.id, Meter.UserIdentities.key);
+    const { licenseService, queue } = await buildLicense({ licenseServer, counters: [counter] });
+    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
 
     // Action
     const result = queue.drain();
@@ -166,9 +171,13 @@ describe("UsageService.handleUsageEvent", () => {
 
   test("should re-emit each meter once at the instance for the daily flush, and only for online self-hosted", async () => {
     // Setup
-    const hooks = new FakeLicenseHooks();
-    hooks.instance = { ...hooks.instance, instanceType: InstanceType.EnterpriseOnPrem, features: enterprisePlan() };
-    const { registeredCrons } = await buildLicense({ hooks });
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.instance = {
+      ...licenseServer.instance,
+      instanceType: InstanceType.EnterpriseOnPrem,
+      features: enterprisePlan()
+    };
+    const { registeredCrons } = await buildLicense({ licenseServer });
     const cloud = await buildLicense();
 
     // Action
@@ -179,21 +188,21 @@ describe("UsageService.handleUsageEvent", () => {
   });
 });
 
-describe("UsageService.getSeatUsage", () => {
+describe("LicenseService.getSeatUsage", () => {
   test("should count the root org's tree on cloud, in one count", async () => {
     // Setup
     const counted: (string | null)[] = [];
-    const { licenseDomain } = await buildLicense({
+    const { licenseService } = await buildLicense({
       organizations: {
         countSeats: async (orgId) => {
           counted.push(orgId);
-          return { membersUsed: 3, identitiesUsed: 7 };
+          return SeatUsage.create({ membersUsed: 3, identitiesUsed: 7 });
         }
       }
     });
 
     // Action
-    const usage = await licenseDomain.getSeatUsage(SUB_ORG_ID);
+    const usage = await licenseService.getSeatUsage(SUB_ORG_ID);
 
     // Assert
     expect([usage.membersUsed, usage.identitiesUsed]).toEqual([3, 7]);
@@ -202,12 +211,14 @@ describe("UsageService.getSeatUsage", () => {
 
   test("should count every org on the instance for the instance's seat usage, even on cloud", async () => {
     // Setup
-    const { licenseDomain } = await buildLicense({
-      organizations: { countSeats: async (orgId) => ({ membersUsed: 0, identitiesUsed: orgId === null ? 9 : 2 }) }
+    const { licenseService } = await buildLicense({
+      organizations: {
+        countSeats: async (orgId) => SeatUsage.create({ membersUsed: 0, identitiesUsed: orgId === null ? 9 : 2 })
+      }
     });
 
     // Action
-    const usage = await licenseDomain.getInstanceSeatUsage();
+    const usage = await licenseService.getInstanceSeatUsage();
 
     // Assert
     expect(usage.identitiesUsed).toBe(9);
@@ -215,10 +226,10 @@ describe("UsageService.getSeatUsage", () => {
 
   test("should refuse an org that does not exist on cloud", async () => {
     // Setup
-    const { licenseDomain } = await buildLicense();
+    const { licenseService } = await buildLicense();
 
     // Action
-    const result = licenseDomain.getSeatUsage(OTHER_ROOT.id.replace("3", "5"));
+    const result = licenseService.getSeatUsage(OTHER_ROOT.id.replace("3", "5"));
 
     // Assert
     await expect(result).rejects.toThrow("not found");
@@ -234,22 +245,6 @@ describe("LicenseModule", () => {
     const result = buildLicense({ counters });
 
     // Assert
-    await expect(result).rejects.toThrow("Two usage counters were registered for 'user_identities'");
-  });
-
-  test("should refuse a second organizations registration", async () => {
-    // Setup
-    const { module } = await buildLicense();
-
-    // Action
-    const register = () =>
-      module.registry.registerOrganizations({
-        findRootOrgId: async () => null,
-        countWorkspacesUsed: async () => 0,
-        countSeats: async () => ({ membersUsed: 0, identitiesUsed: 0 })
-      });
-
-    // Assert
-    expect(register).toThrow("The organizations directory was registered twice");
+    await expect(result).rejects.toThrow("Two usage counters were given for 'user_identities'");
   });
 });

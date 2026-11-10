@@ -3,14 +3,16 @@ import { BadRequestError } from "@app/lib/errors";
 
 import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
 import { Plan, TPlanProps } from "../model/plan";
-import { TLicenseHooks } from "../service/license-hooks";
+import { TLicenseProvider, TLicenseServer } from "../service/dependencies";
+import { TEntitlementOrg } from "../service/license-server-types/license-server-types";
 import { TUsageEvent, TUsageSnapshot, UsageReportError } from "../service/license-server-types/usage-reports";
 import { FakeLicenseServerBilling } from "./fake-license-server-billing";
 import { enterprisePlan, testFeatures } from "./test-features";
 
-// The EE edition in memory: the instance's license, a plan per root org, the reports the License Server
-// received, and failures to inject. A cloud instance by default.
-export class FakeLicenseHooks implements TLicenseHooks {
+// The EE edition in memory, as both the License domain's provider and its License Server: the instance's
+// license, a plan per root org, the reports the License Server received, and failures to inject. A cloud
+// instance by default.
+export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
   instance: TInstanceEntitlementsProps = {
     instanceType: InstanceType.Cloud,
     features: testFeatures(),
@@ -27,6 +29,9 @@ export class FakeLicenseHooks implements TLicenseHooks {
   plans = new Map<string, TPlanProps>();
 
   fetches: string[] = [];
+
+  // The org each fetch named, as the License Server received it.
+  fetchedOrgs: TEntitlementOrg[] = [];
 
   failNextFetches = 0;
 
@@ -61,8 +66,10 @@ export class FakeLicenseHooks implements TLicenseHooks {
 
   isOffline = () => this.offline;
 
-  fetchPlan = async (rootOrgId: string) => {
+  fetchPlan = async (rootOrg: TEntitlementOrg) => {
+    const rootOrgId = rootOrg.id;
     this.fetches.push(rootOrgId);
+    this.fetchedOrgs.push(rootOrg);
     if (this.failNextFetches > 0) {
       this.failNextFetches -= 1;
       throw new BadRequestError({ message: "License Server entitlements are unavailable" });
@@ -72,7 +79,7 @@ export class FakeLicenseHooks implements TLicenseHooks {
 
   fallbackPlan = () => Plan.restore({ ...InstanceEntitlements.restore(this.instance).plan().toJSON(), slug: null });
 
-  isMeteringEnabled = () => this.meteringEnabled;
+  isEnabled = () => this.meteringEnabled;
 
   canReportUsage = () => this.reporting;
 

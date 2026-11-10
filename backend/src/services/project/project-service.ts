@@ -17,8 +17,8 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
@@ -149,7 +149,7 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
-  organizationsProjectsDomain: TOrganizationsProjectsDomain;
+  organizationsProjectsService: TOrganizationsProjectsService;
   projectQueue: TProjectQueueFactory;
   secretValueTrackingService: Pick<TSecretValueTrackingServiceFactory, "enableForProject" | "getProjectStatus">;
   userDAL: TUserDALFactory;
@@ -192,10 +192,10 @@ type TProjectServiceFactoryDep = {
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
-  keyStore: Pick<TKeyStoreFactory, "deleteItem" | "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
   roleDAL: Pick<TRoleDALFactory, "find" | "insertMany" | "delete">;
   kmsService: Pick<
     TKmsServiceFactory,
@@ -239,7 +239,7 @@ const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>
 
 export const projectServiceFactory = ({
   projectDAL,
-  organizationsProjectsDomain,
+  organizationsProjectsService,
   projectQueue,
   secretValueTrackingService,
   permissionService,
@@ -248,7 +248,7 @@ export const projectServiceFactory = ({
   folderDAL,
   projectMembershipDAL,
   projectEnvDAL,
-  licenseDomain,
+  licenseService,
   certificateAuthorityDAL,
   certificateDAL,
   certificateTemplateDAL,
@@ -339,9 +339,9 @@ export const projectServiceFactory = ({
 
     // Read before the transaction, so no other domain is called while it holds a connection. The count is
     // live rather than the plan's cached workspacesUsed.
-    const plan = await licenseDomain.getPlan(organization.id);
+    const plan = await licenseService.getPlan(organization.id);
     if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
-      const currentProjectCount = await organizationsProjectsDomain.countWorkspaces(organization.id);
+      const currentProjectCount = await organizationsProjectsService.countWorkspaces(organization.id);
       if (currentProjectCount >= plan.workspaceLimit) {
         throw new BadRequestError({
           message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
@@ -823,12 +823,12 @@ export const projectServiceFactory = ({
 
     // The plan carries the project count, so it is dropped once the project commits. A caller that passed its own
     // transaction does this after that transaction commits.
-    if (!trx) await licenseDomain.invalidatePlan(actorOrgId);
+    if (!trx) await licenseService.invalidatePlan(actorOrgId);
     // A new project seeds its creator (plus any template members/identities); emit so a new secret-manager,
     // PAM or Agent Vault project's seats are metered. The counters filter by project type.
-    licenseDomain.emit(results.orgId, Meter.SecretIdentities.key);
-    licenseDomain.emit(results.orgId, Meter.PamIdentities.key);
-    licenseDomain.emit(results.orgId, Meter.AgentVaultIdentities.key);
+    licenseService.emit(results.orgId, Meter.SecretIdentities.key);
+    licenseService.emit(results.orgId, Meter.PamIdentities.key);
+    licenseService.emit(results.orgId, Meter.AgentVaultIdentities.key);
     return results;
   };
 
@@ -939,13 +939,13 @@ export const projectServiceFactory = ({
 
       // refresh the cached plan so the freed workspace slot is reflected immediately
       // (countOfOrgProjects now excludes soft-deleted projects)
-      await licenseDomain.invalidatePlan(actorOrgId);
+      await licenseService.invalidatePlan(actorOrgId);
       // Cached reads of this project and of the projects it shares with would keep serving its secrets.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
-      licenseDomain.emit(project.orgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(project.orgId, Meter.PamIdentities.key);
-      licenseDomain.emit(project.orgId, Meter.AgentVaultIdentities.key);
+      licenseService.emit(project.orgId, Meter.SecretIdentities.key);
+      licenseService.emit(project.orgId, Meter.PamIdentities.key);
+      licenseService.emit(project.orgId, Meter.AgentVaultIdentities.key);
       return { ...softDeletedProject, slug: project.slug, hardDelete: !hasGracePeriod };
     } finally {
       await lock.release();
@@ -1032,7 +1032,7 @@ export const projectServiceFactory = ({
 
       let restoredProject: TProjects;
       try {
-        const plan = await licenseDomain.getPlan(project.orgId);
+        const plan = await licenseService.getPlan(project.orgId);
 
         // A deleted project's honey tokens and syncs don't count toward their limits, so restoring it can
         // exceed them.
@@ -1063,7 +1063,7 @@ export const projectServiceFactory = ({
         }
 
         if (plan.workspaceLimit !== null && project.type === ProjectType.SecretManager) {
-          const currentProjectCount = await organizationsProjectsDomain.countWorkspaces(project.orgId);
+          const currentProjectCount = await organizationsProjectsService.countWorkspaces(project.orgId);
           if (currentProjectCount >= plan.workspaceLimit) {
             throw new BadRequestError({
               message:
@@ -1088,12 +1088,12 @@ export const projectServiceFactory = ({
         throw error;
       }
 
-      await licenseDomain.invalidatePlan(project.orgId);
+      await licenseService.invalidatePlan(project.orgId);
       // Cached reads from before the deletion can hold imports from projects deleted since.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
-      licenseDomain.emit(project.orgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(project.orgId, Meter.PamIdentities.key);
-      licenseDomain.emit(project.orgId, Meter.AgentVaultIdentities.key);
+      licenseService.emit(project.orgId, Meter.SecretIdentities.key);
+      licenseService.emit(project.orgId, Meter.PamIdentities.key);
+      licenseService.emit(project.orgId, Meter.AgentVaultIdentities.key);
       return restoredProject;
     } finally {
       await lock.release();
@@ -1278,7 +1278,7 @@ export const projectServiceFactory = ({
         });
       }
 
-      const plan = await licenseDomain.getPlan(project.orgId);
+      const plan = await licenseService.getPlan(project.orgId);
 
       if (!plan.auditLogs) {
         throw new BadRequestError({
@@ -1442,7 +1442,7 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.AuditLogs
     );
 
-    const plan = await licenseDomain.getPlan(project.orgId);
+    const plan = await licenseService.getPlan(project.orgId);
     if (!plan.auditLogs || !isWithinPlanAuditLogRetention(auditLogsRetentionDays, plan)) {
       throw new BadRequestError({
         message: "Failed to update audit logs retention due to plan limit reached. Upgrade plan to increase."
@@ -2042,7 +2042,7 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.externalKms) {
       throw new BadRequestError({
         message: "Failed to get KMS backup due to plan restriction. Upgrade to the enterprise plan."
@@ -2072,7 +2072,7 @@ export const projectServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Kms);
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.externalKms) {
       throw new BadRequestError({
         message: "Failed to load KMS backup due to plan restriction. Upgrade to the enterprise plan."

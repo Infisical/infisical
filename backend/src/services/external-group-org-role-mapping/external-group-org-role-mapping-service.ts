@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionActions,
   OrgPermissionMemberActions,
@@ -24,7 +24,7 @@ import { TExternalGroupOrgRoleMappingDALFactory } from "./external-group-org-rol
 type TExternalGroupOrgRoleMappingServiceFactoryDep = {
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   roleDAL: TRoleDALFactory;
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };
@@ -33,7 +33,7 @@ export type TExternalGroupOrgRoleMappingServiceFactory = ReturnType<typeof exter
 
 export const externalGroupOrgRoleMappingServiceFactory = ({
   externalGroupOrgRoleMappingDAL,
-  licenseDomain,
+  licenseService,
   permissionService,
   roleDAL,
   orgDAL
@@ -86,7 +86,7 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
     const mappings = await constructGroupOrgMembershipRoleMappings({
       mappingsDTO: dto.mappings,
       roleDAL,
-      licenseDomain,
+      licenseService,
       orgId: actor.orgId
     });
 

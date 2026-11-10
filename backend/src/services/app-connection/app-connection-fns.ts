@@ -1,5 +1,5 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ChefConnectionMethod,
   getChefConnectionListItem,
@@ -1114,13 +1114,13 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
 };
 
 export const enterpriseAppCheck = async (
-  licenseDomain: TLicenseDomain,
+  licenseService: TLicenseService,
   appConnection: AppConnection,
   orgId: string,
   errorMessage: string
 ) => {
   if (APP_CONNECTION_PLAN_MAP[appConnection] === AppConnectionPlanType.Enterprise) {
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.enterpriseAppConnections)
       throw new BadRequestError({
         message: errorMessage

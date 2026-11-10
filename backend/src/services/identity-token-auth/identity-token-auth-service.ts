@@ -7,7 +7,7 @@ import {
   OrganizationActionScope,
   TableName
 } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -66,7 +66,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   eventEmitter: TEventEmitter;
 };
@@ -80,7 +80,7 @@ export const identityTokenAuthServiceFactory = ({
   identityAccessTokenDAL,
   identityAccessTokenService,
   permissionService,
-  licenseDomain,
+  licenseService,
   orgDAL,
   eventEmitter
 }: TIdentityTokenAuthServiceFactoryDep) => {
@@ -135,7 +135,7 @@ export const identityTokenAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -238,7 +238,7 @@ export const identityTokenAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&

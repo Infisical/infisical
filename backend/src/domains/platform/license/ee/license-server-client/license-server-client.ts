@@ -1,6 +1,7 @@
 import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
+import { TLicenseServer } from "../../ce/service/dependencies";
 import {
   TBuyProductPayload,
   TCancelTrialPayload,
@@ -9,6 +10,7 @@ import {
   TCreatePortalPayload,
   TEntitlementOrg,
   TEntitlementsResponse,
+  TLicenseServerBilling,
   TStartTrialPayload,
   TSubscriptionPreviewPayload,
   TUpgradePayload
@@ -171,7 +173,7 @@ const postUsage = async (
 
 // The License Server over HTTP. Dormant when it is not configured, or when the instance runs on an offline
 // license: reads then return nothing and changes are refused.
-export class LicenseServerClient {
+export class LicenseServerClient implements TLicenseServer, TLicenseServerBilling {
   constructor(
     private readonly backend: TLicenseClientBackend | null,
     private readonly usageEndpoint: TUsageEndpoint | null

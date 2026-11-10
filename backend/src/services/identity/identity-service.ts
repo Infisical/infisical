@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   assertRoleSetBoundary,
@@ -49,7 +49,7 @@ type TIdentityServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
@@ -67,7 +67,7 @@ export const identityServiceFactory = ({
   identityOrgMembershipDAL,
   identityProjectDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
@@ -104,7 +104,7 @@ export const identityServiceFactory = ({
     );
     const isCustomRole = Boolean(rolePermissionDetails?.role);
     if (isCustomRole) {
-      const plan = await licenseDomain.getPlan(orgId);
+      const plan = await licenseService.getPlan(orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -131,9 +131,9 @@ export const identityServiceFactory = ({
         });
     }
 
-    const identityLimit = Plan.restore(await licenseDomain.getPlan(orgId)).enforcedIdentityLimit;
+    const identityLimit = (await licenseService.getPlan(orgId)).enforcedIdentityLimit;
     if (identityLimit) {
-      const { identitiesUsed } = await licenseDomain.getSeatUsage(orgId);
+      const { identitiesUsed } = await licenseService.getSeatUsage(orgId);
       if (identitiesUsed >= identityLimit) {
         throw new BadRequestError({
           message: "Failed to create identity due to identity limit reached. Upgrade plan to create more identities."
@@ -184,8 +184,8 @@ export const identityServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseDomain.syncSeats(orgId);
-    licenseDomain.emit(orgId, Meter.Identities.key);
+    await licenseService.syncSeats(orgId);
+    licenseService.emit(orgId, Meter.Identities.key);
 
     return identity;
   };
@@ -228,7 +228,7 @@ export const identityServiceFactory = ({
 
       const isCustomRole = Boolean(rolePermissionDetails?.role);
       if (isCustomRole) {
-        const plan = await licenseDomain.getPlan(actorOrgId);
+        const plan = await licenseService.getPlan(actorOrgId);
         if (!plan?.rbac)
           throw new BadRequestError({
             message:
@@ -426,23 +426,23 @@ export const identityServiceFactory = ({
         return identityDAL.deleteById(id, tx);
       });
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
-      await licenseDomain.syncSeats(identityOrgMembership.scopeOrgId);
-      licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
-      licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
-      licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+      await licenseService.syncSeats(identityOrgMembership.scopeOrgId);
+      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
+      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
+      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
+      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
     await membershipIdentityService.removeIdentityFromOrg({ identityId: id, orgId: actorOrgId });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
-    licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
+    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
     // Deleting the identity cascades its project + group memberships, so the secret-manager and PAM
     // identity meters change too.
-    licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
-    licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
-    licenseDomain.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
+    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
+    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 

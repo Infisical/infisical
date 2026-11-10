@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { v7 as uuidv7 } from "uuid";
 
 import type { TAuditLogs } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogStreamOutboxServiceFactory } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -30,7 +30,7 @@ type TAuditLogQueueServiceFactoryDep = {
   auditLogStreamOutboxService: Pick<TAuditLogStreamOutboxServiceFactory, "enqueueForLogs">;
   queueService: TQueueServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
   clickhouseClient: ClickHouseClient | null;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamCollect" | "streamTrim" | "acquireLock">;
@@ -76,7 +76,7 @@ export const auditLogQueueServiceFactory = async ({
   auditLogDAL,
   queueService,
   projectDAL,
-  licenseDomain,
+  licenseService,
   auditLogSettingsService,
   auditLogStreamOutboxService,
   clickhouseClient,
@@ -116,7 +116,7 @@ export const auditLogQueueServiceFactory = async ({
       if (!isAuditLogEventEnabled(settings, data.event.type, projectId)) return null;
     }
 
-    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseDomain.getPlan(orgId));
+    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
     if (!plan || !hasAuditLogRetention(plan)) return null;
 
     const createdAt = new Date();

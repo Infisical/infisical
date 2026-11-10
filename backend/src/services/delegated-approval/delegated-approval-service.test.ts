@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { BadRequestError } from "@app/lib/errors";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 
@@ -195,15 +195,15 @@ describe("delegatedApprovalService.retryDispatch", () => {
 
 describe("delegatedApprovalService.assertPlanAllowsPolicyEdit", () => {
   const createPlanService = (enterpriseAppConnections: boolean) => {
-    const licenseDomain = new FakeLicenseDomain().setPlan("org-1", {
+    const licenseService = new FakeLicenseService().setPlan("org-1", {
       enterpriseAppConnections: enterpriseAppConnections as false
     });
     // Every other org gets the opposite plan, so the outcome shows whose plan was read.
-    licenseDomain.defaultPlan = {
-      ...licenseDomain.defaultPlan,
+    licenseService.defaultPlan = {
+      ...licenseService.defaultPlan,
       enterpriseAppConnections: !enterpriseAppConnections as false
     };
-    const service = delegatedApprovalServiceFactory({ licenseDomain } as never);
+    const service = delegatedApprovalServiceFactory({ licenseService } as never);
     return { service };
   };
 

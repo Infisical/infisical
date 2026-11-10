@@ -10,7 +10,7 @@ import {
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -111,7 +111,7 @@ type TApprovalPolicyServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getOrgPermission" | "getResourcePermission"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -156,7 +156,7 @@ export const approvalPolicyServiceFactory = ({
   kmsService,
   notificationService,
   permissionService,
-  licenseDomain,
+  licenseService,
   projectMembershipDAL,
   membershipDAL,
   pkiApplicationDAL,
@@ -672,7 +672,7 @@ export const approvalPolicyServiceFactory = ({
 
     // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
     if (policyType === ApprovalPolicyType.CertRequest) {
-      const plan = await licenseDomain.getPlan(actor.orgId);
+      const plan = await licenseService.getPlan(actor.orgId);
       if (!plan.pkiApprovals) {
         throw new BadRequestError({
           message:

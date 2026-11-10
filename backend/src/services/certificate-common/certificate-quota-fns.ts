@@ -1,5 +1,5 @@
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -12,8 +12,8 @@ type TQuotaCounts = { total: number; wildcard: number };
 
 export type TCertificateQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseDomain: TLicenseDomain;
-  certManagerDomain: TCertManagerDomain;
+  licenseService: TLicenseService;
+  certManagerService: TCertManagerService;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
 
@@ -38,7 +38,7 @@ const $getQuotaCounts = async (orgId: string, deps: TCertificateQuotaDeps): Prom
     logger.error(error, `Failed to read certificate quota cache [orgId=${orgId}]`);
   }
 
-  const counts = await deps.certManagerDomain.countActiveCertificateQuota(
+  const counts = await deps.certManagerService.countActiveCertificateQuota(
     orgId === PKI_INSTANCE_QUOTA_SCOPE ? undefined : orgId
   );
 
@@ -92,7 +92,7 @@ export const assertCertificateQuota = async ({
 }): Promise<{ quotaKey: string; isNewQuotaKey: boolean; quotaOrgId: string; isWildcard: boolean }> => {
   const quotaKey = buildCertificateQuotaKey({ commonName, altNames });
   const isWildcard = certificateHasWildcard({ commonName, altNames });
-  const plan = await deps.licenseDomain.getPlan(orgId);
+  const plan = await deps.licenseService.getPlan(orgId);
   const unlimited = { quotaKey, isNewQuotaKey: false, quotaOrgId: orgId, isWildcard };
 
   const { maxCertificates, maxWildcardCertificates } = plan;
@@ -102,12 +102,12 @@ export const assertCertificateQuota = async ({
   // Correctness, not an optimization: reissuing names already held in the counted scope cannot raise
   // either count, and this is what lets an org sitting at its cap keep renewing. Remove it and its
   // certs expire.
-  const isInstanceWide = isInstanceWidePkiQuota(deps.licenseDomain);
-  const isAlreadyActive = await deps.certManagerDomain.isCertificateQuotaKeyActive(
+  const isInstanceWide = isInstanceWidePkiQuota(deps.licenseService);
+  const isAlreadyActive = await deps.certManagerService.isCertificateQuotaKeyActive(
     isInstanceWide ? undefined : orgId,
     quotaKey
   );
-  const quotaOrgId = isInstanceWide ? PKI_INSTANCE_QUOTA_SCOPE : await deps.certManagerDomain.resolveRootOrgId(orgId);
+  const quotaOrgId = isInstanceWide ? PKI_INSTANCE_QUOTA_SCOPE : await deps.certManagerService.resolveRootOrgId(orgId);
   if (isAlreadyActive) return { quotaKey, isNewQuotaKey: false, quotaOrgId, isWildcard };
   const scopeNote = isInstanceWide ? " across this instance" : "";
   const holder = isInstanceWide ? "this instance" : "your organization";

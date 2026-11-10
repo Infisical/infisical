@@ -21,9 +21,9 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
       scope: OrganizationActionScope.Any
     });
     if (refreshCache) {
-      await server.services.licenseDomain.refreshPlan(req.permission.rootOrgId);
+      await server.services.licenseService.refreshPlan(req.permission.rootOrgId);
     }
-    return server.services.licenseDomain.getPlan(req.permission.rootOrgId);
+    return server.services.licenseService.getPlan(req.permission.rootOrgId);
   };
 
   server.route({

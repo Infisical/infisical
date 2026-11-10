@@ -1,8 +1,7 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
 
 import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
-import { TPlanProps } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -108,7 +107,11 @@ export const usageInsightsDepStubs: Pick<
 // share one set of stubs for that gate and flip the two toggles to exercise the two rejection paths.
 export const buildOrgInsightsGateStubs = () => {
   let canReadInsights = true;
-  let planHasInsights = true;
+  const licenseService = new FakeLicenseService();
+  const setPlanHasInsights = (hasPlan: boolean) => {
+    licenseService.defaultPlan = { ...licenseService.defaultPlan, secretAccessInsights: hasPlan as false };
+  };
+  setPlanHasInsights(true);
 
   const buildPermission = (canRead: boolean): MongoAbility<OrgPermissionSet> =>
     createMongoAbility<OrgPermissionSet>(
@@ -131,15 +134,11 @@ export const buildOrgInsightsGateStubs = () => {
         hasRole: () => false
       })
     } as TInsightsServiceFactoryDep["permissionService"],
-    licenseDomain: Object.assign(new FakeLicenseDomain(), {
-      getPlan: async () => ({ secretAccessInsights: planHasInsights }) as unknown as TPlanProps
-    }),
+    licenseService,
     setCanReadInsights: (canRead: boolean) => {
       canReadInsights = canRead;
     },
-    setPlanHasInsights: (hasPlan: boolean) => {
-      planHasInsights = hasPlan;
-    }
+    setPlanHasInsights
   };
 };
 

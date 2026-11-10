@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import picomatch from "picomatch";
 
 import { ProjectType } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretEventActions,
@@ -75,7 +75,7 @@ export const getSSEHeaders = () =>
 type TProjectEventsSSEServiceFactoryDep = {
   projectEventsService: TProjectEventsService;
   permissionService: TPermissionServiceFactory;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   keyStore: TKeyStoreFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
 };
@@ -83,7 +83,7 @@ type TProjectEventsSSEServiceFactoryDep = {
 export const projectEventsSSEServiceFactory = ({
   projectEventsService,
   permissionService,
-  licenseDomain,
+  licenseService,
   keyStore,
   projectEnvDAL
 }: TProjectEventsSSEServiceFactoryDep) => {
@@ -312,7 +312,7 @@ export const projectEventsSSEServiceFactory = ({
     // Validate user has permission for all registered events (throws ForbiddenError if not)
     await validateRegisteredPermissions(permissionCache, opts.register, opts.projectId);
 
-    const plan = await licenseDomain.getPlan(opts.actorOrgId);
+    const plan = await licenseService.getPlan(opts.actorOrgId);
     if (!plan.eventSubscriptions) {
       throw new BadRequestError({
         message: "Event subscriptions are not available on your current plan. Please upgrade to access this feature."

@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -50,7 +50,7 @@ type TSecretChangeGlobalPolicyBridgeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
   userDAL: Pick<TUserDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TSecretChangeGlobalPolicyBridgeServiceFactory = ReturnType<
@@ -70,7 +70,7 @@ export const secretChangeGlobalPolicyBridgeServiceFactory = ({
   projectDAL,
   userDAL,
   permissionService,
-  licenseDomain
+  licenseService
 }: TSecretChangeGlobalPolicyBridgeServiceFactoryDep) => {
   const {
     findSecretChangePolicy,
@@ -153,7 +153,7 @@ export const secretChangeGlobalPolicyBridgeServiceFactory = ({
       });
     }
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message:
@@ -267,7 +267,7 @@ export const secretChangeGlobalPolicyBridgeServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message:

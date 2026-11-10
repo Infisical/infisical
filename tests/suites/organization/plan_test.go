@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,6 +66,26 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		require.Empty(t, subScope.State(t).EntitlementFetches)
 	})
 
+	t.Run("should name the root org to the License Server when it fetches a sub-org's plan", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		sub := fixture.NewSubOrg(t, tn)
+		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+
+		// Action
+		fixture.Plan(t, sub.Admin.API, sub.ID.String(), true)
+
+		// Assert
+		fetches := root.State(t).EntitlementFetches
+		require.NotEmpty(t, fetches)
+		last := fetches[len(fetches)-1]
+		spec.Why(t, "the License Server fills its org directory from these, so they name the root, not the sub-org")
+		require.Equal(t, tn.OrgSlug, last.OrgSlug)
+		require.NotEmpty(t, last.OrgName)
+	})
+
 	t.Run("should not fetch again on a second read, and fetch once when the cache is refreshed", func(t *testing.T) {
 		t.Parallel()
 
@@ -111,15 +132,13 @@ func TestOrganizationPlan_Read(t *testing.T) {
 		tn := h.NewTenant(t)
 		sub := fixture.NewSubOrg(t, tn)
 		root := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
-		_, err := sub.Admin.API.GetOrganizationByIdWithResponse(t.Context(), sub.ID.String())
-		require.NoError(t, err)
+		fixture.Plan(t, sub.Admin.API, sub.ID.String(), false)
 		before := len(root.State(t).EntitlementFetches)
 
 		// Action
-		_, err = sub.Admin.API.GetOrganizationByIdWithResponse(t.Context(), sub.ID.String())
+		fixture.Plan(t, sub.Admin.API, sub.ID.String(), false)
 
 		// Assert
-		require.NoError(t, err)
 		require.Equal(t, before, len(root.State(t).EntitlementFetches))
 	})
 

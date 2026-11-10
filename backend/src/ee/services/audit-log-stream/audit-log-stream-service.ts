@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,
@@ -25,7 +25,7 @@ import { TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-
 export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
 };
 
@@ -34,11 +34,11 @@ export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServ
 export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   kmsService
 }: TAuditLogStreamServiceFactoryDep) => {
   const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.orgId);
     if (!plan.auditLogStreams) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan restriction. Upgrade plan to continue."
@@ -90,7 +90,7 @@ export const auditLogStreamServiceFactory = ({
     { logStreamId, provider, credentials, streamMode, filters }: TUpdateAuditLogStreamDTO,
     actor: OrgServiceActor
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.orgId);
     if (!plan.auditLogStreams) {
       throw new BadRequestError({
         message: "Failed to update Audit Log Stream: Plan restriction. Upgrade plan to continue."

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { OrganizationActionScope, OrgMembershipStatus, TOrganizations, TSecretSharing } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -45,7 +45,7 @@ type TSecretSharingServiceFactoryDep = {
   userDAL: TUserDALFactory;
   kmsService: TKmsServiceFactory;
   smtpService: TSmtpService;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
@@ -80,7 +80,7 @@ export const secretSharingServiceFactory = ({
   kmsService,
   smtpService,
   userDAL,
-  licenseDomain
+  licenseService
 }: TSecretSharingServiceFactoryDep) => {
   const $validateSharedSecretExpiry = (expiresAt: Date) => {
     if (expiresAt < new Date()) {
@@ -865,7 +865,7 @@ export const secretSharingServiceFactory = ({
       );
     }
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.secretShareExternalBranding) {
       return null;
     }
@@ -910,7 +910,7 @@ export const secretSharingServiceFactory = ({
       );
     }
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.secretShareExternalBranding) {
       return null;
     }

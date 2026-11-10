@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionProjectFolderGrantActions,
@@ -34,7 +34,7 @@ type TProjectFolderGrantServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export const projectFolderGrantServiceFactory = ({
@@ -44,7 +44,7 @@ export const projectFolderGrantServiceFactory = ({
   orgDAL,
   permissionService,
   secretV2BridgeDAL,
-  licenseDomain
+  licenseService
 }: TProjectFolderGrantServiceFactoryDep) => {
   const createGrant = async ({
     actorId,
@@ -56,7 +56,7 @@ export const projectFolderGrantServiceFactory = ({
     secretPath,
     targetProjectId
   }: TCreateProjectFolderGrantDTO) => {
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     const org = await orgDAL.findOrgById(actorOrgId);
     if (!plan.crossProjectSecretSharing || !org?.allowCrossProjectSecretSharing) {
       throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });

@@ -5,7 +5,7 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
-import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -116,7 +116,7 @@ type TOidcConfigServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -155,7 +155,7 @@ export const oidcConfigServiceFactory = ({
   orgDAL,
   userDAL,
   userAliasDAL,
-  licenseDomain,
+  licenseService,
   additionalPrivilegeDAL,
   permissionService,
   tokenService,
@@ -337,8 +337,8 @@ export const oidcConfigServiceFactory = ({
     } else {
       let isNewUser = false;
       let adoptedFromUsername: string | null = null;
-      const identityLimit = Plan.restore(await licenseDomain.getPlan(orgId)).enforcedIdentityLimit;
-      const seatUsage = identityLimit ? await licenseDomain.getSeatUsage(orgId) : null;
+      const identityLimit = (await licenseService.getPlan(orgId)).enforcedIdentityLimit;
+      const seatUsage = identityLimit ? await licenseService.getSeatUsage(orgId) : null;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
         // we prioritize getting the most complete user to create the new alias under
@@ -498,7 +498,7 @@ export const oidcConfigServiceFactory = ({
           projectKeyDAL,
           projectDAL,
           projectBotDAL,
-          licenseDomain
+          licenseService
         });
       }
 
@@ -533,7 +533,7 @@ export const oidcConfigServiceFactory = ({
           groupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
-          licenseDomain,
+          licenseService,
           alertChannelRecipientDAL,
           eventEmitter,
           membershipDAL,
@@ -565,7 +565,7 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
-    await licenseDomain.syncSeats(organization.id);
+    await licenseService.syncSeats(organization.id);
 
     await oidcConfigDAL.update({ orgId }, { lastUsed: new Date() });
 
@@ -664,7 +664,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const plan = await licenseDomain.getPlan(org.id);
+    const plan = await licenseService.getPlan(org.id);
     if (!plan.oidcSSO)
       throw new BadRequestError({
         message:
@@ -794,7 +794,7 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const plan = await licenseDomain.getPlan(org.id);
+    const plan = await licenseService.getPlan(org.id);
     if (!plan.oidcSSO)
       throw new BadRequestError({
         message:

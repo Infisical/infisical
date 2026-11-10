@@ -44,7 +44,9 @@ func TestUnlicensedInstance_Plan(t *testing.T) {
 	t.Run("should send nothing to the License Server, even when an org is deleted", func(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
-		org := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		admin := fixture.FakenetAdmin(t, tn)
+		scopes := append(license.SelfHostedScopes(t, admin, ""), license.Open(t, admin, tn.OrgID.String()))
+		tn.NewMachineIdentity(t)
 		fixture.Plan(t, tn.Admin.API, tn.OrgID.String(), true)
 
 		// Action
@@ -53,6 +55,6 @@ func TestUnlicensedInstance_Plan(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, res.StatusCode())
-		require.Empty(t, org.Calls(t))
+		license.ExpectNothingSent(t, scopes)
 	})
 }

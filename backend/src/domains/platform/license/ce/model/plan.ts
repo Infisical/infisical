@@ -1,3 +1,4 @@
+import { withProps } from "@app/domains/lib/with-props";
 import { BadRequestError } from "@app/lib/errors";
 
 export type TPlanNotice = {
@@ -125,7 +126,8 @@ export type TPlanProps = {
 
 export type TPlanFeature = keyof typeof Plan.featureNames;
 
-export class Plan {
+// The plan's props are read-only fields on it, so callers read `plan.rbac` directly.
+export class Plan extends withProps<TPlanProps>() {
   // The plan features that gate a capability, with the name a refusal shows the customer.
   static readonly featureNames = {
     dynamicSecret: "Dynamic Secrets",
@@ -182,7 +184,9 @@ export class Plan {
     secretsFolderRbac: "Folder-level Access Control"
   } as const satisfies Partial<Record<keyof TPlanProps, string>>;
 
-  private constructor(private readonly props: TPlanProps) {}
+  private constructor(props: TPlanProps) {
+    super(props);
+  }
 
   static restore(props: TPlanProps): Plan {
     return new Plan(props);
@@ -191,11 +195,11 @@ export class Plan {
   // A plan with a License Server answer on it. A plan with no slug is the community edition, or the
   // fallback served while the License Server cannot be reached.
   get isPaid(): boolean {
-    return Boolean(this.props.slug);
+    return Boolean(this.slug);
   }
 
   has(feature: TPlanFeature): boolean {
-    return Boolean(this.props[feature]);
+    return Boolean(this[feature]);
   }
 
   assert(feature: TPlanFeature): void {
@@ -209,16 +213,16 @@ export class Plan {
   // The member and identity cap that applies, or null when there is none. An enterprise plan is uncapped
   // unless it opts into enforcement.
   get enforcedIdentityLimit(): number | null {
-    if (this.props.slug === "enterprise" && !this.props.enforceIdentityLimit) return null;
-    return this.props.identityLimit ?? null;
+    if (this.slug === "enterprise" && !this.enforceIdentityLimit) return null;
+    return this.identityLimit ?? null;
   }
 
   // The plan as shown to an org: the License Server's answer plus the workspaces the org uses now.
   withWorkspacesUsed(workspacesUsed: number): Plan {
-    return new Plan({ ...this.props, workspacesUsed });
+    return new Plan({ ...this.toJSON(), workspacesUsed });
   }
 
   toJSON(): TPlanProps {
-    return this.props;
+    return { ...this };
   }
 }

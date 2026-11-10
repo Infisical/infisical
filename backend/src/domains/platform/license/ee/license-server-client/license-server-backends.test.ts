@@ -24,6 +24,40 @@ const mockFetchReturning = (body: unknown) =>
 const readBody = (fetchMock: typeof fetch): Record<string, unknown> =>
   JSON.parse(vi.mocked(fetchMock).mock.calls[0][1]?.body as string) as Record<string, unknown>;
 
+const readUrl = (fetchMock: typeof fetch): URL => new URL(String(vi.mocked(fetchMock).mock.calls[0][0]));
+
+// The License Server records the name and slug in its org directory, which is where it learns them.
+describe("licenseServerBackend fetchEntitlements", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test("should send the org's name, slug and the deployment region", async () => {
+    // Setup
+    const fetchMock = mockFetchReturning({ slug: "pro", features: {} });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Action
+    await licenseServerBackend(SERVER_URL, "key", "eu").fetchEntitlements({ id: ORG_ID, name: "Acme", slug: "acme" });
+
+    // Assert
+    const query = Object.fromEntries(readUrl(fetchMock).searchParams);
+    expect(query).toEqual({ org_name: "Acme", org_slug: "acme", region: "eu" });
+  });
+
+  test("should leave out a name and slug it was not given", async () => {
+    // Setup
+    const fetchMock = mockFetchReturning({ slug: "pro", features: {} });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Action
+    await licenseServerBackend(SERVER_URL, "key").fetchEntitlements({ id: ORG_ID });
+
+    // Assert
+    expect([...readUrl(fetchMock).searchParams.keys()]).toEqual([]);
+  });
+});
+
 // Region is insert-only on the license server: it is read only by the call that creates the license,
 // so every license-creating call has to carry this deployment's region or the org is recorded as "us".
 describe("licenseServerBackend region on license-creating calls", () => {

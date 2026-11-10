@@ -3,8 +3,8 @@ import * as x509 from "@peculiar/x509";
 import { randomBytes } from "crypto";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -98,8 +98,8 @@ type TPkiScepServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  licenseDomain: TLicenseDomain;
-  certManagerDomain: TCertManagerDomain;
+  licenseService: TLicenseService;
+  certManagerService: TCertManagerService;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
   certificatePolicyService: Pick<TCertificatePolicyServiceFactory, "validateCertificateRequest">;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
@@ -131,8 +131,8 @@ export const pkiScepServiceFactory = ({
   kmsService,
   appConnectionDAL,
   keyStore,
-  licenseDomain,
-  certManagerDomain,
+  licenseService,
+  certManagerService,
   certificatePolicyDAL,
   certificatePolicyService,
   certificateRequestService,
@@ -194,7 +194,7 @@ export const pkiScepServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await licenseDomain.getPlan(project.orgId);
+    const plan = await licenseService.getPlan(project.orgId);
     if (!plan.pkiScep) {
       throw new BadRequestError({
         message: "Failed to perform SCEP operation due to plan restriction. Upgrade to the Enterprise plan."
@@ -965,8 +965,8 @@ export const pkiScepServiceFactory = ({
       altNames: (certRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      licenseDomain,
-      quotaDeps: { projectDAL, licenseDomain, certManagerDomain, keyStore }
+      licenseService,
+      quotaDeps: { projectDAL, licenseService, certManagerService, keyStore }
     });
 
     const newCertRequest = await certificateRequestService.createCertificateRequest({
@@ -1299,7 +1299,7 @@ export const pkiScepServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await licenseDomain.getPlan(project.orgId);
+    const plan = await licenseService.getPlan(project.orgId);
     if (!plan.pkiScep) {
       throw new BadRequestError({
         message: "Failed to generate SCEP challenge due to plan restriction. Upgrade to the Enterprise plan."

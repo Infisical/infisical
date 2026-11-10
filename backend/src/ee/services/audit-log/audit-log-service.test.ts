@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { QueueJobs, QueueName } from "@app/queue";
 
 import { AuditLogEventClass } from "./audit-log-event-classes";
@@ -64,8 +64,8 @@ const createHarness = ({
     pushToLog: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined),
     pushToLogOrThrow: vi.fn<(data: TPushedLog) => Promise<void>>(async () => undefined)
   };
-  const licenseDomain = new FakeLicenseDomain();
-  licenseDomain.defaultPlan = { ...licenseDomain.defaultPlan, auditLogsRetentionDays: retentionDays };
+  const licenseService = new FakeLicenseService();
+  licenseService.defaultPlan = { ...licenseService.defaultPlan, auditLogsRetentionDays: retentionDays };
   const auditLogSettingsService = {
     getEffectiveSettings: vi.fn<(orgId: string, projectId?: string | null) => Promise<TEffectiveAuditLogSettings>>(
       async () => ({
@@ -81,7 +81,7 @@ const createHarness = ({
     permissionService: {} as never,
     auditLogQueue: auditLogQueue as never,
     auditLogSettingsService: auditLogSettingsService as never,
-    licenseDomain,
+    licenseService,
     queueService: queueService as never,
     keyStore: keyStore as never,
     smtpService: {} as never,

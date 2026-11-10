@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { ResourceType } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
@@ -57,13 +57,13 @@ const assertValidApplicationId = (applicationId: string) => {
 export type TCertManagerApplicationAlertProviderDep = {
   certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export const certManagerApplicationAlertProviderFactory = ({
   certManagerCertificateAlertDAL,
   permissionService,
-  licenseDomain
+  licenseService
 }: TCertManagerApplicationAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
   IEventAlertProvider<TAlertCertificate> => {
   const buildViewUrl = async (alert: TAlertContext): Promise<string> => {
@@ -202,7 +202,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     dedupWindowHours: expiryDedupWindowHours,
     assertPermission,
     assertResourceInScope,
-    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseDomain, input),
+    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
     getWebhookSource,

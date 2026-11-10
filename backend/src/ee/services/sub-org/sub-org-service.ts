@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
@@ -24,7 +24,7 @@ type TSubOrgServiceFactoryDep = {
     "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById" | "deleteById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
@@ -36,7 +36,7 @@ export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
 export const subOrgServiceFactory = ({
   orgDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   membershipDAL,
   membershipRoleDAL,
   projectDAL,
@@ -57,7 +57,7 @@ export const subOrgServiceFactory = ({
       OrgPermissionSubjects.SubOrganization
     );
 
-    const orgLicensePlan = await licenseDomain.getPlan(permission.rootOrgId);
+    const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
     if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message: "Sub-organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
@@ -131,7 +131,7 @@ export const subOrgServiceFactory = ({
       return org;
     });
 
-    licenseDomain.emit(organization.id, Meter.PamIdentities.key);
+    licenseService.emit(organization.id, Meter.PamIdentities.key);
 
     return {
       organization
@@ -239,7 +239,7 @@ export const subOrgServiceFactory = ({
   };
 
   const joinSubOrg = async ({ subOrgId, permission }: TJoinSubOrgDTO) => {
-    const orgLicensePlan = await licenseDomain.getPlan(permission.rootOrgId);
+    const orgLicensePlan = await licenseService.getPlan(permission.rootOrgId);
     if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message:

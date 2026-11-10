@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -89,7 +89,7 @@ type TSecretSyncServiceFactoryDep = {
     TSecretSyncQueueFactory,
     "queueSecretSyncSyncSecretsById" | "queueSecretSyncImportSecretsById" | "queueSecretSyncRemoveSecretsById"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TSecretSyncServiceFactory = ReturnType<typeof secretSyncServiceFactory>;
@@ -110,7 +110,7 @@ export const secretSyncServiceFactory = ({
   projectBotService,
   secretSyncQueue,
   keyStore,
-  licenseDomain
+  licenseService
 }: TSecretSyncServiceFactoryDep) => {
   const getConnectionId = (sync: { connectionId?: string; connection?: { id: string } }) =>
     sync.connectionId ?? sync.connection?.id;
@@ -614,7 +614,7 @@ export const secretSyncServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     await enterpriseSyncCheck(
-      licenseDomain,
+      licenseService,
       params.destination,
       actor.orgId,
       "Failed to create secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
@@ -622,7 +622,7 @@ export const secretSyncServiceFactory = ({
 
     // secretSyncLimit is uncapped by default (null); only enforce a cap when the plan configures a
     // numeric limit. Counted org-wide right before creation.
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.orgId);
     if (typeof plan.secretSyncLimit === "number") {
       const currentSecretSyncCount = await secretSyncDAL.countByOrgId(actor.orgId);
       if (currentSecretSyncCount >= plan.secretSyncLimit) {
@@ -777,7 +777,7 @@ export const secretSyncServiceFactory = ({
       });
 
     await enterpriseSyncCheck(
-      licenseDomain,
+      licenseService,
       secretSync.destination as SecretSync,
       actor.orgId,
       "Failed to update secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
@@ -1063,7 +1063,7 @@ export const secretSyncServiceFactory = ({
       });
 
     await enterpriseSyncCheck(
-      licenseDomain,
+      licenseService,
       secretSync.destination as SecretSync,
       actor.orgId,
       "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
@@ -1125,7 +1125,7 @@ export const secretSyncServiceFactory = ({
       });
 
     await enterpriseSyncCheck(
-      licenseDomain,
+      licenseService,
       secretSync.destination as SecretSync,
       actor.orgId,
       "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."
@@ -1181,7 +1181,7 @@ export const secretSyncServiceFactory = ({
       });
 
     await enterpriseSyncCheck(
-      licenseDomain,
+      licenseService,
       secretSync.destination as SecretSync,
       actor.orgId,
       "Failed to trigger secret sync due to plan restriction. Upgrade plan to access enterprise secret syncs."

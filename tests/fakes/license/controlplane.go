@@ -2,8 +2,10 @@ package license
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/infra/fakenet"
+	"github.com/stretchr/testify/require"
 )
 
 // Env is what the instance needs to reach the fake instead of the real License
@@ -45,4 +47,30 @@ func Open(tt *testing.T, adminURL, scope string) *fakenet.Scope[State] {
 	tt.Helper()
 	fakenet.Track(tt, adminURL, Host, scope)
 	return fakenet.Open[State](tt, adminURL, Host, scope)
+}
+
+// SelfHostedScopes opens every scope a self-hosted instance reaches the License Server
+// under: its license key (skipped when empty), the "self-hosted" organization its usage
+// reports name, and the instance-wide endpoints. None of them is the tenant's org id.
+func SelfHostedScopes(tt *testing.T, adminURL, licenseKey string) []*fakenet.Scope[State] {
+	tt.Helper()
+	keys := []string{"self-hosted", "instance"}
+	if licenseKey != "" {
+		keys = append(keys, licenseKey)
+	}
+	scopes := make([]*fakenet.Scope[State], 0, len(keys))
+	for _, key := range keys {
+		scopes = append(scopes, Open(tt, adminURL, key))
+	}
+	return scopes
+}
+
+// ExpectNothingSent fails if any of the scopes received a call. It first waits past the
+// five second usage report debounce, so a report queued by the action has been sent.
+func ExpectNothingSent(tt *testing.T, scopes []*fakenet.Scope[State]) {
+	tt.Helper()
+	scopes[0].ExpectNoEvent[SnapshotReceived](tt, nil, fakenet.Within(10*time.Second))
+	for _, sc := range scopes {
+		require.Empty(tt, sc.Calls(tt))
+	}
 }

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError, AxiosRequestConfig } from "axios";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -57,7 +57,7 @@ type TGitHubAppServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX" | "deleteItem">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<
     TGatewayPoolServiceFactory,
@@ -75,7 +75,7 @@ export const gitHubAppServiceFactory = ({
   permissionService,
   kmsService,
   keyStore,
-  licenseDomain,
+  licenseService,
   gatewayV2Service,
   gatewayPoolService,
   gatewayV2DAL,
@@ -124,7 +124,7 @@ export const gitHubAppServiceFactory = ({
   // Lets the manifest exchange route through a gateway when the GitHub host (e.g. a private
   // GitHub Enterprise Server) isn't directly reachable from the Infisical backend.
   const assertGatewayUsable = async (gatewayId: string, orgPermission: OrgServiceActor) => {
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    const plan = await licenseService.getPlan(orgPermission.orgId);
     if (!plan.gateway) {
       throw new BadRequestError({
         message:

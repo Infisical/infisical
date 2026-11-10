@@ -7,7 +7,7 @@ import { Octokit as OctokitRest } from "@octokit/rest";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -387,7 +387,7 @@ type TGithubOrgSyncServiceFactoryDep = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany" | "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
   userAliasDAL: Pick<TUserAliasDALFactory, "find">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
@@ -409,7 +409,7 @@ export const githubOrgSyncServiceFactory = ({
   kmsService,
   userGroupMembershipDAL,
   groupDAL,
-  licenseDomain,
+  licenseService,
   orgMembershipDAL,
   userAliasDAL,
   membershipRoleDAL,
@@ -465,7 +465,7 @@ export const githubOrgSyncServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSync);
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    const plan = await licenseService.getPlan(orgPermission.orgId);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -524,7 +524,7 @@ export const githubOrgSyncServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    const plan = await licenseService.getPlan(orgPermission.orgId);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -590,7 +590,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
 
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    const plan = await licenseService.getPlan(orgPermission.orgId);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -852,9 +852,9 @@ export const githubOrgSyncServiceFactory = ({
       }
 
       // Group membership changes cascade into the group-expanded project identity meters.
-      licenseDomain.emit(orgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(orgId, Meter.PamIdentities.key);
-      licenseDomain.emit(orgId, Meter.AgentVaultIdentities.key);
+      licenseService.emit(orgId, Meter.SecretIdentities.key);
+      licenseService.emit(orgId, Meter.PamIdentities.key);
+      licenseService.emit(orgId, Meter.AgentVaultIdentities.key);
     }
   };
 
@@ -870,7 +870,7 @@ export const githubOrgSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
 
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    const plan = await licenseService.getPlan(orgPermission.orgId);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -960,7 +960,7 @@ export const githubOrgSyncServiceFactory = ({
       OrgPermissionSubjects.GithubOrgSyncManual
     );
 
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    const plan = await licenseService.getPlan(orgPermission.orgId);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -1311,9 +1311,9 @@ export const githubOrgSyncServiceFactory = ({
 
     if (createdTeams.size || updatedTeams.size) {
       // Team membership changes cascade into the group-expanded project identity meters.
-      licenseDomain.emit(orgPermission.orgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(orgPermission.orgId, Meter.PamIdentities.key);
-      licenseDomain.emit(orgPermission.orgId, Meter.AgentVaultIdentities.key);
+      licenseService.emit(orgPermission.orgId, Meter.SecretIdentities.key);
+      licenseService.emit(orgPermission.orgId, Meter.PamIdentities.key);
+      licenseService.emit(orgPermission.orgId, Meter.AgentVaultIdentities.key);
     }
 
     if (unmatchedGithubUsers.size) {

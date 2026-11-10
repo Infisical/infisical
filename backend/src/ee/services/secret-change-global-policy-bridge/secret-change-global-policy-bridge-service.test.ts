@@ -4,7 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { ProjectVersion } from "@app/db/schemas";
 import { TPlanProps } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { EnforcementLevel } from "@app/lib/types";
@@ -91,8 +91,8 @@ const buildService = ({
   const findEffectiveProjectSubjectsMembership = vi.fn();
   memberships.forEach((membership) => findEffectiveProjectSubjectsMembership.mockResolvedValueOnce(membership));
 
-  const licenseDomain = new FakeLicenseDomain().setPlan(ORG_ID, plan as Partial<TPlanProps>);
-  vi.spyOn(licenseDomain, "getPlan");
+  const licenseService = new FakeLicenseService().setPlan(ORG_ID, plan as Partial<TPlanProps>);
+  vi.spyOn(licenseService, "getPlan");
 
   const deps = {
     approvalPolicyDAL: {
@@ -160,7 +160,7 @@ const buildService = ({
       )
     },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
-    licenseDomain
+    licenseService
   };
 
   const service = secretChangeGlobalPolicyBridgeServiceFactory(
@@ -259,7 +259,7 @@ describe("secretChangeGlobalPolicyBridge createSecretChangePolicy", () => {
     await expect(result).rejects.toBeInstanceOf(BadRequestError);
     await expect(result).rejects.toThrow("upgraded to the latest secrets version");
     expect(deps.projectDAL.findById).toHaveBeenCalledWith(PROJECT_ID);
-    expect(deps.licenseDomain.getPlan).not.toHaveBeenCalled();
+    expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
     expect(deps.approvalPolicyDAL.transaction).not.toHaveBeenCalled();
   });
 
@@ -768,7 +768,7 @@ describe("secretChangeGlobalPolicyBridge deleteSecretChangePolicy", () => {
 
     const policy = await remove(service);
 
-    expect(deps.licenseDomain.getPlan).not.toHaveBeenCalled();
+    expect(deps.licenseService.getPlan).not.toHaveBeenCalled();
     expect(deps.approvalPolicyDAL.findByIdForUpdate).toHaveBeenCalledWith("policy-1", TX);
     expect(deps.approvalRequestDAL.update).toHaveBeenCalledWith(
       { policyId: "policy-1", status: RequestState.Open },

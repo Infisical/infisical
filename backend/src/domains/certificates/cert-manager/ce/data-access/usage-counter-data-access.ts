@@ -7,27 +7,18 @@ import { DatabaseError } from "@app/lib/errors";
 import { orgTreeIds } from "@app/lib/knex";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
-// A metered PKI unit count for one org in the tree. Certificates carry no per-project attribution here
-// because the meter dedupes by quotaKey across the whole tree (see getActiveCertificateOrgBreakdown).
-export type TOrgUnitCountRow = { orgId: string; count: number };
-
-// Active certificates for one org, with the wildcard subset that active_certs and wildcard_certs both
-// read, so the two meters can never disagree about which certificates are live.
-export type TCertificateOrgUnitRow = TOrgUnitCountRow & { wildcard: number };
-
-export type TPkiRootOrgUsageRow = {
-  rootOrgId: string;
-  cas: number;
-  internalCas: number;
-  activeCertificates: number;
-  wildcardCertificates: number;
-};
+import {
+  TCertificateOrgUnitCount,
+  TCertificateUsageDataAccess,
+  TOrgUnitCount,
+  TPkiRootOrgUsage
+} from "../service/dependencies";
 
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
 // Reads tables this domain will own once certificate issuance moves in: certificate_authorities,
 // internal_certificate_authorities, certificates and pki_signers (see ../../AGENTS.md).
-export class CertificateUsageDataAccess {
+export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
   constructor(private readonly db: TDbClient) {}
 
   // orgId omitted means instance-wide: self-hosted is one licence over the whole database and reports
@@ -133,7 +124,7 @@ export class CertificateUsageDataAccess {
     }
   }
 
-  async getInternalCaOrgBreakdown(orgId?: string): Promise<TOrgUnitCountRow[]> {
+  async getInternalCaOrgBreakdown(orgId?: string): Promise<TOrgUnitCount[]> {
     try {
       const rows = (await this.internalCas(orgId)
         .groupBy(`${TableName.Project}.orgId`)
@@ -153,7 +144,7 @@ export class CertificateUsageDataAccess {
   // orgs is a single billable unit. Splitting that by org therefore needs each quotaKey attributed to
   // exactly one of them, else the parts sum past the billed total. The earliest issuance wins (org id
   // breaks a tie) so the attribution is stable between reads rather than shifting with row order.
-  async getActiveCertificateOrgBreakdown(orgId?: string): Promise<TCertificateOrgUnitRow[]> {
+  async getActiveCertificateOrgBreakdown(orgId?: string): Promise<TCertificateOrgUnitCount[]> {
     try {
       const attributed = this.activeQuotaCertificates(orgId)
         .whereNotNull(`${TableName.Certificate}.quotaKey`)
@@ -199,7 +190,7 @@ export class CertificateUsageDataAccess {
 
   // Orgs with a Certificate Manager project are included even at zero, so one that stops using PKI is
   // overwritten with zeros rather than keeping stale counts. The last such project cannot be deleted.
-  async getPkiUsageByRootOrg(): Promise<TPkiRootOrgUsageRow[]> {
+  async getPkiUsageByRootOrg(): Promise<TPkiRootOrgUsage[]> {
     const orgColumns = [`${TableName.Organization}.rootOrgId`, `${TableName.Organization}.id`];
     const rootOrgIdSql = this.db.raw(`COALESCE(??, ??)`, orgColumns);
     const rootOrgIdSelect = this.db.raw(`COALESCE(??, ??) as "rootOrgId"`, orgColumns);
@@ -243,7 +234,7 @@ export class CertificateUsageDataAccess {
         .whereNull(`${TableName.Project}.deleteAfter`)
         .distinct(rootOrgIdSelect)) as { rootOrgId: string }[];
 
-      const usageByRootOrgId = new Map<string, TPkiRootOrgUsageRow>();
+      const usageByRootOrgId = new Map<string, TPkiRootOrgUsage>();
       const getRow = (rootOrgId: string) => {
         let row = usageByRootOrgId.get(rootOrgId);
         if (!row) {

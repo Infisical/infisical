@@ -3,7 +3,7 @@ import { Job } from "bullmq";
 import { randomUUID } from "crypto";
 
 import { ProjectMembershipRole, SecretType } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -135,7 +135,7 @@ type TSecretSyncQueueFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -191,7 +191,7 @@ export const secretSyncQueueFactory = ({
   resourceMetadataDAL,
   folderCommitService,
   eventEmitter,
-  licenseDomain,
+  licenseService,
   gatewayV2Service,
   gatewayPoolService,
   notificationService,
@@ -400,7 +400,7 @@ export const secretSyncQueueFactory = ({
     } = secretSync;
 
     await enterpriseSyncCheck(
-      licenseDomain,
+      licenseService,
       destination,
       orgId,
       "Failed to import secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
@@ -512,7 +512,7 @@ export const secretSyncQueueFactory = ({
     } = job;
 
     await enterpriseSyncCheck(
-      licenseDomain,
+      licenseService,
       secretSync.destination as SecretSync,
       secretSync.connection.orgId,
       "Failed to sync secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
@@ -846,7 +846,7 @@ export const secretSyncQueueFactory = ({
     } = job;
 
     await enterpriseSyncCheck(
-      licenseDomain,
+      licenseService,
       secretSync.destination as SecretSync,
       secretSync.connection.orgId,
       "Failed to remove secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."

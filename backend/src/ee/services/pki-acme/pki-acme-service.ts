@@ -13,8 +13,8 @@ import { z, ZodError } from "zod";
 import { TPkiAcmeOrders } from "@app/db/schemas";
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -179,8 +179,8 @@ type TPkiAcmeServiceFactoryDep = {
     "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  licenseDomain: TLicenseDomain;
-  certManagerDomain: TCertManagerDomain;
+  licenseService: TLicenseService;
+  certManagerService: TCertManagerService;
   kmsService: Pick<
     TKmsServiceFactory,
     "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
@@ -213,8 +213,8 @@ export const pkiAcmeServiceFactory = ({
   acmeOrderAuthDAL,
   acmeChallengeDAL,
   keyStore,
-  licenseDomain,
-  certManagerDomain,
+  licenseService,
+  certManagerService,
   kmsService,
   certificateV3Service,
   certificatePolicyService,
@@ -1123,8 +1123,8 @@ export const pkiAcmeServiceFactory = ({
       altNames: (updatedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      licenseDomain,
-      quotaDeps: { projectDAL, licenseDomain, certManagerDomain, keyStore }
+      licenseService,
+      quotaDeps: { projectDAL, licenseService, certManagerService, keyStore }
     });
 
     const certRequest = await certificateRequestService.createCertificateRequest({

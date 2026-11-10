@@ -11,7 +11,7 @@ import {
   SecretType,
   TSecretVersionsV2
 } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
@@ -127,7 +127,7 @@ type TSecretQueueFactoryDep = {
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "deleteReminderBySecretId">;
   projectEventsService: TProjectEventsService;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
@@ -194,7 +194,7 @@ export const secretQueueFactory = ({
   eventEmitter,
   reminderService,
   projectEventsService,
-  licenseDomain,
+  licenseService,
   membershipUserDAL,
   membershipRoleDAL,
   telemetryService,
@@ -586,7 +586,7 @@ export const secretQueueFactory = ({
       `syncSecrets: syncing project secrets where [projectId=${dto.projectId}]  [environment=${dto.environmentSlug}] [path=${dto.secretPath}]`
     );
 
-    const plan = await licenseDomain.getPlan(dto.orgId);
+    const plan = await licenseService.getPlan(dto.orgId);
 
     if (event && plan.eventSubscriptions) {
       for await (const singleEvent of event) {

@@ -58,8 +58,6 @@ export const getMigrationEncryptionServices = async ({
   const internalKmsDAL = internalKmsDALFactory(db);
   const internalKmsKeyVersionDAL = internalKmsKeyVersionDALFactory(db);
 
-  // ----- Service dependencies -----
-
   // ----- HSM startup -----
 
   const { hsmService } = await getMigrationHsmService({ envConfig });

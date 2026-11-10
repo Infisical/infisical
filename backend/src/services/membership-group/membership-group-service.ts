@@ -8,7 +8,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -71,7 +71,7 @@ type TMembershipGroupServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
@@ -105,7 +105,7 @@ export const membershipGroupServiceFactory = ({
   orgDAL,
   permissionService,
   groupDAL,
-  licenseDomain,
+  licenseService,
   applicationMembershipCleanupService,
   projectDAL,
   alertChannelRecipientDAL,
@@ -161,7 +161,7 @@ export const membershipGroupServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      licenseDomain,
+      licenseService,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -176,7 +176,7 @@ export const membershipGroupServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await licenseDomain.getPlan(scopeData.orgId);
+      const plan = await licenseService.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -255,9 +255,9 @@ export const membershipGroupServiceFactory = ({
 
     // Assigning a group to a project brings the group's users + identities into it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      licenseDomain.emit(scopeData.orgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(scopeData.orgId, Meter.PamIdentities.key);
-      licenseDomain.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+      licenseService.emit(scopeData.orgId, Meter.SecretIdentities.key);
+      licenseService.emit(scopeData.orgId, Meter.PamIdentities.key);
+      licenseService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
     }
     return { membership, group };
   };
@@ -271,7 +271,7 @@ export const membershipGroupServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await licenseDomain.getPlan(scopeData.orgId);
+      const plan = await licenseService.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -300,7 +300,7 @@ export const membershipGroupServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      licenseDomain,
+      licenseService,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -700,9 +700,9 @@ export const membershipGroupServiceFactory = ({
 
     // Removing a group from a project drops its users + identities from it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      licenseDomain.emit(existingMembership.scopeOrgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(existingMembership.scopeOrgId, Meter.PamIdentities.key);
-      licenseDomain.emit(existingMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+      licenseService.emit(existingMembership.scopeOrgId, Meter.SecretIdentities.key);
+      licenseService.emit(existingMembership.scopeOrgId, Meter.PamIdentities.key);
+      licenseService.emit(existingMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
     }
     return { membership: membershipDoc, group };
   };

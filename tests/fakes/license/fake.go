@@ -80,9 +80,12 @@ type State struct {
 	Logins int `json:"logins"`
 }
 
-// EntitlementFetch is one entitlements read.
+// EntitlementFetch is one entitlements read, with the org details the instance sent
+// for the License Server's org directory.
 type EntitlementFetch struct {
-	Region string `json:"region"`
+	OrgName string `json:"orgName"`
+	OrgSlug string `json:"orgSlug"`
+	Region  string `json:"region"`
 }
 
 // UsageSnapshot is one reported counter value, on the wire shape.
@@ -142,7 +145,7 @@ func (o *Org) routes() *http.ServeMux {
 	entitlements := func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		o.mu.Lock()
-		o.state.EntitlementFetches = append(o.state.EntitlementFetches, EntitlementFetch{Region: q.Get("region")})
+		o.state.EntitlementFetches = append(o.state.EntitlementFetches, EntitlementFetch{OrgName: q.Get("org_name"), OrgSlug: q.Get("org_slug"), Region: q.Get("region")})
 		payload := o.state.Payload()
 		o.mu.Unlock()
 		writeJSON(w, http.StatusOK, payload)

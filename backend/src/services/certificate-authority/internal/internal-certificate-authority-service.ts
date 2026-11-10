@@ -6,7 +6,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -160,7 +160,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
   caKeySourceService: Pick<
     TCaKeySourceServiceFactory,
@@ -187,12 +187,12 @@ export const internalCertificateAuthorityServiceFactory = ({
   projectDAL,
   kmsService,
   permissionService,
-  licenseDomain,
+  licenseService,
   caSigningConfigDAL,
   caKeySourceService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
-    validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseDomain });
+    validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
 
   const $getProjectOrgId = async (projectId: string, tx?: Knex) => {
     const project = await projectDAL.findById(projectId, tx);
@@ -205,7 +205,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    const plan = await licenseDomain.getPlan(project.orgId);
+    const plan = await licenseService.getPlan(project.orgId);
     return plan.caCrl;
   };
 
@@ -213,7 +213,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-    const plan = await licenseDomain.getPlan(project.orgId);
+    const plan = await licenseService.getPlan(project.orgId);
     return plan.pkiOcsp;
   };
 
@@ -394,7 +394,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     await assertCertificateAuthorityQuota({
       projectId,
       isInternal: true,
-      deps: { projectDAL, licenseDomain, certificateAuthorityDAL }
+      deps: { projectDAL, licenseService, certificateAuthorityDAL }
     });
 
     // Refused rather than silently dropped, since the caller asked for it explicitly.
@@ -1606,7 +1606,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       const caProject = await projectDAL.findById(ca.projectId);
       if (!caProject) throw new NotFoundError({ message: `Project with ID '${ca.projectId}' not found` });
 
-      const plan = await licenseDomain.getPlan(caProject.orgId);
+      const plan = await licenseService.getPlan(caProject.orgId);
       if (!plan.pkiExternalIntermediateCa) {
         throw new BadRequestError({
           message:
@@ -2361,8 +2361,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
-    licenseDomain.emit(projectOrgId, Meter.ActiveCerts.key);
-    licenseDomain.emit(projectOrgId, Meter.WildcardCerts.key);
+    licenseService.emit(projectOrgId, Meter.ActiveCerts.key);
+    licenseService.emit(projectOrgId, Meter.WildcardCerts.key);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2859,8 +2859,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(persist);
     }
 
-    licenseDomain.emit(projectOrgId, Meter.ActiveCerts.key);
-    licenseDomain.emit(projectOrgId, Meter.WildcardCerts.key);
+    licenseService.emit(projectOrgId, Meter.ActiveCerts.key);
+    licenseService.emit(projectOrgId, Meter.WildcardCerts.key);
 
     return {
       certificate: leafCert,

@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -41,7 +41,7 @@ type TDynamicSecretServiceFactoryDep = {
     TDynamicSecretLeaseQueueServiceFactory,
     "pruneDynamicSecret" | "unsetLeaseRevocation"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   folderDAL: Pick<
     TSecretFolderDALFactory,
     "findBySecretPath" | "findBySecretPathMultiEnv" | "findById" | "findSecretPathByFolderIds"
@@ -86,7 +86,7 @@ const getUpdatedFieldPaths = (
 export const dynamicSecretServiceFactory = ({
   dynamicSecretDAL,
   dynamicSecretLeaseDAL,
-  licenseDomain,
+  licenseService,
   folderDAL,
   dynamicSecretProviders,
   permissionService,
@@ -131,7 +131,7 @@ export const dynamicSecretServiceFactory = ({
       subject(ProjectPermissionSub.DynamicSecrets, { environment: environmentSlug, secretPath: path, metadata })
     );
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to create dynamic secret due to plan restriction. Upgrade plan to create dynamic secret."
@@ -288,7 +288,7 @@ export const dynamicSecretServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to update dynamic secret due to plan restriction. Upgrade plan to create dynamic secret."

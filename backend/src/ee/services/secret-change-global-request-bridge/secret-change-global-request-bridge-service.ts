@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -131,7 +131,7 @@ type TSecretChangeGlobalRequestBridgeServiceFactoryDep = {
     "findSecretChangePolicyById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectWithOrg">;
@@ -190,7 +190,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   membershipUserDAL,
   secretChangeGlobalPolicyBridgeService,
   permissionService,
-  licenseDomain,
+  licenseService,
   userGroupMembershipDAL,
   folderDAL,
   projectDAL,
@@ -858,7 +858,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
 
   const updateSecretChangeRequestStatus: TSecretChangeGlobalRequestBridgeMethods["updateSecretChangeRequestStatus"] =
     async ({ approvalId, actor, actorId, actorAuthMethod, actorOrgId, status }) => {
-      const plan = await licenseDomain.getPlan(actorOrgId);
+      const plan = await licenseService.getPlan(actorOrgId);
       if (!plan.secretApproval && status === RequestState.Open) {
         throw new BadRequestError({
           message:

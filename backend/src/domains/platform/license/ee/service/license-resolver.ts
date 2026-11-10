@@ -4,8 +4,10 @@ import { logger } from "@app/lib/logger";
 
 import { InstanceEntitlements, InstanceType } from "../../ce/model/instance-entitlements";
 import { Plan } from "../../ce/model/plan";
+import { TLicenseProvider } from "../../ce/service/dependencies";
 import {
   SELF_HOSTED_LICENSE_ORG_ID,
+  TEntitlementOrg,
   TEntitlementsResponse
 } from "../../ce/service/license-server-types/license-server-types";
 import { LicenseServerClient } from "../license-server-client/license-server-client";
@@ -62,6 +64,10 @@ export const cloudPlanFromEntitlements = (entitlements: TEntitlementsResponse): 
 // Cloud: what an org gets while the License Server cannot be reached.
 export const cloudFallbackPlan = (): Plan => Plan.restore(withCloudPlanDefaults(getDefaultOnPremFeatures(), null));
 
+// An offline (air-gapped) license must never reach the License Server.
+export const isOfflineLicenseKey = (licenseKeyConfig: TLicenseKeyConfig) =>
+  licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
+
 export type TLicenseResolverDeps = {
   isCloud: boolean;
   licenseKeyConfig: TLicenseKeyConfig;
@@ -69,7 +75,7 @@ export type TLicenseResolverDeps = {
 };
 
 // Works out what the instance is licensed for, and reads a cloud org's plan.
-export class LicenseResolver {
+export class LicenseResolver implements TLicenseProvider {
   constructor(private readonly deps: TLicenseResolverDeps) {}
 
   // The service key wins over a license key: it is what makes the instance Infisical Cloud. Anything that
@@ -100,9 +106,18 @@ export class LicenseResolver {
     return this.readOnlineLicense();
   }
 
+  isOffline(): boolean {
+    return isOfflineLicenseKey(this.deps.licenseKeyConfig);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  fallbackPlan(): Plan {
+    return cloudFallbackPlan();
+  }
+
   // Cloud: a root org's plan. Throws when the License Server cannot be read, so the domain serves the fallback.
-  async fetchPlan(rootOrgId: string): Promise<Plan> {
-    const entitlements = await this.deps.licenseServerClient.getEntitlements({ id: rootOrgId });
+  async fetchPlan(rootOrg: TEntitlementOrg): Promise<Plan> {
+    const entitlements = await this.deps.licenseServerClient.getEntitlements(rootOrg);
     if (!entitlements) {
       throw new BadRequestError({ message: "License Server entitlements are unavailable" });
     }

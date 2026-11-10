@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { TPlanProps as TLicensePlan } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
@@ -27,7 +27,7 @@ describe("getSessionLogEntitlement", () => {
     fallback?: boolean;
     lastKnown?: { plan: TPlanProps; ageMs: number } | null;
   }) => {
-    const fake = new FakeLicenseDomain().setPlan("org-1", toPlan(plan));
+    const fake = new FakeLicenseService().setPlan("org-1", toPlan(plan));
     if (fallback) fake.fallbackOrgs.add("org-1");
     if (lastKnown)
       fake.lastKnown.set("org-1", { plan: toPlan(lastKnown.plan), fetchedAt: Date.now() - lastKnown.ageMs });

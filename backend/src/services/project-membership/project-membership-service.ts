@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -63,7 +63,7 @@ type TProjectMembershipServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
@@ -106,7 +106,7 @@ export const projectMembershipServiceFactory = ({
   orgDAL,
   membershipRoleDAL,
   applicationMembershipCleanupService,
-  licenseDomain,
+  licenseService,
   alertChannelRecipientDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
@@ -430,9 +430,9 @@ export const projectMembershipServiceFactory = ({
         }
       });
     }
-    licenseDomain.emit(project.orgId, Meter.SecretIdentities.key);
-    licenseDomain.emit(project.orgId, Meter.PamIdentities.key);
-    licenseDomain.emit(project.orgId, Meter.AgentVaultIdentities.key);
+    licenseService.emit(project.orgId, Meter.SecretIdentities.key);
+    licenseService.emit(project.orgId, Meter.PamIdentities.key);
+    licenseService.emit(project.orgId, Meter.AgentVaultIdentities.key);
     return orgMembers;
   };
 
@@ -594,9 +594,9 @@ export const projectMembershipServiceFactory = ({
       ? await performDelete(externalTx)
       : await membershipUserDAL.transaction(performDelete);
 
-    licenseDomain.emit(actorOrgId, Meter.SecretIdentities.key);
-    licenseDomain.emit(actorOrgId, Meter.PamIdentities.key);
-    licenseDomain.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+    licenseService.emit(actorOrgId, Meter.SecretIdentities.key);
+    licenseService.emit(actorOrgId, Meter.PamIdentities.key);
+    licenseService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return memberships;
   };
 
@@ -689,9 +689,9 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "Failed to leave project" });
     }
 
-    licenseDomain.emit(project.orgId, Meter.SecretIdentities.key);
-    licenseDomain.emit(project.orgId, Meter.PamIdentities.key);
-    licenseDomain.emit(project.orgId, Meter.AgentVaultIdentities.key);
+    licenseService.emit(project.orgId, Meter.SecretIdentities.key);
+    licenseService.emit(project.orgId, Meter.PamIdentities.key);
+    licenseService.emit(project.orgId, Meter.AgentVaultIdentities.key);
     return deletedMembership;
   };
 

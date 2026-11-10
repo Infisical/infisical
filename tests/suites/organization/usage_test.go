@@ -34,6 +34,8 @@ func TestUsageReport_Send(t *testing.T) {
 		spec.Why(t, "an invite sends no report; creating an identity syncs the seats, and the admin, in only the implicit PAM project, is not a billable seat")
 		expectSnapshot(t, root, "user_identities", 1)
 		membership := fixture.MembershipOf(t, tn, alice.Email)
+		spec.Why(t, "the first report already sent user_identities 0, so only a report after the removal counts")
+		mark := root.Mark(t)
 
 		// Action
 		res, err := tn.Admin.API.DeleteOrgMembershipWithResponse(t.Context(), tn.OrgID.String(), membership.ID.String())
@@ -41,7 +43,7 @@ func TestUsageReport_Send(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
-		expectSnapshot(t, root, "user_identities", 0)
+		expectSnapshot(t, root, "user_identities", 0, fakenet.Since(mark))
 	})
 
 	t.Run("should refetch the plan when a member is removed", func(t *testing.T) {
@@ -64,7 +66,7 @@ func TestUsageReport_Send(t *testing.T) {
 		require.Equal(t, before+1, len(root.State(t).EntitlementFetches))
 	})
 
-	t.Run("should report users and identities together when a machine identity is created", func(t *testing.T) {
+	t.Run("should report the identity count when a machine identity is created", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -213,9 +215,9 @@ func refused(t *testing.T, sc *fakenet.Scope[license.State], path string) bool {
 }
 
 // expectSnapshot waits for the License Server to receive a value for a dimension.
-func expectSnapshot(t *testing.T, sc *fakenet.Scope[license.State], dimension string, value float64) {
+func expectSnapshot(t *testing.T, sc *fakenet.Scope[license.State], dimension string, value float64, opts ...fakenet.WaitOption) {
 	t.Helper()
 	sc.ExpectEvent[license.SnapshotReceived](t, func(e license.SnapshotReceived) bool {
 		return e.Dimension == dimension && e.Value == value
-	}, fakenet.Within(reportWithin))
+	}, append([]fakenet.WaitOption{fakenet.Within(reportWithin)}, opts...)...)
 }

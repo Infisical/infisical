@@ -60,7 +60,7 @@ func TestOnlineLicense_Plan(t *testing.T) {
 
 		// Assert
 		got := key.ExpectEvent[license.SnapshotReceived](t, func(e license.SnapshotReceived) bool {
-			return e.Dimension == "identities"
+			return e.Dimension == "identities" && e.Value >= 1
 		}, fakenet.Within(30*time.Second))
 		require.Equal(t, "self-hosted", got.Source)
 	})

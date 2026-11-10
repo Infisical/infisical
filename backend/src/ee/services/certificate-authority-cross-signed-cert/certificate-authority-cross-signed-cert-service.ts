@@ -2,7 +2,7 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -43,7 +43,7 @@ type TCertificateAuthorityCrossSignedCertServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TCertificateAuthorityCrossSignedCertServiceFactory = ReturnType<
@@ -57,7 +57,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
   projectDAL,
   kmsService,
   permissionService,
-  licenseDomain
+  licenseService
 }: TCertificateAuthorityCrossSignedCertServiceFactoryDep) => {
   const $toCrossSignedCertMetadata = (crossSignedCert: TCertificateAuthorityCrossSignedCerts) => ({
     caId: crossSignedCert.caId,
@@ -130,7 +130,7 @@ export const certificateAuthorityCrossSignedCertServiceFactory = ({
 
     $assertCanManageCrossSignedCert(permission, ca.name);
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.pkiCrossSignedCa) {
       throw new BadRequestError({
         message:

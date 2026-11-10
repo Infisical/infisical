@@ -2,7 +2,7 @@
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -36,7 +36,7 @@ type TCertificateCleanupQueueFactoryDep = {
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "find">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
@@ -55,7 +55,7 @@ export const certificateCleanupQueueFactory = ({
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  licenseDomain,
+  licenseService,
   auditLogService,
   telemetryService
 }: TCertificateCleanupQueueFactoryDep) => {
@@ -209,8 +209,8 @@ export const certificateCleanupQueueFactory = ({
     await flushAuditLog();
 
     if (deletedCount > 0 && orgId) {
-      licenseDomain.emit(orgId, Meter.ActiveCerts.key);
-      licenseDomain.emit(orgId, Meter.WildcardCerts.key);
+      licenseService.emit(orgId, Meter.ActiveCerts.key);
+      licenseService.emit(orgId, Meter.WildcardCerts.key);
     }
 
     return { deletedCount, errors: errorMessages.length };

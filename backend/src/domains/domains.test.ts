@@ -6,7 +6,7 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 describe("createDomains", () => {
-  test("should register exactly one usage counter for every metered dimension with License", () => {
+  test("should give License exactly one usage counter for every metered dimension", () => {
     // Setup
     const deps = {
       db: {},

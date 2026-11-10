@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import dns from "node:dns/promises";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -26,7 +26,7 @@ type TEmailDomainServiceFactoryDep = {
     "create" | "find" | "findOne" | "findById" | "deleteById" | "updateById" | "transaction"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TEmailDomainServiceFactory = ReturnType<typeof emailDomainServiceFactory>;
@@ -38,7 +38,7 @@ const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
 export const emailDomainServiceFactory = ({
   emailDomainDAL,
   permissionService,
-  licenseDomain
+  licenseService
 }: TEmailDomainServiceFactoryDep) => {
   const createEmailDomain = async ({
     domain,
@@ -61,7 +61,7 @@ export const emailDomainServiceFactory = ({
       OrgPermissionSubjects.EmailDomains
     );
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
     if (!canEmailDomainVerification) {
       throw new BadRequestError({
@@ -142,7 +142,7 @@ export const emailDomainServiceFactory = ({
       OrgPermissionSubjects.EmailDomains
     );
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
     if (!canEmailDomainVerification) {
       throw new BadRequestError({

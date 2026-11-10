@@ -1,7 +1,7 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AlertChannelType } from "../alert-channel-types";
@@ -91,13 +91,13 @@ const buildProvider = (opts?: {
   const permissionService = {
     getResourcePermission: vi.fn(async () => ({ permission: ability() }))
   };
-  const licenseDomain = new FakeLicenseDomain().setPlan("org-1", {
+  const licenseService = new FakeLicenseService().setPlan("org-1", {
     pkiEnterpriseAlerting: (opts?.pkiEnterpriseAlerting ?? false) as false
   });
   const provider = certManagerApplicationAlertProviderFactory({
     certManagerCertificateAlertDAL: dal,
     permissionService,
-    licenseDomain
+    licenseService
   } as unknown as TCertManagerApplicationAlertProviderDep);
   return { provider, permissionService };
 };

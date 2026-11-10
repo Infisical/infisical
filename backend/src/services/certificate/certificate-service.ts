@@ -3,8 +3,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -174,8 +174,8 @@ type TCertificateServiceFactoryDep = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
-  licenseDomain: TLicenseDomain;
-  certManagerDomain: TCertManagerDomain;
+  licenseService: TLicenseService;
+  certManagerService: TCertManagerService;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "update">;
@@ -211,8 +211,8 @@ export const certificateServiceFactory = ({
   apiEnrollmentConfigDAL,
   digicertFns,
   certificatePolicyService,
-  licenseDomain,
-  certManagerDomain,
+  licenseService,
+  certManagerService,
   keyStore,
   caKeySourceService,
   internalCertificateAuthorityDAL,
@@ -607,8 +607,8 @@ export const certificateServiceFactory = ({
       auditLogInfo
     );
 
-    licenseDomain.emit(actorOrgId, Meter.ActiveCerts.key);
-    licenseDomain.emit(actorOrgId, Meter.WildcardCerts.key);
+    licenseService.emit(actorOrgId, Meter.ActiveCerts.key);
+    licenseService.emit(actorOrgId, Meter.WildcardCerts.key);
 
     return {
       deletedCert,
@@ -739,7 +739,7 @@ export const certificateServiceFactory = ({
         keyAlgorithm: ca.internalCa.keyAlgorithm,
         projectId: ca.projectId,
         projectDAL,
-        licenseDomain
+        licenseService
       });
     }
 
@@ -790,8 +790,8 @@ export const certificateServiceFactory = ({
       });
     }
 
-    licenseDomain.emit(actorOrgId, Meter.ActiveCerts.key);
-    licenseDomain.emit(actorOrgId, Meter.WildcardCerts.key);
+    licenseService.emit(actorOrgId, Meter.ActiveCerts.key);
+    licenseService.emit(actorOrgId, Meter.WildcardCerts.key);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -1400,7 +1400,7 @@ export const certificateServiceFactory = ({
       projectId,
       commonName,
       altNames,
-      deps: { projectDAL, licenseDomain, certManagerDomain, keyStore }
+      deps: { projectDAL, licenseService, certManagerService, keyStore }
     });
 
     let renewBeforeDays: number | undefined;
@@ -1487,8 +1487,8 @@ export const certificateServiceFactory = ({
 
     if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
-    licenseDomain.emit(actorOrgId, Meter.ActiveCerts.key);
-    licenseDomain.emit(actorOrgId, Meter.WildcardCerts.key);
+    licenseService.emit(actorOrgId, Meter.ActiveCerts.key);
+    licenseService.emit(actorOrgId, Meter.WildcardCerts.key);
 
     if (cert.id && cert.applicationId) {
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);

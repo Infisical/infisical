@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { ActionProjectType, TCertificates } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -180,7 +180,7 @@ type TCertificateRenewalServiceFactoryDep = {
     "findAllByProfileId" | "findOneByApplicationAndProfile"
   >;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   quotaDeps: TCertificateQuotaDeps;
   recordQuotaUsage: (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => Promise<void>;
   resolveApplicationIdForProfile: TResolveApplicationIdForProfile;
@@ -246,7 +246,7 @@ export const certificateRenewalServiceFactory = ({
   pkiApplicationDAL,
   pkiApplicationProfileDAL,
   apiEnrollmentConfigDAL,
-  licenseDomain,
+  licenseService,
   quotaDeps,
   recordQuotaUsage,
   resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
@@ -1030,7 +1030,7 @@ export const certificateRenewalServiceFactory = ({
     if (!requested.length) return;
 
     for await (const keyAlgorithm of requested) {
-      await validatePqcLicense({ keyAlgorithm, projectId: originalCert.projectId, projectDAL, licenseDomain });
+      await validatePqcLicense({ keyAlgorithm, projectId: originalCert.projectId, projectDAL, licenseService });
     }
   };
 
@@ -1076,7 +1076,7 @@ export const certificateRenewalServiceFactory = ({
       altNames: renewedAltNames,
       projectId: originalCert.projectId,
       projectDAL,
-      licenseDomain,
+      licenseService,
       quotaDeps
     });
   };

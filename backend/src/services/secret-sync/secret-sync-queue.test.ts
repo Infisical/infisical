@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { recordSecretSyncOutcomeMetric, recordSecretSyncStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName } from "@app/queue";
 
@@ -108,7 +108,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
     kmsService: { createCipherPairWithDataKey: vi.fn(async () => ({ decryptor: () => Buffer.from("") })) },
     auditLogService: { createAuditLog: vi.fn(async () => undefined) },
     telemetryService: { sendPostHogEvents: vi.fn(async () => undefined) },
-    licenseDomain: new FakeLicenseDomain()
+    licenseService: new FakeLicenseService()
   } as never);
 
   const runSync = (attempt: number, data: Record<string, unknown> = {}) =>

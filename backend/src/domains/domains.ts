@@ -30,13 +30,20 @@ export type TDomainDeps = {
   >;
 };
 
-export type TDomains = ReturnType<typeof createDomains>;
-
 // Builds every domain in dependency order. The only file that imports ee/ from outside a domain.
 //
-// License comes first: every product depends on it, and it depends on none. Products plug in what License
-// needs from them (usage counters, root orgs) through license.registry while they are built.
+// License depends on no product: organizations-projects and each product are built first, and License takes
+// their usage counters and the organizations service through its constructor. A product that needs License
+// itself takes license.service, so it is built after License, and its counters must then come from its data
+// access, not from a service that uses License.
 export const createDomains = (deps: TDomainDeps) => {
+  const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db });
+  const organizationsProjectsService = organizationsProjects.service;
+  const secrets = new SecretsModule({ organizationsProjectsService });
+  const pam = new PamModule({ organizationsProjectsService });
+  const agentVault = new AgentVaultModule({ organizationsProjectsService });
+  const certManager = new CertManagerModule({ db: deps.db, organizationsProjectsService });
+
   const licenseEe = new LicenseEeModule({ envConfig: deps.envConfig });
   const license = new LicenseModule({
     keyStore: deps.keyStore,
@@ -44,18 +51,18 @@ export const createDomains = (deps: TDomainDeps) => {
     cronJob: deps.cronJob,
     isProductionMode: deps.envConfig.isProductionMode,
     startLocalRefresh,
-    hooks: licenseEe.hooks
+    provider: licenseEe.resolver,
+    licenseServer: licenseEe.licenseServerClient,
+    billing: licenseEe.licenseServerClient,
+    organizations: organizationsProjectsService,
+    usageCounters: [
+      ...organizationsProjects.usageCounters,
+      ...secrets.usageCounters,
+      ...pam.usageCounters,
+      ...agentVault.usageCounters,
+      ...certManager.usageCounters
+    ]
   });
 
-  const organizationsProjects = new OrganizationsProjectsModule({ db: deps.db, licenseRegistry: license.registry });
-  const productDeps = {
-    organizationsProjectsDomain: organizationsProjects.service,
-    licenseRegistry: license.registry
-  };
-  const secrets = new SecretsModule(productDeps);
-  const pam = new PamModule(productDeps);
-  const agentVault = new AgentVaultModule(productDeps);
-  const certManager = new CertManagerModule({ db: deps.db, ...productDeps });
-
-  return { license, organizationsProjects, secrets, pam, agentVault, certManager };
+  return { license, organizationsProjects, certManager };
 };

@@ -2,6 +2,13 @@ import { TDbClient } from "@app/db";
 import { ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 
+import { TOrganization, TOrganizationDataAccess } from "../service/dependencies";
+
+// The columns of an organizations row this domain reads.
+type TOrganizationRow = { id: string; name: string; slug: string };
+
+const toOrganization = (row: TOrganizationRow): TOrganization => ({ id: row.id, name: row.name, slug: row.slug });
+
 // Project types that do not take a workspace slot on a plan.
 const UNCOUNTED_WORKSPACE_TYPES = [
   ProjectType.CertificateManager,
@@ -15,7 +22,7 @@ const UNCOUNTED_WORKSPACE_TYPES = [
 ];
 
 // Reads the organizations and projects tables, which a future domain will own; see ../../AGENTS.md.
-export class OrganizationDataAccess {
+export class OrganizationDataAccess implements TOrganizationDataAccess {
   constructor(private readonly db: TDbClient) {}
 
   // The org's root: itself for a root org, the root a sub-org belongs to. Null when the org does not exist.
@@ -32,9 +39,17 @@ export class OrganizationDataAccess {
     }
   }
 
-  // The org's root, or the org itself when it does not exist.
-  async resolveRootOrgId(orgId: string): Promise<string> {
-    return (await this.findRootOrgId(orgId)) ?? orgId;
+  async findById(orgId: string): Promise<TOrganization | null> {
+    try {
+      const row = (await this.db
+        .replicaNode()(TableName.Organization)
+        .where("id", orgId)
+        .select("id", "name", "slug")
+        .first()) as TOrganizationRow | undefined;
+      return row ? toOrganization(row) : null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find organization" });
+    }
   }
 
   // Live projects that take a workspace slot, in the org and its sub-orgs.

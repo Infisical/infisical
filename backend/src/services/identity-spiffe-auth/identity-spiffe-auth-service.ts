@@ -10,7 +10,7 @@ import {
   TIdentitySpiffeAuths,
   TIdentitySpiffeAuthsUpdate
 } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -77,7 +77,7 @@ type TIdentitySpiffeAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -144,7 +144,7 @@ export const identitySpiffeAuthServiceFactory = ({
   membershipIdentityDAL,
   keyStore,
   permissionService,
-  licenseDomain,
+  licenseService,
   identityAccessTokenDAL,
   kmsService,
   orgDAL,
@@ -548,7 +548,7 @@ export const identitySpiffeAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -692,7 +692,7 @@ export const identitySpiffeAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&

@@ -1,7 +1,7 @@
 import { requestContext } from "@fastify/request-context";
 import { PostHog } from "posthog-node";
 
-import { InstanceType, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { InstanceType, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -85,7 +85,7 @@ export type TTelemetryServiceFactoryDep = {
     TKeyStoreFactory,
     "incrementBy" | "setItemWithExpiryNX" | "setExpiry" | "streamAdd" | "streamCollect" | "streamTrim" | "streamLength"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
@@ -138,7 +138,7 @@ const getDeploymentType = (
 
 export const telemetryServiceFactory = ({
   keyStore,
-  licenseDomain,
+  licenseService,
   orgDAL,
   emailDomainDAL
 }: TTelemetryServiceFactoryDep) => {
@@ -206,7 +206,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     lastName?: string,
     hubspotUtk?: string
   ) => {
-    const instanceType = licenseDomain.getInstanceType();
+    const instanceType = licenseService.getInstanceType();
     if (
       appCfg.isProductionMode &&
       instanceType === InstanceType.Cloud &&
@@ -263,7 +263,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       properties.name = orgName;
     }
 
-    const instanceType = licenseDomain.getInstanceType();
+    const instanceType = licenseService.getInstanceType();
     properties.is_cloud = instanceType === InstanceType.Cloud;
     properties.instance_type = instanceType;
     properties.deployment_type = getDeploymentType(instanceType, appCfg);
@@ -284,7 +284,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
     }
 
     try {
-      const [plan, seatUsage] = await Promise.all([licenseDomain.getPlan(orgId), licenseDomain.getSeatUsage(orgId)]);
+      const [plan, seatUsage] = await Promise.all([licenseService.getPlan(orgId), licenseService.getSeatUsage(orgId)]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
       properties.has_secret_scanning = Boolean(plan.secretScanning);

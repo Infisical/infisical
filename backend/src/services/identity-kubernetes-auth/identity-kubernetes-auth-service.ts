@@ -13,7 +13,7 @@ import {
   TIdentityKubernetesAuthsUpdate
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -116,7 +116,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
@@ -153,7 +153,7 @@ export const identityKubernetesAuthServiceFactory = ({
   keyStore,
   identityAccessTokenDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   gatewayV2Service,
   gatewayV2DAL,
   kmsService,
@@ -868,7 +868,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     );
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -1209,7 +1209,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     );
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId

@@ -66,16 +66,6 @@ type OfflineLicense struct {
 	Entitlements any            `json:"entitlements,omitempty"`
 }
 
-// V1 is a legacy offline license carrying TFeatureSet fields.
-func V1(licenseID string, features map[string]any) OfflineLicense {
-	return OfflineLicense{
-		IssuedTo:  "harness",
-		LicenseID: licenseID,
-		IssuedAt:  time.Now().UTC().Truncate(time.Second),
-		Features:  features,
-	}
-}
-
 // V2 is an offline license carrying a plan's entitlements, as the License Server
 // issues them now.
 func V2(licenseID string, p Plan) OfflineLicense {

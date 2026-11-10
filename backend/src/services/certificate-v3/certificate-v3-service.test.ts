@@ -10,7 +10,7 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InstanceType, TPlanProps } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -79,7 +79,7 @@ vi.mock("@app/lib/logger", () => ({
 
 describe("CertificateV3Service", () => {
   let service: TCertificateV3ServiceFactory;
-  let licenseDomain: FakeLicenseDomain;
+  let licenseService: FakeLicenseService;
 
   const mockTelemetryService = {
     sendPostHogEvents: vi.fn().mockResolvedValue(undefined)
@@ -261,9 +261,9 @@ describe("CertificateV3Service", () => {
     mockKeyStore.getItem.mockResolvedValue(null);
     mockKeyStore.setItemWithExpiry.mockResolvedValue("OK" as const);
     mockKeyStore.deleteItem.mockResolvedValue(1);
-    licenseDomain = new FakeLicenseDomain();
-    licenseDomain.instance = { ...licenseDomain.instance, instanceType: InstanceType.OnPrem };
-    licenseDomain.defaultPlan = { ...licenseDomain.defaultPlan, pkiPqc: true as false };
+    licenseService = new FakeLicenseService();
+    licenseService.instance = { ...licenseService.instance, instanceType: InstanceType.OnPrem };
+    licenseService.defaultPlan = { ...licenseService.defaultPlan, pkiPqc: true as false };
     vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
       const mockTx = {};
       return callback(mockTx);
@@ -407,9 +407,9 @@ describe("CertificateV3Service", () => {
       apiEnrollmentConfigDAL: {
         findById: vi.fn().mockResolvedValue(undefined)
       },
-      certManagerDomain: mockUsageCounterDAL,
+      certManagerService: mockUsageCounterDAL,
       keyStore: mockKeyStore,
-      licenseDomain,
+      licenseService,
       telemetryService: mockTelemetryService,
       auditLogService: mockAuditLogService
     });
@@ -1490,7 +1490,7 @@ describe("CertificateV3Service", () => {
         defaults: { subjectAltNames: [{ type: "dns_name", value: "profile-default.example.com" }] }
       };
 
-      licenseDomain.defaultPlan = { ...licenseDomain.defaultPlan, maxCertificates: 5, maxWildcardCertificates: null };
+      licenseService.defaultPlan = { ...licenseService.defaultPlan, maxCertificates: 5, maxWildcardCertificates: null };
       vi.mocked(mockPermissionService.getProjectPermission).mockResolvedValue({
         permission: {
           throwUnlessCan: vi.fn(),
@@ -2563,7 +2563,7 @@ describe("CertificateV3Service", () => {
 
       const atCap = (plan: Partial<TPlanProps> = AT_CAP, total = 5, wildcard = 0) => {
         vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
-        licenseDomain.defaultPlan = { ...licenseDomain.defaultPlan, ...plan };
+        licenseService.defaultPlan = { ...licenseService.defaultPlan, ...plan };
         vi.mocked(mockUsageCounterDAL.countActiveCertificateQuota).mockResolvedValue({ total, wildcard });
         vi.mocked(mockUsageCounterDAL.isCertificateQuotaKeyActive).mockResolvedValue(false);
       };

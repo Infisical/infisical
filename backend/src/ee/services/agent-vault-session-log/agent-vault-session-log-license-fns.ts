@@ -1,4 +1,4 @@
-import { TLicenseDomain, TPlanProps } from "@app/domains/platform/license/ce/module";
+import { TLicenseService, TPlanProps } from "@app/domains/platform/license/ce/module";
 import { logger } from "@app/lib/logger";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
@@ -31,21 +31,21 @@ const fallbackLoggedAt = new Map<string, number>();
 // returned decides, if it's under an hour old. Without one the answer is "unknown", and each caller decides what that
 // means.
 export const getSessionLogEntitlement = async (
-  licenseDomain: TLicenseDomain,
+  licenseService: TLicenseService,
   orgId: string,
   storageType: ObjectStorageType
 ): Promise<{
   entitlement: TSessionLogEntitlement;
   plan: Pick<TPlanProps, "agentVaultSessionLogRetentionDays"> | null;
 }> => {
-  const plan = await licenseDomain.getPlan(orgId);
+  const plan = await licenseService.getPlan(orgId);
   const isOnPlan = hasStorageOnPlan(plan, storageType);
   if (isOnPlan && storageType !== ObjectStorageType.Default) return { entitlement: "licensed", plan };
-  if (!(await licenseDomain.isServingFallbackPlan(orgId))) {
+  if (!(await licenseService.isServingFallbackPlan(orgId))) {
     return { entitlement: isOnPlan ? "licensed" : "unlicensed", plan };
   }
 
-  const lastKnown = await licenseDomain.getLastKnownPlan(orgId);
+  const lastKnown = await licenseService.getLastKnownPlan(orgId);
   // Retention comes from the last real plan whenever one is cached, even one too old to decide yes or no. The tag is
   // fixed at upload, so tagging with the stand-in plan's retention would delete a longer plan's logs early.
   let decision: Awaited<ReturnType<typeof getSessionLogEntitlement>> = isOnPlan

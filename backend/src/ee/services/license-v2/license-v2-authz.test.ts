@@ -1,4 +1,5 @@
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseServerBilling } from "@app/domains/platform/license/ce/testing/fake-license-server-billing";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { ForbiddenRequestError } from "@app/lib/errors";
 
 import { licenseV2ServiceFactory } from "./license-v2-service";
@@ -35,14 +36,14 @@ const buildService = () => {
     envConfig: { isCloud: false, SITE_URL: "http://localhost" },
     orgDAL: { findById: vi.fn(async () => ({ id: OTHER_ORG, name: "Other", slug: "other" })) },
     permissionService: { getOrgPermission },
-    organizationsProjectsDomain: {
+    organizationsProjectsService: {
       countBillableOrgActors: vi.fn(async () => ({ users: 0, identities: 0 })),
       getBillableIdentityOwnershipBreakdown: vi.fn(async () => []),
       resolveRootOrgId: vi.fn(async (id: string) => id),
       countProjectIdentitiesByKind: vi.fn(async () => ({ users: 0, identities: 0 })),
       getProjectIdentityBreakdown: vi.fn(async () => [])
     },
-    certManagerDomain: {
+    certManagerService: {
       getInternalCaOrgBreakdown: vi.fn(async () => []),
       getActiveCertificateOrgBreakdown: vi.fn(async () => [])
     },
@@ -51,7 +52,8 @@ const buildService = () => {
       findProjectNames: vi.fn(async () => []),
       findAllRootOrgs: vi.fn(async () => ({ orgs: [{ id: ROOT_ORG, name: "Root", slug: "root" }], totalCount: 1 }))
     },
-    licenseDomain: new FakeLicenseDomain()
+    licenseService: new FakeLicenseService(),
+    licenseBilling: new FakeLicenseServerBilling()
   } as unknown as Parameters<typeof licenseV2ServiceFactory>[0]);
 
   return { service, getOrgPermission };

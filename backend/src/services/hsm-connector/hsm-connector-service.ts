@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -52,7 +52,7 @@ export type THsmConnectorServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type THsmConnectorServiceFactory = ReturnType<typeof hsmConnectorServiceFactory>;
@@ -74,7 +74,7 @@ export const hsmConnectorServiceFactory = ({
   gatewayV2DAL,
   gatewayPoolDAL,
   orgDAL,
-  licenseDomain
+  licenseService
 }: THsmConnectorServiceFactoryDep) => {
   const routing = hsmConnectorRoutingFactory({ gatewayV2Service, gatewayV2DAL, gatewayPoolService });
 
@@ -100,7 +100,7 @@ export const hsmConnectorServiceFactory = ({
   };
 
   const assertLicense = async (orgId: string) => {
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.hsm) {
       throw new BadRequestError({
         message: "Your plan does not include HSM support. Please upgrade to use HSM Connectors."

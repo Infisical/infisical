@@ -448,7 +448,8 @@ export const billingProfileResponseSchema = z
 export type TEntitlementFeature = z.infer<typeof entitlementFeatureSchema>;
 export type TEntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
 
-export type TEntitlementOrg = { id: string };
+// The License Server records an org's name and slug in its org directory when they are sent.
+export type TEntitlementOrg = { id: string; name?: string; slug?: string };
 export type TCatalogProduct = z.infer<typeof catalogProductSchema>;
 export type TCatalogResponse = z.infer<typeof catalogResponseSchema>;
 export type TSubscriptionItem = z.infer<typeof subscriptionItemSchema>;

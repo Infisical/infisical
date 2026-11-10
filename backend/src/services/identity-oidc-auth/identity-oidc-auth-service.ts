@@ -12,7 +12,7 @@ import {
   TIdentityOidcAuthsUpdate
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
 import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
@@ -81,7 +81,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
@@ -100,7 +100,7 @@ export const identityOidcAuthServiceFactory = ({
   membershipIdentityDAL,
   keyStore,
   permissionService,
-  licenseDomain,
+  licenseService,
   identityAccessTokenDAL,
   kmsService,
   orgDAL,
@@ -657,7 +657,7 @@ export const identityOidcAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -846,7 +846,7 @@ export const identityOidcAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId

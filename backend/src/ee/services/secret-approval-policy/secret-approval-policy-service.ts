@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -42,7 +42,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "update">;
   secretApprovalPolicyEnvironmentDAL: TSecretApprovalPolicyEnvironmentDALFactory;
   secretChangeGlobalPolicyBridgeService: Pick<
@@ -69,7 +69,7 @@ export const secretApprovalPolicyServiceFactory = ({
   projectEnvDAL,
   projectDAL,
   userDAL,
-  licenseDomain,
+  licenseService,
   secretApprovalRequestDAL,
   secretChangeGlobalPolicyBridgeService
 }: TSecretApprovalPolicyServiceFactoryDep) => {
@@ -155,7 +155,7 @@ export const secretApprovalPolicyServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message:
@@ -404,7 +404,7 @@ export const secretApprovalPolicyServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message:

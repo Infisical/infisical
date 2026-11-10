@@ -2,7 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectType } from "@app/db/schemas";
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { projectTemplateServiceFactory } from "./project-template-service";
@@ -27,7 +27,7 @@ const actor = {
 
 const createService = () =>
   projectTemplateServiceFactory({
-    licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, {
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, {
       projectTemplates: true as false,
       environmentLimit: null
     }),

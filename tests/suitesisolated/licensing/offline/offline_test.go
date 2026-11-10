@@ -32,7 +32,8 @@ func TestOfflineLicense_Plan(t *testing.T) {
 	t.Run("should send nothing to the License Server", func(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
-		org := license.Open(t, fixture.FakenetAdmin(t, tn), tn.OrgID.String())
+		admin := fixture.FakenetAdmin(t, tn)
+		scopes := append(license.SelfHostedScopes(t, admin, licenseKey), license.Open(t, admin, tn.OrgID.String()))
 		tn.NewMachineIdentity(t)
 
 		// Action
@@ -41,7 +42,7 @@ func TestOfflineLicense_Plan(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, res.StatusCode())
-		require.Empty(t, org.Calls(t))
+		license.ExpectNothingSent(t, scopes)
 	})
 
 	t.Run("should report offline usage reports as available to an instance admin", func(t *testing.T) {

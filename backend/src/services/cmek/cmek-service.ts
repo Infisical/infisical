@@ -1,7 +1,7 @@
 import { ForbiddenError, MongoAbility, MongoQuery } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCmekActions,
@@ -43,7 +43,7 @@ type TCmekServiceFactoryDep = {
   kmsService: TKmsServiceFactory;
   kmsDAL: TKmsKeyDALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;
@@ -52,7 +52,7 @@ export const cmekServiceFactory = ({
   kmsService,
   kmsDAL,
   permissionService,
-  licenseDomain
+  licenseService
 }: TCmekServiceFactoryDep) => {
   // A public key is not secret, and verifying outside Infisical needs it, so anyone who may sign or verify with the
   // key can read it and its signing algorithms without being able to list or look up the project's keys.
@@ -80,7 +80,7 @@ export const cmekServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
 
     if (isPqcKeyAlgorithm(dto.encryptionAlgorithm as string)) {
-      const plan = await licenseDomain.getPlan(dto.orgId);
+      const plan = await licenseService.getPlan(dto.orgId);
       if (!plan.kmsPqc) {
         throw new BadRequestError({
           message:
@@ -663,7 +663,7 @@ export const cmekServiceFactory = ({
     const hasPqcKeys = keys.some((entry) => isPqcKeyAlgorithm(entry.algorithm as string));
     let pqcLicensed = true;
     if (hasPqcKeys) {
-      const plan = await licenseDomain.getPlan(actor.orgId);
+      const plan = await licenseService.getPlan(actor.orgId);
       pqcLicensed = !!plan.kmsPqc;
     }
 

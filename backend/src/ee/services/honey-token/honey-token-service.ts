@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrgMembershipRole, SecretType, TableName } from "@app/db/schemas";
 import { THoneyTokens } from "@app/db/schemas/honey-tokens";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
@@ -92,7 +92,7 @@ export type THoneyTokenServiceFactoryDep = {
     "create" | "find" | "countByHoneyTokenId" | "findByHoneyTokenId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
@@ -145,7 +145,7 @@ export const honeyTokenServiceFactory = ({
   honeyTokenConfigDAL,
   honeyTokenEventDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   kmsService,
   appConnectionDAL,
   appConnectionService,
@@ -228,7 +228,7 @@ export const honeyTokenServiceFactory = ({
       throw new BadRequestError({ message: "Unsupported honey token type" });
     }
 
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.orgId);
     if (!plan.honeyTokens) {
       throw new BadRequestError({
         message: "Failed to create honey token due to plan restriction. Upgrade plan to use honey tokens."
@@ -491,7 +491,7 @@ export const honeyTokenServiceFactory = ({
       })
     );
 
-    const updatePlan = await licenseDomain.getPlan(actor.orgId);
+    const updatePlan = await licenseService.getPlan(actor.orgId);
     if (!updatePlan.honeyTokens) {
       throw new BadRequestError({
         message: "Failed to update honey token due to plan restriction. Upgrade plan to use honey tokens."
@@ -687,7 +687,7 @@ export const honeyTokenServiceFactory = ({
       })
     );
 
-    const revokePlan = await licenseDomain.getPlan(actor.orgId);
+    const revokePlan = await licenseService.getPlan(actor.orgId);
     if (!revokePlan.honeyTokens) {
       throw new BadRequestError({
         message: "Failed to revoke honey token due to plan restriction. Upgrade plan to use honey tokens."
@@ -864,7 +864,7 @@ export const honeyTokenServiceFactory = ({
       ProjectPermissionSub.HoneyTokens
     );
 
-    const limitPlan = await licenseDomain.getPlan(actor.orgId);
+    const limitPlan = await licenseService.getPlan(actor.orgId);
     if (!limitPlan.honeyTokens) {
       throw new BadRequestError({
         message: "Failed to access honey token limits due to plan restriction. Upgrade plan to use honey tokens."

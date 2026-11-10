@@ -13,19 +13,22 @@ import (
 
 const licenseID = "harness-offline"
 
+// licenseKey is the signed offline key the instance boots with.
+var licenseKey string
+
 func TestMain(m *testing.M) {
 	signer, err := license.NewSigner()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	key, err := signer.Key(license.V2(licenseID, license.Enterprise().Without(license.SecretRotation)))
+	licenseKey, err = signer.Key(license.V2(licenseID, license.Enterprise().Without(license.SecretRotation)))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	opts := []harness.Option{harness.WithInfisicalFile(signer.PublicKeyFile, license.PublicKeyPath)}
-	for k, v := range license.SelfHostedEnv(key) {
+	for k, v := range license.SelfHostedEnv(licenseKey) {
 		opts = append(opts, harness.WithInfisicalEnv(k, v))
 	}
 	harness.Main(m, harness.Isolated, opts...)

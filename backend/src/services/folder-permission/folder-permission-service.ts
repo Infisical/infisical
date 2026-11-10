@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 
 import { SecretFolderRole } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCacheFingerprint } from "@app/lib/cache/with-cache";
@@ -58,7 +58,7 @@ type TFolderPermissionServiceFactoryDep = {
     | "hasProjectAccess"
     | "isProjectAdmin"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
 };
 
@@ -81,11 +81,11 @@ export const folderPermissionServiceFactory = ({
   secretFolderDAL,
   permissionService,
   folderPermissionDAL,
-  licenseDomain,
+  licenseService,
   keyStore
 }: TFolderPermissionServiceFactoryDep) => {
   const assertFolderRbacLicensed = async (orgId: string) => {
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.secretsFolderRbac) {
       throw new BadRequestError({
         message: "Failed to access folder access controls due to plan restriction. Upgrade your Infisical plan."
