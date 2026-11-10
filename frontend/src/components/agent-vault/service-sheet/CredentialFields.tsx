@@ -372,6 +372,8 @@ type Props = {
   typeLabels?: Partial<Record<AgentVaultCredentialType, string>>;
   /** Off for a database or SSH service, which sends no HTTP header. */
   showsSendsPreview?: boolean;
+  /** Puts the username above the password instead of beside it. */
+  stacksLogin?: boolean;
 };
 
 export const CredentialFields = ({
@@ -379,7 +381,8 @@ export const CredentialFields = ({
   storedMemberFields = [],
   credentialTypes = HTTP_CREDENTIAL_TYPES,
   typeLabels = CREDENTIAL_LABELS,
-  showsSendsPreview = true
+  showsSendsPreview = true,
+  stacksLogin = false
 }: Props) => {
   const { control, watch, setValue, clearErrors } = useFormContext<TServiceForm>();
   const { storedKeys } = useServiceVariables();
@@ -575,7 +578,7 @@ export const CredentialFields = ({
       )}
 
       {credentialType === AgentVaultCredentialType.Basic && (
-        <div className="flex items-start gap-3">
+        <div className={stacksLogin ? "flex flex-col gap-5" : "flex items-start gap-3"}>
           <Controller
             control={control}
             name="username"

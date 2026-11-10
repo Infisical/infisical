@@ -104,6 +104,7 @@ export const NativeCredentialFields = ({
         credentialTypes={NATIVE_CREDENTIAL_TYPES[serviceType]}
         typeLabels={nativeCredentialLabels(serviceType)}
         showsSendsPreview={false}
+        stacksLogin
       />
 
       {isSshKey && (
