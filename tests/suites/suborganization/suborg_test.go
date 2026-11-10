@@ -129,12 +129,15 @@ func TestSubOrganization_Delete(t *testing.T) {
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 		require.Empty(t, subOrgNames(t, tn))
-		// Sub-orgs bill through the root, so this one shouldn't reach the license server. Waiting on
-		// the root's call gives the sub-org event time to run, not a hard guarantee though.
+		require.False(t, fixture.LicenseOrgDeleted(t, rootLicense, tn.OrgID))
+		// The sub-org's event can't be observed directly, so the root delete is the barrier: the outbox
+		// claims the older sub-org event no later than the root's. A second root call means the sub-org
+		// delete cancelled the root too.
 		root, err := tn.Admin.API.DeleteOrganizationWithResponse(t.Context(), tn.OrgID.String())
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, root.StatusCode(), root.Body)
 		fixture.RequireLicenseOrgDeleted(t, rootLicense, tn.OrgID)
+		require.Equal(t, 1, fixture.LicenseOrgDeleteCalls(t, rootLicense, tn.OrgID))
 		require.False(t, fixture.LicenseOrgDeleted(t, subLicense, sub.ID))
 	})
 }

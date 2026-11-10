@@ -18,10 +18,16 @@ func LicenseServer(tt *testing.T, tn *harness.Tenant, orgID uuid.UUID) *fakenet.
 	return license.Open(tt, FakenetAdmin(tt, tn), orgID.String())
 }
 
+// LicenseOrgDeleteCalls counts how many times the license server was told orgID is gone.
+func LicenseOrgDeleteCalls(tt *testing.T, ls *fakenet.Scope[license.Plan], orgID uuid.UUID) int {
+	tt.Helper()
+	return ls.Received(tt, http.MethodDelete, "/v1/organizations/"+orgID.String())
+}
+
 // LicenseOrgDeleted reports whether the license server was told orgID is gone.
 func LicenseOrgDeleted(tt *testing.T, ls *fakenet.Scope[license.Plan], orgID uuid.UUID) bool {
 	tt.Helper()
-	return ls.Received(tt, http.MethodDelete, "/v1/organizations/"+orgID.String()) > 0
+	return LicenseOrgDeleteCalls(tt, ls, orgID) > 0
 }
 
 // RequireLicenseOrgDeleted waits for that call, since the outbox sends it after the delete returns.

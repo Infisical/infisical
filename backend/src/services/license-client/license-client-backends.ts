@@ -60,6 +60,7 @@ const orgScoped = (orgId: string, suffix: string): string => `/v1/organizations/
 const SERVICE_TOKEN_ISSUER = "infisical-cloud";
 const SERVICE_TOKEN_AUDIENCE = "infisical-license-server";
 const SERVICE_TOKEN_SUBJECT = "infisical-cloud";
+const ORG_DELETED_TIMEOUT_MS = 30_000;
 
 // The license server validates a short-lived RS256 service JWT (iss/aud/exp/sub) that we sign with
 // our private key and it verifies with the matching public key. Mint a fresh token per request.
@@ -403,7 +404,8 @@ export const licenseServerBackend = (
     const res = await fetch(url, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
-      redirect: "manual"
+      redirect: "manual",
+      signal: AbortSignal.timeout(ORG_DELETED_TIMEOUT_MS)
     });
     await throwIfResponseError(res);
     const body: unknown = await res.json();
