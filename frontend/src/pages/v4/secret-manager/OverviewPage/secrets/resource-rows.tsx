@@ -25,7 +25,8 @@ import {
   SheetBody,
   SheetContent,
   SheetHeader,
-  SheetTitle
+  SheetTitle,
+  SheetTrigger
 } from "@app/components/v4/ui/sheet";
 import {
   type RowActionList,
@@ -872,7 +873,7 @@ function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
   useLayoutEffect(() => {
     const box = fit.current;
     const ruler = measure.current;
-    if (!box || !ruler) return undefined;
+    if (listOpen || !box || !ruler) return undefined;
     const update = () => {
       const [more, ...items] = [...ruler.children].map(
         (child) => (child as HTMLElement).offsetWidth
@@ -899,33 +900,35 @@ function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
     const observer = new ResizeObserver(update);
     observer.observe(box);
     return () => observer.disconnect();
-  }, [signature]);
+  }, [signature, listOpen]);
   const hidden = sites.length - shown;
   return (
-    <span className={styles.importedIn}>
-      <span className={styles.subtle}>Imported in</span>
-      <span ref={fit} className={styles.importedBadges} style={{ minWidth: reserve }}>
-        {sites.slice(0, shown).map((site) => (
-          <SiteLink key={site.value} site={site} />
-        ))}
-        {hidden > 0 && (
-          <Button variant="ghost" size="xs" onClick={() => setListOpen(true)}>
-            {`+${hidden} more`}
+    <Sheet open={listOpen} onOpenChange={setListOpen}>
+      <span className={styles.importedIn}>
+        <span className={styles.subtle}>Imported in</span>
+        <span ref={fit} className={styles.importedBadges} style={{ minWidth: reserve }}>
+          {sites.slice(0, shown).map((site) => (
+            <SiteLink key={site.value} site={site} />
+          ))}
+          {hidden > 0 && (
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="xs">
+                {`+${hidden} more`}
+              </Button>
+            </SheetTrigger>
+          )}
+        </span>
+        <span ref={measure} className={styles.importedRuler} aria-hidden="true">
+          <Button variant="ghost" size="xs" asChild>
+            <span>{`+${sites.length} more`}</span>
           </Button>
-        )}
-      </span>
-      <span ref={measure} className={styles.importedRuler} aria-hidden="true">
-        <Button variant="ghost" size="xs" asChild>
-          <span>{`+${sites.length} more`}</span>
-        </Button>
-        {sites.map((site) => (
-          <Badge key={site.value} tone="outline">
-            <Icon icon={LayersIcon} />
-            {site.label}
-          </Badge>
-        ))}
-      </span>
-      <Sheet open={listOpen} onOpenChange={setListOpen}>
+          {sites.map((site) => (
+            <Badge key={site.value} tone="outline">
+              <Icon icon={LayersIcon} />
+              {site.label}
+            </Badge>
+          ))}
+        </span>
         <SheetContent>
           <SheetHeader>
             <SheetTitle>{`Imported in ${sites.length} environments`}</SheetTitle>
@@ -934,8 +937,8 @@ function ImportedIn({ sites }: { sites: EnvironmentOption[] }) {
             <SiteList sites={sites} />
           </SheetBody>
         </SheetContent>
-      </Sheet>
-    </span>
+      </span>
+    </Sheet>
   );
 }
 
