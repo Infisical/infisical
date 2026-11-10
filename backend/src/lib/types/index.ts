@@ -1,4 +1,5 @@
 import { TDynamicSecrets } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 
 export type TGenericPermission = {
@@ -81,6 +82,10 @@ export type OrgServiceActor = {
   rootOrgId: string;
   parentOrgId: string;
 };
+
+// What req.permission carries: the actor context, plus the flat fields services still read until they take the
+// context itself.
+export type TRequestPermission = OrgServiceActor & TActorContext;
 
 export type ProjectServiceActor = {
   type: ActorType;

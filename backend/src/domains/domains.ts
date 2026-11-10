@@ -13,10 +13,13 @@ import {
 import { TCronJobFactory } from "@app/lib/cron/cron-job";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { TQueueServiceFactory } from "@app/queue";
+import type { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { AgentVaultModule } from "./agent-vault/agent-vault/ce/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
+import { actorContexts } from "./lib/actor-context";
 import { DataAccessDb } from "./lib/data-access-db";
+import { domainEventEmitter } from "./lib/event-emitter";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
 import { AccessControlModule } from "./platform/access-control/ce/module";
@@ -33,6 +36,8 @@ export type TDomainDeps = {
   keyStore: TDomainKeyStore;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: Pick<TCronJobFactory, "register">;
+  // The outbox. Domains write their events on their own transactions through domainEventEmitter.
+  eventEmitter: TEventEmitter;
   envConfig: Pick<
     TEnvConfig,
     | "LICENSE_KEY"
@@ -149,7 +154,11 @@ export const createDomains = (deps: TDomainDeps) => {
 
   // Access Control is a base domain: memberships, roles, privileges, groups and attributes, and the building
   // blocks every scope owner's permission function uses. It depends on no other domain.
-  const accessControl = new AccessControlModule({ db, keyStore: deps.keyStore });
+  const accessControl = new AccessControlModule({
+    db,
+    keyStore: deps.keyStore,
+    eventEmitter: domainEventEmitter(deps.eventEmitter)
+  });
 
   const organizationsProjects = new OrganizationsProjectsModule({ db, licenseRegistry: license.registry });
   const productDeps = {
@@ -161,7 +170,14 @@ export const createDomains = (deps: TDomainDeps) => {
   const agentVault = new AgentVaultModule(productDeps);
   const certManager = new CertManagerModule({ db, ...productDeps });
 
+  // Built once per request by the auth middleware, and by background jobs acting in an org.
+  const actorContextBuilder = actorContexts({
+    findActorOrg: (orgId) => organizationsProjects.service.findActorOrg(orgId),
+    getPlan: (orgId) => license.service.getPlan(orgId)
+  });
+
   return {
+    actorContexts: actorContextBuilder,
     license,
     kmsCoreEe,
     kmsCore,

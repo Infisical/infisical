@@ -28,6 +28,9 @@ export type TIdentityPrincipal = {
   id: string;
   name: string;
   isInstanceAdmin: boolean;
+  // What the identity authenticated with (OIDC claims, Kubernetes namespace, and so on), read by
+  // `{{identity.auth.*}}` conditions. Present only for the identity making the request.
+  authInfo?: Record<string, unknown>;
   assumed?: TAssumedPrincipal;
 };
 

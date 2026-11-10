@@ -382,10 +382,8 @@ import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/
 import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { scepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
-import { eventOutboxDALFactory } from "@app/services/event-outbox/event-outbox-dal";
 import { eventOutboxQueueFactory } from "@app/services/event-outbox/event-outbox-queue";
-import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
-import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
+import { TEventOutbox } from "@app/services/event-outbox/event-outbox-service";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
@@ -640,7 +638,8 @@ export const registerRoutes = async (
     clickhouse,
     envConfig,
     domains,
-    cronJob
+    cronJob,
+    eventOutbox
   }: {
     auditLogDb?: Knex;
     db: Knex;
@@ -652,6 +651,8 @@ export const registerRoutes = async (
     // Built in main(), before this plugin, so plugins registered beside it can use them too.
     domains: TDomains;
     cronJob: TCronJobFactory;
+    // Built in main() with the domains, which emit on it in their own transactions.
+    eventOutbox: TEventOutbox;
   }
 ) => {
   const appCfg = getConfig();
@@ -851,9 +852,7 @@ export const registerRoutes = async (
   const folderPermissionDAL = folderPermissionDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
-  const eventOutboxDAL = eventOutboxDALFactory(db);
-  const eventOutboxRegistry = eventOutboxRegistryFactory();
-  const eventOutboxService = eventOutboxServiceFactory({ eventOutboxDAL, eventOutboxRegistry });
+  const { eventOutboxDAL, eventOutboxRegistry, eventOutboxService } = eventOutbox;
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
   const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
@@ -5000,6 +4999,7 @@ export const registerRoutes = async (
     pkiTemplate: pkiTemplateService,
     secretScanning: secretScanningService,
     licenseDomain,
+    actorContexts: domains.actorContexts,
     instanceConfigCoreDomain,
     licenseV2: licenseV2Service,
     trustedIp: trustedIpService,

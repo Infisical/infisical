@@ -13,6 +13,7 @@ describe("createDomains", () => {
       keyStore: {},
       queueService: { queue: vi.fn(), start: vi.fn() },
       cronJob: { register: vi.fn() },
+      eventEmitter: { emit: vi.fn() },
       envConfig: { isCloud: false, isProductionMode: false }
     } as unknown as Parameters<typeof createDomains>[0];
 

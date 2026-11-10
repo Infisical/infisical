@@ -3,6 +3,7 @@ import "fastify";
 import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
+import type { TActorContexts } from "@app/domains/lib/actor-context";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
@@ -88,6 +89,7 @@ import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service"
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { ActorAuthMethod, ActorType, MfaMethod } from "@app/lib/auth/actor-types";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
+import type { TRequestPermission } from "@app/lib/types";
 import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAccountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
@@ -277,14 +279,7 @@ declare module "fastify" {
     // identity injection. depending on which kinda of token the information is filled in auth
     auth: TAuthMode;
     shouldForwardWritesToPrimaryInstance: boolean;
-    permission: {
-      authMethod: ActorAuthMethod;
-      type: ActorType;
-      id: string;
-      orgId: string;
-      parentOrgId: string;
-      rootOrgId: string;
-    };
+    permission: TRequestPermission;
     rateLimits: RateLimitConfiguration;
     passportUser: TProviderAuthCallback;
     passportMachineIdentity: {
@@ -429,6 +424,7 @@ declare module "fastify" {
     pkiSigner: TSignerServiceFactory;
     secretScanning: TSecretScanningServiceFactory;
     licenseDomain: TLicenseDomain;
+    actorContexts: TActorContexts;
     kmsCoreDomain: TKmsCoreDomain;
     instanceConfigCoreDomain: TInstanceConfigCoreDomain;
     licenseV2: TLicenseV2ServiceFactory;

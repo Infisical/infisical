@@ -25,6 +25,7 @@ import { Redlock } from "@app/lib/red-lock";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { TQueueServiceFactory } from "@app/queue";
+import { buildEventOutbox } from "@app/services/event-outbox/event-outbox-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
@@ -171,7 +172,15 @@ export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore, redi
 
     // Before the routes: legacy services depend on the domains, and queue workers read the license as soon as they
     // start. Built here rather than in registerRoutes so plugins registered beside it (serve-ui) can use them too.
-    const domains = createDomains({ db, keyStore, queueService: queue, cronJob, envConfig });
+    const eventOutbox = buildEventOutbox(db);
+    const domains = createDomains({
+      db,
+      keyStore,
+      queueService: queue,
+      cronJob,
+      envConfig,
+      eventEmitter: eventOutbox.eventOutboxService
+    });
     await domains.license.start();
 
     await server.register(registerRoutes, {
@@ -183,7 +192,8 @@ export const main = async ({ db, auditLogDb, smtp, logger, queue, keyStore, redi
       clickhouse,
       envConfig,
       domains,
-      cronJob
+      cronJob,
+      eventOutbox
     });
 
     if (appCfg.isApiRunModeEnabled) {

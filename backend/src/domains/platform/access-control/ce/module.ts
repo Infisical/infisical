@@ -1,4 +1,5 @@
 import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
+import type { TDomainEventEmitter } from "@app/domains/lib/event-emitter";
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { TransactionRunner, TTransactionRunner } from "@app/domains/lib/transaction-runner";
 
@@ -51,6 +52,8 @@ export type TAccessControlDeps = (
   | TAccessControlDataAccessDeps
 ) & {
   keyStore: TDomainKeyStore;
+  // Its only dependency: removals write their events on the same transaction as the delete.
+  eventEmitter: TDomainEventEmitter;
 };
 
 export const buildAccessControlDataAccessDeps = (db: DataAccessDb): TAccessControlDataAccessDeps => ({

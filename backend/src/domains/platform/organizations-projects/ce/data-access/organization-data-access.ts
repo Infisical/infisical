@@ -2,6 +2,8 @@ import { ProjectType, TableName } from "@app/db/schemas";
 import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
+import { ActorOrganization, TActorOrganizationProps } from "../model/actor-organization";
+
 // Project types that do not take a workspace slot on a plan.
 const UNCOUNTED_WORKSPACE_TYPES = [
   ProjectType.CertificateManager,
@@ -17,6 +19,32 @@ const UNCOUNTED_WORKSPACE_TYPES = [
 // Reads the organizations and projects tables, which a future domain will own; see ../../AGENTS.md.
 export class OrganizationDataAccess {
   constructor(private readonly db: DataAccessDb) {}
+
+  // The org with its root org's sign-in policy. Undefined when the org does not exist.
+  async findActorOrganization(orgId: string, options?: TReadOptions): Promise<ActorOrganization | undefined> {
+    try {
+      const knex = this.db.reader(options);
+      const row = await knex(TableName.Organization)
+        .joinRaw(
+          `LEFT JOIN "${TableName.Organization}" AS root ON root.id = COALESCE("${TableName.Organization}"."rootOrgId", "${TableName.Organization}".id)`
+        )
+        .where(`${TableName.Organization}.id`, orgId)
+        .select(
+          knex.ref("id").withSchema(TableName.Organization),
+          knex.ref("name").withSchema(TableName.Organization),
+          knex.ref("rootOrgId").withSchema(TableName.Organization),
+          knex.ref("parentOrgId").withSchema(TableName.Organization),
+          knex.ref("shouldUseNewPrivilegeSystem").withSchema(TableName.Organization),
+          knex.ref("authEnforced").withSchema("root").as("rootAuthEnforced"),
+          knex.ref("googleSsoAuthEnforced").withSchema("root").as("rootGoogleSsoAuthEnforced"),
+          knex.ref("bypassOrgAuthEnabled").withSchema("root").as("rootBypassOrgAuthEnabled")
+        )
+        .first<TActorOrganizationProps | undefined>();
+      return row ? ActorOrganization.restore(row) : undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find actor organization" });
+    }
+  }
 
   // The org's root: itself for a root org, the root a sub-org belongs to. Null when the org does not exist.
   async findRootOrgId(orgId: string, options?: TReadOptions): Promise<string | null> {

@@ -66,3 +66,46 @@ describe("OrganizationsProjectsModule organizations for License", () => {
     expect(used).toBe(2);
   });
 });
+
+describe("OrganizationsProjectsModule.findActorOrg", () => {
+  const h = setupIntegration();
+
+  const build = () =>
+    new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(h.db), licenseRegistry: new FakeLicenseRegistry() })
+      .service;
+
+  test("should give a sub-org its root org's sign-in policy and the root and parent ids", async () => {
+    // Setup
+    const root = await h.factories.organization({ authEnforced: true, bypassOrgAuthEnabled: true });
+    const sub = await h.factories.organization({ rootOrgId: root.id, parentOrgId: root.id });
+
+    // Action
+    const org = await build().findActorOrg(sub.id);
+
+    // Assert
+    expect(org).toMatchObject({ id: sub.id, rootOrgId: root.id, parentOrgId: root.id });
+    expect(org?.ssoPolicy).toEqual({ authEnforced: true, googleSsoAuthEnforced: false, bypassOrgAuthEnabled: true });
+  });
+
+  test("should give a root org itself as root and parent", async () => {
+    // Setup
+    const root = await h.factories.organization({ shouldUseNewPrivilegeSystem: false });
+
+    // Action
+    const org = await build().findActorOrg(root.id);
+
+    // Assert
+    expect(org).toMatchObject({ rootOrgId: root.id, parentOrgId: root.id, shouldUseNewPrivilegeSystem: false });
+  });
+
+  test("should find nothing for an org that does not exist", async () => {
+    // Setup
+    const service = build();
+
+    // Action
+    const org = await service.findActorOrg(randomUUID());
+
+    // Assert
+    expect(org).toBeUndefined();
+  });
+});

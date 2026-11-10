@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { TDbClient } from "@app/db";
 import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
@@ -10,8 +11,8 @@ import {
 } from "@app/lib/telemetry/metrics";
 
 import { eventSource } from "./event-definition";
-import { TClaimedOutboxRow, TEventOutboxDALFactory, TOutboxInsertRow } from "./event-outbox-dal";
-import { TEventOutboxRegistry } from "./event-outbox-registry";
+import { eventOutboxDALFactory, TClaimedOutboxRow, TEventOutboxDALFactory, TOutboxInsertRow } from "./event-outbox-dal";
+import { eventOutboxRegistryFactory, TEventOutboxRegistry } from "./event-outbox-registry";
 import {
   computeBackoffMs,
   DELIVERED_RETENTION_MS,
@@ -380,3 +381,13 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
 
   return { emit, drain, sweepStaleClaims, pruneTerminalRows };
 };
+
+// The outbox as main() builds it once: the domains emit on it and the routes register its consumers.
+export const buildEventOutbox = (db: TDbClient) => {
+  const eventOutboxDAL = eventOutboxDALFactory(db);
+  const eventOutboxRegistry = eventOutboxRegistryFactory();
+  const eventOutboxService = eventOutboxServiceFactory({ eventOutboxDAL, eventOutboxRegistry });
+  return { eventOutboxDAL, eventOutboxRegistry, eventOutboxService };
+};
+
+export type TEventOutbox = ReturnType<typeof buildEventOutbox>;

@@ -1,4 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
+import type { TActorOrg } from "@app/domains/lib/actor-context";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
 
@@ -22,6 +23,8 @@ export type TOrganizationsProjectsDomain = {
     orgId?: string
   ) => Promise<{ users: number; identities: number }>;
   getProjectIdentityBreakdown: (projectType: ProjectType, orgId?: string) => Promise<TIdentityOwnershipRow[]>;
+  // The org facts every request acting in it carries (req.permission.org). Undefined when the org does not exist.
+  findActorOrg: (orgId: string) => Promise<TActorOrg | undefined>;
 };
 
 export type TOrganizationsProjectsDeps = {
@@ -46,7 +49,11 @@ export class OrganizationsProjectsModule {
       countProjectIdentities: (projectType, orgId) => actors.countProjectIdentities(projectType, orgId),
       countProjectIdentitiesByKind: (projectType, orgId) => actors.countProjectIdentitiesByKind(projectType, orgId),
       getProjectIdentityBreakdown: (projectType, orgId) =>
-        actors.getProjectIdentityOwnershipBreakdown(projectType, orgId)
+        actors.getProjectIdentityOwnershipBreakdown(projectType, orgId),
+      findActorOrg: async (orgId) => {
+        const organization = await organizations.findActorOrganization(orgId);
+        return organization?.toActorOrg();
+      }
     };
 
     licenseRegistry.registerOrganizations({
