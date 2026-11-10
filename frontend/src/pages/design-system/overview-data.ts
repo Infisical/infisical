@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "header-no-hover",
+    title: "Headers stay still on hover",
+    description:
+      "Hovering a table header no longer tints the whole row. Only a full-cell header trigger, like a sort, takes a hover.",
+    date: "2026-11-07",
+    commit: "63eb87adc8",
+    page: "table"
+  },
+  {
     id: "pinned-edge-line",
     title: "Pinned edges hold their line",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "dfbd72f4c0",
     page: "multi-select"
-  },
-  {
-    id: "bulk-action-reason",
-    title: "Blocked bulk actions explain why",
-    description:
-      "A disabled bulk action stays focusable and shows its reason on hover and keyboard focus.",
-    date: "2026-11-07",
-    commit: "f2ee386887",
-    page: "floating-action-bar"
   }
 ];
