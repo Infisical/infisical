@@ -113,7 +113,8 @@ function AlertDialogContent({
         value={typed}
         onChange={(event) => setTyped(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+          if (event.key !== "Enter" || event.nativeEvent.isComposing || event.keyCode === 229)
+            return;
           event.preventDefault();
           if (busy || typed !== confirmText) return;
           event.currentTarget
