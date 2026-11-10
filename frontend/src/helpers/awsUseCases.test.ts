@@ -39,12 +39,11 @@ describe("AWS use cases", () => {
 
   test.each(
     AWS_USE_CASE_GROUPS.flatMap((group): { id: string; label: string }[] => [...group.options])
-  )(
-    "$id is labelled in the template as it is in Infisical",
-    ({ id, label }) => {
-      expect(template).toContain(`${toParameterName(id)}:\n        default: ${JSON.stringify(label)}`);
-    }
-  );
+  )("$id is labelled in the template as it is in Infisical", ({ id, label }) => {
+    expect(template).toContain(
+      `${toParameterName(id)}:\n        default: ${JSON.stringify(label)}`
+    );
+  });
 
   test.each(Object.entries(AWS_COMPANION_PARAMETER_LABELS))(
     "%s is labelled in the template as it is in Infisical",
