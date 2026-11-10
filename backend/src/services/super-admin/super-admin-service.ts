@@ -1,5 +1,9 @@
 import { AccessScope, IdentityAuthMethod, OrgMembershipRole, OrgMembershipStatus, TUsers } from "@app/db/schemas";
-import { TInstanceConfigCoreDomain, TInstanceConfigPatch } from "@app/domains/platform/instance-config-core/ce/module";
+import {
+  ReadFrom,
+  TInstanceConfigCoreDomain,
+  TInstanceConfigPatch
+} from "@app/domains/platform/instance-config-core/ce/module";
 import { RootKeyEncryptionStrategy, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -174,7 +178,8 @@ export const superAdminServiceFactory = ({
 
     // Teams keeps its bot in this process; the other pods rebuild theirs when their sync sees the new updatedAt.
     if (data.microsoftTeamsAppId || data.microsoftTeamsClientSecret || data.microsoftTeamsBotId) {
-      const teams = await instanceConfigCoreDomain.getMicrosoftTeamsCredentials();
+      // The committed row, not the shared cache, which another pod may have just refilled from a lagging replica.
+      const teams = await instanceConfigCoreDomain.getMicrosoftTeamsCredentials({ readFrom: ReadFrom.Primary });
       if (teams.appId && teams.clientSecret && teams.botId) {
         await microsoftTeamsService.initializeTeamsBot({
           botAppId: teams.appId,

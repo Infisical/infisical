@@ -1,11 +1,11 @@
 import { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { InMemoryKeyStore } from "@app/domains/lib/testing/in-memory-key-store";
+import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { FakeKmsCoreDomain } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core-domain";
 
 import { InstanceConfigCoreModule } from "../module";
-import { TRootKeyCipher } from "../service/instance-config-types";
 import { FakeInstanceConfigEnv } from "./fake-instance-config-env";
 import { InMemoryInstanceConfigCoreDataAccess } from "./in-memory-instance-config-core-data-access";
-import { TestRootKeyCipher } from "./test-root-key-cipher";
 
 export type TInMemoryInstanceConfigCore = ReturnType<typeof buildInMemoryInstanceConfigCore>;
 
@@ -14,13 +14,13 @@ export type TInMemoryInstanceConfigCore = ReturnType<typeof buildInMemoryInstanc
 export const buildInMemoryInstanceConfigCore = ({
   inMemory = new InMemoryInstanceConfigCoreDataAccess(),
   keyStore = new InMemoryKeyStore(),
-  kms = new TestRootKeyCipher(),
+  kms = new FakeKmsCoreDomain(),
   env = new FakeInstanceConfigEnv(),
   fipsEnabled = false
 }: {
   inMemory?: InMemoryInstanceConfigCoreDataAccess;
   keyStore?: TDomainKeyStore;
-  kms?: TRootKeyCipher;
+  kms?: TKmsCoreDomain;
   env?: FakeInstanceConfigEnv;
   fipsEnabled?: boolean;
 } = {}) => {

@@ -68,7 +68,7 @@ export class RootKeyService {
     if (needsEncryptionKey) this.assertEncryptionKeyConfigured();
 
     const rootKey = await this.resolveRootKey(isHsmConfigured, skipRotationState);
-    logger.info("KMS: Loading ROOT Key into Memory.");
+    logger?.info("KMS: Loading ROOT Key into Memory.");
     this.deps.state.rootKey.set(rootKey);
 
     if (skipRotationState) return;
@@ -285,7 +285,7 @@ export class RootKeyService {
     const label = this.currentKekLabel();
     const history = await this.deps.dataAccess.kekHistory.findPage({ offset: 0, limit: 5 }, PRIMARY).catch(() => []);
     const known = history.map((entry) => entry.kekLabel).join(", ");
-    logger.error({ err: errors[0] }, "KMS: No stored root key could be decrypted with the configured encryption key");
+    logger?.error({ err: errors[0] }, "KMS: No stored root key could be decrypted with the configured encryption key");
     throw new InternalServerError({
       message: `The configured encryption key (label ${label ?? "unknown"}) does not decrypt this database's root key. ${
         known
@@ -300,7 +300,7 @@ export class RootKeyService {
     if (row.isStaged) {
       const label = this.currentKekLabel();
       if (await this.promoteRotation(row.id, label)) {
-        logger.info(`KMS: Promoted staged encryption key rotation [label=${label ?? "hsm"}] [rotationId=${row.id}]`);
+        logger?.info(`KMS: Promoted staged encryption key rotation [label=${label ?? "hsm"}] [rotationId=${row.id}]`);
       }
     }
 
@@ -310,7 +310,7 @@ export class RootKeyService {
       if (label) {
         await this.deps.dataAccess.rootKeyConfigs
           .update(row.id, { kekLabel: label })
-          .catch((err: unknown) => logger.warn({ err }, "KMS: Failed to label a root key row"));
+          .catch((err: unknown) => logger?.warn({ err }, "KMS: Failed to label a root key row"));
       }
     }
 
@@ -319,8 +319,8 @@ export class RootKeyService {
     if (row.supersededAt) {
       await this.deps.dataAccess.rootKeyConfigs
         .update(row.id, { lastResolvedAt: new Date() })
-        .catch((err: unknown) => logger.warn({ err }, "KMS: Failed to record use of a superseded root key"));
-      logger.warn(
+        .catch((err: unknown) => logger?.warn({ err }, "KMS: Failed to record use of a superseded root key"));
+      logger?.warn(
         `KMS: This instance started on a superseded encryption key [rootConfigId=${row.id}] [label=${
           this.currentKekLabel() ?? "hsm"
         }]. Roll it onto the current key before the previous one is removed.`
@@ -329,7 +329,7 @@ export class RootKeyService {
   }
 
   private async bootstrapRootKey(isHsmConfigured: boolean, skipRotationState: boolean): Promise<RootKeyConfig> {
-    logger.info(`KMS: Generating new ROOT Key with ${isHsmConfigured ? "HSM" : "software"} encryption`);
+    logger?.info(`KMS: Generating new ROOT Key with ${isHsmConfigured ? "HSM" : "software"} encryption`);
     const wrapper = this.deps.state.hooks.rootKeyWrapper;
     const useHsm = isHsmConfigured && Boolean(wrapper);
     const rootKey = useHsm && wrapper ? await wrapper.randomBytes(32) : crypto.randomBytes(32);
@@ -338,7 +338,7 @@ export class RootKeyService {
     // Wrapped before the transaction opens: this can be an HSM round trip. A pod that loses the race below
     // discards its key unused.
     const encryptedRootKey = await this.wrapRootKey(rootKey, strategy).catch((err) => {
-      logger.error({ hsmEnabled: useHsm, encryptionStrategy: strategy }, "KMS: Failed to encrypt ROOT Key");
+      logger?.error({ hsmEnabled: useHsm, encryptionStrategy: strategy }, "KMS: Failed to encrypt ROOT Key");
       throw err;
     });
 
@@ -391,7 +391,7 @@ export class RootKeyService {
         const entry = stale.kekLabel ? await dataAccess.kekHistory.findActiveByLabel(stale.kekLabel) : undefined;
         // eslint-disable-next-line no-await-in-loop
         if (entry) await dataAccess.kekHistory.markRetired(entry.id, now);
-        logger.info(
+        logger?.info(
           `KMS: Removed a key superseded by an earlier rotation [rootConfigId=${stale.id}] [label=${stale.kekLabel ?? "unknown"}]`
         );
       }
@@ -460,7 +460,7 @@ export class RootKeyService {
       })
       .catch((err: unknown) => {
         // Never block boot on a bookkeeping row.
-        logger.warn({ err }, "KMS: Failed to record initial encryption key history entry");
+        logger?.warn({ err }, "KMS: Failed to record initial encryption key history entry");
       });
   }
 }

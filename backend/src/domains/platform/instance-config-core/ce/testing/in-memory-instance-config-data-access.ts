@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 
 import { SuperAdminSchema, TSuperAdminInsert } from "@app/db/schemas";
 
-import { TInstanceConfigDataAccess, TInstanceConfigUpdate } from "../data-access/instance-config-data-access";
+import {
+  INSTANCE_CONFIG_ID,
+  TInstanceConfigDataAccess,
+  TInstanceConfigUpdate
+} from "../data-access/instance-config-data-access";
 import { InstanceConfig } from "../model/instance-config";
 import { InMemoryInstanceConfigCoreState } from "./in-memory-instance-config-core-state";
 
@@ -30,12 +34,13 @@ export class InMemoryInstanceConfigDataAccess implements TInstanceConfigDataAcce
   }
 
   // SuperAdminSchema applies the column defaults Postgres would.
-  async createIfMissing(initial: TSuperAdminInsert & { id: string }) {
+  async createIfMissing(settings: TSuperAdminInsert) {
     if (!this.state.tables.row) {
       const now = new Date();
       this.state.tables.row = SuperAdminSchema.parse({
         instanceId: randomUUID(),
-        ...initial,
+        ...settings,
+        id: INSTANCE_CONFIG_ID,
         createdAt: now,
         updatedAt: now
       });

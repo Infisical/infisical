@@ -1,4 +1,4 @@
-import { InstanceConfig, TInstanceConfigProps } from "./instance-config";
+import { InstanceConfig, TEncryptedColumn, TInstanceConfigProps } from "./instance-config";
 
 const row = (overrides: Partial<TInstanceConfigProps> = {}): TInstanceConfigProps => ({
   id: "00000000-0000-0000-0000-000000000000",
@@ -12,33 +12,28 @@ const row = (overrides: Partial<TInstanceConfigProps> = {}): TInstanceConfigProp
   ...overrides
 });
 
-describe("InstanceConfig.toView", () => {
-  test("should contain no encrypted column", () => {
+describe("InstanceConfig.toSettings", () => {
+  test("should return the allowlisted fields and no ciphertext", () => {
     // Setup
     const config = InstanceConfig.restore(
       row({ encryptedSlackClientId: Buffer.from("x"), encryptedEnvOverrides: Buffer.from("y") })
     );
 
     // Action
-    const view = config.toView();
+    const settings = config.toSettings();
 
     // Assert
-    expect(Object.keys(view).filter((key) => key.startsWith("encrypted"))).toEqual([]);
-    expect(view.allowSignUp).toBe(true);
+    expect(
+      Object.keys(settings).every((key) => (InstanceConfig.SETTING_FIELDS as readonly string[]).includes(key))
+    ).toBe(true);
+    expect(settings).not.toHaveProperty("encryptedSlackClientId");
+    expect(settings.allowSignUp).toBe(true);
   });
-});
 
-describe("InstanceConfig.fromCached", () => {
-  test("should read back a row a previous release cached, with its dates and ciphertext", () => {
-    // Setup
-    const cipherText = Buffer.from([1, 2, 3]);
-    const cached = JSON.parse(JSON.stringify(row({ encryptedSlackClientId: cipherText }))) as TInstanceConfigProps;
-
-    // Action
-    const config = InstanceConfig.fromCached(cached);
-
-    // Assert
-    expect(config.updatedAt).toEqual(new Date("2026-01-02T00:00:00.000Z"));
-    expect(config.encrypted("encryptedSlackClientId")).toEqual(cipherText);
+  test("should place every super_admin column in the settings or the encrypted columns", () => {
+    // Assert: a new column fails this until it is listed in SETTING_FIELDS or TEncryptedColumn
+    expectTypeOf<
+      Exclude<keyof TInstanceConfigProps, (typeof InstanceConfig.SETTING_FIELDS)[number] | TEncryptedColumn>
+    >().toEqualTypeOf<never>();
   });
 });

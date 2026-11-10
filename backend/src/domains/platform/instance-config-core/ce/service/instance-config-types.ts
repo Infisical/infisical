@@ -1,8 +1,7 @@
-import type { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TInstanceConfigSettings } from "../model/instance-config";
 
-import { TServerConfigView } from "../model/instance-config";
-
-export type { TServerConfigView };
+// What callers read: the settings, never a ciphertext.
+export type TServerConfigView = TInstanceConfigSettings;
 
 // What the env holder (lib/config/env.ts) gives the domain. Passed in by domains.ts so this module never loads env.ts.
 export type TInstanceConfigEnv = {
@@ -18,8 +17,6 @@ export type TInstanceConfigEnv = {
   // Rebuilds the env holder from the process env plus these overrides; keeps it unchanged when they do not parse.
   overrideEnvConfig: (overrides: Record<string, string>) => void;
 };
-
-export type TRootKeyCipher = Pick<TKmsCoreDomain, "encryptWithRootKey" | "decryptWithRootKey">;
 
 type TSettings = Omit<
   TServerConfigView,

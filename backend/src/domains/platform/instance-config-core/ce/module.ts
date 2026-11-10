@@ -1,8 +1,9 @@
 import type { Knex } from "knex";
 
-import { DataAccessDb } from "@app/domains/lib/data-access-db";
+import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { TransactionRunner, TTransactionRunner } from "@app/domains/lib/transaction-runner";
+import type { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import type { startLocalRefresh, TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
@@ -13,7 +14,6 @@ import {
 } from "./data-access/instance-config-core-data-access";
 import { InstanceConfigDataAccess } from "./data-access/instance-config-data-access";
 import { ServerConfigCache } from "./data-access/server-config-cache";
-import { EnvOverridesService } from "./service/env-overrides-service";
 import { InstanceConfigService } from "./service/instance-config-service";
 import {
   TEnvOverridesView,
@@ -21,13 +21,11 @@ import {
   TInstanceConfigPatch,
   TIntegrationCredentials,
   TMicrosoftTeamsCredentials,
-  TRootKeyCipher,
   TServerConfigView
 } from "./service/instance-config-types";
 import { IntegrationCredentialsHolder } from "./service/integration-credentials-holder";
-import { IntegrationCredentialsService } from "./service/integration-credentials-service";
 
-export { INSTANCE_CONFIG_ID } from "./model/instance-config";
+export { ReadFrom } from "@app/domains/lib/data-access-db";
 export type {
   TEnvOverridesView,
   TInstanceConfigEnv,
@@ -45,8 +43,9 @@ export type TInstanceConfigCoreDomain = {
   updateConfig: (patch: TInstanceConfigPatch) => Promise<TServerConfigView>;
   // Stored Slack credentials, else WORKFLOW_SLACK_CLIENT_ID and WORKFLOW_SLACK_CLIENT_SECRET from env.
   getSlackCredentials: () => Promise<{ clientId: string; clientSecret: string }>;
-  // updatedAt is the config row's: it changes on every config update.
-  getMicrosoftTeamsCredentials: () => Promise<TMicrosoftTeamsCredentials>;
+  // updatedAt is the config row's: it changes on every config update. Pass { readFrom: ReadFrom.Primary } to read the
+  // committed row instead of the shared cache, as after your own update.
+  getMicrosoftTeamsCredentials: (options?: TReadOptions) => Promise<TMicrosoftTeamsCredentials>;
   getIntegrationCredentials: () => Promise<TIntegrationCredentials>;
   getEnvOverrides: () => Promise<Record<string, string>>;
   getEnvOverridesOrganized: () => Promise<TEnvOverridesView>;
@@ -66,7 +65,7 @@ export type TInstanceConfigCoreDeps = (
   | TInstanceConfigCoreDataAccessDeps
 ) & {
   keyStore: TDomainKeyStore;
-  kmsCoreDomain: TRootKeyCipher;
+  kmsCoreDomain: TKmsCoreDomain;
   env: TInstanceConfigEnv;
   // Runs a task on a timer in this process. Supplied by the wiring: the timer module must not load with this one.
   startLocalRefresh: typeof startLocalRefresh;
@@ -87,34 +86,28 @@ export class InstanceConfigCoreModule {
 
   private readonly instanceConfig: InstanceConfigService;
 
-  private readonly envOverrides: EnvOverridesService;
-
   constructor(private readonly deps: TInstanceConfigCoreDeps) {
     const { transactionRunner, dataAccess } = "db" in deps ? buildInstanceConfigCoreDataAccessDeps(deps.db) : deps;
-    const cache = new ServerConfigCache(deps.keyStore, dataAccess.instanceConfig);
-    const credentials = new IntegrationCredentialsHolder();
-    const { kmsCoreDomain, env } = deps;
-
     this.instanceConfig = new InstanceConfigService({
       transactionRunner,
-      cache,
-      kmsCoreDomain,
-      env,
+      dataAccess,
+      cache: new ServerConfigCache(deps.keyStore),
+      credentials: new IntegrationCredentialsHolder(),
+      kmsCoreDomain: deps.kmsCoreDomain,
+      env: deps.env,
       isFipsModeEnabled: deps.isFipsModeEnabled ?? (() => crypto.isFipsModeEnabled())
     });
-    this.envOverrides = new EnvOverridesService({ dataAccess, kmsCoreDomain, env });
-    const integrationCredentials = new IntegrationCredentialsService({ cache, credentials, kmsCoreDomain, env });
 
-    const { instanceConfig, envOverrides } = this;
+    const { instanceConfig } = this;
     this.service = {
       getServerConfig: () => instanceConfig.getServerConfig(),
       getAdminIdentityIds: () => instanceConfig.getAdminIdentityIds(),
       updateConfig: (patch) => instanceConfig.updateConfig(patch),
-      getSlackCredentials: () => integrationCredentials.getSlackCredentials(),
-      getMicrosoftTeamsCredentials: () => integrationCredentials.getMicrosoftTeamsCredentials(),
-      getIntegrationCredentials: () => integrationCredentials.getIntegrationCredentials(),
-      getEnvOverrides: () => envOverrides.getEnvOverrides(),
-      getEnvOverridesOrganized: () => envOverrides.getEnvOverridesOrganized()
+      getSlackCredentials: () => instanceConfig.getSlackCredentials(),
+      getMicrosoftTeamsCredentials: (options) => instanceConfig.getMicrosoftTeamsCredentials(options),
+      getIntegrationCredentials: () => instanceConfig.getIntegrationCredentials(),
+      getEnvOverrides: () => instanceConfig.getEnvOverrides(),
+      getEnvOverridesOrganized: () => instanceConfig.getEnvOverridesOrganized()
     };
   }
 
@@ -124,8 +117,7 @@ export class InstanceConfigCoreModule {
     return InstanceConfigDataAccess.readFipsSetting(knex);
   }
 
-  // Whether an instance admin finished setup. A plain read for the boot banner, which runs outside the route plugin
-  // that builds the modules.
+  // Whether an instance admin finished setup. A plain read for the boot banner in main.ts, which has no modules.
   static readInitialized(knex: Knex): Promise<boolean> {
     return InstanceConfigDataAccess.readInitialized(knex);
   }
@@ -139,11 +131,11 @@ export class InstanceConfigCoreModule {
   // started.
   async start(): Promise<TLocalRefreshHandle> {
     logger.info("Setting up background sync process for environment overrides");
-    await this.envOverrides.syncNow();
+    await this.instanceConfig.syncEnvOverrides();
     return this.deps.startLocalRefresh({
       name: "env-config-sync",
       intervalMs: 5 * 60 * 1000,
-      task: () => this.envOverrides.syncNow()
+      task: () => this.instanceConfig.syncEnvOverrides()
     });
   }
 }

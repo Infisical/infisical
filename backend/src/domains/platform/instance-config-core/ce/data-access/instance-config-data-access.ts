@@ -4,7 +4,10 @@ import { TableName, TSuperAdminInsert, TSuperAdminUpdate } from "@app/db/schemas
 import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
-import { INSTANCE_CONFIG_ID, InstanceConfig, TInstanceConfigProps } from "../model/instance-config";
+import { InstanceConfig, TInstanceConfigProps } from "../model/instance-config";
+
+// The id of the one super_admin row. Pods of the previous release look the row up by it.
+export const INSTANCE_CONFIG_ID = "00000000-0000-0000-0000-000000000000";
 
 // The super_admin columns one update writes.
 export type TInstanceConfigUpdate = Omit<TSuperAdminUpdate, "id">;
@@ -12,7 +15,7 @@ export type TInstanceConfigUpdate = Omit<TSuperAdminUpdate, "id">;
 export type TInstanceConfigDataAccess = {
   findById(options?: TReadOptions): Promise<InstanceConfig | undefined>;
   // Returns the existing row, or inserts this one. Safe for any number of pods booting at once.
-  createIfMissing(initial: TSuperAdminInsert & { id: string }): Promise<InstanceConfig>;
+  createIfMissing(settings: TSuperAdminInsert): Promise<InstanceConfig>;
   update(columns: TInstanceConfigUpdate): Promise<void>;
 };
 
@@ -76,11 +79,12 @@ export class InstanceConfigDataAccess implements TInstanceConfigDataAccess {
     }
   }
 
-  async createIfMissing(initial: TSuperAdminInsert & { id: string }): Promise<InstanceConfig> {
+  async createIfMissing(settings: TSuperAdminInsert): Promise<InstanceConfig> {
+    const row: TSuperAdminInsert & { id: string } = { ...settings, id: INSTANCE_CONFIG_ID };
     try {
       // A concurrent boot's insert waits for the first to commit and then does nothing; the read below runs as a new
       // statement, so under Read Committed it sees that row. Read-then-insert would fail one boot on the primary key.
-      await this.db.writer()(TableName.SuperAdmin).insert(initial).onConflict("id").ignore();
+      await this.db.writer()(TableName.SuperAdmin).insert(row).onConflict("id").ignore();
     } catch (error) {
       throw new DatabaseError({ error, name: "Create instance config" });
     }

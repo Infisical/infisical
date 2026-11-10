@@ -11,6 +11,12 @@ export class InMemoryInstanceConfigCoreState {
   // Counts reads of the row, so a test can tell a cache hit from a database read.
   reads = 0;
 
+  // For tests that need a row the domain would never write, such as a corrupt ciphertext.
+  overwriteRow(columns: Partial<TSuperAdmin>) {
+    if (!this.tables.row) throw new Error("No instance config row to overwrite");
+    this.tables.row = { ...this.tables.row, ...columns };
+  }
+
   addOrg(id: string, org: TInMemoryAuthOrg) {
     this.tables.orgs.set(id, org);
   }

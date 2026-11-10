@@ -1,23 +1,18 @@
 import { TSuperAdmin, TSuperAdminInsert } from "@app/db/schemas";
+import { pick } from "@app/lib/fn";
 
-// The id of the one super_admin row. Pods of the previous release look the row up by it.
-export const INSTANCE_CONFIG_ID = "00000000-0000-0000-0000-000000000000";
-
-const ENCRYPTED_COLUMNS = [
-  "encryptedSlackClientId",
-  "encryptedSlackClientSecret",
-  "encryptedMicrosoftTeamsAppId",
-  "encryptedMicrosoftTeamsClientSecret",
-  "encryptedMicrosoftTeamsBotId",
-  "encryptedGitHubAppConnectionClientId",
-  "encryptedGitHubAppConnectionClientSecret",
-  "encryptedGitHubAppConnectionSlug",
-  "encryptedGitHubAppConnectionId",
-  "encryptedGitHubAppConnectionPrivateKey",
-  "encryptedEnvOverrides"
-] as const;
-
-export type TEncryptedColumn = (typeof ENCRYPTED_COLUMNS)[number];
+export type TEncryptedColumn =
+  | "encryptedSlackClientId"
+  | "encryptedSlackClientSecret"
+  | "encryptedMicrosoftTeamsAppId"
+  | "encryptedMicrosoftTeamsClientSecret"
+  | "encryptedMicrosoftTeamsBotId"
+  | "encryptedGitHubAppConnectionClientId"
+  | "encryptedGitHubAppConnectionClientSecret"
+  | "encryptedGitHubAppConnectionSlug"
+  | "encryptedGitHubAppConnectionId"
+  | "encryptedGitHubAppConnectionPrivateKey"
+  | "encryptedEnvOverrides";
 
 // The super_admin row with the default auth org fields its read joins in.
 export type TInstanceConfigProps = TSuperAdmin & {
@@ -26,53 +21,43 @@ export type TInstanceConfigProps = TSuperAdmin & {
   defaultAuthOrgAuthMethod?: string | null;
 };
 
-// What callers read: every setting, never a ciphertext.
-export type TServerConfigView = Omit<TInstanceConfigProps, TEncryptedColumn>;
-
-type TCachedBuffer = { type: "Buffer"; data: number[] } | Buffer | null | undefined;
-
-// The row as JSON.parse returns it from the cache: dates are strings and Buffers are { type: "Buffer", data }.
-export type TCachedInstanceConfig = Omit<TInstanceConfigProps, "createdAt" | "updatedAt" | TEncryptedColumn> & {
-  createdAt: string | Date;
-  updatedAt: string | Date;
-} & Partial<Record<TEncryptedColumn, TCachedBuffer>>;
-
-const reviveBuffer = (value: TCachedBuffer): Buffer | null => {
-  if (!value) return null;
-  return Buffer.isBuffer(value) ? value : Buffer.from(value.data);
-};
+export type TInstanceConfigSettings = Pick<TInstanceConfigProps, (typeof InstanceConfig.SETTING_FIELDS)[number]>;
 
 // The instance's configuration: the single super_admin row.
 export class InstanceConfig {
+  // The fields toSettings() returns. An allowlist, so a column added later stays out of every response, ciphertext
+  // included, until someone lists it here.
+  static readonly SETTING_FIELDS = [
+    "id",
+    "initialized",
+    "allowSignUp",
+    "allowedSignUpDomain",
+    "instanceId",
+    "trustLdapEmails",
+    "defaultAuthOrgId",
+    "enabledLoginMethods",
+    "authConsentContent",
+    "pageFrameContent",
+    "adminIdentityIds",
+    "fipsEnabled",
+    "onboardingCompleted",
+    "allowedStorageHostnames",
+    "createdAt",
+    "updatedAt",
+    "defaultAuthOrgSlug",
+    "defaultAuthOrgAuthEnforced",
+    "defaultAuthOrgAuthMethod"
+  ] as const;
+
   private constructor(private readonly props: TInstanceConfigProps) {}
 
   static restore(props: TInstanceConfigProps): InstanceConfig {
     return new InstanceConfig({ ...props, defaultAuthOrgSlug: props.defaultAuthOrgSlug || null });
   }
 
-  // A row read back from the cache, which pods of the previous release also write.
-  static fromCached(cached: TCachedInstanceConfig): InstanceConfig {
-    return InstanceConfig.restore({
-      ...cached,
-      createdAt: new Date(cached.createdAt),
-      updatedAt: new Date(cached.updatedAt),
-      encryptedSlackClientId: reviveBuffer(cached.encryptedSlackClientId),
-      encryptedSlackClientSecret: reviveBuffer(cached.encryptedSlackClientSecret),
-      encryptedMicrosoftTeamsAppId: reviveBuffer(cached.encryptedMicrosoftTeamsAppId),
-      encryptedMicrosoftTeamsClientSecret: reviveBuffer(cached.encryptedMicrosoftTeamsClientSecret),
-      encryptedMicrosoftTeamsBotId: reviveBuffer(cached.encryptedMicrosoftTeamsBotId),
-      encryptedGitHubAppConnectionClientId: reviveBuffer(cached.encryptedGitHubAppConnectionClientId),
-      encryptedGitHubAppConnectionClientSecret: reviveBuffer(cached.encryptedGitHubAppConnectionClientSecret),
-      encryptedGitHubAppConnectionSlug: reviveBuffer(cached.encryptedGitHubAppConnectionSlug),
-      encryptedGitHubAppConnectionId: reviveBuffer(cached.encryptedGitHubAppConnectionId),
-      encryptedGitHubAppConnectionPrivateKey: reviveBuffer(cached.encryptedGitHubAppConnectionPrivateKey),
-      encryptedEnvOverrides: reviveBuffer(cached.encryptedEnvOverrides)
-    });
-  }
-
-  // The row a new instance starts with.
-  static initial({ fipsEnabled }: { fipsEnabled: boolean }): TSuperAdminInsert & { id: string } {
-    return { id: INSTANCE_CONFIG_ID, fipsEnabled, initialized: false, allowSignUp: true, defaultAuthOrgId: null };
+  // The settings a new instance starts with.
+  static initialSettings({ fipsEnabled }: { fipsEnabled: boolean }): TSuperAdminInsert {
+    return { fipsEnabled, initialized: false, allowSignUp: true, defaultAuthOrgId: null };
   }
 
   get updatedAt(): Date {
@@ -87,25 +72,11 @@ export class InstanceConfig {
     return this.props[column] ?? null;
   }
 
-  toView(): TServerConfigView {
-    const {
-      encryptedSlackClientId,
-      encryptedSlackClientSecret,
-      encryptedMicrosoftTeamsAppId,
-      encryptedMicrosoftTeamsClientSecret,
-      encryptedMicrosoftTeamsBotId,
-      encryptedGitHubAppConnectionClientId,
-      encryptedGitHubAppConnectionClientSecret,
-      encryptedGitHubAppConnectionSlug,
-      encryptedGitHubAppConnectionId,
-      encryptedGitHubAppConnectionPrivateKey,
-      encryptedEnvOverrides,
-      ...view
-    } = this.props;
-    return view;
+  toSettings(): TInstanceConfigSettings {
+    return pick(this.props, [...InstanceConfig.SETTING_FIELDS]);
   }
 
-  // The full row, the shape the shared cache has always held.
+  // The full row, ciphertext included: the shape the shared cache has always held.
   toJSON(): TInstanceConfigProps {
     return { ...this.props };
   }

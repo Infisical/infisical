@@ -1,16 +1,29 @@
+import { ReadFrom, TReadOptions } from "@app/domains/lib/data-access-db";
 import { TTransactionRunner } from "@app/domains/lib/transaction-runner";
-import { BadRequestError, DatabaseError } from "@app/lib/errors";
+import type { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 
 import { TInstanceConfigCoreDataAccess } from "../data-access/instance-config-core-data-access";
 import { TInstanceConfigUpdate } from "../data-access/instance-config-data-access";
 import { ServerConfigCache } from "../data-access/server-config-cache";
-import { InstanceConfig, TServerConfigView } from "../model/instance-config";
-import { TInstanceConfigEnv, TInstanceConfigPatch, TRootKeyCipher } from "./instance-config-types";
+import { InstanceConfig, TEncryptedColumn } from "../model/instance-config";
+import {
+  TEnvOverridesView,
+  TInstanceConfigEnv,
+  TInstanceConfigPatch,
+  TIntegrationCredentials,
+  TMicrosoftTeamsCredentials,
+  TServerConfigView
+} from "./instance-config-types";
+import { IntegrationCredentialsHolder } from "./integration-credentials-holder";
 
 export type TInstanceConfigServiceDeps = {
   transactionRunner: TTransactionRunner<TInstanceConfigCoreDataAccess>;
+  // Outside a transaction, for reads.
+  dataAccess: TInstanceConfigCoreDataAccess;
   cache: ServerConfigCache;
-  kmsCoreDomain: TRootKeyCipher;
+  credentials: IntegrationCredentialsHolder;
+  kmsCoreDomain: TKmsCoreDomain;
   env: TInstanceConfigEnv;
   isFipsModeEnabled: () => boolean;
 };
@@ -22,23 +35,24 @@ export class InstanceConfigService {
   async initialize(): Promise<void> {
     await this.deps.cache.clear();
     await this.deps.transactionRunner.run(({ dataAccess }) =>
-      dataAccess.instanceConfig.createIfMissing(InstanceConfig.initial({ fipsEnabled: this.deps.isFipsModeEnabled() }))
+      dataAccess.instanceConfig.createIfMissing(
+        InstanceConfig.initialSettings({ fipsEnabled: this.deps.isFipsModeEnabled() })
+      )
     );
   }
 
   async getServerConfig(): Promise<TServerConfigView> {
-    const config = await this.deps.cache.get();
-    return config.toView();
+    const config = await this.require();
+    return config.toSettings();
   }
 
   async getAdminIdentityIds(): Promise<string[]> {
-    const config = await this.deps.cache.get();
+    const config = await this.require();
     return config.adminIdentityIds;
   }
 
   async updateConfig(patch: TInstanceConfigPatch): Promise<TServerConfigView> {
     const { env, cache } = this.deps;
-    // Encrypts with the root key before the transaction opens.
     const columns = this.toColumns(patch);
 
     const config = await this.deps.transactionRunner.run(async ({ dataAccess, tx }) => {
@@ -52,11 +66,119 @@ export class InstanceConfigService {
       });
       return updated;
     });
-    return config.toView();
+    return config.toSettings();
   }
 
-  // Slack and Teams credentials are encrypted only when given a value; GitHub app credentials and env overrides
-  // whenever present, so they can be cleared.
+  // The stored credentials, or WORKFLOW_SLACK_CLIENT_ID and WORKFLOW_SLACK_CLIENT_SECRET when none are stored.
+  async getSlackCredentials(): Promise<{ clientId: string; clientSecret: string }> {
+    const config = await this.require();
+    const slack = this.slackOf(config);
+    const envCfg = this.deps.env.getConfig();
+    return {
+      clientId: slack.clientId || envCfg.WORKFLOW_SLACK_CLIENT_ID || "",
+      clientSecret: slack.clientSecret || envCfg.WORKFLOW_SLACK_CLIENT_SECRET || ""
+    };
+  }
+
+  // Reads the cached row unless the caller asks for the primary, as a caller acting on its own update must.
+  async getMicrosoftTeamsCredentials(options?: TReadOptions): Promise<TMicrosoftTeamsCredentials> {
+    const config = await this.require(options);
+    return { ...this.microsoftTeamsOf(config), updatedAt: config.updatedAt };
+  }
+
+  async getIntegrationCredentials(): Promise<TIntegrationCredentials> {
+    const config = await this.require();
+    return {
+      slack: this.slackOf(config),
+      microsoftTeams: this.microsoftTeamsOf(config),
+      gitHubAppConnection: this.gitHubAppConnectionOf(config)
+    };
+  }
+
+  // No row yet means no overrides: a new instance boots before its replica has the row initialize() just created.
+  async getEnvOverrides(): Promise<Record<string, string>> {
+    const config = await this.read();
+    const cipherText = config?.encrypted("encryptedEnvOverrides");
+    if (!cipherText) return {};
+    return JSON.parse(this.deps.kmsCoreDomain.decryptWithRootKey()(cipherText).toString()) as Record<string, string>;
+  }
+
+  async getEnvOverridesOrganized(): Promise<TEnvOverridesView> {
+    const overrides = await this.getEnvOverrides();
+    const original = this.deps.env.getOriginalConfig() ?? {};
+    return Object.fromEntries(
+      Object.entries(this.deps.env.overridableGroups).map(([groupKey, group]) => [
+        groupKey,
+        {
+          name: group.name,
+          fields: group.fields.map(({ key, description }) => ({
+            key,
+            description,
+            value: overrides[key] || "",
+            hasEnvEntry: Boolean(original[key])
+          }))
+        }
+      ])
+    );
+  }
+
+  // Applies the stored overrides to this process's env holder.
+  async syncEnvOverrides(): Promise<void> {
+    const overrides = await this.getEnvOverrides();
+    this.deps.env.overrideEnvConfig(overrides);
+  }
+
+  // The shared cached row, filled from the replica on a miss. ReadFrom.Primary skips the cache.
+  private async read(options?: TReadOptions): Promise<InstanceConfig | undefined> {
+    const { cache, dataAccess } = this.deps;
+    if (options?.readFrom === ReadFrom.Primary) return dataAccess.instanceConfig.findById(options);
+
+    const cached = await cache.get();
+    if (cached) return cached;
+    const config = await dataAccess.instanceConfig.findById();
+    if (config) await cache.set(config);
+    return config;
+  }
+
+  private async require(options?: TReadOptions): Promise<InstanceConfig> {
+    const config = await this.read(options);
+    if (!config) throw new NotFoundError({ message: "Admin config not found" });
+    return config;
+  }
+
+  // Each integration is decrypted on its own, so a column that cannot be decrypted breaks only its integration.
+  private slackOf(config: InstanceConfig): TIntegrationCredentials["slack"] {
+    return this.deps.credentials.remember(config.updatedAt, "slack", () => ({
+      clientId: this.decrypt(config, "encryptedSlackClientId"),
+      clientSecret: this.decrypt(config, "encryptedSlackClientSecret")
+    }));
+  }
+
+  private microsoftTeamsOf(config: InstanceConfig): TIntegrationCredentials["microsoftTeams"] {
+    return this.deps.credentials.remember(config.updatedAt, "microsoftTeams", () => ({
+      appId: this.decrypt(config, "encryptedMicrosoftTeamsAppId"),
+      clientSecret: this.decrypt(config, "encryptedMicrosoftTeamsClientSecret"),
+      botId: this.decrypt(config, "encryptedMicrosoftTeamsBotId")
+    }));
+  }
+
+  private gitHubAppConnectionOf(config: InstanceConfig): TIntegrationCredentials["gitHubAppConnection"] {
+    return this.deps.credentials.remember(config.updatedAt, "gitHubAppConnection", () => ({
+      clientId: this.decrypt(config, "encryptedGitHubAppConnectionClientId"),
+      clientSecret: this.decrypt(config, "encryptedGitHubAppConnectionClientSecret"),
+      appSlug: this.decrypt(config, "encryptedGitHubAppConnectionSlug"),
+      appId: this.decrypt(config, "encryptedGitHubAppConnectionId"),
+      privateKey: this.decrypt(config, "encryptedGitHubAppConnectionPrivateKey")
+    }));
+  }
+
+  private decrypt(config: InstanceConfig, column: TEncryptedColumn): string {
+    const cipherText = config.encrypted(column);
+    return cipherText ? this.deps.kmsCoreDomain.decryptWithRootKey()(cipherText).toString() : "";
+  }
+
+  // Slack and Teams credentials can be changed but not cleared; GitHub app credentials and env overrides are encrypted
+  // whenever present, so "" clears them.
   private toColumns(patch: TInstanceConfigPatch): TInstanceConfigUpdate {
     const {
       slackClientId,
@@ -76,16 +198,23 @@ export class InstanceConfigService {
     if (envOverrides !== undefined) this.validateEnvOverrides(envOverrides);
 
     const encrypt = this.deps.kmsCoreDomain.encryptWithRootKey();
-    const ifSet = (value?: string) => (value ? encrypt(Buffer.from(value)) : undefined);
     const ifGiven = (value?: string) => (value !== undefined ? encrypt(Buffer.from(value)) : undefined);
+    const notEmpty = (label: string, value?: string) => {
+      if (value === "") {
+        throw new BadRequestError({
+          message: `${label} cannot be empty. Slack and Microsoft Teams credentials can be changed but not cleared.`
+        });
+      }
+      return ifGiven(value);
+    };
 
     const columns: TInstanceConfigUpdate = {
       ...settings,
-      encryptedSlackClientId: ifSet(slackClientId),
-      encryptedSlackClientSecret: ifSet(slackClientSecret),
-      encryptedMicrosoftTeamsAppId: ifSet(microsoftTeamsAppId),
-      encryptedMicrosoftTeamsClientSecret: ifSet(microsoftTeamsClientSecret),
-      encryptedMicrosoftTeamsBotId: ifSet(microsoftTeamsBotId),
+      encryptedSlackClientId: notEmpty("Slack client ID", slackClientId),
+      encryptedSlackClientSecret: notEmpty("Slack client secret", slackClientSecret),
+      encryptedMicrosoftTeamsAppId: notEmpty("Microsoft Teams app ID", microsoftTeamsAppId),
+      encryptedMicrosoftTeamsClientSecret: notEmpty("Microsoft Teams client secret", microsoftTeamsClientSecret),
+      encryptedMicrosoftTeamsBotId: notEmpty("Microsoft Teams bot ID", microsoftTeamsBotId),
       encryptedGitHubAppConnectionClientId: ifGiven(gitHubAppConnectionClientId),
       encryptedGitHubAppConnectionClientSecret: ifGiven(gitHubAppConnectionClientSecret),
       encryptedGitHubAppConnectionSlug: ifGiven(gitHubAppConnectionSlug),

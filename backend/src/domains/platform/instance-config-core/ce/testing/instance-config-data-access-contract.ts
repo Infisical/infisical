@@ -1,4 +1,5 @@
-import { INSTANCE_CONFIG_ID, InstanceConfig } from "../model/instance-config";
+import { INSTANCE_CONFIG_ID } from "../data-access/instance-config-data-access";
+import { InstanceConfig } from "../model/instance-config";
 import { TInstanceConfigCoreDataAccessDeps } from "../module";
 
 export type TInstanceConfigContractHarness = {
@@ -10,7 +11,7 @@ export type TInstanceConfigContractHarness = {
 
 const createRow = (deps: TInstanceConfigCoreDataAccessDeps, fipsEnabled = false) =>
   deps.transactionRunner.run(({ dataAccess }) =>
-    dataAccess.instanceConfig.createIfMissing(InstanceConfig.initial({ fipsEnabled }))
+    dataAccess.instanceConfig.createIfMissing(InstanceConfig.initialSettings({ fipsEnabled }))
   );
 
 // What every InstanceConfigDataAccess, in memory or on Postgres, must do.
@@ -28,8 +29,8 @@ export const describeInstanceConfigDataAccessContract = (
       const second = await createRow(deps, false);
 
       // Assert
-      expect(second.toView().id).toBe(INSTANCE_CONFIG_ID);
-      expect(second.toView().fipsEnabled).toBe(true);
+      expect(second.toSettings().id).toBe(INSTANCE_CONFIG_ID);
+      expect(second.toSettings().fipsEnabled).toBe(true);
     });
 
     test("should return the default auth org's slug, enforcement and SSO method with the row", async () => {
@@ -46,7 +47,7 @@ export const describeInstanceConfigDataAccessContract = (
       const config = await deps.dataAccess.instanceConfig.findById();
 
       // Assert
-      const view = config?.toView();
+      const view = config?.toSettings();
       expect(view?.defaultAuthOrgSlug).toBe(org.slug);
       expect(view?.defaultAuthOrgAuthMethod).toBe("saml");
     });
@@ -61,7 +62,7 @@ export const describeInstanceConfigDataAccessContract = (
 
       // Assert
       const updated = await deps.dataAccess.instanceConfig.findById();
-      expect(updated?.toView().allowSignUp).toBe(false);
+      expect(updated?.toSettings().allowSignUp).toBe(false);
       expect(updated?.updatedAt.getTime()).toBeGreaterThan(created.updatedAt.getTime());
     });
   });
