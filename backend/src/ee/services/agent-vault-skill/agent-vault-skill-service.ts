@@ -16,6 +16,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
+import { assertSkillNameNotReserved, getAgentVaultBuiltinSkill } from "./agent-vault-builtin-skill";
 import { TAgentVaultSkillBundleDALFactory } from "./agent-vault-skill-bundle-dal";
 import { TAgentVaultSkillDALFactory, TAgentVaultSkillSummaryRow } from "./agent-vault-skill-dal";
 import {
@@ -138,6 +139,7 @@ export const agentVaultSkillServiceFactory = ({
     await $authorize(scoped, ProjectPermissionAgentVaultSkillActions.Create);
 
     const validated = validateSkillFiles(files);
+    assertSkillNameNotReserved(validated.name);
     const { encryptor } = await getProjectCipher(scoped.projectId);
     const encryptedFiles = encryptor({ plainText: validated.serialized }).cipherTextBlob;
 
@@ -279,6 +281,7 @@ export const agentVaultSkillServiceFactory = ({
 
     const skill = await $findSkill({ skillId, projectId: scoped.projectId });
     const validated = validateSkillFiles(files);
+    assertSkillNameNotReserved(validated.name);
 
     // Checked again under the lock. This read only spares an unchanged upload the encrypt.
     const latest = await agentVaultSkillVersionDAL.findLatest(skill.id);
@@ -438,6 +441,13 @@ export const agentVaultSkillServiceFactory = ({
     return { skill: { ...projectSkill(skill), accessBundles, files }, version: latest.version };
   };
 
+  // Every agent gets the built-in skill whatever bundle it runs with, so a member doesn't need a bundle to read it.
+  const getBuiltinSkill = async (scoped: TAgentVaultSkillScoped) => {
+    await $authorize(scoped, ProjectPermissionAgentVaultSkillActions.Read);
+    const { id, name, description, sha256, files } = await getAgentVaultBuiltinSkill();
+    return { id, name, description, sha256, files };
+  };
+
   // Version history is for the people who can publish and restore, so it checks Edit rather than Read.
   const listVersions = async ({ skillId, ...scoped }: TSkillByIdDTO) => {
     await $authorize(scoped, ProjectPermissionAgentVaultSkillActions.Edit);
@@ -587,6 +597,7 @@ export const agentVaultSkillServiceFactory = ({
     restoreVersion,
     listSkills,
     getSkill,
+    getBuiltinSkill,
     listVersions,
     getVersionFiles,
     deleteSkill,

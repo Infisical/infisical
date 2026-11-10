@@ -479,6 +479,22 @@ export const isMemberProvidedOauth = (service: { credentialType: string; memberP
   service.credentialType === AgentVaultCredentialType.OAuth &&
   Boolean(service.memberProvidedFields?.includes(AgentVaultVariableReferenceField.CredentialValue));
 
+// Whether resolve sends a member's sign-in: one bound to the service's current server whose login hasn't died. The
+// service row and the connection can come from replicas at different points, so the server is checked here too.
+// `status` overrides the stored one when resolve has just refreshed the token.
+export const isMemberOauthConnectionUsable = (
+  service: { config?: unknown },
+  oauthConfig: unknown,
+  status?: AgentVaultOauthStatus
+) => {
+  const config = oauthConfig as TAgentVaultOauthConfig | null | undefined;
+  return Boolean(
+    config &&
+    config.serverUrl === getServiceServerUrl(service.config) &&
+    (status ?? config.status) !== AgentVaultOauthStatus.NeedsReauthorization
+  );
+};
+
 // A connection's status as an API response shows it, without anything that identifies the client or the token.
 export const oauthConnectionStatusOf = (config: TAgentVaultOauthConfig) => ({
   status: config.status,

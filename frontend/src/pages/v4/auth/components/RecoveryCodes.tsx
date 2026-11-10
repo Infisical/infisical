@@ -9,16 +9,7 @@ import { AuthPage } from "./AuthPage";
 
 import styles from "../auth.module.css";
 
-type Props = {
-  recoveryCodes: string[];
-  isPending?: boolean;
-  onContinue: () => void;
-};
-
-export const RecoveryCodes = ({ recoveryCodes, isPending, onContinue }: Props) => {
-  const [copied, setCopied] = useState(false);
-  const [isAcknowledged, setIsAcknowledged] = useState(false);
-
+export const RecoveryCodesPanel = ({ recoveryCodes }: { recoveryCodes: string[] }) => {
   const handleDownload = () => {
     const blob = new Blob([recoveryCodes.join("\n")], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -34,12 +25,45 @@ export const RecoveryCodes = ({ recoveryCodes, isPending, onContinue }: Props) =
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(recoveryCodes.join("\n"));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      toast.success("Recovery codes copied");
     } catch {
       toast.error("Failed to copy recovery codes. Please download them instead.");
     }
   };
+
+  return (
+    <Stack gap={12}>
+      <ol className={styles.codes}>
+        {recoveryCodes.map((code) => (
+          <li key={code}>{code}</li>
+        ))}
+      </ol>
+      <Inline gap={8} wrap={false}>
+        <Button
+          type="button"
+          variant="outline"
+          icon="download"
+          className="flex-1"
+          onClick={handleDownload}
+        >
+          Download
+        </Button>
+        <Button type="button" variant="outline" icon="copy" className="flex-1" onClick={handleCopy}>
+          Copy
+        </Button>
+      </Inline>
+    </Stack>
+  );
+};
+
+type Props = {
+  recoveryCodes: string[];
+  isPending?: boolean;
+  onContinue: () => void;
+};
+
+export const RecoveryCodes = ({ recoveryCodes, isPending, onContinue }: Props) => {
+  const [isAcknowledged, setIsAcknowledged] = useState(false);
 
   return (
     <AuthPage
@@ -48,33 +72,7 @@ export const RecoveryCodes = ({ recoveryCodes, isPending, onContinue }: Props) =
       title="Save your recovery codes"
       description="Each code works once and lets you sign in if you lose access to your other methods."
     >
-      <Stack gap={12}>
-        <ol className={styles.codes}>
-          {recoveryCodes.map((code) => (
-            <li key={code}>{code}</li>
-          ))}
-        </ol>
-        <Inline gap={8} wrap={false}>
-          <Button
-            type="button"
-            variant="outline"
-            icon="download"
-            className="flex-1"
-            onClick={handleDownload}
-          >
-            Download
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            icon="copy"
-            className="flex-1"
-            onClick={handleCopy}
-          >
-            {copied ? "Copied" : "Copy"}
-          </Button>
-        </Inline>
-      </Stack>
+      <RecoveryCodesPanel recoveryCodes={recoveryCodes} />
       <Checkbox
         label="I have saved my recovery codes in a safe place"
         checked={isAcknowledged}

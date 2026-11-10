@@ -136,21 +136,31 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       sections: toSidebar("product", productSections(product))
     });
   }
+  const settingsOpens: Record<string, string> = at.settings ? { settings: "project-settings" } : {};
   if (at.projectId) {
     levels.push({
       id: at.level,
       label: project?.name ?? at.projectId,
       parent: "product",
-      sections: toSidebar(at.level, at.sections)
+      sections: toSidebar(at.level, at.sections, settingsOpens)
     });
   } else if (at.level === "pki" || at.level === "scanning" || at.level === "pam") {
     levels.push({
       id: at.level,
       label: product?.label ?? at.level,
       parent: "org",
-      sections: toSidebar(at.level, at.sections)
+      sections: toSidebar(at.level, at.sections, settingsOpens)
     });
   }
+  if (at.settings) {
+    levels.push({
+      id: "project-settings",
+      label: "Settings",
+      parent: at.level,
+      sections: toSidebar("project-settings", at.settings)
+    });
+  }
+  const currentLevel = at.inSettings ? "project-settings" : at.level;
 
   const orgCrumb: BreadcrumbCrumb = {
     label: organization.name,
@@ -231,6 +241,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
     ...(at.level === "settings" ? [{ label: "Settings", href: resolve(`${base}/settings`) }] : []),
     ...(productCrumb ? [productCrumb] : []),
     ...(projectCrumb ? [projectCrumb] : []),
+    ...(at.inSettings ? [{ label: "Settings", href: resolve(location.pathname) }] : []),
     ...(at.current ? [{ label: at.current.label }] : [])
   ];
 
@@ -274,7 +285,7 @@ export const V4Shell = ({ children }: { children: ReactNode }) => {
       <Sidebar
         label="Main"
         levels={levels}
-        current={sidebarCurrent ? `${at.level}:${sidebarCurrent.id}` : undefined}
+        current={sidebarCurrent ? `${currentLevel}:${sidebarCurrent.id}` : undefined}
         help={chrome.help}
         announcements={chrome.announcements}
       />

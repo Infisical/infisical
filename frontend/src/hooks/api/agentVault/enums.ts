@@ -87,7 +87,11 @@ export enum AgentVaultSessionLogDecision {
   Brokered = "brokered",
   Passthrough = "passthrough",
   Blocked = "blocked",
-  Error = "error"
+  Error = "error",
+  // The agent asked for the services its session can use, which the proxy gets from Infisical for the session.
+  Discovery = "discovery",
+  // The session's skills, which the proxy gets from Infisical for the session.
+  Skills = "skills"
 }
 
 /** Which value of a service uses a variable. A basic credential's password is its credential-value. */
