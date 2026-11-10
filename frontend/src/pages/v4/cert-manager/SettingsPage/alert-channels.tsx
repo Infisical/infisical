@@ -1,5 +1,6 @@
 import { Controller, useFieldArray, useFormContext, useWatch } from "react-hook-form";
 
+import { CertificateEnterpriseAlertingUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
@@ -33,6 +34,7 @@ import { toChannelInput } from "@app/hooks/api/alerts/utils";
 
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { useUpgradeGate } from "../../license";
 import {
   CHANNEL_ICONS,
   ENTERPRISE_CHANNEL_TYPES,
@@ -49,9 +51,6 @@ import {
 
 const NO_AUTH = "none";
 
-const ENTERPRISE_REASON =
-  "Slack, webhook and PagerDuty channels are on the Enterprise plan. Upgrade to add them.";
-
 export const AddChannelMenu = ({
   channelCount,
   hasEnterprise,
@@ -60,44 +59,55 @@ export const AddChannelMenu = ({
   channelCount: number;
   hasEnterprise: boolean;
   onAdd: (channelType: AlertChannelType) => void;
-}) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        icon="plus"
-        layout="trigger"
-        disabledReason={
-          channelCount >= MAX_CHANNELS
-            ? `An alert can have up to ${MAX_CHANNELS} channels`
-            : undefined
-        }
-      >
-        Add channel
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      {Object.values(AlertChannelType).map((channelType) => {
-        const isLocked = !hasEnterprise && ENTERPRISE_CHANNEL_TYPES.includes(channelType);
-        const glyph = CHANNEL_ICONS[channelType];
-        return (
-          <DropdownMenuItem
-            key={channelType}
-            disabled={isLocked}
-            description={isLocked ? ENTERPRISE_REASON : undefined}
-            onSelect={() => onAdd(channelType)}
+}) => {
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            icon="plus"
+            layout="trigger"
+            disabledReason={
+              channelCount >= MAX_CHANNELS
+                ? `An alert can have up to ${MAX_CHANNELS} channels`
+                : undefined
+            }
           >
-            {typeof glyph === "string" ? <Icon name={glyph} /> : <Icon icon={glyph} />}
-            {ALERT_CHANNEL_TYPE_LABELS[channelType]}
-            {isLocked && <Badge tone="soft">Enterprise</Badge>}
-          </DropdownMenuItem>
-        );
-      })}
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+            Add channel
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {Object.values(AlertChannelType).map((channelType) => {
+            const isLocked = !hasEnterprise && ENTERPRISE_CHANNEL_TYPES.includes(channelType);
+            const glyph = CHANNEL_ICONS[channelType];
+            return (
+              <DropdownMenuItem
+                key={channelType}
+                onSelect={() =>
+                  isLocked
+                    ? openUpgradeGate({
+                        intent: CertificateEnterpriseAlertingUpgradeIntent,
+                        paywallKey: "cert-manager.application-alert-channels"
+                      })
+                    : onAdd(channelType)
+                }
+              >
+                {typeof glyph === "string" ? <Icon name={glyph} /> : <Icon icon={glyph} />}
+                {ALERT_CHANNEL_TYPE_LABELS[channelType]}
+                {isLocked && <Badge tone="soft">Enterprise</Badge>}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {upgradeGate}
+    </>
+  );
+};
 
 const EmailRecipientsField = ({
   value,

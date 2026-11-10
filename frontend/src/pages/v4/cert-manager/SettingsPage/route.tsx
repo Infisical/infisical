@@ -9,8 +9,7 @@ export const Route = createFileRoute("/v4/organizations/$orgId/cert-manager/sett
     readiness: "partial",
     missing: [
       "Edit credentials on existing app connections",
-      "Add forms for apps without a v4 connection preset",
-      "Upgrade modal for Enterprise alert channels"
+      "Add forms for apps without a v4 connection preset"
     ]
   },
   component: SettingsPage,
