@@ -94,6 +94,50 @@ Every linked record also has a **hasn't been used before** check. It passes only
 
 To require sign-off in Jira, use **is approved in Jira** rather than **has status**. Only the approvers on a Jira Service Management request can decide its approval, while the requester might be able to change the ticket's status.
 
+## AI checks
+
+An AI check has your organization's AI model review a request against instructions you write. Use it for criteria the other checks can't express, such as whether a linked ticket describes an open incident.
+
+### Set up the AI model
+
+To set up the model, you need permission to edit organization settings:
+
+<Steps>
+  <Step>
+    In your organization, go to **Organization Settings** > **General**.
+  </Step>
+  <Step>
+    In the **AI Model** card, choose an organization-level [Anthropic connection](/integrations/app-connections/anthropic) under **Anthropic Connection**, then choose a **Model**.
+  </Step>
+  <Step>
+    Select **Save Changes**.
+  </Step>
+</Steps>
+
+### Add an AI check to a rule
+
+<Steps>
+  <Step>
+    In a rule, select **Add Condition**, then select **AI approves the request**.
+  </Step>
+  <Step>
+    Under **Instructions**, describe when to approve, such as `Approve if the linked Jira ticket is an open incident assigned to the requester.`
+  </Step>
+  <Step>
+    Under **Additional Context**, choose the connections the AI can read from, such as your Jira connection, then select **Save Changes**.
+  </Step>
+</Steps>
+
+The AI reads the requester's reason, the request details, and the linked records. With a Jira connection in **Additional Context**, it can also look up tickets, but it can't change anything in Jira. A rule can have one AI check, and Infisical runs it only after the rule's other checks pass.
+
+The AI check passes only if the model approves. If the model declines, errors, or doesn't answer within 90 seconds, the check fails and the request waits for the approvers.
+
+<Warning>
+  The requester writes the reason and the linked tickets, so they can try to give the AI instructions. Keep the **is assigned to the requester** and **hasn't been used before** checks in every rule with an AI check.
+</Warning>
+
+Approvers see the model's reasoning and the tickets it looked up under **Auto-approval status**. The requester only sees that the AI didn't approve the request.
+
 ## Request access with a linked record
 
 If an account's template allows auto-approval and its folder has rules, the account's [request form](/documentation/platform/pam/access-requests/overview#request-access) has an optional field for each record the folder asks for, such as **Jira ticket**. Enter the record's ID, such as the ticket key `PAY-123`, or a link to the record. If the link points to a different site from the one the folder's connection uses, Infisical shows an error and doesn't submit the request.
