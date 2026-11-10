@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "toast-errors",
+    title: "Error toasts stay put",
+    description:
+      "Error toasts are announced right away, stay until you close them, and every toast has a close button.",
+    date: "2026-11-07",
+    commit: "b2ff57a491",
+    page: "toast"
+  },
+  {
     id: "header-no-hover",
     title: "Headers stay still on hover",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "9f6084dc3e",
     page: "tooltip"
-  },
-  {
-    id: "list-whole-rows",
-    title: "Lists end on a whole row",
-    description:
-      "Multi-select, combobox and command lists size to whole rows, so the last visible option is never cut.",
-    date: "2026-11-07",
-    commit: "dfbd72f4c0",
-    page: "multi-select"
   }
 ];
