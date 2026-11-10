@@ -20,6 +20,7 @@ import { projectTagsDemo } from "./project-tags/demo";
 import { projectsDemo } from "./projects/demo";
 import { secretPoliciesDemo } from "./secret-policies/demo";
 import { secretScanningDemo } from "./secret-scanning/demo";
+import { secretSharingDemo } from "./secret-sharing/demo";
 import { secretsDemo } from "./secrets/demo";
 import { ssoDemo } from "./sso/demo";
 
@@ -32,6 +33,7 @@ export const demoAdapters: V4Adapters = {
   integrations: integrationsDemo,
   networking: networkingDemo,
   secretScanning: secretScanningDemo,
+  secretSharing: secretSharingDemo,
   secrets: secretsDemo,
   certificates: certificatesDemo,
   certManagerSettings: certManagerSettingsDemo,

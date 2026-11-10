@@ -22,6 +22,7 @@ import type { ProjectTagsAdapter } from "./project-tags/contract";
 import type { ProjectsAdapter } from "./projects/contract";
 import type { SecretPoliciesAdapter } from "./secret-policies/contract";
 import type { SecretScanningAdapter } from "./secret-scanning/contract";
+import type { SecretSharingAdapter } from "./secret-sharing/contract";
 import type { SecretsAdapter } from "./secrets/contract";
 import type { SsoAdapter } from "./sso/contract";
 
@@ -32,6 +33,7 @@ export type V4Adapters = {
   integrations: IntegrationsAdapter;
   networking: NetworkingAdapter;
   secretScanning: SecretScanningAdapter;
+  secretSharing: SecretSharingAdapter;
   secrets: SecretsAdapter;
   certificates: CertificatesAdapter;
   certManagerSettings: CertManagerSettingsAdapter;

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { useServerConfig } from "@app/context";
+import { handoffToV4 } from "@app/helpers/v4Bridge";
 
 import { NotFoundPage } from "../NotFoundPage/NotFoundPage";
 import { ShareSecretPage } from "./ShareSecretPage";
@@ -16,5 +17,6 @@ const ShareSecretRoute = () => {
 };
 
 export const Route = createFileRoute("/shared/new")({
-  component: ShareSecretRoute
+  component: ShareSecretRoute,
+  beforeLoad: ({ location }) => handoffToV4(location)
 });

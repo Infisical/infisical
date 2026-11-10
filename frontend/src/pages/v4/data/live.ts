@@ -20,6 +20,7 @@ import { projectTagsLive } from "./project-tags/live";
 import { projectsLive } from "./projects/live";
 import { secretPoliciesLive } from "./secret-policies/live";
 import { secretScanningLive } from "./secret-scanning/live";
+import { secretSharingLive } from "./secret-sharing/live";
 import { secretsLive } from "./secrets/live";
 import { ssoLive } from "./sso/live";
 
@@ -32,6 +33,7 @@ export const liveAdapters: V4Adapters = {
   integrations: integrationsLive,
   networking: networkingLive,
   secretScanning: secretScanningLive,
+  secretSharing: secretSharingLive,
   secrets: secretsLive,
   certificates: certificatesLive,
   certManagerSettings: certManagerSettingsLive,
