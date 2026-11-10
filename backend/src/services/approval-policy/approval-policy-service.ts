@@ -1373,7 +1373,17 @@ export const approvalPolicyServiceFactory = ({
             approvalRequestDAL.hasApprovedRequestLinkingRecord({ policyId: evaluatedPolicyId, ...record }),
           orgId: actor.orgId,
           projectId,
-          ctx: { requester: { email: requesterEmail || null } }
+          ctx: {
+            requester: { email: requesterEmail || null },
+            request: {
+              policyType,
+              policyName: policy.name,
+              requester: { name: requesterName || null, email: requesterEmail || null },
+              justification: justification ?? null,
+              duration: requestDuration ?? null,
+              details: requestData
+            }
+          }
         });
 
         const current = await checkAgainstPolicy();

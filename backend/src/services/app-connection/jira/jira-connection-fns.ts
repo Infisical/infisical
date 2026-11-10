@@ -432,6 +432,29 @@ export const findJiraUsersByEmail = async (
   return Array.isArray(users) ? users : [];
 };
 
+export const searchJiraIssues = async (
+  config: TJiraRequestConfig,
+  { jql, fields, maxResults }: { jql: string; fields: string[]; maxResults: number },
+  deps: TJiraGatewayDeps
+): Promise<{ issues: TJiraIssue[]; hasMore: boolean }> => {
+  if (isJiraCloud(config)) {
+    const data = await jiraRequest<{ issues?: TJiraIssue[]; isLast?: boolean; nextPageToken?: string }>(
+      config,
+      { path: "/rest/api/3/search/jql", params: { jql, maxResults, fields: fields.join(",") } },
+      deps
+    );
+    return { issues: data?.issues ?? [], hasMore: Boolean(data?.nextPageToken) && data?.isLast !== true };
+  }
+
+  const data = await jiraRequest<{ issues?: TJiraIssue[]; total?: number }>(
+    config,
+    { path: "/rest/api/2/search", params: { jql, maxResults, fields: fields.join(",") } },
+    deps
+  );
+  const issues = data?.issues ?? [];
+  return { issues, hasMore: (data?.total ?? 0) > issues.length };
+};
+
 // Jira Service Management approvals, which only an approver can decide, unlike an issue's status
 export const listJiraIssueApprovals = async (
   config: TJiraRequestConfig,

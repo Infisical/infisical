@@ -54,6 +54,7 @@ import { onePassConnectionService } from "./1password/1password-connection-servi
 import { ValidateADCSConnectionCredentialsSchema } from "./adcs/adcs-connection-schemas";
 import { adcsConnectionService } from "./adcs/adcs-connection-service";
 import { ValidateAnthropicConnectionCredentialsSchema } from "./anthropic";
+import { anthropicConnectionService } from "./anthropic/anthropic-connection-service";
 import { TAppConnectionDALFactory } from "./app-connection-dal";
 import { AppConnection } from "./app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "./app-connection-maps";
@@ -1236,11 +1237,18 @@ export const appConnectionServiceFactory = ({
         const { constraint } = err.error as { constraint?: string };
         if (
           constraint === "approval_policy_auto_approval_inputs_connectionid_foreign" ||
-          constraint === "approval_policy_auto_approval_conditions_connectionid_foreign"
+          constraint === "approval_policy_auto_approval_conditions_connectionid_foreign" ||
+          constraint === "auto_approval_condition_contexts_connectionid_foreign"
         ) {
           throw new BadRequestError({
             message:
               "Cannot delete this App Connection because one or more approval policies use it in their auto-approval rules. Remove it from those rules first."
+          });
+        }
+        if (constraint === "organizations_aiconnectionid_foreign") {
+          throw new BadRequestError({
+            message:
+              "Cannot delete this App Connection because the organization's AI features use it. Change the AI model under Organization Settings > General first."
           });
         }
         if (constraint === "certificate_authority_secret_appconnectionid_foreign") {
@@ -1545,6 +1553,7 @@ export const appConnectionServiceFactory = ({
     externalInfisical: externalInfisicalConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
     datadog: datadogConnectionService(connectAppConnectionById),
+    anthropic: anthropicConnectionService(connectAppConnectionById),
     openai: openaiConnectionService(connectAppConnectionById),
     openRouter: openRouterConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),

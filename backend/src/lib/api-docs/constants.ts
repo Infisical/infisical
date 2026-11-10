@@ -5226,9 +5226,13 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   ruleName: "A name that tells approvers why the rule approved a request.",
   conditions: "Every condition in a rule must pass for the rule to approve.",
   conditionConnectionId:
-    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'.",
+    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'. Omit it for an 'ai' condition.",
   conditionSubject:
-    "What the condition checks: one of the inputs' subjects, or 'requester' for the requester's own account.",
+    "What the condition checks: one of the inputs' subjects, 'requester' for the requester's own account, or 'ai' to have the organization's AI model review the request.",
+  conditionPrompt:
+    "For an 'ai' condition, the instructions the AI model checks the request against. The model receives the request details and every request form field value.",
+  conditionContextConnectionIds:
+    "For an 'ai' condition, the IDs of App Connections the AI model can read from with read-only lookups (e.g. a Jira connection).",
   constraint: "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').",
   values: "The values the check accepts. Several values mean any of them; checks that take no value use an empty list.",
   requestInputs:
@@ -5263,4 +5267,11 @@ export const AWS_HONEY_TOKENS = {
     unavailableReason:
       "Why this AWS account cannot be used now, or null when it can. For `instance`: `instance-not-configured` means the instance has no managed signing key, `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set, and `invalid-role-arn` means the managed role ARN is not an IAM role ARN. For `organization`: `account-not-connected` means your organization has not connected an AWS account, and `stack-verification-pending` means the CloudFormation stack is not verified yet."
   }
+};
+
+export const ORG_AI_CONFIG = {
+  connectionId:
+    "The ID of the organization-level Anthropic App Connection the organization's AI features use. Null turns AI features off.",
+  model: "The ID of the Anthropic model to use, such as 'claude-sonnet-4-5'. Required when connectionId is set.",
+  connectionName: "The name of the App Connection."
 };

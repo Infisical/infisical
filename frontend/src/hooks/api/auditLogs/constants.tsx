@@ -289,6 +289,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.LIST_PKI_SUBSCRIBER_CERTS]: "List PKI subscriber certificates",
 
   [EventType.UPDATE_ORG]: "Update Organization",
+  [EventType.UPDATE_ORG_AI_CONFIG]: "Update Organization AI Model",
   [EventType.ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING]: "Enable Org-Wide Secret Value Tracking",
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",

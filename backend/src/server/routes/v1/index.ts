@@ -76,6 +76,7 @@ import { registerOAuthRouter } from "./oauth-router";
 import { registerOidcIssuerRouter } from "./oidc-issuer-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgIdentityRouter } from "./org-identity-router";
+import { registerOrgAiConfigRouter } from "./organization-ai-config-router";
 import { registerOrganizationMembershipsRouter } from "./organization-memberships-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
@@ -135,6 +136,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(
     async (orgRouter) => {
       await orgRouter.register(registerOrgRouter);
+      await orgRouter.register(registerOrgAiConfigRouter);
       await orgRouter.register(registerOrgIdentityRouter);
       await orgRouter.register(registerIdentityOrgMembershipRouter);
       await orgRouter.register(registerGroupOrgMembershipRouter);

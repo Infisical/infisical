@@ -1,6 +1,10 @@
 import { logger } from "@app/lib/logger";
+import { TAiJudgeResult } from "@app/services/ai/ai-types";
 
 import {
+  AUTO_APPROVAL_AI_CONSTRAINT_LABEL,
+  AUTO_APPROVAL_AI_SUBJECT,
+  AUTO_APPROVAL_AI_SUBJECT_LABEL,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
@@ -11,8 +15,12 @@ import {
   TStoredAutoApproval
 } from "./auto-approval-types";
 
-export const getAutoApprovalSubjectKey = (condition: { inputId: string | null; connectionId: string }) =>
+export const getAutoApprovalSubjectKey = (condition: { inputId: string | null; connectionId: string | null }) =>
   condition.inputId ?? `${AUTO_APPROVAL_REQUESTER_SUBJECT}:${condition.connectionId}`;
+
+export const isAiCondition = (condition: { subject: string }) => condition.subject === AUTO_APPROVAL_AI_SUBJECT;
+
+export type TAiConditionResult = { passed: boolean; reason: string | null; ai: TAiJudgeResult | null };
 
 export const describeAutoApprovalCondition = (subjectLabel: string, constraintLabel: string, values: string[]) =>
   [subjectLabel, constraintLabel, values.join(" or ")].filter(Boolean).join(" ");
@@ -32,17 +40,37 @@ export type TResolvedAutoApprovalSubject = {
 export const evaluateAutoApprovalRules = (
   rules: TStoredAutoApproval["rules"],
   subjects: Map<string, TResolvedAutoApprovalSubject>,
-  ctx: TAutoApprovalContext
+  ctx: TAutoApprovalContext,
+  aiResults: Map<string, TAiConditionResult> = new Map()
 ): Pick<TAutoApprovalEvidence, "rules" | "approvedByRuleId"> => {
   const evaluated = rules.map((rule) => {
     const conditions = rule.conditions.map((condition) => {
+      if (isAiCondition(condition)) {
+        const result = aiResults.get(condition.id);
+        return {
+          id: condition.id,
+          connectionId: null,
+          subject: condition.subject,
+          constraint: condition.constraint,
+          values: condition.values,
+          description: describeAutoApprovalCondition(
+            AUTO_APPROVAL_AI_SUBJECT_LABEL,
+            AUTO_APPROVAL_AI_CONSTRAINT_LABEL,
+            []
+          ),
+          passed: result?.passed ?? false,
+          reason: result ? result.reason : "The AI didn't review this request",
+          ai: result?.ai ?? null
+        };
+      }
+
       const subject = subjects.get(getAutoApprovalSubjectKey(condition));
       const isUnusedCheck =
         condition.constraint === AUTO_APPROVAL_UNUSED_CONSTRAINT && Boolean(subject?.definition?.input);
       const constraint = isUnusedCheck ? undefined : subject?.definition?.constraints[condition.constraint];
       const base = {
         id: condition.id,
-        connectionId: condition.connectionId,
+        connectionId: condition.connectionId ?? null,
         subject: condition.subject,
         constraint: condition.constraint,
         values: condition.values,
@@ -109,7 +137,27 @@ export const toAutoApprovalOutcome = (request: {
       id: rule.id,
       name: rule.name,
       passed: rule.passed,
-      conditions: rule.conditions.map(({ id, description, passed, reason }) => ({ id, description, passed, reason }))
+      conditions: rule.conditions.map(({ id, description, passed, reason, ai }) => ({
+        id,
+        description,
+        passed,
+        reason,
+        ai: ai
+          ? {
+              model: ai.model,
+              approve: ai.approve,
+              reason: ai.reason,
+              error: ai.error,
+              toolCalls: ai.toolCalls.map(({ tool, connectionName, input, summary, error }) => ({
+                tool,
+                connectionName,
+                input,
+                summary,
+                error
+              }))
+            }
+          : null
+      }))
     }))
   };
 };

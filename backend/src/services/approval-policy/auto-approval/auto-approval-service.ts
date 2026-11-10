@@ -6,6 +6,13 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { TAiServiceFactory } from "@app/services/ai/ai-service";
+import { TAiJudgeResult } from "@app/services/ai/ai-types";
+import {
+  AI_CONTEXT_APPS,
+  buildAppConnectionAiTools,
+  listAppConnectionAiTools
+} from "@app/services/app-connection/app-connection-ai-tools";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
@@ -18,10 +25,14 @@ import { TApprovalPolicyAutoApprovalDALFactory } from "./auto-approval-dal";
 import {
   evaluateAutoApprovalRules,
   getAutoApprovalSubjectKey,
+  isAiCondition,
+  TAiConditionResult,
   TResolvedAutoApprovalSubject
 } from "./auto-approval-fns";
 import { AUTO_APPROVAL_APPS, getAutoApprovalProvider } from "./auto-approval-providers";
 import {
+  AUTO_APPROVAL_AI_CONSTRAINT,
+  AUTO_APPROVAL_AI_CONSTRAINT_LABEL,
   AUTO_APPROVAL_REQUESTER_SUBJECT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT,
   AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL,
@@ -56,6 +67,7 @@ type TAutoApprovalServiceFactoryDep = {
     TAppConnectionServiceFactory,
     "validateAppConnectionUsageById" | "listAvailableAppConnectionsForUser"
   >;
+  aiService: Pick<TAiServiceFactory, "getOrgAiModel" | "runJudge">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "runWithPoolFailover">;
@@ -92,6 +104,7 @@ export const autoApprovalServiceFactory = ({
   approvalPolicyAutoApprovalDAL,
   appConnectionDAL,
   appConnectionService,
+  aiService,
   kmsService,
   gatewayV2Service,
   gatewayPoolService
@@ -124,9 +137,42 @@ export const autoApprovalServiceFactory = ({
     const connectionIds = [
       ...new Set([
         ...config.inputs.map((input) => input.connectionId),
-        ...config.rules.flatMap((rule) => rule.conditions.map((condition) => condition.connectionId))
+        ...config.rules.flatMap((rule) =>
+          rule.conditions.flatMap((condition) =>
+            !isAiCondition(condition) && condition.connectionId ? [condition.connectionId] : []
+          )
+        )
       ])
     ];
+    const contextConnectionIds = [
+      ...new Set(
+        config.rules.flatMap((rule) =>
+          rule.conditions.flatMap((condition) =>
+            isAiCondition(condition) ? (condition.contextConnectionIds ?? []) : []
+          )
+        )
+      )
+    ];
+
+    if (
+      config.rules.some((rule) => rule.conditions.some(isAiCondition)) &&
+      !(await aiService.getOrgAiModel(actor.orgId))
+    ) {
+      throw new BadRequestError({
+        message:
+          "Set up an AI model under Organization Settings > General before adding an AI condition to auto-approval rules."
+      });
+    }
+
+    const contextNameById = new Map<string, string>();
+    for await (const connectionId of contextConnectionIds) {
+      const connection = await appConnectionService.validateAppConnectionUsageById(
+        AI_CONTEXT_APPS,
+        { connectionId, projectId },
+        actor as OrgServiceActor
+      );
+      contextNameById.set(connectionId, connection.name);
+    }
 
     const appByConnectionId = new Map<string, { app: string; name: string }>();
     for await (const connectionId of connectionIds) {
@@ -166,7 +212,54 @@ export const autoApprovalServiceFactory = ({
       const name = rule.name.trim();
       const connectionIdByKind = new Map<string, string>();
 
+      if (rule.conditions.filter(isAiCondition).length > 1) {
+        throw new BadRequestError({
+          message: `Rule '${name}' has more than one AI condition. Combine their instructions into one.`
+        });
+      }
+
       const conditions = rule.conditions.map((condition) => {
+        if (isAiCondition(condition)) {
+          const check = `AI ${AUTO_APPROVAL_AI_CONSTRAINT_LABEL}`;
+          if (condition.connectionId) {
+            throw new BadRequestError({
+              message: `Rule '${name}': '${check}' doesn't take a connection. Add connections it can read from as context instead.`
+            });
+          }
+          if (condition.constraint !== AUTO_APPROVAL_AI_CONSTRAINT) {
+            throw new BadRequestError({
+              message: `Rule '${name}' uses '${condition.constraint}', which is not a check on AI. Use: ${AUTO_APPROVAL_AI_CONSTRAINT}`
+            });
+          }
+          if (condition.values.length) {
+            throw new BadRequestError({ message: `Rule '${name}': '${check}' takes no values` });
+          }
+          const prompt = condition.prompt?.trim();
+          if (!prompt) {
+            throw new BadRequestError({
+              message: `Rule '${name}': write the instructions the AI checks requests against`
+            });
+          }
+          return {
+            ...condition,
+            connectionId: null,
+            values: [],
+            prompt,
+            contextConnectionIds: [...new Set(condition.contextConnectionIds ?? [])]
+          };
+        }
+
+        if (condition.prompt || condition.contextConnectionIds?.length) {
+          throw new BadRequestError({
+            message: `Rule '${name}': only AI conditions take instructions and context connections`
+          });
+        }
+        if (!condition.connectionId) {
+          throw new BadRequestError({
+            message: `Rule '${name}' checks '${condition.subject}' without saying which connection to read it from`
+          });
+        }
+
         const isRequester = condition.subject === AUTO_APPROVAL_REQUESTER_SUBJECT;
         const { connection, subject } = getSubject(condition.connectionId, condition.subject);
         const connectionName = connection?.name ?? condition.connectionId;
@@ -217,7 +310,7 @@ export const autoApprovalServiceFactory = ({
           });
         }
 
-        return { ...condition, values };
+        return { ...condition, values, prompt: null, contextConnectionIds: [] };
       });
 
       return { name, conditions };
@@ -237,13 +330,17 @@ export const autoApprovalServiceFactory = ({
     rules: (stored?.rules ?? []).map((rule) => ({
       id: rule.id,
       name: rule.name,
-      conditions: rule.conditions.map(({ id, connectionId, subject, constraint, values }) => ({
-        id,
-        connectionId,
-        subject,
-        constraint,
-        values
-      }))
+      conditions: rule.conditions.map(
+        ({ id, connectionId, subject, constraint, values, prompt, contextConnectionIds }) => ({
+          id,
+          connectionId,
+          subject,
+          constraint,
+          values,
+          prompt,
+          contextConnectionIds
+        })
+      )
     }))
   });
 
@@ -359,6 +456,7 @@ export const autoApprovalServiceFactory = ({
     >();
     stored.rules.forEach((rule) =>
       rule.conditions.forEach((condition) => {
+        if (isAiCondition(condition) || !condition.connectionId) return;
         const key = getAutoApprovalSubjectKey(condition);
         const target = targets.get(key) ?? {
           connectionId: condition.connectionId,
@@ -482,7 +580,82 @@ export const autoApprovalServiceFactory = ({
     const stableIdByInputId = new Map(
       [...resolved.values()].flatMap(({ inputId, stableId }) => (inputId && stableId ? [[inputId, stableId]] : []))
     );
-    const { rules, approvedByRuleId } = evaluateAutoApprovalRules(stored.rules, resolved, ctx);
+
+    const runAiCondition = async (condition: TStoredAutoApproval["rules"][number]["conditions"][number]) => {
+      const contextConnections = await Promise.all(condition.contextConnectionIds.map(loadConnection));
+      if (contextConnections.some((connection) => !connection)) {
+        const error = "A connection this AI condition reads from is no longer available";
+        return { approve: false, reason: error, model: "", toolCalls: [], error } satisfies TAiJudgeResult;
+      }
+
+      const inputs = await Promise.all(
+        parsedInputs.map(async (input) => ({
+          label: input.label,
+          value: input.id,
+          connectionName: (await loadConnection(input.connectionId))?.name ?? null
+        }))
+      );
+
+      return aiService.runJudge({
+        orgId,
+        instructions: condition.prompt ?? "",
+        request: {
+          policyType: ctx.request?.policyType ?? "",
+          policyName: ctx.request?.policyName ?? "",
+          requester: ctx.request?.requester ?? { name: null, email: ctx.requester.email },
+          justification: ctx.request?.justification ?? null,
+          duration: ctx.request?.duration ?? null,
+          details: ctx.request?.details ?? null,
+          inputs
+        },
+        tools: buildAppConnectionAiTools(contextConnections as TAppConnection[], providerDeps)
+      });
+    };
+
+    const deterministic = evaluateAutoApprovalRules(stored.rules, resolved, ctx);
+    const aiResults = new Map<string, TAiConditionResult>();
+    let isApproved = false;
+    for await (const rule of stored.rules) {
+      const aiConditions = rule.conditions.filter(isAiCondition);
+      const evaluatedRule = deterministic.rules.find((candidate) => candidate.id === rule.id);
+      const othersPassed = Boolean(
+        evaluatedRule?.conditions.every((condition) => isAiCondition(condition) || condition.passed)
+      );
+
+      if (isApproved) {
+        aiConditions.forEach((condition) =>
+          aiResults.set(condition.id, {
+            passed: false,
+            reason: "Not reviewed because an earlier rule approved the request",
+            ai: null
+          })
+        );
+      } else if (!aiConditions.length) {
+        isApproved = Boolean(evaluatedRule?.passed);
+      } else if (!othersPassed) {
+        aiConditions.forEach((condition) =>
+          aiResults.set(condition.id, {
+            passed: false,
+            reason: "Not reviewed because another condition in this rule didn't pass",
+            ai: null
+          })
+        );
+      } else {
+        let allApproved = true;
+        for await (const condition of aiConditions) {
+          const result = await runAiCondition(condition);
+          aiResults.set(condition.id, {
+            passed: result.approve,
+            reason: result.approve ? null : result.reason,
+            ai: result
+          });
+          if (!result.approve) allApproved = false;
+        }
+        isApproved = allApproved;
+      }
+    }
+
+    const { rules, approvedByRuleId } = evaluateAutoApprovalRules(stored.rules, resolved, ctx, aiResults);
 
     return {
       version: 1,
@@ -513,11 +686,26 @@ export const autoApprovalServiceFactory = ({
       }
     };
 
-    const connectionsByApp = await Promise.all(AUTO_APPROVAL_APPS.map(listConnections));
+    const apps = [...new Set([...AUTO_APPROVAL_APPS, ...AI_CONTEXT_APPS])];
+    const [listed, aiModel] = await Promise.all([
+      Promise.all(apps.map(async (app) => [app, await listConnections(app)] as const)),
+      aiService.getOrgAiModel(actor.orgId)
+    ]);
+    const connectionsByApp = new Map(listed);
 
     return {
       apps: AUTO_APPROVAL_APPS,
-      connections: connectionsByApp.flat().flatMap((connection) => {
+      ai: {
+        model: aiModel?.model ?? null,
+        contextApps: AI_CONTEXT_APPS,
+        contextConnections: AI_CONTEXT_APPS.flatMap((app) => connectionsByApp.get(app) ?? []).map((connection) => ({
+          id: connection.id,
+          name: connection.name,
+          app: connection.app,
+          tools: listAppConnectionAiTools(connection.app)
+        }))
+      },
+      connections: AUTO_APPROVAL_APPS.flatMap((app) => connectionsByApp.get(app) ?? []).flatMap((connection) => {
         const provider = getAutoApprovalProvider(connection.app);
         if (!provider) return [];
 

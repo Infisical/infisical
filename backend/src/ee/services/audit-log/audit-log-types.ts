@@ -731,6 +731,7 @@ export enum EventType {
   SECRET_SCANNING_CONFIG_UPDATE = "secret-scanning-config-update",
 
   UPDATE_ORG = "update-org",
+  UPDATE_ORG_AI_CONFIG = "update-org-ai-config",
   ENABLE_ORG_WIDE_SECRET_VALUE_TRACKING = "enable-org-wide-secret-value-tracking",
 
   CREATE_PROJECT = "create-project",
@@ -5972,6 +5973,15 @@ interface SecretScanningConfigReadEvent {
   metadata?: Record<string, never>; // not needed, based off projectId
 }
 
+interface OrgAiConfigUpdateEvent {
+  type: EventType.UPDATE_ORG_AI_CONFIG;
+  metadata: {
+    connectionId: string | null;
+    connectionName: string | null;
+    model: string | null;
+  };
+}
+
 interface OrgUpdateEvent {
   type: EventType.UPDATE_ORG;
   metadata: {
@@ -9009,6 +9019,7 @@ export type Event =
   | SecretScanningConfigUpdateEvent
   | SecretScanningConfigReadEvent
   | OrgUpdateEvent
+  | OrgAiConfigUpdateEvent
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent

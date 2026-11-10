@@ -1,7 +1,7 @@
-import { Check, ExternalLink, X, Zap } from "lucide-react";
+import { Check, ExternalLink, Sparkles, X, Zap } from "lucide-react";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@app/components/v3";
-import { TAutoApprovalOutcome } from "@app/hooks/api/approvalPolicies";
+import { TAutoApprovalAiOutcome, TAutoApprovalOutcome } from "@app/hooks/api/approvalPolicies";
 
 type Props = {
   outcome: TAutoApprovalOutcome;
@@ -36,6 +36,43 @@ const LinkedRecords = ({ inputs }: { inputs: TAutoApprovalOutcome["inputs"] }) =
   );
 };
 
+const MAX_TOOL_INPUT_LENGTH = 120;
+
+const formatToolInput = (input: unknown) => {
+  const text = JSON.stringify(input ?? {});
+  return text.length > MAX_TOOL_INPUT_LENGTH ? `${text.slice(0, MAX_TOOL_INPUT_LENGTH)}...` : text;
+};
+
+const AiTrace = ({ ai }: { ai: TAutoApprovalAiOutcome }) => {
+  const toolCalls = ai.toolCalls.map((call, position) => ({ ...call, position }));
+  return (
+    <div className="mt-1 flex flex-col gap-1 rounded-sm border border-border bg-foreground/5 px-2 py-1.5">
+      <p className="text-foreground">
+        <Sparkles className="mr-1 inline size-3 text-info" />
+        {ai.reason}
+      </p>
+      {toolCalls.length > 0 && (
+        <ol className="flex flex-col gap-0.5">
+          {toolCalls.map((call) => (
+            <li key={call.position} className="flex min-w-0 flex-wrap gap-x-1.5 text-muted">
+              <span className="font-mono text-foreground/80">{call.tool}</span>
+              <span className="truncate font-mono">{formatToolInput(call.input)}</span>
+              {call.connectionName && <span>via {call.connectionName}</span>}
+              <span>·</span>
+              {call.error ? (
+                <span className="text-danger">{call.error}</span>
+              ) : (
+                <span>{call.summary}</span>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+      {ai.model && <p className="text-muted">Decided by {ai.model}</p>}
+    </div>
+  );
+};
+
 const ConditionResult = ({
   condition
 }: {
@@ -49,7 +86,10 @@ const ConditionResult = ({
     )}
     <div className="min-w-0">
       <p className="text-foreground">{condition.description}</p>
-      {!condition.passed && condition.reason && <p className="text-muted">{condition.reason}</p>}
+      {!condition.passed && condition.reason && !condition.ai && (
+        <p className="text-muted">{condition.reason}</p>
+      )}
+      {condition.ai && <AiTrace ai={condition.ai} />}
     </div>
   </li>
 );

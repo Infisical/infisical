@@ -365,14 +365,14 @@ export const registerApprovalPolicyEndpoints = ({
       },
       onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
       handler: async (req) => {
-        const { apps, connections } = await server.services.approvalPolicy.getAutoApprovalCatalog(
+        const { apps, ai, connections } = await server.services.approvalPolicy.getAutoApprovalCatalog(
           policyType,
           req.query.scope,
           req.query.id,
           req.permission
         );
 
-        return { apps, connections };
+        return { apps, ai, connections };
       }
     });
 
