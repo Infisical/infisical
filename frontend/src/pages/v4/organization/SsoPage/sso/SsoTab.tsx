@@ -44,7 +44,7 @@ const SsoTabContent = () => {
   const { permission } = useOrgPermission();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const enabledLoginMethods = sso.useServerConfig().data?.enabledLoginMethods;
-  const { data: subscription } = sso.useSubscription(orgId);
+  const { data: subscription, error: subscriptionError } = sso.useSubscription(orgId);
   const { data: emailDomains, isPending: isLoadingEmailDomains } = sso.useEmailDomains(
     subscription?.emailDomainVerification ? orgId : ""
   );
@@ -259,6 +259,7 @@ const SsoTabContent = () => {
     openSelectedProvider(to);
   };
 
+  if (subscriptionError) throw subscriptionError;
   if (areConfigsLoading) {
     return <Loader label="Loading SSO configuration" />;
   }

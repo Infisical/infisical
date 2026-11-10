@@ -5,7 +5,7 @@ import { z } from "zod";
 import { SsoPage } from "./SsoPage";
 
 export const Route = createFileRoute("/v4/organizations/$orgId/sso")({
-  staticData: { readiness: "partial", missing: ["SSO", "Provisioning"] },
+  staticData: { readiness: "full" },
   component: SsoPage,
   validateSearch: zodValidator(z.object({ selectedTab: z.string().catch("") })),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
