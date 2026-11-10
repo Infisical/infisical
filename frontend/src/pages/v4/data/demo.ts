@@ -8,6 +8,7 @@ import { orgDemo } from "./org/demo";
 import { pamDemo } from "./pam/demo";
 import { projectsDemo } from "./projects/demo";
 import { secretScanningDemo } from "./secret-scanning/demo";
+import { secretSharingDemo } from "./secret-sharing/demo";
 import { secretsDemo } from "./secrets/demo";
 
 export const demoAdapters: V4Adapters = {
@@ -16,6 +17,7 @@ export const demoAdapters: V4Adapters = {
   org: orgDemo,
   integrations: integrationsDemo,
   secretScanning: secretScanningDemo,
+  secretSharing: secretSharingDemo,
   secrets: secretsDemo,
   certificates: certificatesDemo,
   access: accessDemo,

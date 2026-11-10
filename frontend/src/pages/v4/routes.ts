@@ -22,6 +22,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/account-recovery-reset", "v4/auth/AccountRecoveryResetPage/route.tsx"),
     route("/admin/signup", "v4/auth/AdminSignUpPage/route.tsx")
   ]),
+  layout("v4-public", "v4/secret-sharing/public/route.tsx", [
+    route("/shared/secret/$secretId", "v4/secret-sharing/public/ViewSharedSecretPage/route.tsx"),
+    route("/shared/new", "v4/secret-sharing/public/ShareSecretPage/route.tsx")
+  ]),
   route("/organizations/onboarding", "v4/auth/OrgOnboardingPage/route.tsx"),
   route("/organizations/none", "v4/auth/NoOrgPage/route.tsx"),
   route("/password-setup", "v4/auth/PasswordSetupPage/route.tsx"),
@@ -70,6 +74,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "/secret-management/$projectId/roles/$roleSlug",
         "v4/project/RoleDetailsBySlugPage/route.tsx"
       ),
+      route("/secret-management/secret-sharing", "v4/secret-sharing/SecretSharingPage/route.tsx"),
       route("/agent-vault/$projectId/", "v4/redirects/AgentVaultIndexRedirect/route.tsx"),
       route("/agent-vault/$projectId/sessions", "v4/agent-vault/AgentVaultSessionsPage/route.tsx"),
       route("/$type/", "v4/organization/ProjectsPage/ProjectTypePage/route.tsx"),

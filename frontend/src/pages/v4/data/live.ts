@@ -8,6 +8,7 @@ import { orgLive } from "./org/live";
 import { pamLive } from "./pam/live";
 import { projectsLive } from "./projects/live";
 import { secretScanningLive } from "./secret-scanning/live";
+import { secretSharingLive } from "./secret-sharing/live";
 import { secretsLive } from "./secrets/live";
 
 export const liveAdapters: V4Adapters = {
@@ -16,6 +17,7 @@ export const liveAdapters: V4Adapters = {
   org: orgLive,
   integrations: integrationsLive,
   secretScanning: secretScanningLive,
+  secretSharing: secretSharingLive,
   secrets: secretsLive,
   certificates: certificatesLive,
   access: accessLive,

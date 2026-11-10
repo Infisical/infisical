@@ -9,6 +9,7 @@ import type { OrgAdapter } from "./org/contract";
 import type { PamAdapter } from "./pam/contract";
 import type { ProjectsAdapter } from "./projects/contract";
 import type { SecretScanningAdapter } from "./secret-scanning/contract";
+import type { SecretSharingAdapter } from "./secret-sharing/contract";
 import type { SecretsAdapter } from "./secrets/contract";
 
 export type V4Adapters = {
@@ -16,6 +17,7 @@ export type V4Adapters = {
   org: OrgAdapter;
   integrations: IntegrationsAdapter;
   secretScanning: SecretScanningAdapter;
+  secretSharing: SecretSharingAdapter;
   secrets: SecretsAdapter;
   certificates: CertificatesAdapter;
   access: AccessAdapter;
