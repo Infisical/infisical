@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "head-button-menu",
+    title: "Header menus attach",
+    description:
+      "A header cell's menu trigger stays filled while its menu is open, and its focus ring draws inside the cell.",
+    date: "2026-11-07",
+    commit: "b83b077298",
+    page: "table"
+  },
+  {
     id: "toast-offset",
     title: "Toasts clear the footer",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "7b78041dbe",
     page: "button"
-  },
-  {
-    id: "row-actions-lazy",
-    title: "Lazy row actions",
-    description:
-      "Row actions can render as plain buttons until a row is hovered or focused, and pages can open the More menu themselves.",
-    date: "2026-11-07",
-    commit: "b7ba7061e7",
-    page: "table"
   }
 ];
