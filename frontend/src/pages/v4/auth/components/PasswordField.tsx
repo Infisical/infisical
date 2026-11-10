@@ -12,6 +12,7 @@ import { PasswordInput } from "./PasswordInput";
 import styles from "../auth.module.css";
 
 type Props = {
+  label?: string;
   value: string;
   policy: TPasswordPolicy;
   breachStatus: PasswordBreachCheckStatus;
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export const PasswordField = ({
+  label = "Password",
   value,
   policy,
   breachStatus,
@@ -33,7 +35,7 @@ export const PasswordField = ({
   const showRequirements = value.length > 0;
 
   return (
-    <Field label="Password" error={showRequirements ? undefined : error}>
+    <Field label={label} error={showRequirements ? undefined : error}>
       <PasswordInput {...registration} autoComplete="new-password" invalid={Boolean(error)} />
       {showRequirements && (
         <div className={styles.requirements} aria-live="polite">
