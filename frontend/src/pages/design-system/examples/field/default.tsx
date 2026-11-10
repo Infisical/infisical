@@ -16,7 +16,9 @@ export default function Example() {
         <UI.Field>
           <UI.FieldLabel htmlFor="field-project">Project name</UI.FieldLabel>
           <Input id="field-project" defaultValue="payments" />
-          <UI.FieldDescription>Use a name your team recognizes.</UI.FieldDescription>
+          <UI.FieldDescription>
+            Use a name your team recognizes. <a href="https://infisical.com/docs">Naming guide</a>
+          </UI.FieldDescription>
         </UI.Field>
       </UI.FieldGroup>
     </ExampleStack>

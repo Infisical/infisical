@@ -6,6 +6,7 @@ import { useFieldControlAttributes } from "../lib/field-context";
 import { snap, spring } from "../lib/motion";
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
+import { Tooltip } from "./tooltip";
 
 import controlStyles from "./controls.module.css";
 
@@ -20,7 +21,9 @@ function Switch({
   label,
   description,
   layout = "default",
+  disabledReason,
   onChange,
+  onClick,
   onCheckedChange,
   onPointerEnter,
   onPointerLeave,
@@ -28,14 +31,18 @@ function Switch({
   ref,
   ...props
 }: Omit<React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root>, "onChange"> & {
-  label?: string;
-  description?: string;
+  label?: React.ReactNode;
+  description?: React.ReactNode;
   layout?: "default" | "row";
+  /** Blocks the switch and says why: it stays focusable, shows the reason in a tooltip and exposes it as the accessible description. */
+  disabledReason?: string;
   onChange?: (checked: boolean) => void;
 } & {
   size?: "sm" | "default";
 } & { ref?: React.Ref<React.ComponentRef<typeof SwitchPrimitive.Root>> }) {
   const reduced = useReducedMotion();
+  const reason = disabledReason || undefined;
+  const inactive = Boolean(props.disabled || reason);
   const [hovered, setHovered] = React.useState(false);
   const [pressed, setPressed] = React.useState(false);
   const [checked, setChecked] = useControllableState({
@@ -53,8 +60,8 @@ function Switch({
     };
   }, [pressed]);
   const geometry = thumbGeometry[size];
-  const extra = props.disabled ? 0 : pressed ? geometry.press : hovered ? geometry.hover : 0;
-  const shrink = pressed && !props.disabled ? geometry.shrink : 0;
+  const extra = inactive ? 0 : pressed ? geometry.press : hovered ? geometry.hover : 0;
+  const shrink = pressed && !inactive ? geometry.shrink : 0;
   const generated = React.useId();
   const titleId = `${generated}-title`;
   const descriptionId = `${generated}-description`;
@@ -72,6 +79,11 @@ function Switch({
       )}
       {...props}
       {...fieldAttributes}
+      disabled={reason ? undefined : props.disabled}
+      data-disabled={inactive ? "" : undefined}
+      data-disabled-reason={reason ? "" : undefined}
+      aria-disabled={inactive || undefined}
+      aria-description={reason ?? props["aria-description"]}
       id={fieldAttributes.id ?? generated}
       aria-labelledby={label ? titleId : fieldAttributes["aria-labelledby"]}
       aria-describedby={
@@ -90,6 +102,10 @@ function Switch({
       onPointerDown={(event) => {
         setPressed(true);
         onPointerDown?.(event);
+      }}
+      onClick={(event) => {
+        if (reason) event.preventDefault();
+        onClick?.(event);
       }}
       onCheckedChange={(next) => {
         setChecked(next);
@@ -112,12 +128,21 @@ function Switch({
       </SwitchPrimitive.Thumb>
     </SwitchPrimitive.Root>
   );
+  const anchored = reason ? (
+    <Tooltip content={reason}>
+      <span data-slot="switch-anchor" className={controlStyles.switchAnchor}>
+        {control}
+      </span>
+    </Tooltip>
+  ) : (
+    control
+  );
   return label ? (
     <label
       htmlFor={fieldAttributes.id ?? generated}
       className={cn(controlStyles.choice, layout === "row" && controlStyles.choiceRow)}
     >
-      {layout !== "row" && control}
+      {layout !== "row" && anchored}
       <span className={controlStyles.choiceText}>
         <span id={titleId} className={controlStyles.choiceTitle}>
           {label}
@@ -128,10 +153,10 @@ function Switch({
           </span>
         )}
       </span>
-      {layout === "row" && control}
+      {layout === "row" && anchored}
     </label>
   ) : (
-    control
+    anchored
   );
 }
 Switch.displayName = "Switch";

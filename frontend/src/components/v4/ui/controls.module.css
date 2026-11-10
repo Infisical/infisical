@@ -428,11 +428,73 @@
   letter-spacing: var(--v4-type-small-letter-spacing);
   color: var(--v4-muted);
 }
+.choiceCard {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--v4-space-12);
+  min-width: 0;
+  padding: var(--v4-space-12);
+  border: var(--v4-size-control-border) solid var(--v4-line-soft);
+  border-radius: 0;
+  background-color: transparent;
+  color: inherit;
+  text-align: start;
+  transition-property: background-color, border-color;
+  transition-duration: var(--v4-duration-fast);
+  transition-timing-function: var(--v4-ease-fade);
+}
+.choiceCard[data-state="checked"] {
+  border-color: var(--v4-choice-selected-border);
+  background-color: var(--v4-choice-selected-surface);
+}
+.choiceCard[aria-invalid="true"]:not([data-state="checked"]) {
+  border-color: var(--v4-control-invalid-border);
+}
+@media (hover: hover) {
+  .choiceCard:hover:not(:disabled) {
+    background-image: linear-gradient(var(--v4-hover), var(--v4-hover));
+  }
+}
+.choiceCard:active:not(:disabled) {
+  background-image: linear-gradient(var(--v4-press), var(--v4-press));
+}
+.choiceCardMarkBox {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: var(--v4-type-field-label-line-height);
+}
+.choiceCardMark {
+  position: relative;
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
+  border-radius: 50%;
+}
+.choiceCardMedia {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-icon-xl);
+  height: var(--v4-size-icon-xl);
+}
+.choiceCardMedia > :is(svg, img) {
+  width: var(--v4-size-icon-xl);
+  height: var(--v4-size-icon-xl);
+  object-fit: contain;
+}
 .choiceRow {
   align-items: center;
   justify-content: space-between;
   padding-block: 12px;
   border-bottom: 1px solid var(--v4-line-soft);
+}
+.choiceRow:last-child {
+  border-bottom: 0;
+}
+.switchAnchor {
+  display: inline-flex;
+  flex: none;
 }
 .switch {
   --v4-switch-travel: 16px;

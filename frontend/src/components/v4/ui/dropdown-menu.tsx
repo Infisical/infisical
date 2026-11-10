@@ -101,6 +101,8 @@ function DropdownMenuItem({
   inset,
   variant = "default",
   description,
+  disabledReason,
+  onSelect,
   children,
   ref,
   ...props
@@ -108,18 +110,31 @@ function DropdownMenuItem({
   inset?: boolean;
   variant?: "default" | "destructive";
   description?: React.ReactNode;
+  /** Blocks the item and says why: it stays reachable by keyboard, shows the reason in place of the description, exposes it as the accessible description and never runs onSelect. */
+  disabledReason?: string;
 } & { ref?: React.Ref<React.ComponentRef<typeof DropdownMenuPrimitive.Item>> }) {
   const Primitive = useMenuPrimitive();
+  const reason = disabledReason || undefined;
   return (
     <Primitive.Item
       ref={ref}
       data-slot="dropdown-menu-item"
       data-inset={inset}
       data-variant={variant}
+      data-disabled-reason={reason ? "" : undefined}
       className={cn(menu.row, className)}
       {...props}
+      aria-disabled={reason ? true : props["aria-disabled"]}
+      aria-description={reason ?? props["aria-description"]}
+      onSelect={(event) => {
+        if (reason) {
+          event.preventDefault();
+          return;
+        }
+        onSelect?.(event);
+      }}
     >
-      {menuRowContent(children, description)}
+      {menuRowContent(children, reason ? <span aria-hidden>{reason}</span> : description)}
     </Primitive.Item>
   );
 }

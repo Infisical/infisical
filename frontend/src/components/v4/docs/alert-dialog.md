@@ -54,7 +54,8 @@ Exports: AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 - confirmText adds a mono field, labeled Type <name> to confirm and focused on open, above the footer; the action stays disabled until the field matches exactly.
 - One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer.
 - When AlertDialogHeader or AlertDialogFooter is a direct child, the lead tile, header and body share one scroll region with the edge fade, and the footer stays pinned below it; the footer's own pad is the space above the actions.
-- pending on AlertDialogContent blocks Escape and disables AlertDialogCancel while an action runs; the content is aria-busy. Show progress on the Action Button with loading.
+- pending on AlertDialogContent blocks Escape and disables AlertDialogCancel while an action runs; the content is aria-busy.
+- loading on AlertDialogAction follows Button's loading: the spinner replaces the label at the same width, the action stays focusable and aria-busy, and further clicks and Enter are ignored, so a confirmation cannot submit twice. While loading is true the content is pending as above. Passing loading at all, even false, hands closing to the host: a click runs onClick and leaves the dialog open, and the host sets open false once the request succeeds.
 - DiscardChangesAlertDialog is the v3 discard prompt: a danger alert with the alert icon, title (default Discard changes?), description (default Your changes will be lost.), Keep editing and a destructive Discard that calls onDiscard. useDiscardChangesGuard({ isDirty, onDiscard }) returns the v3 shape (requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen) plus discardDialogProps to spread on the prompt. requestDiscard calls onDiscard at once when clean and opens the prompt when dirty; route a Dialog or Sheet onOpenChange(false) through it.
 
 ## Accessibility
@@ -64,7 +65,7 @@ Exports: AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 ## Use cases
 
-- Control open state or prevent the Action default close, retain the resource and consequence text, and close only after the host confirms success.
+- For an async action, pass loading to AlertDialogAction and control open state, retain the resource and consequence text, and close only after the host confirms success.
 
 ## Avoid
 
@@ -72,7 +73,7 @@ Exports: AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 ## Limits
 
-- Action does not await a request or infer success; prevent its default close or control open while an async operation settles.
+- Action does not await a request or infer success; pass loading (or prevent its default close) and control open while an async operation settles.
 
 ## Declared example coverage
 
@@ -147,6 +148,67 @@ export default function Example() {
         </figure>
       ))}
     </div>
+  );
+}
+```
+
+### Action loading
+
+Save this example at `src/pages/design-system/examples/alert-dialog/loading.tsx`; its relative imports are generated for that exact path. States: default, loading.
+
+Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useEffect, useRef, useState } from "react";
+
+import * as UI from "../../../../components/v4/ui/alert-dialog";
+import { Button } from "../../../../components/v4/ui/button";
+
+export default function Example() {
+  const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  let label = "Ready";
+  if (deleting) label = "Deleting";
+  else if (deleted) label = "Deleted in this local example";
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+        <UI.AlertDialog open={open} onOpenChange={setOpen}>
+          <UI.AlertDialogTrigger asChild>
+            <Button variant="outline">Delete connection</Button>
+          </UI.AlertDialogTrigger>
+          <UI.AlertDialogContent tone="danger">
+            <UI.AlertDialogHeader>
+              <UI.AlertDialogTitle>Delete production-postgres?</UI.AlertDialogTitle>
+              <UI.AlertDialogDescription>
+                Syncs and rotations that use this connection stop.
+              </UI.AlertDialogDescription>
+            </UI.AlertDialogHeader>
+            <UI.AlertDialogFooter>
+              <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
+              <UI.AlertDialogAction
+                variant="destructive"
+                loading={deleting}
+                onClick={() => {
+                  setDeleting(true);
+                  timer.current = window.setTimeout(() => {
+                    setDeleting(false);
+                    setDeleted(true);
+                    setOpen(false);
+                  }, 2000);
+                }}
+              >
+                Delete connection
+              </UI.AlertDialogAction>
+            </UI.AlertDialogFooter>
+          </UI.AlertDialogContent>
+        </UI.AlertDialog>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">{label}</figcaption>
+    </figure>
   );
 }
 ```

@@ -67,6 +67,7 @@ Exports: Alert, AlertAction, AlertDescription, AlertTitle, Banner. Source TypeSc
 ## Behavior
 
 - Alert supports tone and dismissal for inline feedback. Banner represents a standing condition above related content.
+- A text link inside AlertDescription (an anchor that is not a Button or another slotted part) is a quiet link: the link color with no underline at rest, underlined on hover and keyboard focus.
 
 ## Accessibility
 
@@ -133,7 +134,8 @@ export default function Example() {
       <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
         <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
           <Alert tone="info" title="Read access only">
-            This connection can fetch secrets.
+            This connection can fetch secrets.{" "}
+            <a href="https://infisical.com/docs">Review its scopes</a>
           </Alert>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"info"}</figcaption>

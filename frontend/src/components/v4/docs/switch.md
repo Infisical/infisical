@@ -54,10 +54,14 @@ Exports: Switch. Source TypeScript defines the API.
 ## Behavior
 
 - Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is the accent track (sw-on) with an on-accent ink knob (sw-knob-on). Track and knob are square. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio.
+- label and description take any node, so a description can hold a Code value or a quiet link; label names the switch through aria-labelledby and description describes it.
+- layout row puts the switch after the text, with a line-soft divider under each row except the last child of its container, so stacked rows are divided and a lone row in a Card draws no divider above the card's edge.
+- disabledReason blocks the switch and says why, like Button: the switch stays focusable, is aria-disabled and dimmed, never toggles from a click, Space or its label, and shows the reason in a tooltip on hover and keyboard focus and as its accessible description.
 
 ## Accessibility
 
 - Label the switch and keep its name stable when its checked state changes. Do not stage it behind Save.
+- Use disabledReason rather than disabled when a permission or plan blocks the setting, so keyboard users can reach the switch and hear the reason.
 
 ## Use cases
 
@@ -86,12 +90,18 @@ Source declarations and review criteria only. Generation checks references and c
 - default: example `default`, visible label "Inline".
 - row: example `default`, visible label "Row with description".
 
+### row count
+
+- one row: example `rows`, visible label "One row".
+- stacked rows: example `rows`, visible label "Stacked rows".
+
 ### state
 
 - unchecked: example `states`, visible label "Off".
 - checked: example `states`, visible label "On".
 - disabled unchecked: example `states`, visible label "Disabled, off".
 - disabled checked: example `states`, visible label "Disabled, on".
+- disabled with reason: example `rows`, visible label "Enable SCIM".
 - controlled saved state: example `default`, visible label "Inline".
 - invalid: omitted. aria-invalid draws the red control border. A switch is rarely a required answer; Field shows the error rendering.
 - external label: omitted. An id and a Label with htmlFor. The Label page shows the association.
@@ -202,6 +212,67 @@ export default function Example() {
           <Switch aria-label="Audit events, disabled on" disabled defaultChecked />
         </div>
         <figcaption className="text-muted-foreground text-xs">{"Disabled, on"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Rows in a card
+
+Save this example at `src/pages/design-system/examples/switch/rows.tsx`; its relative imports are generated for that exact path. States: default, disabled.
+
+Registry items used: @infisical/card, @infisical/code, @infisical/switch. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Card } from "../../../../components/v4/ui/card";
+import { Code } from "../../../../components/v4/ui/code";
+import { Switch } from "../../../../components/v4/ui/switch";
+
+export default function Example() {
+  const [audit, setAudit] = useState(true);
+  const [rotation, setRotation] = useState(false);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Card variant="framed" title="SCIM provisioning">
+            <Switch
+              layout="row"
+              label="Enable SCIM"
+              description="Provision and deprovision members from your identity provider."
+              disabledReason="You need permission to edit SCIM."
+            />
+          </Card>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"One row"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Card variant="framed" title="Security">
+            <Switch
+              layout="row"
+              label="Audit events"
+              description="Stream every read and write to the audit log."
+              checked={audit}
+              onChange={setAudit}
+            />
+            <Switch
+              layout="row"
+              label="Automatic rotation"
+              description={
+                <>
+                  Rotate <Code>DB_PASSWORD</Code> every 30 days.
+                </>
+              }
+              checked={rotation}
+              onChange={setRotation}
+            />
+          </Card>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Stacked rows"}</figcaption>
       </figure>
     </div>
   );

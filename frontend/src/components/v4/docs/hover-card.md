@@ -48,6 +48,7 @@ Exports: HoverCard, HoverCardContent, HoverCardTrigger. Source TypeScript define
 ## Behavior
 
 - Radix HoverCard owns open/onOpenChange and hover delays; Content is scoped to V4Scope and accepts alignment and side offset.
+- width picks the panel width from a size token: default is size-popover (288px), sm is size-sheet-sm (384px) and md is size-sheet-md (512px) for a table or raw payload, and content fits its content up to size-dialog-wide (560px). Every width shrinks to the space the popper has, so it never overflows the viewport. Never set a width class on HoverCardContent.
 - HoverCard is where hovered content goes: the pointer can move into it and its text can be selected and copied, so it carries the longer reads, values and links a pass-through Tooltip cannot. Content with actions goes in a Popover instead.
 
 ## Accessibility
@@ -69,6 +70,13 @@ Exports: HoverCard, HoverCardContent, HoverCardTrigger. Source TypeScript define
 ## Declared example coverage
 
 Source declarations and review criteria only. Generation checks references and completeness, not rendered behavior or API parity.
+
+### HoverCardContent.width
+
+- default: example `widths`, visible label "default".
+- sm: example `widths`, visible label "sm".
+- md: example `widths`, visible label "md".
+- content: example `widths`, visible label "content".
 
 ### Side
 
@@ -191,6 +199,69 @@ export default function Example() {
           Staging connection selected locally, {selected}.
         </p>
       )}
+    </div>
+  );
+}
+```
+
+### Widths
+
+Save this example at `src/pages/design-system/examples/hover-card/widths.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/code, @infisical/hover-card. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Code } from "../../../../components/v4/ui/code";
+import * as UI from "../../../../components/v4/ui/hover-card";
+
+const widths = [
+  {
+    width: "default",
+    trigger: "Staging connection",
+    body: "Last synchronized 12 versions. All clients are up to date."
+  },
+  {
+    width: "sm",
+    trigger: "SAML provider",
+    body: "Okta sends the email, first name and last name attributes. Members sign in through the Infisical app tile in Okta, and new members join with the Member role."
+  },
+  {
+    width: "md",
+    trigger: "Raw SCIM event",
+    body: '{"schemas":["urn:ietf:params:scim:api:messages:2.0:PatchOp"],"Operations":[{"op":"replace","path":"active","value":false}]}'
+  },
+  { width: "content", trigger: "Tags", body: "env:production, team:payments" }
+] as const;
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      {widths.map(({ width, trigger, body }) => (
+        <figure
+          key={width}
+          className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center"
+        >
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+            <UI.HoverCard>
+              <UI.HoverCardTrigger asChild>
+                <a href="#hover-card" onClick={(event) => event.preventDefault()}>
+                  {trigger}
+                </a>
+              </UI.HoverCardTrigger>
+              <UI.HoverCardContent width={width} align="start">
+                {width === "md" ? (
+                  <Code block wrap language="json" label="Raw SCIM event">
+                    {body}
+                  </Code>
+                ) : (
+                  <p>{body}</p>
+                )}
+              </UI.HoverCardContent>
+            </UI.HoverCard>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{width}</figcaption>
+        </figure>
+      ))}
     </div>
   );
 }

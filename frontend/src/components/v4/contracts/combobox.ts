@@ -7,6 +7,7 @@ export const comboboxDefinition = {
   summary: "Search and choose one option from a provided list.",
   sourceFiles: [
     "src/components/v4/ui/combobox.tsx",
+    "src/components/v4/ui/tags-input.tsx",
     "src/components/v4/ui/picker.module.css",
     "src/components/v4/lib/use-option-creation.ts"
   ],
@@ -15,9 +16,11 @@ export const comboboxDefinition = {
     "ComboboxCreation",
     "ComboboxCreationFormProps",
     "ComboboxOption",
-    "ComboboxProps"
+    "ComboboxProps",
+    "TagsInput",
+    "TagsInputProps"
   ],
-  referenceNames: ["Combobox"],
+  referenceNames: ["Combobox", "TagsInput"],
   behavior: [
     "Single selection uses Radix Popover and cmdk; multiple selection composes the shared ARIA listbox with removable chips and empty-query Backspace. Chips sit on a tint; a chip that cannot be removed (locked, for example required by policy) drops the tint and its text goes muted so the whole chip reads as disabled, and its remove button stays visible but disabled.",
     "ArrowDown or ArrowUp on the focused closed trigger opens the list with focus in the search field and the active option highlighted, like Enter and Space.",
@@ -31,7 +34,8 @@ export const comboboxDefinition = {
     "creation picks how the Create row works for single selection. mode inline takes onCreate and behaves exactly like the onCreate prop, which stays as its shorthand. mode dialog always ends the list with a plus row named by label, after a separator when options are listed, so an empty list still offers it. Choosing it closes the list and opens a Dialog titled title with description, the form from renderForm and a footer with Cancel and submitLabel (default Create), which submits the form whose id is formId.",
     "renderForm receives query (the trimmed search text), formId, complete, dismiss, onDirtyChange and onPendingChange, and remounts on every open. complete(option) selects the option (its label shows on the trigger even before the host adds it to options), closes the Dialog and returns focus to the trigger; a complete that arrives after the Dialog was dismissed is ignored. onPendingChange(true) makes the Dialog pending, which blocks Escape, outside clicks and the corner close, disables Cancel and shows the submit Button loading.",
     "Escape, an outside click, the corner close, Cancel and dismiss all go through useDiscardChangesGuard: with the form dirty (onDirtyChange(true)) they open DiscardChangesAlertDialog with discardTitle and discardDescription, and only Discard closes; a clean form closes at once. A submit inside the Dialog never reaches a form around the Combobox.",
-    "disabledReason on either mode keeps the Create row visible but disabled, with the reason beside its label (disable, do not hide). Gate it on the create permission."
+    "disabledReason on either mode keeps the Create row visible but disabled, with the reason beside its label (disable, do not hide). Gate it on the create permission.",
+    "TagsInput is the free-text sibling of multiple mode, for values people type rather than pick (domains, claim values, labels). It draws the same field and chips with no list. Enter or a comma commits the typed text, and so does leaving the field; Backspace in the empty input removes the last tag; each chip has a remove button that takes Enter, Space, Backspace or Delete and moves focus to the next chip, else the previous one, else the input. Pasting text with commas or line breaks splits it into tags. Text is trimmed and an exact duplicate is dropped without a message. validate(tag, tags) returns a reason to refuse a tag; refused text stays in the input, comma separated after a paste, and onValidationChange receives the first reason on every commit, or undefined when nothing was refused, so the host can show it in the Field error. value or defaultValue with onChange or onValueChange; mono for machine values; disabled locks the chips and input."
   ],
   accessibility: [
     "Caller supplies a visible or programmatic label.",
@@ -74,12 +78,18 @@ export const comboboxDefinition = {
       title: "Create in a dialog",
       module: "./examples/app-connection-form/default.tsx",
       states: ["controlled", "loading", "disabled"]
+    },
+    {
+      id: "tags",
+      title: "Free-text tags",
+      module: "./examples/combobox/tags.tsx",
+      states: ["controlled", "empty", "invalid", "disabled"]
     }
   ],
   coverage: [
     {
       axis: "mode",
-      expected: ["single", "multiple"],
+      expected: ["single", "multiple", "free text"],
       shown: [
         {
           value: "single",
@@ -90,6 +100,11 @@ export const comboboxDefinition = {
           value: "multiple",
           exampleId: "multiple",
           label: "Visible environments"
+        },
+        {
+          value: "free text",
+          exampleId: "tags",
+          label: "Mono values with validation"
         }
       ]
     },
@@ -204,7 +219,7 @@ export const comboboxDefinition = {
     ],
     avoid: [],
     decision:
-      "Choose Combobox when a known option list needs search. Use Select for a short grouped choice and CommandMenu for executing actions.",
+      "Choose Combobox when a known option list needs search. Use TagsInput when people type the values and there is no list to pick from, Select for a short grouped choice and CommandMenu for executing actions.",
     rules: [
       {
         id: "combobox-usage",
@@ -256,12 +271,34 @@ export const comboboxDefinition = {
           "src/components/v4/ui/combobox.tsx",
           "src/pages/design-system/examples/combobox/default.tsx"
         ]
+      },
+      {
+        id: "combobox-free-text-tags",
+        when: "People type a list of values that no option list holds, such as domains, redirect URIs or claim values.",
+        do: "Use TagsInput, with validate for format rules and onValidationChange feeding the Field error.",
+        avoid:
+          "Fake it with Combobox multiple whose options mirror the value and whose onCreate appends the query.",
+        reason:
+          "A tag list has no options to search, so a picker adds an empty list, a Create row and a second source of truth for the value.",
+        evidence: [
+          "src/components/v4/ui/tags-input.tsx",
+          "src/pages/design-system/examples/combobox/tags.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "Type a value and press Enter, type a comma, paste a comma and newline separated list with one invalid entry and press Backspace in the empty input. Each commit adds trimmed tags once, the invalid entry stays in the input with its reason in the Field error, and Backspace removes the last tag."
+        }
       }
     ],
     states: [
       {
         state: "empty",
         guidance: "Keep the query and state that no options match."
+      },
+      {
+        state: "invalid",
+        guidance:
+          "For TagsInput, keep the refused text in the input and show validate's reason in the Field error until the next commit."
       },
       {
         state: "disabled",

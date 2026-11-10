@@ -164,7 +164,8 @@ export const baselineContent = [
     exports: ["Alert", "AlertAction", "AlertDescription", "AlertTitle", "Banner"],
     referenceNames: ["Alert", "Banner"],
     behavior: [
-      "Alert supports tone and dismissal for inline feedback. Banner represents a standing condition above related content."
+      "Alert supports tone and dismissal for inline feedback. Banner represents a standing condition above related content.",
+      "A text link inside AlertDescription (an anchor that is not a Button or another slotted part) is a quiet link: the link color with no underline at rest, underlined on hover and keyboard focus."
     ],
     accessibility: [
       "Use readable text with the tone. Dismissal needs a named button and owner-controlled state when the notice can return."

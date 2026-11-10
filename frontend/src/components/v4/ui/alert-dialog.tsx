@@ -17,6 +17,7 @@ import { cn } from "../lib/utils";
 import overlay from "./overlay.module.css";
 
 const ConfirmContext = React.createContext<{ ready: boolean }>({ ready: true });
+const PendingClaimContext = React.createContext<(delta: number) => void>(() => {});
 const ToneContext = React.createContext<{
   tone?: "danger" | "neutral";
   claimMedia: (claimed: boolean) => void;
@@ -83,11 +84,17 @@ function AlertDialogContent({
   icon?: IconName;
   /** The exact text the person types before the action enables. */
   confirmText?: string;
-  /** While true, Escape and Cancel are blocked, so an in-flight action cannot be abandoned. */
+  /** While true, Escape and Cancel are blocked, so an in-flight action cannot be abandoned. An AlertDialogAction with loading sets this for you. */
   pending?: boolean;
 } & { ref?: React.Ref<React.ComponentRef<typeof AlertDialogPrimitive.Content>> }) {
   const escape = useOwnedEscape(ref, onEscapeKeyDown);
-  const guard = useDismissGuard(pending, { onEscapeKeyDown: escape.onEscapeKeyDown });
+  const [loadingActions, setLoadingActions] = React.useState(0);
+  const claimPending = React.useCallback(
+    (delta: number) => setLoadingActions((count) => count + delta),
+    []
+  );
+  const busy = pending || loadingActions > 0;
+  const guard = useDismissGuard(busy, { onEscapeKeyDown: escape.onEscapeKeyDown });
   const [typed, setTyped] = React.useState("");
   const [hasMedia, setHasMedia] = React.useState(false);
   const toneValue = React.useMemo(() => ({ tone, claimMedia: setHasMedia }), [tone]);
@@ -134,7 +141,7 @@ function AlertDialogContent({
         data-sections={sections ? "" : undefined}
         data-size={size}
         data-tone={tone}
-        aria-busy={pending || undefined}
+        aria-busy={busy || undefined}
         className={cn(
           "group/alert-dialog-content z-50 data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm",
           overlay.pop,
@@ -151,34 +158,36 @@ function AlertDialogContent({
         }}
         onEscapeKeyDown={guard.onEscapeKeyDown}
       >
-        <OverlayPendingContext value={pending}>
-          <ConfirmContext value={{ ready: confirmText === undefined || typed === confirmText }}>
-            <ToneContext value={toneValue}>
-              {sections ? (
-                <>
-                  {sections.scroll.length > 0 && (
-                    <div
-                      data-slot="alert-dialog-scroll"
-                      data-scroll-fade="y"
-                      data-before-footer={sections.footer.length > 0 || undefined}
-                    >
-                      {sections.scroll}
-                    </div>
-                  )}
-                  {sections.footer}
-                </>
-              ) : (
-                <>
-                  {!hasMedia && (icon || tone === "danger") && (
-                    <AlertDialogMedia data-auto="">
-                      <Icon name={icon ?? "trash"} size={20} />
-                    </AlertDialogMedia>
-                  )}
-                  {parts}
-                </>
-              )}
-            </ToneContext>
-          </ConfirmContext>
+        <OverlayPendingContext value={busy}>
+          <PendingClaimContext value={claimPending}>
+            <ConfirmContext value={{ ready: confirmText === undefined || typed === confirmText }}>
+              <ToneContext value={toneValue}>
+                {sections ? (
+                  <>
+                    {sections.scroll.length > 0 && (
+                      <div
+                        data-slot="alert-dialog-scroll"
+                        data-scroll-fade="y"
+                        data-before-footer={sections.footer.length > 0 || undefined}
+                      >
+                        {sections.scroll}
+                      </div>
+                    )}
+                    {sections.footer}
+                  </>
+                ) : (
+                  <>
+                    {!hasMedia && (icon || tone === "danger") && (
+                      <AlertDialogMedia data-auto="">
+                        <Icon name={icon ?? "trash"} size={20} />
+                      </AlertDialogMedia>
+                    )}
+                    {parts}
+                  </>
+                )}
+              </ToneContext>
+            </ConfirmContext>
+          </PendingClaimContext>
         </OverlayPendingContext>
       </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
@@ -277,13 +286,30 @@ function AlertDialogAction({
   size = "default",
   asChild,
   disabled,
+  loading,
+  onClick,
   ref,
   ...props
 }: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> &
   Pick<React.ComponentPropsWithoutRef<typeof Button>, "variant" | "size"> & {
+    /** Button's loading: the spinner takes the label's place at the same width and the action stays focusable but cannot fire again. While true, the dialog is pending (Escape and Cancel blocked). Passing loading at all, even false, means the host closes the dialog: a click runs onClick and does not close it. */
+    loading?: boolean;
     ref?: React.Ref<React.ComponentRef<typeof AlertDialogPrimitive.Action>>;
   }) {
   const { ready } = React.useContext(ConfirmContext);
+  const claimPending = React.useContext(PendingClaimContext);
+  React.useLayoutEffect(() => {
+    if (!loading) return undefined;
+    claimPending(1);
+    return () => claimPending(-1);
+  }, [loading, claimPending]);
+  const handleClick: React.MouseEventHandler<HTMLButtonElement> | undefined =
+    loading === undefined
+      ? onClick
+      : (event) => {
+          onClick?.(event);
+          event.preventDefault();
+        };
   if (asChild)
     return (
       <AlertDialogPrimitive.Action
@@ -292,15 +318,17 @@ function AlertDialogAction({
         data-slot="alert-dialog-action"
         className={className}
         disabled={disabled || !ready}
+        onClick={handleClick}
         {...props}
       />
     );
   return (
-    <Button variant={variant} size={size} disabled={disabled || !ready} asChild>
+    <Button variant={variant} size={size} disabled={disabled || !ready} loading={loading} asChild>
       <AlertDialogPrimitive.Action
         ref={ref}
         data-slot="alert-dialog-action"
         className={cn(className)}
+        onClick={handleClick}
         {...props}
       />
     </Button>

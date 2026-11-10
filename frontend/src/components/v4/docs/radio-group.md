@@ -4,7 +4,7 @@ Choose one option from a visible group.
 
 ## Choose this component
 
-Choose RadioGroup when exactly one visible alternative is required. Use Checkbox for independent choices and ToggleGroup for optional pressed tools.
+Choose RadioGroup when exactly one visible alternative is required, with RadioGroupCard when each alternative needs a description or a logo to tell it apart. Use Checkbox for independent choices and ToggleGroup for optional pressed tools.
 
 ## Usage rules
 
@@ -67,11 +67,12 @@ Why: Mutual exclusion and a deliberate empty value must remain understandable.
 
 - src/components/v4/ui/radio-group.tsx
 
-Exports: RadioGroup, RadioGroupItem. Source TypeScript defines the API.
+Exports: RadioGroup, RadioGroupCard, RadioGroupItem. Source TypeScript defines the API.
 
 ## Behavior
 
 - RadioGroup uses one string value with value/defaultValue and onValueChange. Each RadioGroupItem contributes its own value and disabled state.
+- RadioGroupCard is a RadioGroup item drawn as a selectable card: the radio mark, optional media (an icon or logo at size-icon-xl, hidden from assistive technology), a title and an optional description. The whole card is the radio and its click target; the title names it and the description describes it. Checked takes the choice selected paint (choice-selected-border and choice-selected-surface), hover and press lay the shared translucent hover and press over it, and disabled dims it. It is a bordered tile with a line-soft edge, not a frame, so a set of cards may sit inside a framed Card or SettingsCard, but never put a Card or other framed container inside one. Lay the cards out with a grid class on RadioGroup.
 
 ## Accessibility
 
@@ -101,6 +102,12 @@ Source declarations and review criteria only. Generation checks references and c
 - disabled group: example `states`, visible label "Policy choice".
 - disabled option: example `default`, visible label "archived".
 - controlled: example `default`, visible label "Environment access".
+
+### RadioGroupCard content
+
+- media and description: example `cards`, visible label "Media and description, one disabled".
+- title only: example `cards`, visible label "Title only, nothing chosen yet".
+- disabled card: example `cards`, visible label "Media and description, one disabled".
 
 ## Executable examples
 
@@ -219,6 +226,78 @@ export default function Example() {
           <figcaption className="text-muted-foreground text-xs">{orientation}</figcaption>
         </figure>
       ))}
+    </div>
+  );
+}
+```
+
+### Choice cards
+
+Save this example at `src/pages/design-system/examples/radio-group/cards.tsx`; its relative imports are generated for that exact path. States: controlled, empty, disabled.
+
+Registry items used: @infisical/icon, @infisical/radio-group. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Icon } from "../../../../components/v4/ui/icon";
+import { RadioGroup, RadioGroupCard } from "../../../../components/v4/ui/radio-group";
+
+export default function Example() {
+  const [protocol, setProtocol] = useState("saml");
+  const [expiry, setExpiry] = useState<string>();
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <RadioGroup
+            aria-label="Single sign-on protocol"
+            value={protocol}
+            onValueChange={setProtocol}
+            className="grid-cols-1 sm:grid-cols-3"
+          >
+            <RadioGroupCard
+              value="saml"
+              title="SAML"
+              description="Okta, Microsoft Entra ID, JumpCloud and other SAML 2.0 identity providers."
+              media={<Icon name="building" />}
+            />
+            <RadioGroupCard
+              value="oidc"
+              title="OIDC"
+              description="Any OpenID Connect provider with a discovery URL."
+              media={<Icon name="globe" />}
+            />
+            <RadioGroupCard
+              value="ldap"
+              title="LDAP"
+              description="Available on the Enterprise plan."
+              media={<Icon name="user" />}
+              disabled
+            />
+          </RadioGroup>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Media and description, one disabled"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <RadioGroup
+            aria-label="Token expiry"
+            value={expiry}
+            onValueChange={setExpiry}
+            className="grid-cols-3"
+          >
+            <RadioGroupCard value="7d" title="7 days" />
+            <RadioGroupCard value="30d" title="30 days" />
+            <RadioGroupCard value="never" title="Never" />
+          </RadioGroup>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Title only, nothing chosen yet"}
+        </figcaption>
+      </figure>
     </div>
   );
 }

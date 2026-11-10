@@ -235,7 +235,8 @@
     background-color: var(--v4-bad-hover);
   }
 }
-.danger.danger:is(:disabled, [aria-disabled="true"]) {
+.danger.danger:disabled,
+.danger.danger[aria-disabled="true"]:not([aria-busy="true"]) {
   border-color: var(--v4-line-soft);
   background-color: var(--v4-line-soft);
   color: var(--v4-faint);

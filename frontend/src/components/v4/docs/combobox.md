@@ -4,7 +4,7 @@ Search and choose one option from a provided list.
 
 ## Choose this component
 
-Choose Combobox when a known option list needs search. Use Select for a short grouped choice and CommandMenu for executing actions.
+Choose Combobox when a known option list needs search. Use TagsInput when people type the values and there is no list to pick from, Select for a short grouped choice and CommandMenu for executing actions.
 
 ## Usage rules
 
@@ -62,9 +62,28 @@ Source evidence:
 - src/components/v4/ui/combobox.tsx
 - src/pages/design-system/examples/combobox/default.tsx
 
+### combobox-free-text-tags
+
+Owner: combobox.
+
+When people type a list of values that no option list holds, such as domains, redirect URIs or claim values.
+
+Do: Use TagsInput, with validate for format rules and onValidationChange feeding the Field error.
+
+Avoid: Fake it with Combobox multiple whose options mirror the value and whose onCreate appends the query.
+
+Why: A tag list has no options to search, so a picker adds an empty list, a Create row and a second source of truth for the value.
+
+Checked by: review only. Look for: Type a value and press Enter, type a comma, paste a comma and newline separated list with one invalid entry and press Backspace in the empty input. Each commit adds trimmed tags once, the invalid entry stays in the input with its reason in the Field error, and Backspace removes the last tag.
+
+Source evidence:
+- src/components/v4/ui/tags-input.tsx
+- src/pages/design-system/examples/combobox/tags.tsx
+
 ## State guidance
 
 - empty: Keep the query and state that no options match.
+- invalid: For TagsInput, keep the refused text in the input and show validate's reason in the Field error until the next commit.
 - disabled: Show why a known option cannot be chosen without removing the current selection's meaning.
 
 ## Presentation rules
@@ -84,10 +103,11 @@ Why: Pending, rejection and cancellation have different outcomes and recovery pa
 ## Import and exports
 
 - src/components/v4/ui/combobox.tsx
+- src/components/v4/ui/tags-input.tsx
 - src/components/v4/ui/picker.module.css
 - src/components/v4/lib/use-option-creation.ts
 
-Exports: Combobox, ComboboxCreation, ComboboxCreationFormProps, ComboboxOption, ComboboxProps. Source TypeScript defines the API.
+Exports: Combobox, ComboboxCreation, ComboboxCreationFormProps, ComboboxOption, ComboboxProps, TagsInput, TagsInputProps. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -104,6 +124,7 @@ Exports: Combobox, ComboboxCreation, ComboboxCreationFormProps, ComboboxOption, 
 - renderForm receives query (the trimmed search text), formId, complete, dismiss, onDirtyChange and onPendingChange, and remounts on every open. complete(option) selects the option (its label shows on the trigger even before the host adds it to options), closes the Dialog and returns focus to the trigger; a complete that arrives after the Dialog was dismissed is ignored. onPendingChange(true) makes the Dialog pending, which blocks Escape, outside clicks and the corner close, disables Cancel and shows the submit Button loading.
 - Escape, an outside click, the corner close, Cancel and dismiss all go through useDiscardChangesGuard: with the form dirty (onDirtyChange(true)) they open DiscardChangesAlertDialog with discardTitle and discardDescription, and only Discard closes; a clean form closes at once. A submit inside the Dialog never reaches a form around the Combobox.
 - disabledReason on either mode keeps the Create row visible but disabled, with the reason beside its label (disable, do not hide). Gate it on the create permission.
+- TagsInput is the free-text sibling of multiple mode, for values people type rather than pick (domains, claim values, labels). It draws the same field and chips with no list. Enter or a comma commits the typed text, and so does leaving the field; Backspace in the empty input removes the last tag; each chip has a remove button that takes Enter, Space, Backspace or Delete and moves focus to the next chip, else the previous one, else the input. Pasting text with commas or line breaks splits it into tags. Text is trimmed and an exact duplicate is dropped without a message. validate(tag, tags) returns a reason to refuse a tag; refused text stays in the input, comma separated after a paste, and onValidationChange receives the first reason on every commit, or undefined when nothing was refused, so the host can show it in the Field error. value or defaultValue with onChange or onValueChange; mono for machine values; disabled locks the chips and input.
 
 ## Accessibility
 
@@ -130,6 +151,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 - single: example `default`, visible label "Single environment".
 - multiple: example `multiple`, visible label "Visible environments".
+- free text: example `tags`, visible label "Mono values with validation".
 
 ### state
 
@@ -438,6 +460,80 @@ export default function Example() {
         <figcaption className="text-muted-foreground text-xs">
           {"Without permission to create connections"}
         </figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Free-text tags
+
+Save this example at `src/pages/design-system/examples/combobox/tags.tsx`; its relative imports are generated for that exact path. States: controlled, empty, invalid, disabled.
+
+Registry items used: @infisical/field, @infisical/tags-input. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Field } from "../../../../components/v4/ui/field";
+import { TagsInput } from "../../../../components/v4/ui/tags-input";
+
+const urnPrefix = "urn:";
+
+export default function Example() {
+  const [contexts, setContexts] = useState([
+    "urn:oasis:names:tc:SAML:2.0:ac:classes:MobileTwoFactorContract",
+    "urn:infisical:mfa:totp"
+  ]);
+  const [refusal, setRefusal] = useState<string>();
+  const [labels, setLabels] = useState<string[]>([]);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="MFA authentication contexts" error={refusal}>
+            <TagsInput
+              label="MFA authentication contexts"
+              mono
+              value={contexts}
+              onChange={setContexts}
+              invalid={Boolean(refusal)}
+              validate={(tag) =>
+                tag.startsWith(urnPrefix) ? undefined : `${tag} is not a URN. Start it with urn:`
+              }
+              onValidationChange={setRefusal}
+              placeholder="urn:oasis:names:tc:SAML:2.0:ac:classes:..."
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Mono values with validation"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Labels" description="Press Enter or type a comma to add a label.">
+            <TagsInput
+              label="Labels"
+              value={labels}
+              onChange={setLabels}
+              placeholder="payments, backend"
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Empty"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Allowed domains">
+            <TagsInput
+              label="Allowed domains"
+              defaultValue={["acme.test", "corp.acme.test"]}
+              disabled
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
       </figure>
     </div>
   );
