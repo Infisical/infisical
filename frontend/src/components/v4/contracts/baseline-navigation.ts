@@ -574,10 +574,11 @@ export const baselineNavigation = [
       "Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.",
       "Radix Root owns open/onOpenChange. Action items close after onSelect; checkbox/radio changes stay open by default and can opt into closeOnSelect.",
       "DropdownMenuItem, DropdownMenuCheckboxItem and DropdownMenuRadioItem take an optional description, a muted second line under the label. A disabled item uses it for the reason it is unavailable, so the action or setting stays visible and explains itself.",
+      "DropdownMenuItem takes disabledReason for an action blocked by a permission or state: the item stays in the keyboard order, dims like a disabled row, shows the reason in place of its description (under an element label and inside an asChild child too), exposes it as the accessible description, and choosing it with Enter or Space does nothing and keeps the menu open, so onSelect never runs. Prefer it to disabled with a description whenever the person should be able to reach the reason by keyboard.",
       "DropdownMenuSubContent portals into the V4Scope container like the root menu, never inside its parent panel, so the parent's overflow and entry motion cannot clip or hide it. It opens beside its SubTrigger row: sideOffset 4 (space-4) and alignOffset -3 (the menu inset) line its first row up with the trigger, and when the trailing side has no room within the collision padding (8, space-8) it flips to the leading side, still beside the parent and never over it."
     ],
     accessibility: [
-      "A named trigger opens the menu. Typing a letter jumps to a matching item, arrow keys skip disabled items and focus returns to the trigger on close. Use checkbox or radio items for persistent selection.",
+      "A named trigger opens the menu. Typing a letter jumps to a matching item, arrow keys skip disabled items (but stop on an item with disabledReason, which is announced as unavailable with its reason) and focus returns to the trigger on close. Use checkbox or radio items for persistent selection.",
       "DropdownMenuTrigger defers to Button. Without asChild it renders an outline Button; with asChild it adds nothing, so rest, hover, open, focus and disabled all come from the Button. No tint is ever drawn inside a bordered control.",
       "The panel follows the shared menu recipe: pop ground, pop-line edge and shadow-pop, a 3px inset on all four sides, and 32px rows that are inset square blocks. Separators run edge to edge; rows and their tints never do.",
       "Two translucent thumbs mark rows: a hover thumb that follows the pointer and keyboard and stays on the last row while the pointer is anywhere in the panel, and a selection thumb on the checked or current item that shows only while the hover thumb is hidden. Both appear in place on open and glide between rows after that; the current item keeps its weight and check while the hover thumb is elsewhere. A row whose submenu, flyout or popover is open (aria-haspopup with aria-expanded true) keeps the hover thumb while the pointer is in that popover and the selection thumb stays hidden; on close the hover thumb goes back to the pointer, or hands off to the selection thumb if the pointer has left."
@@ -603,6 +604,12 @@ export const baselineNavigation = [
         title: "Placements",
         module: "./examples/dropdown-menu/placements.tsx",
         states: ["default"]
+      },
+      {
+        id: "disabled-reason",
+        title: "Disabled with a reason",
+        module: "./examples/dropdown-menu/disabled-reason.tsx",
+        states: ["disabled", "keyboard"]
       }
     ],
     coverage: [

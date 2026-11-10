@@ -567,6 +567,23 @@
   letter-spacing: var(--v4-type-small-letter-spacing);
 }
 
+:is(.fieldDescription, .alertDescription) a:not([data-slot]) {
+  color: var(--v4-link);
+  text-decoration-line: none;
+  text-decoration-thickness: var(--v4-size-control-border);
+  text-underline-offset: var(--v4-space-3);
+}
+:is(.fieldDescription, .alertDescription) a:not([data-slot]):focus-visible {
+  text-decoration-line: underline;
+}
+@media (hover: hover) {
+  :is(.fieldDescription, .alertDescription) a:not([data-slot]):hover {
+    color: var(--v4-text2);
+    text-decoration-line: underline;
+    text-decoration-thickness: var(--v4-space-2);
+  }
+}
+
 .alert {
   position: relative;
   display: grid;

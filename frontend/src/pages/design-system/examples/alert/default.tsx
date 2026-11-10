@@ -13,7 +13,8 @@ export default function Example() {
       </ExampleCell>
       <ExampleCell align="stretch" label="info">
         <Alert tone="info" title="Read access only">
-          This connection can fetch secrets.
+          This connection can fetch secrets.{" "}
+          <a href="https://infisical.com/docs">Review its scopes</a>
         </Alert>
       </ExampleCell>
       <ExampleCell align="stretch" label="ok">

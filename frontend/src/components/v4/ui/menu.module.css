@@ -42,6 +42,16 @@
   scroll-padding-block: var(--v4-focus-clearance);
   padding: var(--v4-space-12);
 }
+.card[data-width="sm"] {
+  width: min(var(--v4-size-sheet-sm), var(--radix-popper-available-width, 100vw));
+}
+.card[data-width="md"] {
+  width: min(var(--v4-size-sheet-md), var(--radix-popper-available-width, 100vw));
+}
+.card[data-width="content"] {
+  width: max-content;
+  max-width: min(var(--v4-size-dialog-wide), var(--radix-popper-available-width, 100vw));
+}
 .tooltip {
   box-sizing: border-box;
   display: inline-flex;

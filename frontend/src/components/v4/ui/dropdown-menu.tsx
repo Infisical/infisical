@@ -101,6 +101,9 @@ function DropdownMenuItem({
   inset,
   variant = "default",
   description,
+  disabledReason,
+  onSelect,
+  onClick,
   children,
   ref,
   ...props
@@ -108,18 +111,46 @@ function DropdownMenuItem({
   inset?: boolean;
   variant?: "default" | "destructive";
   description?: React.ReactNode;
+  /** Blocks the item and says why: it stays reachable by keyboard, shows the reason in place of the description, exposes it as the accessible description and never runs onSelect. */
+  disabledReason?: string;
 } & { ref?: React.Ref<React.ComponentRef<typeof DropdownMenuPrimitive.Item>> }) {
   const Primitive = useMenuPrimitive();
+  const reason = disabledReason || undefined;
+  const rowDescription = reason ? <span aria-hidden>{reason}</span> : description;
+  const slotted =
+    props.asChild && React.isValidElement<{ children?: React.ReactNode }>(children)
+      ? children
+      : null;
   return (
     <Primitive.Item
       ref={ref}
       data-slot="dropdown-menu-item"
       data-inset={inset}
       data-variant={variant}
+      data-disabled-reason={reason ? "" : undefined}
       className={cn(menu.row, className)}
       {...props}
+      aria-disabled={reason ? true : props["aria-disabled"]}
+      aria-description={reason ?? props["aria-description"]}
+      onClick={(event) => {
+        if (reason) event.preventDefault();
+        onClick?.(event);
+      }}
+      onSelect={(event) => {
+        if (reason) {
+          event.preventDefault();
+          return;
+        }
+        onSelect?.(event);
+      }}
     >
-      {menuRowContent(children, description)}
+      {slotted
+        ? React.cloneElement(
+            slotted,
+            undefined,
+            menuRowContent(slotted.props.children, rowDescription)
+          )
+        : menuRowContent(children, rowDescription)}
     </Primitive.Item>
   );
 }

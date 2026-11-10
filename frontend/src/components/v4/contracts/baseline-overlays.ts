@@ -34,7 +34,8 @@ export const baselineOverlays = [
       "confirmText adds a mono field, labeled Type <name> to confirm and focused on open, above the footer; the action stays disabled until the field matches exactly.",
       "One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer.",
       "When AlertDialogHeader or AlertDialogFooter is a direct child, the lead tile, header and body share one scroll region with the edge fade, and the footer stays pinned below it; the footer's own pad is the space above the actions.",
-      "pending on AlertDialogContent blocks Escape and disables AlertDialogCancel while an action runs; the content is aria-busy. Show progress on the Action Button with loading.",
+      "pending on AlertDialogContent blocks Escape and disables AlertDialogCancel while an action runs; the content is aria-busy.",
+      "loading on AlertDialogAction follows Button's loading: the spinner replaces the label at the same width, the action stays focusable and aria-busy, and further clicks and Enter are ignored, so a confirmation cannot submit twice. With asChild the composed child gets the same guard, aria-busy and aria-disabled, so its own onClick cannot fire while loading; give the child loading too for the spinner. While loading is true the content is pending as above. Passing loading at all, even false, hands closing to the host: a click runs onClick and leaves the dialog open, and the host sets open false once the request succeeds.",
       "DiscardChangesAlertDialog is the v3 discard prompt: a danger alert with the alert icon, title (default Discard changes?), description (default Your changes will be lost.), Keep editing and a destructive Discard that calls onDiscard. useDiscardChangesGuard({ isDirty, onDiscard }) returns the v3 shape (requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen) plus discardDialogProps to spread on the prompt. requestDiscard calls onDiscard at once when clean and opens the prompt when dirty; route a Dialog or Sheet onOpenChange(false) through it."
     ],
     accessibility: [
@@ -42,7 +43,7 @@ export const baselineOverlays = [
       "A focus ring is never clipped where the scroll region meets the footer: the region keeps the ring's reach (size-focus-ring outline past an equal offset, or size-focus-glow, whichever is larger) clear below its last control, such as the confirmText field, without moving the footer, and Tab scrolls a control that far inside either edge."
     ],
     limitations: [
-      "Action does not await a request or infer success; prevent its default close or control open while an async operation settles."
+      "Action does not await a request or infer success; pass loading (or prevent its default close) and control open while an async operation settles."
     ],
     examples: [
       {
@@ -50,6 +51,12 @@ export const baselineOverlays = [
         title: "Confirmation states",
         module: "./examples/alert-dialog/default.tsx",
         states: ["default", "loading", "error", "keyboard"]
+      },
+      {
+        id: "loading",
+        title: "Action loading",
+        module: "./examples/alert-dialog/loading.tsx",
+        states: ["default", "loading"]
       },
       {
         id: "sizes",
@@ -104,7 +111,7 @@ export const baselineOverlays = [
     ],
     guidance: {
       use: [
-        "Control open state or prevent the Action default close, retain the resource and consequence text, and close only after the host confirms success."
+        "For an async action, pass loading to AlertDialogAction and control open state, retain the resource and consequence text, and close only after the host confirms success."
       ],
       avoid: [
         "Assume AlertDialogAction waits for a promise or close the confirmation before a failure can be shown."
@@ -337,6 +344,7 @@ export const baselineOverlays = [
     referenceNames: ["HoverCard"],
     behavior: [
       "Radix HoverCard owns open/onOpenChange and hover delays; Content is scoped to V4Scope and accepts alignment and side offset.",
+      "width picks the panel width from a size token: default is size-popover (288px), sm is size-sheet-sm (384px) and md is size-sheet-md (512px) for a table or raw payload, and content fits its content up to size-dialog-wide (560px). Every width shrinks to the space the popper has, so it never overflows the viewport. Never set a width class on HoverCardContent.",
       "HoverCard is where hovered content goes: the pointer can move into it and its text can be selected and copied, so it carries the longer reads, values and links a pass-through Tooltip cannot. Content with actions goes in a Popover instead."
     ],
     accessibility: [
@@ -357,9 +365,25 @@ export const baselineOverlays = [
         title: "Placements",
         module: "./examples/hover-card/placements.tsx",
         states: ["default"]
+      },
+      {
+        id: "widths",
+        title: "Widths",
+        module: "./examples/hover-card/widths.tsx",
+        states: ["default"]
       }
     ],
     coverage: [
+      {
+        axis: "HoverCardContent.width",
+        expected: ["default", "sm", "md", "content"],
+        shown: [
+          { value: "default", exampleId: "widths", label: "default" },
+          { value: "sm", exampleId: "widths", label: "sm" },
+          { value: "md", exampleId: "widths", label: "md" },
+          { value: "content", exampleId: "widths", label: "content" }
+        ]
+      },
       {
         axis: "Side",
         expected: ["top", "right", "bottom", "left"],

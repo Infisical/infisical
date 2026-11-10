@@ -178,6 +178,25 @@
   font-weight: var(--v4-type-mono-font-weight);
   letter-spacing: var(--v4-type-mono-letter-spacing);
 }
+.snippet[data-multiline] {
+  align-items: flex-start;
+}
+.snippet[data-multiline] > .prompt {
+  padding-block: calc((var(--v4-nested-action-height) - 1lh) / 2);
+}
+/* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
+/* field-sizing: content ignores rows and is missing in older targets, so the line count also sets a minimum height; content past it scrolls. */
+.snippetLines {
+  box-sizing: content-box;
+  min-height: calc(var(--v4-snippet-rows) * 1lh);
+  max-height: calc(var(--v4-snippet-lines) * 1lh);
+  padding-block: calc((var(--v4-nested-action-height) - 1lh) / 2);
+  overflow-y: auto;
+  resize: none;
+  field-sizing: content;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .snippet {
   transition-property: border-color, box-shadow;
   transition-duration: var(--v4-duration-fast);

@@ -4,17 +4,24 @@ import { Kbd } from "./kbd";
 
 import menu from "./menu.module.css";
 
+const withDescription = (label: React.ReactNode, description: React.ReactNode) => (
+  <span className={menu.text}>
+    <span className={menu.title}>{label}</span>
+    <span className={menu.description}>{description}</span>
+  </span>
+);
+
 export const menuRowContent = (children: React.ReactNode, description?: React.ReactNode) => {
   if (description === undefined && React.isValidElement(children)) return children;
-  return React.Children.map(children, (child) => {
-    if (typeof child !== "string" && typeof child !== "number") return child;
+  const items = React.Children.toArray(children);
+  const textual = (child: React.ReactNode) =>
+    typeof child === "string" || typeof child === "number";
+  const labelIndex = description === undefined || items.some(textual) ? -1 : items.length - 1;
+  return items.map((child, index) => {
+    if (index === labelIndex) return withDescription(child, description);
+    if (!textual(child)) return child;
     if (description === undefined) return <span className={menu.title}>{child}</span>;
-    return (
-      <span className={menu.text}>
-        <span className={menu.title}>{child}</span>
-        <span className={menu.description}>{description}</span>
-      </span>
-    );
+    return withDescription(child, description);
   });
 };
 

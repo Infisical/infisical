@@ -105,7 +105,7 @@ function AlertDescription({ className, ref, ...props }: React.ComponentProps<"di
       data-slot="alert-description"
       className={cn(
         helperStyles.alertDescription,
-        "text-muted-foreground text-balance md:text-pretty [&_a:not([data-slot=button])]:underline [&_a:not([data-slot=button])]:underline-offset-3 [&_a:not([data-slot=button])]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
+        "text-muted-foreground text-balance md:text-pretty [&_p:not(:last-child)]:mb-4",
         className
       )}
       {...props}
