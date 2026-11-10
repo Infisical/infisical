@@ -6,18 +6,20 @@ export const textDefinition = {
   group: "Utilities",
   summary: "Use shared body and supporting-text measures.",
   sourceFiles: ["src/components/v4/ui/text.tsx", "src/components/v4/ui/text.module.css"],
-  exports: ["Text", "SmallText", "Heading", "Meta", "StatusText"],
+  exports: ["Text", "SmallText", "Heading", "Meta", "StatusText", "Highlight"],
   referenceNames: ["Text"],
   behavior: [
     "Body uses the complete 14/20 role; supporting copy uses 13/18. Each role owns font family, weight and tracking as well as size and line height.",
     "Muted text uses the semantic muted role.",
     "Heading separates semantic level from visual size. page uses 28/32, explicit display uses 44/44, and section/subsection use the shared section role. Meta uses the 12/16 metadata role with optional monospace.",
     "Native attributes and refs are preserved.",
-    "StatusText reports a state as a required line icon plus words. It inherits the surrounding type role; neutral is muted and ok, warn and bad tint both the icon and the words, so the state still reads in grayscale."
+    "StatusText reports a state as a required line icon plus words. It inherits the surrounding type role; neutral is muted and ok, warn and bad tint both the icon and the words, so the state still reads in grayscale.",
+    "Highlight renders text with every case-insensitive occurrence of query wrapped in a mark (data-slot highlight), filled with the accent and on-accent text, the search highlight in every theme. The query is literal text, never a pattern, so dots, brackets and other symbols match themselves. Overlapping matches merge into one mark. terms matches each whitespace-separated word on its own, for multi-word filters. An empty or blank query, or no match, returns the text unchanged. It is the one search highlight: Combobox options and CommandMenu items use it, and a search list in a page uses it instead of slicing strings by hand."
   ],
   accessibility: [
     "Text and SmallText render paragraphs; Heading renders the requested h1-h6 level; Meta renders a span.",
-    "StatusText renders a span whose icon is hidden from assistive technology; its words carry the whole state, so they must make sense on their own."
+    "StatusText renders a span whose icon is hidden from assistive technology; its words carry the whole state, so they must make sense on their own.",
+    "Highlight uses the native mark element and adds no announcement; the surrounding text reads as usual."
   ],
   limitations: [
     "Meta defaults to mono for short machine values and aligned numbers (IDs, versions, counts); pass mono={false} for a date, a label or a name (rule/mono-machine-values).",
@@ -36,6 +38,12 @@ export const textDefinition = {
       title: "StatusText tones",
       module: "./examples/text/status.tsx",
       states: ["default"]
+    },
+    {
+      id: "highlight",
+      title: "Search highlight",
+      module: "./examples/text/highlight.tsx",
+      states: ["default", "controlled"]
     }
   ],
   coverage: [

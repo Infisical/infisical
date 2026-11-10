@@ -47,11 +47,6 @@
   background: transparent;
   box-shadow: none;
 }
-.match {
-  background: var(--v4-accent);
-  color: var(--v4-on-accent);
-}
-
 .triggerValue {
   flex: 1 1 auto;
   min-width: 0;

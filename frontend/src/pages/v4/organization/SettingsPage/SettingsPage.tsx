@@ -45,6 +45,7 @@ import type { Organization } from "@app/hooks/api/organization/types";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
 import { GenericResourceNameSchema } from "@app/lib/schemas";
 
+import { failed, saved as savedToast } from "../../access/toast";
 import { ListToolbar } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
@@ -87,7 +88,10 @@ const OrganizationDetails = ({
       dirty={dirty}
       onDiscard={() => setDraft(saved)}
       onSave={async () => {
-        if (issues) throw new Error("Fix the highlighted fields, then save again.");
+        if (issues) {
+          failed("Fix the highlighted fields, then save again.");
+          return;
+        }
         await updateOrganization.mutateAsync({
           orgId: organization.id,
           name: draft.name,
@@ -95,6 +99,7 @@ const OrganizationDetails = ({
           defaultMembershipRoleSlug: draft.role || undefined
         });
         setSaved(draft);
+        savedToast("Organization details saved");
       }}
     >
       <Stack gap={16}>

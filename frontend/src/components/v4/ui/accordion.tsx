@@ -51,12 +51,18 @@ function AccordionTrigger({
         data-slot="accordion-trigger"
         className={cn(
           controlStyles.label,
-          "group/accordion-trigger **:data-[slot=accordion-trigger-icon]:text-muted-foreground relative flex flex-1 items-start justify-between rounded-lg border border-transparent py-2.5 text-left transition-colors outline-none hover:underline focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-[color:var(--v4-focus-ring)] focus-visible:after:border-ring disabled:pointer-events-none disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4",
+          "group/accordion-trigger **:data-[slot=accordion-trigger-icon]:text-muted-foreground relative flex flex-1 items-start justify-between gap-(--v4-space-8) rounded-lg border border-transparent py-2.5 text-left transition-colors outline-none hover:[&>[data-slot=accordion-trigger-text]]:underline focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-[color:var(--v4-focus-ring)] focus-visible:after:border-ring disabled:pointer-events-none disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4",
           className
         )}
         {...props}
       >
-        {children}
+        {React.Children.map(children, (child) =>
+          typeof child === "string" || typeof child === "number" ? (
+            <span data-slot="accordion-trigger-text">{child}</span>
+          ) : (
+            child
+          )
+        )}
         <Icon
           name="chev-down"
           data-slot="accordion-trigger-icon"

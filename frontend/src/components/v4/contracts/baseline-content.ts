@@ -10,7 +10,8 @@ export const baselineContent = [
     exports: ["Accordion", "AccordionContent", "AccordionItem", "AccordionTrigger"],
     referenceNames: ["Accordion"],
     behavior: [
-      "Radix single mode uses a string value; multiple mode uses an array. onValueChange reports item values, and collapsible allows the open single item to close."
+      "Radix single mode uses a string value; multiple mode uses an array. onValueChange reports item values, and collapsible allows the open single item to close.",
+      "Hover underlines only the trigger's text: AccordionTrigger wraps each string or number child in a text span and underlines that span, so a Badge, count or icon beside the title never takes the underline. Pass the title as text, not wrapped in an element, to keep the hover cue."
     ],
     accessibility: [
       "Each trigger is a button inside a heading and controls its own panel. Arrow keys, Home and End move between triggers."
@@ -36,6 +37,12 @@ export const baselineContent = [
         title: "Controlled open section",
         module: "./examples/accordion/controlled.tsx",
         states: ["default", "controlled"]
+      },
+      {
+        id: "badges",
+        title: "Trigger with a badge",
+        module: "./examples/accordion/badges.tsx",
+        states: ["default"]
       }
     ],
     coverage: [
