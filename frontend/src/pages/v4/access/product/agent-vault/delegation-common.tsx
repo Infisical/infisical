@@ -19,6 +19,9 @@ import { Muted } from "../../ui";
 
 import styles from "./delegation.module.css";
 
+export const DELEGATION_DOCS_URL =
+  "https://infisical.com/docs/documentation/platform/agent-vault/sessions-on-behalf-of-users";
+
 export const ALL_MEMBERS = "all-members";
 
 export type DelegationSubject = {

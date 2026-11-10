@@ -29,7 +29,7 @@ const uuid = (prefix: string, index: number) =>
 const loadedAt = Date.now();
 const at = (minutes: number) => new Date(loadedAt + minutes * 60_000).toISOString();
 
-const user = (
+const seedUser = (
   id: string | null,
   firstName: string,
   lastName: string
@@ -48,13 +48,13 @@ const machine = (id: string | null, name: string): TAgentVaultSessionActor => ({
   name
 });
 
-const sarah = user(uuid("a1", 1), "Sarah", "Lin");
+const sarah = seedUser(uuid("a1", 1), "Sarah", "Lin");
 const people = [
   sarah,
-  user(uuid("a1", 2), "Marcus", "Webb"),
-  user(uuid("a1", 3), "Priya", "Raman"),
-  user(uuid("a1", 4), "Diego", "Alvarez"),
-  user(null, "Tom", "Becker")
+  seedUser(uuid("a1", 2), "Marcus", "Webb"),
+  seedUser(uuid("a1", 3), "Priya", "Raman"),
+  seedUser(uuid("a1", 4), "Diego", "Alvarez"),
+  seedUser(null, "Tom", "Becker")
 ];
 const machines = [
   machine(uuid("a2", 1), "ci-release-agent"),
@@ -216,8 +216,8 @@ const demoUser = (
 ): DemoUserMember => ({
   type: AgentVaultMemberType.User,
   id,
-  username: firstName.toLowerCase() + "@acme.dev",
-  email: firstName.toLowerCase() + "@acme.dev",
+  username: `${firstName.toLowerCase()}@acme.dev`,
+  email: `${firstName.toLowerCase()}@acme.dev`,
   firstName,
   lastName,
   isOrgMembershipPending,
@@ -278,7 +278,7 @@ const memberStore = createFixtureStore<DemoMember[]>([
 ]);
 
 const delegations = createFixtureStore<Record<string, TAgentVaultDelegationDetail | null>>({});
-const delegationKey = (projectId: string, identityId: string) => projectId + ":" + identityId;
+const delegationKey = (projectId: string, identityId: string) => `${projectId}:${identityId}`;
 const now = () => new Date().toISOString();
 const excluded = [{ id: uuid("b1", 2), name: "Billing APIs" }];
 

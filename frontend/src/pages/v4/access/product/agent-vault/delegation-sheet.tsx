@@ -32,7 +32,6 @@ import {
 import { Switch } from "@app/components/v4/ui/switch";
 import { Heading } from "@app/components/v4/ui/text";
 import { AgentVaultDelegationScope, AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
-import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { useV4Adapter } from "../../../data/adapters";
 import { useDebounced } from "../../org/use-debounced";
@@ -41,11 +40,12 @@ import { formatDate } from "../../roles";
 import { failed, saved } from "../../toast";
 import { Muted } from "../../ui";
 import {
-  type DelegationSubject,
-  delegationSubjects,
+  DELEGATION_DOCS_URL,
   MissingAccessBundlesHint,
   SubjectName,
-  subjectOnBehalfOf
+  delegationSubjects,
+  subjectOnBehalfOf,
+  type DelegationSubject
 } from "./delegation-common";
 import { memberDisplayName } from "./shared";
 
@@ -235,7 +235,7 @@ const Content = ({ identity }: { identity: Identity }) => {
         <SheetTitle>
           <Inline gap={8}>
             Manage delegation
-            <DocumentationLinkBadge href={AgentVaultDocsUrls.sessionsOnBehalfOfUsers} />
+            <DocumentationLinkBadge href={DELEGATION_DOCS_URL} />
           </Inline>
         </SheetTitle>
       </SheetHeader>
@@ -331,7 +331,7 @@ const Content = ({ identity }: { identity: Identity }) => {
                   label="Not in delegation"
                   rows={candidates}
                   columns={candidateColumns}
-                  getRowId={(member) => member.type + ":" + member.id}
+                  getRowId={(member) => `${member.type}:${member.id}`}
                   rowLabel={memberDisplayName}
                   loading={available.isPending}
                   loadingRows={3}

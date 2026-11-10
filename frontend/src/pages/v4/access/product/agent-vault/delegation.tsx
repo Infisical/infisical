@@ -10,7 +10,6 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Inline } from "@app/components/v4/ui/layout";
 import { AgentVaultDelegationScope } from "@app/hooks/api/agentVault/enums";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { useV4Adapter } from "../../../data/adapters";
 import { useProjectScope } from "../../project/scope";
@@ -18,11 +17,12 @@ import { formatDate } from "../../roles";
 import { Muted } from "../../ui";
 import {
   ALL_MEMBERS,
-  type DelegationSubject,
-  delegationSubjects,
+  DELEGATION_DOCS_URL,
   MissingAccessBundlesHint,
   SubjectName,
-  subjectOnBehalfOf
+  delegationSubjects,
+  subjectOnBehalfOf,
+  type DelegationSubject
 } from "./delegation-common";
 import { ManageDelegationSheet } from "./delegation-sheet";
 
@@ -120,7 +120,7 @@ export const AgentVaultIdentityDelegationSection = ({
         title={
           <Inline gap={8}>
             Delegation
-            <DocumentationLinkBadge href={AgentVaultDocsUrls.sessionsOnBehalfOfUsers} />
+            <DocumentationLinkBadge href={DELEGATION_DOCS_URL} />
           </Inline>
         }
         flush={Boolean(rows.length) && !loadFailed}

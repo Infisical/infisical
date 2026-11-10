@@ -153,6 +153,7 @@ export const IdentityRemovalDialog = ({
   const access = useV4Adapter("access");
   const removeMembership = access.useRemoveProjectIdentity();
   const removePamMembership = useV4Adapter("pam").useRemoveProductIdentityMember();
+  const revokeAgentVaultMembers = useV4Adapter("agentVault").useRevokeMembers(projectId);
   const deleteIdentity = access.useDeleteProjectManagedIdentity();
   const [pending, setPending] = useState(false);
   const isProjectIdentity = Boolean(identity && isProjectManaged(identity));
@@ -171,6 +172,8 @@ export const IdentityRemovalDialog = ({
       } else {
         if (projectType === ProjectType.PAM)
           await removePamMembership.mutateAsync({ projectId, identityId: identity.id });
+        else if (projectType === ProjectType.AgentVault)
+          await revokeAgentVaultMembers.mutateAsync({ machineIdentityIds: [identity.id] });
         else
           await removeMembership.mutateAsync({ projectId, projectType, identityId: identity.id });
         saved(`Successfully removed machine identity from ${accessNoun(projectType)}`);

@@ -39,6 +39,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { supportsAssumePrivileges } from "@app/helpers/project";
 import type { Identity } from "@app/hooks/api/identities/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { useV4Adapter } from "../../data/adapters";
@@ -46,6 +47,7 @@ import { PageLoader } from "../../shell/project-gate";
 import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { useOrgPermission, useProjectPermission } from "../permissions";
+import { AgentVaultIdentityDelegationSection } from "../product/agent-vault/delegation";
 import { formatDateTime } from "../roles";
 import { failed, saved, toast } from "../toast";
 import { AccessRestricted, Gate, Muted } from "../ui";
@@ -504,7 +506,14 @@ export const ProjectIdentityDetail = () => {
           ) : (
             <OrgManagedAuthCard identity={identity} />
           )}
-          <IdentityRoleDetailsSection projectId={projectId} membership={membership} />
+          {scope.projectType === ProjectType.AgentVault ? (
+            <AgentVaultIdentityDelegationSection
+              machineIdentityId={identity.id}
+              machineIdentityName={identity.name}
+            />
+          ) : (
+            <IdentityRoleDetailsSection projectId={projectId} membership={membership} />
+          )}
         </Stack>
       </DetailLayout>
       {editing && (
