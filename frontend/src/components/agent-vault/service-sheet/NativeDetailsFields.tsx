@@ -62,7 +62,7 @@ export const NativeDetailsFields = () => {
 
       <DescriptionField placeholder={DESCRIPTION_PLACEHOLDERS[serviceType]} />
 
-      <div className="flex flex-col gap-5">
+      <div className="flex items-start gap-3">
         <Controller
           control={control}
           name="host"

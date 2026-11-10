@@ -548,6 +548,7 @@ export const ServiceSheet = ({
       reset({
         ...blankNativeForm(service.type),
         name: service.name,
+        description: service.description ?? "",
         host: service.host,
         port: String(service.port),
         database: databaseService?.database ?? "",
