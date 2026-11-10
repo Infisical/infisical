@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "toast-offset",
+    title: "Toasts clear the footer",
+    description:
+      "Toasts sit above pagination and move up while the bulk bar is showing, so they never cover either.",
+    date: "2026-11-07",
+    commit: "d1dd13b1ca",
+    page: "toast"
+  },
+  {
     id: "button-aria-expanded",
     title: "Disclosure buttons stay quiet",
     description:
@@ -210,15 +219,6 @@ export const recentChanges: {
       "Row actions can render as plain buttons until a row is hovered or focused, and pages can open the More menu themselves.",
     date: "2026-11-07",
     commit: "b7ba7061e7",
-    page: "table"
-  },
-  {
-    id: "row-context-lazy",
-    title: "Lighter row menus",
-    description:
-      "Right-click row menus mount only when opened, so large tables carry no closed menus.",
-    date: "2026-11-07",
-    commit: "7a2ed78093",
     page: "table"
   }
 ];
