@@ -69,6 +69,7 @@ export type BillingAdapter = {
     params?: { search?: string; limit?: number; offset?: number }
   ) => BillingQuery<BillingOrganizationsPage>;
   useIsSubmitting: () => boolean;
+  useIsCloud: () => boolean;
   useCreatePortalSession: BillingMutation<TCreateBillingPortalSessionDTO, string>;
   useBuyProduct: BillingMutation<TBuyBillingProductDTO, BillingCheckoutResult>;
   useAddPaymentMethod: BillingMutation<TAddBillingPaymentMethodDTO, string>;

@@ -4,7 +4,7 @@ import { V4_DEMO_ORG_ID } from "../../mode";
 import type { V4Session } from "./contract";
 
 export const demoSession: V4Session = {
-  user: { name: "Sarah Lin", email: "sarah@acme.dev" },
+  user: { id: "u-sarah", name: "Sarah Lin", email: "sarah@acme.dev", superAdmin: true },
   organization: { id: V4_DEMO_ORG_ID, name: "Acme Corp", isSubOrganization: false },
   organizations: [
     { id: V4_DEMO_ORG_ID, name: "Acme Corp", group: "Current organization" },

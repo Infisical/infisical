@@ -10,6 +10,7 @@ import type {
   TFolderAccessUser,
   TFolderGrantType
 } from "@app/hooks/api/folderAccess/types";
+import { wasErrorReported } from "@app/hooks/api/reactQuery";
 
 import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
@@ -128,6 +129,7 @@ export function FolderActions({
   };
 
   const failed = (error: unknown) =>
+    !wasErrorReported(error) &&
     onToast("bad", {
       title: "Failed to update folder access",
       description: errorMessage(error)

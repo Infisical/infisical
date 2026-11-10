@@ -1,5 +1,6 @@
 import { accessDemo } from "./access/demo";
 import type { V4Adapters } from "./adapters";
+import { adminDemo } from "./admin/demo";
 import { agentVaultSettingsDemo } from "./agent-vault-settings/demo";
 import { agentVaultDemo } from "./agent-vault/demo";
 import { billingDemo } from "./billing/demo";
@@ -40,6 +41,7 @@ export const demoAdapters: V4Adapters = {
   projectEnvironments: projectEnvironmentsDemo,
   projectTags: projectTagsDemo,
   pam: pamDemo,
+  admin: adminDemo,
   secretPolicies: secretPoliciesDemo,
   billing: billingDemo,
   sso: ssoDemo
