@@ -123,7 +123,8 @@ const formSchema = z
       .array(
         z.object({ oid: z.string().trim(), value: z.string(), critical: z.boolean().optional() })
       )
-      .default([])
+      .default([]),
+    renewsFromStoredCsr: z.boolean().default(false)
   })
   .superRefine((data, ctx) => {
     if (data.keySource === CertificateRenewalKeySource.Csr && !data.csr) {
@@ -133,7 +134,7 @@ const formSchema = z
         message: "A certificate signing request is required"
       });
     }
-    if (data.keySource !== CertificateRenewalKeySource.Csr) {
+    if (data.keySource !== CertificateRenewalKeySource.Csr && !data.renewsFromStoredCsr) {
       if (!data.signatureAlgorithm) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -157,7 +158,7 @@ const externalTemplateFormSchema = formSchema.innerType().omit({ ttl: true }).ex
 
 export type RenewalFormData = z.infer<typeof formSchema>;
 
-type RenewalStepKey = "setup" | "csr" | "subject" | "options" | "extensions";
+type RenewalStepKey = "setup" | "csr" | "storedCsr" | "subject" | "options" | "extensions";
 
 const NO_RENEWAL_DECLARATIONS: TProfileCustomExtension[] = [];
 
@@ -175,6 +176,13 @@ const STEP_META: Record<RenewalStepKey, WizardStep> = {
     subtitle: "Provide the CSR and set the validity for this renewal.",
     rightDescription:
       "The subject and key are taken from the CSR you provide, so there are no separate subject or key usage fields. Validity is set here, and custom extensions on the next step."
+  },
+  storedCsr: {
+    name: "Validity",
+    shortDescription: "Validity",
+    subtitle: "Set the validity for this renewal.",
+    rightDescription:
+      "This renewal reuses the signing request Infisical holds for the certificate's key, so the subject, names, and key come from that request and can't be changed here. Validity is set here, and custom extensions on the next step."
   },
   subject: {
     name: "Subject",
@@ -223,6 +231,19 @@ const EXTERNAL_TEMPLATE_OPTIONS_STEP: WizardStep = {
   subtitle: "Choose the key algorithm for the renewed certificate.",
   rightDescription:
     "The issuing certificate authority takes validity, key usages, extended key usages and basic constraints from its own certificate template, so they cannot be set here."
+};
+
+const EXTERNAL_TEMPLATE_CSR_STEP: WizardStep = {
+  ...STEP_META.csr,
+  shortDescription: "CSR",
+  subtitle: "Provide the CSR for this renewal.",
+  rightDescription:
+    "The subject and key are taken from the CSR you provide. The issuing certificate authority takes validity from its own certificate template, so it cannot be set here."
+};
+
+const EXTERNAL_TEMPLATE_STEP_META: Partial<Record<RenewalStepKey, WizardStep>> = {
+  options: EXTERNAL_TEMPLATE_OPTIONS_STEP,
+  csr: EXTERNAL_TEMPLATE_CSR_STEP
 };
 
 const REISSUE_STEP_COPY: Partial<Record<RenewalStepKey, Partial<WizardStep>>> = {
@@ -351,6 +372,7 @@ enum DigiCertOrderChoice {
 const STEP_FIELDS: Record<RenewalStepKey, string[]> = {
   setup: ["keySource"],
   csr: ["csr", "ttl"],
+  storedCsr: ["ttl"],
   subject: ["subjectAttributes", "subjectAltNames"],
   options: [
     "ttl",
@@ -474,7 +496,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       basicConstraints: { isCA: false },
       keyUsages: {},
       extendedKeyUsages: {},
-      customExtensions: []
+      customExtensions: [],
+      renewsFromStoredCsr: false
     }
   });
 
@@ -590,24 +613,37 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     ? (profile?.issuerType ?? (certificate.caId ? IssuerType.CA : IssuerType.SELF_SIGNED)) ===
       IssuerType.SELF_SIGNED
     : false;
+  const isIssuedByAcm = profile?.certificateAuthority?.externalType === CaType.AWS_ACM_PUBLIC_CA;
+  const isKeyless = certificate?.hasPrivateKey === false;
+  const cannotRenewFromCsr =
+    certificate?.canRenewFromCsr === undefined
+      ? renewalPreview?.hasOriginatingCsr === false
+      : !certificate.canRenewFromCsr;
   let reuseRefusalReason: string | undefined;
-  if (isSelfSigned && certificate?.hasPrivateKey === false) {
+  if (isSelfSigned && isKeyless) {
     reuseRefusalReason =
       "Infisical does not hold this certificate's private key, which is what signs a self-signed certificate.";
-  } else if (!isSelfSigned && certificate?.caType === CertificateIssuerKind.External) {
+  } else if (isIssuedByAcm) {
     reuseRefusalReason =
-      "The issuing certificate authority does not support reusing an existing key pair.";
+      "AWS Certificate Manager can't issue from a signing request, so it can't reuse a key pair. Generate a new key pair.";
+  } else if (!isSelfSigned && isKeyless && cannotRenewFromCsr) {
+    reuseRefusalReason =
+      "Infisical holds neither this certificate's private key nor a signing request it can renew from. Generate a new key pair, or use a CSR generated from the existing key.";
   } else if (
     !isSelfSigned &&
-    certificate?.hasPrivateKey === false &&
-    renewalPreview?.hasOriginatingCsr === false
+    certificate?.caType === CertificateIssuerKind.External &&
+    !isKeyless
   ) {
     reuseRefusalReason =
-      "Infisical holds neither this certificate's private key nor the signing request it was issued from. Generate a new key pair, or use a CSR generated from the existing key.";
+      "This certificate authority can reuse a key pair only from a signing request, not from a private key Infisical holds. Generate a new key pair, or export the private key and use a CSR generated from it.";
   }
-  const csrRefusalReason = isSelfSigned
-    ? "A self-signed certificate is signed by its own private key, which a signing request does not carry."
-    : undefined;
+  let csrRefusalReason: string | undefined;
+  if (isSelfSigned) {
+    csrRefusalReason =
+      "A self-signed certificate is signed by its own private key, which a signing request does not carry.";
+  } else if (isIssuedByAcm) {
+    csrRefusalReason = "AWS Certificate Manager can't issue from a signing request.";
+  }
   const isReuseAllowed = !reuseRefusalReason;
   const isCsrAllowed = !csrRefusalReason;
 
@@ -618,12 +654,26 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     if (isRefused) setValue("keySource", CertificateRenewalKeySource.New);
   }, [keySource, isReuseAllowed, isCsrAllowed, setValue]);
 
+  // Without the private key, Reuse renews from the stored CSR exactly like "Use a CSR", so the CSR fixes
+  // the subject, names, key usages and algorithms, and only validity and extensions can be set.
+  const renewsFromStoredCsr = keySource === CertificateRenewalKeySource.Reuse && isKeyless;
+  useEffect(() => {
+    setValue("renewsFromStoredCsr", renewsFromStoredCsr);
+  }, [renewsFromStoredCsr, setValue]);
+
   const showCustomExtensions =
     policyData?.customExtensions?.length !== 0 && caSupportsCustomExtensions;
 
   const stepKeys = useMemo<RenewalStepKey[]>(() => {
     if (keySource === CertificateRenewalKeySource.Csr) {
       return showCustomExtensions ? ["setup", "csr", "extensions"] : ["setup", "csr"];
+    }
+    if (renewsFromStoredCsr) {
+      // A template CA sets validity itself, which leaves this step with nothing to ask.
+      const keys: RenewalStepKey[] = ["setup"];
+      if (!isExternalTemplateProfile) keys.push("storedCsr");
+      if (showCustomExtensions) keys.push("extensions");
+      return keys;
     }
     const keys: RenewalStepKey[] = ["setup"];
     if (constraints.shouldShowSubjectSection || constraints.shouldShowSanSection)
@@ -635,6 +685,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     return keys;
   }, [
     keySource,
+    renewsFromStoredCsr,
+    isExternalTemplateProfile,
     constraints.shouldShowSubjectSection,
     constraints.shouldShowSanSection,
     showCustomExtensions
@@ -646,7 +698,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     clearErrors,
     isSubjectSectionShown: constraints.shouldShowSubjectSection,
     isSanSectionShown: constraints.shouldShowSanSection,
-    isSubjectEvaluated: keySource !== CertificateRenewalKeySource.Csr,
+    isSubjectEvaluated: keySource !== CertificateRenewalKeySource.Csr && !renewsFromStoredCsr,
     isValidityEvaluated: !isExternalTemplateProfile,
     resetKey: certificate?.id
   });
@@ -668,10 +720,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   const steps = useMemo(
     () =>
       stepKeys.map((key) => {
-        const meta =
-          key === "options" && isExternalTemplateProfile
-            ? EXTERNAL_TEMPLATE_OPTIONS_STEP
-            : STEP_META[key];
+        const meta = isExternalTemplateProfile
+          ? (EXTERNAL_TEMPLATE_STEP_META[key] ?? STEP_META[key])
+          : STEP_META[key];
         const replayedMeta = hasOriginatingRequest
           ? { ...meta, ...(REPLAYED_STEP_COPY[key] ?? {}) }
           : meta;
@@ -858,7 +909,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
         label: "Reuse the existing key pair",
         description: certificate?.hasPrivateKey
           ? "Keep the same private and public key."
-          : "Renew from the signing request this certificate was issued from, so the public key stays the same.",
+          : "Renew from the signing request Infisical holds for this key. Its names stay the same; only validity and extensions can change.",
         isDisabled: !isReuseAllowed,
         disabledReason: reuseRefusalReason
       },
@@ -974,6 +1025,22 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
           {removedNames.length > 0 && !nameRemovalError && (
             <NameRemovalWarning names={removedNames} />
           )}
+          {!isExternalTemplateProfile && (
+            <ValidityField
+              control={control}
+              label="Validity (TTL)"
+              isReadOnly={isReissuing}
+              description={isReissuing ? REISSUE_VALIDITY_DESCRIPTION : undefined}
+              hint={policy.ttlHint}
+              policyError={policy.ttlError}
+              revealPolicyError={policy.isRevealed("ttl")}
+            />
+          )}
+        </div>
+      )}
+
+      {currentStepKey === "storedCsr" && (
+        <div className="space-y-4">
           <ValidityField
             control={control}
             label="Validity (TTL)"

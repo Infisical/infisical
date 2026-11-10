@@ -8,6 +8,7 @@ import { sanitizeString } from "@app/lib/fn";
 import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { clientSecretBasicCredentials, formUrlEncode } from "@app/lib/oauth";
 import { safeRequest } from "@app/lib/validator";
 
 import {
@@ -45,16 +46,13 @@ const OAuth2LeaseDataSchema = z.object({
   ACCESS_TOKEN: z.string().min(1)
 });
 
-// RFC 6749 section 2.3.1: credentials are form-urlencoded before being joined and base64 encoded
-const formEncode = (value: string) => new URLSearchParams([["", value]]).toString().slice(1);
-
 // RFC 7009 section 2.1 requires the revocation request to authenticate the same way as the token request,
 // so both go through here; it adds body parameters in place and returns any headers to send
 const applyClientAuth = ({ clientId, clientAuth }: TOAuth2ProviderInputs, body: URLSearchParams) => {
   switch (clientAuth.method) {
     case OAuth2ClientAuthMethod.ClientSecretBasic:
       return {
-        Authorization: `Basic ${Buffer.from(`${formEncode(clientId)}:${formEncode(clientAuth.clientSecret)}`).toString("base64")}`
+        Authorization: `Basic ${clientSecretBasicCredentials(clientId, clientAuth.clientSecret)}`
       };
     case OAuth2ClientAuthMethod.ClientSecretPost:
       body.set("client_id", clientId);
@@ -84,7 +82,7 @@ const parseJsonBody = (data: unknown): unknown => {
 const withEncodings = (values: (string | undefined)[]) =>
   values
     .filter((value): value is string => Boolean(value))
-    .flatMap((value) => [value, formEncode(value), encodeURIComponent(value)]);
+    .flatMap((value) => [value, formUrlEncode(value), encodeURIComponent(value)]);
 
 const redact = (
   message: string,

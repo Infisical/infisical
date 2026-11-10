@@ -605,6 +605,7 @@
                     "root": "documentation/platform/pam/accounts/account-types",
                     "pages": [
                       "documentation/platform/pam/accounts/postgresql",
+                      "documentation/platform/pam/accounts/cockroachdb",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
                       "documentation/platform/pam/accounts/oracledb",
@@ -700,7 +701,6 @@
                   "documentation/platform/agent-vault/quickstart",
                   "documentation/platform/agent-vault/why-agent-vault",
                   "documentation/platform/agent-vault/how-it-works",
-                  "documentation/platform/agent-vault/projects",
                   "documentation/platform/agent-vault/plan-your-setup"
                 ]
               },
@@ -725,6 +725,7 @@
               {
                 "group": "Concepts",
                 "pages": [
+                  "documentation/platform/agent-vault/projects",
                   "documentation/platform/agent-vault/access-bundles",
                   {
                     "group": "Services",
@@ -1362,10 +1363,8 @@
                     "expanded": true,
                     "pages": [
                       "cli/reference/secrets-manager",
-                      "cli/reference/secrets-manager/agent-proxy",
                       "cli/reference/secrets-manager/dynamic-secrets",
                       "cli/reference/secrets-manager/environments",
-                      "cli/reference/secrets-manager/export",
                       "cli/reference/secrets-manager/folders",
                       "cli/reference/secrets-manager/projects",
                       "cli/reference/secrets-manager/run",
@@ -5065,8 +5064,16 @@
       "destination": "/cli/reference#secrets-manager"
     },
     {
+      "source": "/cli/reference/secrets-manager/agent-proxy",
+      "destination": "/documentation/platform/agent-proxy/overview"
+    },
+    {
+      "source": "/cli/reference/secrets-manager/export",
+      "destination": "/cli/reference#secrets-manager-secrets-export"
+    },
+    {
       "source": "/cli/reference/sm/agent-proxy",
-      "destination": "/cli/reference#secrets-manager-agent-proxy"
+      "destination": "/documentation/platform/agent-proxy/overview"
     },
     {
       "source": "/cli/reference/sm/dynamic-secrets",
@@ -5074,7 +5081,7 @@
     },
     {
       "source": "/cli/reference/sm/export",
-      "destination": "/cli/reference#secrets-manager-export"
+      "destination": "/cli/reference#secrets-manager-secrets-export"
     },
     {
       "source": "/cli/reference/sm/projects",
@@ -5094,7 +5101,7 @@
     },
     {
       "source": "/cli/reference/export",
-      "destination": "/cli/reference#secrets-manager-export"
+      "destination": "/cli/reference#secrets-manager-secrets-export"
     },
     {
       "source": "/cli/reference/run",
@@ -5106,7 +5113,7 @@
     },
     {
       "source": "/cli/commands/agent-proxy",
-      "destination": "/cli/reference#secrets-manager-agent-proxy"
+      "destination": "/documentation/platform/agent-proxy/overview"
     },
     {
       "source": "/cli/commands/agent-vault",
@@ -5122,7 +5129,7 @@
     },
     {
       "source": "/cli/commands/export",
-      "destination": "/cli/reference#secrets-manager-export"
+      "destination": "/cli/reference#secrets-manager-secrets-export"
     },
     {
       "source": "/cli/commands/gateway",

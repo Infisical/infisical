@@ -108,14 +108,17 @@ func listKeys(t *testing.T, pr *harness.Principal, proj *fixture.Project, tagSlu
 	return keys
 }
 
-func listDashboardKeys(t *testing.T, pr *harness.Principal, proj *fixture.Project, search, tags *string) ([]string, float32) {
+func listDashboardKeys(t *testing.T, pr *harness.Principal, proj *fixture.Project, search *string, tags ...string) ([]string, float32) {
 	t.Helper()
-	res, err := pr.API.ListProjectSecretsDetailsWithResponse(t.Context(), &api.ListProjectSecretsDetailsParams{
+	body := api.ListProjectSecretsDetailsJSONRequestBody{
 		ProjectId:   proj.ID,
 		Environment: "dev",
 		Search:      search,
-		Tags:        tags,
-	})
+	}
+	if len(tags) > 0 {
+		body.Tags = &tags
+	}
+	res, err := pr.API.ListProjectSecretsDetailsWithResponse(t.Context(), body)
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "dashboard listing returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 	keys := []string{}
