@@ -15,3 +15,10 @@ Read before changing scan triggers, `secret-scanning-v2-queue.ts`, or the GitHub
   `queued`), since a check left open blocks merging when it is required.
 - Fork PRs aren't scanned: they get a `skipped` check under the same name, unless the commit already has one of
   our checks (checks belong to the commit, so it would replace a real result).
+- Findings with the same secret value share `secretFindingBlindIndex`. Closing a finding (the PATCH routes or a GitHub
+  check skip) also closes the unresolved findings in the project with that value. Close findings only through
+  `closeFindingsWithSameValue` (`secret-scanning-v2-fns.ts`), including from a provider's own triage action. It writes
+  the finding and its siblings together after locking them in id order; updating the finding first and its siblings
+  after deadlocks two concurrent closes of the same value. A newly
+  inserted finding inherits the newest closed triage for its value from `createFindingRowsBuilder`; keep triage columns
+  out of the upsert's merge columns, or every rescan overwrites what users triaged.

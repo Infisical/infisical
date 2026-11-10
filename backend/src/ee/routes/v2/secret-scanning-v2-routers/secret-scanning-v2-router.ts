@@ -296,7 +296,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
         permission
       } = req;
 
-      const { finding, projectId, previousStatus } =
+      const { finding, projectId, previousStatus, sameValueFindingIds } =
         await server.services.secretScanningV2.updateSecretScanningFindingById({ findingId, ...body }, permission);
 
       await server.services.auditLog.createAuditLog({
@@ -306,7 +306,8 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           type: EventType.SECRET_SCANNING_FINDING_UPDATE,
           metadata: {
             findingId,
-            ...body
+            ...body,
+            ...(sameValueFindingIds.length ? { sameValueFindingIds } : {})
           }
         }
       });
@@ -345,7 +346,7 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
       const { body, permission } = req;
 
       const updatedFindingPromises = body.map(async (findingUpdatePayload) => {
-        const { finding, projectId, previousStatus } =
+        const { finding, projectId, previousStatus, sameValueFindingIds } =
           await server.services.secretScanningV2.updateSecretScanningFindingById(findingUpdatePayload, permission);
 
         await server.services.auditLog.createAuditLog({
@@ -353,7 +354,10 @@ export const registerSecretScanningV2Router = async (server: FastifyZodProvider)
           projectId,
           event: {
             type: EventType.SECRET_SCANNING_FINDING_UPDATE,
-            metadata: findingUpdatePayload
+            metadata: {
+              ...findingUpdatePayload,
+              ...(sameValueFindingIds.length ? { sameValueFindingIds } : {})
+            }
           }
         });
 

@@ -19,6 +19,7 @@ import {
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-factory";
 import {
+  closeFindingsWithSameValue,
   doesDataSourceSupportDiscovery,
   isDataSourceWebhookRequired,
   listSecretScanningDataSourceOptions
@@ -1344,29 +1345,51 @@ export const secretScanningV2ServiceFactory = ({
 
     const isStatusChange = status !== undefined && status !== finding.status;
     const now = new Date();
+    const triagedByUserId = actor.type === ActorType.USER ? actor.id : null;
 
-    const updatedFinding = await secretScanningV2DAL.findings.transaction(async (tx) => {
-      await secretScanningV2DAL.findings.updateById(
-        findingId,
-        {
-          triageComment,
-          status,
-          ...(isStatusChange || triageComment !== undefined
-            ? { triagedAt: now, triagedByUserId: actor.type === ActorType.USER ? actor.id : null }
-            : {}),
-          ...(isStatusChange ? { resolvedAt: status === SecretScanningFindingStatus.Resolved ? now : null } : {})
-        },
-        tx
-      );
+    const { updatedFinding, sameValueFindingIds } = await secretScanningV2DAL.findings.transaction(async (tx) => {
+      let sameValueFindingIds: string[] = [];
 
-      // read back in the same transaction: a replica may not have the write yet
-      return secretScanningV2DAL.findings.findByIdWithDetails(findingId, tx);
+      if (isStatusChange && status && status !== SecretScanningFindingStatus.Unresolved) {
+        // a request without a comment keeps the finding's own, which is also the comment the same-value findings get
+        const closed = await closeFindingsWithSameValue(
+          {
+            secretScanningV2DAL,
+            projectId: finding.projectId,
+            findings: [finding],
+            status,
+            triageComment: triageComment !== undefined ? triageComment : (finding.triageComment ?? null),
+            triagedByUserId
+          },
+          tx
+        );
+
+        sameValueFindingIds = closed.get(findingId) ?? [];
+      } else {
+        await secretScanningV2DAL.findings.updateById(
+          findingId,
+          {
+            triageComment,
+            status,
+            ...(isStatusChange || triageComment !== undefined ? { triagedAt: now, triagedByUserId } : {}),
+            ...(isStatusChange ? { resolvedAt: null } : {})
+          },
+          tx
+        );
+      }
+
+      return {
+        // read back in the same transaction: a replica may not have the write yet
+        updatedFinding: await secretScanningV2DAL.findings.findByIdWithDetails(findingId, tx),
+        sameValueFindingIds
+      };
     });
 
     return {
       finding: updatedFinding as TSecretScanningFinding,
       projectId: finding.projectId,
-      previousStatus: isStatusChange ? (finding.status as SecretScanningFindingStatus) : undefined
+      previousStatus: isStatusChange ? (finding.status as SecretScanningFindingStatus) : undefined,
+      sameValueFindingIds
     };
   };
 

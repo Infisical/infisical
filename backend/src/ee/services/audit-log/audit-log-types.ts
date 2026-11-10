@@ -5932,7 +5932,10 @@ interface SecretScanningFindingListEvent {
 
 interface SecretScanningFindingUpdateEvent {
   type: EventType.SECRET_SCANNING_FINDING_UPDATE;
-  metadata: TUpdateSecretScanningFindingDTO;
+  metadata: TUpdateSecretScanningFindingDTO & {
+    // unresolved findings with the same secret value, closed along with this one
+    sameValueFindingIds?: string[];
+  };
 }
 
 interface SecretScanningConfigUpdateEvent {

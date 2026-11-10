@@ -13,6 +13,7 @@ import {
   SecretScanningScanTrigger
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
+  closeFindingsWithSameValue,
   convertPatchLineToFileLineNumber,
   replaceNonChangesWithNewlines,
   toFindingDetails
@@ -1144,25 +1145,42 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
 
     const { pullRequestNumber, findingIds = [] } = metadata.data;
 
-    const findings = findingIds.length
-      ? await secretScanningV2DAL.findings.find({ resourceId: resource.id, $in: { id: findingIds } }, { tx: primary })
-      : [];
-    const findingsToSkip = findings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
+    const triageComment = `${
+      action === SecretScanningFindingStatus.FalsePositive ? "Marked as a false positive" : "Ignored"
+    } from GitHub by @${sender.login} on pull request ${repository.full_name}#${pullRequestNumber}.`;
+
+    const { findingsToSkip, sameValueFindingIdsByFindingId } = await secretScanningV2DAL.findings.transaction(
+      async (tx) => {
+        const findings = findingIds.length
+          ? await secretScanningV2DAL.findings.find({ resourceId: resource.id, $in: { id: findingIds } }, { tx })
+          : [];
+        const toSkip = findings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
+
+        return {
+          findingsToSkip: toSkip,
+          sameValueFindingIdsByFindingId: toSkip.length
+            ? await closeFindingsWithSameValue(
+                {
+                  secretScanningV2DAL,
+                  projectId: dataSource.projectId,
+                  findings: toSkip,
+                  status: action,
+                  triageComment,
+                  triagedByUserId: null
+                },
+                tx
+              )
+            : new Map<string, string[]>()
+        };
+      }
+    );
 
     if (findingsToSkip.length) {
-      const triageComment = `${
-        action === SecretScanningFindingStatus.FalsePositive ? "Marked as a false positive" : "Ignored"
-      } from GitHub by @${sender.login} on pull request ${repository.full_name}#${pullRequestNumber}.`;
-      const now = new Date();
-
-      await secretScanningV2DAL.findings.update(
-        { $in: { id: findingsToSkip.map((finding) => finding.id) } },
-        { status: action, triageComment, triagedAt: now, triagedByUserId: null, resolvedAt: null }
-      );
-
       await Promise.all(
-        findingsToSkip.map((finding) =>
-          auditLogService.createAuditLog({
+        findingsToSkip.map((finding) => {
+          const sameValueFindingIds = sameValueFindingIdsByFindingId.get(finding.id);
+
+          return auditLogService.createAuditLog({
             projectId: dataSource.projectId,
             actor: {
               type: ActorType.PLATFORM,
@@ -1170,10 +1188,15 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
             },
             event: {
               type: EventType.SECRET_SCANNING_FINDING_UPDATE,
-              metadata: { findingId: finding.id, status: action, triageComment }
+              metadata: {
+                findingId: finding.id,
+                status: action,
+                triageComment,
+                ...(sameValueFindingIds?.length ? { sameValueFindingIds } : {})
+              }
             }
-          })
-        )
+          });
+        })
       );
 
       logger.info(

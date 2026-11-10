@@ -6,6 +6,7 @@ import {
   TableName,
   TSecretScanningDataSources,
   TSecretScanningFindings,
+  TSecretScanningFindingsUpdate,
   TSecretScanningResources
 } from "@app/db/schemas";
 import {
@@ -760,6 +761,100 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     }
   };
 
+  /**
+   * Returns, for each blind index, the most recently triaged finding in the project that is no longer unresolved.
+   * New findings with the same secret value inherit its triage.
+   */
+  const findLatestTriagedFindingsByBlindIndexes = async (projectId: string, blindIndexes: string[], tx?: Knex) => {
+    try {
+      const triagedFindings: TSecretScanningFindings[] = [];
+
+      for (const chunk of chunkArray([...new Set(blindIndexes)], FINDINGS_UPSERT_CHUNK_SIZE)) {
+        // eslint-disable-next-line no-await-in-loop
+        const rows = (await baseFindingQuery(tx)
+          .where(`${TableName.SecretScanningDataSource}.projectId`, projectId)
+          .whereIn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`, chunk)
+          .whereNot(`${TableName.SecretScanningFinding}.status`, SecretScanningFindingStatus.Unresolved)
+          .distinctOn(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`)
+          .select(selectAllTableCols(TableName.SecretScanningFinding))
+          .orderBy(`${TableName.SecretScanningFinding}.secretFindingBlindIndex`)
+          .orderByRaw("?? DESC NULLS LAST", [`${TableName.SecretScanningFinding}.triagedAt`])
+          .orderBy(`${TableName.SecretScanningFinding}.createdAt`, "desc")) as TSecretScanningFindings[];
+
+        triagedFindings.push(...rows);
+      }
+
+      return triagedFindings;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Latest Triaged By Blind Indexes - Secret Scanning Finding" });
+    }
+  };
+
+  /**
+   * Applies one triage to the given findings and to every unresolved finding in the project that shares a secret value
+   * with them, returning all the rows it changed.
+   *
+   * The rows are locked in id order before they are written. Two closes of the same value (the batch PATCH runs its
+   * items concurrently) each touch the other's finding, so locking in any other order deadlocks them. The second one
+   * waits on the first row, then Postgres re-checks the filter, and findings the first close already resolved drop out.
+   */
+  const triageFindingsWithSameValue = async (
+    {
+      projectId,
+      findingIds,
+      blindIndexes,
+      data
+    }: {
+      projectId: string;
+      findingIds: string[];
+      blindIndexes: string[];
+      data: Pick<
+        TSecretScanningFindingsUpdate,
+        "status" | "triageComment" | "triagedAt" | "triagedByUserId" | "resolvedAt"
+      >;
+    },
+    tx: Knex
+  ) => {
+    try {
+      const lockedFindings = (await tx(TableName.SecretScanningFinding)
+        .select("id")
+        .whereIn("id", findingIds)
+        .orWhere((qb) => {
+          void qb
+            .whereIn("secretFindingBlindIndex", blindIndexes)
+            .where("status", SecretScanningFindingStatus.Unresolved)
+            .whereIn("resourceId", (subQuery) => {
+              void subQuery
+                .select(`${TableName.SecretScanningResource}.id`)
+                .from(TableName.SecretScanningResource)
+                .join(
+                  TableName.SecretScanningDataSource,
+                  `${TableName.SecretScanningDataSource}.id`,
+                  `${TableName.SecretScanningResource}.dataSourceId`
+                )
+                .where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
+            });
+        })
+        .orderBy("id")
+        .forUpdate()) as Pick<TSecretScanningFindings, "id">[];
+
+      if (!lockedFindings.length) return [];
+
+      return (await tx(TableName.SecretScanningFinding)
+        .whereIn(
+          "id",
+          lockedFindings.map(({ id }) => id)
+        )
+        .update(data)
+        .returning(["id", "secretFindingBlindIndex"])) as Pick<
+        TSecretScanningFindings,
+        "id" | "secretFindingBlindIndex"
+      >[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Triage With Same Value - Secret Scanning Finding" });
+    }
+  };
+
   const primaryNode = () => db.primaryNode();
 
   return {
@@ -792,7 +887,9 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       countByScanId: countFindingsByScanId,
       findByProjectId: findFindingsByProjectId,
       findByIdWithDetails: findFindingByIdWithDetails,
-      countByProjectId: countFindingsByProjectId
+      countByProjectId: countFindingsByProjectId,
+      findLatestTriagedByBlindIndexes: findLatestTriagedFindingsByBlindIndexes,
+      triageWithSameValue: triageFindingsWithSameValue
     },
     configs: configOrm
   };

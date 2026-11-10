@@ -43,6 +43,7 @@ import { PostHogEventTypes, TSecretScanningScanCompletedEvent } from "@app/servi
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import {
   SecretScanningDataSource,
+  SecretScanningFindingStatus,
   SecretScanningScanStatus,
   SecretScanningScanTrigger,
   SecretScanningScanType
@@ -128,8 +129,8 @@ export const secretScanningV2QueueServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     const blindIndexer = await createOrgSecretBlindIndexer({ orgId: project.orgId, kmsService });
 
-    return (findings: TFindingsPayload) =>
-      Promise.all(
+    return async (findings: TFindingsPayload) => {
+      const rows = await Promise.all(
         findings.map(async ({ secretValue, ...finding }) => ({
           ...finding,
           resourceId,
@@ -137,6 +138,36 @@ export const secretScanningV2QueueServiceFactory = ({
           secretFindingBlindIndex: await blindIndexer.generateOrgLevelBlindIndex(Buffer.from(secretValue))
         }))
       );
+
+      if (!rows.length) return rows;
+
+      // A new finding whose secret value was already triaged in this project starts with the newest of those triages.
+      // Only rows the upsert inserts take these columns, so findings saved by an earlier scan keep their own triage.
+      // Read from the primary so a triage made moments ago is not missed on a lagging replica.
+      const triagedFindings = await secretScanningV2DAL.findings.findLatestTriagedByBlindIndexes(
+        projectId,
+        rows.map(({ secretFindingBlindIndex }) => secretFindingBlindIndex),
+        secretScanningV2DAL.primaryNode()
+      );
+
+      const triageByBlindIndex = new Map(
+        triagedFindings.map((triaged) => [triaged.secretFindingBlindIndex as string, triaged])
+      );
+      const now = new Date();
+
+      return rows.map((row) => {
+        const triaged = triageByBlindIndex.get(row.secretFindingBlindIndex);
+
+        return {
+          ...row,
+          status: triaged ? triaged.status : SecretScanningFindingStatus.Unresolved,
+          triageComment: triaged ? (triaged.triageComment ?? null) : null,
+          triagedByUserId: triaged ? (triaged.triagedByUserId ?? null) : null,
+          triagedAt: triaged ? now : null,
+          resolvedAt: triaged?.status === SecretScanningFindingStatus.Resolved ? now : null
+        };
+      });
+    };
   };
 
   /**

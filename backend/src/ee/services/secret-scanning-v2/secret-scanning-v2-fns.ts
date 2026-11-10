@@ -1,8 +1,10 @@
 import { AxiosError } from "axios";
+import { Knex } from "knex";
 import { join } from "path";
 import picomatch from "picomatch";
 import RE2 from "re2";
 
+import { TSecretScanningFindings } from "@app/db/schemas";
 import { BITBUCKET_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/bitbucket";
 import { GITHUB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/github";
 import { GITLAB_SECRET_SCANNING_DATA_SOURCE_LIST_OPTION } from "@app/ee/services/secret-scanning-v2/gitlab";
@@ -29,7 +31,12 @@ import { titleCaseToCamelCase } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
 import { GitLabDataSourceScope } from "./gitlab/gitlab-secret-scanning-enums";
-import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
+import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
+import {
+  SecretScanningDataSource,
+  SecretScanningFindingSeverity,
+  SecretScanningFindingStatus
+} from "./secret-scanning-v2-enums";
 import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListItem } from "./secret-scanning-v2-types";
 
 const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSecretScanningDataSourceListItem> = {
@@ -600,4 +607,73 @@ export const scanSecretPolicyViolations = async (
   } finally {
     await deleteTempFolder(tempFolder);
   }
+};
+
+/**
+ * Closes findings and every unresolved finding in the project with the same secret value. Every path that closes
+ * findings goes through here, so a provider's own triage action (such as a GitHub check skip) behaves like the API.
+ *
+ * Takes the caller's transaction, so the findings it is handed were read in the same one it writes in.
+ *
+ * Returns, for each finding passed in, the IDs of the other findings closed with it, for its audit log.
+ */
+export const closeFindingsWithSameValue = async (
+  {
+    secretScanningV2DAL,
+    projectId,
+    findings,
+    status,
+    triageComment,
+    triagedByUserId
+  }: {
+    secretScanningV2DAL: Pick<TSecretScanningV2DALFactory, "findings">;
+    projectId: string;
+    findings: Pick<TSecretScanningFindings, "id" | "secretFindingBlindIndex">[];
+    status: Exclude<SecretScanningFindingStatus, SecretScanningFindingStatus.Unresolved>;
+    triageComment: string | null;
+    triagedByUserId: string | null;
+  },
+  tx: Knex
+) => {
+  const now = new Date();
+  const findingIds = new Set(findings.map(({ id }) => id));
+  const blindIndexes = [
+    ...new Set(
+      findings.flatMap(({ secretFindingBlindIndex }) => (secretFindingBlindIndex ? [secretFindingBlindIndex] : []))
+    )
+  ];
+
+  const triagedFindings = await secretScanningV2DAL.findings.triageWithSameValue(
+    {
+      projectId,
+      findingIds: [...findingIds],
+      blindIndexes,
+      data: {
+        status,
+        triageComment,
+        triagedAt: now,
+        triagedByUserId,
+        resolvedAt: status === SecretScanningFindingStatus.Resolved ? now : null
+      }
+    },
+    tx
+  );
+
+  const sameValueFindingIdsByBlindIndex = new Map<string, string[]>();
+
+  for (const { id, secretFindingBlindIndex } of triagedFindings) {
+    if (secretFindingBlindIndex && !findingIds.has(id)) {
+      sameValueFindingIdsByBlindIndex.set(secretFindingBlindIndex, [
+        ...(sameValueFindingIdsByBlindIndex.get(secretFindingBlindIndex) ?? []),
+        id
+      ]);
+    }
+  }
+
+  return new Map(
+    findings.map(({ id, secretFindingBlindIndex }) => [
+      id,
+      (secretFindingBlindIndex && sameValueFindingIdsByBlindIndex.get(secretFindingBlindIndex)) || []
+    ])
+  );
 };
