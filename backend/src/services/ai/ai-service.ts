@@ -126,12 +126,14 @@ export const aiServiceFactory = ({
     orgId,
     instructions,
     request,
-    tools
+    tools,
+    deadline
   }: {
     orgId: string;
     instructions: string;
     request: TAiRequestContext;
     tools: TAiTool[];
+    deadline?: number;
   }): Promise<TAiJudgeResult> => {
     const fail = (error: string, model = ""): TAiJudgeResult => ({
       approve: false,
@@ -157,13 +159,14 @@ export const aiServiceFactory = ({
     }
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), AI_JUDGE_TIMEOUT_MS);
+    const timeoutMs = Math.min(AI_JUDGE_TIMEOUT_MS, deadline ? deadline - Date.now() : AI_JUDGE_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), Math.max(timeoutMs, 0));
     try {
       return await runAiJudge({
         sendMessage: (body) =>
           createAnthropicMessage(connection, body, { signal: controller.signal, timeoutMs: AI_MESSAGE_TIMEOUT_MS }),
         describeError: (error) => {
-          if (controller.signal.aborted) return `The AI didn't decide within ${AI_JUDGE_TIMEOUT_MS / 1000} seconds`;
+          if (controller.signal.aborted) return `The AI didn't decide within ${Math.round(timeoutMs / 1000)} seconds`;
           logger.warn(
             {
               message: getAnthropicErrorMessage(error),

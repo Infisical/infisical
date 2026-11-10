@@ -48,6 +48,8 @@ import {
 } from "./auto-approval-types";
 
 const RESOLVE_TIMEOUT_MS = 20_000;
+const AI_EVALUATION_BUDGET_MS = 60_000;
+const AI_MIN_REMAINING_MS = 5_000;
 
 const UNUSED_CONSTRAINT = { label: AUTO_APPROVAL_UNUSED_CONSTRAINT_LABEL, value: AutoApprovalConstraintValue.None };
 
@@ -608,11 +610,13 @@ export const autoApprovalServiceFactory = ({
           details: ctx.request?.details ?? null,
           inputs
         },
-        tools: buildAppConnectionAiTools(contextConnections as TAppConnection[], providerDeps)
+        tools: buildAppConnectionAiTools(contextConnections as TAppConnection[], providerDeps),
+        deadline: aiDeadline
       });
     };
 
     const deterministic = evaluateAutoApprovalRules(stored.rules, resolved, ctx);
+    const aiDeadline = Date.now() + AI_EVALUATION_BUDGET_MS;
     const aiResults = new Map<string, TAiConditionResult>();
     let isApproved = false;
     for await (const rule of stored.rules) {
@@ -643,6 +647,16 @@ export const autoApprovalServiceFactory = ({
       } else {
         let allApproved = true;
         for await (const condition of aiConditions) {
+          if (aiDeadline - Date.now() < AI_MIN_REMAINING_MS) {
+            aiResults.set(condition.id, {
+              passed: false,
+              reason: "Not reviewed because the AI ran out of time on earlier rules",
+              ai: null
+            });
+            allApproved = false;
+            // eslint-disable-next-line no-continue
+            continue;
+          }
           const result = await runAiCondition(condition);
           aiResults.set(condition.id, {
             passed: result.approve,
