@@ -53,7 +53,7 @@
   font-weight: var(--v4-type-row-title-font-weight);
   letter-spacing: var(--v4-type-row-title-letter-spacing);
 }
-.description[data-description] {
+.toaster[data-sonner-toaster] .description[data-description] {
   font-family: var(--v4-type-small-font-family);
   font-size: var(--v4-type-small-font-size);
   line-height: var(--v4-type-small-line-height);

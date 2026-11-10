@@ -37,6 +37,29 @@ export default function Example() {
         >
           Show warning
         </Button>
+        <Button variant="outline" onClick={() => toast.info("Version available")}>
+          Show notice
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() =>
+            toast.success("Secret deleted", {
+              description: "DATABASE_URL was removed from Production.",
+              action: { label: "Undo", onClick: () => toast.success("Secret restored") }
+            })
+          }
+        >
+          Show with action
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            const id = toast.loading("Checking provider");
+            window.setTimeout(() => toast.success("Provider connected", { id }), 1800);
+          }}
+        >
+          Show loading
+        </Button>
       </div>
     </ExampleStack>
   );
