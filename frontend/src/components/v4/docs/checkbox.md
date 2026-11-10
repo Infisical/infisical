@@ -54,10 +54,12 @@ Exports: Checkbox. Source TypeScript defines the API.
 ## Behavior
 
 - Checkbox supports checked, unchecked and mixed values, labeled content and disabled policy states. The owner applies or stages its checked change.
+- label and description take a node, so a label can carry emphasis or a link-free phrase. media puts an icon or a provider logo before the label, in a size-icon box centered on the label's first line, for choices a logo identifies faster than words, such as login methods. Control, media, label and description sit inside one label element, so the whole row is one click target.
 
 ## Accessibility
 
 - Name the control. Screen readers announce the mixed state.
+- media is decorative and hidden from assistive technology; the label names the choice, so put anything the logo means in the label (a ProviderIcon inside media takes alt empty).
 
 ## Use cases
 
@@ -186,6 +188,73 @@ export default function Example() {
           <Checkbox label="Audit events" disabled defaultChecked />
         </div>
         <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Login methods with logos
+
+Save this example at `src/pages/design-system/examples/checkbox/media.tsx`; its relative imports are generated for that exact path. States: controlled, default.
+
+Registry items used: @infisical/checkbox, @infisical/provider-icon. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+
+import { Checkbox } from "../../../../components/v4/ui/checkbox";
+import { ProviderIcon } from "../../../../components/v4/ui/provider-icon";
+
+const methods = [
+  {
+    id: "google",
+    icon: "Google Workspace.svg",
+    label: "Google",
+    description: "Workspace accounts"
+  },
+  { id: "github", icon: "GitHub.png", label: "GitHub", description: "Organization members" },
+  { id: "gitlab", icon: "GitLab.png", label: "GitLab", description: undefined }
+];
+
+export default function Example() {
+  const [enabled, setEnabled] = React.useState<string[]>(["google"]);
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <div className="flex flex-col gap-3">
+            {methods.map((method) => (
+              <Checkbox
+                key={method.id}
+                media={<ProviderIcon icon={method.icon} alt="" />}
+                label={method.label}
+                description={method.description}
+                checked={enabled.includes(method.id)}
+                onChange={(checked) =>
+                  setEnabled((current) =>
+                    checked ? [...current, method.id] : current.filter((id) => id !== method.id)
+                  )
+                }
+              />
+            ))}
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Login methods with logos"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <Checkbox
+            label={
+              <>
+                Enforce <strong>SAML</strong> for every member
+              </>
+            }
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Node label"}</figcaption>
       </figure>
     </div>
   );

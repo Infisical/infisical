@@ -487,6 +487,7 @@ const AccountSheet = ({
               onValueChange={(value) => {
                 if (value) account.theme?.onChange(value as ShellTheme);
               }}
+              width="full"
               className={styles.sheetThemeChoice}
             >
               {themeOptions.map((option) => (

@@ -14,6 +14,7 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
 
+import { errorMessage } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { AppLogo } from "./AppLogo";
 
@@ -121,13 +122,17 @@ export const NewConnection = () => {
       onCancel={reset}
       onComplete={async () => {
         if (!app || !chosen) return;
-        await createConnection.mutateAsync({
-          app,
-          name: name.trim(),
-          description: description.trim() || null,
-          method: chosen as TAppConnection["method"],
-          credentials: credentials as TAppConnection["credentials"]
-        } as TCreateAppConnectionDTO);
+        await createConnection
+          .mutateAsync({
+            app,
+            name: name.trim(),
+            description: description.trim() || null,
+            method: chosen as TAppConnection["method"],
+            credentials: credentials as TAppConnection["credentials"]
+          } as TCreateAppConnectionDTO)
+          .catch((error: unknown) => {
+            throw new Error(errorMessage(error));
+          });
         reset();
       }}
       steps={[

@@ -9,12 +9,6 @@ import { Spinner } from "./spinner";
 
 import styles from "./settings-card.module.css";
 
-type SaveState =
-  | { kind: "idle" }
-  | { kind: "saving" }
-  | { kind: "saved" }
-  | { kind: "failed"; message: string };
-
 export type SettingsCardProps = Omit<
   React.ComponentPropsWithoutRef<"section">,
   "title" | "onSubmit"
@@ -29,6 +23,8 @@ export type SettingsCardProps = Omit<
   locked?: React.ReactNode;
   loading?: boolean;
   saveLabel?: string;
+  /** Blocks Save and says why, the way Button's disabledReason does: the button stays focusable and shows the reason on hover and focus. */
+  saveDisabledReason?: string;
   tone?: "default" | "danger";
   actions?: React.ReactNode;
   /** Renders the body edge to edge without the form and footer, for content that is not saved here, such as an embedded DataTable. */
@@ -46,6 +42,7 @@ export function SettingsCard({
   locked,
   loading = false,
   saveLabel = "Save",
+  saveDisabledReason,
   tone = "default",
   actions,
   flush = false,
@@ -54,28 +51,17 @@ export function SettingsCard({
   ref,
   ...props
 }: SettingsCardProps & { ref?: React.Ref<HTMLElement> }) {
-  const [state, setState] = React.useState<SaveState>({ kind: "idle" });
+  const [saving, setSaving] = React.useState(false);
   const titleId = React.useId();
-  React.useEffect(() => {
-    if (state.kind !== "saved") return undefined;
-    const timer = window.setTimeout(() => setState({ kind: "idle" }), 3000);
-    return () => window.clearTimeout(timer);
-  }, [state.kind]);
-  React.useEffect(() => {
-    if (dirty && state.kind === "saved") setState({ kind: "idle" });
-  }, [dirty, state.kind]);
-  const saving = state.kind === "saving";
   const save = async () => {
-    if (!onSave || !dirty || saving || locked) return;
-    setState({ kind: "saving" });
+    if (!onSave || !dirty || saving || locked || saveDisabledReason) return;
+    setSaving(true);
     try {
       await onSave();
-      setState({ kind: "saved" });
-    } catch (error) {
-      setState({
-        kind: "failed",
-        message: error instanceof Error ? error.message : "The change was not saved. Try again."
-      });
+    } catch {
+      // The caller reports the failure with a toast; the card only keeps what was typed.
+    } finally {
+      setSaving(false);
     }
   };
   let status: React.ReactNode = hint;
@@ -91,14 +77,6 @@ export function SettingsCard({
       <>
         <Spinner />
         Saving
-      </>
-    );
-  else if (state.kind === "failed") status = <span className={styles.failed}>{state.message}</span>;
-  else if (state.kind === "saved")
-    status = (
-      <>
-        <Icon name="check-c" size={14} className={styles.saved} />
-        Saved
       </>
     );
   else if (dirty)
@@ -120,6 +98,7 @@ export function SettingsCard({
     </div>
   );
   const body = loading ? <Skeleton lines={2} height={32} /> : children;
+  const hasBody = loading || React.Children.toArray(children).length > 0;
   if (flush)
     return (
       <section
@@ -132,9 +111,11 @@ export function SettingsCard({
         {...props}
       >
         {header}
-        <FrameScope framed>
-          <div className={styles.flushContent}>{body}</div>
-        </FrameScope>
+        {hasBody && (
+          <FrameScope framed>
+            <div className={styles.flushContent}>{body}</div>
+          </FrameScope>
+        )}
       </section>
     );
   return (
@@ -154,11 +135,13 @@ export function SettingsCard({
         }}
       >
         {header}
-        <FrameScope framed>
-          <fieldset className={styles.content} disabled={Boolean(locked) || saving}>
-            {body}
-          </fieldset>
-        </FrameScope>
+        {hasBody && (
+          <FrameScope framed>
+            <fieldset className={styles.content} disabled={Boolean(locked) || saving}>
+              {body}
+            </fieldset>
+          </FrameScope>
+        )}
         <div className={styles.footer}>
           <p className={styles.status} role="status">
             {status}
@@ -170,15 +153,7 @@ export function SettingsCard({
               ) : (
                 <>
                   {dirty && onDiscard && !saving && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        onDiscard();
-                        setState({ kind: "idle" });
-                      }}
-                    >
+                    <Button type="button" variant="ghost" size="sm" onClick={onDiscard}>
                       Discard
                     </Button>
                   )}
@@ -187,7 +162,8 @@ export function SettingsCard({
                       type="submit"
                       variant="primary"
                       size="sm"
-                      disabled={!dirty || loading}
+                      disabled={!saveDisabledReason && (!dirty || loading)}
+                      disabledReason={saveDisabledReason}
                       loading={saving}
                     >
                       {saveLabel}

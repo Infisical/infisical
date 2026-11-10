@@ -364,6 +364,22 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       [example, '<Button variant="outline" iconRight="chev-right">Continue</Button>']
     ]
   },
+  "tab-width": {
+    bad: [
+      [css, '.spaces [role="tab"].spaceTab { flex: 1 1 0; min-width: 0; }'],
+      [css, '.toolbar [data-slot="toggle-group"] { width: 100%; }'],
+      [page, '<TabsList variant="segmented" className="w-full">'],
+      [page, '<ToggleGroupItem value="all" className="flex-1">All</ToggleGroupItem>'],
+      [page, '<div className="**:data-[slot=tabs-trigger]:flex-1" />']
+    ],
+    good: [
+      [css, '.spaces [role="tab"].spaceTab { min-width: 0; padding-inline: var(--v4-space-8); }'],
+      [css, ".sheetThemeChoice > * { min-height: var(--v4-size-touch-row); }"],
+      [page, '<Tabs variant="segmented" width="full" tabs={tabs} />'],
+      [page, '<ToggleGroup type="single" width="full" className={styles.choice} />'],
+      ["src/components/v4/ui/navigation.module.css", '.tabsList [role="tab"] { flex: 1 1 0; }']
+    ]
+  },
   "dot-separator": {
     bad: [[example, "<span>Primary · alias of default</span>"]],
     good: [[example, "<span>Primary, alias of default</span>"]]

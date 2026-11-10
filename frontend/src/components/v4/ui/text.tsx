@@ -108,3 +108,52 @@ export function StatusText({
   );
 }
 StatusText.displayName = "StatusText";
+
+/**
+ * Marks every case-insensitive occurrence of query in text as a search match. The query is literal
+ * text, never a pattern; terms matches each whitespace-separated word on its own.
+ */
+export function Highlight({
+  text,
+  query,
+  terms = false,
+  className
+}: {
+  text: string;
+  query?: string;
+  terms?: boolean;
+  className?: string;
+}) {
+  const needles = (terms ? (query ?? "").split(/\s+/) : [(query ?? "").trim() && (query ?? "")])
+    .map((needle) => needle.toLowerCase())
+    .filter(Boolean);
+  const lower = text.toLowerCase();
+  const ranges = needles
+    .flatMap((needle) => {
+      const found: [number, number][] = [];
+      for (let at = lower.indexOf(needle); at >= 0; at = lower.indexOf(needle, at + 1))
+        found.push([at, at + needle.length]);
+      return found;
+    })
+    .sort((a, b) => a[0] - b[0])
+    .reduce<[number, number][]>((merged, range) => {
+      const last = merged.at(-1);
+      if (last && range[0] <= last[1]) last[1] = Math.max(last[1], range[1]);
+      else merged.push([...range]);
+      return merged;
+    }, []);
+  if (!ranges.length || lower.length !== text.length) return text;
+  const parts: React.ReactNode[] = [];
+  let from = 0;
+  ranges.forEach(([start, end]) => {
+    if (start > from) parts.push(text.slice(from, start));
+    parts.push(
+      <mark key={start} data-slot="highlight" className={cn(styles.highlight, className)}>
+        {text.slice(start, end)}
+      </mark>
+    );
+    from = end;
+  });
+  if (from < text.length) parts.push(text.slice(from));
+  return parts;
+}

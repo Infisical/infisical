@@ -14,14 +14,17 @@ function Checkbox({
   className,
   label,
   description,
+  media,
   indeterminate,
   onChange,
   onCheckedChange,
   ref,
   ...props
 }: Omit<React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>, "onChange"> & {
-  label?: string;
-  description?: string;
+  label?: React.ReactNode;
+  description?: React.ReactNode;
+  /** An icon or logo before the label, sized to size-icon and hidden from assistive technology; anything it means belongs in label. */
+  media?: React.ReactNode;
   indeterminate?: boolean;
   onChange?: (checked: boolean) => void;
 } & { ref?: React.Ref<React.ComponentRef<typeof CheckboxPrimitive.Root>> }) {
@@ -89,6 +92,11 @@ function Checkbox({
   return label ? (
     <label htmlFor={fieldAttributes.id ?? generated} className={controlStyles.choice}>
       {control}
+      {media && (
+        <span aria-hidden className={controlStyles.choiceMedia}>
+          {media}
+        </span>
+      )}
       <span className={controlStyles.choiceText}>
         <span id={titleId} className={controlStyles.choiceTitle}>
           {label}

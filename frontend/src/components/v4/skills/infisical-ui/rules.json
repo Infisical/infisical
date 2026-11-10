@@ -1136,6 +1136,19 @@
       "exceptions": "The check reads mono on a JSX element or option object whose title, label or text reads an entity's .name. It cannot see a name passed through a local variable, mono set by a page stylesheet class, a conditional mono expression or a DataTable column whose render reads a name; those are reviewed by hand."
     },
     {
+      "id": "tab-width",
+      "title": "Tab tracks and their triggers share one width",
+      "instruction": "Tabs and ToggleGroup take one width prop that sizes the track and its triggers together. width=\"full\" stretches the track to its container and every trigger to an equal share of it; the default width=\"content\" fits the track to its triggers. Never set a width, flex or grow on a tab list, track or trigger yourself.",
+      "good": "A segmented Tabs with width=\"full\" in a narrow sidebar, where both segments split the track evenly, and a content-width segmented Tabs in a sheet that ends after its last tab.",
+      "avoid": "A tint track that spans the whole sheet while its three tabs sit at the start at their label widths, leaving an empty stretch of track after them.",
+      "detect": {
+        "by": "lint",
+        "check": "tab-width"
+      },
+      "category": "Visual",
+      "exceptions": "The check reads className strings and CSS rules that select a tab, tab list, toggle group or toggle item by role or data-slot; a page class that reaches the parts another way is reviewed by hand."
+    },
+    {
       "id": "trigger-start-aligned",
       "title": "Triggers start-align their value",
       "instruction": "Every trigger that shows a value and a chevron (Select, Combobox, MultiSelect, and a Button that opens a menu, popover or picker) puts its label at the start, truncates it, and puts the chevron at the end. A Button acting as that trigger passes layout=\"trigger\", which draws the chevron and takes SelectTrigger's insets; never center the value or add a chevron to a plain Button.",
@@ -1398,6 +1411,17 @@
         "check": "logical-inline-unscoped"
       },
       "category": "Interaction"
+    },
+    {
+      "id": "chevron-tile-frame",
+      "title": "A far-edge chevron needs a framed or shaded tile",
+      "instruction": "A trailing chevron sits at the far edge only on a tile with its own ground: Tile draws a line-soft border on a bare surface and swaps it for the tint shade inside a framed Card, List or DataTable. On an unframed item, put the chevron right after the content it leads from, as a ghost Button with iconRight does.",
+      "good": "Three billing summary tiles in a Card, each on the tint shade with its chevron at the tile's end, or a plain label and value followed directly by a chevron.",
+      "avoid": "Three unframed label and value pairs spread across a row, each with its chevron pushed to the far edge of an invisible column.",
+      "detect": {
+        "by": "review"
+      },
+      "category": "Visual"
     }
   ]
 }
