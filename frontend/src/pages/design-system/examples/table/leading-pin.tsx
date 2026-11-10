@@ -3,6 +3,12 @@ import * as React from "react";
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import { DataTable, type DataTableColumn, EnvMark } from "@app/components/v4/ui/data-table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import {
@@ -123,7 +129,18 @@ function Matrix() {
           </TableHead>
           {environments.map((environment) => (
             <TableHead key={environment} scope="col">
-              {environment}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <TableHeadButton>
+                    {environment}
+                    <Icon name="chev-down" />
+                  </TableHeadButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem>Sort by last change</DropdownMenuItem>
+                  <DropdownMenuItem>{`Hide ${environment}`}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </TableHead>
           ))}
           <TableActionsHead slots={1} />

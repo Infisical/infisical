@@ -326,7 +326,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableHea
 - DataTable sits in the shared tint frame: the column header row is a 40px uppercase eyebrow row in the frame and the body rows sit on the inset raised surface.
 - A table embedded in a framed card is frameless. Inside a framed Card, List or other frame, DataTable drops its tint frame and the body's own border: the header row, pinned actions tail and pagination sit on the parent's inset surface with a line-soft rule under the header, so the header reads apart from the card's band. A flush framed Card keeps its bordered inset around the embedded table.
 - Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.
-- Header rows never take a hover state: no row hover layer, no background change, on any header cell, pinned or not. Only an interactive header cell hovers, and only itself: TableHeadButton is the one header trigger, a sort or menu button that fills its TableHead edge to edge (it pulls through the head's space-row-inline padding to the full height) and takes the hover overlay on that cell alone. DataTable's sortable headers render it; a native Table uses it for a sort or column menu trigger. Never tint a header cell from row hover, and never wrap a small trigger inside a hovering cell.
+- Header rows never take a hover state: no row hover layer, no background change, on any header cell, pinned or not. Only an interactive header cell hovers, and only itself: TableHeadButton is the one header trigger, a sort or menu button that fills its TableHead edge to edge (it pulls through the head's space-row-inline padding to the full height) and takes the hover overlay on that cell alone. DataTable's sortable headers render it; a native Table uses it for a sort or column menu trigger, composed under DropdownMenuTrigger asChild for a menu. As a popup trigger (aria-haspopup) it keeps the same hover fill while its menu is open, from data-state open or aria-expanded true on the trigger (a wrapping Tooltip overwrites data-state), so the menu reads as attached to its header; aria-expanded without aria-haspopup, a disclosure, never paints. A menu trigger keeps its chevron visible at rest, while a sort arrow shows only when sorted, hovered or focused. Its styles and its keyboard ring key off the .tableSort class and the data-table-head-button attribute, both of which survive asChild composition (Slot overwrites data-slot), and the ring is drawn focus-ring inside the button, which fills the cell, so neighbouring cells, pinned columns and the scroll edge never clip it in pinned or unpinned headers. Pages need no CSS of their own for this trigger. Never tint a header cell from row hover, and never wrap a small trigger inside a hovering cell.
 - Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.
 - Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.
 - Rows are size-row (40px) through one variable, --v4-table-row-height, which falls back to the token; DataTable reads size-row at runtime as its default virtual metric, so the CSS row and the scroll model never disagree. Cells pad by space-row-inline (12px), the content edge text and glyphs share.
@@ -2154,7 +2154,7 @@ export default function ColumnToggle() {
 
 Save this example at `src/pages/design-system/examples/table/leading-pin.tsx`; its relative imports are generated for that exact path. States: default, controlled, overflow.
 
-Registry items used: @infisical/button, @infisical/checkbox, @infisical/data-table, @infisical/icon, @infisical/input, @infisical/popover, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/checkbox, @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/input, @infisical/popover, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -2162,6 +2162,12 @@ import * as React from "react";
 import { Button } from "../../../../components/v4/ui/button";
 import { Checkbox } from "../../../../components/v4/ui/checkbox";
 import { DataTable, type DataTableColumn, EnvMark } from "../../../../components/v4/ui/data-table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "../../../../components/v4/ui/dropdown-menu";
 import { Icon } from "../../../../components/v4/ui/icon";
 import { Input } from "../../../../components/v4/ui/input";
 import {
@@ -2280,7 +2286,18 @@ function Matrix() {
           </TableHead>
           {environments.map((environment) => (
             <TableHead key={environment} scope="col">
-              {environment}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <TableHeadButton>
+                    {environment}
+                    <Icon name="chev-down" />
+                  </TableHeadButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem>Sort by last change</DropdownMenuItem>
+                  <DropdownMenuItem>{`Hide ${environment}`}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </TableHead>
           ))}
           <TableActionsHead slots={1} />

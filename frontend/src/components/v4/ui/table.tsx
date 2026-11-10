@@ -326,6 +326,7 @@ function TableHeadButton({
       ref={ref}
       type={type}
       data-slot="table-head-button"
+      data-table-head-button=""
       className={cn(styles.tableSort, className)}
       {...props}
     />
