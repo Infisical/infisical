@@ -13,7 +13,7 @@ import frame from "./frame.module.css";
 
 export type CodeBlockProps = Omit<CodeProps, "children" | "block" | "onCopy"> & {
   children?: React.ReactNode;
-  label?: string;
+  label?: React.ReactNode;
   icon?: IconName;
   actions?: React.ReactNode;
   copyable?: boolean;
@@ -44,22 +44,27 @@ export const CodeBlock = ({
   const hasCopySource =
     Boolean(json) || copyValue !== undefined || code !== undefined || typeof children === "string";
   const embedded = useInFrame("CodeBlock");
+  const labelText = typeof label === "string" ? label : undefined;
+  const identityId = React.useId();
   return (
     <section
       data-slot="code-block"
-      aria-label={label}
+      aria-label={labelText}
+      aria-labelledby={label && !labelText ? identityId : undefined}
       data-embedded={embedded || undefined}
       className={cn(!embedded && frame.frame, styles.codeBlock, className)}
     >
       <FrameScope framed>
         {(label || actions || copyable) && (
           <div className={styles.header} data-has-actions={Boolean(actions) || undefined}>
-            <div className={styles.identity}>
+            <div id={identityId} className={styles.identity}>
               {icon && <Icon name={icon} />}
-              {label && (
+              {labelText ? (
                 <MiddleTruncate keepEnd={16} className={styles.blockLabel}>
-                  {label}
+                  {labelText}
                 </MiddleTruncate>
+              ) : (
+                label
               )}
             </div>
             {actions && <div className={styles.actions}>{actions}</div>}
@@ -78,7 +83,7 @@ export const CodeBlock = ({
         <div className={cn(frame.frameInset, styles.body)}>
           {json ??
             (typeof children === "string" || children === undefined ? (
-              <Code block code={code ?? children} label={label} {...props} />
+              <Code block code={code ?? children} label={labelText} {...props} />
             ) : (
               <div className={styles.customContent}>{children}</div>
             ))}
