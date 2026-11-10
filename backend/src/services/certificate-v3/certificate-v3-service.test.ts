@@ -2745,6 +2745,134 @@ describe("CertificateV3Service", () => {
         expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
       });
 
+      it("renews unchanged with only the issue permission, since resubmitting the stored CSR is not an edit", async () => {
+        vi.mocked(ForbiddenError).from.mockRestore();
+        (mockPermissionService.getProjectPermission as any).mockResolvedValue({
+          permission: createMongoAbility([
+            {
+              action: ProjectPermissionCertificateProfileActions.IssueCert,
+              subject: ProjectPermissionSub.CertificateProfiles
+            }
+          ])
+        });
+        setupKeylessRenewal({ caType: CaType.DIGICERT, importedCsr: STORED_CSR });
+
+        await reuse();
+
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).toHaveBeenCalledWith(
+          expect.objectContaining({ csr: STORED_CSR })
+        );
+      });
+
+      it("still requires certificate edit permission for a CSR the caller supplies", async () => {
+        vi.mocked(ForbiddenError).from.mockRestore();
+        (mockPermissionService.getProjectPermission as any).mockResolvedValue({
+          permission: createMongoAbility([
+            {
+              action: ProjectPermissionCertificateProfileActions.IssueCert,
+              subject: ProjectPermissionSub.CertificateProfiles
+            }
+          ])
+        });
+        setupKeylessRenewal({ caType: CaType.DIGICERT, importedCsr: STORED_CSR });
+
+        await expect(
+          service.renewCertificate({
+            certificateId: "cert-123",
+            renewalKeySource: CertificateRenewalKeySource.Csr,
+            csr: STORED_CSR,
+            ...mockActor
+          })
+        ).rejects.toThrow(ForbiddenError);
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
+      });
+
+      it("keeps the certificate's usages when the stored CSR carries none", async () => {
+        setupKeylessRenewal({ caType: CaType.INTERNAL, importedCsr: STORED_CSR });
+
+        await reuse().catch(() => undefined);
+
+        expect(mockCertificatePolicyService.validateRequestAgainstPolicy).toHaveBeenCalledWith(
+          mockPolicy,
+          expect.objectContaining({
+            keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_AGREEMENT],
+            extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+          }),
+          expect.anything()
+        );
+      });
+
+      it("keeps the usages recorded on the originating request when its CSR carries none", async () => {
+        setupKeylessRenewal({ caType: CaType.INTERNAL, importedCsr: null, requestCsr: STORED_CSR });
+        const originating = await mockCertificateDAL.getOriginatingRequestByCertId("cert-123");
+        vi.mocked(mockCertificateDAL.getOriginatingRequestByCertId).mockResolvedValue({
+          ...originating,
+          keyUsages: [CertKeyUsageType.KEY_ENCIPHERMENT],
+          extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+        });
+
+        await reuse().catch(() => undefined);
+
+        expect(mockCertificatePolicyService.validateRequestAgainstPolicy).toHaveBeenCalledWith(
+          mockPolicy,
+          expect.objectContaining({
+            keyUsages: [CertKeyUsageType.KEY_ENCIPHERMENT],
+            extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+          }),
+          expect.anything()
+        );
+      });
+
+      it("uses the usages a CSR carries over the certificate's", async () => {
+        setupKeylessRenewal({ caType: CaType.INTERNAL, importedCsr: STORED_CSR });
+        vi.mocked(extractCertificateRequestFromCSR).mockReturnValue({
+          commonName: "test.example.com",
+          subjectAlternativeNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "test.example.com" }],
+          keyUsages: [CertKeyUsageType.KEY_ENCIPHERMENT],
+          extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+        });
+
+        await reuse().catch(() => undefined);
+
+        expect(mockCertificatePolicyService.validateRequestAgainstPolicy).toHaveBeenCalledWith(
+          mockPolicy,
+          expect.objectContaining({
+            keyUsages: [CertKeyUsageType.KEY_ENCIPHERMENT],
+            extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH]
+          }),
+          expect.anything()
+        );
+      });
+
+      it.each([CertificateRenewalKeySource.Reuse, CertificateRenewalKeySource.Csr])(
+        "signs with the certificate's signature algorithm, not the one the CSR was signed with (%s)",
+        async (renewalKeySource) => {
+          setupKeylessRenewal({ caType: CaType.INTERNAL, importedCsr: STORED_CSR });
+          vi.mocked(extractAlgorithmsFromCSR).mockReturnValue({
+            keyAlgorithm: "EC_prime256v1" as any,
+            signatureAlgorithm: "ECDSA-SHA256" as any
+          });
+
+          await service
+            .renewCertificate({
+              certificateId: "cert-123",
+              renewalKeySource,
+              ...(renewalKeySource === CertificateRenewalKeySource.Csr && { csr: STORED_CSR }),
+              ...mockActor
+            })
+            .catch(() => undefined);
+
+          expect(mockCertificatePolicyService.validateRequestAgainstPolicy).toHaveBeenCalledWith(
+            mockPolicy,
+            expect.objectContaining({ keyAlgorithm: "EC_prime256v1", signatureAlgorithm: "RSA-SHA256" }),
+            expect.anything()
+          );
+          expect(mockCertificateRequestService.createCertificateRequest).toHaveBeenCalledWith(
+            expect.objectContaining({ signatureAlgorithm: "RSA-SHA256" })
+          );
+        }
+      );
+
       it("reports the imported CSR in the renewal preview", async () => {
         setupKeylessRenewal({ caType: CaType.DIGICERT, importedCsr: STORED_CSR });
 

@@ -169,7 +169,7 @@ describe("certificateService.importCert with a CSR", () => {
   };
 
   const buildImportService = () => {
-    const certificateDAL = { transaction: vi.fn() };
+    const certificateDAL = { transaction: vi.fn(), findOne: vi.fn().mockResolvedValue(undefined) };
     const certificatePolicyService = { validateCertificateRequest: vi.fn() };
     const deps = {
       certificateDAL,
@@ -213,6 +213,65 @@ describe("certificateService.importCert with a CSR", () => {
       expect.objectContaining({ commonName: "web.example.com", validity: { ttl: "90d" } })
     );
     expect(certificateDAL.transaction).not.toHaveBeenCalled();
+  });
+
+  it("checks the CSR with the algorithm the CA signed the certificate with and the certificate's usages", async () => {
+    const { service, certificatePolicyService } = buildImportService();
+    certificatePolicyService.validateCertificateRequest.mockResolvedValue({
+      isValid: false,
+      errors: ["stop after the check"],
+      warnings: []
+    });
+    const RSA_ALG = {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+      publicExponent: new Uint8Array([1, 0, 1]),
+      modulusLength: 2048
+    };
+    const [caKeys, leafKeys] = await Promise.all([
+      crypto.subtle.generateKey(RSA_ALG, true, ["sign", "verify"]),
+      crypto.subtle.generateKey(ALG, true, ["sign", "verify"])
+    ]);
+    const [certificate, csr] = await Promise.all([
+      x509.X509CertificateGenerator.create({
+        serialNumber: "0a1b2d",
+        subject: "CN=web.example.com",
+        issuer: "CN=rsa-root",
+        notBefore: new Date("2026-01-01"),
+        notAfter: new Date("2026-04-01"),
+        publicKey: leafKeys.publicKey,
+        signingKey: caKeys.privateKey,
+        signingAlgorithm: RSA_ALG,
+        extensions: [
+          new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature),
+          new x509.ExtendedKeyUsageExtension([x509.ExtendedKeyUsage.serverAuth])
+        ]
+      }),
+      x509.Pkcs10CertificateRequestGenerator.create({
+        name: "CN=web.example.com",
+        keys: leafKeys,
+        signingAlgorithm: ALG
+      })
+    ]);
+
+    await expect(
+      service.importCert({
+        ...actor,
+        projectId: "project-1",
+        profileId: "profile-1",
+        certificatePem: certificate.toString("pem"),
+        csr: csr.toString("pem")
+      })
+    ).rejects.toThrow(/does not satisfy the policy/);
+    expect(certificatePolicyService.validateCertificateRequest).toHaveBeenCalledWith(
+      "policy-1",
+      expect.objectContaining({
+        keyAlgorithm: "EC_prime256v1",
+        signatureAlgorithm: "RSA-SHA256",
+        keyUsages: ["digital_signature"],
+        extendedKeyUsages: ["server_auth"]
+      })
+    );
   });
 
   it("refuses a CSR with an extended key usage renewal can't carry, before storing anything", async () => {

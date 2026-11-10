@@ -459,6 +459,23 @@ export const buildCsrRenewalCertificateRequest = ({
   };
 };
 
+// Where the CSR is silent, a CSR renewal keeps what the certificate already has, as every other renewal
+// does, so an unchanged renewal passes the policy the certificate passed. The signature algorithm always
+// comes from the certificate: the CSR's own signature only proves possession of its key and says nothing
+// about how the CA signs, so an ECDSA CSR for a certificate an RSA CA signed must not ask for ECDSA.
+export const keepCertificateFactsInCsrRenewal = (
+  csrRequest: TCertificateRequest,
+  certificate: Pick<TCertificateRequest, "signatureAlgorithm" | "keyUsages" | "extendedKeyUsages" | "basicConstraints">
+): TCertificateRequest => ({
+  ...csrRequest,
+  signatureAlgorithm: certificate.signatureAlgorithm ?? csrRequest.signatureAlgorithm,
+  keyUsages: csrRequest.keyUsages?.length ? csrRequest.keyUsages : certificate.keyUsages,
+  extendedKeyUsages: csrRequest.extendedKeyUsages?.length
+    ? csrRequest.extendedKeyUsages
+    : certificate.extendedKeyUsages,
+  basicConstraints: csrRequest.basicConstraints ?? certificate.basicConstraints
+});
+
 export const buildRenewalAuditChanges = (
   replayedRequest: TCertificateRequest,
   issuedRequest: TCertificateRequest

@@ -93,7 +93,12 @@ import {
 } from "../certificate-common/certificate-issuance-utils";
 import { assertCanRevokeCertificate } from "../certificate-common/certificate-permission-fns";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
-import { buildCsrRenewalCertificateRequest, certificateSpanToTtl } from "../certificate-v3/certificate-renewal-fns";
+import {
+  buildCsrRenewalCertificateRequest,
+  certificateSpanToTtl,
+  keepCertificateFactsInCsrRenewal,
+  resolveRenewalUsages
+} from "../certificate-v3/certificate-renewal-fns";
 import { parseExtendedKeyUsages, parseKeyUsages } from "../certificate-v3/certificate-v3-fns";
 import {
   assertCertificateMaterialAvailable,
@@ -1353,26 +1358,6 @@ export const certificateServiceFactory = ({
       }
     }
 
-    if (csr && linkage) {
-      await assertCsrMatchesCertificate(csr, leafCert);
-
-      // Renewal from the stored CSR runs as a CSR renewal, so refuse here any CSR that renewal would refuse.
-      const csrRenewalRequest = buildCsrRenewalCertificateRequest({
-        csr,
-        attributes: { ttl: certificateSpanToTtl(leafCert.notBefore, leafCert.notAfter) }
-      });
-      const csrValidation = await certificatePolicyService.validateCertificateRequest(
-        linkage.policyId,
-        csrRenewalRequest
-      );
-      if (!csrValidation.isValid) {
-        const violations = csrValidation.errors.map((error) => `- ${error}`).join("\n");
-        throw new BadRequestError({
-          message: `This certificate signing request can't be used to renew the certificate, because it does not satisfy the policy of certificate profile '${linkage.profileName}':\n${violations}\nSupply a CSR the policy allows, or import the certificate without one.`
-        });
-      }
-    }
-
     // Get certificate attributes
     const commonName = Array.from(leafCert.subjectName.getField("CN")?.values() || [])[0] || "";
 
@@ -1410,6 +1395,35 @@ export const certificateServiceFactory = ({
     const certificateFields = extractCertificateFields(certificateBuffer);
     const certificateAlgorithms = extractCertificateAlgorithms(certificateBuffer);
     const importedCustomExtensions = parseImportedCustomExtensions(certificateBuffer);
+
+    if (csr && linkage) {
+      await assertCsrMatchesCertificate(csr, leafCert);
+
+      // Renewal from the stored CSR runs as a CSR renewal, so refuse here any CSR that renewal would refuse.
+      const csrRenewalRequest = keepCertificateFactsInCsrRenewal(
+        buildCsrRenewalCertificateRequest({
+          csr,
+          attributes: { ttl: certificateSpanToTtl(leafCert.notBefore, leafCert.notAfter) }
+        }),
+        {
+          signatureAlgorithm: certificateAlgorithms.signatureAlgorithm,
+          ...resolveRenewalUsages(
+            { exists: false, keyUsages: null, extendedKeyUsages: null },
+            { keyUsages, extendedKeyUsages }
+          )
+        }
+      );
+      const csrValidation = await certificatePolicyService.validateCertificateRequest(
+        linkage.policyId,
+        csrRenewalRequest
+      );
+      if (!csrValidation.isValid) {
+        const violations = csrValidation.errors.map((error) => `- ${error}`).join("\n");
+        throw new BadRequestError({
+          message: `This certificate signing request can't be used to renew the certificate, because it does not satisfy the policy of certificate profile '${linkage.profileName}':\n${violations}\nSupply a CSR the policy allows, or import the certificate without one.`
+        });
+      }
+    }
 
     const providerMetadata = await linkage?.verifyCertificate({
       certificatePem,

@@ -170,6 +170,20 @@ describe("buildRenewalRequestAttributes", () => {
     });
   });
 
+  it.each([
+    [
+      "reuse from the stored CSR",
+      { keySource: CertificateRenewalKeySource.Reuse, renewsFromStoredCsr: true }
+    ],
+    ["a supplied CSR", { keySource: CertificateRenewalKeySource.Csr, renewsFromStoredCsr: false }]
+  ])("sends no validity for %s when the CA takes it from its template", (_label, mode) => {
+    const formData = { ...buildRenewalFormDefaults(certificate, constraints), ...mode, ttl: "30d" };
+
+    expect(
+      buildRenewalRequestAttributes({ formData, constraints, isExternalTemplateProfile: true })
+    ).toEqual({ customExtensions: [] });
+  });
+
   it("sends the subject and usages when reuse renews from the private key Infisical holds", () => {
     const formData = {
       ...buildRenewalFormDefaults(certificate, constraints),

@@ -233,6 +233,19 @@ const EXTERNAL_TEMPLATE_OPTIONS_STEP: WizardStep = {
     "The issuing certificate authority takes validity, key usages, extended key usages and basic constraints from its own certificate template, so they cannot be set here."
 };
 
+const EXTERNAL_TEMPLATE_CSR_STEP: WizardStep = {
+  ...STEP_META.csr,
+  shortDescription: "CSR",
+  subtitle: "Provide the CSR for this renewal.",
+  rightDescription:
+    "The subject and key are taken from the CSR you provide. The issuing certificate authority takes validity from its own certificate template, so it cannot be set here."
+};
+
+const EXTERNAL_TEMPLATE_STEP_META: Partial<Record<RenewalStepKey, WizardStep>> = {
+  options: EXTERNAL_TEMPLATE_OPTIONS_STEP,
+  csr: EXTERNAL_TEMPLATE_CSR_STEP
+};
+
 const REISSUE_STEP_COPY: Partial<Record<RenewalStepKey, Partial<WizardStep>>> = {
   setup: {
     shortDescription: "Order and key pair",
@@ -656,7 +669,11 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       return showCustomExtensions ? ["setup", "csr", "extensions"] : ["setup", "csr"];
     }
     if (renewsFromStoredCsr) {
-      return showCustomExtensions ? ["setup", "storedCsr", "extensions"] : ["setup", "storedCsr"];
+      // A template CA sets validity itself, which leaves this step with nothing to ask.
+      const keys: RenewalStepKey[] = ["setup"];
+      if (!isExternalTemplateProfile) keys.push("storedCsr");
+      if (showCustomExtensions) keys.push("extensions");
+      return keys;
     }
     const keys: RenewalStepKey[] = ["setup"];
     if (constraints.shouldShowSubjectSection || constraints.shouldShowSanSection)
@@ -669,6 +686,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   }, [
     keySource,
     renewsFromStoredCsr,
+    isExternalTemplateProfile,
     constraints.shouldShowSubjectSection,
     constraints.shouldShowSanSection,
     showCustomExtensions
@@ -702,10 +720,9 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   const steps = useMemo(
     () =>
       stepKeys.map((key) => {
-        const meta =
-          key === "options" && isExternalTemplateProfile
-            ? EXTERNAL_TEMPLATE_OPTIONS_STEP
-            : STEP_META[key];
+        const meta = isExternalTemplateProfile
+          ? (EXTERNAL_TEMPLATE_STEP_META[key] ?? STEP_META[key])
+          : STEP_META[key];
         const replayedMeta = hasOriginatingRequest
           ? { ...meta, ...(REPLAYED_STEP_COPY[key] ?? {}) }
           : meta;
@@ -1008,15 +1025,17 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
           {removedNames.length > 0 && !nameRemovalError && (
             <NameRemovalWarning names={removedNames} />
           )}
-          <ValidityField
-            control={control}
-            label="Validity (TTL)"
-            isReadOnly={isReissuing}
-            description={isReissuing ? REISSUE_VALIDITY_DESCRIPTION : undefined}
-            hint={policy.ttlHint}
-            policyError={policy.ttlError}
-            revealPolicyError={policy.isRevealed("ttl")}
-          />
+          {!isExternalTemplateProfile && (
+            <ValidityField
+              control={control}
+              label="Validity (TTL)"
+              isReadOnly={isReissuing}
+              description={isReissuing ? REISSUE_VALIDITY_DESCRIPTION : undefined}
+              hint={policy.ttlHint}
+              policyError={policy.ttlError}
+              revealPolicyError={policy.isRevealed("ttl")}
+            />
+          )}
         </div>
       )}
 

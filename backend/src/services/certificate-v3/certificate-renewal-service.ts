@@ -118,6 +118,7 @@ import {
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
+  keepCertificateFactsInCsrRenewal,
   resolveRenewalAlgorithms,
   resolveRenewalAltNames,
   resolveRenewalCustomExtensions,
@@ -796,7 +797,7 @@ export const certificateRenewalServiceFactory = ({
 
     const mergedRequest = csrRenewalRequest
       ? {
-          ...csrRenewalRequest,
+          ...keepCertificateFactsInCsrRenewal(csrRenewalRequest, originalRequest),
           customExtensions:
             attributes?.customExtensions ?? csrRenewalRequest.customExtensions ?? carriedCustomExtensions
         }
@@ -1111,7 +1112,8 @@ export const certificateRenewalServiceFactory = ({
     internal?: boolean;
   }): Promise<TCertificateIssuanceResponse> => {
     const actorCtx: TRenewalActor = { actor, actorId, actorAuthMethod, actorOrgId };
-    let keySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr: requestedCsr });
+    const callerKeySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr: requestedCsr });
+    let keySource = callerKeySource;
     let csr = requestedCsr;
 
     // Without the private key, reusing the key pair means renewing from the CSR Infisical holds for it, so
@@ -1135,7 +1137,9 @@ export const certificateRenewalServiceFactory = ({
       csrRenewalRequest = buildCsrRenewalCertificateRequest({ csr, attributes });
     }
 
-    const isEditingCertificate = isCertificateContentEdit({ keySource, attributes });
+    // Decided from what the caller asked for: resubmitting the stored CSR is how Infisical carries out a
+    // Reuse, not an edit, so it must not demand certificate Edit from a role that may only renew.
+    const isEditingCertificate = isCertificateContentEdit({ keySource: callerKeySource, attributes });
     let changedAttributes: TRenewalAuditChange[] = [];
 
     // Read once for both licence checks. They run before the transaction because getPlan can reach

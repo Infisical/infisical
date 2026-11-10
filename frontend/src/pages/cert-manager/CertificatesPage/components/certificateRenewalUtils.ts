@@ -232,7 +232,7 @@ export const buildRenewalRequestAttributes = ({
     }));
 
   if (formData.keySource === CertificateRenewalKeySource.Csr || formData.renewsFromStoredCsr) {
-    return { ttl: formData.ttl, customExtensions };
+    return { ...(!isExternalTemplateProfile && { ttl: formData.ttl }), customExtensions };
   }
 
   const basicConstraints = buildBasicConstraints(formData, constraints);
