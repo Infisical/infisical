@@ -242,7 +242,8 @@ import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal"
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags, INSTANCE_STATUS } from "@app/lib/api-docs";
+import { getInstanceAwsAccountId } from "@app/lib/aws/instance-aws-account";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { cronJobFactory } from "@app/lib/cron/cron-job";
 import { TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
@@ -5258,7 +5259,8 @@ export const registerRoutes = async (
           secretScanningConfigured: z.boolean().optional(),
           samlDefaultOrgSlug: z.string().optional(),
           auditLogStorageDisabled: z.boolean().optional(),
-          maxIdentityAccessTokenTTL: z.number().optional()
+          maxIdentityAccessTokenTTL: z.number().optional(),
+          awsAccountId: z.string().optional().describe(INSTANCE_STATUS.awsAccountId)
         })
       }
     },
@@ -5287,7 +5289,8 @@ export const registerRoutes = async (
         secretScanningConfigured: cfg.isSecretScanningConfigured,
         samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
         auditLogStorageDisabled: Boolean(cfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE),
-        maxIdentityAccessTokenTTL: cfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
+        maxIdentityAccessTokenTTL: cfg.MAX_MACHINE_IDENTITY_TOKEN_AGE,
+        awsAccountId: getInstanceAwsAccountId()
       };
     }
   });
