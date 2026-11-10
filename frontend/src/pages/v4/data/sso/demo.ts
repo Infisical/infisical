@@ -242,21 +242,27 @@ export const ssoDemo: SsoAdapter = {
     return {};
   }),
   useLdapConfig: () => ready(ldap.use()),
-  useCreateLdapConfig: fixtureMutation(({ organizationId, ...dto }) => {
+  useCreateLdapConfig: fixtureMutation(({ organizationId, clientKeyCertificate, ...dto }) => {
     put(ldap, {
       id: "ldap-config",
       organization: organizationId,
       caCert: "",
-      ...dto
+      ...dto,
+      hasClientKeyCertificate: Boolean(clientKeyCertificate)
     } as LdapConfig);
     return {};
   }),
-  useUpdateLdapConfig: fixtureMutation(({ organizationId, ...dto }) => {
+  useUpdateLdapConfig: fixtureMutation(({ organizationId, clientKeyCertificate, ...dto }) => {
     ldap.update((current) =>
       current
         ? ({
             ...current,
-            ...Object.fromEntries(Object.entries(dto).filter(([, value]) => value !== undefined))
+            ...Object.fromEntries(Object.entries(dto).filter(([, value]) => value !== undefined)),
+            hasClientKeyCertificate: clientKeyCertificate
+              ? true
+              : dto.clientCertificate === ""
+                ? false
+                : current.hasClientKeyCertificate
           } as LdapConfig)
         : current
     );
