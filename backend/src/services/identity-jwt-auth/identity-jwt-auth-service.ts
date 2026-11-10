@@ -145,10 +145,6 @@ export const identityJwtAuthServiceFactory = ({
           cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
         }).toString();
 
-        // Pin the connection to the IPs validated here so the hostname cannot be re-resolved
-        // to an internal address when jwks-rsa connects (DNS-rebinding SSRF). buildSsrfSafeAgent
-        // performs the same private/internal-IP validation blockLocalAndPrivateIpAddresses did,
-        // so no separate guard call is needed before the fetch.
         const requestAgent = await buildSsrfSafeAgent(identityJwtAuth.jwksUrl, {
           ca: decryptedJwksCaCert || undefined
         });

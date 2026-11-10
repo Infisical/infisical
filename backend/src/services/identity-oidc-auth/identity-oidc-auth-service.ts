@@ -142,8 +142,6 @@ export const identityOidcAuthServiceFactory = ({
 
       let discoveryDoc: { jwks_uri: string };
       try {
-        // safeRequest validates the URL and pins the connection to the IPs resolved during
-        // validation, closing the DNS-rebinding window between validate and connect.
         const response = await safeRequest.get<{ jwks_uri: string }>(
           `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
           { ca: caCert || undefined }
@@ -199,8 +197,6 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
-      // Pin the JWKS connection to its validated IPs; jwks-rsa re-resolves DNS at connect time,
-      // so without this a rebind could point it at an internal address after validation passed.
       const requestAgent = await buildSsrfSafeAgent(jwksUri, { ca: caCert || undefined });
 
       const client = new JwksClient({
