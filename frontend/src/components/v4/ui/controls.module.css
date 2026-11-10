@@ -26,7 +26,8 @@
   --v4-field-height: var(--v4-size-control-xs);
   --v4-field-inline: var(--v4-space-6);
   --v4-field-nested: calc(
-    var(--v4-size-control-xs) - 2 * (var(--v4-space-control-slot-inset) + var(--v4-size-control-border))
+    var(--v4-size-control-xs) - 2 *
+      (var(--v4-space-control-slot-inset) + var(--v4-size-control-border))
   );
   padding-block: calc(
     (var(--v4-field-height) - var(--v4-type-caption-line-height)) / 2 -
@@ -162,6 +163,12 @@
   min-height: calc(2 * var(--v4-space-32));
   field-sizing: content;
   resize: vertical;
+}
+/* field-sizing: content ignores the rows attribute, so rows becomes the starting height: that many lines plus the field's padding and border, and content still grows it. */
+.textarea[data-rows] {
+  min-height: calc(
+    var(--v4-textarea-rows) * 1lh + var(--v4-field-height) - var(--v4-type-body-line-height)
+  );
 }
 .textarea[data-mono] {
   font-family: var(--v4-type-mono-font-family);
@@ -405,6 +412,19 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
+}
+.choiceMedia {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-icon);
+  height: var(--v4-type-field-label-line-height);
+}
+.choiceMedia > :is(svg, img) {
+  width: var(--v4-size-icon);
+  height: var(--v4-size-icon);
+  object-fit: contain;
 }
 .choiceText {
   min-width: 0;

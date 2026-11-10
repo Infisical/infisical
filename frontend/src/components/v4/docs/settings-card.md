@@ -14,13 +14,13 @@ Owner: settings-card.
 
 When a save fails.
 
-Do: Reject with an Error whose message says what failed and what to do, and keep what was typed.
+Do: Toast an error that says what failed and what to do, and keep what was typed.
 
 Avoid: Clear the fields or show a generic Something went wrong.
 
 Why: People should be able to fix the value and save again without retyping.
 
-Checked by: review only. Look for: Clear the name in the example and save; the message explains the fix and the field keeps its value.
+Checked by: review only. Look for: Clear the name in the example and save; the error toast explains the fix and the field keeps its value.
 
 Source evidence:
 - src/components/v4/ui/settings-card.tsx
@@ -66,8 +66,10 @@ Exports: SettingsCard. Source TypeScript defines the API.
 
 ## Behavior
 
-- The footer shows one status at a time: the hint, Unsaved changes, Saving, Saved for three seconds, the failure message, or the lock reason.
-- Save runs from the button or Enter in a field. A returned promise shows Saving; a rejection shows the Error's message and keeps the typed values.
+- The footer shows one state at a time: the hint, Unsaved changes, Saving, or the lock reason. It never shows a save's result: like every v4 primitive, the card raises no toast itself, so onSave reports success and failure with a toast from @infisical/sonner (adapter mutations already toast their errors).
+- Save runs from the button or Enter in a field. A returned promise shows Saving; a rejection ends Saving and keeps the typed values without showing anything.
+- saveDisabledReason blocks Save and Enter, and passes to the Save Button's disabledReason: the button stays focusable, shows the reason in a tooltip on hover and keyboard focus, and carries it as aria-description.
+- With no children and not loading, the card renders no body, so a card holding only a title, description and actions has no empty padded band.
 - Discard appears only while there are changes and calls onDiscard.
 - locked disables the fields, hides the buttons and shows the reason. tone danger draws the bad line and wash and shows your own actions.
 - flush renders the same header with the body edge to edge under a line-soft rule and no form or footer, for content that is not saved by the card, such as a list of incident contacts in a DataTable.
@@ -104,9 +106,9 @@ Source declarations and review criteria only. Generation checks references and c
 
 ### Save, locked and danger
 
-Save this example at `src/pages/design-system/examples/settings-card/default.tsx`; its relative imports are generated for that exact path. States: default, editing, loading, success, error, read-only.
+Save this example at `src/pages/design-system/examples/settings-card/default.tsx`; its relative imports are generated for that exact path. States: default, editing, loading, success, error, disabled, read-only.
 
-Registry items used: @infisical/alert-dialog, @infisical/badge, @infisical/button, @infisical/field, @infisical/input, @infisical/settings-card. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/alert-dialog, @infisical/badge, @infisical/button, @infisical/field, @infisical/input, @infisical/settings-card, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -117,6 +119,7 @@ import { Button } from "../../../../components/v4/ui/button";
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
 import { SettingsCard } from "../../../../components/v4/ui/settings-card";
+import { toast } from "../../../../components/v4/ui/sonner";
 
 const wait = (ms: number) =>
   new Promise((resolve) => {
@@ -139,8 +142,12 @@ export default function Example() {
             onDiscard={() => setName(saved)}
             onSave={async () => {
               await wait(800);
-              if (!name.trim()) throw new Error("Enter a project name, then save again.");
+              if (!name.trim()) {
+                toast.error("Enter a project name, then save again.");
+                return;
+              }
               setSaved(name);
+              toast.success("Project name saved");
             }}
           >
             <Field label="Name">
@@ -149,6 +156,39 @@ export default function Example() {
           </SettingsCard>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"default"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <SettingsCard
+            title="Default role"
+            description="The role new members get when they join."
+            dirty
+            saveDisabledReason="Billing is managed by your reseller, so roles can't change here."
+            onSave={() => undefined}
+          >
+            <Field label="Role">
+              <Input value="Developer" readOnly />
+            </Field>
+          </SettingsCard>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Save blocked with a reason"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <SettingsCard
+            tone="danger"
+            title="Leave organization"
+            description="You lose access to every project in Acme Corp."
+            actions={
+              <Button variant="destructive" size="sm">
+                Leave Acme Corp
+              </Button>
+            }
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"No body"}</figcaption>
       </figure>
       <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
         <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
