@@ -5,6 +5,7 @@ import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger, sanitizeUrlForLog } from "@app/lib/logger";
+import { clientSecretBasicCredentials, formUrlEncode } from "@app/lib/oauth";
 import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
 import { computePkceChallenge } from "@app/services/oauth-client/oauth-client-fns";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
@@ -34,6 +35,8 @@ import {
 } from "./agent-vault-oauth-types";
 
 const base64Url = (buffer: Buffer) => buffer.toString("base64url");
+
+const GOOGLE_AUTHORIZATION_HOST = "accounts.google.com";
 
 export const hashAccessToken = (accessToken: string) => crypto.createHash("sha256").update(accessToken).digest("hex");
 
@@ -81,6 +84,12 @@ export const buildAuthorizeUrl = ({
   if (scopes.length) url.searchParams.set("scope", scopes.join(" "));
   // OIDC Core section 11: a server must ignore offline_access without it, and issue no refresh token.
   if (scopes.includes(OFFLINE_ACCESS_SCOPE)) url.searchParams.set("prompt", "consent");
+  // Google ignores offline_access and issues a refresh token only for access_type=offline, and only on a consent
+  // screen, so without both a Google connection dies when its first access token expires.
+  if (url.hostname === GOOGLE_AUTHORIZATION_HOST) {
+    url.searchParams.set("access_type", "offline");
+    url.searchParams.set("prompt", "consent");
+  }
   return url.toString();
 };
 
@@ -138,7 +147,8 @@ const parseTokenBody = (contentType: string, body: string): Record<string, unkno
 
 // RFC 6749 appendix A: client IDs, client secrets and tokens are all VSCHAR. The access token is injected into a
 // header by the proxy, so a line break or NUL in it must never get that far; the client ID is stored in jsonb and
-// sent in the authorize URL, and the secret is form-encoded into the token request, which throws on a lone surrogate.
+// sent in the authorize URL, and the secret is form-encoded into the token request, which would silently replace a
+// lone surrogate and send a different secret.
 export const OAUTH_VSCHAR_PATTERN = new RE2(/^[\x20-\x7e]+$/);
 
 const MAX_TOKEN_LENGTH = 16_384;
@@ -218,14 +228,6 @@ const PROVIDER_WHITESPACE_RE = new RE2(/[\s\p{Z}\ufeff\x00-\x1f\x7f]+/gu);
 const PROVIDER_FORMATTING_RE = new RE2(/[\p{Cc}\p{Cf}\p{Co}]/gu);
 const REPEATED_SPACES_RE = new RE2(/ {2,}/g);
 const PROVIDER_URL_RE = new RE2(/https?:\/\/[^\s\v\p{Z}\ufeff<>"']+/giu);
-const FORM_URL_ESCAPED_RE = new RE2(/[-_.!~*'()]|%20/g);
-
-// The encoding oauth4webapi applies to the client ID and secret in a client_secret_basic header, which escapes
-// more characters than URLSearchParams does.
-export const formUrlEncode = (value: string) =>
-  encodeURIComponent(value).replace(FORM_URL_ESCAPED_RE, (match) =>
-    match === "%20" ? "+" : `%${match.charCodeAt(0).toString(16).toUpperCase()}`
-  );
 
 // Anything a provider sends that can end up in a message, a log line, `lastError` or an authorization's `error`
 // goes through here: line breaks and tabs become spaces, other control and formatting characters (NUL, lone
@@ -238,14 +240,13 @@ export const normalizeProviderText = (
 ) => {
   if (typeof text !== "string" || !text) return "";
   // Providers can echo request credentials in their descriptions. Redact literal and form-encoded values before
-  // truncating, so a partial secret is never left at the cut. The request body is encoded by URLSearchParams and
-  // the Basic header by `formUrlEncode`, so both forms are redacted.
+  // truncating, so a partial secret is never left at the cut.
   let redacted = text;
   sensitiveValues
     .filter((value): value is string => Boolean(value))
     .forEach((value) => {
-      const encodings = [new URLSearchParams({ value }).toString().slice("value=".length), formUrlEncode(value)];
-      const secrets = new Set([value, ...encodings.flatMap((encoded) => [encoded, encoded.replaceAll("+", "%20")])]);
+      const encoded = formUrlEncode(value);
+      const secrets = new Set([value, encoded, encoded.replaceAll("+", "%20")]);
       secrets.forEach((secret) => {
         redacted = redacted.split(secret).join("[redacted]");
       });
@@ -305,7 +306,11 @@ export const requestToken = async ({
   const client = { client_id: clientId };
   let clientAuthentication = oauth.None();
   if (clientSecret && tokenEndpointAuthMethod === AgentVaultOauthClientAuthMethod.ClientSecretBasic) {
-    clientAuthentication = oauth.ClientSecretBasic(clientSecret);
+    // Not oauth.ClientSecretBasic: it also escapes `-` and `.`, so Google, which compares the credentials without
+    // decoding them, can't find any client ID.
+    clientAuthentication = (_as, _client, _body, headers) => {
+      headers.set("authorization", `Basic ${clientSecretBasicCredentials(clientId, clientSecret)}`);
+    };
   }
   if (clientSecret && tokenEndpointAuthMethod === AgentVaultOauthClientAuthMethod.ClientSecretPost) {
     clientAuthentication = oauth.ClientSecretPost(clientSecret);
@@ -316,9 +321,7 @@ export const requestToken = async ({
     params.code,
     params.code_verifier,
     params.refresh_token,
-    ...(clientSecret
-      ? [Buffer.from(`${formUrlEncode(clientId)}:${formUrlEncode(clientSecret)}`).toString("base64")]
-      : [])
+    ...(clientSecret ? [clientSecretBasicCredentials(clientId, clientSecret)] : [])
   ];
 
   const send = async (withResource: boolean): Promise<TTokenRequestResult> => {
