@@ -162,7 +162,7 @@ If you want credentials issued per identity and revoked after a short lease, rat
 
 If a scheduled rotation fails after all of its retries, the rotation's failure alert notifies your team by email, Slack, webhook, or PagerDuty.
 
-- New rotations have the alert on by default, with an email to the project's admins
+- If you create a rotation in the Infisical UI and can edit secret rotations in its environment and path, the alert is on by default, with an email to the project's admins
 - If a rotation existed before failure alerts were available, it has the same alert
 - If a manual rotation fails, Infisical shows the error right away and doesn't send an alert
 - Project admins get an in-app notification when a scheduled rotation fails, even if the alert is off
