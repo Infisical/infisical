@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import type { AxiosError } from "axios";
 
 import { getDynamicSecretProviderRuntimeMetadata } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/runtimeMetadata";
 import {
@@ -19,6 +18,7 @@ import {
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { DynamicSecretLeaseStatus } from "@app/hooks/api/dynamicSecretLease/types";
 
+import { errorMessage } from "../../../../access/toast";
 import { useV4Adapter } from "../../../../data/adapters";
 import {
   dynamicSecretDefinitionFor,
@@ -31,8 +31,6 @@ import type { DynamicSecretLease } from "./dynamic-secret-leases";
 import { DynamicSecretLeasesSheet } from "./dynamic-secret-leases-sheet";
 import { useManagedBlock } from "./permissions";
 import type { RowActionHostProps } from "./types";
-
-const errorText = (error: unknown) => (error instanceof Error ? error.message : undefined);
 
 const providerOf = (entry: DynamicSecretResource) =>
   dynamicSecretDefinitionFor(entry)?.provider ?? DynamicSecretProviders.SqlDatabase;
@@ -126,8 +124,7 @@ export function DynamicSecretActions({
   const failed = (title: string) => (error: unknown) =>
     onToast("bad", {
       title,
-      description:
-        (error as AxiosError<{ message?: string }>)?.response?.data?.message ?? errorText(error)
+      description: errorMessage(error)
     });
 
   const leaseTarget = kind === "leases" ? entry : undefined;

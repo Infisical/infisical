@@ -19,7 +19,7 @@ import {
   type TSecretApprovalRequest
 } from "@app/hooks/api/secretApprovalRequest/types";
 
-import { failed, toast } from "../../access/toast";
+import { errorMessage, failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, v4Path } from "../../links";
@@ -380,7 +380,7 @@ const ChangeRequests = ({
     } catch (error) {
       setFailures((current) => ({
         ...current,
-        [id]: error instanceof Error ? error.message : "The approval failed."
+        [id]: errorMessage(error) ?? "The approval failed."
       }));
     } finally {
       setWorking(undefined);

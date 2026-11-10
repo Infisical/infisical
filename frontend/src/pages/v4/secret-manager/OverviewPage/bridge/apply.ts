@@ -3,6 +3,7 @@ import { isAxiosError } from "axios";
 import { SecretType } from "@app/hooks/api/secrets/types";
 import type { WsTag } from "@app/hooks/api/tags/types";
 
+import { errorMessage } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import type { Resource, ResourceApplyOptions, Secret } from "../secrets-model";
 
@@ -44,9 +45,7 @@ export const useEnsureTags = (projectId: string, tags: readonly WsTag[]) => {
         createTag
           .mutateAsync({ projectId, tagSlug: slug, tagColor: "" })
           .catch((error: unknown) => {
-            const reason = isAxiosError<{ message?: string }>(error)
-              ? error.response?.data?.message
-              : undefined;
+            const reason = isAxiosError(error) ? errorMessage(error) : undefined;
             throw new Error(`Could not create the tag ${slug}.${reason ? ` ${reason}` : ""}`);
           })
       )

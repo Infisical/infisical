@@ -49,7 +49,7 @@ import {
 } from "@app/hooks/api/secretScanningV2/enums";
 import type { TSecretScanningDataSourceWithDetails } from "@app/hooks/api/secretScanningV2/types";
 
-import { failed, toast } from "../../access/toast";
+import { errorMessage, failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
@@ -185,7 +185,7 @@ const EditDataSourceSheet = ({
       onSaved(`Updated ${name.trim()}`);
       onClose();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Failed to update data source");
+      setError(errorMessage(cause) ?? "Failed to update data source");
     } finally {
       setPending(false);
     }
