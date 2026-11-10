@@ -59,6 +59,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       ),
       route("/kms/$projectId/groups/$groupId", "v4/project/GroupDetailsByIDPage/kms/route.tsx"),
       route("/kms/$projectId/roles/$roleSlug", "v4/project/RoleDetailsBySlugPage/kms/route.tsx"),
+      route("/kms/$projectId/audit-logs", "v4/project/AuditLogsPage/kms/route.tsx"),
       route("/kms/$projectId/settings", "v4/kms/SettingsPage/route.tsx"),
       route("/secret-management/$projectId/overview", "v4/secret-manager/OverviewPage/route.tsx"),
       route(
@@ -89,9 +90,11 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "/secret-management/$projectId/roles/$roleSlug",
         "v4/project/RoleDetailsBySlugPage/route.tsx"
       ),
+      route("/secret-management/$projectId/audit-logs", "v4/project/AuditLogsPage/route.tsx"),
       route("/secret-management/$projectId/settings", "v4/secret-manager/SettingsPage/route.tsx"),
       route("/agent-vault/$projectId/", "v4/redirects/AgentVaultIndexRedirect/route.tsx"),
       route("/agent-vault/$projectId/sessions", "v4/agent-vault/AgentVaultSessionsPage/route.tsx"),
+      route("/agent-vault/$projectId/audit-logs", "v4/project/AuditLogsPage/agent-vault/route.tsx"),
       route(
         "/agent-vault/$projectId/access-management",
         "v4/project/AccessControlPage/agent-vault/route.tsx"
@@ -142,8 +145,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       "/cert-manager/certificates/$certificateId",
       "v4/cert-manager/CertificateDetailsByIDPage/route.tsx"
     ),
+    route("/cert-manager/audit-logs", "v4/project/AuditLogsPage/cert-manager/route.tsx"),
     route("/cert-manager/settings", "v4/cert-manager/SettingsPage/route.tsx"),
     route("/pam/accounts/", "v4/pam/PamAccountsPage/route.tsx"),
+    route("/pam/audit-logs", "v4/project/AuditLogsPage/pam/route.tsx"),
     route("/pam/access", "v4/redirects/PamAccessRedirect/route.tsx"),
     route("/cert-manager/access-management", "v4/project/AccessControlPage/cert-manager/route.tsx"),
     route(

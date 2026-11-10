@@ -350,7 +350,8 @@ export const ssoDemo: SsoAdapter = {
     ...ready({ pages: [scimEvents], pageParams: [0] }),
     hasNextPage: false,
     isFetchingNextPage: false,
-    fetchNextPage: async () => undefined
+    fetchNextPage: async () => undefined,
+    refetch: async () => undefined
   }),
   useExternalGroupRoleMappings: () => ready(groupRoleMappings.use()),
   useUpdateExternalGroupRoleMappings: fixtureMutation(({ mappings }) => {

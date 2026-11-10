@@ -102,6 +102,7 @@ import { Route as v4SecretScanningSecretScanningFindingsPageRouteImport } from '
 import { Route as v4ProjectAccessControlPageSecretScanningRouteImport } from './pages/v4/project/AccessControlPage/secret-scanning/route'
 import { Route as v4OrganizationRoleByIDPageRouteImport } from './pages/v4/organization/RoleByIDPage/route'
 import { Route as v4OrganizationNotPortedPageProjectsRouteImport } from './pages/v4/organization/NotPortedPage/projects/route'
+import { Route as v4ProjectAuditLogsPagePamRouteImport } from './pages/v4/project/AuditLogsPage/pam/route'
 import { Route as v4ProjectAccessControlPagePamRouteImport } from './pages/v4/project/AccessControlPage/pam/route'
 import { Route as v4RedirectsPamAccessRedirectRouteImport } from './pages/v4/redirects/PamAccessRedirect/route'
 import { Route as v4OrganizationUserDetailsByIDPageRouteImport } from './pages/v4/organization/UserDetailsByIDPage/route'
@@ -110,6 +111,7 @@ import { Route as v4OrganizationGroupDetailsByIDPageRouteImport } from './pages/
 import { Route as v4CertManagerSettingsPageRouteImport } from './pages/v4/cert-manager/SettingsPage/route'
 import { Route as v4CertManagerDashboardPageRouteImport } from './pages/v4/cert-manager/DashboardPage/route'
 import { Route as v4CertManagerInventoryPageRouteImport } from './pages/v4/cert-manager/InventoryPage/route'
+import { Route as v4ProjectAuditLogsPageCertManagerRouteImport } from './pages/v4/project/AuditLogsPage/cert-manager/route'
 import { Route as v4ProjectAccessControlPageCertManagerRouteImport } from './pages/v4/project/AccessControlPage/cert-manager/route'
 import { Route as v4AdminResourceOverviewPageRouteImport } from './pages/v4/admin/ResourceOverviewPage/route'
 import { Route as v4AuthProviderErrorPageRouteImport } from './pages/v4/auth/ProviderErrorPage/route'
@@ -168,15 +170,18 @@ import { Route as secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport
 import { Route as secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-app-configurations-oauth-redirect'
 import { Route as v4SecretManagerSettingsPageRouteImport } from './pages/v4/secret-manager/SettingsPage/route'
 import { Route as v4SecretManagerOverviewPageRouteImport } from './pages/v4/secret-manager/OverviewPage/route'
+import { Route as v4ProjectAuditLogsPageRouteImport } from './pages/v4/project/AuditLogsPage/route'
 import { Route as v4SecretManagerSecretApprovalsPageRouteImport } from './pages/v4/secret-manager/SecretApprovalsPage/route'
 import { Route as v4ProjectAccessControlPageRouteImport } from './pages/v4/project/AccessControlPage/route'
 import { Route as v4KmsKmipServerDetailsByIDPageRouteImport } from './pages/v4/kms/KmipServerDetailsByIDPage/route'
 import { Route as v4KmsSettingsPageRouteImport } from './pages/v4/kms/SettingsPage/route'
 import { Route as v4KmsOverviewPageRouteImport } from './pages/v4/kms/OverviewPage/route'
 import { Route as v4KmsKmipPageRouteImport } from './pages/v4/kms/KmipPage/route'
+import { Route as v4ProjectAuditLogsPageKmsRouteImport } from './pages/v4/project/AuditLogsPage/kms/route'
 import { Route as v4ProjectAccessControlPageKmsRouteImport } from './pages/v4/project/AccessControlPage/kms/route'
 import { Route as v4AgentVaultAgentVaultSettingsPageRouteImport } from './pages/v4/agent-vault/AgentVaultSettingsPage/route'
 import { Route as v4AgentVaultAgentVaultSessionsPageRouteImport } from './pages/v4/agent-vault/AgentVaultSessionsPage/route'
+import { Route as v4ProjectAuditLogsPageAgentVaultRouteImport } from './pages/v4/project/AuditLogsPage/agent-vault/route'
 import { Route as v4ProjectAccessControlPageAgentVaultRouteImport } from './pages/v4/project/AccessControlPage/agent-vault/route'
 import { Route as organizationRoleByIDPageRouteImport } from './pages/organization/RoleByIDPage/route'
 import { Route as organizationProjectsPageProjectTypePageRouteImport } from './pages/organization/ProjectsPage/ProjectTypePage/route'
@@ -1189,6 +1194,13 @@ const v4OrganizationNotPortedPageProjectsRouteRoute =
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
+const v4ProjectAuditLogsPagePamRouteRoute =
+  v4ProjectAuditLogsPagePamRouteImport.update({
+    id: '/pam/audit-logs',
+    path: '/pam/audit-logs',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
 const v4ProjectAccessControlPagePamRouteRoute =
   v4ProjectAccessControlPagePamRouteImport.update({
     id: '/pam/access-management',
@@ -1242,6 +1254,13 @@ const v4CertManagerInventoryPageRouteRoute =
   v4CertManagerInventoryPageRouteImport.update({
     id: '/cert-manager/inventory',
     path: '/cert-manager/inventory',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
+const v4ProjectAuditLogsPageCertManagerRouteRoute =
+  v4ProjectAuditLogsPageCertManagerRouteImport.update({
+    id: '/cert-manager/audit-logs',
+    path: '/cert-manager/audit-logs',
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
@@ -1728,6 +1747,13 @@ const v4SecretManagerOverviewPageRouteRoute =
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
+const v4ProjectAuditLogsPageRouteRoute =
+  v4ProjectAuditLogsPageRouteImport.update({
+    id: '/secret-management/$projectId/audit-logs',
+    path: '/secret-management/$projectId/audit-logs',
+    getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+  } as any)
+
 const v4SecretManagerSecretApprovalsPageRouteRoute =
   v4SecretManagerSecretApprovalsPageRouteImport.update({
     id: '/secret-management/$projectId/approval',
@@ -1767,6 +1793,13 @@ const v4KmsKmipPageRouteRoute = v4KmsKmipPageRouteImport.update({
   getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
 } as any)
 
+const v4ProjectAuditLogsPageKmsRouteRoute =
+  v4ProjectAuditLogsPageKmsRouteImport.update({
+    id: '/kms/$projectId/audit-logs',
+    path: '/kms/$projectId/audit-logs',
+    getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+  } as any)
+
 const v4ProjectAccessControlPageKmsRouteRoute =
   v4ProjectAccessControlPageKmsRouteImport.update({
     id: '/kms/$projectId/access-management',
@@ -1785,6 +1818,13 @@ const v4AgentVaultAgentVaultSessionsPageRouteRoute =
   v4AgentVaultAgentVaultSessionsPageRouteImport.update({
     id: '/agent-vault/$projectId/sessions',
     path: '/agent-vault/$projectId/sessions',
+    getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+  } as any)
+
+const v4ProjectAuditLogsPageAgentVaultRouteRoute =
+  v4ProjectAuditLogsPageAgentVaultRouteImport.update({
+    id: '/agent-vault/$projectId/audit-logs',
+    path: '/agent-vault/$projectId/audit-logs',
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
@@ -4405,6 +4445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4ProjectAccessControlPageCertManagerRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
+    '/v4/organizations/$orgId/cert-manager/audit-logs': {
+      id: '/v4/organizations/$orgId/cert-manager/audit-logs'
+      path: '/cert-manager/audit-logs'
+      fullPath: '/v4/organizations/$orgId/cert-manager/audit-logs'
+      preLoaderRoute: typeof v4ProjectAuditLogsPageCertManagerRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/cert-manager/inventory': {
       id: '/v4/organizations/$orgId/cert-manager/inventory'
       path: '/cert-manager/inventory'
@@ -4459,6 +4506,13 @@ declare module '@tanstack/react-router' {
       path: '/pam/access-management'
       fullPath: '/v4/organizations/$orgId/pam/access-management'
       preLoaderRoute: typeof v4ProjectAccessControlPagePamRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
+    '/v4/organizations/$orgId/pam/audit-logs': {
+      id: '/v4/organizations/$orgId/pam/audit-logs'
+      path: '/pam/audit-logs'
+      fullPath: '/v4/organizations/$orgId/pam/audit-logs'
+      preLoaderRoute: typeof v4ProjectAuditLogsPagePamRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
     '/v4/organizations/$orgId/projects/$': {
@@ -4811,6 +4865,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4ProjectAccessControlPageAgentVaultRouteImport
       parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
+    '/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs': {
+      id: '/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs'
+      path: '/agent-vault/$projectId/audit-logs'
+      fullPath: '/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs'
+      preLoaderRoute: typeof v4ProjectAuditLogsPageAgentVaultRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
     '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions': {
       id: '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions'
       path: '/agent-vault/$projectId/sessions'
@@ -4830,6 +4891,13 @@ declare module '@tanstack/react-router' {
       path: '/kms/$projectId/access-management'
       fullPath: '/v4/organizations/$orgId/projects/kms/$projectId/access-management'
       preLoaderRoute: typeof v4ProjectAccessControlPageKmsRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
+    '/v4/organizations/$orgId/projects/kms/$projectId/audit-logs': {
+      id: '/v4/organizations/$orgId/projects/kms/$projectId/audit-logs'
+      path: '/kms/$projectId/audit-logs'
+      fullPath: '/v4/organizations/$orgId/projects/kms/$projectId/audit-logs'
+      preLoaderRoute: typeof v4ProjectAuditLogsPageKmsRouteImport
       parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
     '/v4/organizations/$orgId/projects/kms/$projectId/kmip': {
@@ -4872,6 +4940,13 @@ declare module '@tanstack/react-router' {
       path: '/secret-management/$projectId/approval'
       fullPath: '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
       preLoaderRoute: typeof v4SecretManagerSecretApprovalsPageRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
+    '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs': {
+      id: '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs'
+      path: '/secret-management/$projectId/audit-logs'
+      fullPath: '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs'
+      preLoaderRoute: typeof v4ProjectAuditLogsPageRouteImport
       parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
     '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': {
@@ -6755,15 +6830,18 @@ interface V4OrganizationsOrgIdProjectsRouteChildren {
   v4RedirectsAgentVaultIndexRedirectRouteRoute: typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
   v4KmsKmipServersPageRouteRoute: typeof v4KmsKmipServersPageRouteRoute
   v4ProjectAccessControlPageAgentVaultRouteRoute: typeof v4ProjectAccessControlPageAgentVaultRouteRoute
+  v4ProjectAuditLogsPageAgentVaultRouteRoute: typeof v4ProjectAuditLogsPageAgentVaultRouteRoute
   v4AgentVaultAgentVaultSessionsPageRouteRoute: typeof v4AgentVaultAgentVaultSessionsPageRouteRoute
   v4AgentVaultAgentVaultSettingsPageRouteRoute: typeof v4AgentVaultAgentVaultSettingsPageRouteRoute
   v4ProjectAccessControlPageKmsRouteRoute: typeof v4ProjectAccessControlPageKmsRouteRoute
+  v4ProjectAuditLogsPageKmsRouteRoute: typeof v4ProjectAuditLogsPageKmsRouteRoute
   v4KmsKmipPageRouteRoute: typeof v4KmsKmipPageRouteRoute
   v4KmsOverviewPageRouteRoute: typeof v4KmsOverviewPageRouteRoute
   v4KmsSettingsPageRouteRoute: typeof v4KmsSettingsPageRouteRoute
   v4KmsKmipServerDetailsByIDPageRouteRoute: typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   v4ProjectAccessControlPageRouteRoute: typeof v4ProjectAccessControlPageRouteRoute
   v4SecretManagerSecretApprovalsPageRouteRoute: typeof v4SecretManagerSecretApprovalsPageRouteRoute
+  v4ProjectAuditLogsPageRouteRoute: typeof v4ProjectAuditLogsPageRouteRoute
   v4SecretManagerOverviewPageRouteRoute: typeof v4SecretManagerOverviewPageRouteRoute
   v4SecretManagerSettingsPageRouteRoute: typeof v4SecretManagerSettingsPageRouteRoute
   v4ProjectGroupDetailsByIDPageAgentVaultRouteRoute: typeof v4ProjectGroupDetailsByIDPageAgentVaultRouteRoute
@@ -6793,12 +6871,15 @@ const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRou
     v4KmsKmipServersPageRouteRoute: v4KmsKmipServersPageRouteRoute,
     v4ProjectAccessControlPageAgentVaultRouteRoute:
       v4ProjectAccessControlPageAgentVaultRouteRoute,
+    v4ProjectAuditLogsPageAgentVaultRouteRoute:
+      v4ProjectAuditLogsPageAgentVaultRouteRoute,
     v4AgentVaultAgentVaultSessionsPageRouteRoute:
       v4AgentVaultAgentVaultSessionsPageRouteRoute,
     v4AgentVaultAgentVaultSettingsPageRouteRoute:
       v4AgentVaultAgentVaultSettingsPageRouteRoute,
     v4ProjectAccessControlPageKmsRouteRoute:
       v4ProjectAccessControlPageKmsRouteRoute,
+    v4ProjectAuditLogsPageKmsRouteRoute: v4ProjectAuditLogsPageKmsRouteRoute,
     v4KmsKmipPageRouteRoute: v4KmsKmipPageRouteRoute,
     v4KmsOverviewPageRouteRoute: v4KmsOverviewPageRouteRoute,
     v4KmsSettingsPageRouteRoute: v4KmsSettingsPageRouteRoute,
@@ -6807,6 +6888,7 @@ const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRou
     v4ProjectAccessControlPageRouteRoute: v4ProjectAccessControlPageRouteRoute,
     v4SecretManagerSecretApprovalsPageRouteRoute:
       v4SecretManagerSecretApprovalsPageRouteRoute,
+    v4ProjectAuditLogsPageRouteRoute: v4ProjectAuditLogsPageRouteRoute,
     v4SecretManagerOverviewPageRouteRoute:
       v4SecretManagerOverviewPageRouteRoute,
     v4SecretManagerSettingsPageRouteRoute:
@@ -6858,6 +6940,7 @@ interface v4OrganizationRouteRouteChildren {
   v4OrganizationNetworkingPageRouteRoute: typeof v4OrganizationNetworkingPageRouteRoute
   v4RedirectsSecretScanningIndexRedirectRouteRoute: typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   v4ProjectAccessControlPageCertManagerRouteRoute: typeof v4ProjectAccessControlPageCertManagerRouteRoute
+  v4ProjectAuditLogsPageCertManagerRouteRoute: typeof v4ProjectAuditLogsPageCertManagerRouteRoute
   v4CertManagerInventoryPageRouteRoute: typeof v4CertManagerInventoryPageRouteRoute
   v4CertManagerDashboardPageRouteRoute: typeof v4CertManagerDashboardPageRouteRoute
   v4CertManagerSettingsPageRouteRoute: typeof v4CertManagerSettingsPageRouteRoute
@@ -6866,6 +6949,7 @@ interface v4OrganizationRouteRouteChildren {
   v4OrganizationUserDetailsByIDPageRouteRoute: typeof v4OrganizationUserDetailsByIDPageRouteRoute
   v4RedirectsPamAccessRedirectRouteRoute: typeof v4RedirectsPamAccessRedirectRouteRoute
   v4ProjectAccessControlPagePamRouteRoute: typeof v4ProjectAccessControlPagePamRouteRoute
+  v4ProjectAuditLogsPagePamRouteRoute: typeof v4ProjectAuditLogsPagePamRouteRoute
   v4OrganizationRoleByIDPageRouteRoute: typeof v4OrganizationRoleByIDPageRouteRoute
   v4ProjectAccessControlPageSecretScanningRouteRoute: typeof v4ProjectAccessControlPageSecretScanningRouteRoute
   v4SecretScanningSecretScanningFindingsPageRouteRoute: typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
@@ -6909,6 +6993,8 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
     v4RedirectsSecretScanningIndexRedirectRouteRoute,
   v4ProjectAccessControlPageCertManagerRouteRoute:
     v4ProjectAccessControlPageCertManagerRouteRoute,
+  v4ProjectAuditLogsPageCertManagerRouteRoute:
+    v4ProjectAuditLogsPageCertManagerRouteRoute,
   v4CertManagerInventoryPageRouteRoute: v4CertManagerInventoryPageRouteRoute,
   v4CertManagerDashboardPageRouteRoute: v4CertManagerDashboardPageRouteRoute,
   v4CertManagerSettingsPageRouteRoute: v4CertManagerSettingsPageRouteRoute,
@@ -6922,6 +7008,7 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
     v4RedirectsPamAccessRedirectRouteRoute,
   v4ProjectAccessControlPagePamRouteRoute:
     v4ProjectAccessControlPagePamRouteRoute,
+  v4ProjectAuditLogsPagePamRouteRoute: v4ProjectAuditLogsPagePamRouteRoute,
   v4OrganizationRoleByIDPageRouteRoute: v4OrganizationRoleByIDPageRouteRoute,
   v4ProjectAccessControlPageSecretScanningRouteRoute:
     v4ProjectAccessControlPageSecretScanningRouteRoute,
@@ -8467,6 +8554,7 @@ export interface FileRoutesByFullPath {
   '/v4/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
   '/v4/admin/resources/overview': typeof v4AdminResourceOverviewPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/access-management': typeof v4ProjectAccessControlPageCertManagerRouteRoute
+  '/v4/organizations/$orgId/cert-manager/audit-logs': typeof v4ProjectAuditLogsPageCertManagerRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
@@ -8475,6 +8563,7 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/pam/access': typeof v4RedirectsPamAccessRedirectRouteRoute
   '/v4/organizations/$orgId/pam/access-management': typeof v4ProjectAccessControlPagePamRouteRoute
+  '/v4/organizations/$orgId/pam/audit-logs': typeof v4ProjectAuditLogsPagePamRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/access-management': typeof v4ProjectAccessControlPageSecretScanningRouteRoute
@@ -8525,15 +8614,18 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/access-management': typeof v4ProjectAccessControlPageAgentVaultRouteRoute
+  '/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs': typeof v4ProjectAuditLogsPageAgentVaultRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions': typeof v4AgentVaultAgentVaultSessionsPageRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings': typeof v4AgentVaultAgentVaultSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/access-management': typeof v4ProjectAccessControlPageKmsRouteRoute
+  '/v4/organizations/$orgId/projects/kms/$projectId/audit-logs': typeof v4ProjectAuditLogsPageKmsRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/kmip': typeof v4KmsKmipPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/settings': typeof v4KmsSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof v4ProjectAccessControlPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs': typeof v4ProjectAuditLogsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': typeof v4SecretManagerOverviewPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/settings': typeof v4SecretManagerSettingsPageRouteRoute
   '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
@@ -8870,6 +8962,7 @@ export interface FileRoutesByTo {
   '/v4/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
   '/v4/admin/resources/overview': typeof v4AdminResourceOverviewPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/access-management': typeof v4ProjectAccessControlPageCertManagerRouteRoute
+  '/v4/organizations/$orgId/cert-manager/audit-logs': typeof v4ProjectAuditLogsPageCertManagerRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
@@ -8878,6 +8971,7 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/pam/access': typeof v4RedirectsPamAccessRedirectRouteRoute
   '/v4/organizations/$orgId/pam/access-management': typeof v4ProjectAccessControlPagePamRouteRoute
+  '/v4/organizations/$orgId/pam/audit-logs': typeof v4ProjectAuditLogsPagePamRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/access-management': typeof v4ProjectAccessControlPageSecretScanningRouteRoute
@@ -8925,15 +9019,18 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/access-management': typeof v4ProjectAccessControlPageAgentVaultRouteRoute
+  '/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs': typeof v4ProjectAuditLogsPageAgentVaultRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions': typeof v4AgentVaultAgentVaultSessionsPageRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings': typeof v4AgentVaultAgentVaultSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/access-management': typeof v4ProjectAccessControlPageKmsRouteRoute
+  '/v4/organizations/$orgId/projects/kms/$projectId/audit-logs': typeof v4ProjectAuditLogsPageKmsRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/kmip': typeof v4KmsKmipPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/settings': typeof v4KmsSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof v4ProjectAccessControlPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs': typeof v4ProjectAuditLogsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': typeof v4SecretManagerOverviewPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/settings': typeof v4SecretManagerSettingsPageRouteRoute
   '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
@@ -9265,6 +9362,7 @@ export interface FileRoutesById {
   '/v4/_v4-auth/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
   '/v4/admin/_v4-admin-shell/resources/overview': typeof v4AdminResourceOverviewPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/access-management': typeof v4ProjectAccessControlPageCertManagerRouteRoute
+  '/v4/organizations/$orgId/cert-manager/audit-logs': typeof v4ProjectAuditLogsPageCertManagerRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
@@ -9273,6 +9371,7 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/pam/access': typeof v4RedirectsPamAccessRedirectRouteRoute
   '/v4/organizations/$orgId/pam/access-management': typeof v4ProjectAccessControlPagePamRouteRoute
+  '/v4/organizations/$orgId/pam/audit-logs': typeof v4ProjectAuditLogsPagePamRouteRoute
   '/v4/organizations/$orgId/projects/$': typeof v4OrganizationNotPortedPageProjectsRouteRoute
   '/v4/organizations/$orgId/roles/$roleId': typeof v4OrganizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/secret-scanning/access-management': typeof v4ProjectAccessControlPageSecretScanningRouteRoute
@@ -9323,15 +9422,18 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/access-management': typeof v4ProjectAccessControlPageAgentVaultRouteRoute
+  '/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs': typeof v4ProjectAuditLogsPageAgentVaultRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions': typeof v4AgentVaultAgentVaultSessionsPageRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings': typeof v4AgentVaultAgentVaultSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/access-management': typeof v4ProjectAccessControlPageKmsRouteRoute
+  '/v4/organizations/$orgId/projects/kms/$projectId/audit-logs': typeof v4ProjectAuditLogsPageKmsRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/kmip': typeof v4KmsKmipPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/settings': typeof v4KmsSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof v4ProjectAccessControlPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs': typeof v4ProjectAuditLogsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': typeof v4SecretManagerOverviewPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/settings': typeof v4SecretManagerSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
@@ -9685,6 +9787,7 @@ export interface FileRouteTypes {
     | '/v4/login/provider/error'
     | '/v4/admin/resources/overview'
     | '/v4/organizations/$orgId/cert-manager/access-management'
+    | '/v4/organizations/$orgId/cert-manager/audit-logs'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/cert-manager/settings'
@@ -9693,6 +9796,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/members/$membershipId'
     | '/v4/organizations/$orgId/pam/access'
     | '/v4/organizations/$orgId/pam/access-management'
+    | '/v4/organizations/$orgId/pam/audit-logs'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/access-management'
@@ -9743,15 +9847,18 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/$type'
     | '/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/access-management'
+    | '/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/$projectId/access-management'
+    | '/v4/organizations/$orgId/projects/kms/$projectId/audit-logs'
     | '/v4/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
     | '/v4/organizations/$orgId/projects/kms/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/settings'
     | '/integrations/azure-app-configuration/oauth2/callback'
@@ -10087,6 +10194,7 @@ export interface FileRouteTypes {
     | '/v4/login/provider/error'
     | '/v4/admin/resources/overview'
     | '/v4/organizations/$orgId/cert-manager/access-management'
+    | '/v4/organizations/$orgId/cert-manager/audit-logs'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/cert-manager/settings'
@@ -10095,6 +10203,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/members/$membershipId'
     | '/v4/organizations/$orgId/pam/access'
     | '/v4/organizations/$orgId/pam/access-management'
+    | '/v4/organizations/$orgId/pam/audit-logs'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/access-management'
@@ -10142,15 +10251,18 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/$type'
     | '/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/access-management'
+    | '/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/$projectId/access-management'
+    | '/v4/organizations/$orgId/projects/kms/$projectId/audit-logs'
     | '/v4/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
     | '/v4/organizations/$orgId/projects/kms/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/settings'
     | '/integrations/azure-app-configuration/oauth2/callback'
@@ -10480,6 +10592,7 @@ export interface FileRouteTypes {
     | '/v4/_v4-auth/login/provider/error'
     | '/v4/admin/_v4-admin-shell/resources/overview'
     | '/v4/organizations/$orgId/cert-manager/access-management'
+    | '/v4/organizations/$orgId/cert-manager/audit-logs'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
     | '/v4/organizations/$orgId/cert-manager/settings'
@@ -10488,6 +10601,7 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/members/$membershipId'
     | '/v4/organizations/$orgId/pam/access'
     | '/v4/organizations/$orgId/pam/access-management'
+    | '/v4/organizations/$orgId/pam/audit-logs'
     | '/v4/organizations/$orgId/projects/$'
     | '/v4/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/secret-scanning/access-management'
@@ -10538,15 +10652,18 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/access-management'
+    | '/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/$projectId/access-management'
+    | '/v4/organizations/$orgId/projects/kms/$projectId/audit-logs'
     | '/v4/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
     | '/v4/organizations/$orgId/projects/kms/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/settings'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback'
@@ -11136,6 +11253,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/networking/",
         "/v4/organizations/$orgId/secret-scanning/",
         "/v4/organizations/$orgId/cert-manager/access-management",
+        "/v4/organizations/$orgId/cert-manager/audit-logs",
         "/v4/organizations/$orgId/cert-manager/inventory",
         "/v4/organizations/$orgId/cert-manager/overview",
         "/v4/organizations/$orgId/cert-manager/settings",
@@ -11144,6 +11262,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/members/$membershipId",
         "/v4/organizations/$orgId/pam/access",
         "/v4/organizations/$orgId/pam/access-management",
+        "/v4/organizations/$orgId/pam/audit-logs",
         "/v4/organizations/$orgId/roles/$roleId",
         "/v4/organizations/$orgId/secret-scanning/access-management",
         "/v4/organizations/$orgId/secret-scanning/findings",
@@ -11390,15 +11509,18 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/projects/agent-vault/$projectId/",
         "/v4/organizations/$orgId/projects/kms/kmip-servers/",
         "/v4/organizations/$orgId/projects/agent-vault/$projectId/access-management",
+        "/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs",
         "/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions",
         "/v4/organizations/$orgId/projects/agent-vault/$projectId/settings",
         "/v4/organizations/$orgId/projects/kms/$projectId/access-management",
+        "/v4/organizations/$orgId/projects/kms/$projectId/audit-logs",
         "/v4/organizations/$orgId/projects/kms/$projectId/kmip",
         "/v4/organizations/$orgId/projects/kms/$projectId/overview",
         "/v4/organizations/$orgId/projects/kms/$projectId/settings",
         "/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/access-management",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/approval",
+        "/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/overview",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/settings",
         "/v4/organizations/$orgId/projects/agent-vault/$projectId/groups/$groupId",
@@ -11476,6 +11598,10 @@ export const routeTree = rootRoute
       "filePath": "v4/project/AccessControlPage/cert-manager/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
+    "/v4/organizations/$orgId/cert-manager/audit-logs": {
+      "filePath": "v4/project/AuditLogsPage/cert-manager/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
     "/v4/organizations/$orgId/cert-manager/inventory": {
       "filePath": "v4/cert-manager/InventoryPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
@@ -11506,6 +11632,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/pam/access-management": {
       "filePath": "v4/project/AccessControlPage/pam/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/pam/audit-logs": {
+      "filePath": "v4/project/AuditLogsPage/pam/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/projects/$": {
@@ -11765,6 +11895,10 @@ export const routeTree = rootRoute
       "filePath": "v4/project/AccessControlPage/agent-vault/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
     },
+    "/v4/organizations/$orgId/projects/agent-vault/$projectId/audit-logs": {
+      "filePath": "v4/project/AuditLogsPage/agent-vault/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
+    },
     "/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions": {
       "filePath": "v4/agent-vault/AgentVaultSessionsPage/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
@@ -11775,6 +11909,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/projects/kms/$projectId/access-management": {
       "filePath": "v4/project/AccessControlPage/kms/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
+    },
+    "/v4/organizations/$orgId/projects/kms/$projectId/audit-logs": {
+      "filePath": "v4/project/AuditLogsPage/kms/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
     },
     "/v4/organizations/$orgId/projects/kms/$projectId/kmip": {
@@ -11799,6 +11937,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/projects/secret-management/$projectId/approval": {
       "filePath": "v4/secret-manager/SecretApprovalsPage/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
+    },
+    "/v4/organizations/$orgId/projects/secret-management/$projectId/audit-logs": {
+      "filePath": "v4/project/AuditLogsPage/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
     },
     "/v4/organizations/$orgId/projects/secret-management/$projectId/overview": {
