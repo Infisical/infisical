@@ -6,6 +6,7 @@ import { integrationsDemo } from "./integrations/demo";
 import { kmsDemo } from "./kms/demo";
 import { orgDemo } from "./org/demo";
 import { pamDemo } from "./pam/demo";
+import { projectSettingsDemo } from "./project-settings/demo";
 import { projectsDemo } from "./projects/demo";
 import { secretScanningDemo } from "./secret-scanning/demo";
 import { secretsDemo } from "./secrets/demo";
@@ -20,5 +21,6 @@ export const demoAdapters: V4Adapters = {
   certificates: certificatesDemo,
   access: accessDemo,
   projects: projectsDemo,
+  projectSettings: projectSettingsDemo,
   pam: pamDemo
 };

@@ -7,6 +7,7 @@ import type { IntegrationsAdapter } from "./integrations/contract";
 import type { KmsAdapter } from "./kms/contract";
 import type { OrgAdapter } from "./org/contract";
 import type { PamAdapter } from "./pam/contract";
+import type { ProjectSettingsAdapter } from "./project-settings/contract";
 import type { ProjectsAdapter } from "./projects/contract";
 import type { SecretScanningAdapter } from "./secret-scanning/contract";
 import type { SecretsAdapter } from "./secrets/contract";
@@ -20,6 +21,7 @@ export type V4Adapters = {
   certificates: CertificatesAdapter;
   access: AccessAdapter;
   projects: ProjectsAdapter;
+  projectSettings: ProjectSettingsAdapter;
   pam: PamAdapter;
   agentVault: AgentVaultAdapter;
 };
