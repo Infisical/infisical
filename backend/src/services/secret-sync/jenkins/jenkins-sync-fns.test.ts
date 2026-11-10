@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-import { AxiosError, AxiosHeaders } from "axios";
+import { AxiosError, AxiosResponse } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // `vi.mock` factories are hoisted above imports, so the spies they reference must come from `vi.hoisted`.
@@ -43,10 +43,7 @@ const gatewayPoolService = { resolveEffectiveGatewayId: vi.fn() };
 const INSTANCE_URL = "https://ci.example.com/jenkins";
 const GLOBAL_STORE = `${INSTANCE_URL}/credentials/store/system/domain/_`;
 
-const syncWith = ({
-  destinationConfig = { scope: JenkinsSyncScope.Global },
-  syncOptions = {}
-}: { destinationConfig?: Record<string, unknown>; syncOptions?: Record<string, unknown> } = {}) =>
+const syncWith = (syncOptions: Record<string, unknown> = {}) =>
   ({
     destination: "jenkins",
     connection: {
@@ -54,7 +51,7 @@ const syncWith = ({
       gatewayId: null,
       gatewayPoolId: null
     },
-    destinationConfig,
+    destinationConfig: { scope: JenkinsSyncScope.Global },
     environment: { slug: "prod" },
     syncOptions: { disableSecretDeletion: false, ...syncOptions }
   }) as any;
@@ -64,6 +61,9 @@ const payloadOf = (secrets: Record<string, string>) =>
     flatten: () => Object.fromEntries(Object.entries(secrets).map(([key, value]) => [key, { value }]))
   }) as any;
 
+const axiosErrorWithStatus = (status: number) =>
+  new AxiosError("Request failed", undefined, undefined, undefined, { status } as AxiosResponse);
+
 const stubJenkins = (credentials: { id: string; typeName: string }[]) =>
   safeRequestMock.mockImplementation(async (config: { method: string; url: string }) =>
     config.method === "GET" ? { data: { credentials } } : { data: "" }
@@ -72,10 +72,15 @@ const stubJenkins = (credentials: { id: string; typeName: string }[]) =>
 const requestsWith = (method: string) =>
   safeRequestMock.mock.calls.map(([config]) => config).filter((config) => config.method === method);
 
+const deletedUrls = () => requestsWith("DELETE").map(({ url }) => url);
+
 const sync = (secretSync: any, payload: any) =>
   JenkinsSyncFns.syncSecrets(secretSync, payload, gatewayV2Service as any, gatewayPoolService as any);
 
-describe("JenkinsSyncFns.syncSecrets", () => {
+const remove = (secretSync: any, payload: any) =>
+  JenkinsSyncFns.removeSecrets(secretSync, payload, gatewayV2Service as any, gatewayPoolService as any);
+
+describe("JenkinsSyncFns", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -108,18 +113,16 @@ describe("JenkinsSyncFns.syncSecrets", () => {
         buildJenkinsSecretTextCredentialXml("EXISTING", "updated-value")
       ]
     ]);
-    expect(requestsWith("DELETE").map(({ url }) => url)).toEqual([`${GLOBAL_STORE}/credential/STALE/config.xml`]);
+    expect(deletedUrls()).toEqual([`${GLOBAL_STORE}/credential/STALE/config.xml`]);
   });
 
   it("refuses a key that belongs to a credential of another type without writing anything", async () => {
     stubJenkins([{ id: "DEPLOY_KEY", typeName: "SSH Username with private key" }]);
 
-    const error = await sync(syncWith(), payloadOf({ NEW: "a", DEPLOY_KEY: "b" })).catch((err: unknown) => err);
-
-    expect(error).toBeInstanceOf(SecretSyncError);
-    expect((error as SecretSyncError).message).toContain(
+    await expect(sync(syncWith(), payloadOf({ NEW: "a", DEPLOY_KEY: "b" }))).rejects.toThrow(
       "A Jenkins credential with ID 'DEPLOY_KEY' already exists as 'SSH Username with private key'"
     );
+
     expect(requestsWith("POST")).toHaveLength(0);
   });
 
@@ -129,9 +132,34 @@ describe("JenkinsSyncFns.syncSecrets", () => {
       { id: "MANUAL", typeName: "Secret text" }
     ]);
 
-    await sync(syncWith({ syncOptions: { keySchema: "INF_{{secretKey}}" } }), payloadOf({ INF_KEEP: "a" }));
+    await sync(syncWith({ keySchema: "INF_{{secretKey}}" }), payloadOf({ INF_KEEP: "a" }));
 
-    expect(requestsWith("DELETE").map(({ url }) => url)).toEqual([`${GLOBAL_STORE}/credential/INF_STALE/config.xml`]);
+    expect(deletedUrls()).toEqual([`${GLOBAL_STORE}/credential/INF_STALE/config.xml`]);
+  });
+
+  it("deletes nothing when secret deletion is disabled", async () => {
+    stubJenkins([{ id: "STALE", typeName: "Secret text" }]);
+
+    await sync(syncWith({ disableSecretDeletion: true }), payloadOf({ NEW: "a" }));
+
+    expect(deletedUrls()).toHaveLength(0);
+  });
+
+  it.each([
+    ["a rejected API token", axiosErrorWithStatus(401), "Jenkins rejected the username or API token", false],
+    [
+      "a gateway tunnel failure",
+      new GatewayTransportError({ message: "Failed to reach the gateway" }),
+      "Failed to reach the gateway",
+      true
+    ]
+  ])("reports %s and sets whether the queue retries it", async (_, failure, reason, shouldRetry) => {
+    safeRequestMock.mockRejectedValue(failure);
+
+    const error = (await sync(syncWith(), payloadOf({ NEW: "a" })).catch((err: unknown) => err)) as SecretSyncError;
+
+    expect(error.message).toBe(`Failed to list Jenkins credentials: ${reason}`);
+    expect(error.shouldRetry).toBe(shouldRetry);
   });
 
   it("ignores credentials whose IDs could not have been written by Infisical", async () => {
@@ -142,76 +170,24 @@ describe("JenkinsSyncFns.syncSecrets", () => {
     ]);
 
     await sync(syncWith(), payloadOf({ NEW: "a" }));
-    await JenkinsSyncFns.removeSecrets(
-      syncWith(),
-      payloadOf({ "..": "a", STALE: "b" }),
-      gatewayV2Service as any,
-      gatewayPoolService as any
-    );
+    await remove(syncWith(), payloadOf({ "..": "a", STALE: "b" }));
 
-    expect(requestsWith("DELETE").map(({ url }) => url)).toEqual([
+    expect(deletedUrls()).toEqual([
       `${GLOBAL_STORE}/credential/STALE/config.xml`,
       `${GLOBAL_STORE}/credential/STALE/config.xml`
     ]);
   });
 
-  it("deletes nothing when secret deletion is disabled", async () => {
-    stubJenkins([{ id: "STALE", typeName: "Secret text" }]);
-
-    await sync(syncWith({ syncOptions: { disableSecretDeletion: true } }), payloadOf({ NEW: "a" }));
-
-    expect(requestsWith("DELETE")).toHaveLength(0);
-  });
-
-  it("does not retry when Jenkins rejects the API token", async () => {
-    safeRequestMock.mockRejectedValue(
-      new AxiosError("Request failed with status code 401", "ERR_BAD_REQUEST", undefined, undefined, {
-        status: 401,
-        statusText: "Unauthorized",
-        data: "<html></html>",
-        headers: {},
-        config: { headers: new AxiosHeaders() }
-      })
-    );
-
-    const error = await sync(syncWith(), payloadOf({ NEW: "a" })).catch((err: unknown) => err);
-
-    expect((error as SecretSyncError).message).toBe(
-      "Failed to list Jenkins credentials: Jenkins rejected the username or API token"
-    );
-    expect((error as SecretSyncError).shouldRetry).toBe(false);
-  });
-
-  it("leaves a gateway tunnel failure to the queue's retries", async () => {
-    safeRequestMock.mockRejectedValue(new GatewayTransportError({ message: "Failed to reach the gateway" }));
-
-    const error = await sync(syncWith(), payloadOf({ NEW: "a" })).catch((err: unknown) => err);
-
-    expect((error as SecretSyncError).message).toBe("Failed to list Jenkins credentials: Failed to reach the gateway");
-    expect((error as SecretSyncError).shouldRetry).toBe(true);
-  });
-});
-
-describe("JenkinsSyncFns.removeSecrets", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("deletes only Secret text credentials whose ID is in the payload", async () => {
+  it("removes only Secret text credentials whose ID is in the payload", async () => {
     stubJenkins([
       { id: "SYNCED", typeName: "Secret text" },
       { id: "OTHER", typeName: "Secret text" },
       { id: "DEPLOY_KEY", typeName: "SSH Username with private key" }
     ]);
 
-    await JenkinsSyncFns.removeSecrets(
-      syncWith(),
-      payloadOf({ SYNCED: "a", DEPLOY_KEY: "b" }),
-      gatewayV2Service as any,
-      gatewayPoolService as any
-    );
+    await remove(syncWith(), payloadOf({ SYNCED: "a", DEPLOY_KEY: "b" }));
 
-    expect(requestsWith("DELETE").map(({ url }) => url)).toEqual([`${GLOBAL_STORE}/credential/SYNCED/config.xml`]);
+    expect(deletedUrls()).toEqual([`${GLOBAL_STORE}/credential/SYNCED/config.xml`]);
   });
 
   it("does not treat inherited object properties as synced secrets", async () => {
@@ -220,27 +196,17 @@ describe("JenkinsSyncFns.removeSecrets", () => {
       { id: "toString", typeName: "Secret text" }
     ]);
 
-    await JenkinsSyncFns.removeSecrets(syncWith(), payloadOf({}), gatewayV2Service as any, gatewayPoolService as any);
+    await remove(syncWith(), payloadOf({}));
 
-    expect(requestsWith("DELETE")).toHaveLength(0);
-  });
-});
-
-describe("getJenkinsCredentialStorePath", () => {
-  it("uses the system store for the global scope", () => {
-    expect(getJenkinsCredentialStorePath({ scope: JenkinsSyncScope.Global })).toBe(
-      "/credentials/store/system/domain/_"
-    );
+    expect(deletedUrls()).toHaveLength(0);
   });
 
-  it("walks nested folders and encodes each segment", () => {
+  it("walks nested folders and encodes each segment of the store path", () => {
     expect(getJenkinsCredentialStorePath({ scope: JenkinsSyncScope.Folder, folderPath: "team a/app" })).toBe(
       "/job/team%20a/job/app/credentials/store/folder/domain/_"
     );
   });
-});
 
-describe("buildJenkinsSecretTextCredentialXml", () => {
   it("escapes XML in the secret so it cannot break out of the element", () => {
     expect(buildJenkinsSecretTextCredentialXml("ID", `a<b>&"c'\r\nd`)).toBe(
       "<org.jenkinsci.plugins.plaincredentials.impl.StringCredentialsImpl>" +

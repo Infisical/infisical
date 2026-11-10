@@ -276,6 +276,7 @@ const portainerDuplicateCheck: DestinationDuplicateCheckFn = async ({ existingSy
     getPortainerInstanceKey(newConn as TPortainerConnection)
   );
 };
+
 // Folder names are local to a Jenkins instance, so the same scope on two instances is two destinations. The
 // same address behind two gateways is two instances too, while `https://host` and `https://host:443` are one.
 const getJenkinsInstanceKey = (connection: TJenkinsConnection) => {

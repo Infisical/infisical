@@ -1,4 +1,4 @@
-import { getGitHubSyncSecretTypeName } from "@app/helpers/secretSyncs";
+import { getGitHubSyncSecretTypeName, JENKINS_SYNC_SCOPE_LABELS } from "@app/helpers/secretSyncs";
 import { TerraformCloudSyncScope } from "@app/hooks/api/appConnections/terraform-cloud";
 import { ZabbixSyncScope } from "@app/hooks/api/appConnections/zabbix";
 import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
@@ -325,7 +325,7 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText =
         destinationConfig.scope === JenkinsSyncScope.Folder
           ? destinationConfig.folderPath
-          : "Global";
+          : JENKINS_SYNC_SCOPE_LABELS[JenkinsSyncScope.Global];
       secondaryText = "Credentials";
       break;
     default:

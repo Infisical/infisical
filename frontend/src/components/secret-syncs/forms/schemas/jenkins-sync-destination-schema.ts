@@ -13,18 +13,7 @@ export const JenkinsSyncDestinationSchema = BaseSecretSyncSchema().merge(
       }),
       z.object({
         scope: z.literal(JenkinsSyncScope.Folder),
-        folderPath: z
-          .string()
-          .trim()
-          .min(1, "Folder is required")
-          .max(255)
-          .refine(
-            (val) =>
-              val
-                .split("/")
-                .every((segment) => segment !== "" && segment !== "." && segment !== ".."),
-            "Invalid folder path"
-          )
+        folderPath: z.string().trim().min(1, "Folder is required")
       })
     ])
   })

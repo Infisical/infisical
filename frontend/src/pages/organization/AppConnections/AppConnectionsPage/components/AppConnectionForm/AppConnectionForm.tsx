@@ -416,10 +416,10 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
         return <RundeckConnectionForm onSubmit={onSubmit} />;
-      case AppConnection.Jenkins:
-        return <JenkinsConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Portainer:
         return <PortainerConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Jenkins:
+        return <JenkinsConnectionForm onSubmit={onSubmit} />;
       case AppConnection.NutanixPrismCentral:
         return <NutanixPrismCentralConnectionForm onSubmit={onSubmit} />;
       case AppConnection.PowerDns:
@@ -738,10 +738,10 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:
         return <RundeckConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
-      case AppConnection.Jenkins:
-        return <JenkinsConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Portainer:
         return <PortainerConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Jenkins:
+        return <JenkinsConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.NutanixPrismCentral:
         return (
           <NutanixPrismCentralConnectionForm onSubmit={onSubmit} appConnection={appConnection} />

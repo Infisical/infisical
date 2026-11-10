@@ -25,8 +25,6 @@ type TJenkinsRequest = {
   path: string;
   data?: string;
   params?: Record<string, string>;
-  headers?: Record<string, string>;
-  timeoutMs?: number;
 };
 
 type TJenkinsItemResponse = {
@@ -35,7 +33,7 @@ type TJenkinsItemResponse = {
   jobs?: TJenkinsItemResponse[];
 };
 
-export const JENKINS_REQUEST_TIMEOUT_MS = 30_000;
+const JENKINS_REQUEST_TIMEOUT_MS = 30_000;
 const JENKINS_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const JENKINS_MAX_FOLDER_DEPTH = 10;
 
@@ -88,7 +86,7 @@ export const getJenkinsErrorMessage = (error: unknown, fallback: string) => {
 
 export const jenkinsRequest = async <T>(
   config: TJenkinsRequestConfig,
-  { method, path, data, params, headers: extraHeaders, timeoutMs = JENKINS_REQUEST_TIMEOUT_MS }: TJenkinsRequest,
+  { method, path, data, params }: TJenkinsRequest,
   { gatewayV2Service, gatewayPoolService }: TJenkinsGatewayDeps = {}
 ): Promise<T> => {
   const { credentials, gatewayId: directGatewayId, gatewayPoolId } = config;
@@ -112,18 +110,20 @@ export const jenkinsRequest = async <T>(
 
   const url = new URL(`${getJenkinsInstanceUrl(config)}${path}`);
   // An API token authenticates through the Basic header, which also exempts the request from
-  // Jenkins' CSRF crumb check, so no crumb or session cookie is needed for writes.
+  // Jenkins' CSRF crumb check, so no crumb or session cookie is needed for writes. Credential listings
+  // return each type's localized display name, so responses are pinned to English.
   const headers = {
     Authorization: `Basic ${Buffer.from(`${credentials.username}:${credentials.apiToken}`).toString("base64")}`,
     Accept: "application/json",
-    ...extraHeaders
+    "Accept-Language": "en",
+    ...(data !== undefined && { "Content-Type": "application/xml; charset=utf-8" })
   };
 
   const baseRequestConfig: AxiosRequestConfig = {
     method,
     params,
     ...(data !== undefined && { data }),
-    timeout: timeoutMs,
+    timeout: JENKINS_REQUEST_TIMEOUT_MS,
     maxContentLength: JENKINS_MAX_RESPONSE_BYTES,
     maxBodyLength: JENKINS_MAX_RESPONSE_BYTES
   };
@@ -246,7 +246,7 @@ export const listJenkinsFolders = async (
     items.forEach((item) => {
       if (!Array.isArray(item.jobs) || !item.fullName) return;
 
-      folders.push({ name: item.name, fullName: item.fullName });
+      folders.push({ fullName: item.fullName });
 
       if (depth === JENKINS_MAX_FOLDER_DEPTH) {
         if (item.jobs.length) isTruncated = true;
@@ -261,7 +261,6 @@ export const listJenkinsFolders = async (
 
   if (isTruncated) {
     logger.warn(
-      { appConnectionId: appConnection.id },
       `Jenkins folders nested deeper than ${JENKINS_MAX_FOLDER_DEPTH} levels were not listed [appConnectionId=${appConnection.id}]`
     );
   }

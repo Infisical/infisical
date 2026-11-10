@@ -520,11 +520,6 @@ export const CLOUDFLARE_SECRETS_STORE_SCOPE_LABELS: Record<CloudflareSecretsStor
   [CloudflareSecretsStoreScope.Containers]: "Containers"
 };
 
-export const JENKINS_SYNC_SCOPE_LABELS: Record<JenkinsSyncScope, string> = {
-  [JenkinsSyncScope.Global]: "Global",
-  [JenkinsSyncScope.Folder]: "Folder"
-};
-
 export const CLOUDFLARE_PAGES_VARIABLE_TYPE_LABELS: Record<CloudflarePagesVariableType, string> = {
   [CloudflarePagesVariableType.Secret]: "Secret",
   [CloudflarePagesVariableType.Text]: "Text"
@@ -537,4 +532,9 @@ export const CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS: Record<
   [CloudflareWorkersVariableType.Secret]: "Secret",
   [CloudflareWorkersVariableType.Text]: "Text",
   [CloudflareWorkersVariableType.Json]: "JSON"
+};
+
+export const JENKINS_SYNC_SCOPE_LABELS: Record<JenkinsSyncScope, string> = {
+  [JenkinsSyncScope.Global]: "Global",
+  [JenkinsSyncScope.Folder]: "Folder"
 };

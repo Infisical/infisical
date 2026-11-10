@@ -37,7 +37,6 @@ export const registerJenkinsConnectionRouter = async (server: FastifyZodProvider
         200: z.object({
           folders: z
             .object({
-              name: z.string(),
               fullName: z.string()
             })
             .array()

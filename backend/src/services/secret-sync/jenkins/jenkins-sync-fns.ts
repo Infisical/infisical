@@ -20,7 +20,7 @@ import { TSecretMap } from "../secret-sync-types";
 import { JenkinsSyncScope } from "./jenkins-sync-enums";
 import { TJenkinsCredential, TJenkinsSyncWithCredentials } from "./jenkins-sync-types";
 
-// The listing only exposes the type's display name, so the request pins English to keep it stable
+// The listing only exposes the type's display name, which jenkinsRequest pins to English
 const JENKINS_SECRET_TEXT_TYPE_NAME = "Secret text";
 const JENKINS_CREDENTIAL_DESCRIPTION = "Managed by Infisical";
 // The rule Jenkins' own credential form enforces; the REST endpoints accept anything, including
@@ -28,11 +28,6 @@ const JENKINS_CREDENTIAL_DESCRIPTION = "Managed by Infisical";
 const JENKINS_CREDENTIAL_ID_REGEX = /^[A-Za-z0-9_.-]+$/;
 
 const isValidJenkinsCredentialId = (id: string) => JENKINS_CREDENTIAL_ID_REGEX.test(id) && id !== "." && id !== "..";
-
-const getGatewayDeps = (
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
-): TJenkinsGatewayDeps => ({ gatewayV2Service, gatewayPoolService });
 
 export const getJenkinsCredentialStorePath = (destinationConfig: TJenkinsSyncWithCredentials["destinationConfig"]) => {
   if (destinationConfig.scope === JenkinsSyncScope.Global) return "/credentials/store/system/domain/_";
@@ -83,6 +78,23 @@ const toSyncError = (error: unknown, message: string, secretKey?: string) => {
   });
 };
 
+// Resolved once so every request in a run goes through the same pool member
+const resolveGatewayConnection = async (
+  connection: TJenkinsConnection,
+  gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
+): Promise<TJenkinsConnection> => {
+  try {
+    const gatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
+      gatewayId: connection.gatewayId,
+      gatewayPoolId: connection.gatewayPoolId
+    });
+
+    return { ...connection, gatewayId, gatewayPoolId: null };
+  } catch (error) {
+    throw toSyncError(error, "Failed to resolve the Jenkins connection's gateway");
+  }
+};
+
 const listJenkinsCredentials = async (
   connection: TJenkinsConnection,
   storePath: string,
@@ -91,12 +103,7 @@ const listJenkinsCredentials = async (
   try {
     const { credentials } = await jenkinsRequest<{ credentials?: TJenkinsCredential[] }>(
       connection,
-      {
-        method: "GET",
-        path: `${storePath}/api/json`,
-        params: { tree: "credentials[id,typeName]" },
-        headers: { "Accept-Language": "en" }
-      },
+      { method: "GET", path: `${storePath}/api/json`, params: { tree: "credentials[id,typeName]" } },
       deps
     );
 
@@ -122,8 +129,7 @@ const writeJenkinsCredential = async (
         path: exists
           ? `${storePath}/credential/${encodeURIComponent(key)}/config.xml`
           : `${storePath}/createCredentials`,
-        data: buildJenkinsSecretTextCredentialXml(key, value),
-        headers: { "Content-Type": "application/xml; charset=utf-8" }
+        data: buildJenkinsSecretTextCredentialXml(key, value)
       },
       deps
     );
@@ -164,7 +170,6 @@ export const JenkinsSyncFns = {
   ) {
     const secretMap = payload.flatten();
     const {
-      connection,
       environment,
       destinationConfig,
       syncOptions: { disableSecretDeletion, keySchema }
@@ -179,7 +184,8 @@ export const JenkinsSyncFns = {
       });
     }
 
-    const deps = getGatewayDeps(gatewayV2Service, gatewayPoolService);
+    const connection = await resolveGatewayConnection(secretSync.connection, gatewayPoolService);
+    const deps = { gatewayV2Service };
     const storePath = getJenkinsCredentialStorePath(destinationConfig);
 
     const credentials = await listJenkinsCredentials(connection, storePath, deps);
@@ -227,10 +233,9 @@ export const JenkinsSyncFns = {
     gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
   ) {
     const secretMap = payload.flatten();
-    const { connection, destinationConfig } = secretSync;
-
-    const deps = getGatewayDeps(gatewayV2Service, gatewayPoolService);
-    const storePath = getJenkinsCredentialStorePath(destinationConfig);
+    const connection = await resolveGatewayConnection(secretSync.connection, gatewayPoolService);
+    const deps = { gatewayV2Service };
+    const storePath = getJenkinsCredentialStorePath(secretSync.destinationConfig);
 
     const credentials = await listJenkinsCredentials(connection, storePath, deps);
 

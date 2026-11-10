@@ -107,7 +107,7 @@ export const JenkinsSyncFields = () => {
                   isDisabled={!connectionId}
                   value={
                     folders.find((folder) => folder.fullName === value) ??
-                    (value ? { name: value, fullName: value } : null)
+                    (value ? { fullName: value } : null)
                   }
                   onValueChange={(option) => {
                     onChange(option?.fullName ?? "");
