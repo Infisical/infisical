@@ -724,6 +724,7 @@ const PlansView = ({
           <Stack gap={24}>
             <Tabs
               variant="segmented"
+              className="items-start"
               label={`${prod.name} plans`}
               value={selectedTier}
               onValueChange={setSelectedTier}

@@ -267,14 +267,12 @@ button.tile:focus-visible {
 }
 
 .summaryTiles > .tile {
-  padding: 0;
   border: 0;
-  background: none;
+  background: var(--v4-tint);
 }
 
 .summaryTiles > :is(a, button).tile:not(:disabled):hover {
-  background: none;
-  color: var(--v4-ink);
+  background: var(--v4-hover);
 }
 
 .productCard {
