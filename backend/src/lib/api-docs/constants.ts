@@ -4698,6 +4698,11 @@ export const AGENT_VAULT = {
   SERVICE: {
     serviceId: "The ID of the service.",
     name: "The name of the service.",
+    description:
+      "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it.",
+    updateDescription:
+      "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it. Send null or an empty string to remove it.",
+    descriptionRead: "What the service is for, or null if it has no description. Agents in a session can read it.",
     type: "The service type: `http` for an HTTP API, or `mcp` for a remote MCP server. Can't be changed after the service is created.",
     updateType: "The service's type, `http` or `mcp`. Must match the type the service was created with.",
     serverUrlRead: "The MCP server's full URL. Null for an `http` service.",
@@ -4917,7 +4922,13 @@ export const AGENT_VAULT = {
     offset: "How many skills to skip.",
     totalCount: "How many skills match the filters, across every page.",
     sessionSkills:
-      "The latest version of each skill on the session's access bundles that the session's owner can still reach, ordered by name."
+      "The latest version of each skill on the session's access bundles that the session's owner can still reach, plus the built-in infisical-agent-vault skill unless includeBuiltin is false, ordered by name.",
+    includeBuiltin:
+      "Whether to include infisical-agent-vault, the built-in skill that tells an agent how to work behind the Agent Vault proxy. Defaults to true.",
+    isBuiltin:
+      "Whether this is the built-in infisical-agent-vault skill, which Agent Vault provides, rather than a skill from the library.",
+    builtinName: "The name of the built-in skill, `infisical-agent-vault`. A skill in the library can't use this name.",
+    builtinDescription: "What the built-in skill is for, taken from the `description` in its SKILL.md."
   },
   MEMBER: {
     grantedAt: "When the access bundle was granted.",
@@ -5023,6 +5034,12 @@ export const AGENT_VAULT = {
     ciphertextSha256:
       "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
     recordCount: "The number of requests recorded in the chunk.",
+    decisionCounts: "How many of the chunk's requests had each outcome. Sent only by CLI versions that count them.",
+    brokeredCount: "The number of requests in the chunk the proxy added a credential, header or substituted value to.",
+    passthroughCount: "The number of requests in the chunk the proxy forwarded without changing them.",
+    blockedCount: "The number of requests in the chunk the proxy refused.",
+    errorCount:
+      "The number of requests in the chunk the proxy couldn't forward, such as when it couldn't reach the destination host. An error response from the destination counts as brokered or passthrough.",
     legacyIv:
       "Sent only by Infisical CLI versions that can't record session logs. A request that includes it is refused.",
     uploadUrl:
@@ -5125,6 +5142,42 @@ export const AGENT_VAULT = {
       "The user the machine identity in actor started this session on behalf of, or null when the session is the actor's own.",
     onBehalfOfType: "Always user: a machine identity starts sessions only on behalf of users.",
     onBehalfOfUserIdRead: "The ID of the user, or null once the user is deleted."
+  },
+  SESSION_SERVICES: {
+    agentVault:
+      "The proxy the request came through: its name, its Infisical CLI version, and its traffic policy. Each is null when the request didn't come through a proxy in the session's project.",
+    trafficPolicy:
+      "any-host if the proxy forwards requests to hosts no service covers, service-hosts if it refuses them, apart from the exception hosts the notes name.",
+    session: "The session's expiry as an RFC 3339 time, and the name of its access bundle.",
+    services: "The services the session can use, bundle services first, then the session's own.",
+    hosts: "The host patterns the service covers, as an admin wrote them.",
+    url: "The URL to call: an MCP server's URL, or for an HTTP service with exactly one host that isn't a wildcard, that host's URL.",
+    status:
+      "ready, or needs-personal-values if the session's owner, or the user it was started on behalf of, hasn't set every personal value the service needs or connected their account. The proxy refuses requests to the service until they do.",
+    credential:
+      "What the proxy adds to each request: its type, the header it sets, and whether it adds one at all. Never the credential itself.",
+    customHeaders: "The names of the headers the proxy adds. Never their values.",
+    placeholders: "Text the agent writes where a secret goes, and the parts of a request the proxy replaces it in.",
+    howToUse: "One paragraph that tells an agent how to call the service.",
+    notes: "Facts about working behind the proxy that apply to every service.",
+    proxyName: "The name of the proxy the request came through.",
+    proxyVersion: "The version of the Infisical CLI that runs the proxy, as the proxy reported it.",
+    sessionExpiresAt: "When the session expires, as an RFC 3339 time, or null if it doesn't expire.",
+    sessionAccessBundle: "The name of the session's access bundle, or null if its owner can no longer reach one.",
+    serviceName: "The service's name.",
+    serviceDescription: "What the service is for, as an admin wrote it, or null if it has no description.",
+    serviceType: "http for an HTTP API, or mcp for a remote MCP server.",
+    transport: "The MCP server's transport, streamable-http or sse. Only set for an MCP service.",
+    credentialType: "The kind of credential the proxy adds: bearer, oauth, basic, or none.",
+    credentialHeader: "The header the proxy sets the credential in.",
+    credentialAddedByProxy: "Whether the proxy adds a credential to the service's requests.",
+    credentialMemberProvided:
+      "Whether some part of the credential is a personal value of the session's owner, or the user it was started on behalf of, so that person, not an admin, fixes it when the service rejects it.",
+    placeholder: "The text the agent writes where the secret goes.",
+    placeholderSurfaces: "The parts of a request the proxy replaces the placeholder in: path, query, header, or body.",
+    allowedMethods: "The HTTP methods the service allows, or null if it allows every method.",
+    allowedPathPrefixes: "The path prefixes the service allows, or null if it allows every path.",
+    allowedTools: "The MCP tools the agent can call, or null if it can call every tool."
   },
   DELEGATION: {
     machineIdentityId: "The ID of the machine identity the delegation belongs to.",

@@ -23,6 +23,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { useOrgId, useOrgPermission } from "../permissions";
 import { failed, saved } from "../toast";
 import { personName, useMemberRoleAccess } from "./member-access";
+import { accessNoun, accessThe, accessThis } from "./product";
 import { useProjectScope } from "./scope";
 
 export const AddMemberDialog = ({
@@ -69,7 +70,7 @@ export const AddMemberDialog = ({
     ...invited.map((email) => ({ value: email, label: email }))
   ];
 
-  let emptyText = "All organization members are already assigned to this project.";
+  let emptyText = `All organization members are already assigned to ${accessThis(scope.projectType)}.`;
   if (available.length)
     emptyText = canInvite
       ? "Invite new users to your organization by typing out their email address."
@@ -84,7 +85,9 @@ export const AddMemberDialog = ({
 
   const submit = async () => {
     if (project.data?.version === ProjectVersion.V1) {
-      failed("Please upgrade your project to invite new members to the project.");
+      failed(
+        `Please upgrade ${accessThe(scope.projectType)} to invite new members to ${accessThe(scope.projectType)}.`
+      );
       return;
     }
     setPending(true);
@@ -96,10 +99,10 @@ export const AddMemberDialog = ({
         projectType: scope.projectType,
         roleSlugs: roles
       });
-      saved("Successfully added user to the project");
+      saved(`Successfully added user to ${accessThe(scope.projectType)}`);
       close();
     } catch (error) {
-      failed("Failed to add users to the project", error);
+      failed(`Failed to add users to ${accessThe(scope.projectType)}`, error);
     } finally {
       setPending(false);
     }
@@ -109,7 +112,7 @@ export const AddMemberDialog = ({
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
       <DialogContent pending={pending}>
         <DialogHeader>
-          <DialogTitle>Add users to your project</DialogTitle>
+          <DialogTitle>{`Add users to ${accessThe(scope.projectType)}`}</DialogTitle>
           <DialogDescription>Users get an email with instructions to join.</DialogDescription>
         </DialogHeader>
         <form
@@ -122,7 +125,7 @@ export const AddMemberDialog = ({
           <Stack gap={16}>
             <Combobox
               multiple
-              label="Invite users to project"
+              label={`Invite users to ${accessNoun(scope.projectType)}`}
               placeholder="Add one or more users..."
               disabled={availableUsers.isPending}
               emptyText={emptyText}

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { AxiosError } from "axios";
 
 import {
   type DashboardProjectSecretsOverview,
@@ -406,6 +407,27 @@ export const secretsDemo: SecretsAdapter = {
       []
     );
     return { data: { tree, value: expandedOf(tree) }, isPending: false, error: null };
+  },
+  useExpandedSecretValue: (dto) => {
+    const scenario = useScenario();
+    const state = useStore().use();
+    const target = { env: dto.environment, path: dto.secretPath, key: dto.secretKey };
+    if (!state.secrets.some(secretAt(dto.projectId, target.env, target.path, target.key)))
+      return {
+        data: undefined,
+        isPending: false,
+        error: Object.assign(new AxiosError("Secret not found"), { status: 404 })
+      };
+    if (scenario === "permissions" && dto.secretKey === "STRIPE_SECRET_KEY")
+      return { data: { secretValue: "", secretValueHidden: true }, isPending: false, error: null };
+    return {
+      data: {
+        secretValue: expandedOf(traceOf(state, dto.projectId, target, [])),
+        secretValueHidden: false
+      },
+      isPending: false,
+      error: null
+    };
   },
   useSecretReferences: (dto) => {
     const state = useStore().use();

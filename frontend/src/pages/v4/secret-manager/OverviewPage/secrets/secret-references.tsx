@@ -4,6 +4,7 @@ import {
   type FocusEvent,
   Fragment,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactElement,
   type ReactNode,
   type Ref,
@@ -16,14 +17,17 @@ import {
   useRef,
   useState
 } from "react";
+import { AxiosError } from "axios";
 import { LayersIcon } from "lucide-react";
 
-import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Popover, PopoverAnchor, PopoverContent } from "@app/components/v4/ui/popover";
 import { CopyButton } from "@app/components/v4/ui/sensitive-editor";
+import { Skeleton } from "@app/components/v4/ui/skeleton";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
+import { ApiErrorTypes } from "@app/hooks/api/types";
 
+import { useV4Adapter } from "../../../data/adapters";
 import { readableValue, type Resource, type Scope, type Secret } from "../secrets-model";
 
 import styles from "./references.module.css";
@@ -83,32 +87,6 @@ export const findSecret = (resources: readonly Resource[], target: ReferenceTarg
       resource.name === target.key
   );
 
-export const referenceId = (target: ReferenceTarget) =>
-  `${target.environment} ${target.path} ${target.key}`;
-
-export function expandReferences(value: string, base: Secret, resources: readonly Resource[]) {
-  let circular = false;
-  let forbidden = false;
-  const expand = (text: string, scope: Scope, seen: string[]): string =>
-    text.replace(/\$\{([^}]+)\}/g, (raw, reference: string) => {
-      const target = resolveReference(reference.trim(), scope);
-      const found = findSecret(resources, target);
-      if (!found) return raw;
-      const resolved = readableValue(found);
-      if (resolved === undefined) {
-        forbidden = true;
-        return raw;
-      }
-      if (seen.includes(referenceId(target))) {
-        circular = true;
-        return raw;
-      }
-      return expand(resolved, found, [...seen, referenceId(target)]);
-    });
-  const expanded = expand(value, base, [referenceId({ ...base, key: base.name })]);
-  return { value: expanded, circular, forbidden };
-}
-
 const DENIED = "You do not have permission to access this secret";
 
 function focusSegment(index: number, parts: string[], base: Scope, source: ReferenceSource) {
@@ -158,7 +136,45 @@ function useModifierHeld() {
   return held;
 }
 
-export function ReferenceText({ value, scope }: { value: string; scope?: Scope }) {
+const VALID_REFERENCE = /^\$\{[a-zA-Z0-9-_.@]+(?: +[a-zA-Z0-9-_@]+)*\}$/;
+const DENIED_REFERENCE = "You do not have permission to view this referenced secret.";
+
+function ResolvedReference({ reference, scope }: { reference: string; scope: Scope }) {
+  const target = resolveReference(reference, scope);
+  const { data, isPending, error } = useV4Adapter("secrets").useExpandedSecretValue({
+    projectId: scope.project,
+    environment: target.environment,
+    secretPath: target.path,
+    secretKey: target.key
+  });
+  if (isPending) return <Skeleton width={128} />;
+  if (error) {
+    const status =
+      error instanceof AxiosError ? (error.status ?? error.response?.status) : undefined;
+    if (status === 404) return "Referenced secret not found.";
+    if (status === 403) return DENIED_REFERENCE;
+    return "Failed to resolve this reference.";
+  }
+  if (!data || data.secretValueHidden) return DENIED_REFERENCE;
+  if (!data.secretValue) return <span className={styles.previewEmpty}>Empty</span>;
+  return <span className={styles.preview}>{data.secretValue}</span>;
+}
+
+const previewOf = (raw: string, reference: string, scope: Scope) => {
+  if (!VALID_REFERENCE.test(raw)) return "Not a valid reference, so it stays as written.";
+  if (reference.startsWith("@")) return "Cross-project references can't be previewed here.";
+  return <ResolvedReference reference={reference} scope={scope} />;
+};
+
+export function ReferenceText({
+  value,
+  scope,
+  hover
+}: {
+  value: string;
+  scope?: Scope;
+  hover?: { index?: number; onClose: () => void };
+}) {
   const source = useContext(ReferenceSourceContext);
   const held = useModifierHeld();
   const nodes: ReactElement[] = [];
@@ -170,8 +186,8 @@ export function ReferenceText({ value, scope }: { value: string; scope?: Scope }
     last = start + match[0].length;
     const parts = match[1].split(".");
     const target = source && scope && !parts[0]?.startsWith("@") ? { source, scope } : undefined;
-    nodes.push(
-      <span key={`ref-${start}`} className={styles.reference}>
+    const node = (
+      <span key={`ref-${start}`} className={styles.reference} data-reference={start}>
         {"${"}
         {parts.map((segment, index) => (
           <Fragment key={`${start}-${index + 1}`}>
@@ -207,6 +223,29 @@ export function ReferenceText({ value, scope }: { value: string; scope?: Scope }
         ))}
         {"}"}
       </span>
+    );
+    if (!scope) {
+      nodes.push(node);
+      return;
+    }
+    const preview = previewOf(match[0], match[1], scope);
+    nodes.push(
+      hover ? (
+        <Tooltip
+          key={`ref-${start}`}
+          content={preview}
+          open={hover.index === start}
+          onOpenChange={(next) => {
+            if (!next) hover.onClose();
+          }}
+        >
+          {node}
+        </Tooltip>
+      ) : (
+        <Tooltip key={`ref-${start}`} content={preview}>
+          {node}
+        </Tooltip>
+      )
     );
   });
   if (last < value.length)
@@ -372,6 +411,8 @@ type ControlProps = {
   onFocus: () => void;
   onBlur: (event: FocusEvent<Field>) => void;
   onScroll: () => void;
+  onMouseMove: (event: MouseEvent<Field>) => void;
+  onMouseLeave: () => void;
 };
 
 const mask = "••••••••••••••••";
@@ -408,6 +449,7 @@ export function ReferenceEditor({
   const [cursor, setCursor] = useState(0);
   const [highlighted, setHighlighted] = useState(0);
   const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState<number>();
   const hidden = masked && !focused && value !== "";
 
   const openLeft = unclosedLeft(value, cursor - 1);
@@ -421,6 +463,7 @@ export function ReferenceEditor({
   const optionKey = `${wizard?.step}:${input.split(".").slice(0, -1).join(".")}:${options.length}`;
 
   useEffect(() => setHighlighted(0), [optionKey]);
+  useEffect(() => setHovered(undefined), [value, hidden]);
   useEffect(() => {
     if (open)
       document.getElementById(`${listId}-${highlighted}`)?.scrollIntoView({ block: "nearest" });
@@ -551,10 +594,34 @@ export function ReferenceEditor({
               setFocused(false);
               onBlur?.(event);
             },
-            onScroll: sync
+            onScroll: sync,
+            onMouseMove: (event) => {
+              if (!scope || hidden) return;
+              const hit = [
+                ...(layer.current?.querySelectorAll<HTMLElement>("[data-reference]") ?? [])
+              ].find((node) =>
+                [...node.getClientRects()].some(
+                  (rect) =>
+                    event.clientX >= rect.left &&
+                    event.clientX <= rect.right &&
+                    event.clientY >= rect.top &&
+                    event.clientY <= rect.bottom
+                )
+              );
+              setHovered(hit ? Number(hit.dataset.reference) : undefined);
+            },
+            onMouseLeave: () => setHovered(undefined)
           })}
           <div ref={layer} aria-hidden className={styles.layer}>
-            {hidden ? mask : <ReferenceText value={value} scope={scope} />}
+            {hidden ? (
+              mask
+            ) : (
+              <ReferenceText
+                value={value}
+                scope={scope}
+                hover={{ index: open ? undefined : hovered, onClose: () => setHovered(undefined) }}
+              />
+            )}
             {!hidden && value.endsWith("\n") && <br />}
           </div>
         </div>
@@ -637,68 +704,40 @@ export function ReferenceEditor({
   );
 }
 
-export function ResolvedValueButton({
-  secret,
-  disabledReason,
-  open,
-  onOpenChange
-}: {
-  secret: Secret;
-  disabledReason?: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const source = useContext(ReferenceSourceContext);
-  const resolved = expandReferences(readableValue(secret) ?? "", secret, source?.resources ?? []);
+export function ResolvedValue({ secret }: { secret: Secret }) {
+  const { data, isPending, error } = useV4Adapter("secrets").useSecretReferenceTree({
+    projectId: secret.project,
+    environmentSlug: secret.environment,
+    secretPath: secret.path,
+    secretKey: secret.name
+  });
+  if (isPending)
+    return (
+      <div className={styles.resolvedValue}>
+        <Skeleton width="100%" />
+      </div>
+    );
+  if (error)
+    return (
+      <p className={styles.resolvedError}>
+        {error instanceof AxiosError &&
+        error.response?.data?.error === ApiErrorTypes.CustomForbiddenError
+          ? "You do not have permission to view one of the referenced secrets."
+          : "Failed to resolve secret value."}
+      </p>
+    );
+  const resolved = data?.value ?? "";
   return (
-    <Popover open={open && !disabledReason} onOpenChange={onOpenChange}>
-      <PopoverAnchor asChild>
-        <span className={styles.resolvedSlot}>
-          <Tooltip content={disabledReason ?? "View resolved value"}>
-            <span className={styles.resolvedSlot}>
-              <Button
-                variant="ghost"
-                size="icon-row"
-                iconOnly
-                aria-disabled={Boolean(disabledReason) || undefined}
-                aria-expanded={open && !disabledReason}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (!disabledReason) onOpenChange(!open);
-                }}
-              >
-                <Icon name="link" />
-                <span className="sr-only">View resolved secret value</span>
-              </Button>
-            </span>
-          </Tooltip>
-        </span>
-      </PopoverAnchor>
-      <PopoverContent
-        align="start"
-        className={styles.resolved}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onCloseAutoFocus={(event) => event.preventDefault()}
+    <div className={styles.resolvedValue}>
+      <span
+        role="textbox"
+        aria-readonly
+        aria-label="Resolved secret value"
+        className={styles.resolvedText}
       >
-        {resolved.forbidden ? (
-          <p className={styles.resolvedError}>
-            You do not have permission to view one of the referenced secrets.
-          </p>
-        ) : (
-          <div className={styles.resolvedValue}>
-            <span
-              role="textbox"
-              aria-readonly
-              aria-label="Resolved secret value"
-              className={styles.resolvedText}
-            >
-              <ReferenceText value={resolved.value} />
-            </span>
-            <CopyButton value={resolved.value} label="Copy resolved value" iconOnly />
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+        <ReferenceText value={resolved} />
+      </span>
+      <CopyButton value={resolved} label="Copy resolved value" iconOnly />
+    </div>
   );
 }

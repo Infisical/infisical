@@ -40,6 +40,8 @@ export const LiveSessionProvider = ({
       Boolean(organization.rootOrgId) && organization.id !== organization.rootOrgId;
     last.current = {
       user: {
+        id: user.id,
+        superAdmin: user.superAdmin,
         name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username,
         email: user.email ?? user.username
       },

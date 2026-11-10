@@ -10,6 +10,7 @@ import {
   productOf,
   productSections,
   projectSections,
+  projectSettingsSections,
   scanningSections,
   settingsSections,
   type ShellLevel,
@@ -21,6 +22,8 @@ export type ShellLocation = {
   level: ShellLevel;
   sections: readonly ShellNavSection[];
   current?: ShellNavItem;
+  settings?: readonly ShellNavSection[];
+  inSettings?: boolean;
   product?: ProjectType;
   projectId?: string;
 };
@@ -81,6 +84,15 @@ export const resolveShellLocation = (
   isSubOrganization: boolean
 ): ShellLocation => {
   const at = locate(path, isSubOrganization);
+  const settingsPath = at.sections
+    .flatMap((section) => section.items)
+    .find((item) => item.id === "settings")?.path;
+  const settings = settingsPath ? projectSettingsSections(at.level, settingsPath) : undefined;
+  if (settings && settingsPath === path) {
+    const tabs = settings.flatMap((section) => section.items);
+    const current = tabs.find((item) => item.search?.selectedTab === selectedTab) ?? tabs[0];
+    return { ...at, settings, inSettings: true, current };
+  }
   const items = at.sections.flatMap((section) => section.items);
   const matches = items.filter(
     (item) =>
@@ -92,5 +104,5 @@ export const resolveShellLocation = (
     items.find(
       (item) => item.id === detailOwners.find(([pattern]) => pattern.test(`${path}/`))?.[1]
     );
-  return { ...at, current };
+  return { ...at, settings, current };
 };

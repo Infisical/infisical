@@ -1,0 +1,167 @@
+---
+title: "How agents find their services"
+sidebarTitle: "Service discovery"
+description: "How an AI agent behind the Agent Vault proxy lists the services its session can use, and the built-in skill that tells the agent to check that list."
+---
+
+An agent that runs behind the Agent Vault [proxy](/documentation/platform/agent-vault/proxies) holds no API keys, so its environment doesn't list the APIs and MCP servers it can use. Without help, an agent often stops and asks you for a key, even though the proxy would have added the real one.
+
+Agent Vault provides two things so that an agent can find its services on its own:
+
+- A [list of the services](#how-an-agent-gets-the-list) its [session](/documentation/platform/agent-vault/sessions) can use, which the agent gets from Infisical through the proxy
+- Agent Vault's [built-in skill](#the-built-in-skill), which tells the agent to check the list before it asks for a key, and explains how to work behind the proxy
+
+## What the list includes
+
+For each service in the session, the list includes:
+
+- The service's name and [description](/documentation/platform/agent-vault/services#service-descriptions)
+- The service's hosts, or for an MCP service, its server URL and transport
+- The header the proxy sets, and any [substitution placeholder](/documentation/platform/agent-vault/http-apis#substitutions) the agent writes where a secret goes
+- The [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths) the service allows, or for an MCP service, the [tools](/documentation/platform/agent-vault/mcp-servers#allowed-tools) it allows
+- The service's status: ready, or waiting for [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values)
+- The person who has to fix the credential if the service rejects it: an admin, or, if the credential uses personal values, the person who set them (the session's owner, or for a session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users), that user)
+- A sentence that tells the agent how to call the service
+
+The list also shows the session's expiry, and the [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) of the proxy that the request came through, so the agent can tell if the proxy refuses hosts that no service covers. If it does, the list names the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions), such as a package registry the agent can still reach. The list never includes a credential, a custom header's value, or a substitution's value.
+
+This shortened example shows a GitHub service that allows only `GET` requests:
+
+```json
+{
+  "session": { "expiresAt": "2026-11-05T02:00:00Z", "accessBundle": "engineering" },
+  "services": [
+    {
+      "name": "github",
+      "description": "GitHub REST API for the acme-corp organization.",
+      "type": "http",
+      "hosts": ["api.github.com"],
+      "url": "https://api.github.com",
+      "status": "ready",
+      "credential": { "type": "bearer", "header": "Authorization", "addedByProxy": true, "memberProvided": false },
+      "allowedMethods": ["GET"],
+      "howToUse": "Call https://api.github.com directly. The proxy sets the Authorization header, so send no key, or any placeholder value if a client or SDK insists on one. A key you send in that header is replaced. Only GET requests are allowed; the proxy refuses any other method."
+    }
+  ]
+}
+```
+
+## How an agent gets the list
+
+The agent requests the list from the Infisical instance that the proxy connects to, through the same proxy as its other requests. The agent sends no token. The proxy adds the session's token to the request, so the agent never handles the token. Each request appears in the session's [logs](/documentation/platform/agent-vault/session-logs#what-gets-recorded) with the outcome **Listed Services**.
+
+`INFISICAL_AGENT_VAULT_URL` holds the URL of that Infisical instance, such as `https://app.infisical.com`. With the variable set, the agent runs:
+
+```bash
+curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"
+```
+
+`--noproxy ""` sends the request through the proxy even if `NO_PROXY` lists your Infisical instance's host, such as `localhost`. If the request skips the proxy, it reaches Infisical without the session's token, and Infisical refuses it.
+
+To set `INFISICAL_AGENT_VAULT_URL` in the agent's environment:
+
+- If you start the agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI gets the URL from the proxy and sets the variable for you
+- If your code starts agents another way, such as in an [E2B sandbox](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox), set the variable yourself to the URL you passed to the proxy with [`--domain`](/documentation/platform/agent-vault/proxies#command-flags) (or to `https://app.infisical.com` if you didn't pass `--domain`)
+
+<Note>
+  If the proxy runs an older version of the Infisical CLI, `infisical agent-vault run` can't get the URL from the proxy and doesn't set the variable, so the agent can't list its services. To fix this, update the Infisical CLI that runs the proxy.
+</Note>
+
+### Check what an agent sees
+
+To get the list that an agent in a session gets, call the [List session services](/api-reference/endpoints/agent-vault-sessions/list-session-services) endpoint with the session's token. If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with the URL of your instance:
+
+```bash
+curl -H "Authorization: Bearer <session-token>" https://app.infisical.com/api/v1/agent-vault/session/services
+```
+
+A list you get this way doesn't include a traffic policy, because the request didn't come through a proxy.
+
+## Give the agent its MCP servers
+
+Most MCP clients load their servers only when they start, so an agent can't add an MCP server it finds in the list and use its tools in the same session. To give the agent those tools from the start, add the session's MCP servers to the agent's MCP configuration before it starts:
+
+- If you start Claude Code with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI adds the session's MCP servers that are ready to Claude Code with `--mcp-config` (to leave them out, pass [`--no-mcp-servers`](/cli/reference#agent-vault-run--flag-no-mcp-servers))
+- If your code starts the agent another way, build the configuration from the [List session services](/api-reference/endpoints/agent-vault-sessions/list-session-services) endpoint, as the following example shows
+
+Build one server for each service whose `type` is `mcp` and whose `status` is `ready`:
+
+- Add the server at the service's `url`, with its `transport`
+- Put a placeholder in the header the proxy sets, `credential.header`, so the agent's MCP client doesn't try to sign in (the proxy replaces it with the real credential)
+- Leave out a service whose URL or header contains `$`, because Claude Code fills in `${VAR}` from the agent's environment, so such a URL could send a variable, such as the proxy URL with the session token, to the server
+
+This example builds the value of Claude Code's `--mcp-config` from a session's token. If you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with the URL of your instance:
+
+```python
+import json
+
+import requests
+
+services = requests.get(
+    "https://app.infisical.com/api/v1/agent-vault/session/services",
+    headers={"Authorization": f"Bearer {session_token}"},
+    timeout=30,
+).json()["services"]
+
+mcp_servers = {}
+for service in services:
+    if service["type"] != "mcp" or service["status"] != "ready":
+        continue
+    if "$" in service["url"] or "$" in (service["credential"].get("header") or ""):
+        continue
+    server = {"type": "sse" if service.get("transport") == "sse" else "http", "url": service["url"]}
+    header = service["credential"].get("header")
+    if service["credential"]["addedByProxy"] and header:
+        server["headers"] = {header: "Bearer agent-vault"}
+    mcp_servers[service["name"]] = server
+
+mcp_config = json.dumps({"mcpServers": mcp_servers})
+```
+
+Then start Claude Code with `--mcp-config` set to `mcp_config`.
+
+## The built-in skill
+
+`infisical-agent-vault` is a [skill](/documentation/platform/agent-vault/skills) that Agent Vault provides for every agent. The skill tells the agent to:
+
+- Expect no API keys in its environment, and check its list of services before it asks you for a key or gives up on a task
+- Give a placeholder key, such as `agent-vault`, to a tool or SDK that won't start without one, and write a service's substitution placeholder where the secret goes
+- Call an MCP service with plain HTTP requests if the agent's MCP client only loads servers when the client starts
+- Read the `X-Agent-Vault-Decision` header to tell the proxy's responses apart from the API's (see [Responses from the proxy](#responses-from-the-proxy))
+- Read Infisical's documentation for agents only when a task is about Infisical itself
+- Never bypass the proxy, turn off TLS verification, or print the proxy URL, which holds the session token
+
+The skill tells the agent to request the list first, and to ignore the skill if `INFISICAL_AGENT_VAULT_URL` isn't set, such as when an agent later runs on the same host without Agent Vault.
+
+### Read the built-in skill
+
+To read the built-in skill, call the [Get built-in skill](/api-reference/endpoints/agent-vault-skills/get-builtin) endpoint. After `infisical agent-vault run` installs the skill, its files are also on the agent's host, in the [folder where the CLI installs skills](/documentation/platform/agent-vault/skills#where-the-cli-installs-skills).
+
+Infisical provides the built-in skill, so you can't edit it or delete it. To leave it out, [turn it off](#turn-off-the-built-in-skill).
+
+### How agents get the built-in skill
+
+- `infisical agent-vault run` installs the built-in skill along with the session's [other skills](/documentation/platform/agent-vault/skills#how-agents-get-skills)
+- If your code starts agents without `infisical agent-vault run`, such as in an [E2B sandbox](/documentation/platform/agent-vault/guides/e2b#step-4-run-a-command-in-a-sandbox), install the skills that the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint returns (they include the built-in skill), and [set `INFISICAL_AGENT_VAULT_URL`](#how-an-agent-gets-the-list)
+
+### Turn off the built-in skill
+
+- With `infisical agent-vault run`, pass [`--no-agent-vault-skill`](/cli/reference#agent-vault-run--flag-no-agent-vault-skill) to leave out only the built-in skill, or [`--no-skills`](/cli/reference#agent-vault-run--flag-no-skills) to leave out every skill
+- With the [List session skills](/api-reference/endpoints/agent-vault-skills/list-session-skills) endpoint, pass `includeBuiltin=false`
+
+To replace the built-in skill with your own, turn the built-in skill off and give your skill another name. A skill you add can't use the name `infisical-agent-vault`.
+
+## Responses from the proxy
+
+Every response that goes through the proxy has an `X-Agent-Vault-Decision` header, so an agent can tell a response from the proxy apart from a response from the API:
+
+| Value | What the proxy did |
+| --- | --- |
+| `brokered` | Added a service's credential to the request. If the API still answers `401` or `403`, the service's stored [credential](/documentation/platform/agent-vault/http-apis#credential-types) is wrong or lacks a permission |
+| `passthrough` | Sent the request on without a credential, because no service covers the host |
+| `blocked` | Refused the request, for one of the reasons in [Blocked requests](/documentation/platform/agent-vault/proxies#blocked-requests) |
+| `error` | Couldn't complete the request, such as when it can't reach the host |
+| `discovery` | Got the [list of services](#how-an-agent-gets-the-list) from Infisical for the session |
+| `skills` | Got the session's [skills](/documentation/platform/agent-vault/skills) from Infisical, such as when `infisical agent-vault run` installs them |
+
+If a service matched the request, the `X-Agent-Vault-Service` header names the service. If the proxy refuses a request, the response body is JSON with an error code, a message, and a hint that tells the agent what to do next.

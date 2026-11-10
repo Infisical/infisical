@@ -17,6 +17,7 @@ import {
 import { hostError } from "@app/helpers/agentVaultHostPattern";
 import { pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 
+import { DescriptionField } from "./DescriptionField";
 import { HTTP_METHODS, isAllMethods, TServiceForm } from "./serviceSchema";
 
 export const DetailsFields = () => {
@@ -38,6 +39,8 @@ export const DetailsFields = () => {
           </Field>
         )}
       />
+
+      <DescriptionField placeholder="Query metrics and logs for the US5 site" />
 
       <Controller
         control={control}

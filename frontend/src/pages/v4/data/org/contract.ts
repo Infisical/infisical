@@ -20,6 +20,7 @@ export type V4InfiniteQueryResult<TPage> = V4QueryResult<InfiniteData<TPage>> & 
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   fetchNextPage: () => Promise<unknown>;
+  refetch: () => Promise<unknown>;
 };
 
 export type OrgAdapter = {

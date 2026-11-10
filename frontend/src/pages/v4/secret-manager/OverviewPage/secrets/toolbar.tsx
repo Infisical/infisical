@@ -1,11 +1,16 @@
 import { type ReactNode, useRef, useState } from "react";
 import {
+  BellIcon,
   ClipboardPasteIcon,
+  CodeXmlIcon,
   FilterIcon,
   FingerprintIcon,
   HexagonIcon,
   ImportIcon,
-  ListPlusIcon
+  ListPlusIcon,
+  MessageSquareIcon,
+  PencilLineIcon,
+  TagsIcon
 } from "lucide-react";
 
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
@@ -26,12 +31,15 @@ import {
 } from "@app/components/v4/ui/dropdown-menu";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
+import { Popover, PopoverAnchor, PopoverContent } from "@app/components/v4/ui/popover";
 import { SecretInput } from "@app/components/v4/ui/secret-input";
 import { TableCell, TableRow } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
-import type { ResourceKind } from "../secrets-model";
+import type { ResourceKind, Secret } from "../secrets-model";
 import { KindIcon, NEXT_PHASE } from "./overview-cells";
+import { CommentForm, MetadataForm, TagForm } from "./row-actions/annotations";
+import { Annotations } from "./secret-row";
 
 import styles from "./overview.module.css";
 
@@ -342,10 +350,17 @@ export function FolderBreadcrumbBar({
   );
 }
 
+export type QuickAddAnnotations = Pick<Secret, "comment" | "tags" | "metadata">;
+type QuickAddAnnotation = "comment" | "tags" | "metadata";
+const noAnnotations: QuickAddAnnotations = { comment: "", tags: [], metadata: [] };
+
 export function QuickAddRow({
   multiple,
   colSpan,
   existing,
+  tagOptions,
+  tagsBlock,
+  canCreateTags,
   onCreate,
   onQueue,
   onPasteSecrets
@@ -353,19 +368,47 @@ export function QuickAddRow({
   multiple: boolean;
   colSpan: number;
   existing: string[];
-  onCreate: (key: string, value: string) => void;
-  onQueue?: (key: string, value: string) => void;
+  tagOptions: string[];
+  tagsBlock?: string;
+  canCreateTags: boolean;
+  onCreate: (
+    key: string,
+    value: string,
+    annotations: QuickAddAnnotations,
+    onFieldError: (message: string) => void
+  ) => Promise<boolean>;
+  onQueue?: (key: string, value: string, annotations: QuickAddAnnotations) => void;
   onPasteSecrets: (parsed: ReturnType<typeof parsePastedEnv>) => void;
 }) {
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
+  const [annotations, setAnnotations] = useState(noAnnotations);
+  const [overlay, setOverlay] = useState<QuickAddAnnotation>();
+  const [saving, setSaving] = useState(false);
   const valueRef = useRef<HTMLTextAreaElement>(null);
-  const dirty = Boolean(key || value);
+  const keyRef = useRef<HTMLInputElement>(null);
+  const annotating = useRef(false);
+  const chosen = useRef<QuickAddAnnotation>(undefined);
+  const resume = useRef<HTMLElement | null>(null);
+  const annotated = Boolean(
+    annotations.comment || annotations.tags.length || annotations.metadata.length
+  );
+  const dirty = Boolean(key || value || annotated);
   const reset = () => {
     setKey("");
     setValue("");
     setError("");
+    setAnnotations(noAnnotations);
+  };
+  const finishAnnotating = () => {
+    setOverlay(undefined);
+    (resume.current ?? valueRef.current)?.focus();
+    annotating.current = false;
+  };
+  const annotate = (patch: Partial<QuickAddAnnotations>) => {
+    setAnnotations((current) => ({ ...current, ...patch }));
+    finishAnnotating();
   };
   const save = (queue = false) => {
     const name = key.trim();
@@ -381,15 +424,30 @@ export function QuickAddRow({
       setError("A secret with this name already exists");
       return;
     }
-    if (queue && onQueue) onQueue(name, value);
-    else onCreate(name, value);
-    reset();
+    if (queue && onQueue) {
+      onQueue(name, value, annotations);
+      reset();
+      return;
+    }
+    setSaving(true);
+    onCreate(name, value, annotations, setError)
+      .then((ok) => {
+        if (ok) reset();
+      })
+      .finally(() => setSaving(false));
   };
   return (
     <TableRow
       className={styles.quickAdd}
+      focused={Boolean(overlay)}
       onBlurCapture={(event) => {
-        if (!onQueue || !key.trim() || event.currentTarget.contains(event.relatedTarget as Node))
+        if (
+          annotating.current ||
+          saving ||
+          !onQueue ||
+          !key.trim() ||
+          event.currentTarget.contains(event.relatedTarget as Node)
+        )
           return;
         save(true);
       }}
@@ -402,40 +460,153 @@ export function QuickAddRow({
         </span>
       </TableCell>
       <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
-        <Input
-          className={styles.inlineInput}
-          aria-label="New secret name"
-          placeholder="Add a secret name or paste a .env"
-          autoComplete="off"
-          spellCheck={false}
-          value={key}
-          aria-invalid={Boolean(error) || undefined}
-          title={error || undefined}
-          onChange={(event) => {
-            setKey(event.target.value);
-            setError("");
-          }}
-          onPaste={(event) => {
-            const { selectionStart, selectionEnd, value: current } = event.currentTarget;
-            if (key && !(selectionStart === 0 && selectionEnd === current.length)) return;
-            const entries = Object.entries(parsePastedEnv(event.clipboardData.getData("text")));
-            if (!entries.length) return;
-            event.preventDefault();
-            if (entries.length > 1) {
-              onPasteSecrets(Object.fromEntries(entries));
-              return;
-            }
-            setKey(entries[0][0]);
-            setValue(entries[0][1].value);
-            setError("");
-            setTimeout(() => valueRef.current?.focus(), 0);
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter") return;
-            event.preventDefault();
-            valueRef.current?.focus();
-          }}
-        />
+        <div className={styles.nameLine}>
+          <Input
+            ref={keyRef}
+            className={styles.inlineInput}
+            aria-label="New secret name"
+            placeholder="Add a secret name or paste a .env"
+            autoComplete="off"
+            spellCheck={false}
+            value={key}
+            aria-invalid={Boolean(error) || undefined}
+            title={error || undefined}
+            onChange={(event) => {
+              setKey(event.target.value);
+              setError("");
+            }}
+            onPaste={(event) => {
+              const { selectionStart, selectionEnd, value: current } = event.currentTarget;
+              if (key && !(selectionStart === 0 && selectionEnd === current.length)) return;
+              const entries = Object.entries(parsePastedEnv(event.clipboardData.getData("text")));
+              if (!entries.length) return;
+              event.preventDefault();
+              if (entries.length > 1) {
+                onPasteSecrets(Object.fromEntries(entries));
+                return;
+              }
+              setKey(entries[0][0]);
+              setValue(entries[0][1].value);
+              setError("");
+              setTimeout(() => valueRef.current?.focus(), 0);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              valueRef.current?.focus();
+            }}
+          />
+          <Annotations
+            secret={{ name: key.trim(), ...annotations }}
+            onOpen={(next) => {
+              annotating.current = true;
+              resume.current = keyRef.current;
+              setOverlay(next);
+            }}
+          />
+          {key.trim() && (
+            <Popover
+              open={Boolean(overlay)}
+              onOpenChange={(next) => {
+                if (!next) finishAnnotating();
+              }}
+            >
+              <DropdownMenu
+                onOpenChange={(next) => {
+                  if (!next) return;
+                  annotating.current = true;
+                  chosen.current = undefined;
+                  resume.current =
+                    document.activeElement === valueRef.current ? valueRef.current : keyRef.current;
+                }}
+              >
+                <PopoverAnchor asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-xs" iconOnly tabIndex={-1}>
+                      <Icon icon={PencilLineIcon} />
+                      <span className="sr-only">Annotate new secret</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                </PopoverAnchor>
+                <DropdownMenuContent
+                  align="start"
+                  onCloseAutoFocus={(event) => {
+                    event.preventDefault();
+                    if (chosen.current) setOverlay(chosen.current);
+                    else finishAnnotating();
+                  }}
+                >
+                  <DropdownMenuLabel>Annotate</DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      chosen.current = "comment";
+                    }}
+                  >
+                    <Icon icon={MessageSquareIcon} />
+                    {annotations.comment ? "Edit comment" : "Add comment"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={Boolean(tagsBlock)}
+                    description={tagsBlock}
+                    onSelect={() => {
+                      chosen.current = "tags";
+                    }}
+                  >
+                    <Icon icon={TagsIcon} />
+                    {annotations.tags.length ? "Edit tags" : "Add tags"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled description="Create the secret to add a reminder">
+                    <Icon icon={BellIcon} />
+                    Add reminder
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      chosen.current = "metadata";
+                    }}
+                  >
+                    <Icon icon={CodeXmlIcon} />
+                    {annotations.metadata.length ? "Edit metadata" : "Add metadata"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <PopoverContent
+                draggable
+                align="start"
+                className={
+                  overlay === "metadata" ? styles.metadataPopover : styles.annotationPopover
+                }
+                onCloseAutoFocus={(event) => event.preventDefault()}
+              >
+                {overlay === "comment" && (
+                  <CommentForm
+                    comment={annotations.comment}
+                    canEdit
+                    onClose={finishAnnotating}
+                    onSave={(comment) => annotate({ comment })}
+                  />
+                )}
+                {overlay === "tags" && (
+                  <TagForm
+                    tags={annotations.tags}
+                    options={tagOptions}
+                    canEdit
+                    canCreate={canCreateTags}
+                    onClose={finishAnnotating}
+                    onSave={(tags) => annotate({ tags })}
+                  />
+                )}
+                {overlay === "metadata" && (
+                  <MetadataForm
+                    metadata={annotations.metadata}
+                    canEdit
+                    onClose={finishAnnotating}
+                    onSave={(metadata) => annotate({ metadata })}
+                  />
+                )}
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
       </TableCell>
       <TableCell
         pin={multiple ? "viewport" : undefined}
@@ -463,7 +634,7 @@ export function QuickAddRow({
               <Button variant="ghost" size="xs" onClick={reset}>
                 Undo
               </Button>
-              <Button size="xs" onClick={() => save()}>
+              <Button size="xs" loading={saving} onClick={() => save()}>
                 Save
               </Button>
             </span>
