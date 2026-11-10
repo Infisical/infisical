@@ -17,6 +17,8 @@ export const toast = ({
 }: Omit<ToastItem, "id" | "icon">) =>
   byTone[tone](title, { description, action, ...(duration === undefined ? {} : { duration }) });
 
+export const dismissToast = (id: string | number) => v4Toast.dismiss(id);
+
 export const saved = (title: string) => toast({ tone: "ok", title });
 
 export const failed = (title: string, error?: unknown) =>

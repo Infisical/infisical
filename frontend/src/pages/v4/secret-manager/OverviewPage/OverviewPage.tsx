@@ -92,7 +92,7 @@ import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { useProjectPermission } from "../../access/permissions";
-import { toast } from "../../access/toast";
+import { dismissToast, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
@@ -254,6 +254,16 @@ export const OverviewPage = () => {
   const [recent, setRecent] = useState<string[]>([]);
   const [quickAddedState, setQuickAddedState] = useState({ scope: "", keys: [] as string[] });
   const [sharing, setSharing] = useState<string>();
+  const mounted = useRef(false);
+  const shareToasts = useRef<(string | number)[]>([]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      shareToasts.current.forEach(dismissToast);
+      shareToasts.current = [];
+    };
+  }, []);
   const [rowAction, setRowAction] = useState<RowAction>();
   const [importRequest, setImportRequest] = useState<ImportSecretsRequest>();
   const [copyInvocation, setCopyInvocation] = useState<CopySecretsInvocation>();
@@ -527,11 +537,11 @@ export const OverviewPage = () => {
           )
         )
       : undefined;
-    if (!share) {
+    if (!share || !mounted.current) {
       toast({ tone: "ok", title: feedback.title, description: feedback.description });
       return;
     }
-    toast({
+    const id = toast({
       tone: "ok",
       title: feedback.title,
       description: feedback.description,
@@ -542,6 +552,7 @@ export const OverviewPage = () => {
         }
       }
     });
+    shareToasts.current.push(id);
   };
   const setResources = (
     update: (current: Resource[]) => Resource[],
