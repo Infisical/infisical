@@ -84,6 +84,7 @@ const announcementKey = (item: ToastT) =>
 const spoken = (value: unknown): string => {
   if (typeof value === "string" || typeof value === "number") return String(value);
   if (!React.isValidElement<{ children?: React.ReactNode }>(value)) return "";
+  if (value.type !== React.Fragment && typeof value.type !== "string") return "";
   return React.Children.toArray(value.props.children).map(spoken).filter(Boolean).join(" ");
 };
 const announce = (fresh: ToastT[]): Announcement | null =>

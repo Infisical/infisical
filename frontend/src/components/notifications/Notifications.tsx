@@ -154,7 +154,12 @@ export const createNotification = (
           navigator.clipboard
             .writeText(copy.value)
             .then(() => toast.success(`Copied ${copy.name}`, { toasterId: V4_TOASTER_ID }))
-            .catch(() => toast.error(`Couldn't copy ${copy.name}`, { toasterId: V4_TOASTER_ID }));
+            .catch(() =>
+              toast.error(`Couldn't copy ${copy.name}`, {
+                toasterId: V4_TOASTER_ID,
+                duration: Infinity
+              })
+            );
         }
       },
       duration,
