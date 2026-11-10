@@ -899,28 +899,25 @@ export const orgServiceFactory = ({
     const decodedToken = crypto.jwt().verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
 
-    const deletedOrg = await orgDeletionService.deleteOrganization(orgId);
+    return orgDeletionService.deleteOrganization(orgId, async (organization, tx) => {
+      // Fresh tokens so the session stops pointing at the deleted org
+      const user = await userDAL.findById(userId, tx);
+      const { access: accessToken, refresh: refreshToken } = await loginService.generateUserTokens(
+        {
+          userId: user.id,
+          authMethod: decodedToken.authMethod,
+          issuingRootOrgId: decodedToken.issuingRootOrgId,
+          ip: ipAddress,
+          userAgent: userAgentHeader,
+          isMfaVerified: decodedToken.isMfaVerified,
+          mfaMethod: decodedToken.mfaMethod,
+          idpMfaOrgId: decodedToken.idpMfaOrgId
+        },
+        tx
+      );
 
-    // Fresh tokens so the session stops pointing at the deleted org
-    const user = await userDAL.findById(userId);
-    const { access: accessToken, refresh: refreshToken } = await loginService.generateUserTokens({
-      userId: user.id,
-      authMethod: decodedToken.authMethod,
-      issuingRootOrgId: decodedToken.issuingRootOrgId,
-      ip: ipAddress,
-      userAgent: userAgentHeader,
-      isMfaVerified: decodedToken.isMfaVerified,
-      mfaMethod: decodedToken.mfaMethod,
-      idpMfaOrgId: decodedToken.idpMfaOrgId
+      return { organization, tokens: { accessToken, refreshToken } };
     });
-
-    return {
-      organization: deletedOrg,
-      tokens: {
-        accessToken,
-        refreshToken
-      }
-    };
   };
   /*
    * Org membership management

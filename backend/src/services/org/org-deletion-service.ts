@@ -1,3 +1,6 @@
+import { Knex } from "knex";
+
+import { TOrganizations } from "@app/db/schemas";
 import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { NotFoundError } from "@app/lib/errors";
 import { EventModificationType } from "@app/services/event-outbox/event-definition";
@@ -37,7 +40,16 @@ export const orgDeletionServiceFactory = ({
   honeyTokenCleanupService,
   eventEmitter
 }: TOrgDeletionServiceFactoryDep) => {
-  const deleteOrganization = async (orgId: string) => {
+  // inDeleteTx runs in the delete's tx, so if it throws the org isn't deleted either.
+  function deleteOrganization(orgId: string): Promise<TOrganizations>;
+  function deleteOrganization<T>(
+    orgId: string,
+    inDeleteTx: (deletedOrg: TOrganizations, tx: Knex) => Promise<T>
+  ): Promise<T>;
+  async function deleteOrganization<T>(
+    orgId: string,
+    inDeleteTx?: (deletedOrg: TOrganizations, tx: Knex) => Promise<T>
+  ): Promise<TOrganizations | T> {
     // Outside the tx on purpose: the cleanup grabs its own connections, so inside it we'd hold one
     // pool conn while waiting on another.
     const projects = await projectDAL.find({ orgId });
@@ -67,9 +79,9 @@ export const orgDeletionServiceFactory = ({
         tx
       );
 
-      return deletedOrg;
+      return inDeleteTx ? inDeleteTx(deletedOrg, tx) : deletedOrg;
     });
-  };
+  }
 
   return { deleteOrganization };
 };
