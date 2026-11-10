@@ -769,7 +769,12 @@ const SidebarView = ({
           </>
         )}
         {!scope && spaces && activeSpace && !rail && (
-          <Tabs className={styles.spaces} value={activeSpace.id} onValueChange={setSpaceId}>
+          <Tabs
+            className={styles.spaces}
+            width="full"
+            value={activeSpace.id}
+            onValueChange={setSpaceId}
+          >
             <TabsList variant="segmented" aria-label={spacesLabel}>
               {spaces.map((entry) => (
                 <TabsTrigger key={entry.id} value={entry.id} className={styles.spaceTab}>

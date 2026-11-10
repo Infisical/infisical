@@ -67,6 +67,7 @@ Exports: Tabs, TabsContent, TabsList, tabsListVariants, TabsTrigger, TabsProps, 
 ## Behavior
 
 - Use tabs/value/onChange for a typed collection, or compose the retained Radix parts. Tabs and TabsList take the same variant, underline or segmented. underline draws a 2px ink line under the selected tab on a 1px track rule; segmented sits on a tint track and marks the selected tab with the shared selected paint; a horizontal segmented track is control-default tall (a 2px inset around the tabs), so it lines up with Inputs and Buttons in a toolbar row. Both share one measured indicator. A count renders as a neutral Count chip. The panel sits 16px under the track; when no tab has content, Tabs renders only the tab bar, with no empty panels or gap, for a filter or a page section switcher. Overflow scrolls in the selected orientation and reveals the selected tab.
+- width on Tabs sizes the track and its triggers together, and a composed TabsList reads it from Tabs. The default, content, fits the track to its triggers; full stretches the track to its container and gives every horizontal trigger an equal share, never narrower than its label. There is no full-width track with content-width triggers (rule/tab-width).
 
 ## Accessibility
 
@@ -88,6 +89,11 @@ Source declarations and review criteria only. Generation checks references and c
 
 - underline: example `default`, visible label "underline".
 - segmented: example `default`, visible label "segmented".
+
+### width
+
+- content: example `default`, visible label "segmented".
+- full: example `default`, visible label "segmented, full width".
 
 ### Orientation
 
@@ -155,6 +161,21 @@ export default function Example() {
           />
         </div>
         <figcaption className="text-muted-foreground text-xs">{"segmented"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Tabs
+            label="Plan"
+            variant="segmented"
+            width="full"
+            tabs={[
+              { value: "pro", label: "Pro", content: "Pro features." },
+              { value: "advanced", label: "Advanced", content: "Advanced features." },
+              { value: "enterprise", label: "Enterprise", content: "Enterprise features." }
+            ]}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"segmented, full width"}</figcaption>
       </figure>
     </div>
   );

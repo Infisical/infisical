@@ -200,7 +200,6 @@
   gap: var(--v4-space-4);
 }
 .spaces [role="tab"].spaceTab {
-  flex: 1 1 0;
   min-width: 0;
   min-height: var(--v4-size-control-sm);
   padding-inline: var(--v4-space-8);

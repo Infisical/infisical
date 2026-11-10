@@ -1612,7 +1612,8 @@ export const baselineContent = [
     ],
     referenceNames: ["Item", "Media", "Tile"],
     behavior: [
-      "Item composes rows with title, media, metadata, actions, error/unread states and actions below the text. ItemGroup keeps the requested semantic wrapper; Tile is a native selected button. Tile wraps its title (up to two lines), description and meta within the tile, so long text never runs under the trailing chevron or check."
+      "Item composes rows with title, media, metadata, actions, error/unread states and actions below the text. ItemGroup keeps the requested semantic wrapper; Tile is a native selected button. Tile wraps its title (up to two lines), description and meta within the tile, so long text never runs under the trailing chevron or check.",
+      "Tile always has its own ground, because its chevron sits at the far edge: a line-soft border on a bare surface, and the tint shade with no border inside a framed Card, List or DataTable, so the frames never nest. An unframed item puts its chevron right after its content instead (rule/chevron-tile-frame)."
     ],
     accessibility: [
       "Make only actionable rows interactive. Name a selected Tile and preserve aria-pressed instead of adding click handlers to a generic div."
@@ -1751,6 +1752,14 @@ export const baselineContent = [
             exampleId: "variants",
             label: "info"
           }
+        ]
+      },
+      {
+        axis: "Tile ground",
+        expected: ["border", "shade"],
+        shown: [
+          { value: "border", exampleId: "tiles", label: "On a surface: bordered" },
+          { value: "shade", exampleId: "tiles", label: "Inside a Card: shaded" }
         ]
       },
       {
