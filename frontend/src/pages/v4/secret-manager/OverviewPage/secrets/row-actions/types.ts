@@ -8,7 +8,12 @@ export type SecretPatch = Partial<
   >
 > & { value?: string };
 
-export type SecretUpdate = (secret: Secret, patch: SecretPatch, feedback: FlowFeedback) => void;
+export type SecretUpdate = (
+  secret: Secret,
+  patch: SecretPatch,
+  feedback: FlowFeedback,
+  onFieldError?: (message: string) => void
+) => Promise<boolean>;
 
 type Of<K extends Resource["kind"]> = Extract<Resource, { kind: K }>;
 

@@ -1,6 +1,7 @@
 import { type ComponentProps, memo, type ReactNode, useEffect, useRef, useState } from "react";
 import {
   BellIcon,
+  BracesIcon,
   CodeXmlIcon,
   CopyPlusIcon,
   EditIcon,
@@ -98,12 +99,7 @@ import { ReferencesDialog } from "./row-actions/references-dialog";
 import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
 import type { SecretUpdate } from "./row-actions/types";
 import { VersionHistorySheet } from "./row-actions/version-history-sheet";
-import {
-  hasReference,
-  ReferenceEditor,
-  ReferenceText,
-  ResolvedValueButton
-} from "./secret-references";
+import { hasReference, ReferenceEditor, ReferenceText, ResolvedValue } from "./secret-references";
 
 import styles from "./overview.module.css";
 
@@ -134,8 +130,13 @@ type Overlay =
   | "history"
   | "references"
   | "access"
-  | "share";
-const popovers: Overlay[] = ["comment", "tags", "metadata"];
+  | "share"
+  | "resolved";
+const popovers: Overlay[] = ["comment", "tags", "metadata", "resolved"];
+const popoverClass: Partial<Record<Overlay, string>> = {
+  metadata: styles.metadataPopover,
+  resolved: styles.resolvedPopover
+};
 
 const copy = async (
   value: string,
@@ -151,19 +152,10 @@ const copy = async (
   }
 };
 
-function SecretValue({
-  secret,
-  visible,
-  pending
-}: {
-  secret?: Secret;
-  visible: boolean;
-  pending?: boolean;
-}) {
+function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean }) {
   const [focused, setFocused] = useState(false);
-  const [resolving, setResolving] = useState(false);
   const loader = useValueLoader();
-  const shown = visible || focused || resolving;
+  const shown = visible || focused;
   const loading = secret?.value.status === "loading";
   useEffect(() => {
     if (secret && shown && loading) loader.request([secret]);
@@ -182,29 +174,18 @@ function SecretValue({
       </span>
     );
   return (
-    <>
-      {(focused || resolving) && !loading && hasReference(value) && (
-        <ResolvedValueButton
-          secret={secret}
-          disabledReason={pending ? "Save pending changes to view resolved value" : undefined}
-          open={resolving}
-          onOpenChange={setResolving}
-        />
-      )}
-      <span
-        className={styles.value}
-        role="textbox"
-        aria-readonly
-        tabIndex={0}
-        aria-label={`Value of ${secret.name}, focus to reveal`}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-      >
-        {value === "" && <span className={styles.emptyValue}>Empty</span>}
-        {value !== "" &&
-          (shown && !loading ? <ReferenceText value={value} scope={secret} /> : mask)}
-      </span>
-    </>
+    <span
+      className={styles.value}
+      role="textbox"
+      aria-readonly
+      tabIndex={0}
+      aria-label={`Value of ${secret.name}, focus to reveal`}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+    >
+      {value === "" && <span className={styles.emptyValue}>Empty</span>}
+      {value !== "" && (shown && !loading ? <ReferenceText value={value} scope={secret} /> : mask)}
+    </span>
   );
 }
 
@@ -227,23 +208,33 @@ function InlineEditor({
   saveLabel: string;
   undoLabel: string;
   dirtyFromStart?: boolean;
-  onSave: (value: string) => void;
+  onSave: (value: string, onFieldError: (message: string) => void) => Promise<boolean>;
   onCancel: () => void;
   idle?: ReactNode;
 }) {
   const [draft, setDraft] = useState(initial);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const dirty = dirtyFromStart || draft !== initial;
+  const save = () => {
+    if (saving) return;
+    setSaving(true);
+    onSave(draft, setError).finally(() => setSaving(false));
+  };
   return (
-    <div ref={root} className={styles.inlineEdit}>
+    <div ref={root} className={styles.inlineEdit} data-invalid={error ? "" : undefined}>
       <ReferenceEditor
         value={draft}
         scope={scope}
-        onValueChange={setDraft}
+        onValueChange={(next) => {
+          setDraft(next);
+          setError("");
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter" && dirty) {
             event.preventDefault();
-            onSave(draft);
+            save();
           }
           if (event.key === "Escape") {
             event.preventDefault();
@@ -259,6 +250,7 @@ function InlineEditor({
             {...control}
             autoFocus
             className={styles.inlineInput}
+            aria-invalid={Boolean(error) || undefined}
             aria-label={label}
             placeholder={placeholder}
             autoComplete="off"
@@ -271,12 +263,17 @@ function InlineEditor({
           <Button variant="ghost" size="xs" onClick={onCancel}>
             {undoLabel}
           </Button>
-          <Button size="xs" onClick={() => onSave(draft)}>
+          <Button size="xs" loading={saving} onClick={save}>
             {saveLabel}
           </Button>
         </span>
       ) : (
         idle
+      )}
+      {error && (
+        <span role="alert" className={styles.fieldError}>
+          {error}
+        </span>
       )}
     </div>
   );
@@ -303,11 +300,11 @@ const pendingSecretActions: Record<PendingType, ProjectPermissionSecretActions> 
 
 type Annotation = "comment" | "tags" | "metadata";
 
-function Annotations({
+export function Annotations({
   secret,
   onOpen
 }: {
-  secret: Secret;
+  secret: Pick<Secret, "name" | "comment" | "tags" | "metadata">;
   onOpen: (overlay: Annotation) => void;
 }) {
   const marks = [
@@ -380,7 +377,6 @@ function SecretActionsRow({
   children: ReactNode;
 }) {
   const pending = useRef<() => void>(undefined);
-  const keepFocus = useRef(false);
   const [seen, setSeen] = useState<Overlay[]>([]);
   if (open && !seen.includes(open)) setSeen([...seen, open]);
   const loader = useValueLoader();
@@ -441,8 +437,9 @@ function SecretActionsRow({
   const overrideBlock =
     secret.override !== undefined ? "Override already exists" : describeDenied(["*"]);
   const update: SecretUpdate = (target, patch, feedback) => {
-    handlers.onUpdate(target, patch, feedback);
+    const saved = handlers.onUpdate(target, patch, feedback);
     setOpen(undefined);
+    return saved;
   };
   let editBlock = ctx.writeBlock ?? editDenied;
   if (secret.honeyToken)
@@ -460,6 +457,10 @@ function SecretActionsRow({
   if (secret.honeyToken) copySecretBlock = "Cannot copy honey token secret";
   if (secret.managedBy) copySecretBlock = "Cannot copy rotated secret";
   copySecretBlock ??= describeDenied(secret.tags);
+  let resolvedBlock: string | undefined;
+  if (unreadable) resolvedBlock = "Access denied";
+  else if (pendingType) resolvedBlock = "Save pending changes to view resolved value";
+  else if (value !== undefined && !hasReference(value)) resolvedBlock = "No references to resolve";
   let referencesBlock: string | undefined;
   if (unreadable) referencesBlock = "Access denied";
   else if (value === "") referencesBlock = "Create secret to view references";
@@ -535,6 +536,20 @@ function SecretActionsRow({
         </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Insights</DropdownMenuLabel>
+        <DropdownMenuItem
+          disabled={Boolean(resolvedBlock)}
+          description={resolvedBlock}
+          onSelect={later(() =>
+            withValue((loaded) =>
+              hasReference(loaded)
+                ? setOpen("resolved")
+                : ctx.report(`${secret.name} has no references to resolve.`, "ok")
+            )
+          )}
+        >
+          <Icon icon={BracesIcon} />
+          View resolved value
+        </DropdownMenuItem>
         <DropdownMenuItem
           disabled={Boolean(referencesBlock)}
           description={referencesBlock}
@@ -635,23 +650,21 @@ function SecretActionsRow({
                 {...rowActions}
                 menuLabel="More secret actions"
                 onOpenChange={(next) => {
-                  const run = pending.current;
-                  pending.current = undefined;
-                  if (next || !run) return;
-                  keepFocus.current = true;
-                  setTimeout(run, 0);
+                  if (next) pending.current = undefined;
                 }}
                 onMenuCloseAutoFocus={(event) => {
-                  if (!keepFocus.current) return;
-                  keepFocus.current = false;
+                  const run = pending.current;
+                  pending.current = undefined;
+                  if (!run) return;
                   event.preventDefault();
+                  run();
                 }}
               />
             </PopoverAnchor>
             <PopoverContent
               draggable
               align="end"
-              className={popover === "metadata" ? styles.metadataPopover : styles.annotationPopover}
+              className={(popover && popoverClass[popover]) ?? styles.annotationPopover}
               onCloseAutoFocus={(event) => event.preventDefault()}
             >
               {popover === "comment" && (
@@ -676,6 +689,7 @@ function SecretActionsRow({
                   }
                 />
               )}
+              {popover === "resolved" && <ResolvedValue secret={secret} />}
               {popover === "metadata" && (
                 <MetadataForm
                   metadata={secret.metadata}
@@ -840,15 +854,19 @@ function OverrideValue({
           setEditing(false);
           onStopCreating();
         }}
-        onSave={(override) => {
+        onSave={(override, onFieldError) =>
           onUpdate(
             secret,
             { override },
-            saved(`${creating ? "Created" : "Updated"} your personal override for ${secret.name}`)
-          );
-          setEditing(false);
-          onStopCreating();
-        }}
+            saved(`${creating ? "Created" : "Updated"} your personal override for ${secret.name}`),
+            onFieldError
+          ).then((ok) => {
+            if (!ok) return false;
+            setEditing(false);
+            onStopCreating();
+            return true;
+          })
+        }
       />
     );
   return (
@@ -985,16 +1003,18 @@ function SecretRowView({
     setCreatingOverride((current) => current.filter((entry) => entry !== environment));
   const startCreating = (environment: string) =>
     setCreatingOverride((current) => [...current, environment]);
-  const saveInline = (secret: Secret, value: string) => {
-    handlers.onUpdate(
-      secret,
-      { value },
-      {
-        title: `Updated ${secret.name} in ${environmentLabel(secret.environment)}`
-      }
-    );
-    setEditing(undefined);
-  };
+  const saveInline = (secret: Secret, value: string, onFieldError: (message: string) => void) =>
+    handlers
+      .onUpdate(
+        secret,
+        { value },
+        { title: `Updated ${secret.name} in ${environmentLabel(secret.environment)}` },
+        onFieldError
+      )
+      .then((ok) => {
+        if (ok) setEditing(undefined);
+        return ok;
+      });
   if (ctx.single) {
     const showOverride =
       first.override !== undefined || creatingOverride.includes(first.environment);
@@ -1038,11 +1058,7 @@ function SecretRowView({
           </TableCell>
           <TableCell className={styles.valueCell}>
             <div className={styles.nameLine}>
-              <SecretValue
-                secret={first}
-                visible={revealAll}
-                pending={Boolean(ctx.pending?.[first.id])}
-              />
+              <SecretValue secret={first} visible={revealAll} />
               <Indicators secret={first} />
             </div>
           </TableCell>
@@ -1233,15 +1249,13 @@ function SecretRowView({
                             saveLabel="Save"
                             undoLabel="Undo"
                             onCancel={() => setEditing(undefined)}
-                            onSave={(value) => saveInline(secret, value)}
+                            onSave={(value, onFieldError) =>
+                              saveInline(secret, value, onFieldError)
+                            }
                           />
                         ) : (
                           <div className={styles.nameLine}>
-                            <SecretValue
-                              secret={secret}
-                              visible={rowVisible}
-                              pending={Boolean(secret && ctx.pending?.[secret.id])}
-                            />
+                            <SecretValue secret={secret} visible={rowVisible} />
                             {secret && <Indicators secret={secret} />}
                           </div>
                         )}
