@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { BadRequestError } from "@app/lib/errors";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 
-import { buildSecretAccessPolicySteps } from "./secret-access-approval-global-policy-bridge-fns";
+import { buildSecretAccessPolicySteps } from "./access-approval-policy-fns";
 
 type TApprovalsRequired = { numberOfApprovals: number; stepNumber: number }[];
 
