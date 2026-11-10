@@ -323,7 +323,11 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             orgId,
             storageType,
             bytes: req.body.ciphertextBytes,
-            ...(req.body.recordCount !== undefined && { records: req.body.recordCount })
+            ...(req.body.recordCount !== undefined && { records: req.body.recordCount }),
+            ...(req.body.brokeredCount !== undefined && { brokered: req.body.brokeredCount }),
+            ...(req.body.passthroughCount !== undefined && { passthrough: req.body.passthroughCount }),
+            ...(req.body.blockedCount !== undefined && { blocked: req.body.blockedCount }),
+            ...(req.body.errorCount !== undefined && { errored: req.body.errorCount })
           }
         })
         .catch(() => {});

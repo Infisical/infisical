@@ -5020,6 +5020,10 @@ export const AGENT_VAULT = {
     ciphertextSha256:
       "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
     recordCount: "The number of requests recorded in the chunk.",
+    brokeredCount: "The number of requests in the chunk the proxy added a credential, header or substituted value to.",
+    passthroughCount: "The number of requests in the chunk the proxy forwarded without changing.",
+    blockedCount: "The number of requests in the chunk the proxy refused.",
+    errorCount: "The number of requests in the chunk that failed in the proxy or upstream.",
     legacyIv:
       "Sent only by Infisical CLI versions that can't record session logs. A request that includes it is refused.",
     uploadUrl:
