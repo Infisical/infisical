@@ -76,7 +76,6 @@ export const ProjectsPage = () => {
       <Stack gap={32}>
         <PageHeader
           title={`${organization.isSubOrganization ? "Sub-organization" : "Organization"} overview`}
-          description="View and manage your projects across Infisical products."
         />
         {demoProject && (
           <Item
