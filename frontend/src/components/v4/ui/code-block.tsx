@@ -11,7 +11,7 @@ import { CopyButton } from "./sensitive-editor";
 import styles from "./code.module.css";
 import frame from "./frame.module.css";
 
-export type CodeBlockProps = Omit<CodeProps, "children" | "block" | "onCopy"> & {
+export type CodeBlockProps = Omit<CodeProps, "children" | "block" | "onCopy" | "label"> & {
   children?: React.ReactNode;
   label?: React.ReactNode;
   icon?: IconName;
