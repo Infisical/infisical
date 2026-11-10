@@ -92,6 +92,7 @@ import { Route as v4RedirectsPamAccessRedirectRouteImport } from './pages/v4/red
 import { Route as v4OrganizationUserDetailsByIDPageRouteImport } from './pages/v4/organization/UserDetailsByIDPage/route'
 import { Route as v4OrganizationIdentityDetailsByIDPageRouteImport } from './pages/v4/organization/IdentityDetailsByIDPage/route'
 import { Route as v4OrganizationGroupDetailsByIDPageRouteImport } from './pages/v4/organization/GroupDetailsByIDPage/route'
+import { Route as v4CertManagerSettingsPageRouteImport } from './pages/v4/cert-manager/SettingsPage/route'
 import { Route as v4CertManagerDashboardPageRouteImport } from './pages/v4/cert-manager/DashboardPage/route'
 import { Route as v4CertManagerInventoryPageRouteImport } from './pages/v4/cert-manager/InventoryPage/route'
 import { Route as v4AuthProviderErrorPageRouteImport } from './pages/v4/auth/ProviderErrorPage/route'
@@ -136,13 +137,16 @@ import { Route as secretManagerIntegrationsRouteGcpOauthRedirectImport } from '.
 import { Route as secretManagerIntegrationsRouteBitbucketOauthRedirectImport } from './pages/secret-manager/integrations/route-bitbucket-oauth-redirect'
 import { Route as secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-key-vault-oauth-redirect'
 import { Route as secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-app-configurations-oauth-redirect'
+import { Route as v4SecretManagerSettingsPageRouteImport } from './pages/v4/secret-manager/SettingsPage/route'
 import { Route as v4SecretManagerOverviewPageRouteImport } from './pages/v4/secret-manager/OverviewPage/route'
 import { Route as v4SecretManagerSecretApprovalsPageRouteImport } from './pages/v4/secret-manager/SecretApprovalsPage/route'
 import { Route as v4ProjectAccessControlPageRouteImport } from './pages/v4/project/AccessControlPage/route'
 import { Route as v4KmsKmipServerDetailsByIDPageRouteImport } from './pages/v4/kms/KmipServerDetailsByIDPage/route'
+import { Route as v4KmsSettingsPageRouteImport } from './pages/v4/kms/SettingsPage/route'
 import { Route as v4KmsOverviewPageRouteImport } from './pages/v4/kms/OverviewPage/route'
 import { Route as v4KmsKmipPageRouteImport } from './pages/v4/kms/KmipPage/route'
 import { Route as v4ProjectAccessControlPageKmsRouteImport } from './pages/v4/project/AccessControlPage/kms/route'
+import { Route as v4AgentVaultAgentVaultSettingsPageRouteImport } from './pages/v4/agent-vault/AgentVaultSettingsPage/route'
 import { Route as v4AgentVaultAgentVaultSessionsPageRouteImport } from './pages/v4/agent-vault/AgentVaultSessionsPage/route'
 import { Route as organizationRoleByIDPageRouteImport } from './pages/organization/RoleByIDPage/route'
 import { Route as organizationProjectsPageProjectTypePageRouteImport } from './pages/organization/ProjectsPage/ProjectTypePage/route'
@@ -1087,6 +1091,13 @@ const v4OrganizationGroupDetailsByIDPageRouteRoute =
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
+const v4CertManagerSettingsPageRouteRoute =
+  v4CertManagerSettingsPageRouteImport.update({
+    id: '/cert-manager/settings',
+    path: '/cert-manager/settings',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
 const v4CertManagerDashboardPageRouteRoute =
   v4CertManagerDashboardPageRouteImport.update({
     id: '/cert-manager/overview',
@@ -1472,6 +1483,13 @@ const secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute =
     } as any,
   )
 
+const v4SecretManagerSettingsPageRouteRoute =
+  v4SecretManagerSettingsPageRouteImport.update({
+    id: '/secret-management/$projectId/settings',
+    path: '/secret-management/$projectId/settings',
+    getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+  } as any)
+
 const v4SecretManagerOverviewPageRouteRoute =
   v4SecretManagerOverviewPageRouteImport.update({
     id: '/secret-management/$projectId/overview',
@@ -1500,6 +1518,12 @@ const v4KmsKmipServerDetailsByIDPageRouteRoute =
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
+const v4KmsSettingsPageRouteRoute = v4KmsSettingsPageRouteImport.update({
+  id: '/kms/$projectId/settings',
+  path: '/kms/$projectId/settings',
+  getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+} as any)
+
 const v4KmsOverviewPageRouteRoute = v4KmsOverviewPageRouteImport.update({
   id: '/kms/$projectId/overview',
   path: '/kms/$projectId/overview',
@@ -1516,6 +1540,13 @@ const v4ProjectAccessControlPageKmsRouteRoute =
   v4ProjectAccessControlPageKmsRouteImport.update({
     id: '/kms/$projectId/access-management',
     path: '/kms/$projectId/access-management',
+    getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
+  } as any)
+
+const v4AgentVaultAgentVaultSettingsPageRouteRoute =
+  v4AgentVaultAgentVaultSettingsPageRouteImport.update({
+    id: '/agent-vault/$projectId/settings',
+    path: '/agent-vault/$projectId/settings',
     getParentRoute: () => V4OrganizationsOrgIdProjectsRoute,
   } as any)
 
@@ -4017,6 +4048,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4CertManagerDashboardPageRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
+    '/v4/organizations/$orgId/cert-manager/settings': {
+      id: '/v4/organizations/$orgId/cert-manager/settings'
+      path: '/cert-manager/settings'
+      fullPath: '/v4/organizations/$orgId/cert-manager/settings'
+      preLoaderRoute: typeof v4CertManagerSettingsPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/groups/$groupId': {
       id: '/v4/organizations/$orgId/groups/$groupId'
       path: '/groups/$groupId'
@@ -4304,6 +4342,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4AgentVaultAgentVaultSessionsPageRouteImport
       parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
+    '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings': {
+      id: '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings'
+      path: '/agent-vault/$projectId/settings'
+      fullPath: '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings'
+      preLoaderRoute: typeof v4AgentVaultAgentVaultSettingsPageRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
     '/v4/organizations/$orgId/projects/kms/$projectId/access-management': {
       id: '/v4/organizations/$orgId/projects/kms/$projectId/access-management'
       path: '/kms/$projectId/access-management'
@@ -4323,6 +4368,13 @@ declare module '@tanstack/react-router' {
       path: '/kms/$projectId/overview'
       fullPath: '/v4/organizations/$orgId/projects/kms/$projectId/overview'
       preLoaderRoute: typeof v4KmsOverviewPageRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
+    '/v4/organizations/$orgId/projects/kms/$projectId/settings': {
+      id: '/v4/organizations/$orgId/projects/kms/$projectId/settings'
+      path: '/kms/$projectId/settings'
+      fullPath: '/v4/organizations/$orgId/projects/kms/$projectId/settings'
+      preLoaderRoute: typeof v4KmsSettingsPageRouteImport
       parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
     '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': {
@@ -4351,6 +4403,13 @@ declare module '@tanstack/react-router' {
       path: '/secret-management/$projectId/overview'
       fullPath: '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
       preLoaderRoute: typeof v4SecretManagerOverviewPageRouteImport
+      parentRoute: typeof V4OrganizationsOrgIdProjectsImport
+    }
+    '/v4/organizations/$orgId/projects/secret-management/$projectId/settings': {
+      id: '/v4/organizations/$orgId/projects/secret-management/$projectId/settings'
+      path: '/secret-management/$projectId/settings'
+      fullPath: '/v4/organizations/$orgId/projects/secret-management/$projectId/settings'
+      preLoaderRoute: typeof v4SecretManagerSettingsPageRouteImport
       parentRoute: typeof V4OrganizationsOrgIdProjectsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': {
@@ -6146,13 +6205,16 @@ interface V4OrganizationsOrgIdProjectsRouteChildren {
   v4RedirectsAgentVaultIndexRedirectRouteRoute: typeof v4RedirectsAgentVaultIndexRedirectRouteRoute
   v4KmsKmipServersPageRouteRoute: typeof v4KmsKmipServersPageRouteRoute
   v4AgentVaultAgentVaultSessionsPageRouteRoute: typeof v4AgentVaultAgentVaultSessionsPageRouteRoute
+  v4AgentVaultAgentVaultSettingsPageRouteRoute: typeof v4AgentVaultAgentVaultSettingsPageRouteRoute
   v4ProjectAccessControlPageKmsRouteRoute: typeof v4ProjectAccessControlPageKmsRouteRoute
   v4KmsKmipPageRouteRoute: typeof v4KmsKmipPageRouteRoute
   v4KmsOverviewPageRouteRoute: typeof v4KmsOverviewPageRouteRoute
+  v4KmsSettingsPageRouteRoute: typeof v4KmsSettingsPageRouteRoute
   v4KmsKmipServerDetailsByIDPageRouteRoute: typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   v4ProjectAccessControlPageRouteRoute: typeof v4ProjectAccessControlPageRouteRoute
   v4SecretManagerSecretApprovalsPageRouteRoute: typeof v4SecretManagerSecretApprovalsPageRouteRoute
   v4SecretManagerOverviewPageRouteRoute: typeof v4SecretManagerOverviewPageRouteRoute
+  v4SecretManagerSettingsPageRouteRoute: typeof v4SecretManagerSettingsPageRouteRoute
   v4ProjectGroupDetailsByIDPageKmsRouteRoute: typeof v4ProjectGroupDetailsByIDPageKmsRouteRoute
   v4ProjectIdentityDetailsByIDPageKmsRouteRoute: typeof v4ProjectIdentityDetailsByIDPageKmsRouteRoute
   v4ProjectMemberDetailsByIDPageKmsRouteRoute: typeof v4ProjectMemberDetailsByIDPageKmsRouteRoute
@@ -6176,10 +6238,13 @@ const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRou
     v4KmsKmipServersPageRouteRoute: v4KmsKmipServersPageRouteRoute,
     v4AgentVaultAgentVaultSessionsPageRouteRoute:
       v4AgentVaultAgentVaultSessionsPageRouteRoute,
+    v4AgentVaultAgentVaultSettingsPageRouteRoute:
+      v4AgentVaultAgentVaultSettingsPageRouteRoute,
     v4ProjectAccessControlPageKmsRouteRoute:
       v4ProjectAccessControlPageKmsRouteRoute,
     v4KmsKmipPageRouteRoute: v4KmsKmipPageRouteRoute,
     v4KmsOverviewPageRouteRoute: v4KmsOverviewPageRouteRoute,
+    v4KmsSettingsPageRouteRoute: v4KmsSettingsPageRouteRoute,
     v4KmsKmipServerDetailsByIDPageRouteRoute:
       v4KmsKmipServerDetailsByIDPageRouteRoute,
     v4ProjectAccessControlPageRouteRoute: v4ProjectAccessControlPageRouteRoute,
@@ -6187,6 +6252,8 @@ const V4OrganizationsOrgIdProjectsRouteChildren: V4OrganizationsOrgIdProjectsRou
       v4SecretManagerSecretApprovalsPageRouteRoute,
     v4SecretManagerOverviewPageRouteRoute:
       v4SecretManagerOverviewPageRouteRoute,
+    v4SecretManagerSettingsPageRouteRoute:
+      v4SecretManagerSettingsPageRouteRoute,
     v4ProjectGroupDetailsByIDPageKmsRouteRoute:
       v4ProjectGroupDetailsByIDPageKmsRouteRoute,
     v4ProjectIdentityDetailsByIDPageKmsRouteRoute:
@@ -6226,6 +6293,7 @@ interface v4OrganizationRouteRouteChildren {
   v4RedirectsSecretScanningIndexRedirectRouteRoute: typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   v4CertManagerInventoryPageRouteRoute: typeof v4CertManagerInventoryPageRouteRoute
   v4CertManagerDashboardPageRouteRoute: typeof v4CertManagerDashboardPageRouteRoute
+  v4CertManagerSettingsPageRouteRoute: typeof v4CertManagerSettingsPageRouteRoute
   v4OrganizationGroupDetailsByIDPageRouteRoute: typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   v4OrganizationIdentityDetailsByIDPageRouteRoute: typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   v4OrganizationUserDetailsByIDPageRouteRoute: typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -6259,6 +6327,7 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
     v4RedirectsSecretScanningIndexRedirectRouteRoute,
   v4CertManagerInventoryPageRouteRoute: v4CertManagerInventoryPageRouteRoute,
   v4CertManagerDashboardPageRouteRoute: v4CertManagerDashboardPageRouteRoute,
+  v4CertManagerSettingsPageRouteRoute: v4CertManagerSettingsPageRouteRoute,
   v4OrganizationGroupDetailsByIDPageRouteRoute:
     v4OrganizationGroupDetailsByIDPageRouteRoute,
   v4OrganizationIdentityDetailsByIDPageRouteRoute:
@@ -7770,6 +7839,7 @@ export interface FileRoutesByFullPath {
   '/v4/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
+  '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -7811,13 +7881,16 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions': typeof v4AgentVaultAgentVaultSessionsPageRouteRoute
+  '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings': typeof v4AgentVaultAgentVaultSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/access-management': typeof v4ProjectAccessControlPageKmsRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/kmip': typeof v4KmsKmipPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
+  '/v4/organizations/$orgId/projects/kms/$projectId/settings': typeof v4KmsSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof v4ProjectAccessControlPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': typeof v4SecretManagerOverviewPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/settings': typeof v4SecretManagerSettingsPageRouteRoute
   '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -8137,6 +8210,7 @@ export interface FileRoutesByTo {
   '/v4/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
+  '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -8175,13 +8249,16 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions': typeof v4AgentVaultAgentVaultSessionsPageRouteRoute
+  '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings': typeof v4AgentVaultAgentVaultSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/access-management': typeof v4ProjectAccessControlPageKmsRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/kmip': typeof v4KmsKmipPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
+  '/v4/organizations/$orgId/projects/kms/$projectId/settings': typeof v4KmsSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof v4ProjectAccessControlPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': typeof v4SecretManagerOverviewPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/settings': typeof v4SecretManagerSettingsPageRouteRoute
   '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -8494,6 +8571,7 @@ export interface FileRoutesById {
   '/v4/_v4-auth/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
+  '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -8535,13 +8613,16 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type': typeof organizationProjectsPageProjectTypePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions': typeof v4AgentVaultAgentVaultSessionsPageRouteRoute
+  '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings': typeof v4AgentVaultAgentVaultSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/access-management': typeof v4ProjectAccessControlPageKmsRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/kmip': typeof v4KmsKmipPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/$projectId/overview': typeof v4KmsOverviewPageRouteRoute
+  '/v4/organizations/$orgId/projects/kms/$projectId/settings': typeof v4KmsSettingsPageRouteRoute
   '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId': typeof v4KmsKmipServerDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management': typeof v4ProjectAccessControlPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/approval': typeof v4SecretManagerSecretApprovalsPageRouteRoute
   '/v4/organizations/$orgId/projects/secret-management/$projectId/overview': typeof v4SecretManagerOverviewPageRouteRoute
+  '/v4/organizations/$orgId/projects/secret-management/$projectId/settings': typeof v4SecretManagerSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
@@ -8877,6 +8958,7 @@ export interface FileRouteTypes {
     | '/v4/login/provider/error'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
+    | '/v4/organizations/$orgId/cert-manager/settings'
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
@@ -8918,13 +9000,16 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/$type'
     | '/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions'
+    | '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/$projectId/access-management'
     | '/v4/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
+    | '/v4/organizations/$orgId/projects/kms/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/settings'
     | '/integrations/azure-app-configuration/oauth2/callback'
     | '/integrations/azure-key-vault/oauth2/callback'
     | '/integrations/bitbucket/oauth2/callback'
@@ -9243,6 +9328,7 @@ export interface FileRouteTypes {
     | '/v4/login/provider/error'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
+    | '/v4/organizations/$orgId/cert-manager/settings'
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
@@ -9281,13 +9367,16 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/$type'
     | '/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions'
+    | '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/$projectId/access-management'
     | '/v4/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
+    | '/v4/organizations/$orgId/projects/kms/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/settings'
     | '/integrations/azure-app-configuration/oauth2/callback'
     | '/integrations/azure-key-vault/oauth2/callback'
     | '/integrations/bitbucket/oauth2/callback'
@@ -9598,6 +9687,7 @@ export interface FileRouteTypes {
     | '/v4/_v4-auth/login/provider/error'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
+    | '/v4/organizations/$orgId/cert-manager/settings'
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
@@ -9639,13 +9729,16 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$type'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId'
     | '/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions'
+    | '/v4/organizations/$orgId/projects/agent-vault/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/$projectId/access-management'
     | '/v4/organizations/$orgId/projects/kms/$projectId/kmip'
     | '/v4/organizations/$orgId/projects/kms/$projectId/overview'
+    | '/v4/organizations/$orgId/projects/kms/$projectId/settings'
     | '/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/access-management'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/approval'
     | '/v4/organizations/$orgId/projects/secret-management/$projectId/overview'
+    | '/v4/organizations/$orgId/projects/secret-management/$projectId/settings'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback'
@@ -10192,6 +10285,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/secret-scanning/",
         "/v4/organizations/$orgId/cert-manager/inventory",
         "/v4/organizations/$orgId/cert-manager/overview",
+        "/v4/organizations/$orgId/cert-manager/settings",
         "/v4/organizations/$orgId/groups/$groupId",
         "/v4/organizations/$orgId/identities/$identityId",
         "/v4/organizations/$orgId/members/$membershipId",
@@ -10397,13 +10491,16 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/projects/agent-vault/$projectId/",
         "/v4/organizations/$orgId/projects/kms/kmip-servers/",
         "/v4/organizations/$orgId/projects/agent-vault/$projectId/sessions",
+        "/v4/organizations/$orgId/projects/agent-vault/$projectId/settings",
         "/v4/organizations/$orgId/projects/kms/$projectId/access-management",
         "/v4/organizations/$orgId/projects/kms/$projectId/kmip",
         "/v4/organizations/$orgId/projects/kms/$projectId/overview",
+        "/v4/organizations/$orgId/projects/kms/$projectId/settings",
         "/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/access-management",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/approval",
         "/v4/organizations/$orgId/projects/secret-management/$projectId/overview",
+        "/v4/organizations/$orgId/projects/secret-management/$projectId/settings",
         "/v4/organizations/$orgId/projects/kms/$projectId/groups/$groupId",
         "/v4/organizations/$orgId/projects/kms/$projectId/identities/$identityId",
         "/v4/organizations/$orgId/projects/kms/$projectId/members/$membershipId",
@@ -10473,6 +10570,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/cert-manager/overview": {
       "filePath": "v4/cert-manager/DashboardPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/cert-manager/settings": {
+      "filePath": "v4/cert-manager/SettingsPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/groups/$groupId": {
@@ -10696,6 +10797,10 @@ export const routeTree = rootRoute
       "filePath": "v4/agent-vault/AgentVaultSessionsPage/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
     },
+    "/v4/organizations/$orgId/projects/agent-vault/$projectId/settings": {
+      "filePath": "v4/agent-vault/AgentVaultSettingsPage/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
+    },
     "/v4/organizations/$orgId/projects/kms/$projectId/access-management": {
       "filePath": "v4/project/AccessControlPage/kms/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
@@ -10706,6 +10811,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/projects/kms/$projectId/overview": {
       "filePath": "v4/kms/OverviewPage/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
+    },
+    "/v4/organizations/$orgId/projects/kms/$projectId/settings": {
+      "filePath": "v4/kms/SettingsPage/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
     },
     "/v4/organizations/$orgId/projects/kms/kmip-servers/$kmipServerId": {
@@ -10722,6 +10831,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/projects/secret-management/$projectId/overview": {
       "filePath": "v4/secret-manager/OverviewPage/route.tsx",
+      "parent": "/v4/organizations/$orgId/projects"
+    },
+    "/v4/organizations/$orgId/projects/secret-management/$projectId/settings": {
+      "filePath": "v4/secret-manager/SettingsPage/route.tsx",
       "parent": "/v4/organizations/$orgId/projects"
     },
     "/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback": {
