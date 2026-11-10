@@ -19,7 +19,7 @@ import {
   type TSecretApprovalRequest
 } from "@app/hooks/api/secretApprovalRequest/types";
 
-import { toast } from "../../access/toast";
+import { failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref, v4Path } from "../../links";
@@ -166,10 +166,10 @@ const RequestDetail = ({
   const review = secrets.useReviewApprovalRequest();
   const updateStatus = secrets.useUpdateApprovalRequestStatus();
   const merge = secrets.useMergeApprovalRequest();
-  const act = (task: () => Promise<unknown>, done: string) =>
+  const act = (task: () => Promise<unknown>, done: string, failure: string) =>
     task().then(
       () => toast({ tone: "ok", title: done }),
-      () => undefined
+      (reason) => failed(failure, reason)
     );
   const reviewerColumns: DataTableColumn<Approver>[] = [
     { id: "approver", header: "Approver", grow: true, text: approverName, render: approverName },
@@ -239,7 +239,8 @@ const RequestDetail = ({
                         projectId,
                         status: ApprovalStatus.REJECTED
                       }),
-                    "You rejected this change request"
+                    "You rejected this change request",
+                    "Failed to reject the change request"
                   )
                 }
               >
@@ -257,7 +258,8 @@ const RequestDetail = ({
                         projectId,
                         status: ApprovalStatus.APPROVED
                       }),
-                    "You approved this change request"
+                    "You approved this change request",
+                    "Failed to approve the change request"
                   )
                 }
               >
@@ -321,7 +323,8 @@ const RequestDetail = ({
                         environment: request.environment,
                         secretPath: request.secretPath
                       }),
-                    "Merged the change request"
+                    "Merged the change request",
+                    "Failed to merge the change request"
                   )
                 }
               >
@@ -332,7 +335,8 @@ const RequestDetail = ({
                 onClick={() =>
                   act(
                     () => updateStatus.mutateAsync({ id: request.id, projectId, status: "close" }),
-                    "Closed the change request"
+                    "Closed the change request",
+                    "Failed to close the change request"
                   )
                 }
               >

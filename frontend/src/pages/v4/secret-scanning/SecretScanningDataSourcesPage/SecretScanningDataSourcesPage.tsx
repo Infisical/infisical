@@ -49,7 +49,7 @@ import {
 } from "@app/hooks/api/secretScanningV2/enums";
 import type { TSecretScanningDataSourceWithDetails } from "@app/hooks/api/secretScanningV2/types";
 
-import { toast } from "../../access/toast";
+import { failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 
@@ -530,11 +530,16 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
                 variant="destructive"
                 onClick={async () => {
                   if (!deleting) return;
-                  await deleteDataSource.mutateAsync({
-                    dataSourceId: deleting.id,
-                    type: deleting.type,
-                    projectId: deleting.projectId
-                  });
+                  try {
+                    await deleteDataSource.mutateAsync({
+                      dataSourceId: deleting.id,
+                      type: deleting.type,
+                      projectId: deleting.projectId
+                    });
+                  } catch (error) {
+                    failed("Failed to delete data source", error);
+                    return;
+                  }
                   toast({
                     tone: "ok",
                     title: `Deleted ${SECRET_SCANNING_DATA_SOURCE_MAP[deleting.type].name} data source ${deleting.name}`

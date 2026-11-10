@@ -173,7 +173,7 @@ export const InviteUsersSheet = ({
         inviteeEmails: emails,
         organizationRoleSlug: role ?? defaultRole
       });
-      await Promise.allSettled(
+      const projectResults = await Promise.allSettled(
         targets.map((project) =>
           addToProject.mutateAsync({
             orgId,
@@ -184,11 +184,14 @@ export const InviteUsersSheet = ({
           })
         )
       );
+      const projectFailure = projectResults.find((result) => result.status === "rejected");
+      if (projectFailure) failed("Failed to add users to projects", projectFailure.reason);
       if (data.completeInviteLinks?.length) {
         setCreatedLinks(data.completeInviteLinks);
         return;
       }
-      saved(`Successfully invited user${emails.length > 1 ? "s" : ""} to the organization.`);
+      if (!projectFailure)
+        saved(`Successfully invited user${emails.length > 1 ? "s" : ""} to the organization.`);
       close();
     } catch (err) {
       failed("Failed to invite users", err);

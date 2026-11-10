@@ -1,6 +1,9 @@
 export type V4QueryResult<TData> = { data: TData | undefined; isPending: boolean; error: unknown };
 
-/** Reaches the mutation only where the live hook takes meta; hooks with no options ignore it. */
+/**
+ * Live mode defaults skipErrorToast to true (live-query-client.ts); false restores main's toast.
+ * Reaches the mutation only where the live hook takes meta; hooks with no options ignore it.
+ */
 export type V4MutationOptions = { meta?: { skipErrorToast?: boolean } };
 
 export const withMutationMeta =
