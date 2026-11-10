@@ -159,7 +159,7 @@ The `subject` field is the same value without the `com.infisical.` prefix.
 
 ## Webhook payload format
 
-`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, a `title` (its common name, or its first SAN or serial number when it has none), a one-line `summary`, a `severity`, and a list of display `fields`. To act on a certificate in code, read `resource` instead of `fields`: it holds the certificate's typed values, with ISO 8601 dates and the raw revocation reason code. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about. If a request includes one certificate, `data.metadata.viewUrl` opens that certificate in Infisical. If it includes several, `data.metadata.viewUrl` opens the application, the **Inventory** page, or the **Signers** page, depending on the alert.
+`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, a `title` (its common name, or its first SAN or serial number when it has none), a one-line `summary`, a `severity`, and a list of display `fields`. To act on a certificate in code, read `resource` instead of `fields`: it holds the certificate's typed values, with ISO 8601 dates and the raw revocation reason code. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about. For an application or organization-wide alert, `data.metadata.viewUrl` opens the certificate if the request includes one, and the application or the **Inventory** page if it includes several. For a signer certificate expiration alert, `data.metadata.viewUrl` always opens the **Signers** page.
 
 To find out which kind of alert sent a request, read `data.alert.resourceType`:
 
@@ -381,7 +381,7 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
         ],
         "metadata": {
           "totalItems": 1,
-          "viewUrl": "https://app.infisical.com/organizations/<org-id>/projects/cert-manager/<project-id>/certificates/7e1f3a5c-9b2d-4e6f-8a0c-1d3e5f7a9b2c"
+          "viewUrl": "https://app.infisical.com/organizations/<org-id>/cert-manager/code-signing"
         }
       }
     }

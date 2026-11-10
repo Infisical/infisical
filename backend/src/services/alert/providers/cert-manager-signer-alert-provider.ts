@@ -24,7 +24,6 @@ import {
   assertCertManagerAdminAlertPermission,
   assertCertManagerAlertChannelTypesAllowed,
   assertNoAlertResource,
-  buildCertificateUrl,
   buildPkiAlertTelemetryEvent,
   certificateDisplayName,
   expiryDedupWindowHours,
@@ -97,7 +96,7 @@ export const certManagerSignerAlertProviderFactory = ({
         ...(alert.projectId ? { projectId: alert.projectId } : {}),
         resourceType: alert.resourceType,
         condition: alertBefore,
-        viewUrl: targets.length === 1 ? buildCertificateUrl(alert, targets[0].id) : viewUrl
+        viewUrl
       },
       eventKey: SignerAlertEvent.CertificateExpiry,
       eventLabel: "Expiration",

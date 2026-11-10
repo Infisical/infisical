@@ -117,7 +117,7 @@ A Slack channel on a certificate [alert](/documentation/platform/pki/application
 
 ## Message format
 
-Each Slack message includes the alert's summary, up to two certificates, and a **View in Infisical** button. If the message is about one certificate, the button opens that certificate. If the message lists several certificates, the button opens the application for an application alert, or the **Inventory** page for an organization-wide alert (the **Signers** page for a signer certificate expiration alert).
+Each Slack message includes the alert's summary, up to two certificates, and a **View in Infisical** button. For an application or organization-wide alert about one certificate, the button opens that certificate. If the message lists several certificates, the button opens the application for an application alert, or the **Inventory** page for an organization-wide alert. For a signer certificate expiration alert, the button always opens the **Signers** page.
 
 The message color shows the alert's severity:
 
