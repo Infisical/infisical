@@ -25,7 +25,7 @@ import {
 
 import type { Resource, Secret } from "../../secrets-model";
 import { childPath, Gate } from "../flows/shared";
-import type { ApplyFeedback, EnvironmentOption } from "../flows/types";
+import type { ApplyFeedback, EnvironmentOption, FlowFeedback } from "../flows/types";
 import { useManagedBlock } from "../row-actions/permissions";
 import type { OverlayHostProps } from "../row-actions/types";
 import {
@@ -430,6 +430,15 @@ function MoveSecretsDialogContent({
       feedback,
       { shouldOverwrite }
     );
+  const waitingForReview = (removed: string[]): FlowFeedback => ({
+    tone: "neutral",
+    title: "Move waiting for review",
+    description: removed.length
+      ? `Already removed from ${sourcePath} in ${new Intl.ListFormat("en").format(
+          removed.map((env) => environments.find((entry) => entry.value === env)?.label ?? env)
+        )}`
+      : undefined
+  });
   const folderMove = (folder: Folder, destination: string): FolderMove => ({
     environment: folder.environment,
     destinationEnvironment: destination,
@@ -460,7 +469,11 @@ function MoveSecretsDialogContent({
         }
         onToast("bad", { title: `Failed to move selected secrets: ${outcome.error}` });
       } else {
-        apply([step], { title: "Successfully moved selected secrets" });
+        apply([step], (held) =>
+          held(destinationEnv, selectedPath)
+            ? waitingForReview(held(env, sourcePath) ? [] : [env])
+            : { title: "Successfully moved selected secrets" }
+        );
       }
     }
     const rotationSteps: Step[] = [];
@@ -593,12 +606,14 @@ function MoveSecretsDialogContent({
       });
     });
     if (steps.length) {
-      apply(steps, (held) => ({
-        title: `Moved selected ${noun} in ${plural(
-          [...changed].filter((env) => nonSecretMoves.has(env) || !held(env, selectedPath)).length,
-          "environment"
-        )}`
-      }));
+      apply(steps, (held) => {
+        const written = [...changed].filter(
+          (env) => nonSecretMoves.has(env) || !held(env, selectedPath)
+        );
+        if (!written.length)
+          return waitingForReview([...changed].filter((env) => !held(env, sourcePath)));
+        return { title: `Moved selected ${noun} in ${plural(written.length, "environment")}` };
+      });
       if (moved.length) onFoldersMoved?.(moved);
     }
     setResults(nextResults);
