@@ -42,12 +42,12 @@ import type { TGatewayEnrollmentToken } from "@app/hooks/api/gateways-v2/types";
 import type { TRelayConnectedGateway } from "@app/hooks/api/relays/queries";
 import type { TRelayWithAuthMethod } from "@app/hooks/api/relays/types";
 
-import { CopyButton, Dash, Value } from "../../access/org/detail-parts";
+import { Dash } from "../../access/org/detail-parts";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { saved, toast } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
-import { orgHref, useGo } from "../../links";
+import { orgHref, useGo, v4Path } from "../../links";
 import {
   NetworkingAuthMethodForm,
   toNetworkingAuthMethodInput
@@ -55,6 +55,7 @@ import {
 import { ConfirmDialog } from "../../networking/confirm-dialog";
 import { DeployRestricted, siteUrl, useEnrollmentExpiry } from "../../networking/deploy-parts";
 import { isRelayHealthy, RelayHealth } from "../../networking/health";
+import { TruncatedValue } from "../../networking/truncated-value";
 
 const backHref = (orgId: string) => orgHref(orgId, "/networking?selectedTab=relays");
 
@@ -344,7 +345,9 @@ const AuthenticationCard = ({
 };
 
 export const RelayDetailsByIDPage = () => {
-  const { relayId } = useParams({ from: "/v4/organizations/$orgId/networking/relays/$relayId" });
+  const { relayId } = useParams({
+    from: v4Path("/organizations/$orgId/networking/relays/$relayId")
+  });
   const orgId = useOrgId();
   const go = useGo();
   const networking = useV4Adapter("networking");
@@ -455,17 +458,13 @@ export const RelayDetailsByIDPage = () => {
                 items={[
                   [
                     "ID",
-                    <Value key="id" mono>
-                      {relay.id}
-                      <CopyButton value={relay.id} label="Copy relay ID to clipboard" />
-                    </Value>
+                    <TruncatedValue
+                      key="id"
+                      value={relay.id}
+                      copyLabel="Copy relay ID to clipboard"
+                    />
                   ],
-                  [
-                    "Host",
-                    <Value key="host" mono>
-                      {relay.host}
-                    </Value>
-                  ],
+                  ["Host", <TruncatedValue key="host" value={relay.host} />],
                   ["Health", <RelayHealth key="health" heartbeat={relay.heartbeat} />],
                   [
                     "Last heartbeat",

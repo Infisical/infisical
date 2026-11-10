@@ -28,12 +28,12 @@ import {
 import type { TGatewayV2WithAuthMethod } from "@app/hooks/api/gateways-v2/types";
 import { getGatewayTransportHealth, getLastSeenHeartbeat } from "@app/hooks/api/gateways-v2/utils";
 
-import { CopyButton, Dash, Value } from "../../access/org/detail-parts";
+import { Dash } from "../../access/org/detail-parts";
 import { useOrgId, useOrgPermission } from "../../access/permissions";
 import { saved, toast } from "../../access/toast";
 import { AccessRestricted, Muted, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
-import { orgHref, useGo } from "../../links";
+import { orgHref, useGo, v4Path } from "../../links";
 import {
   NetworkingAuthMethodForm,
   toNetworkingAuthMethodInput
@@ -41,6 +41,7 @@ import {
 import { ConfirmDialog } from "../../networking/confirm-dialog";
 import { GatewayHealth, isGatewayRegistered } from "../../networking/health";
 import { NameDialog } from "../../networking/name-dialog";
+import { TruncatedValue } from "../../networking/truncated-value";
 import { GatewayDeployCard } from "./deploy";
 import { ConnectedResourcesCard } from "./resources";
 
@@ -62,7 +63,7 @@ const Connection = ({ gateway }: { gateway: TGatewayV2WithAuthMethod }) => {
   return (
     <Stack gap={4}>
       {transports.map((transport) => (
-        <Value key={transport.transport}>
+        <Stack key={transport.transport} gap={4}>
           <Tooltip
             content={
               transport.probedAt ? `Last seen ${dateTime(transport.probedAt)}` : "Never reached"
@@ -77,9 +78,9 @@ const Connection = ({ gateway }: { gateway: TGatewayV2WithAuthMethod }) => {
             </StatusText>
           </Tooltip>
           {transport.transport === "direct" && gateway.directAddress && (
-            <Value mono>{gateway.directAddress}</Value>
+            <TruncatedValue value={gateway.directAddress} />
           )}
-        </Value>
+        </Stack>
       ))}
     </Stack>
   );
@@ -129,7 +130,7 @@ const AuthenticationCard = ({
 
 export const GatewayDetailsByIDPage = () => {
   const { gatewayId } = useParams({
-    from: "/v4/organizations/$orgId/networking/gateways/$gatewayId"
+    from: v4Path("/organizations/$orgId/networking/gateways/$gatewayId")
   });
   const orgId = useOrgId();
   const go = useGo();
@@ -252,10 +253,11 @@ export const GatewayDetailsByIDPage = () => {
                 items={[
                   [
                     "ID",
-                    <Value key="id" mono>
-                      {gateway.id}
-                      <CopyButton value={gateway.id} label="Copy gateway ID to clipboard" />
-                    </Value>
+                    <TruncatedValue
+                      key="id"
+                      value={gateway.id}
+                      copyLabel="Copy gateway ID to clipboard"
+                    />
                   ],
                   ["Health", <GatewayHealth key="health" gateway={gateway} />],
                   ["Connection", <Connection key="connection" gateway={gateway} />],

@@ -58,36 +58,35 @@ const Enforcement = ({ onUpgrade }: { onUpgrade: () => void }) => {
   const required = Boolean(organization?.requireGatewayPools);
   return (
     <Card
-      variant="framed"
       title={
         <Inline gap={8} align="center">
-          Enforcement
+          Require gateway pools
           {required && <Badge tone="ok">Active</Badge>}
         </Inline>
       }
-    >
-      <Switch
-        layout="row"
-        label="Require gateway pools"
-        description="Resources connect only through a gateway pool, not an individual gateway. Resources already using an individual gateway keep working."
-        checked={required}
-        disabled={!canEdit || update.isPending}
-        title={canEdit ? undefined : RESTRICTED}
-        onChange={async (next) => {
-          if (next && !subscription?.gatewayPool) {
-            onUpgrade();
-            return;
-          }
-          await update.mutateAsync({ orgId, requireGatewayPools: next });
-          toast({
-            tone: "ok",
-            title: next
-              ? "Resources in this organization now require a gateway pool"
-              : "Resources in this organization can now use individual gateways"
-          });
-        }}
-      />
-    </Card>
+      description="Resources connect only through a gateway pool, not an individual gateway. Resources already using an individual gateway keep working."
+      action={
+        <Switch
+          aria-label="Require gateway pools"
+          checked={required}
+          disabled={!canEdit || update.isPending}
+          title={canEdit ? undefined : RESTRICTED}
+          onChange={async (next) => {
+            if (next && !subscription?.gatewayPool) {
+              onUpgrade();
+              return;
+            }
+            await update.mutateAsync({ orgId, requireGatewayPools: next });
+            toast({
+              tone: "ok",
+              title: next
+                ? "Resources in this organization now require a gateway pool"
+                : "Resources in this organization can now use individual gateways"
+            });
+          }}
+        />
+      }
+    />
   );
 };
 
