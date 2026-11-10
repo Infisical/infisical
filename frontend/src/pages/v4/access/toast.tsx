@@ -1,17 +1,21 @@
-import { ToastStack, type ToastItem } from "@app/components/v4/ui/toast-stack";
+import { toast as v4Toast } from "@app/components/v4/ui/sonner";
+import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 
-import { createFixtureStore } from "../data/fixture-store";
-
-const toasts = createFixtureStore<ToastItem[]>([]);
-
-export const toast = (item: Omit<ToastItem, "id">) => {
-  const id = crypto.randomUUID();
-  toasts.update((current) => [...current, { ...item, id }]);
-  return id;
+const byTone = {
+  ok: v4Toast.success,
+  bad: v4Toast.error,
+  neutral: v4Toast.info,
+  loading: v4Toast.loading
 };
 
-export const dismissToast = (id: string) =>
-  toasts.update((current) => current.filter((item) => item.id !== id));
+export const toast = ({
+  tone = "neutral",
+  title,
+  description,
+  action,
+  duration
+}: Omit<ToastItem, "id" | "icon">) =>
+  byTone[tone](title, { description, action, ...(duration === undefined ? {} : { duration }) });
 
 export const saved = (title: string) => toast({ tone: "ok", title });
 
@@ -21,5 +25,3 @@ export const failed = (title: string, error?: unknown) =>
     title,
     description: error instanceof Error ? error.message : undefined
   });
-
-export const AccessToasts = () => <ToastStack items={toasts.use()} onDismiss={dismissToast} />;

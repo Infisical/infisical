@@ -85,7 +85,7 @@ import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { useProjectPermission } from "../../access/permissions";
-import { dismissToast, toast } from "../../access/toast";
+import { toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
@@ -524,7 +524,7 @@ export const OverviewPage = () => {
       toast({ tone: "ok", title: feedback.title, description: feedback.description });
       return;
     }
-    const id = toast({
+    toast({
       tone: "ok",
       title: feedback.title,
       description: feedback.description,
@@ -532,7 +532,6 @@ export const OverviewPage = () => {
         label: share.count === 1 ? "Share secret" : `Share ${share.count} secrets`,
         onClick: () => {
           setSharing(share.value);
-          dismissToast(id);
         }
       }
     });

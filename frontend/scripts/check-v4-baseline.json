@@ -1,11 +1,6 @@
 {
   "action-feedback-in-status": {
-    "src/components/v4/patterns/access-list.tsx": 1,
-    "src/pages/v4/pam/PamAccountsPage/PamAccountsPage.tsx": 1,
-    "src/pages/v4/secret-manager/OverviewPage/OverviewPage.tsx": 1,
-    "src/pages/v4/secret-manager/SecretApprovalsPage/SecretApprovalsPage.tsx": 1,
-    "src/pages/v4/secret-scanning/SecretScanningDataSourcesPage/SecretScanningDataSourcesPage.tsx": 1,
-    "src/pages/v4/secret-scanning/SecretScanningFindingsPage/SecretScanningFindingsPage.tsx": 1
+    "src/components/v4/patterns/access-list.tsx": 1
   },
   "arbitrary-geometry": {
     "src/components/v4/ui/chart.tsx": 1,
