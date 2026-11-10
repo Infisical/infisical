@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { addSeconds, formatISO } from "date-fns";
 
-import { PageTitle } from "@app/components/PageTitle";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/v4/ui/alert";
 import { Button } from "@app/components/v4/ui/button";
 import { Field } from "@app/components/v4/ui/field";
@@ -17,14 +16,9 @@ import { toast } from "../../../access/toast";
 import { AuthPage } from "../../../auth/components/AuthPage";
 import { v4Path } from "../../../links";
 import { resolveV4Href } from "../../../resolveV4Href";
+import { BrandedLayout } from "../BrandedLayout";
 import { usePublicSecretSharing } from "../PublicLayout";
-import {
-  brandStyle,
-  DEFAULT_FAVICON_URL,
-  DEFAULT_PRIMARY,
-  DEFAULT_SECONDARY,
-  errorOf
-} from "../shared";
+import { DEFAULT_FAVICON_URL, errorOf } from "../shared";
 
 import styles from "../public.module.css";
 
@@ -159,31 +153,19 @@ export const ViewSecretRequestPage = () => {
     </>
   );
 
-  if (isBranded)
+  if (config && isBranded)
     return (
-      <div
-        className={styles.branded}
-        style={brandStyle(
-          config?.primaryColor || DEFAULT_PRIMARY,
-          config?.secondaryColor || config?.primaryColor || DEFAULT_SECONDARY
-        )}
+      <BrandedLayout
+        config={config}
+        logoUrl={adapter.requestBrandingAssetUrl(secretRequestId, "brand-logo")}
+        pageTitle="Secret Request"
       >
-        <PageTitle title="Secret Request" />
-        {config?.hasLogo && (
-          <img
-            src={adapter.requestBrandingAssetUrl(secretRequestId, "brand-logo")}
-            alt="Logo"
-            className={styles.logo}
-          />
-        )}
-        <div className={styles.panel}>
-          <Stack gap={4}>
-            <Text className={styles.panelTitle}>{title}</Text>
-            {requester && <SmallText muted>Requested by {requester.username}</SmallText>}
-          </Stack>
-          {content}
-        </div>
-      </div>
+        <Stack gap={4}>
+          <Text className={styles.panelTitle}>{title}</Text>
+          {requester && <SmallText muted>Requested by {requester.username}</SmallText>}
+        </Stack>
+        {content}
+      </BrandedLayout>
     );
 
   return (

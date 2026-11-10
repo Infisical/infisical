@@ -29,18 +29,28 @@ const shift = (hex: string, amount: number) => {
     .join("")}`;
 };
 
-export const brandStyle = (primary: string, secondary: string) => {
+export const brandTheme = (primary: string, secondary: string) => {
   const lightPanel = isLight(secondary);
+  const inset = shift(secondary, lightPanel ? -15 : 15);
+  const line = shift(secondary, lightPanel ? -30 : 30);
   return {
-    "--brand-page": `linear-gradient(to bottom right, ${shift(primary, isLight(primary) ? -20 : 20)}, ${primary})`,
-    "--brand-panel": secondary,
-    "--brand-line": shift(secondary, lightPanel ? -30 : 30),
-    "--brand-inset": shift(secondary, lightPanel ? -15 : 15),
-    // v4-check-ignore raw-color -- customer brand colors from the org's branding config, not product chrome
-    "--brand-text": lightPanel ? "#1a1a1a" : "#f5f5f5",
-    // v4-check-ignore raw-color -- customer brand colors from the org's branding config, not product chrome
-    "--brand-muted": lightPanel ? "#1a1a1acc" : "#f5f5f5cc"
-  } as CSSProperties;
+    page: {
+      "--brand-page": `linear-gradient(to bottom right, ${shift(primary, isLight(primary) ? -20 : 20)}, ${primary})`
+    } as CSSProperties,
+    panelTheme: lightPanel ? "peach" : "dark",
+    panel: {
+      background: secondary,
+      borderColor: line,
+      "--v4-line": line,
+      "--v4-line-soft": line,
+      "--v4-inset": inset,
+      "--v4-surface": inset,
+      "--v4-tint": inset,
+      "--v4-paper": inset,
+      "--v4-control-surface": inset,
+      "--v4-control-surface-hover": inset
+    } as CSSProperties
+  };
 };
 
 export const errorOf = (error: unknown) => {

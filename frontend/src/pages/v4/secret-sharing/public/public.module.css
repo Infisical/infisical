@@ -60,7 +60,6 @@
   padding: var(--v4-space-40) var(--v4-space-16);
   overflow: auto;
   background: var(--brand-page);
-  color: var(--brand-text);
 }
 .logo {
   max-height: 64px;
@@ -74,16 +73,8 @@
   width: 100%;
   max-width: var(--v4-size-measure-form);
   padding: var(--v4-space-24);
-  border: var(--v4-size-control-border) solid var(--brand-line);
-  background: var(--brand-panel);
-  --v4-ink: var(--brand-text);
-  --v4-muted: var(--brand-muted);
-  --v4-line: var(--brand-line);
-  --v4-line-soft: var(--brand-line);
-  --v4-inset: var(--brand-inset);
-  --v4-surface: var(--brand-inset);
-  --v4-control-surface: var(--brand-inset);
-  --v4-control-surface-hover: var(--brand-inset);
+  border-width: var(--v4-size-control-border);
+  border-style: solid;
 }
 .panelTitle {
   font-size: var(--v4-type-title-sm-font-size);
