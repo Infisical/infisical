@@ -451,7 +451,10 @@ function ImportSecretsContent({
       ...(scope.path === "/" ? [] : [scope.path]),
       ...(nestedImport?.folderPaths.map((path) => joinSecretPath(scope.path, path)) ?? [])
     ];
-    const plan = (current: readonly Resource[]) => {
+    const plan = (
+      current: readonly Resource[],
+      held: (environment: string, path: string) => boolean = () => false
+    ) => {
       const next = [...current];
       const counts = { created: 0, updated: 0, skipped: 0 };
       selectedEnvs.forEach((environment) => {
@@ -471,6 +474,7 @@ function ImportSecretsContent({
           });
         });
         writes.forEach(({ path, secrets }) => {
+          if (held(environment, path)) return;
           const existing = new Map(
             secretsAt(next, scope.project, environment, path).map((secret) => [secret.name, secret])
           );
@@ -529,22 +533,32 @@ function ImportSecretsContent({
       return { next, counts };
     };
     const { counts } = plan(resources);
-    const target =
-      selectedEnvs.length === 1
-        ? environmentLabel(selectedEnvs[0])
-        : plural(selectedEnvs.length, "environment");
+    const targetOf = (environments: string[]) =>
+      environments.length === 1
+        ? environmentLabel(environments[0])
+        : plural(environments.length, "environment");
+    const target = targetOf(selectedEnvs);
     if (counts.created || counts.updated || (nestedImport && folderCount)) {
-      onApply((current) => plan(current).next, {
-        title: `Uploaded ${plural(secretCount, "secret")}${folderSummary} to ${target}`,
-        description: [
-          counts.created && `${plural(counts.created, "secret")} created`,
-          counts.updated && `${counts.updated} updated`,
-          counts.skipped && `${counts.skipped} skipped`
-        ]
-          .filter(Boolean)
-          .join(", "),
-        share: true
-      });
+      onApply(
+        (current) => plan(current).next,
+        (held) => {
+          const written = plan(resources, held).counts;
+          const environments = selectedEnvs.filter((environment) =>
+            writes.some(({ path }) => !held(environment, path))
+          );
+          return {
+            title: `Uploaded ${plural(secretCount, "secret")}${folderSummary} to ${targetOf(environments)}`,
+            description: [
+              written.created && `${plural(written.created, "secret")} created`,
+              written.updated && `${written.updated} updated`,
+              written.skipped && `${written.skipped} skipped`
+            ]
+              .filter(Boolean)
+              .join(", "),
+            share: true
+          };
+        }
+      );
     } else {
       onToast("neutral", {
         title: `No secrets uploaded to ${target}`,

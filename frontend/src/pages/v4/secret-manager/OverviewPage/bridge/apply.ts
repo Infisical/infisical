@@ -21,6 +21,9 @@ export type SecretHooks = {
   reminder?: (before: Secret, after: Secret) => Promise<unknown>;
 };
 
+export type ApplyScope = { environment: string; path: string };
+export type ApplyResult = { written: ApplyScope[]; held: ApplyScope[] };
+
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const within = (path: string, root: string) => path === root || path.startsWith(`${root}/`);
 const groupBy = <T>(items: T[], key: (item: T) => string) =>
@@ -85,7 +88,12 @@ export const useResourceApply = ({
     before: readonly Resource[],
     after: readonly Resource[],
     { shouldOverwrite = false }: ResourceApplyOptions = {}
-  ) => {
+  ): Promise<ApplyResult> => {
+    const result: ApplyResult = { written: [], held: [] };
+    const record = (environment: string, path: string, response: unknown) => {
+      const held = typeof response === "object" && response !== null && "approval" in response;
+      result[held ? "held" : "written"].push({ environment, path });
+    };
     const previous = new Map(
       before.map((resource) => [`${resource.kind}:${resource.id}`, resource])
     );
@@ -163,13 +171,17 @@ export const useResourceApply = ({
         !resource.honeyToken
     );
     await Promise.all(
-      Object.values(groupBy(removedSecrets, scopeOf)).map((group) =>
-        deleteSecretBatch.mutateAsync({
-          projectId,
-          environment: group[0].environment,
-          secretPath: group[0].path,
-          secrets: group.map((secret) => ({ secretKey: secret.name, type: SecretType.Shared }))
-        })
+      Object.values(groupBy(removedSecrets, scopeOf)).map(async (group) =>
+        record(
+          group[0].environment,
+          group[0].path,
+          await deleteSecretBatch.mutateAsync({
+            projectId,
+            environment: group[0].environment,
+            secretPath: group[0].path,
+            secrets: group.map((secret) => ({ secretKey: secret.name, type: SecretType.Shared }))
+          })
+        )
       )
     );
     await Promise.all(
@@ -275,25 +287,29 @@ export const useResourceApply = ({
     );
 
     await Promise.all(
-      Object.values(groupBy(createdSecrets, scopeOf)).map((group) =>
-        createSecretBatch.mutateAsync({
-          projectId,
-          environment: group[0].environment,
-          secretPath: group[0].path,
-          secrets: group.map((secret) => ({
-            secretKey: secret.name,
-            secretValue: valueOf(secret) ?? "",
-            secretComment: secret.comment,
-            skipMultilineEncoding: secret.skipMultilineEncoding,
-            tagIds: tagIds(secret.tags),
-            secretMetadata: secret.metadata.map((entry) => ({
-              key: entry.key,
-              value: entry.value,
-              isEncrypted: entry.encrypted
-            })),
-            type: SecretType.Shared
-          }))
-        })
+      Object.values(groupBy(createdSecrets, scopeOf)).map(async (group) =>
+        record(
+          group[0].environment,
+          group[0].path,
+          await createSecretBatch.mutateAsync({
+            projectId,
+            environment: group[0].environment,
+            secretPath: group[0].path,
+            secrets: group.map((secret) => ({
+              secretKey: secret.name,
+              secretValue: valueOf(secret) ?? "",
+              secretComment: secret.comment,
+              skipMultilineEncoding: secret.skipMultilineEncoding,
+              tagIds: tagIds(secret.tags),
+              secretMetadata: secret.metadata.map((entry) => ({
+                key: entry.key,
+                value: entry.value,
+                isEncrypted: entry.encrypted
+              })),
+              type: SecretType.Shared
+            }))
+          })
+        )
       )
     );
 
@@ -325,7 +341,11 @@ export const useResourceApply = ({
             : {})
         };
         if (Object.keys(patch).length)
-          await updateSecret.mutateAsync({ ...scope, ...patch, type: SecretType.Shared });
+          record(
+            to.environment,
+            to.path,
+            await updateSecret.mutateAsync({ ...scope, ...patch, type: SecretType.Shared })
+          );
         const personal = { ...scope, secretKey: to.name };
         if (from.override === undefined && to.override !== undefined)
           await createSecret.mutateAsync({
@@ -393,5 +413,6 @@ export const useResourceApply = ({
         )?.(from, to);
       })
     );
+    return result;
   };
 };

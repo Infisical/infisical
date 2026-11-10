@@ -121,8 +121,14 @@ import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
 import { CommitHistorySheet } from "./secrets/commits/commit-history-sheet";
 import { createdSecretsShare } from "./secrets/created-share";
 import { EnvironmentPicker } from "./secrets/environment-picker";
-import { addFlows, type FlowFeedback, FlowToasts, type NewResource } from "./secrets/flows";
-import { childPath } from "./secrets/flows/shared";
+import {
+  addFlows,
+  type ApplyFeedback,
+  type FlowFeedback,
+  FlowToasts,
+  type NewResource
+} from "./secrets/flows";
+import { childPath, environmentLabel } from "./secrets/flows/shared";
 import {
   type ImportSecretsRequest,
   ImportSecretsSheet
@@ -548,31 +554,58 @@ export const OverviewPage = () => {
   };
   const setResources = (
     update: (current: Resource[]) => Resource[],
-    feedback?: FlowFeedback,
+    feedback?: ApplyFeedback,
     options?: ResourceApplyOptions
   ) => {
     const before = resourcesRef.current;
     const after = update([...before]);
     runApply(before, after, options).then(
-      () => {
+      ({ written, held }) => {
         if (!feedback) return;
-        if (!feedback.share) {
-          pushToast({ tone: "ok", title: feedback.title, description: feedback.description });
+        if (held.length && !written.length) {
+          pushToast({
+            tone: "neutral",
+            title: "Change request opened",
+            description: "An approval policy covers this folder, so changes wait for review."
+          });
+          return;
+        }
+        const isHeld = (environment: string, secretPath: string) =>
+          held.some((scope) => scope.environment === environment && scope.path === secretPath);
+        const resolved = typeof feedback === "function" ? feedback(isHeld) : feedback;
+        const heldNames = [...new Set(held.map((scope) => environmentLabel(scope.environment)))];
+        const result = heldNames.length
+          ? {
+              ...resolved,
+              description: [
+                resolved.description,
+                `Change request opened for ${new Intl.ListFormat("en").format(heldNames)}`
+              ]
+                .filter(Boolean)
+                .join(". ")
+            }
+          : resolved;
+        if (!result.share) {
+          pushToast({ tone: "ok", title: result.title, description: result.description });
           return;
         }
         const existing = new Set(before.map((resource) => resource.id));
         pushCreatedToast(
-          feedback,
+          result,
           after.filter(
             (resource): resource is Secret =>
-              resource.kind === "secret" && !existing.has(resource.id)
+              resource.kind === "secret" &&
+              !existing.has(resource.id) &&
+              !isHeld(resource.environment, resource.path)
           )
         );
       },
       (error: unknown) =>
         pushToast({
           tone: "bad",
-          title: feedback ? `Could not finish: ${feedback.title}` : "The change failed",
+          title: feedback
+            ? `Could not finish: ${(typeof feedback === "function" ? feedback(() => false) : feedback).title}`
+            : "The change failed",
           description: errorText(error)
         })
     );
@@ -2178,7 +2211,7 @@ export const OverviewPage = () => {
               resources,
               onApply: (
                 update: (current: Resource[]) => Resource[],
-                feedback: FlowFeedback,
+                feedback: ApplyFeedback,
                 options?: ResourceApplyOptions
               ) => {
                 setResources(update, feedback, options);
