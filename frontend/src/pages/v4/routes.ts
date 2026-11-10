@@ -97,6 +97,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       route("/$", "v4/organization/NotPortedPage/projects/route.tsx")
     ]),
     route("/settings", "v4/organization/SettingsPage/route.tsx"),
+    route("/billing", "v4/organization/BillingPage/route.tsx"),
     route("/sso", "v4/organization/SsoPage/route.tsx"),
     route("/oauth-applications", "v4/organization/OauthApplicationsPage/route.tsx"),
     route("/audit-logs", "v4/organization/AuditLogsPage/route.tsx"),
