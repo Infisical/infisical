@@ -73,6 +73,8 @@ describe("isValidAzureAppConfigurationUrl", () => {
     "https://my-store.azconfig.io:8443",
     "https://my-store.azconfig.io/kv",
     "https://my-store.azconfig.io?label=.azconfig.io",
+    "https://my-store.azconfig.io?",
+    "https://my-store.azconfig.io#",
     "https://azconfig.io",
     "https://foo.bar.azconfig.io",
     "not-a-url",
