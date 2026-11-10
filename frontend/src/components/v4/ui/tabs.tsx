@@ -32,7 +32,10 @@ export type TabsProps = Omit<
 
 const UNDERLINE_RULE_SPANS = true;
 
-const TabsWidthContext = React.createContext<TabsWidth>("content");
+const TabsWidthContext = React.createContext<{
+  width: TabsWidth;
+  orientation: TabsProps["orientation"];
+}>({ width: "content", orientation: "horizontal" });
 
 function Tabs({
   className,
@@ -69,7 +72,7 @@ function Tabs({
       className={cn(styles.tabs, className)}
       {...props}
     >
-      <TabsWidthContext value={width}>
+      <TabsWidthContext value={{ width, orientation }}>
         {tabs ? (
           <>
             <TabsList aria-label={label} variant={variant}>
@@ -125,7 +128,7 @@ function TabsList({
   VariantProps<typeof tabsListVariants> & {
     ref?: React.Ref<React.ComponentRef<typeof TabsPrimitive.List>>;
   }) {
-  const width = React.useContext(TabsWidthContext);
+  const { width, orientation } = React.useContext(TabsWidthContext);
   const list = React.useRef<HTMLDivElement | null>(null);
   const [edge, setEdge] = React.useState({ before: false, after: false });
   const wheelCancelled = React.useRef(false);
@@ -212,7 +215,9 @@ function TabsList({
       className={styles.tabsTrack}
       data-variant={variant}
       data-width={width}
-      data-rule-spans={(variant === "underline" && UNDERLINE_RULE_SPANS) || undefined}
+      data-rule-spans={
+        (variant === "underline" && orientation !== "vertical" && UNDERLINE_RULE_SPANS) || undefined
+      }
     >
       <TabsPrimitive.List
         ref={attach}
