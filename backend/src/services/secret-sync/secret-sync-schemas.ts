@@ -4,7 +4,7 @@ import { AnyZodObject, z } from "zod";
 import { SecretSyncsSchema } from "@app/db/schemas/secret-syncs";
 import { SecretSyncs } from "@app/lib/api-docs";
 import { removeTrailingSlash } from "@app/lib/fn";
-import { slugSchema } from "@app/server/lib/schemas";
+import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { SecretSync, SecretSyncInitialSyncBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import { SECRET_SYNC_CONNECTION_MAP, SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
@@ -70,7 +70,7 @@ const BaseSyncOptionsSchema = <T extends AnyZodObject | undefined = undefined>({
     disableSecretDeletion: supportsDisableSecretDeletion
       ? z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).disableSecretDeletion)
       : z.literal(false).or(z.undefined()).describe(`Not supported for ${syncName} syncs.`),
-    includeAllSubFolders: z.boolean().optional().describe(SecretSyncs.SYNC_OPTIONS(destination).includeAllSubFolders)
+    includeAllSubFolders: z.boolean().optional().describe(openApiHidden())
   });
 
   // What the merged schema actually is: baseSchema, merged with the destination's own extra
