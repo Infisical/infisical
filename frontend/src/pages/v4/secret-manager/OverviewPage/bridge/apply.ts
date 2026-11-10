@@ -93,12 +93,7 @@ export const useResourceApply = ({
     const record = async (environment: string, path: string, pending?: Promise<unknown>) => {
       if (!pending) return;
       const response = await pending;
-      const held =
-        typeof response === "object" &&
-        response !== null &&
-        ("approval" in response ||
-          ("isDestinationUpdated" in response && !response.isDestinationUpdated) ||
-          ("isSourceUpdated" in response && !response.isSourceUpdated));
+      const held = typeof response === "object" && response !== null && "approval" in response;
       result[held ? "held" : "written"].push({ environment, path });
     };
     const previous = new Map(
@@ -302,22 +297,27 @@ export const useResourceApply = ({
     await Promise.all(
       Object.values(
         groupBy(movedSecrets, ([from, to]) => `${scopeOf(from)}\u0000${scopeOf(to)}`)
-      ).map((group) =>
-        record(
-          group[0][1].environment,
-          group[0][1].path,
-          moveSecrets.mutateAsync({
-            projectId,
-            projectSlug,
-            sourceEnvironment: group[0][0].environment,
-            sourceSecretPath: group[0][0].path,
-            destinationEnvironment: group[0][1].environment,
-            destinationSecretPath: group[0][1].path,
-            secretIds: group.map(([from]) => from.id),
-            shouldOverwrite
-          })
-        )
-      )
+      ).map(async (group) => {
+        const [from, to] = group[0];
+        const response = (await moveSecrets.mutateAsync({
+          projectId,
+          projectSlug,
+          sourceEnvironment: from.environment,
+          sourceSecretPath: from.path,
+          destinationEnvironment: to.environment,
+          destinationSecretPath: to.path,
+          secretIds: group.map(([secret]) => secret.id),
+          shouldOverwrite
+        })) as { isSourceUpdated?: boolean; isDestinationUpdated?: boolean } | undefined;
+        result[response?.isDestinationUpdated === false ? "held" : "written"].push({
+          environment: to.environment,
+          path: to.path
+        });
+        result[response?.isSourceUpdated === false ? "held" : "written"].push({
+          environment: from.environment,
+          path: from.path
+        });
+      })
     );
 
     await Promise.all(
