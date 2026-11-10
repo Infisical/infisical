@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { ApprovalPoliciesSchema, TableName } from "@app/db/schemas";
+import { ApprovalPoliciesSchema, TableName, TApprovalPolicies } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -224,17 +224,9 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findSecretAccessPolicyByEnvIdAndSecretPath = async ({
-    projectId,
-    envId,
-    secretPath
-  }: {
-    projectId: string;
-    envId: string;
-    secretPath: string;
-  }) => {
+  const findSecretAccessPoliciesByEnvId = async ({ projectId, envId }: { projectId: string; envId: string }) => {
     try {
-      const policy = await db
+      return (await db
         .replicaNode()(TableName.ApprovalPolicies)
         .join(
           TableName.ApprovalPolicySecretEnvironment,
@@ -244,20 +236,12 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
         .where(`${TableName.ApprovalPolicies}.type`, ApprovalPolicyType.SecretAccess)
         .where(`${TableName.ApprovalPolicies}.projectId`, projectId)
         .where(`${TableName.ApprovalPolicySecretEnvironment}.envId`, envId)
-        .where(`${TableName.ApprovalPolicySecretEnvironment}.secretPath`, secretPath)
         .select(selectAllTableCols(TableName.ApprovalPolicies))
-        .first();
-
-      if (!policy) return null;
-
-      const [steps, bypassers] = await Promise.all([
-        findStepsByPolicyId(policy.id),
-        findBypassersByPolicyId(policy.id)
-      ]);
-
-      return { ...policy, steps, bypassers };
+        .select(db.ref("secretPath").withSchema(TableName.ApprovalPolicySecretEnvironment))) as (TApprovalPolicies & {
+        secretPath: string;
+      })[];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find secret access approval policy by environment and secret path" });
+      throw new DatabaseError({ error, name: "Find secret access approval policies by environment" });
     }
   };
 
@@ -617,7 +601,7 @@ export const approvalPolicyDALFactory = (db: TDbClient) => {
     findBypassersByPolicyId,
     findBypassersByPolicyIds,
     findByProjectId,
-    findSecretAccessPolicyByEnvIdAndSecretPath,
+    findSecretAccessPoliciesByEnvId,
     findPoliciesWhereSubjectIsApprover,
     isProjectApprover,
     findRequestableScopes,

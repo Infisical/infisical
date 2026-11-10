@@ -148,6 +148,49 @@ describe("Access approval request routing", () => {
     expect(await db(TableName.AccessApprovalRequest).where({ id: approval.id })).toHaveLength(0);
   });
 
+  test("A request for a folder inside a glob policy grants only that folder", async () => {
+    const db = getDb();
+    const created = await createGlobalPolicy({ name: "routing-scope", secretPath: "/routing-scope/**" });
+    expect(created.statusCode).toBe(200);
+    const policyId: string = created.json().approval.id;
+
+    const res = await createAccessRequest("/routing-scope/api");
+    expect(res.statusCode).toBe(200);
+    const { approval } = res.json();
+    expect(approval.policyId).toBe(policyId);
+
+    const reviewRes = await reviewAccessRequest(approval.id, "approved");
+    expect(reviewRes.statusCode).toBe(200);
+
+    const grant = await db(TableName.ApprovalRequestGrants).where({ requestId: approval.id }).first();
+    const privilege = await db(TableName.AdditionalPrivilege).where({ grantId: grant?.id }).first();
+    expect(privilege?.permissions).toEqual([
+      ["read", "secrets", { environment: seedData1.environment.slug, secretPath: { $glob: "/routing-scope/api" } }]
+    ]);
+  });
+
+  test("A request covered by several policies goes to the most specific one", async () => {
+    const broad = await createGlobalPolicy({ name: "routing-broad", secretPath: "/routing-nested/**" });
+    expect(broad.statusCode).toBe(200);
+    const narrow = await createGlobalPolicy({ name: "routing-narrow", secretPath: "/routing-nested/api/**" });
+    expect(narrow.statusCode).toBe(200);
+
+    const res = await createAccessRequest("/routing-nested/api/db");
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().approval.policyId).toBe(narrow.json().approval.id);
+  });
+
+  test("A request broader than every policy is refused", async () => {
+    const created = await createGlobalPolicy({ name: "routing-one-level", secretPath: "/routing-one-level/*" });
+    expect(created.statusCode).toBe(200);
+
+    const res = await createAccessRequest("/routing-one-level/**");
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json().message).toContain("Access requests aren't enabled for secret path '/routing-one-level/**'");
+  });
+
   test("A request against a path only a legacy policy covers is refused", async () => {
     const db = getDb();
     const secretPath = "/routing-legacy";
@@ -156,7 +199,7 @@ describe("Access approval request routing", () => {
     const res = await createAccessRequest(secretPath);
 
     expect(res.statusCode).toBe(404);
-    expect(res.json().message).toContain("No policy in environment");
+    expect(res.json().message).toContain("Access requests aren't enabled for secret path '/routing-legacy'");
     expect(await db(TableName.AccessApprovalRequest).where({ policyId: legacyPolicy.id })).toHaveLength(0);
   });
 

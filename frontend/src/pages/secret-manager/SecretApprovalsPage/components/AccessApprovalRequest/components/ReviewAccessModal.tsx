@@ -113,7 +113,12 @@ import {
   PROJECT_PERMISSION_OBJECT
 } from "@app/pages/project/RoleDetailsBySlugPage/components/ProjectRoleModifySection.utils";
 
-import { getAccessDurationLabel } from "../AccessApprovalRequest.utils";
+import {
+  getAccessDurationLabel,
+  getRequestedSecretPath,
+  isGlobPath
+} from "../AccessApprovalRequest.utils";
+import { AccessRequestFolderList } from "./AccessRequestFolderList";
 
 // The four basic CRUD actions render with clean labels rather than the role editor's
 // granular secret labels (e.g. "read" maps to "Read (legacy)" there), so existing
@@ -280,7 +285,7 @@ export const ReviewAccessRequestModal = ({
       currentProject?.environments.find((env) => env.slug === request.environmentName)?.name ??
       request.environmentName,
     // secret path will be inside $glob operator
-    secretPath: request.policy.secretPath,
+    secretPath: getRequestedSecretPath(request),
     temporaryAccess: {
       isTemporary: request.isTemporary,
       temporaryRange: request.temporaryRange
@@ -893,6 +898,13 @@ export const ReviewAccessRequestModal = ({
                   <DetailValue className="break-words">{accessDetails.secretPath}</DetailValue>
                 </Detail>
                 <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
+                  <DetailLabel>Policy</DetailLabel>
+                  <DetailValue className="break-words">
+                    {request.policy.name}{" "}
+                    <span className="text-muted">{request.policy.secretPath}</span>
+                  </DetailValue>
+                </Detail>
+                <Detail className={shouldCollapseDetails ? undefined : "min-w-36 flex-[1_1_0]"}>
                   <DetailLabel>Access Duration</DetailLabel>
                   <DetailValue>
                     <div className="flex min-w-0 items-center gap-1">
@@ -903,6 +915,15 @@ export const ReviewAccessRequestModal = ({
                     </div>
                   </DetailValue>
                 </Detail>
+                {isGlobPath(accessDetails.secretPath) && (
+                  <Detail className="w-full flex-none">
+                    <DetailLabel>Matching Folders</DetailLabel>
+                    <AccessRequestFolderList
+                      secretPath={accessDetails.secretPath}
+                      environment={request.environmentName}
+                    />
+                  </Detail>
+                )}
                 {request.note && (
                   <Detail className="w-full flex-none">
                     <DetailLabel>Note</DetailLabel>

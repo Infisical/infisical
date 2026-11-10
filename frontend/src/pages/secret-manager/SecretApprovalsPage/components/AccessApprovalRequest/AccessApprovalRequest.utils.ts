@@ -1,7 +1,9 @@
 import ms from "ms";
+import picomatch from "picomatch";
 
-import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
+import { TAccessApprovalPolicy, TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
 import { ApprovalStatus } from "@app/hooks/api/types";
+import { isGlobSubsetOfGlob, literalPrefix } from "@app/lib/fn/glob";
 
 export type AccessRequestState =
   | "pending"
@@ -77,3 +79,29 @@ export const getAccessDurationLabel = (isTemporary?: boolean, temporaryRange?: s
   if (!rangeMs) return `Valid for ${temporaryRange} after approval`;
   return `Valid for ${formatAccessDuration(rangeMs)} after approval`;
 };
+
+export const ENTIRE_SCOPE_PATH = "/**";
+
+export const isGlobPath = (secretPath: string) => picomatch.scan(secretPath).isGlob;
+
+// The server refuses a request whose rules name different paths, so the first rule's path is the request's.
+export const getRequestedSecretPath = (
+  request: Pick<TAccessApprovalRequest, "permissions" | "policy">
+) => {
+  const glob = request.permissions?.[0]?.conditions?.secretPath?.$glob;
+  return typeof glob === "string" ? glob : (request.policy.secretPath ?? "/");
+};
+
+// Mirrors resolveSecretAccessPolicyForPath on the server, so the form applies the limits of the policy that
+// will own the request.
+export const resolveAccessPolicyForPath = (policies: TAccessApprovalPolicy[], secretPath: string) =>
+  policies
+    .filter((policy) => isGlobSubsetOfGlob(policy.secretPath, secretPath))
+    .sort(
+      (a, b) =>
+        Number(b.secretPath === secretPath) - Number(a.secretPath === secretPath) ||
+        literalPrefix(b.secretPath).length - literalPrefix(a.secretPath).length ||
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+        a.id.localeCompare(b.id)
+    )
+    .shift();

@@ -70,8 +70,16 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { useCreateAccessRequest } from "@app/hooks/api";
 import { TAccessApprovalPolicy } from "@app/hooks/api/types";
+import { normalizeFolderPath } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.utils";
 
-import { getAccessDurationLabel, parseAccessDurationMs } from "../AccessApprovalRequest.utils";
+import {
+  getAccessDurationLabel,
+  isGlobPath,
+  parseAccessDurationMs,
+  resolveAccessPolicyForPath
+} from "../AccessApprovalRequest.utils";
+import { AccessRequestFolderList } from "./AccessRequestFolderList";
+import { AccessRequestPathInput } from "./AccessRequestPathInput";
 
 const INVALID_DURATION_MESSAGE = "Enter a duration greater than 0.";
 const policyMaxDurationMessage = (maxTimePeriod: string) =>
@@ -314,7 +322,7 @@ const RESOURCE_CONFIGS: TResourceConfig[] = [
 
 const requestAccessSchema = z.object({
   environmentSlug: z.string().min(1),
-  secretPath: z.string().min(1, "Please select a secret path"),
+  secretPath: z.string().trim().min(1, "Enter a secret path").transform(normalizeFolderPath),
   resources: z
     .object({
       subject: z.nativeEnum(ProjectPermissionSub),
@@ -503,23 +511,35 @@ export const RequestAccessForm = ({
   const secretPath = form.watch("secretPath");
   const resources = form.watch("resources");
 
-  const selectablePaths = useMemo(
+  const [isPathFocused, setIsPathFocused] = useState(false);
+
+  const environmentPolicies = useMemo(
     () =>
-      policies
-        .filter((policy) => policy.environments.some((env) => env.slug === selectedEnvironment))
-        .map((policy) => policy.secretPath),
+      policies.filter((policy) =>
+        policy.environments.some((env) => env.slug === selectedEnvironment)
+      ),
     [policies, selectedEnvironment]
   );
+  const policyPaths = useMemo(
+    () => environmentPolicies.map((policy) => policy.secretPath),
+    [environmentPolicies]
+  );
+
+  const requestedPath = secretPath.trim() ? normalizeFolderPath(secretPath) : "";
 
   const matchedPolicy = useMemo(
     () =>
-      policies.find(
-        (policy) =>
-          policy.environments.some((env) => env.slug === selectedEnvironment) &&
-          policy.secretPath === secretPath
-      ),
-    [policies, selectedEnvironment, secretPath]
+      requestedPath ? resolveAccessPolicyForPath(environmentPolicies, requestedPath) : undefined,
+    [environmentPolicies, requestedPath]
   );
+
+  const environmentName =
+    currentProject.environments?.find((env) => env.slug === selectedEnvironment)?.name ??
+    selectedEnvironment;
+  const pathIssue =
+    requestedPath && !matchedPolicy
+      ? `Access requests aren't enabled for ${requestedPath} in ${environmentName}. Ask a project admin to add an access policy that covers it.`
+      : undefined;
 
   const maxDurationMs = matchedPolicy?.maxTimePeriod ? ms(matchedPolicy.maxTimePeriod) : null;
 
@@ -568,6 +588,8 @@ export const RequestAccessForm = ({
       });
       return;
     }
+
+    if (pathIssue) return;
 
     const { isTemporary, temporaryRange } = data.duration;
 
@@ -648,28 +670,32 @@ export const RequestAccessForm = ({
             control={form.control}
             name="secretPath"
             render={({ field, fieldState: { error } }) => {
+              const displayedError = !isPathFocused && pathIssue ? { message: pathIssue } : error;
               const secretPathField = (
                 <Field>
                   <FieldLabel htmlFor="secretPath">Secret Path</FieldLabel>
-                  <Combobox
-                    modal
-                    options={selectablePaths}
-                    value={selectablePaths.find((path) => path === field.value) ?? null}
-                    onValueChange={field.onChange}
-                    getOptionValue={(path) => path}
-                    getOptionLabel={(path) => path}
+                  <AccessRequestPathInput
                     id="secretPath"
-                    isDisabled={!selectablePaths.length}
-                    isError={Boolean(error)}
-                    placeholder="Select a secret path"
-                    searchPlaceholder="Search secret paths..."
-                    searchAriaLabel="Search secret paths"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onFocus={() => setIsPathFocused(true)}
+                    onBlur={() => setIsPathFocused(false)}
+                    environment={selectedEnvironment}
+                    policyPaths={policyPaths}
+                    isError={Boolean(displayedError)}
+                    disabled={!policyPaths.length}
                   />
-                  <FieldError errors={[error]} />
+                  {displayedError ? (
+                    <FieldError errors={[displayedError]} />
+                  ) : (
+                    <FieldDescription>
+                      Type a folder path or glob. Request the narrowest path you need.
+                    </FieldDescription>
+                  )}
                 </Field>
               );
 
-              if (selectablePaths.length) return secretPathField;
+              if (policyPaths.length) return secretPathField;
 
               return (
                 <Tooltip>
@@ -684,6 +710,12 @@ export const RequestAccessForm = ({
             }}
           />
         </div>
+        {requestedPath && !pathIssue && isGlobPath(requestedPath) && (
+          <Field>
+            <FieldLabel>Matching Folders</FieldLabel>
+            <AccessRequestFolderList secretPath={requestedPath} environment={selectedEnvironment} />
+          </Field>
+        )}
         <Field>
           <FieldLabel>Resources & Permissions</FieldLabel>
           {resourceFields.map((resourceField, index) => {

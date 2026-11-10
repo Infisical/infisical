@@ -142,8 +142,7 @@ export const notifySecretAccessStepApprovers = async (
     project,
     requestedByUser,
     data,
-    environment,
-    secretPath
+    environment
   }: {
     step: ApprovalPolicyStep;
     request: TSecretAccessRequestRow;
@@ -151,7 +150,6 @@ export const notifySecretAccessStepApprovers = async (
     requestedByUser: { firstName?: string | null; lastName?: string | null; email?: string | null };
     data: TSecretAccessRequestData;
     environment: { slug: string };
-    secretPath: string;
   },
   {
     userDAL,
@@ -178,6 +176,8 @@ export const notifySecretAccessStepApprovers = async (
     : [];
 
   try {
+    const { secretPath } = verifyRequestedPermissions({ permissions: data.permissions });
+
     await triggerWorkflowIntegrationNotification({
       input: {
         notification: {
@@ -254,18 +254,21 @@ export const notifySecretAccessBypass = async (
     policy,
     actingUser,
     environmentName,
+    data,
     bypassReason
   }: {
     request: Pick<TSecretAccessRequestRow, "id" | "organizationId">;
     project: { id: string; name: string; orgId: string };
-    policy: { secretPath: string; approvers: { type: ApproverType; id?: string | null }[] };
+    policy: { approvers: { type: ApproverType; id?: string | null }[] };
     actingUser: Pick<TUsers, "id" | "firstName" | "lastName" | "email">;
     environmentName: string;
+    data: TSecretAccessRequestData;
     bypassReason: string;
   },
   { userDAL, userGroupMembershipDAL, notificationService, smtpService }: TNotifySecretAccessBypassDep
 ) => {
   try {
+    const { secretPath } = verifyRequestedPermissions({ permissions: data.permissions });
     const approverUserIds = await resolveStepApproverUserIds(
       {
         requiredApprovals: 1,
@@ -288,7 +291,7 @@ export const notifySecretAccessBypass = async (
         orgId: request.organizationId,
         type: NotificationType.ACCESS_POLICY_BYPASSED,
         title: "Secret Access Policy Bypassed",
-        body: `**${actingUserFullName}** (${actingUser.email}) has accessed a secret in **${policy.secretPath || "/"}** in the **${environmentName}** environment for project **${project.name}** without obtaining the required approval.`,
+        body: `**${actingUserFullName}** (${actingUser.email}) has accessed a secret in **${secretPath}** in the **${environmentName}** environment for project **${project.name}** without obtaining the required approval.`,
         link: approvalPath
       }))
     );
@@ -303,7 +306,7 @@ export const notifySecretAccessBypass = async (
           requesterFullName: actingUserFullName,
           requesterEmail: actingUser.email,
           bypassReason,
-          secretPath: policy.secretPath || "/",
+          secretPath,
           environment: environmentName,
           approvalUrl: `${cfg.SITE_URL}${approvalPath}`,
           requestType: "access"

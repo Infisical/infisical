@@ -105,8 +105,10 @@ import { queryClient } from "@app/hooks/api/reactQuery";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 
 import {
+  ENTIRE_SCOPE_PATH,
   formatAccessDuration,
   getAccessRequestState,
+  getRequestedSecretPath,
   parseAccessDurationMs
 } from "./AccessApprovalRequest.utils";
 import { RequestAccessModal } from "./components/RequestAccessModal";
@@ -342,8 +344,8 @@ export const AccessApprovalRequest = ({
           );
           break;
         case AccessRequestOrderBy.SecretPath:
-          comparison = (requestOne.policy.secretPath ?? "").localeCompare(
-            requestTwo.policy.secretPath ?? ""
+          comparison = getRequestedSecretPath(requestOne).localeCompare(
+            getRequestedSecretPath(requestTwo)
           );
           break;
         case AccessRequestOrderBy.RequestedBy:
@@ -896,6 +898,7 @@ export const AccessApprovalRequest = ({
                     !isRequestExpired(request);
                   const environmentDisplayName =
                     environmentNamesBySlug[request.environmentName] ?? request.environmentName;
+                  const requestedSecretPath = getRequestedSecretPath(request);
 
                   return (
                     <TableRow key={request.id} linked>
@@ -923,8 +926,13 @@ export const AccessApprovalRequest = ({
                           {environmentDisplayName}
                         </RowLink>
                       </TableCell>
-                      <TableCell title={request.policy.secretPath ?? undefined}>
-                        {request.policy.secretPath}
+                      <TableCell title={requestedSecretPath}>
+                        <div className="flex items-center gap-2">
+                          <span className="truncate">{requestedSecretPath}</span>
+                          {requestedSecretPath === ENTIRE_SCOPE_PATH && (
+                            <Badge variant="warning">Entire Scope</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {requester ? (

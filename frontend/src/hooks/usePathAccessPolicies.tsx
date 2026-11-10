@@ -2,34 +2,7 @@ import { useMemo } from "react";
 
 import { useProject, useSubscription } from "@app/context";
 import { useGetAccessApprovalPolicies } from "@app/hooks/api";
-
-const matchesPath = (folderPath: string, pattern: string) => {
-  const normalizedPath = folderPath === "/" ? "/" : folderPath.replace(/\/$/, "");
-  const normalizedPattern = pattern === "/" ? "/" : pattern.replace(/\/$/, "");
-
-  if (normalizedPath === normalizedPattern) {
-    return true;
-  }
-
-  if (normalizedPattern.endsWith("/**")) {
-    const basePattern = normalizedPattern.slice(0, -3); // Remove "/**"
-
-    // Handle root wildcard "/**"
-    if (basePattern === "") {
-      return true;
-    }
-
-    // Check if path starts with the base pattern
-    if (normalizedPath === basePattern) {
-      return true;
-    }
-
-    // Check if path is a subdirectory of the base pattern
-    return normalizedPath.startsWith(`${basePattern}/`);
-  }
-
-  return false;
-};
+import { isGlobSubsetOfGlob } from "@app/lib/fn/glob";
 
 type Params = {
   secretPath: string;
@@ -50,12 +23,13 @@ export const usePathAccessPolicies = ({ secretPath, environment }: Params) => {
     const pathPolicies = policies?.filter(
       (policy) =>
         policy.environments?.some((env) => env.slug === environment) &&
-        matchesPath(secretPath, policy.secretPath)
+        isGlobSubsetOfGlob(policy.secretPath, secretPath)
     );
 
     return {
       hasPathPolicies: subscription.secretApproval && Boolean(pathPolicies?.length),
-      pathPolicies
+      pathPolicies,
+      policies: policies ?? []
     };
   }, [secretPath, environment, policies, subscription.secretApproval]);
 };

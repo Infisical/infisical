@@ -407,7 +407,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
     });
     if (!policy) {
       throw new NotFoundError({
-        message: `No policy in environment with slug '${environment.slug}' and with secret path '${secretPath}' was found.`
+        message: `Access requests aren't enabled for secret path '${secretPath}' in environment '${environment.name}'. Ask a project admin to add an access policy that covers this path.`
       });
     }
 
@@ -507,8 +507,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
           project,
           requestedByUser,
           data: requestData,
-          environment: { slug: envSlug },
-          secretPath
+          environment: { slug: envSlug }
         },
         {
           userDAL,
@@ -739,6 +738,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
             policy,
             actingUser,
             environmentName: policy.environment.name,
+            data,
             bypassReason: trimmedBypassReason
           },
           { userDAL, userGroupMembershipDAL, notificationService, smtpService }
@@ -857,8 +857,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
             project,
             requestedByUser,
             data,
-            environment: policy.environment,
-            secretPath: policy.secretPath
+            environment: policy.environment
           },
           {
             userDAL,
