@@ -136,6 +136,7 @@ export type TAgentVaultService = TAgentVaultServiceConfig & {
   id: string;
   accessBundleId: string;
   name: string;
+  description: string | null;
   hostPattern: string;
   // null means unrestricted.
   allowedMethods: AgentVaultHttpMethod[] | null;
@@ -280,6 +281,7 @@ export type TAgentVaultSessionInlineService = {
   id: string;
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
+  description: string | null;
   type: AgentVaultServiceType;
   serverUrl: string | null;
   transport: AgentVaultMcpTransport | null;
@@ -424,6 +426,7 @@ export type TCreateAgentVaultServiceDTO =
       accessBundleId: string;
       type: AgentVaultServiceType.Http;
       name: string;
+      description?: string;
       hostPattern: string;
       allowedMethods?: AgentVaultHttpMethod[] | null;
       allowedPathPrefixes?: string[] | null;
@@ -435,6 +438,7 @@ export type TCreateAgentVaultServiceDTO =
       accessBundleId: string;
       type: AgentVaultServiceType.Mcp;
       name: string;
+      description?: string;
       serverUrl: string;
       transport: AgentVaultMcpTransport;
       allowedTools?: string[] | null;
@@ -450,6 +454,7 @@ export type TUpdateAgentVaultServiceDTO = {
   // Must match the service's type, which never changes.
   type: AgentVaultServiceType;
   name?: string;
+  description?: string | null;
   hostPattern?: string;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;

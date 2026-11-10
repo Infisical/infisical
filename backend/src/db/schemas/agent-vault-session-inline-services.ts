@@ -25,7 +25,8 @@ export const AgentVaultSessionInlineServicesSchema = z.object({
   substitutions: z.unknown(),
   encryptedSecrets: zodBuffer.nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  description: z.string().nullable().optional()
 });
 
 export type TAgentVaultSessionInlineServices = z.infer<typeof AgentVaultSessionInlineServicesSchema>;
