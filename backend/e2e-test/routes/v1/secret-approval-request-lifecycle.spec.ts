@@ -1,4 +1,5 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
+import { createSecretChangePolicy } from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
@@ -55,12 +56,10 @@ const getSecret = (secretPath: string, key: string) =>
     headers: authHeaders()
   });
 
-const createPolicy = (url: string, secretPath: string, name: string) =>
-  testServer.inject({
-    method: "POST",
-    url,
-    headers: authHeaders(),
-    body: { workspaceId: projectId, projectId, environment: envSlug, secretPath, approvers, approvals: 1, name }
+const createPolicy = (secretPath: string, name: string) =>
+  createSecretChangePolicy({
+    body: { projectId, environment: envSlug, secretPath, approvers, approvals: 1, name },
+    authToken: jwtAuthToken
   });
 
 const getRequest = (id: string) =>
@@ -124,9 +123,7 @@ describe("Secret change request lifecycle on a policy on the global approval sys
 
   beforeAll(async () => {
     ({ folderId, secretPath, baseSecretId, baseVersion } = await setupFolderWithBaseSecret(FOLDER));
-    const policyRes = await createPolicy("/api/v2/secret-approvals", secretPath, "lifecycle-global-policy");
-    expect(policyRes.statusCode).toBe(200);
-    policyId = policyRes.json().approval.id as string;
+    policyId = (await createPolicy(secretPath, "lifecycle-global-policy")).id;
   });
 
   afterAll(async () => {

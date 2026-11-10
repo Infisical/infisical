@@ -1,5 +1,5 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
+import { createSecretChangePolicy, seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
@@ -60,12 +60,10 @@ const moveSecrets = (destinationSecretPath: string, secretIds: string[]) =>
     }
   });
 
-const createPolicy = (url: string, secretPath: string, name: string) =>
-  testServer.inject({
-    method: "POST",
-    url,
-    headers: authHeaders(),
-    body: { workspaceId: projectId, projectId, environment: envSlug, secretPath, approvers, approvals: 1, name }
+const createPolicy = (secretPath: string, name: string) =>
+  createSecretChangePolicy({
+    body: { projectId, environment: envSlug, secretPath, approvers, approvals: 1, name },
+    authToken: jwtAuthToken
   });
 
 const changeRequestsForFolder = (folderId: string) => getDb()(TableName.SecretChangeRequests).where({ folderId });
@@ -98,9 +96,7 @@ describe("Secret move under a secret approval policy", () => {
       })
     ).id;
 
-    const bridgeRes = await createPolicy("/api/v2/secret-approvals", `/${BRIDGE_FOLDER}`, "move-bridge-policy");
-    expect(bridgeRes.statusCode).toBe(200);
-    bridgePolicyId = bridgeRes.json().approval.id as string;
+    bridgePolicyId = (await createPolicy(`/${BRIDGE_FOLDER}`, "move-bridge-policy")).id;
 
     const tagRes = await createTag("sar-move-bridge-tag");
     expect(tagRes.statusCode).toBe(200);

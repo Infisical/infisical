@@ -1,5 +1,9 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
+import {
+  createSecretChangePolicy,
+  deleteSecretChangePolicy,
+  seedLegacySecretApprovalPolicy
+} from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
@@ -82,23 +86,20 @@ const mergeRequest = (id: string) =>
     body: {}
   });
 
-const createGlobalSystemPolicy = async () => {
-  const res = await testServer.inject({
-    method: "POST",
-    url: "/api/v2/secret-approvals",
-    headers: authHeaders(),
-    body: {
-      projectId,
-      environment: envSlug,
-      secretPath: GLOBAL_SYSTEM_PATH,
-      approvers: [{ type: ApproverType.User, id: seedData1.id }],
-      approvals: 1,
-      name: "global-system-bridge-test-policy"
-    }
-  });
-  expect(res.statusCode).toBe(200);
-  return res.json().approval.id as string;
-};
+const createGlobalSystemPolicy = async () =>
+  (
+    await createSecretChangePolicy({
+      body: {
+        projectId,
+        environment: envSlug,
+        secretPath: GLOBAL_SYSTEM_PATH,
+        approvers: [{ type: ApproverType.User, id: seedData1.id }],
+        approvals: 1,
+        name: "global-system-bridge-test-policy"
+      },
+      authToken: jwtAuthToken
+    })
+  ).id;
 
 describe("Secret approval request routing", () => {
   let legacyPolicyId: string;
@@ -373,12 +374,7 @@ describe("Secret approval request routing", () => {
     const request: TListedRequest = createRes.json().approval;
     globalSystemRequestIds.push(request.id);
 
-    const deleteRes = await testServer.inject({
-      method: "DELETE",
-      url: `/api/v2/secret-approvals/${globalSystemPolicyId}`,
-      headers: authHeaders()
-    });
-    expect(deleteRes.statusCode).toBe(200);
+    await deleteSecretChangePolicy({ policyId: globalSystemPolicyId, authToken: jwtAuthToken });
 
     expect(await db(TableName.ApprovalPolicies).where({ id: globalSystemPolicyId }).first()).toBeUndefined();
     expect(

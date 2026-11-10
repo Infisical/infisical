@@ -1,7 +1,11 @@
 import crypto from "node:crypto";
 
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
+import {
+  createSecretChangePolicy,
+  seedLegacySecretApprovalPolicy,
+  updateSecretChangePolicy
+} from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
@@ -43,27 +47,16 @@ const createProjectUser = async (label: string) => {
 };
 
 const createGlobalPolicy = async (name: string, secretPath: string, approver: { type: ApproverType; id: string }) => {
-  const res = await testServer.inject({
-    method: "POST",
-    url: "/api/v2/secret-approvals",
-    headers: authHeaders(),
-    body: { projectId, environment: envSlug, secretPath, approvers: [approver], approvals: 1, name }
+  const { id: policyId } = await createSecretChangePolicy({
+    body: { projectId, environment: envSlug, secretPath, approvers: [approver], approvals: 1, name },
+    authToken: jwtAuthToken
   });
-  expect(res.statusCode).toBe(200);
-  const policyId = (res.json() as { approval: { id: string } }).approval.id;
   expect(await getDb()(TableName.ApprovalPolicies).where({ id: policyId }).first()).toBeDefined();
   return policyId;
 };
 
-const replaceGlobalPolicyApprover = async (policyId: string, approver: { type: ApproverType; id: string }) => {
-  const res = await testServer.inject({
-    method: "PATCH",
-    url: `/api/v2/secret-approvals/${policyId}`,
-    headers: authHeaders(),
-    body: { approvers: [approver], approvals: 1 }
-  });
-  expect(res.statusCode).toBe(200);
-};
+const replaceGlobalPolicyApprover = (policyId: string, approver: { type: ApproverType; id: string }) =>
+  updateSecretChangePolicy({ policyId, body: { approvers: [approver], approvals: 1 }, authToken: jwtAuthToken });
 
 const removeProjectUser = (username: string) =>
   testServer.inject({
