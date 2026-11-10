@@ -64,7 +64,9 @@ import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as designSystemRoutesComponentImport } from './pages/design-system/routes/component'
 import { Route as redirectsPamAccessRedirectImport } from './pages/redirects/pam-access-redirect'
 import { Route as adminLayoutImport } from './pages/admin/layout'
+import { Route as v4OrganizationSsoPageRouteImport } from './pages/v4/organization/SsoPage/route'
 import { Route as v4OrganizationSettingsPageRouteImport } from './pages/v4/organization/SettingsPage/route'
+import { Route as v4OrganizationOauthApplicationsPageRouteImport } from './pages/v4/organization/OauthApplicationsPage/route'
 import { Route as v4OrganizationIntegrationsPageRouteImport } from './pages/v4/organization/IntegrationsPage/route'
 import { Route as v4OrganizationAuditLogsPageRouteImport } from './pages/v4/organization/AuditLogsPage/route'
 import { Route as v4OrganizationAccessManagementPageRouteImport } from './pages/v4/organization/AccessManagementPage/route'
@@ -885,10 +887,25 @@ const AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute =
     getParentRoute: () => organizationLayoutRoute,
   } as any)
 
+const v4OrganizationSsoPageRouteRoute = v4OrganizationSsoPageRouteImport.update(
+  {
+    id: '/sso',
+    path: '/sso',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any,
+)
+
 const v4OrganizationSettingsPageRouteRoute =
   v4OrganizationSettingsPageRouteImport.update({
     id: '/settings',
     path: '/settings',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
+const v4OrganizationOauthApplicationsPageRouteRoute =
+  v4OrganizationOauthApplicationsPageRouteImport.update({
+    id: '/oauth-applications',
+    path: '/oauth-applications',
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
@@ -3831,11 +3848,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4OrganizationIntegrationsPageRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
+    '/v4/organizations/$orgId/oauth-applications': {
+      id: '/v4/organizations/$orgId/oauth-applications'
+      path: '/oauth-applications'
+      fullPath: '/v4/organizations/$orgId/oauth-applications'
+      preLoaderRoute: typeof v4OrganizationOauthApplicationsPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/settings': {
       id: '/v4/organizations/$orgId/settings'
       path: '/settings'
       fullPath: '/v4/organizations/$orgId/settings'
       preLoaderRoute: typeof v4OrganizationSettingsPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
+    '/v4/organizations/$orgId/sso': {
+      id: '/v4/organizations/$orgId/sso'
+      path: '/sso'
+      fullPath: '/v4/organizations/$orgId/sso'
+      preLoaderRoute: typeof v4OrganizationSsoPageRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
     '/_authenticate/_inject-org-details/_org-layout/integrations': {
@@ -6158,7 +6189,9 @@ interface v4OrganizationRouteRouteChildren {
   v4OrganizationAccessManagementPageRouteRoute: typeof v4OrganizationAccessManagementPageRouteRoute
   v4OrganizationAuditLogsPageRouteRoute: typeof v4OrganizationAuditLogsPageRouteRoute
   v4OrganizationIntegrationsPageRouteRoute: typeof v4OrganizationIntegrationsPageRouteRoute
+  v4OrganizationOauthApplicationsPageRouteRoute: typeof v4OrganizationOauthApplicationsPageRouteRoute
   v4OrganizationSettingsPageRouteRoute: typeof v4OrganizationSettingsPageRouteRoute
+  v4OrganizationSsoPageRouteRoute: typeof v4OrganizationSsoPageRouteRoute
   V4OrganizationsOrgIdProjectsRoute: typeof V4OrganizationsOrgIdProjectsRouteWithChildren
   v4CertManagerIndexPageRouteRoute: typeof v4CertManagerIndexPageRouteRoute
   v4RedirectsSecretScanningIndexRedirectRouteRoute: typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
@@ -6183,7 +6216,10 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
   v4OrganizationAuditLogsPageRouteRoute: v4OrganizationAuditLogsPageRouteRoute,
   v4OrganizationIntegrationsPageRouteRoute:
     v4OrganizationIntegrationsPageRouteRoute,
+  v4OrganizationOauthApplicationsPageRouteRoute:
+    v4OrganizationOauthApplicationsPageRouteRoute,
   v4OrganizationSettingsPageRouteRoute: v4OrganizationSettingsPageRouteRoute,
+  v4OrganizationSsoPageRouteRoute: v4OrganizationSsoPageRouteRoute,
   V4OrganizationsOrgIdProjectsRoute:
     V4OrganizationsOrgIdProjectsRouteWithChildren,
   v4CertManagerIndexPageRouteRoute: v4CertManagerIndexPageRouteRoute,
@@ -7678,7 +7714,9 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/access-management': typeof v4OrganizationAccessManagementPageRouteRoute
   '/v4/organizations/$orgId/audit-logs': typeof v4OrganizationAuditLogsPageRouteRoute
   '/v4/organizations/$orgId/integrations': typeof v4OrganizationIntegrationsPageRouteRoute
+  '/v4/organizations/$orgId/oauth-applications': typeof v4OrganizationOauthApplicationsPageRouteRoute
   '/v4/organizations/$orgId/settings': typeof v4OrganizationSettingsPageRouteRoute
+  '/v4/organizations/$orgId/sso': typeof v4OrganizationSsoPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
   '/v4/organizations/$orgId/projects': typeof V4OrganizationsOrgIdProjectsRouteWithChildren
@@ -8043,7 +8081,9 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/access-management': typeof v4OrganizationAccessManagementPageRouteRoute
   '/v4/organizations/$orgId/audit-logs': typeof v4OrganizationAuditLogsPageRouteRoute
   '/v4/organizations/$orgId/integrations': typeof v4OrganizationIntegrationsPageRouteRoute
+  '/v4/organizations/$orgId/oauth-applications': typeof v4OrganizationOauthApplicationsPageRouteRoute
   '/v4/organizations/$orgId/settings': typeof v4OrganizationSettingsPageRouteRoute
+  '/v4/organizations/$orgId/sso': typeof v4OrganizationSsoPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
   '/design-system/components/$group/$component': typeof designSystemRoutesComponentRoute
@@ -8393,7 +8433,9 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/access-management': typeof v4OrganizationAccessManagementPageRouteRoute
   '/v4/organizations/$orgId/audit-logs': typeof v4OrganizationAuditLogsPageRouteRoute
   '/v4/organizations/$orgId/integrations': typeof v4OrganizationIntegrationsPageRouteRoute
+  '/v4/organizations/$orgId/oauth-applications': typeof v4OrganizationOauthApplicationsPageRouteRoute
   '/v4/organizations/$orgId/settings': typeof v4OrganizationSettingsPageRouteRoute
+  '/v4/organizations/$orgId/sso': typeof v4OrganizationSsoPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout': typeof adminLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/pam/access': typeof redirectsPamAccessRedirectRoute
@@ -8773,7 +8815,9 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/access-management'
     | '/v4/organizations/$orgId/audit-logs'
     | '/v4/organizations/$orgId/integrations'
+    | '/v4/organizations/$orgId/oauth-applications'
     | '/v4/organizations/$orgId/settings'
+    | '/v4/organizations/$orgId/sso'
     | '/integrations'
     | '/pam/access'
     | '/v4/organizations/$orgId/projects'
@@ -9137,7 +9181,9 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/access-management'
     | '/v4/organizations/$orgId/audit-logs'
     | '/v4/organizations/$orgId/integrations'
+    | '/v4/organizations/$orgId/oauth-applications'
     | '/v4/organizations/$orgId/settings'
+    | '/v4/organizations/$orgId/sso'
     | '/integrations'
     | '/pam/access'
     | '/design-system/components/$group/$component'
@@ -9485,7 +9531,9 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/access-management'
     | '/v4/organizations/$orgId/audit-logs'
     | '/v4/organizations/$orgId/integrations'
+    | '/v4/organizations/$orgId/oauth-applications'
     | '/v4/organizations/$orgId/settings'
+    | '/v4/organizations/$orgId/sso'
     | '/_authenticate/_inject-org-details/_org-layout/integrations'
     | '/_authenticate/_inject-org-details/admin/_admin-layout'
     | '/_authenticate/_inject-org-details/pam/access'
@@ -10088,7 +10136,9 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/access-management",
         "/v4/organizations/$orgId/audit-logs",
         "/v4/organizations/$orgId/integrations",
+        "/v4/organizations/$orgId/oauth-applications",
         "/v4/organizations/$orgId/settings",
+        "/v4/organizations/$orgId/sso",
         "/v4/organizations/$orgId/projects",
         "/v4/organizations/$orgId/cert-manager/",
         "/v4/organizations/$orgId/secret-scanning/",
@@ -10243,8 +10293,16 @@ export const routeTree = rootRoute
       "filePath": "v4/organization/IntegrationsPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
+    "/v4/organizations/$orgId/oauth-applications": {
+      "filePath": "v4/organization/OauthApplicationsPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
     "/v4/organizations/$orgId/settings": {
       "filePath": "v4/organization/SettingsPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/sso": {
+      "filePath": "v4/organization/SsoPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/_authenticate/_inject-org-details/_org-layout/integrations": {

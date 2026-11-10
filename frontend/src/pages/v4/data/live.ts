@@ -2,6 +2,7 @@ import { accessLive } from "./access/live";
 import type { V4Adapters } from "./adapters";
 import { agentVaultSettingsLive } from "./agent-vault-settings/live";
 import { agentVaultLive } from "./agent-vault/live";
+import { billingLive } from "./billing/live";
 import { certManagerSettingsLive } from "./cert-manager-settings/live";
 import { certificatesLive } from "./certificates/live";
 import { integrationsLive } from "./integrations/live";
@@ -16,6 +17,7 @@ import { projectsLive } from "./projects/live";
 import { secretPoliciesLive } from "./secret-policies/live";
 import { secretScanningLive } from "./secret-scanning/live";
 import { secretsLive } from "./secrets/live";
+import { ssoLive } from "./sso/live";
 
 export const liveAdapters: V4Adapters = {
   agentVault: agentVaultLive,
@@ -34,5 +36,7 @@ export const liveAdapters: V4Adapters = {
   projectEnvironments: projectEnvironmentsLive,
   projectTags: projectTagsLive,
   pam: pamLive,
-  secretPolicies: secretPoliciesLive
+  secretPolicies: secretPoliciesLive,
+  billing: billingLive,
+  sso: ssoLive
 };

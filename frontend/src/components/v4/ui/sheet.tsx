@@ -63,6 +63,30 @@ function SheetOverlay({
 }
 SheetOverlay.displayName = "SheetOverlay";
 
+const SheetLayout = ({
+  head,
+  scroll,
+  footer
+}: {
+  head: React.ReactNode;
+  scroll: React.ReactNode;
+  footer: React.ReactNode;
+}) => (
+  <>
+    {head && <div data-slot="sheet-head">{head}</div>}
+    {scroll && (
+      <div
+        data-slot="sheet-scroll"
+        data-scroll-fade="y"
+        data-before-footer={Boolean(footer) || undefined}
+      >
+        {scroll}
+      </div>
+    )}
+    {footer}
+  </>
+);
+
 function SheetContent({
   className,
   children,
@@ -124,21 +148,11 @@ function SheetContent({
             ? renderInForm(
                 sections.form,
                 "sheet-form",
-                <>
-                  {sections.pinned.length > 0 && (
-                    <div data-slot="sheet-head">{sections.pinned}</div>
-                  )}
-                  {sections.scroll.length > 0 && (
-                    <div
-                      data-slot="sheet-scroll"
-                      data-scroll-fade="y"
-                      data-before-footer={sections.footer.length > 0 || undefined}
-                    >
-                      {sections.scroll}
-                    </div>
-                  )}
-                  {sections.footer}
-                </>
+                <SheetLayout
+                  head={sections.pinned.length > 0 && sections.pinned}
+                  scroll={sections.scroll.length > 0 && sections.scroll}
+                  footer={sections.footer.length > 0 && sections.footer}
+                />
               )
             : children}
           {showCloseButton && (
@@ -155,6 +169,35 @@ function SheetContent({
   );
 }
 SheetContent.displayName = "SheetContent";
+
+/**
+ * The pinned layout for content that SheetContent cannot see: a view component that renders its own
+ * header and footer, or a header wrapped in another component. header and footer are pinned and
+ * children scroll between them, so pinning never depends on what the direct children are.
+ */
+function SheetSections({
+  header,
+  footer,
+  children,
+  className,
+  ref,
+  ...props
+}: Omit<React.ComponentPropsWithoutRef<"div">, "children"> & {
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
+  children?: React.ReactNode;
+} & { ref?: React.Ref<HTMLDivElement> }) {
+  return (
+    <div ref={ref} data-slot="sheet-sections" data-sections="" className={cn(className)} {...props}>
+      <SheetLayout
+        head={header}
+        scroll={children}
+        footer={footer && <div data-slot="sheet-foot">{footer}</div>}
+      />
+    </div>
+  );
+}
+SheetSections.displayName = "SheetSections";
 
 function SheetHeader({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
@@ -238,6 +281,7 @@ export {
   SheetDescription,
   SheetFooter,
   SheetHeader,
+  SheetSections,
   SheetSubheader,
   SheetTitle,
   SheetTrigger

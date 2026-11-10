@@ -8,6 +8,8 @@ import controlStyles from "./controls.module.css";
 function Textarea({
   className,
   mono = false,
+  rows,
+  style,
   ref,
   ...props
 }: React.ComponentProps<"textarea"> & { mono?: boolean }) {
@@ -18,6 +20,13 @@ function Textarea({
       data-slot="textarea"
       data-size="sm"
       data-mono={mono || undefined}
+      data-rows={rows === undefined ? undefined : ""}
+      rows={rows}
+      style={
+        rows === undefined
+          ? style
+          : ({ ...style, "--v4-textarea-rows": rows } as React.CSSProperties)
+      }
       className={cn(controlStyles.field, controlStyles.textarea, "flex w-full", className)}
       {...props}
       {...fieldAttributes}

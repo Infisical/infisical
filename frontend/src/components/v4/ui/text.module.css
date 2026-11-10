@@ -181,3 +181,7 @@
 .status[data-tone="bad"] {
   color: var(--v4-bad);
 }
+.highlight {
+  background-color: var(--v4-accent);
+  color: var(--v4-on-accent);
+}
