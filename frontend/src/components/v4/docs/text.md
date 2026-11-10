@@ -80,7 +80,7 @@ Why: Technical values benefit from a fixed measure; ordinary prose needs a reada
 - src/components/v4/ui/text.tsx
 - src/components/v4/ui/text.module.css
 
-Exports: Text, SmallText, Heading, Meta, StatusText. Source TypeScript defines the API.
+Exports: Text, SmallText, Heading, Meta, StatusText, Highlight. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -89,11 +89,13 @@ Exports: Text, SmallText, Heading, Meta, StatusText. Source TypeScript defines t
 - Heading separates semantic level from visual size. page uses 28/32, explicit display uses 44/44, and section/subsection use the shared section role. Meta uses the 12/16 metadata role with optional monospace.
 - Native attributes and refs are preserved.
 - StatusText reports a state as a required line icon plus words. It inherits the surrounding type role; neutral is muted and ok, warn and bad tint both the icon and the words, so the state still reads in grayscale.
+- Highlight renders text with every case-insensitive occurrence of query wrapped in a mark (data-slot highlight), filled with the accent and on-accent text, the search highlight in every theme. The query is literal text, never a pattern, so dots, brackets and other symbols match themselves. Overlapping matches merge into one mark. terms matches each whitespace-separated word on its own, for multi-word filters. An empty or blank query, or no match, returns the text unchanged. It is the one search highlight: Combobox options and CommandMenu items use it, and a search list in a page uses it instead of slicing strings by hand.
 
 ## Accessibility
 
 - Text and SmallText render paragraphs; Heading renders the requested h1-h6 level; Meta renders a span.
 - StatusText renders a span whose icon is hidden from assistive technology; its words carry the whole state, so they must make sense on their own.
+- Highlight uses the native mark element and adds no announcement; the surrounding text reads as usual.
 
 ## Use cases
 
@@ -234,6 +236,80 @@ export default function Status() {
           </StatusText>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"bad"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Search highlight
+
+Save this example at `src/pages/design-system/examples/text/highlight.tsx`; its relative imports are generated for that exact path. States: default, controlled.
+
+Registry items used: @infisical/input, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+
+import { Input } from "../../../../components/v4/ui/input";
+import { Highlight } from "../../../../components/v4/ui/text";
+
+const variables = [
+  "DATABASE_URL",
+  "DATABASE_REPLICA_URL",
+  "REDIS_URL",
+  "SENTRY_DSN",
+  "API_BASE_URL"
+];
+
+export default function Example() {
+  const [query, setQuery] = React.useState("url");
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <div className="flex flex-col gap-2">
+            <Input
+              aria-label="Search environment variables"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <ul className="flex flex-col gap-1 font-mono">
+              {variables.map((name) => (
+                <li key={name}>
+                  <Highlight text={name} query={query} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Every match, case-insensitive"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <p>
+            <Highlight
+              text="Rotate the database password before the replica restarts"
+              query="database replica"
+              terms
+            />
+          </p>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"terms: each word on its own"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">
+          <p className="font-mono">
+            <Highlight text="api.v1.(beta) and apixv1" query="api.v1.(beta)" />
+          </p>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Literal query, not a pattern"}
+        </figcaption>
       </figure>
     </div>
   );

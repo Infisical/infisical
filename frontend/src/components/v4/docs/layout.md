@@ -67,6 +67,8 @@ Exports: Stack, Inline, Grid, Container, Measure, PageMeasure, FormMeasure. Sour
 ## Behavior
 
 - Stack and Inline use source spacing tokens, alignment and wrapping; Inline wraps by default.
+- gap takes 0, 2, 4, 6, 8, 12, 16, 20, 24, 32 or 48, each the space token of that size: 2 for a title over its description, 6 for a label over its control, 20 between checkbox options. The 3, 10, 14, 40 and 44 steps stay inside components (shell insets, field and row padding, the page gutter and section gaps), so layout gaps do not offer them.
+- Inline align="baseline" lines items up on their first text baseline, for a value beside a smaller unit or label in another type size. Stack has no baseline option, since a column has no shared baseline.
 - Grid automatically preserves the tile-width floor and drops columns in narrow containers. Explicit columns use equal flexible tracks.
 - columns="1:2" sets one narrow and one wide track (1fr and 2fr), for a summary beside its detail. Below 896px of its own width (size-sidecar-collapse, the breakpoint DetailLayout uses) every child spans the full width, so the pair stacks in source order.
 - min="card" raises the auto-fit floor to size-card-min (320px) for grids of Cards holding DataLists, so a pair of cards drops to one column before label and value rows start wrapping.
@@ -106,16 +108,19 @@ Source declarations and review criteria only. Generation checks references and c
 
 - 8: example `default`, visible label "Stack".
 - 0: omitted. The Spacing page shows the whole gap scale; one gap demonstrates the prop.
+- 2: omitted. The Spacing page shows the whole gap scale; one gap demonstrates the prop.
 - 4: omitted. The Spacing page shows the whole gap scale; one gap demonstrates the prop.
+- 6: omitted. The Spacing page shows the whole gap scale; one gap demonstrates the prop.
 - 12: omitted. The Spacing page shows the whole gap scale; one gap demonstrates the prop.
 - 16: omitted. The Spacing page shows the whole gap scale; one gap demonstrates the prop.
+- 20: omitted. The Spacing page shows the whole gap scale; one gap demonstrates the prop.
 - 24: omitted. The Spacing page shows the whole gap scale; one gap demonstrates the prop.
 - 32: omitted. The Spacing page shows the whole gap scale; one gap demonstrates the prop.
 - 48: omitted. The Spacing page shows the whole gap scale; one gap demonstrates the prop.
 
 ### alignment
 
-
+- baseline: example `default`, visible label "Inline, baseline".
 - start: omitted. Alignment maps directly to CSS align-items; the examples keep the default.
 - center: omitted. Alignment maps directly to CSS align-items; the examples keep the default.
 - end: omitted. Alignment maps directly to CSS align-items; the examples keep the default.
@@ -140,11 +145,12 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/layout/default.tsx`; its relative imports are generated for that exact path. States: default, overflow.
 
-Registry items used: @infisical/button, @infisical/layout. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/layout, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
 import { Container, Grid, Inline, Measure, Stack } from "../../../../components/v4/ui/layout";
+import { Heading, SmallText } from "../../../../components/v4/ui/text";
 
 const tile = "bg-muted px-3 py-2 text-center";
 
@@ -173,6 +179,17 @@ export default function Example() {
           <figcaption className="text-muted-foreground text-xs">
             {"Inline, wraps when the row runs out of room"}
           </figcaption>
+        </figure>
+        <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+          <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+            <Inline gap={6} align="baseline">
+              <Heading level={3} size="display">
+                $1,240
+              </Heading>
+              <SmallText muted>per month</SmallText>
+            </Inline>
+          </div>
+          <figcaption className="text-muted-foreground text-xs">{"Inline, baseline"}</figcaption>
         </figure>
         <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
           <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">

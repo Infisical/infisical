@@ -17,6 +17,7 @@ import {
 import { Icon, type IconName } from "./icon";
 import { Kbd } from "./kbd";
 import { Spinner } from "./spinner";
+import { Highlight } from "./text";
 
 import menu from "./menu.module.css";
 import styles from "./picker.module.css";
@@ -226,18 +227,6 @@ export const CommandMenu = ({
       if (mounted.current) setPendingActions([...inFlight.current]);
     }
   };
-  const markLabel = (text: string) => {
-    const index = text.toLowerCase().indexOf(query.toLowerCase());
-    return !query || index < 0 ? (
-      text
-    ) : (
-      <>
-        {text.slice(0, index)}
-        <mark className={styles.match}>{text.slice(index, index + query.length)}</mark>
-        {text.slice(index + query.length)}
-      </>
-    );
-  };
 
   const panel = (
     <Command
@@ -324,7 +313,7 @@ export const CommandMenu = ({
                     )}
                     <span data-command-label className={cn(menu.text, styles.commandText)}>
                       <span className={cn(menu.title, item.mono && styles.mono)}>
-                        {markLabel(item.label)}
+                        <Highlight text={item.label} query={query} />
                       </span>
                       {item.description && item.description !== group.label && (
                         <span className={menu.description}>{item.description}</span>
