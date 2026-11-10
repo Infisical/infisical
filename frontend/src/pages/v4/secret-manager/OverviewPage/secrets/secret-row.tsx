@@ -1019,6 +1019,8 @@ function SecretRowView({
             overlay={overlayOf(first)}
           />
           <TableCell
+            pin="start"
+            pinOffset="var(--v4-size-row)"
             className={styles.nameCell}
             data-override-rule={first.override !== undefined || undefined}
           >
@@ -1049,12 +1051,17 @@ function SecretRowView({
             ctx={ctx}
             onUpdate={handlers.onUpdate}
           >
-            <TableCell selection divider={false}>
+            <TableCell pin="start" selection divider={false}>
               <span className={styles.iconSlot}>
                 <Icon icon={GitBranchIcon} label="Personal override" />
               </span>
             </TableCell>
-            <TableCell className={styles.nameCell} data-override-rule>
+            <TableCell
+              pin="start"
+              pinOffset="var(--v4-size-row)"
+              className={styles.nameCell}
+              data-override-rule
+            >
               <span className={styles.truncate}>{name}</span>
             </TableCell>
             <TableCell className={styles.valueCell}>
@@ -1113,7 +1120,7 @@ function SecretRowView({
           onClick={() => setExpanded(!expanded)}
         >
           <ExpandCell expanded={expanded} label={name} onToggle={() => setExpanded(!expanded)} />
-          <TableCell className={styles.nameCell}>
+          <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
             <div className={styles.nameLine}>
               <span className={styles.nameKind}>
                 <KindIcon kind="secret" />
@@ -1152,7 +1159,11 @@ function SecretRowView({
       </RowContextMenu>
       {expanded && (
         <TableRow className={styles.nestedRow}>
-          <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
+          <TableCell
+            pin="viewport"
+            colSpan={ctx.environments.length + 3}
+            className={styles.nestedCell}
+          >
             <Table className={styles.nestedTable}>
               <TableHeader>
                 <TableRow>

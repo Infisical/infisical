@@ -1,4 +1,11 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from "react";
 import { replaceEqualDeep } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
@@ -1488,7 +1495,9 @@ export const OverviewPage = () => {
   );
   const environmentMenu = (environment: { value: string; label: string }) => (
     <DropdownMenu>
-      <span className={styles.truncate}>{environment.label}</span>
+      <span className={styles.truncate} title={environment.label}>
+        {environment.label}
+      </span>
       <span className={styles.push}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon-xs" icon="chev-down" iconOnly>
@@ -1758,6 +1767,11 @@ export const OverviewPage = () => {
                       <Table
                         className={styles.table}
                         data-mode={single ? "single" : "multi"}
+                        style={
+                          {
+                            "--secrets-env-count": single ? 0 : visibleEnvironments.length
+                          } as CSSProperties
+                        }
                         aria-label={`Resources in ${project} at ${path}`}
                       >
                         <colgroup>
@@ -1773,7 +1787,7 @@ export const OverviewPage = () => {
                         </colgroup>
                         <TableHeader>
                           <TableRow>
-                            <TableHead selection divider={false}>
+                            <TableHead pin="start" selection divider={false}>
                               <span className={styles.iconSlot}>
                                 <Checkbox
                                   aria-label="Select all resources on this page"
@@ -1790,7 +1804,7 @@ export const OverviewPage = () => {
                                 />
                               </span>
                             </TableHead>
-                            <TableHead>
+                            <TableHead pin="start" pinOffset="var(--v4-size-row)">
                               <div className={styles.headLine}>
                                 Name
                                 <span className={styles.push}>{sortMenu}</span>
@@ -1846,7 +1860,7 @@ export const OverviewPage = () => {
                           {loading &&
                             Array.from({ length: 8 }, (_, index) => (
                               <TableRow key={`skeleton-${index + 1}`}>
-                                <TableCell selection divider={false}>
+                                <TableCell pin="start" selection divider={false}>
                                   <Skeleton
                                     width="var(--v4-size-icon)"
                                     height="var(--v4-size-icon)"

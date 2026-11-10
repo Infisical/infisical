@@ -45,7 +45,7 @@ Source evidence:
 
 ## State guidance
 
-- revoked: Rows leave the list and the footer offers Undo.
+- revoked: Rows leave the list and a toast offers Undo for the undo window.
 - empty: A small empty state with a bare icon says nobody else has access yet.
 
 ## Presentation rules
@@ -68,11 +68,12 @@ Exports: AccessList. Source TypeScript defines the API.
 - A toolbar above the list says how many have access and offers Add member.
 - Members are link rows in a framed List with selection, the member's name as text, the role as a Badge, how they got access, last use and a row menu.
 - Selecting rows raises the FloatingActionBar with Revoke access. The owner cannot be selected and its menu is disabled.
-- After a revoke, a status line in the list footer says how many lost access and Undo restores them.
+- After a revoke, a success toast says how many lost access and offers Undo for 10 seconds, the undo window; Undo calls onRestore and toasts the result. The revoke is already committed through onRevoke, so the window ending only closes the toast. A failed revoke or restore is an error toast that stays until dismissed, and the rows stay.
 
 ## Accessibility
 
 - The List's select-all and row checkboxes are named for the member; the bulk bar is a named toolbar with a count status.
+- The toast region announces each revoke, restore and failure, so the pattern has no status line of its own. When the revoked rows leave the list and focus went with them, focus moves to the next remaining member's name, or the previous one at the end, or the list itself when nobody is left.
 - Machine and agent names are names people chose, so they stay in the sans like a person's name; the kind shows in the media and badge (rule/mono-machine-values).
 
 ## Use cases
@@ -101,7 +102,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 ### Members of a project
 
-Save this example at `src/pages/design-system/examples/access-list/default.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
+Save this example at `src/pages/design-system/examples/access-list/default.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard, success.
 
 Registry items used: @infisical/access-list. Additional packages: none. Install every listed item before compiling this example.
 

@@ -1,7 +1,4 @@
 {
-  "action-feedback-in-status": {
-    "src/components/v4/patterns/access-list.tsx": 1
-  },
   "arbitrary-geometry": {
     "src/components/v4/ui/chart.tsx": 1,
     "src/components/v4/ui/input-group.tsx": 2,

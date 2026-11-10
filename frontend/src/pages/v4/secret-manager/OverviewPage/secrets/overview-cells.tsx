@@ -283,7 +283,7 @@ export function SelectCell({
 }) {
   const { all, some } = selectionState(keys, ctx.selected);
   return (
-    <TableCell selection divider={false}>
+    <TableCell pin="start" selection divider={false}>
       <span
         className={styles.iconSlot}
         data-selectable={selectable || undefined}
@@ -382,7 +382,7 @@ export function ExpandCell({
   onToggle: () => void;
 }) {
   return (
-    <TableCell selection divider={false}>
+    <TableCell pin="start" selection divider={false}>
       <span className={styles.iconSlot}>
         <ExpandToggle expanded={expanded} label={label} onToggle={onToggle} />
       </span>
