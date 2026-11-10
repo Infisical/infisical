@@ -165,6 +165,7 @@ import {
   AddNewMenu,
   ExportMenu,
   FolderBreadcrumbBar,
+  type QuickAddAnnotations,
   QuickAddRow,
   ResourceCount,
   ResourceFilterMenu
@@ -860,11 +861,12 @@ export const OverviewPage = () => {
           })
       );
   };
-  const secretKeysOnPage = windowRows
-    .filter(([, entries]) => entries[0].kind === "secret")
+  const expandableKeysOnPage = windowRows
+    .filter(([, entries]) => entries[0].kind !== "folder")
     .map(([key]) => key);
   const allOpen =
-    secretKeysOnPage.length > 0 && secretKeysOnPage.every((key) => expandedRows.includes(key));
+    expandableKeysOnPage.length > 0 &&
+    expandableKeysOnPage.every((key) => expandedRows.includes(key));
   const rowEvents = useStableHandlers<
     Required<
       Pick<
@@ -962,7 +964,12 @@ export const OverviewPage = () => {
     setFlowOpen(true);
     setRecent([]);
   };
-  const create = (name: string, value: string, targets: string[]) =>
+  const create = (
+    name: string,
+    value: string,
+    targets: string[],
+    annotations: QuickAddAnnotations
+  ) =>
     insert(
       targets.map((environment) => ({
         kind: "secret",
@@ -972,9 +979,7 @@ export const OverviewPage = () => {
         name,
         value: { status: "present", value },
         version: 1,
-        comment: "",
-        tags: [],
-        metadata: []
+        ...annotations
       })),
       { title: `Created ${name}`, share: true }
     );
@@ -1771,12 +1776,12 @@ export const OverviewPage = () => {
                             <Button
                               variant="ghost"
                               size="xs"
-                              disabled={!secretKeysOnPage.length}
+                              disabled={!expandableKeysOnPage.length}
                               onClick={() =>
                                 setExpandedRows(
                                   allOpen
                                     ? []
-                                    : [...new Set([...expandedRows, ...secretKeysOnPage])]
+                                    : [...new Set([...expandedRows, ...expandableKeysOnPage])]
                                 )
                               }
                             >
@@ -1935,17 +1940,29 @@ export const OverviewPage = () => {
                               existing={ordered
                                 .filter(([, entries]) => entries[0].kind === "secret")
                                 .map(([, entries]) => entries[0].name)}
-                              onCreate={(key, value) => {
+                              tagOptions={tagOptions}
+                              tagsBlock={deniedEverywhere(
+                                ProjectPermissionSub.Tags,
+                                ProjectPermissionActions.Read
+                              )}
+                              canCreateTags={
+                                !deniedEverywhere(
+                                  ProjectPermissionSub.Tags,
+                                  ProjectPermissionActions.Create
+                                )
+                              }
+                              onCreate={(key, value, annotations) => {
                                 pinQuickAdded(key);
                                 create(
                                   key,
                                   value,
-                                  visibleEnvironments.map((environment) => environment.value)
+                                  visibleEnvironments.map((environment) => environment.value),
+                                  annotations
                                 );
                               }}
                               onQueue={
                                 single
-                                  ? (key, value) => {
+                                  ? (key, value, annotations) => {
                                       pinQuickAdded(key);
                                       const timestamp = new Date().toISOString();
                                       setPending((current) => [
@@ -1962,9 +1979,7 @@ export const OverviewPage = () => {
                                             name: key,
                                             value: { status: "present", value },
                                             version: 1,
-                                            comment: "",
-                                            tags: [],
-                                            metadata: [],
+                                            ...annotations,
                                             createdAt: timestamp,
                                             updatedAt: timestamp
                                           }

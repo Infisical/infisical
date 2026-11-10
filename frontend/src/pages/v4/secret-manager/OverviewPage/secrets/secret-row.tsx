@@ -302,11 +302,11 @@ const pendingSecretActions: Record<PendingType, ProjectPermissionSecretActions> 
 
 type Annotation = "comment" | "tags" | "metadata";
 
-function Annotations({
+export function Annotations({
   secret,
   onOpen
 }: {
-  secret: Secret;
+  secret: Pick<Secret, "name" | "comment" | "tags" | "metadata">;
   onOpen: (overlay: Annotation) => void;
 }) {
   const marks = [
