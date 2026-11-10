@@ -1,6 +1,7 @@
 import { accessLive } from "./access/live";
 import type { V4Adapters } from "./adapters";
 import { agentVaultLive } from "./agent-vault/live";
+import { certManagerSettingsLive } from "./cert-manager-settings/live";
 import { certificatesLive } from "./certificates/live";
 import { integrationsLive } from "./integrations/live";
 import { kmsLive } from "./kms/live";
@@ -19,6 +20,7 @@ export const liveAdapters: V4Adapters = {
   secretScanning: secretScanningLive,
   secrets: secretsLive,
   certificates: certificatesLive,
+  certManagerSettings: certManagerSettingsLive,
   access: accessLive,
   projects: projectsLive,
   projectSettings: projectSettingsLive,

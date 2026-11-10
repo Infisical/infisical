@@ -90,6 +90,7 @@ import { Route as v4RedirectsPamAccessRedirectRouteImport } from './pages/v4/red
 import { Route as v4OrganizationUserDetailsByIDPageRouteImport } from './pages/v4/organization/UserDetailsByIDPage/route'
 import { Route as v4OrganizationIdentityDetailsByIDPageRouteImport } from './pages/v4/organization/IdentityDetailsByIDPage/route'
 import { Route as v4OrganizationGroupDetailsByIDPageRouteImport } from './pages/v4/organization/GroupDetailsByIDPage/route'
+import { Route as v4CertManagerSettingsPageRouteImport } from './pages/v4/cert-manager/SettingsPage/route'
 import { Route as v4CertManagerDashboardPageRouteImport } from './pages/v4/cert-manager/DashboardPage/route'
 import { Route as v4CertManagerInventoryPageRouteImport } from './pages/v4/cert-manager/InventoryPage/route'
 import { Route as v4AuthProviderErrorPageRouteImport } from './pages/v4/auth/ProviderErrorPage/route'
@@ -1064,6 +1065,13 @@ const v4OrganizationGroupDetailsByIDPageRouteRoute =
   v4OrganizationGroupDetailsByIDPageRouteImport.update({
     id: '/groups/$groupId',
     path: '/groups/$groupId',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
+const v4CertManagerSettingsPageRouteRoute =
+  v4CertManagerSettingsPageRouteImport.update({
+    id: '/cert-manager/settings',
+    path: '/cert-manager/settings',
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
@@ -3956,6 +3964,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4CertManagerDashboardPageRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
+    '/v4/organizations/$orgId/cert-manager/settings': {
+      id: '/v4/organizations/$orgId/cert-manager/settings'
+      path: '/cert-manager/settings'
+      fullPath: '/v4/organizations/$orgId/cert-manager/settings'
+      preLoaderRoute: typeof v4CertManagerSettingsPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/groups/$groupId': {
       id: '/v4/organizations/$orgId/groups/$groupId'
       path: '/groups/$groupId'
@@ -6149,6 +6164,7 @@ interface v4OrganizationRouteRouteChildren {
   v4RedirectsSecretScanningIndexRedirectRouteRoute: typeof v4RedirectsSecretScanningIndexRedirectRouteRoute
   v4CertManagerInventoryPageRouteRoute: typeof v4CertManagerInventoryPageRouteRoute
   v4CertManagerDashboardPageRouteRoute: typeof v4CertManagerDashboardPageRouteRoute
+  v4CertManagerSettingsPageRouteRoute: typeof v4CertManagerSettingsPageRouteRoute
   v4OrganizationGroupDetailsByIDPageRouteRoute: typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   v4OrganizationIdentityDetailsByIDPageRouteRoute: typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   v4OrganizationUserDetailsByIDPageRouteRoute: typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -6175,6 +6191,7 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
     v4RedirectsSecretScanningIndexRedirectRouteRoute,
   v4CertManagerInventoryPageRouteRoute: v4CertManagerInventoryPageRouteRoute,
   v4CertManagerDashboardPageRouteRoute: v4CertManagerDashboardPageRouteRoute,
+  v4CertManagerSettingsPageRouteRoute: v4CertManagerSettingsPageRouteRoute,
   v4OrganizationGroupDetailsByIDPageRouteRoute:
     v4OrganizationGroupDetailsByIDPageRouteRoute,
   v4OrganizationIdentityDetailsByIDPageRouteRoute:
@@ -7679,6 +7696,7 @@ export interface FileRoutesByFullPath {
   '/v4/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
+  '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -8041,6 +8059,7 @@ export interface FileRoutesByTo {
   '/v4/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
+  '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -8393,6 +8412,7 @@ export interface FileRoutesById {
   '/v4/_v4-auth/login/provider/error': typeof v4AuthProviderErrorPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/inventory': typeof v4CertManagerInventoryPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/overview': typeof v4CertManagerDashboardPageRouteRoute
+  '/v4/organizations/$orgId/cert-manager/settings': typeof v4CertManagerSettingsPageRouteRoute
   '/v4/organizations/$orgId/groups/$groupId': typeof v4OrganizationGroupDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/identities/$identityId': typeof v4OrganizationIdentityDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/members/$membershipId': typeof v4OrganizationUserDetailsByIDPageRouteRoute
@@ -8771,6 +8791,7 @@ export interface FileRouteTypes {
     | '/v4/login/provider/error'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
+    | '/v4/organizations/$orgId/cert-manager/settings'
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
@@ -9132,6 +9153,7 @@ export interface FileRouteTypes {
     | '/v4/login/provider/error'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
+    | '/v4/organizations/$orgId/cert-manager/settings'
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
@@ -9482,6 +9504,7 @@ export interface FileRouteTypes {
     | '/v4/_v4-auth/login/provider/error'
     | '/v4/organizations/$orgId/cert-manager/inventory'
     | '/v4/organizations/$orgId/cert-manager/overview'
+    | '/v4/organizations/$orgId/cert-manager/settings'
     | '/v4/organizations/$orgId/groups/$groupId'
     | '/v4/organizations/$orgId/identities/$identityId'
     | '/v4/organizations/$orgId/members/$membershipId'
@@ -10071,6 +10094,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/secret-scanning/",
         "/v4/organizations/$orgId/cert-manager/inventory",
         "/v4/organizations/$orgId/cert-manager/overview",
+        "/v4/organizations/$orgId/cert-manager/settings",
         "/v4/organizations/$orgId/groups/$groupId",
         "/v4/organizations/$orgId/identities/$identityId",
         "/v4/organizations/$orgId/members/$membershipId",
@@ -10338,6 +10362,10 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/cert-manager/overview": {
       "filePath": "v4/cert-manager/DashboardPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
+    },
+    "/v4/organizations/$orgId/cert-manager/settings": {
+      "filePath": "v4/cert-manager/SettingsPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/groups/$groupId": {

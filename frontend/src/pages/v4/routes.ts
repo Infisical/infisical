@@ -98,6 +98,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       "/cert-manager/certificates/$certificateId",
       "v4/cert-manager/CertificateDetailsByIDPage/route.tsx"
     ),
+    route("/cert-manager/settings", "v4/cert-manager/SettingsPage/route.tsx"),
     route("/pam/accounts/", "v4/pam/PamAccountsPage/route.tsx"),
     route("/pam/access", "v4/redirects/PamAccessRedirect/route.tsx"),
     route("/secret-scanning/", "v4/redirects/SecretScanningIndexRedirect/route.tsx"),

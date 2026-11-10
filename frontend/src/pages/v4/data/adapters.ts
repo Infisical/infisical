@@ -2,6 +2,7 @@ import { useRouteContext } from "@tanstack/react-router";
 
 import type { AccessAdapter } from "./access/contract";
 import type { AgentVaultAdapter } from "./agent-vault/contract";
+import type { CertManagerSettingsAdapter } from "./cert-manager-settings/contract";
 import type { CertificatesAdapter } from "./certificates/contract";
 import type { IntegrationsAdapter } from "./integrations/contract";
 import type { KmsAdapter } from "./kms/contract";
@@ -19,6 +20,7 @@ export type V4Adapters = {
   secretScanning: SecretScanningAdapter;
   secrets: SecretsAdapter;
   certificates: CertificatesAdapter;
+  certManagerSettings: CertManagerSettingsAdapter;
   access: AccessAdapter;
   projects: ProjectsAdapter;
   projectSettings: ProjectSettingsAdapter;
