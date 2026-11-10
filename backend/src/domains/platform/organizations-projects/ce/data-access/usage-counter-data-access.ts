@@ -130,39 +130,37 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
           .union((qb) => void qb.select("id").from(TableName.Organization).where("rootOrgId", orgId), true)
       : knex.select("id").from(TableName.Organization);
 
-    return (
-      knex
-        .with("orgs", orgIds)
-        .with("counted_projects", (qb) => {
-          void qb
-            .from(TableName.Project)
-            .whereNull("deleteAfter")
-            .whereIn("type", COUNTED_PROJECT_TYPES)
-            .whereIn("orgId", knex.select("id").from("orgs"))
-            .select("id");
-        })
-        .with("all_projects", (qb) => {
-          void qb
-            .from(TableName.Project)
-            .whereNull("deleteAfter")
-            .whereIn("orgId", knex.select("id").from("orgs"))
-            .select("id");
-        })
-        .with("org_users", (qb) => {
-          void qb
-            .from({ m: TableName.Membership })
-            .join({ u: TableName.Users }, "u.id", "m.actorUserId")
-            .where("m.scope", AccessScope.Organization)
-            .whereIn("m.scopeOrgId", knex.select("id").from("orgs"))
-            .whereNotNull("m.actorUserId")
-            .where("u.isGhost", false)
-            .where("u.isAccepted", true)
-            .distinct({ id: "m.actorUserId" });
-        })
-        .with("org_identities", (qb) => {
-          void qb.from(TableName.Identity).whereIn("orgId", knex.select("id").from("orgs")).distinct("id");
-        })
-    );
+    return knex
+      .with("orgs", orgIds)
+      .with("counted_projects", (qb) => {
+        void qb
+          .from(TableName.Project)
+          .whereNull("deleteAfter")
+          .whereIn("type", COUNTED_PROJECT_TYPES)
+          .whereIn("orgId", knex.select("id").from("orgs"))
+          .select("id");
+      })
+      .with("all_projects", (qb) => {
+        void qb
+          .from(TableName.Project)
+          .whereNull("deleteAfter")
+          .whereIn("orgId", knex.select("id").from("orgs"))
+          .select("id");
+      })
+      .with("org_users", (qb) => {
+        void qb
+          .from({ m: TableName.Membership })
+          .join({ u: TableName.Users }, "u.id", "m.actorUserId")
+          .where("m.scope", AccessScope.Organization)
+          .whereIn("m.scopeOrgId", knex.select("id").from("orgs"))
+          .whereNotNull("m.actorUserId")
+          .where("u.isGhost", false)
+          .where("u.isAccepted", true)
+          .distinct({ id: "m.actorUserId" });
+      })
+      .with("org_identities", (qb) => {
+        void qb.from(TableName.Identity).whereIn("orgId", knex.select("id").from("orgs")).distinct("id");
+      });
   }
 
   // UNION dedupes across the four sources; kind ('u'/'i') lets the caller split by actor type.
