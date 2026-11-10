@@ -364,7 +364,6 @@ export function ExpandToggle({
       variant="ghost"
       size="icon-row"
       iconOnly
-      aria-expanded={kind ? expanded : undefined}
       onClick={(event) => {
         event.stopPropagation();
         onToggle();
