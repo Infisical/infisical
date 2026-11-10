@@ -141,6 +141,7 @@ import {
   ROW_ACTION_SLOTS,
   type RowContext,
   selectableKinds,
+  TruncatedLabel,
   useStableHandlers
 } from "./secrets/overview-cells";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
@@ -1546,9 +1547,7 @@ export const OverviewPage = () => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <TableHeadButton aria-label={`${environment.label} column menu`}>
-          <span className={styles.truncate} title={environment.label}>
-            {environment.label}
-          </span>
+          <TruncatedLabel>{environment.label}</TruncatedLabel>
           <span className={styles.push}>
             <Icon name="chev-down" size="var(--v4-size-icon-xs)" />
           </span>

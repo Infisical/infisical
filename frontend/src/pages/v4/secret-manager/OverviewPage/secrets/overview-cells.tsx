@@ -4,7 +4,8 @@ import {
   type ReactNode,
   useLayoutEffect,
   useMemo,
-  useRef
+  useRef,
+  useState
 } from "react";
 import { replaceEqualDeep } from "@tanstack/react-query";
 import {
@@ -103,6 +104,25 @@ const kindGlyphs: Record<ResourceKind, Glyph> = {
   honey: { icon: HexagonIcon },
   proxy: { icon: ChevronsLeftRightEllipsisIcon }
 };
+export function TruncatedLabel({ children }: { children: string }) {
+  const label = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <Tooltip
+      content={children}
+      open={open}
+      onOpenChange={(next) => {
+        const node = label.current;
+        setOpen(next && !!node && node.scrollWidth > node.clientWidth);
+      }}
+    >
+      <span ref={label} className={styles.truncate}>
+        {children}
+      </span>
+    </Tooltip>
+  );
+}
+
 export type KindOverlay = "rotation" | "honey";
 export function KindIcon({ kind, overlay }: { kind: ResourceKind; overlay?: KindOverlay }) {
   if (!overlay) return <Icon {...kindGlyphs[kind]} />;
