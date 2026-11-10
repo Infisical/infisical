@@ -132,7 +132,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .array()
           .max(100, "Cannot have more than 100 bypassers")
           .optional(),
-        approvals: z.number().min(1).default(1),
+        approvals: z.number().min(1).optional(),
         secretPath: z
           .string()
           .trim()
@@ -140,7 +140,7 @@ export const registerSecretApprovalPolicyRouter = async (server: FastifyZodProvi
           .optional()
           .transform((val) => (val ? removeTrailingSlash(val) : undefined)),
         enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
-        allowedSelfApprovals: z.boolean().default(true),
+        allowedSelfApprovals: z.boolean().optional(),
         bypassForMachineIdentities: z.boolean().optional(),
         environments: z.array(z.string()).optional(),
         delegatedApproval: DelegatedApprovalSchema.optional().describe(

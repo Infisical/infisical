@@ -19,6 +19,7 @@ import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/
 
 import {
   buildSecretAccessPolicySteps,
+  resolveAllowedSelfApprovalsOnUpdate,
   revokeActiveSecretAccessGrants,
   secretAccessApprovalGlobalPolicyExists
 } from "./secret-access-approval-global-policy-bridge-fns";
@@ -644,7 +645,11 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       const delegatedApprovalAfterUpdate =
         delegatedApproval === undefined ? existingDelegatedApproval : delegatedApproval;
       const involvesDelegatedApproval = Boolean(existingDelegatedApproval || delegatedApprovalAfterUpdate);
-      const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApprovalAfterUpdate;
+      const allowedSelfApprovals = resolveAllowedSelfApprovalsOnUpdate({
+        input: allowedSelfApprovalsInput,
+        isDelegatedAfterUpdate: Boolean(delegatedApprovalAfterUpdate),
+        current: current.allowedSelfApprovals
+      });
       const reviewers = await $resolveReviewers(
         {
           delegatedApproval: delegatedApprovalAfterUpdate,

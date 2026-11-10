@@ -333,11 +333,13 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
           .max(100, "Cannot have more than 100 bypassers")
           .optional(),
         approvals: z.number().min(1).optional(),
-        enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
+        enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
         allowedSelfApprovals: z
           .boolean()
           .optional()
-          .describe("Defaults to true, or to false when the policy is handled by a delegated approval system."),
+          .describe(
+            "Keeps the current value when omitted. Always false when the policy is handled by a delegated approval system."
+          ),
         environments: z.array(z.string()).optional(),
         approvalsRequired: z
           .object({

@@ -400,4 +400,54 @@ describe("Access approval policy required approvals per step", () => {
     expect(legacyEffective).toEqual([1, 1]);
     expect(await getStepRequirements(globalPolicy.id)).toEqual(legacyEffective);
   });
+
+  test("An update that omits enforcement level and self approval keeps their stored values", async () => {
+    const db = getDb();
+    const globalPolicy = await createGlobalPolicy({
+      name: "policy-routing-keep-fields-global",
+      secretPath: "/policy-routing-keep-fields-global"
+    });
+    const restrictRes = await patchPolicy(globalPolicy.id, {
+      allowedSelfApprovals: false,
+      enforcementLevel: EnforcementLevel.Soft
+    });
+    expect(restrictRes.statusCode).toBe(200);
+
+    const globalRes = await patchPolicy(globalPolicy.id, { name: "policy-routing-keep-fields-renamed" });
+    expect(globalRes.statusCode).toBe(200);
+    const globalAfter = await getPolicy(globalPolicy.id);
+    expect(globalAfter.json().approval).toMatchObject({
+      name: "policy-routing-keep-fields-renamed",
+      allowedSelfApprovals: false,
+      enforcementLevel: EnforcementLevel.Soft
+    });
+
+    const legacyPolicy = await createLegacyPolicy({
+      name: "policy-routing-keep-fields-legacy",
+      secretPath: "/policy-routing-keep-fields-legacy"
+    });
+    await db(TableName.AccessApprovalPolicy)
+      .where({ id: legacyPolicy.id })
+      .update({ allowedSelfApprovals: false, enforcementLevel: EnforcementLevel.Soft });
+
+    const legacyRes = await patchPolicy(legacyPolicy.id, { name: "policy-routing-keep-fields-legacy-renamed" });
+    expect(legacyRes.statusCode).toBe(200);
+    expect(await db(TableName.AccessApprovalPolicy).where({ id: legacyPolicy.id }).first()).toMatchObject({
+      name: "policy-routing-keep-fields-legacy-renamed",
+      allowedSelfApprovals: false,
+      enforcementLevel: EnforcementLevel.Soft
+    });
+
+    const approversOnlyRes = await testServer.inject({
+      method: "PATCH",
+      url: `/api/v1/access-approvals/policies/${legacyPolicy.id}`,
+      headers: authHeaders(),
+      body: { approvers: [{ type: ApproverType.User, id: seedData1.id }] }
+    });
+    expect(approversOnlyRes.statusCode).toBe(200);
+    expect(await db(TableName.AccessApprovalPolicy).where({ id: legacyPolicy.id }).first()).toMatchObject({
+      allowedSelfApprovals: false,
+      enforcementLevel: EnforcementLevel.Soft
+    });
+  });
 });

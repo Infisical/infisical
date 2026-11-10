@@ -3,7 +3,10 @@ import { describe, expect, test } from "vitest";
 import { BadRequestError } from "@app/lib/errors";
 import { ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 
-import { buildSecretAccessPolicySteps } from "./secret-access-approval-global-policy-bridge-fns";
+import {
+  buildSecretAccessPolicySteps,
+  resolveAllowedSelfApprovalsOnUpdate
+} from "./secret-access-approval-global-policy-bridge-fns";
 
 type TApprovalsRequired = { numberOfApprovals: number; stepNumber: number }[];
 
@@ -169,6 +172,38 @@ describe("buildSecretAccessPolicySteps", () => {
 
     expect(steps.map((step) => step.requiredApprovals)).toEqual(
       sequences.map((sequence) => legacyRequiredApprovals(sequence, approvalsRequired))
+    );
+  });
+});
+
+describe("resolveAllowedSelfApprovalsOnUpdate", () => {
+  test("an omitted value keeps the stored one", () => {
+    expect(
+      resolveAllowedSelfApprovalsOnUpdate({ input: undefined, isDelegatedAfterUpdate: false, current: true })
+    ).toBe(true);
+  });
+
+  test("removing delegation without sending a value keeps self approval off", () => {
+    expect(
+      resolveAllowedSelfApprovalsOnUpdate({ input: undefined, isDelegatedAfterUpdate: false, current: false })
+    ).toBe(false);
+  });
+
+  test("removing delegation and sending true turns self approval on", () => {
+    expect(resolveAllowedSelfApprovalsOnUpdate({ input: true, isDelegatedAfterUpdate: false, current: false })).toBe(
+      true
+    );
+  });
+
+  test("a delegated policy never allows self approval when the value is omitted", () => {
+    expect(resolveAllowedSelfApprovalsOnUpdate({ input: undefined, isDelegatedAfterUpdate: true, current: true })).toBe(
+      false
+    );
+  });
+
+  test("an explicit value is passed through for the delegated constraint check to judge", () => {
+    expect(resolveAllowedSelfApprovalsOnUpdate({ input: true, isDelegatedAfterUpdate: true, current: false })).toBe(
+      true
     );
   });
 });

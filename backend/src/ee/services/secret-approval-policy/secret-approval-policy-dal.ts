@@ -123,6 +123,15 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
       .select(selectAllTableCols(TableName.SecretApprovalPolicy))
       .orderBy("createdAt", "asc");
 
+  const findByIdForUpdate = async (id: string, tx: Knex) => {
+    try {
+      const policy = await tx(TableName.SecretApprovalPolicy).where({ id }).forUpdate().first();
+      return policy as TSecretApprovalPolicies | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretApprovalPolicyByIdForUpdate" });
+    }
+  };
+
   const findById = async (id: string, tx?: Knex) => {
     try {
       const doc = await secretApprovalPolicyFindQuery(tx || db.replicaNode(), {
@@ -344,5 +353,12 @@ export const secretApprovalPolicyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...secretApprovalPolicyOrm, findById, find, softDeleteById, findPolicyByEnvIdAndSecretPath };
+  return {
+    ...secretApprovalPolicyOrm,
+    findById,
+    findByIdForUpdate,
+    find,
+    softDeleteById,
+    findPolicyByEnvIdAndSecretPath
+  };
 };

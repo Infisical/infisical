@@ -72,6 +72,18 @@ export const buildSecretAccessPolicySteps = <T extends { type: ApproverType; id:
     });
 };
 
+// An update that omits the field keeps the stored value rather than a default, so a partial update cannot
+// re-enable self approval on a policy an admin restricted. A delegated policy never allows it.
+export const resolveAllowedSelfApprovalsOnUpdate = ({
+  input,
+  isDelegatedAfterUpdate,
+  current
+}: {
+  input: boolean | undefined;
+  isDelegatedAfterUpdate: boolean;
+  current: boolean;
+}) => input ?? (isDelegatedAfterUpdate ? false : current);
+
 type TRevokeActiveSecretAccessGrantsDep = {
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "update">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
