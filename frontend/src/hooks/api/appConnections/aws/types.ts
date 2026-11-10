@@ -64,12 +64,13 @@ export type TGetAwsConnectionProvisioningTemplate = {
 export type TAwsUpdateProvisioningTemplate = {
   kind: "cloudformation-update";
   stackUrl: string;
+  updateUrl: string;
   templateUrl: string;
   stackName: string;
   region: string;
   partition: string;
   templateVersion: string;
-  parameters: Record<string, string>;
+  parameterChanges: { useCase: string; parameter: string; value: "true" | "false" }[];
   companionParameters: string[];
 };
 

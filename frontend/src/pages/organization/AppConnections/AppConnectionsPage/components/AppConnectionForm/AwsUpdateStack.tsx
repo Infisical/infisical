@@ -1,29 +1,31 @@
 import { ReactNode, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { ExternalLinkIcon, EyeIcon, InfoIcon, TriangleAlertIcon } from "lucide-react";
+import { ExternalLinkIcon, InfoIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared/AwsRegionSelect";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
   Alert,
   AlertDescription,
-  AlertTitle,
+  Badge,
   Button,
-  Code,
-  CopyButton,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
   Field,
   FieldDescription,
   FieldLabel,
-  Skeleton
+  Skeleton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { AWS_REGIONS } from "@app/helpers/appConnections";
-import { getAwsUseCaseLabel } from "@app/helpers/awsUseCases";
+import { AWS_COMPANION_PARAMETER_LABELS, getAwsUseCaseLabel } from "@app/helpers/awsUseCases";
 import { useScopeVariant } from "@app/hooks";
 import {
   TAwsConnection,
@@ -57,19 +59,17 @@ const getErrorMessage = (error: unknown) => {
   return typeof message === "string" && message ? message : null;
 };
 
-const GENERIC_REASON = "Infisical could not prepare the update steps for this connection.";
+const GENERIC_REASON = "Infisical could not prepare the update for this connection.";
 
 const NOT_STACK_MANAGED_REASON =
-  "Infisical prepares update steps only for stacks in the commercial AWS partition that it launched, and this connection's stack is not one.";
+  "Infisical prepares updates only for stacks in the commercial AWS partition that it launched, and this connection's stack is not one.";
 
 const UpdateStackFallback = ({ reason }: { reason: string }) => (
   <Alert variant="info">
     <InfoIcon />
-    <AlertTitle>Update the stack manually</AlertTitle>
     <AlertDescription>
       <p>
-        {reason} Update the stack in the AWS console by following the manual steps, then come back
-        to record the change.{" "}
+        {reason} Update the stack in AWS yourself, then come back to record the change.{" "}
         <a
           href={MANUAL_DOCS_URL}
           target="_blank"
@@ -84,126 +84,43 @@ const UpdateStackFallback = ({ reason }: { reason: string }) => (
   </Alert>
 );
 
-const UpdateStackSteps = ({
-  projectId,
+const ParameterRow = ({ title, action }: { title: string; action: ReactNode }) => (
+  <li className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+    <span className="min-w-0">{title}</span>
+    <span className="shrink-0 text-xs text-accent">{action}</span>
+  </li>
+);
+
+const UpdateInstructions = ({
   template,
-  useCaseCount,
-  isPending,
-  onMarkAsUpdated
+  hasRemovals
 }: {
-  projectId?: string | null;
   template: TAwsUpdateProvisioningTemplate;
-  useCaseCount: number;
-  isPending: boolean;
-  onMarkAsUpdated: () => void;
-}) => {
-  const { currentOrg } = useOrganization();
-  const scopeVariant = useScopeVariant();
-  const regionName = AWS_REGIONS.find(({ slug }) => slug === template.region)?.name;
-  const toggles = Object.entries(template.parameters).sort(([a], [b]) => a.localeCompare(b));
-
-  const handleOpenStack = () => {
-    analytics.captureForOrganization(AnalyticsEvent.AwsUpdateStackClicked, currentOrg.id, {
-      scope: projectId ? "project" : "org",
-      useCaseCount
-    });
-  };
-
-  const steps: ReactNode[] = [
-    <>
-      Open the stack <Code>{template.stackName}</Code> in{" "}
-      {regionName ? `${regionName} (${template.region})` : template.region} in the AWS
-      CloudFormation console.{" "}
-      <a
-        href={template.stackUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 underline"
-        onClick={handleOpenStack}
-      >
-        Open stack in AWS
-        <ExternalLinkIcon className="size-3" />
-      </a>
-    </>,
-    <>
-      Select <strong>Update stack</strong>, then <strong>Make a direct update</strong>. Choose{" "}
-      <strong>Replace existing template</strong> and <strong>Amazon S3 URL</strong>, and paste the
-      Provisioning template URL.
-      <span className="mt-2 flex items-center gap-1 rounded-sm bg-foreground/10 py-0.5 pr-0.5 pl-2">
-        <Code variant="plain" className="min-w-0 flex-1 text-xs break-all">
-          {template.templateUrl}
-        </Code>
-        <CopyButton value={template.templateUrl} ariaLabel="Copy Provisioning template URL" />
-      </span>
-    </>,
-    <>
-      On the <strong>Specify stack details</strong> page, change only these parameters.
-      {toggles.length > 0 && (
-        <span className="mt-2 flex flex-col gap-1">
-          {toggles.map(([name, value]) => (
-            <span key={name}>
-              <Code>{name}</Code> to <Code>{value}</Code>
-            </span>
-          ))}
-        </span>
-      )}
-      {template.companionParameters.length > 0 && (
-        <>
-          <span className="mt-3 block">
-            Also enter a value for each of these parameters. The use cases you added need them.
-          </span>
-          <span className="mt-2 flex flex-col gap-1">
-            {template.companionParameters.map((name) => (
-              <span key={name}>
-                <Code>{name}</Code>
-              </span>
-            ))}
-          </span>
-        </>
-      )}
-      <span className="mt-3 block">
-        Leave every other parameter on its existing value, including the External ID, the trusted
-        account and the role name.
-      </span>
-    </>,
-    <>
-      Submit the update and wait for the stack to reach <Code>UPDATE_COMPLETE</Code>.
-    </>,
-    <>
-      Return here and select <strong>Mark as updated</strong>.
-    </>
-  ];
-
-  return (
-    <div className="flex flex-col gap-4">
-      <ol className="flex flex-col gap-3 rounded-md border border-border bg-container p-4 text-sm text-foreground-soft">
-        {steps.map((step, index) => (
-          // eslint-disable-next-line react/no-array-index-key
-          <li key={index} className="flex items-start gap-3">
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border text-xs font-medium text-foreground">
-              {index + 1}
-            </span>
-            <span className="min-w-0 pt-px">{step}</span>
-          </li>
-        ))}
-      </ol>
-      <div className="flex flex-col items-start gap-2">
-        <Button
-          type="button"
-          variant={scopeVariant}
-          isPending={isPending}
-          onClick={onMarkAsUpdated}
-        >
-          Mark as updated
-        </Button>
-        <p className="text-xs text-muted">
-          Infisical does not check AWS. This saves the use cases you selected as the record for this
-          connection.
-        </p>
-      </div>
-    </div>
-  );
-};
+  hasRemovals: boolean;
+}) => (
+  <div className="flex flex-col gap-2">
+    <p className="text-xs text-accent">In AWS, change only these parameters:</p>
+    <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
+      {template.parameterChanges.map(({ useCase, parameter, value }) => (
+        <ParameterRow
+          key={parameter}
+          title={getAwsUseCaseLabel(useCase)}
+          action={<Badge variant={value === "true" ? "success" : "warning"}>{value}</Badge>}
+        />
+      ))}
+      {template.companionParameters.map((name) => (
+        <ParameterRow
+          key={name}
+          title={AWS_COMPANION_PARAMETER_LABELS[name] ?? name}
+          action="Enter a value"
+        />
+      ))}
+    </ul>
+    {hasRemovals && (
+      <p className="text-xs text-warning">Features that use removed permissions will fail.</p>
+    )}
+  </div>
+);
 
 export const AwsUpdateStack = ({
   projectId,
@@ -212,6 +129,8 @@ export const AwsUpdateStack = ({
   preselectedUseCases
 }: Props) => {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrganization();
+  const scopeVariant = useScopeVariant();
   const updateAppConnection = useUpdateAppConnection();
   const [recorded, setRecorded] = useState(provisioning);
   const [useCases, setUseCases] = useState<string[]>(() => [
@@ -219,15 +138,16 @@ export const AwsUpdateStack = ({
     ...(preselectedUseCases ?? []).filter((id) => !provisioning.useCases.includes(id))
   ]);
   const [chosenRegion, setChosenRegion] = useState("");
+  const [hasOpenedAws, setHasOpenedAws] = useState(false);
+  const [hasCustomized, setHasCustomized] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [sheetView, setSheetView] = useState<"list" | "policy">("list");
 
   const isRegionMissing = !recorded.region;
   const hasRegion = !isRegionMissing || Boolean(chosenRegion);
   const isChanged = !isSameSelection(useCases, recorded.useCases);
   const hasNoUseCases = useCases.length === 0;
   const removedUseCases = recorded.useCases.filter((id) => !useCases.includes(id));
-  const selectedLabels = useCases.map(getAwsUseCaseLabel);
+  const addedUseCases = useCases.filter((id) => !recorded.useCases.includes(id));
 
   const {
     data: template,
@@ -243,15 +163,23 @@ export const AwsUpdateStack = ({
     { enabled: isChanged && hasRegion && !hasNoUseCases }
   );
 
-  const openSheet = (view: "list" | "policy") => {
-    setSheetView(view);
-    setIsSheetOpen(true);
-  };
-
   const toggleUseCase = (id: string, isChecked: boolean) => {
+    setHasOpenedAws(false);
+    setHasCustomized(true);
     setUseCases((current) =>
       isChecked ? [...current.filter((item) => item !== id), id] : current.filter((i) => i !== id)
     );
+  };
+
+  const handleOpenAws = () => {
+    if (!template) return;
+
+    analytics.captureForOrganization(AnalyticsEvent.AwsUpdateStackClicked, currentOrg.id, {
+      scope: projectId ? "project" : "org",
+      useCaseCount: useCases.length
+    });
+    window.open(template.updateUrl, "_blank", "noopener,noreferrer");
+    setHasOpenedAws(true);
   };
 
   const handleMarkAsUpdated = () => {
@@ -278,9 +206,12 @@ export const AwsUpdateStack = ({
           queryClient.invalidateQueries({
             queryKey: awsConnectionKeys.allConnectionProvisioningTemplates()
           });
-          setRecorded(
-            (connection as TAwsConnection).configuration?.provisioning ?? updatedProvisioning
-          );
+          const nextProvisioning =
+            (connection as TAwsConnection).configuration?.provisioning ?? updatedProvisioning;
+          setRecorded(nextProvisioning);
+          setUseCases(nextProvisioning.useCases);
+          setHasOpenedAws(false);
+          setHasCustomized(false);
           createNotification({
             text: "Updated the recorded use cases for this AWS connection",
             type: "success"
@@ -290,26 +221,20 @@ export const AwsUpdateStack = ({
     );
   };
 
-  const renderSteps = () => {
+  const renderChanges = () => {
     if (!isChanged) {
-      return (
-        <p className="text-sm text-muted">
-          Select or clear use cases to see the steps for updating the stack.
-        </p>
-      );
+      return hasCustomized ? (
+        <p className="text-xs text-accent">This role already has these permissions.</p>
+      ) : null;
     }
 
     if (hasNoUseCases) {
-      return (
-        <p className="text-sm text-muted">
-          Select at least one use case. Infisical cannot prepare update steps for a stack with none.
-        </p>
-      );
+      return <p className="text-xs text-accent">Select at least one use case.</p>;
     }
 
     if (!hasRegion) return null;
 
-    if (isFetching) return <Skeleton className="h-40 w-full" />;
+    if (isFetching) return <Skeleton className="h-24 w-full" />;
 
     if (isError) {
       const message = getErrorMessage(error);
@@ -322,105 +247,97 @@ export const AwsUpdateStack = ({
     if (!template) return <UpdateStackFallback reason={GENERIC_REASON} />;
 
     return (
-      <UpdateStackSteps
-        projectId={projectId}
-        template={template}
-        useCaseCount={useCases.length}
-        isPending={updateAppConnection.isPending}
-        onMarkAsUpdated={handleMarkAsUpdated}
-      />
+      <>
+        <UpdateInstructions template={template} hasRemovals={removedUseCases.length > 0} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={hasOpenedAws ? "outline" : scopeVariant}
+            onClick={handleOpenAws}
+          >
+            Update stack in AWS
+            <ExternalLinkIcon />
+          </Button>
+          <Button
+            type="button"
+            variant={hasOpenedAws ? scopeVariant : "outline"}
+            isDisabled={!hasOpenedAws}
+            isPending={updateAppConnection.isPending}
+            onClick={handleMarkAsUpdated}
+          >
+            Mark as updated
+          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <InfoIcon className="size-4 text-accent" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              Infisical does not check AWS. This saves the selected use cases as the record for this
+              connection.
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </>
     );
   };
 
   return (
-    <Accordion
-      type="single"
-      collapsible
-      className="mb-4"
-      defaultValue={preselectedUseCases?.length ? "update-stack" : undefined}
-    >
-      <AccordionItem value="update-stack">
-        <AccordionTrigger>Update Stack</AccordionTrigger>
-        <AccordionContent className="flex flex-col gap-4 px-4 pb-4">
-          <p className="text-sm text-muted">
-            Choose the use cases this role should cover, then update the stack in the AWS console.
-            Infisical does not change the stack for you.
-          </p>
+    <Card className="mb-4">
+      <CardHeader>
+        <CardTitle className="text-base leading-snug">Role permissions</CardTitle>
+        <CardDescription>Use cases this role covers.</CardDescription>
+        <CardAction>
+          <Button type="button" variant="outline" size="xs" onClick={() => setIsSheetOpen(true)}>
+            Customize
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-wrap gap-1.5">
+          {recorded.useCases.map((id) =>
+            removedUseCases.includes(id) ? (
+              <Badge key={id} variant="warning" className="line-through">
+                {getAwsUseCaseLabel(id)}
+              </Badge>
+            ) : (
+              <Badge key={id} variant="neutral">
+                {getAwsUseCaseLabel(id)}
+              </Badge>
+            )
+          )}
+          {addedUseCases.map((id) => (
+            <Badge key={id} variant="success">
+              + {getAwsUseCaseLabel(id)}
+            </Badge>
+          ))}
+        </div>
+        {isRegionMissing && isChanged && (
           <Field>
-            <FieldLabel>Role permissions</FieldLabel>
-            <div className="flex items-start justify-between gap-3 rounded-md border border-border p-3">
-              <div className="min-w-0 text-sm">
-                <p>
-                  {selectedLabels.slice(0, 2).join(", ")}
-                  {selectedLabels.length > 2 && (
-                    <span className="text-muted"> +{selectedLabels.length - 2} more</span>
-                  )}
-                </p>
-                <button
-                  type="button"
-                  className="mt-1 inline-flex items-center text-xs text-muted underline hover:text-foreground"
-                  onClick={() => openSheet("list")}
-                >
-                  Customize
-                </button>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                isDisabled={useCases.length === 0}
-                onClick={() => openSheet("policy")}
-              >
-                <EyeIcon />
-                View policy
-              </Button>
-            </div>
-            <FieldDescription>
-              Starts from the use cases recorded for this connection.
-            </FieldDescription>
+            <FieldLabel htmlFor="aws-update-stack-region">Stack region</FieldLabel>
+            <AwsRegionSelect
+              id="aws-update-stack-region"
+              value={chosenRegion}
+              onChange={(value) => {
+                setHasOpenedAws(false);
+                setChosenRegion(value ?? "");
+              }}
+              regions={
+                PARTITION_REGIONS[recorded.partition] ?? PARTITION_REGIONS[AwsPartition.Commercial]
+              }
+            />
+            <FieldDescription>The region this stack was created in.</FieldDescription>
           </Field>
-          <AwsUseCasesSheet
-            isOpen={isSheetOpen}
-            onOpenChange={setIsSheetOpen}
-            initialView={sheetView}
-            selected={useCases}
-            lockedIds={[]}
-            onToggle={toggleUseCase}
-          />
-          {removedUseCases.length > 0 && (
-            <Alert variant="warning">
-              <TriangleAlertIcon />
-              <AlertTitle>Permissions will be removed</AlertTitle>
-              <AlertDescription>
-                <p>
-                  Updating the stack removes the permissions for{" "}
-                  {removedUseCases.map(getAwsUseCaseLabel).join(", ")} from the role. Features that
-                  rely on them will fail.
-                </p>
-              </AlertDescription>
-            </Alert>
-          )}
-          {isRegionMissing && isChanged && (
-            <Field>
-              <FieldLabel htmlFor="aws-update-stack-region">Stack region</FieldLabel>
-              <AwsRegionSelect
-                id="aws-update-stack-region"
-                value={chosenRegion}
-                onChange={(value) => setChosenRegion(value ?? "")}
-                regions={
-                  PARTITION_REGIONS[recorded.partition] ??
-                  PARTITION_REGIONS[AwsPartition.Commercial]
-                }
-              />
-              <FieldDescription>
-                Infisical has no record of the region this stack was created in. Choose it so the
-                steps open the right stack.
-              </FieldDescription>
-            </Field>
-          )}
-          {renderSteps()}
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+        )}
+        {renderChanges()}
+      </CardContent>
+      <AwsUseCasesSheet
+        isOpen={isSheetOpen}
+        onOpenChange={setIsSheetOpen}
+        initialView="list"
+        selected={useCases}
+        lockedIds={[]}
+        onToggle={toggleUseCase}
+      />
+    </Card>
   );
 };

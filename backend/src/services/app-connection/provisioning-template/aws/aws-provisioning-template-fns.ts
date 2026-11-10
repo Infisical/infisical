@@ -131,23 +131,24 @@ export const awsProvisioningTemplateProvider: TProvisioningTemplateProvider<
     const added = requested.filter((useCase) => !recorded.useCases.includes(useCase));
     const removed = recorded.useCases.filter((useCase) => !requested.includes(useCase));
 
-    const parameters: Record<string, string> = {};
-    added.forEach((useCase) => {
-      parameters[toggleName(useCase)] = "true";
-    });
-    removed.forEach((useCase) => {
-      parameters[toggleName(useCase)] = "false";
-    });
+    const parameterChanges = [
+      ...added.map((useCase) => ({ useCase, parameter: toggleName(useCase), value: "true" as const })),
+      ...removed.map((useCase) => ({ useCase, parameter: toggleName(useCase), value: "false" as const }))
+    ];
+
+    const templateUrl = getAwsTemplateUrl();
+    const consoleBaseUrl = `https://${region}.${partition.consoleDomain}/cloudformation/home?region=${region}`;
 
     return {
       kind: ProvisioningTemplateKind.CloudFormationUpdate,
       stackName: recorded.stackName,
       region,
       partition: recorded.partition,
-      stackUrl: `https://${region}.${partition.consoleDomain}/cloudformation/home?region=${region}#/stacks?filteringText=${encodeURIComponent(recorded.stackName)}`,
-      templateUrl: getAwsTemplateUrl(),
+      stackUrl: `${consoleBaseUrl}#/stacks?filteringText=${encodeURIComponent(recorded.stackName)}`,
+      updateUrl: `${consoleBaseUrl}#/stacks/update?stackId=${encodeURIComponent(recorded.stackName)}&templateURL=${encodeURIComponent(templateUrl)}`,
+      templateUrl,
       templateVersion: AWS_PROVISIONING_TEMPLATE_VERSION,
-      parameters,
+      parameterChanges,
       companionParameters: getCompanionParameters(recorded.useCases, added)
     };
   },

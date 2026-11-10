@@ -50,6 +50,51 @@ Metadata:
           - "PamRecordingBucket"
           - "AgentVaultSessionLogsBucket"
           - "AgentVaultSessionLogsKeyPrefix"
+    ParameterLabels:
+      ExternalId:
+        default: "External ID"
+      TrustedAccountId:
+        default: "Trusted account ID"
+      RoleName:
+        default: "Role name"
+      EnableSecretsManager:
+        default: "AWS Secrets Manager sync"
+      EnableSecretsManagerKms:
+        default: "AWS Secrets Manager sync: uses a customer managed KMS key"
+      EnableParameterStore:
+        default: "AWS Parameter Store sync"
+      EnableParameterStoreKms:
+        default: "AWS Parameter Store sync: uses a customer managed KMS key"
+      EnableIamRotation:
+        default: "AWS IAM user secret rotation"
+      EnableHoneyTokens:
+        default: "AWS honey tokens"
+      EnableAcmSync:
+        default: "AWS Certificate Manager sync"
+      EnableElbSync:
+        default: "AWS Elastic Load Balancer sync"
+      EnablePkiSecretsManager:
+        default: "AWS Secrets Manager certificate sync"
+      EnablePrivateCa:
+        default: "AWS Private CA"
+      EnableAcmPublicCa:
+        default: "AWS Certificate Manager public CA"
+      EnableAcmeRoute53:
+        default: "ACME CA with Route 53"
+      EnablePamRecording:
+        default: "PAM session recording"
+      EnableAgentVaultSessionLogs:
+        default: "Agent Vault session logs"
+      PrivateCaArn:
+        default: "Private CA ARN"
+      Route53HostedZoneId:
+        default: "Route 53 hosted zone ID"
+      PamRecordingBucket:
+        default: "PAM recording S3 bucket"
+      AgentVaultSessionLogsBucket:
+        default: "Agent Vault session logs S3 bucket"
+      AgentVaultSessionLogsKeyPrefix:
+        default: "Agent Vault session logs key prefix"
 Parameters:
   ExternalId:
     Type: "String"

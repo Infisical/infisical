@@ -6582,6 +6582,24 @@ func (e GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind) 
 	}
 }
 
+// Defines values for GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue.
+const (
+	GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValueFalse GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue = "false"
+	GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValueTrue  GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue = "true"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue enum.
+func (e GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue) Valid() bool {
+	switch e {
+	case GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValueFalse:
+		return true
+	case GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValueTrue:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetAwsProvisioningTemplate400JSONResponseBodyStatusCode.
 const (
 	GetAwsProvisioningTemplate400JSONResponseBodyStatusCodeN400 GetAwsProvisioningTemplate400JSONResponseBodyStatusCode = 400
@@ -7104,6 +7122,21 @@ func (e GetAwsAppConnection500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for UpdateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod.
+const (
+	UpdateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethodLaunchStack UpdateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod = "launch-stack"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod enum.
+func (e UpdateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod) Valid() bool {
+	switch e {
+	case UpdateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethodLaunchStack:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateAwsAppConnectionJSONBodyIsAutoRotationEnabled.
 const (
 	UpdateAwsAppConnectionJSONBodyIsAutoRotationEnabledFalse UpdateAwsAppConnectionJSONBodyIsAutoRotationEnabled = false
@@ -7374,6 +7407,24 @@ const (
 func (e GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind) Valid() bool {
 	switch e {
 	case GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1KindCloudformationUpdate:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue.
+const (
+	GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValueFalse GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue = "false"
+	GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValueTrue  GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue = "true"
+)
+
+// Valid indicates whether the value is a known member of the GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue enum.
+func (e GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue) Valid() bool {
+	switch e {
+	case GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValueFalse:
+		return true
+	case GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValueTrue:
 		return true
 	default:
 		return false
@@ -97705,17 +97756,25 @@ type GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate0Kind stri
 type GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 struct {
 	CompanionParameters []string                                                               `json:"companionParameters"`
 	Kind                GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind `json:"kind"`
-	Parameters          map[string]string                                                      `json:"parameters"`
-	Partition           string                                                                 `json:"partition"`
-	Region              string                                                                 `json:"region"`
-	StackName           string                                                                 `json:"stackName"`
-	StackUrl            string                                                                 `json:"stackUrl"`
-	TemplateUrl         string                                                                 `json:"templateUrl"`
-	TemplateVersion     string                                                                 `json:"templateVersion"`
+	ParameterChanges    []struct {
+		Parameter string                                                                                  `json:"parameter"`
+		UseCase   string                                                                                  `json:"useCase"`
+		Value     GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue `json:"value"`
+	} `json:"parameterChanges"`
+	Partition       string `json:"partition"`
+	Region          string `json:"region"`
+	StackName       string `json:"stackName"`
+	StackUrl        string `json:"stackUrl"`
+	TemplateUrl     string `json:"templateUrl"`
+	TemplateVersion string `json:"templateVersion"`
+	UpdateUrl       string `json:"updateUrl"`
 }
 
 // GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind defines parameters for GetAwsProvisioningTemplate.
 type GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind string
+
+// GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue defines parameters for GetAwsProvisioningTemplate.
+type GetAwsProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue string
 
 // GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate defines parameters for GetAwsProvisioningTemplate.
 type GetAwsProvisioningTemplate200JSONResponseBody_ProvisioningTemplate struct {
@@ -98146,6 +98205,32 @@ type GetAwsAppConnection500JSONResponseBodyStatusCode float32
 
 // UpdateAwsAppConnectionJSONBody defines parameters for UpdateAwsAppConnection.
 type UpdateAwsAppConnectionJSONBody struct {
+	Configuration *struct {
+		// Provisioning How the connection's role was provisioned. Null for roles created manually.
+		Provisioning *struct {
+			// LaunchMethod How the IAM role was provisioned.
+			LaunchMethod UpdateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod `json:"launchMethod"`
+
+			// Partition The AWS partition the stack was launched in.
+			Partition string `json:"partition"`
+
+			// Region The AWS region the CloudFormation stack lives in.
+			Region *string `json:"region,omitempty"`
+
+			// RoleName The name of the IAM role the stack created.
+			RoleName *string `json:"roleName,omitempty"`
+
+			// StackName The CloudFormation stack name.
+			StackName string `json:"stackName"`
+
+			// TemplateVersion The version of the Provisioning template.
+			TemplateVersion string `json:"templateVersion"`
+
+			// UseCases The Use cases the role was provisioned for.
+			UseCases []string `json:"useCases"`
+		} `json:"provisioning,omitempty"`
+	} `json:"configuration,omitempty"`
+
 	// Credentials The credentials used to connect with AWS.
 	Credentials *UpdateAwsAppConnectionJSONBody_Credentials `json:"credentials,omitempty"`
 
@@ -98170,6 +98255,9 @@ type UpdateAwsAppConnectionJSONBody struct {
 	// Rotation Not supported for AWS Connections.
 	Rotation *UpdateAwsAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
 }
+
+// UpdateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod defines parameters for UpdateAwsAppConnection.
+type UpdateAwsAppConnectionJSONBodyConfigurationProvisioningLaunchMethod string
 
 // UpdateAwsAppConnectionJSONBodyCredentials0 defines parameters for UpdateAwsAppConnection.
 type UpdateAwsAppConnectionJSONBodyCredentials0 struct {
@@ -98460,17 +98548,25 @@ type GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate
 type GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1 struct {
 	CompanionParameters []string                                                                         `json:"companionParameters"`
 	Kind                GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind `json:"kind"`
-	Parameters          map[string]string                                                                `json:"parameters"`
-	Partition           string                                                                           `json:"partition"`
-	Region              string                                                                           `json:"region"`
-	StackName           string                                                                           `json:"stackName"`
-	StackUrl            string                                                                           `json:"stackUrl"`
-	TemplateUrl         string                                                                           `json:"templateUrl"`
-	TemplateVersion     string                                                                           `json:"templateVersion"`
+	ParameterChanges    []struct {
+		Parameter string                                                                                            `json:"parameter"`
+		UseCase   string                                                                                            `json:"useCase"`
+		Value     GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue `json:"value"`
+	} `json:"parameterChanges"`
+	Partition       string `json:"partition"`
+	Region          string `json:"region"`
+	StackName       string `json:"stackName"`
+	StackUrl        string `json:"stackUrl"`
+	TemplateUrl     string `json:"templateUrl"`
+	TemplateVersion string `json:"templateVersion"`
+	UpdateUrl       string `json:"updateUrl"`
 }
 
 // GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind defines parameters for GetAwsConnectionProvisioningTemplate.
 type GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1Kind string
+
+// GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue defines parameters for GetAwsConnectionProvisioningTemplate.
+type GetAwsConnectionProvisioningTemplate200JSONResponseBodyProvisioningTemplate1ParameterChangesValue string
 
 // GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate defines parameters for GetAwsConnectionProvisioningTemplate.
 type GetAwsConnectionProvisioningTemplate200JSONResponseBody_ProvisioningTemplate struct {

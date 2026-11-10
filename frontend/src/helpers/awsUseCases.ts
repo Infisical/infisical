@@ -43,6 +43,14 @@ export const getAwsUseCaseLabel = (id: string) =>
     (option) => option.id === id
   )?.label ?? id;
 
+export const AWS_COMPANION_PARAMETER_LABELS: Record<string, string> = {
+  PrivateCaArn: "Private CA ARN",
+  Route53HostedZoneId: "Route 53 hosted zone ID",
+  PamRecordingBucket: "PAM recording S3 bucket",
+  AgentVaultSessionLogsBucket: "Agent Vault session logs S3 bucket",
+  AgentVaultSessionLogsKeyPrefix: "Agent Vault session logs key prefix"
+};
+
 export const getAwsUpdateStackHint = ({
   recordedUseCases,
   neededUseCases,

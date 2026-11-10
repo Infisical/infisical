@@ -12,6 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type parameterChange struct {
+	UseCase   string `json:"useCase"`
+	Parameter string `json:"parameter"`
+	Value     string `json:"value"`
+}
+
 type updateTemplate struct {
 	ProvisioningTemplate *struct {
 		Kind                string            `json:"kind"`
@@ -19,9 +25,10 @@ type updateTemplate struct {
 		Region              string            `json:"region"`
 		Partition           string            `json:"partition"`
 		StackURL            string            `json:"stackUrl"`
+		UpdateURL           string            `json:"updateUrl"`
 		TemplateURL         string            `json:"templateUrl"`
 		TemplateVersion     string            `json:"templateVersion"`
-		Parameters          map[string]string `json:"parameters"`
+		ParameterChanges    []parameterChange `json:"parameterChanges"`
 		CompanionParameters []string          `json:"companionParameters"`
 	} `json:"provisioningTemplate"`
 }

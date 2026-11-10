@@ -5,7 +5,11 @@ import { describe, expect, test } from "vitest";
 // eslint-disable-next-line import/extensions
 import { buildPolicyStatements } from "../../scripts/generate-aws-use-case-policies.mjs";
 import { AWS_USE_CASE_POLICY_STATEMENTS } from "./awsUseCasePolicies";
-import { AWS_USE_CASE_GROUPS, getAwsUpdateStackHint } from "./awsUseCases";
+import {
+  AWS_COMPANION_PARAMETER_LABELS,
+  AWS_USE_CASE_GROUPS,
+  getAwsUpdateStackHint
+} from "./awsUseCases";
 
 const template = readFileSync(
   path.resolve(
@@ -13,7 +17,7 @@ const template = readFileSync(
     "../../../cloudformation/aws-app-connection/infisical-aws-app-connection.yaml"
   ),
   "utf8"
-);
+).replace(/\r\n/g, "\n");
 
 const toParameterName = (id: string) =>
   `Enable${id
@@ -30,6 +34,22 @@ describe("AWS use cases", () => {
     "%s has an Enable parameter in the provisioning template",
     (id) => {
       expect(template).toMatch(new RegExp(`^ {2}${toParameterName(id)}:`, "m"));
+    }
+  );
+
+  test.each(
+    AWS_USE_CASE_GROUPS.flatMap((group): { id: string; label: string }[] => [...group.options])
+  )(
+    "$id is labelled in the template as it is in Infisical",
+    ({ id, label }) => {
+      expect(template).toContain(`${toParameterName(id)}:\n        default: ${JSON.stringify(label)}`);
+    }
+  );
+
+  test.each(Object.entries(AWS_COMPANION_PARAMETER_LABELS))(
+    "%s is labelled in the template as it is in Infisical",
+    (parameter, label) => {
+      expect(template).toContain(`${parameter}:\n        default: ${JSON.stringify(label)}`);
     }
   );
 });

@@ -20,12 +20,13 @@ export const CloudFormationLaunchSchema = z.object({
 export const CloudFormationUpdateSchema = z.object({
   kind: z.literal(ProvisioningTemplateKind.CloudFormationUpdate),
   stackUrl: z.string(),
+  updateUrl: z.string(),
   templateUrl: z.string(),
   stackName: z.string(),
   region: z.string(),
   partition: z.string(),
   templateVersion: z.string(),
-  parameters: z.record(z.string()),
+  parameterChanges: z.array(z.object({ useCase: z.string(), parameter: z.string(), value: z.enum(["true", "false"]) })),
   companionParameters: z.array(z.string())
 });
 

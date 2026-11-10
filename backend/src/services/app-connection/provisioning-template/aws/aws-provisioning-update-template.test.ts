@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BadRequestError } from "@app/lib/errors";
 import { AwsConnectionMethod } from "@app/services/app-connection/aws/aws-connection-enums";
 
+import { ProvisioningTemplateKind } from "../provisioning-template-types";
 import { AWS_PROVISIONING_TEMPLATE_VERSION } from "./aws-provisioning-template-constants";
 import { awsProvisioningTemplateProvider, AWS_USE_CASE_COMPANION_PARAMETERS } from "./aws-provisioning-template-fns";
 
@@ -44,23 +45,39 @@ describe("awsProvisioningTemplateProvider.getUpdateTemplate", () => {
       partition: "aws",
       stackUrl:
         "https://eu-west-1.console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks?filteringText=infisical-aws-app-connection",
+      updateUrl: `https://eu-west-1.console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/update?stackId=infisical-aws-app-connection&templateURL=${encodeURIComponent(
+        `https://mirror.test/cfn/aws-app-connection/v${AWS_PROVISIONING_TEMPLATE_VERSION}/infisical-aws-app-connection.yaml`
+      )}`,
       templateUrl: `https://mirror.test/cfn/aws-app-connection/v${AWS_PROVISIONING_TEMPLATE_VERSION}/infisical-aws-app-connection.yaml`,
       templateVersion: AWS_PROVISIONING_TEMPLATE_VERSION,
-      parameters: {},
+      parameterChanges: [],
       companionParameters: []
     });
+  });
+
+  it("opens the update wizard by stack name and prefills only the template, never parameters", async () => {
+    const template = await update(provisioning(), ["secrets-manager", "parameter-store"]);
+
+    const updateUrl = template?.kind === ProvisioningTemplateKind.CloudFormationUpdate ? template.updateUrl : "";
+
+    expect(updateUrl).toMatch(/#\/stacks\/update\?stackId=infisical-aws-app-connection&templateURL=[^&]+$/);
   });
 
   it("turns added use cases on and lists nothing for unchanged ones", async () => {
     const template = await update(provisioning(), ["secrets-manager", "parameter-store"]);
 
-    expect(template).toMatchObject({ parameters: { EnableParameterStore: "true" }, companionParameters: [] });
+    expect(template).toMatchObject({
+      parameterChanges: [{ useCase: "parameter-store", parameter: "EnableParameterStore", value: "true" }],
+      companionParameters: []
+    });
   });
 
   it("turns removed use cases off", async () => {
     const template = await update(provisioning({ useCases: ["secrets-manager", "acm-sync"] }), ["secrets-manager"]);
 
-    expect(template).toMatchObject({ parameters: { EnableAcmSync: "false" } });
+    expect(template).toMatchObject({
+      parameterChanges: [{ useCase: "acm-sync", parameter: "EnableAcmSync", value: "false" }]
+    });
   });
 
   it("handles additions and removals together", async () => {
@@ -69,7 +86,12 @@ describe("awsProvisioningTemplateProvider.getUpdateTemplate", () => {
       "iam-rotation"
     ]);
 
-    expect(template).toMatchObject({ parameters: { EnableIamRotation: "true", EnableAcmSync: "false" } });
+    expect(template).toMatchObject({
+      parameterChanges: [
+        { useCase: "iam-rotation", parameter: "EnableIamRotation", value: "true" },
+        { useCase: "acm-sync", parameter: "EnableAcmSync", value: "false" }
+      ]
+    });
   });
 
   it("names the extra parameters a newly enabled use case needs", async () => {
@@ -93,7 +115,10 @@ describe("awsProvisioningTemplateProvider.getUpdateTemplate", () => {
   it("does not ask again for a parameter an already enabled use case filled in", async () => {
     const template = await update(provisioning({ useCases: ["acm-public-ca"] }), ["acm-public-ca", "acme-route53"]);
 
-    expect(template).toMatchObject({ parameters: { EnableAcmeRoute53: "true" }, companionParameters: [] });
+    expect(template).toMatchObject({
+      parameterChanges: [{ useCase: "acme-route53", parameter: "EnableAcmeRoute53", value: "true" }],
+      companionParameters: []
+    });
   });
 
   it("names a shared parameter once when two use cases that need it are added", async () => {
@@ -107,7 +132,10 @@ describe("awsProvisioningTemplateProvider.getUpdateTemplate", () => {
       "secrets-manager"
     ]);
 
-    expect(template).toMatchObject({ parameters: { EnablePamRecording: "false" }, companionParameters: [] });
+    expect(template).toMatchObject({
+      parameterChanges: [{ useCase: "pam-recording", parameter: "EnablePamRecording", value: "false" }],
+      companionParameters: []
+    });
   });
 
   it("returns null when the role was created manually or has no recorded provisioning", async () => {

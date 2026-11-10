@@ -17,21 +17,25 @@ export const awsUseCaseGroups = loadUseCaseGroups();
 const PLACEHOLDER_PARAMETERS = {
   "recording-bucket": {
     name: "PamRecordingBucket",
+    label: "PAM recording S3 bucket",
     description: "Name of the S3 bucket PAM session recordings are written to",
     pattern: "([a-z0-9][a-z0-9.-]{1,61}[a-z0-9])?"
   },
   "session-logs-bucket": {
     name: "AgentVaultSessionLogsBucket",
+    label: "Agent Vault session logs S3 bucket",
     description: "Name of the S3 bucket Agent Vault session logs are written to",
     pattern: "([a-z0-9][a-z0-9.-]{1,61}[a-z0-9])?"
   },
   "key-prefix": {
     name: "AgentVaultSessionLogsKeyPrefix",
+    label: "Agent Vault session logs key prefix",
     description: "Key prefix Agent Vault session logs are written under, without a trailing slash",
     pattern: "([\\w!.*()=+@,:;-]+(/[\\w!.*()=+@,:;-]+)*)?"
   },
   "hosted-zone-id": {
     name: "Route53HostedZoneId",
+    label: "Route 53 hosted zone ID",
     description: "ID of the Route 53 hosted zone used for ACM validation or ACME challenges",
     pattern: "([A-Z0-9]{1,32})?"
   }
@@ -41,6 +45,7 @@ const WHOLE_ARN_PARAMETERS = [
   {
     match: /^arn:aws:acm-pca:<region>:<account-id>:certificate-authority\/<ca-id>$/,
     name: "PrivateCaArn",
+    label: "Private CA ARN",
     description: "ARN of the AWS Private CA that Infisical issues certificates from",
     pattern: "(arn:aws[\\w-]*:acm-pca:[\\w-]+:\\d{12}:certificate-authority/[\\w-]+)?"
   }
@@ -110,6 +115,7 @@ export const buildTemplate = () => {
   const resourceParameterToggles = new Map();
   const resourceParameterDefinitions = new Map();
   const groups = [{ Label: { default: "Role" }, Parameters: ["ExternalId", "TrustedAccountId", "RoleName"] }];
+  const labels = { ExternalId: "External ID", TrustedAccountId: "Trusted account ID", RoleName: "Role name" };
 
   for (const group of awsUseCaseGroups) {
     const groupParameters = [];
@@ -123,6 +129,7 @@ export const buildTemplate = () => {
         Description: `Grant the permissions for ${option.label}`
       };
       groupParameters.push(toggle);
+      labels[toggle] = option.label;
       conditions[`Use${pascal(option.id)}`] = equalsTrue(toggle);
 
       const usedParameters = new Map();
@@ -151,6 +158,7 @@ export const buildTemplate = () => {
           Description: `Also grant the extra permissions needed when ${option.label} ${option.policy.optional.label}`
         };
         groupParameters.push(kmsToggle);
+        labels[kmsToggle] = `${option.label}: ${option.policy.optional.label}`;
         conditions[`Use${pascal(option.id)}Kms`] = {
           "Fn::And": [{ Condition: `Use${pascal(option.id)}` }, equalsTrue(kmsToggle)]
         };
@@ -174,9 +182,10 @@ export const buildTemplate = () => {
 
   const resourceGroup = { Label: { default: "Resources for the selected use cases" }, Parameters: [] };
   for (const [name, toggles] of resourceParameterToggles) {
-    const { description, pattern } = resourceParameterDefinitions.get(name);
+    const { label, description, pattern } = resourceParameterDefinitions.get(name);
     parameters[name] = { Type: "String", Default: "", Description: description, AllowedPattern: pattern };
     resourceGroup.Parameters.push(name);
+    labels[name] = label;
     rules[`Require${name}`] = {
       RuleCondition: anyOf(toggles.map(equalsTrue)),
       Assertions: [
@@ -195,7 +204,10 @@ export const buildTemplate = () => {
     Metadata: {
       InfisicalTemplateVersion: TEMPLATE_VERSION,
       "cfn-lint": { config: { ignore_checks: ["W1030", "W1031"] } },
-      "AWS::CloudFormation::Interface": { ParameterGroups: groups }
+      "AWS::CloudFormation::Interface": {
+        ParameterGroups: groups,
+        ParameterLabels: Object.fromEntries(Object.entries(labels).map(([name, label]) => [name, { default: label }]))
+      }
     },
     Parameters: parameters,
     Rules: rules,

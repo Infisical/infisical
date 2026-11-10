@@ -15,6 +15,12 @@ import (
 
 const stackRoleArn = "arn:aws:iam::" + account + ":role/infisical-app-connection"
 
+type parameterChange struct {
+	UseCase   string `json:"useCase"`
+	Parameter string `json:"parameter"`
+	Value     string `json:"value"`
+}
+
 type updateTemplate struct {
 	ProvisioningTemplate *struct {
 		Kind                string            `json:"kind"`
@@ -22,11 +28,20 @@ type updateTemplate struct {
 		Region              string            `json:"region"`
 		Partition           string            `json:"partition"`
 		StackURL            string            `json:"stackUrl"`
+		UpdateURL           string            `json:"updateUrl"`
 		TemplateURL         string            `json:"templateUrl"`
 		TemplateVersion     string            `json:"templateVersion"`
-		Parameters          map[string]string `json:"parameters"`
+		ParameterChanges    []parameterChange `json:"parameterChanges"`
 		CompanionParameters []string          `json:"companionParameters"`
 	} `json:"provisioningTemplate"`
+}
+
+func toggles(changes []parameterChange) map[string]string {
+	out := map[string]string{}
+	for _, c := range changes {
+		out[c.Parameter] = c.Value
+	}
+	return out
 }
 
 func getUpdateTemplate(t *testing.T, p *harness.Principal, connectionID uuid.UUID, useCases string, region *string) (int, []byte) {
@@ -75,8 +90,11 @@ func TestAWSAppConnection_UpdateTemplate(t *testing.T) {
 		require.Contains(t, tpl.StackURL, stackName)
 		require.True(t, strings.HasSuffix(tpl.TemplateURL, "/aws-app-connection/v1/infisical-aws-app-connection.yaml"), tpl.TemplateURL)
 		require.Equal(t, "1", tpl.TemplateVersion)
-		require.Equal(t, map[string]string{"EnableParameterStore": "true"}, tpl.Parameters)
+		require.Equal(t, []parameterChange{{UseCase: "parameter-store", Parameter: "EnableParameterStore", Value: "true"}}, tpl.ParameterChanges)
 		require.Empty(t, tpl.CompanionParameters)
+		require.Contains(t, tpl.UpdateURL, "eu-west-1.console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/update?stackId="+stackName)
+		require.Contains(t, tpl.UpdateURL, "&templateURL=")
+		require.NotContains(t, tpl.UpdateURL, "param_")
 	})
 
 	t.Run("should return the toggles to turn off for removed use cases", func(t *testing.T) {
@@ -96,7 +114,7 @@ func TestAWSAppConnection_UpdateTemplate(t *testing.T) {
 			"EnableIamRotation":    "true",
 			"EnableParameterStore": "false",
 			"EnableAcmSync":        "false",
-		}, out.ProvisioningTemplate.Parameters)
+		}, toggles(out.ProvisioningTemplate.ParameterChanges))
 	})
 
 	t.Run("should list no toggles when the use cases are unchanged", func(t *testing.T) {
@@ -110,7 +128,7 @@ func TestAWSAppConnection_UpdateTemplate(t *testing.T) {
 		// Assert
 		out := decodeUpdateTemplate(t, status, body)
 		require.NotNil(t, out.ProvisioningTemplate)
-		require.Empty(t, out.ProvisioningTemplate.Parameters)
+		require.Empty(t, out.ProvisioningTemplate.ParameterChanges)
 	})
 
 	t.Run("should name the extra parameters a newly enabled use case needs", func(t *testing.T) {
@@ -127,7 +145,7 @@ func TestAWSAppConnection_UpdateTemplate(t *testing.T) {
 		require.Equal(t, map[string]string{
 			"EnableAgentVaultSessionLogs": "true",
 			"EnablePrivateCa":             "true",
-		}, out.ProvisioningTemplate.Parameters)
+		}, toggles(out.ProvisioningTemplate.ParameterChanges))
 		require.ElementsMatch(t,
 			[]string{"AgentVaultSessionLogsBucket", "AgentVaultSessionLogsKeyPrefix", "PrivateCaArn"},
 			out.ProvisioningTemplate.CompanionParameters)
@@ -263,7 +281,7 @@ func TestAWSAppConnection_UpdateTemplate(t *testing.T) {
 		// Assert
 		out := decodeUpdateTemplate(t, status, body)
 		require.NotNil(t, out.ProvisioningTemplate)
-		require.Equal(t, map[string]string{"EnableParameterStore": "true"}, out.ProvisioningTemplate.Parameters)
+		require.Equal(t, map[string]string{"EnableParameterStore": "true"}, toggles(out.ProvisioningTemplate.ParameterChanges))
 	})
 }
 
