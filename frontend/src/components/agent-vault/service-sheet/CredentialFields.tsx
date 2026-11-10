@@ -178,8 +178,7 @@ export const SecretInput = <TName extends SecretName>({
                 aria-expanded={autocomplete.isOpen}
                 aria-controls={autocomplete.isOpen ? autocomplete.listId : undefined}
                 aria-activedescendant={autocomplete.activeOptionId}
-                // Not type="password": that opens the browser's and password managers' autofill menus over
-                // the variable list, so the field is masked in CSS and each manager is told to skip it.
+                type={isShown ? "text" : "password"}
                 className={cn(
                   !isShown && "[-webkit-text-security:disc]",
                   isHighlighted && "text-transparent caret-foreground"
