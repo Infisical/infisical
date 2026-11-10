@@ -858,9 +858,14 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   their hints name the services URL. The proxy's port has no session endpoints, only `/_agent-vault/ca`.
 - **The proxy names its Infisical only to a session it accepts**, in `X-Agent-Vault-Api-Url` on the CONNECT answer,
   its own refusals and the session endpoints' answers. A CONNECT to the deferred Infisical host checks the session
-  first: a refused one still gets its tunnel, marked `X-Agent-Vault-Decision: blocked` (or `error` when the session
-  couldn't be checked) instead of the URL, so `run` doesn't take the proxy for an old one
-  (`agentvault.ErrProxyRefusedSession`). Refusals of the session itself (`session_invalid`, `session_unresolvable`,
+  first and logs a refusal like any other door: a refused one still gets its tunnel, marked
+  `X-Agent-Vault-Decision: blocked` (or `error` when the session couldn't be checked) with the refusal's code in
+  `X-Agent-Vault-Error` instead of the URL. `run` reads that as `agentvault.ProxyRefusalError`, not as a proxy too old
+  to name its Infisical: it warns with the proxy's reason and starts the agent without skills, MCP servers or the
+  variable rather than asking Infisical directly, since the proxy refuses everything the session sends. Only
+  `session_invalid` on a session `run` just minted is asked again (1, 2 and 3 seconds), to outlast the proxy's
+  5-second memory of a refusal from a replica that hadn't seen it. Every refusal the proxy writes carries
+  `X-Agent-Vault-Error`. Refusals of the session itself (`session_invalid`, `session_unresolvable`,
   `proxy_revoked`) carry no URL, and the proxy deletes the header from every upstream answer. The published URL never
   carries `--domain`'s credentials, query or fragment. `agent-vault run` asks with a bare CONNECT once the session is minted (`agentvault.AskProxyAPIURL`, inside
   the same interrupt scope that revokes a minted session, with 20s for the proxy's own session lookup; no answer in
@@ -877,8 +882,9 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
     base URL (an inherited value never passes through). A proxy
     that names no Infisical is too old: the CLI asks Infisical directly, and if that fails too, the warning says the
     proxy is too old. Code that starts agents without `run` sets the variable itself, to the URL it passed the proxy in `--domain`.
-  - Infisical's skills audit event records the proxy's IP, not the agent host's. The CLI reads the proxy's own `busy`
-    and `infisical_unreachable` answers as the proxy's (`agentvault.IsInfisicalForwardRefusal`), and its
+  - Infisical's skills audit event records the proxy's IP, not the agent host's. The CLI reads the proxy's own `busy`,
+    `infisical_unreachable`, `proxy_revoked` and `session_unresolvable` answers as the proxy's
+    (`agentvault.IsInfisicalForwardRefusal`), and its
     `session_invalid` like Infisical's 401 (`agentvault.IsSessionRefusal`). The session endpoints pass Infisical's
   `Retry-After` on, which `run`'s retries honor.
 - **Every forwarded or refused response carries `X-Agent-Vault-Decision`** (and `X-Agent-Vault-Service` when a
@@ -889,8 +895,9 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   `curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"` on its own: a URL error from
   curl means the variable isn't set, so the agent isn't behind Agent Vault. `--noproxy ""` keeps the request on the
   proxy when the agent's `NO_PROXY` covers Infisical's host (`run` always adds `localhost` and `127.0.0.1`, and keeps
-  the operator's own entries); without it the request reaches Infisical directly, and the skill reads that 401 as a
-  dead session. Claude Code 2.1.72 blanks `$VAR` in any piped shell
+  the operator's own entries); without it the request reaches Infisical directly without the session's token. The
+  skill reads only `session_invalid` as a dead session, and has the agent pass on any other error with its hint.
+  Claude Code 2.1.72 blanks `$VAR` in any piped shell
   command, which made 4 of 40 runs in the first eval decide they weren't behind Agent Vault, so the skill says to run
   the command alone, with no pipe. Agents follow its wording closely: a gate line ending "Tell the user." made them ask
   before acting on unrelated tasks, and one pointing at `SSL_CERT_FILE` sent them to print their environment, proxy
@@ -916,7 +923,7 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 - **Session-endpoint requests go in the session log**, with the proxy's Infisical as the host and no service: the
   services list with decision `discovery` (**Listed Services**) and the skills with `skills` (**Fetched Skills**). Each
   forwarded endpoint gets its own decision, so a new one on the allowlist needs a value, a label, and a docs row. The
-  frontend offers Add Service only for blocked and passthrough rows, so never for these; an older frontend shows a raw
+  frontend offers Add Service only for blocked and passthrough rows, so never for these, and not for a blocked request to the session paths on Infisical's own host either (`isInfisicalSessionEndpointRequest`), such as a POST refused as the wrong method; an older frontend shows a raw
   value with its fallback badge.
 - Trust is stateless: `agent-vault run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional
   pin checked before anything is written. Re-enrolling a proxy replaces its CA, so pins, mounted copies,

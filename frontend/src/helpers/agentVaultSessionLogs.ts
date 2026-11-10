@@ -56,3 +56,21 @@ export const isInfisicalLogHost = (
   const pagePort = page.port || (page.protocol === "https:" ? "443" : "80");
   return record.host.toLowerCase() === page.hostname.toLowerCase() && record.port === pagePort;
 };
+
+const SESSION_ENDPOINT_PATHS = [
+  "/v1/agent-vault/session/services",
+  "/v1/agent-vault/session/skills"
+];
+
+// A request to the session's own endpoints on Infisical, such as a POST the proxy refused as the wrong method. Making
+// Infisical's host a service wouldn't help, so the logs offer no Add Service for it.
+export const isInfisicalSessionEndpointRequest = (
+  record: { host: string; port: string; path: string },
+  page: { hostname: string; port: string; protocol: string } = window.location
+) => {
+  const path = record.path.split("?")[0];
+  return (
+    SESSION_ENDPOINT_PATHS.some((endpoint) => path.endsWith(endpoint)) &&
+    isInfisicalLogHost(record, page)
+  );
+};
