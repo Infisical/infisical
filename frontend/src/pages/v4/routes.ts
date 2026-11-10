@@ -41,6 +41,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       ),
       route("/kms/$projectId/groups/$groupId", "v4/project/GroupDetailsByIDPage/kms/route.tsx"),
       route("/kms/$projectId/roles/$roleSlug", "v4/project/RoleDetailsBySlugPage/kms/route.tsx"),
+      route("/kms/$projectId/settings", "v4/kms/SettingsPage/route.tsx"),
       route("/secret-management/$projectId/overview", "v4/secret-manager/OverviewPage/route.tsx"),
       route(
         "/secret-management/$projectId/secrets/$envSlug",
@@ -70,8 +71,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "/secret-management/$projectId/roles/$roleSlug",
         "v4/project/RoleDetailsBySlugPage/route.tsx"
       ),
+      route("/secret-management/$projectId/settings", "v4/secret-manager/SettingsPage/route.tsx"),
       route("/agent-vault/$projectId/", "v4/redirects/AgentVaultIndexRedirect/route.tsx"),
       route("/agent-vault/$projectId/sessions", "v4/agent-vault/AgentVaultSessionsPage/route.tsx"),
+      route("/agent-vault/$projectId/settings", "v4/agent-vault/AgentVaultSettingsPage/route.tsx"),
       route("/$type/", "v4/organization/ProjectsPage/ProjectTypePage/route.tsx"),
       route("/$", "v4/organization/NotPortedPage/projects/route.tsx")
     ]),
@@ -95,6 +98,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       "/cert-manager/certificates/$certificateId",
       "v4/cert-manager/CertificateDetailsByIDPage/route.tsx"
     ),
+    route("/cert-manager/settings", "v4/cert-manager/SettingsPage/route.tsx"),
     route("/pam/accounts/", "v4/pam/PamAccountsPage/route.tsx"),
     route("/pam/access", "v4/redirects/PamAccessRedirect/route.tsx"),
     route("/secret-scanning/", "v4/redirects/SecretScanningIndexRedirect/route.tsx"),
