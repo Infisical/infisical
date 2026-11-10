@@ -120,8 +120,10 @@ export const runAiJudge = async ({
       (block): block is Extract<TAnthropicContentBlock, { type: "tool_use" }> => block.type === "tool_use"
     );
 
-    const decision = toolUses.find((block) => block.name === AI_JUDGE_DECISION_TOOL);
-    if (decision) {
+    const decisions = toolUses.filter((block) => block.name === AI_JUDGE_DECISION_TOOL);
+    if (decisions.length > 1) return fail("The AI gave more than one decision");
+    const [decision] = decisions;
+    if (decision && toolUses.length === 1) {
       const parsed = DecisionSchema.safeParse(decision.input);
       if (!parsed.success) return fail("The AI's decision wasn't in the expected format");
       return { approve: parsed.data.approve, reason: parsed.data.reason, model, toolCalls, error: null };
@@ -137,6 +139,16 @@ export const runAiJudge = async ({
     const results: TAnthropicContentBlock[] = [];
     // eslint-disable-next-line no-await-in-loop
     for await (const use of toolUses) {
+      if (use.name === AI_JUDGE_DECISION_TOOL) {
+        results.push({
+          type: "tool_result",
+          tool_use_id: use.id,
+          content: "Decision ignored because it was sent with lookups. Read their results, then submit your decision.",
+          is_error: true
+        });
+        // eslint-disable-next-line no-continue
+        continue;
+      }
       const tool = toolByName.get(use.name);
       const call: TAiJudgeToolCall = {
         tool: use.name,

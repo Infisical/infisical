@@ -189,4 +189,44 @@ describe("runAiJudge", () => {
     expect(sendMessage).toHaveBeenCalledTimes(3);
     expect(result).toMatchObject({ approve: false, error: "The AI didn't reach a decision within 3 steps" });
   });
+
+  test("ignores a decision sent with lookups and asks again after the results", async () => {
+    getTicket.mockResolvedValue({ result: { key: "INC-1", status: "Closed" }, summary: "Read INC-1 (Closed)" });
+    const sendMessage = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ...reply(toolUse("t1", "jira_get_ticket", { key: "INC-1" })),
+        content: [
+          toolUse("t1", "jira_get_ticket", { key: "INC-1" }),
+          toolUse("t2", AI_JUDGE_DECISION_TOOL, { approve: true, reason: "Looks fine" })
+        ]
+      })
+      .mockResolvedValueOnce(
+        reply(toolUse("t3", AI_JUDGE_DECISION_TOOL, { approve: false, reason: "INC-1 is closed" }))
+      );
+
+    const result = await run(sendMessage);
+
+    expect(getTicket).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({ approve: false, reason: "INC-1 is closed" });
+    const results = (sendMessage.mock.calls[1][0] as TAnthropicMessageRequest).messages[2]
+      .content as TAnthropicContentBlock[];
+    expect(results.find((block) => block.type === "tool_result" && block.tool_use_id === "t2")).toMatchObject({
+      is_error: true
+    });
+  });
+
+  test("doesn't approve when one reply holds more than one decision", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      ...reply(toolUse("t1", AI_JUDGE_DECISION_TOOL, { approve: true, reason: "a" })),
+      content: [
+        toolUse("t1", AI_JUDGE_DECISION_TOOL, { approve: true, reason: "a" }),
+        toolUse("t2", AI_JUDGE_DECISION_TOOL, { approve: false, reason: "b" })
+      ]
+    });
+
+    const result = await run(sendMessage);
+
+    expect(result).toMatchObject({ approve: false, error: "The AI gave more than one decision" });
+  });
 });
