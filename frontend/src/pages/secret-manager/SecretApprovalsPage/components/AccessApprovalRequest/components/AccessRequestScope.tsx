@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CornerDownRightIcon, FolderOpenIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, CornerDownRightIcon, FolderOpenIcon } from "lucide-react";
 import picomatch from "picomatch";
 
 import { Button } from "@app/components/v3";
@@ -58,14 +58,12 @@ export const AccessRequestScope = ({
         </div>
       )}
       {hiddenCount > 0 && (
-        <Button
-          variant="ghost"
-          size="xs"
-          className="justify-start rounded-none border-t border-border px-3 text-label"
-          onClick={() => setIsExpanded((prev) => !prev)}
-        >
-          {isExpanded ? "Show Fewer Folders" : `Show ${hiddenCount} More Folders`}
-        </Button>
+        <div className="border-t border-border p-1">
+          <Button variant="ghost" size="xs" onClick={() => setIsExpanded((prev) => !prev)}>
+            {isExpanded ? "Show Fewer Folders" : `Show ${hiddenCount} More Folders`}
+            {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </Button>
+        </div>
       )}
     </div>
   );

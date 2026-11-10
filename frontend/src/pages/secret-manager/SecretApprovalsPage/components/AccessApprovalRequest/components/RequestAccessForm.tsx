@@ -734,7 +734,7 @@ export const RequestAccessForm = ({
                     modal
                     options={policyPaths}
                     value={policyPaths.find((path) => path === field.value) ?? null}
-                    onValueChange={field.onChange}
+                    onValueChange={(path) => field.onChange(path ?? "")}
                     getOptionValue={(path) => path}
                     getOptionLabel={(path) => path}
                     renderOption={(path) => (

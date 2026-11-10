@@ -49,6 +49,8 @@ export const resolveSecretAccessPolicyForPath = <T extends { secretPath: string;
       (a, b) =>
         Number(b.secretPath === secretPath) - Number(a.secretPath === secretPath) ||
         literalPrefix(b.secretPath).length - literalPrefix(a.secretPath).length ||
+        Number(isGlobSubsetOfGlob(a.secretPath, b.secretPath)) -
+          Number(isGlobSubsetOfGlob(b.secretPath, a.secretPath)) ||
         a.createdAt.getTime() - b.createdAt.getTime() ||
         a.id.localeCompare(b.id)
     )

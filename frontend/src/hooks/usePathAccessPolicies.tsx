@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { useProject, useSubscription } from "@app/context";
+import { removeTrailingSlash } from "@app/helpers/string";
 import { useGetAccessApprovalPolicies } from "@app/hooks/api";
 import { isGlobSubsetOfGlob } from "@app/lib/fn/glob";
 
@@ -23,7 +24,7 @@ export const usePathAccessPolicies = ({ secretPath, environment }: Params) => {
     const pathPolicies = policies?.filter(
       (policy) =>
         policy.environments?.some((env) => env.slug === environment) &&
-        isGlobSubsetOfGlob(policy.secretPath, secretPath)
+        isGlobSubsetOfGlob(policy.secretPath, removeTrailingSlash(secretPath))
     );
 
     return {

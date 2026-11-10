@@ -264,9 +264,15 @@ describe("resolveSecretAccessPolicyForPath", () => {
     expect(resolveSecretAccessPolicyForPath(policies, "/web")?.id).toBe("all");
   });
 
-  test("equally specific policies resolve to the oldest", () => {
-    const policies = [policy("newer", "/apps/**", "2026-01-01"), policy("older", "/apps/*/db", "2025-01-01")];
+  test("a narrower policy wins over an older broader one with the same prefix", () => {
+    const policies = [policy("broad", "/apps/**", "2025-01-01"), policy("narrow", "/apps/*", "2026-01-01")];
 
-    expect(resolveSecretAccessPolicyForPath(policies, "/apps/api/db")?.id).toBe("older");
+    expect(resolveSecretAccessPolicyForPath(policies, "/apps/api")?.id).toBe("narrow");
+  });
+
+  test("policies that neither contain each other resolve to the oldest", () => {
+    const policies = [policy("newer", "/apps/*/db/**", "2026-01-01"), policy("older", "/apps/*/*/cache", "2025-01-01")];
+
+    expect(resolveSecretAccessPolicyForPath(policies, "/apps/api/db/cache")?.id).toBe("older");
   });
 });
