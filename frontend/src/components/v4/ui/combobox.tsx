@@ -29,6 +29,7 @@ import { fieldBoxFlags, fieldBoxWatch } from "./input";
 import { MultiSelect } from "./multi-select";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { Spinner } from "./spinner";
+import { Highlight } from "./text";
 
 import controlStyles from "./controls.module.css";
 import menu from "./menu.module.css";
@@ -382,7 +383,9 @@ export function Combobox({
                     changeOpen(false);
                   }}
                 >
-                  <span className={menu.title}>{markComboboxLabel(option.label, query)}</span>
+                  <span className={menu.title}>
+                    <Highlight text={option.label} query={query} />
+                  </span>
                   {option.meta && <span className={menu.meta}>{option.meta}</span>}
                 </CommandItem>
               ))}
@@ -479,18 +482,6 @@ export function Combobox({
   );
 }
 Combobox.displayName = "Combobox";
-function markComboboxLabel(label: string, query: string) {
-  const index = label.toLowerCase().indexOf(query.toLowerCase());
-  return !query || index < 0 ? (
-    label
-  ) : (
-    <>
-      {label.slice(0, index)}
-      <mark className={styles.match}>{label.slice(index, index + query.length)}</mark>
-      {label.slice(index + query.length)}
-    </>
-  );
-}
 
 export const ComboboxInput = CommandInput;
 export const ComboboxContent = PopoverContent;

@@ -151,6 +151,12 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
             </Detail>
           </div>
         )}
+        {form.description.trim() && (
+          <Detail>
+            <DetailLabel>Description</DetailLabel>
+            <DetailValue>{form.description.trim()}</DetailValue>
+          </Detail>
+        )}
       </DetailGroup>
 
       <DetailGroup>

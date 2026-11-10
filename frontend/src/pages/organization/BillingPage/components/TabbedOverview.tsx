@@ -242,14 +242,20 @@ export const TabbedOverview = ({
   } else if (trials.length > 1) {
     trialNote = `${trials.length} trials · first ends ${trials[0].endsAt}`;
   }
-  let accountTeamNote: { label: string; detail: string } | null = null;
-  if (!isManaged && !overview.selfServe) {
-    accountTeamNote = {
-      label: "Managed Billing",
-      detail:
-        "Contact your Infisical account manager to adjust products, commitments, or your subscription."
-    };
-  }
+  const isSalesManaged = !isManaged && !overview.selfServe;
+  const managedBillingTooltip = (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <IconButton size="2xs" variant="ghost-muted" aria-label="About managed billing">
+          <InfoIcon />
+        </IconButton>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-80">
+        Contact your Infisical account manager to adjust products, commitments, or your
+        subscription.
+      </TooltipContent>
+    </Tooltip>
+  );
 
   const handleRefresh = () => {
     refreshEntitlements.mutate(
@@ -284,17 +290,24 @@ export const TabbedOverview = ({
     summaryLeft = (
       <div className="flex flex-col gap-1">
         <span className="text-xs text-accent">Subscription</span>
-        <span className="flex items-baseline gap-2">
-          <span className="text-lg leading-6 font-medium">None</span>
-          <span className="text-xs text-muted">
-            {visible.some(
-              (prod) =>
-                !entitlements[prod.id]?.entitled || entitlements[prod.id]?.status === "churned"
-            )
-              ? "Activate a product to start one"
-              : "No products to activate"}
+        {isSalesManaged ? (
+          <span className="flex items-center gap-1">
+            <span className="text-lg leading-6 font-medium">Managed Billing</span>
+            {managedBillingTooltip}
           </span>
-        </span>
+        ) : (
+          <span className="flex items-baseline gap-2">
+            <span className="text-lg leading-6 font-medium">None</span>
+            <span className="text-xs text-muted">
+              {visible.some(
+                (prod) =>
+                  !entitlements[prod.id]?.entitled || entitlements[prod.id]?.status === "churned"
+              )
+                ? "Activate a product to start one"
+                : "No products to activate"}
+            </span>
+          </span>
+        )}
       </div>
     );
   } else {
@@ -347,6 +360,12 @@ export const TabbedOverview = ({
             )}
           </span>
           {trialNote && <span className="text-xs text-muted">{trialNote}</span>}
+          {isSalesManaged && (
+            <span className="flex items-center gap-1 text-xs text-muted">
+              Managed Billing
+              {managedBillingTooltip}
+            </span>
+          )}
         </div>
         {nextCharge && (
           <div className="flex flex-col gap-1">
@@ -384,23 +403,6 @@ export const TabbedOverview = ({
         <div className="flex flex-wrap items-center justify-between gap-4">
           {summaryLeft}
           <div className="flex flex-wrap items-center gap-3">
-            {accountTeamNote && (
-              <span className="flex items-center gap-1 text-xs text-muted">
-                {accountTeamNote.label}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <IconButton
-                      size="2xs"
-                      variant="ghost-muted"
-                      aria-label={`About ${accountTeamNote.label.toLowerCase()}`}
-                    >
-                      <InfoIcon />
-                    </IconButton>
-                  </TooltipTrigger>
-                  <TooltipContent>{accountTeamNote.detail}</TooltipContent>
-                </Tooltip>
-              </span>
-            )}
             {summaryRight}
             {showPayment && showBillingInfo && (
               <SummaryBlock label="Card on File" onClick={() => setOpenSheet("payment")}>

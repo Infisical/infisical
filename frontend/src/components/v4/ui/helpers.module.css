@@ -104,6 +104,13 @@
   border-color: var(--v4-control, var(--border));
   background: var(--v4-hover);
 }
+.tile[data-in-frame] {
+  border-color: transparent;
+  background: var(--v4-tint);
+}
+.tile[data-in-frame]:hover {
+  background: color-mix(in srgb, var(--v4-mix-ink) var(--v4-hover-mix), var(--v4-tint));
+}
 .tile[aria-pressed="true"] {
   border-color: var(--v4-ink, var(--foreground));
 }

@@ -8,6 +8,7 @@ import {
 } from "react";
 import { replaceEqualDeep } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { isAxiosError } from "axios";
 import {
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
@@ -83,6 +84,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { HoneyTokenManagedBy, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import type { TProxiedServiceCredentialInput } from "@app/hooks/api/proxiedServices/types";
+import { wasErrorReported } from "@app/hooks/api/reactQuery";
 import type { SecretRotation } from "@app/hooks/api/secretRotationsV2/enums";
 import type {
   TCreateSecretRotationV2DTO,
@@ -93,7 +95,7 @@ import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { useProjectPermission } from "../../access/permissions";
-import { dismissToast, toast } from "../../access/toast";
+import { dismissToast, errorMessage, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
@@ -165,6 +167,7 @@ import {
   AddNewMenu,
   ExportMenu,
   FolderBreadcrumbBar,
+  type QuickAddAnnotations,
   QuickAddRow,
   ResourceCount,
   ResourceFilterMenu
@@ -210,8 +213,9 @@ const parseList = (value?: string) =>
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
-const errorText = (error: unknown) =>
-  error instanceof Error && error.message ? error.message : "Please try again.";
+const errorText = (error: unknown) => errorMessage(error) || "Please try again.";
+const fieldErrorText = (error: unknown) =>
+  isAxiosError(error) && error.response?.status === 400 ? errorMessage(error) : undefined;
 
 export const OverviewPage = () => {
   const { projectId } = useParams({ from: ROUTE });
@@ -559,20 +563,21 @@ export const OverviewPage = () => {
   const setResources = (
     update: (current: Resource[]) => Resource[],
     feedback?: ApplyFeedback,
-    options?: ResourceApplyOptions
+    options?: ResourceApplyOptions,
+    onFieldError?: (message: string) => void
   ) => {
     const before = resourcesRef.current;
     const after = update([...before]);
-    runApply(before, after, options).then(
+    return runApply(before, after, { ...options, quiet: Boolean(onFieldError) }).then(
       ({ written, held }) => {
-        if (!feedback) return;
+        if (!feedback) return true;
         if (held.length && !written.length) {
           toast({
             tone: "neutral",
             title: "Change request opened",
             description: "An approval policy covers this folder, so changes wait for review."
           });
-          return;
+          return true;
         }
         const isHeld = (environment: string, secretPath: string) =>
           held.some((scope) => scope.environment === environment && scope.path === secretPath);
@@ -595,7 +600,7 @@ export const OverviewPage = () => {
             title: result.title,
             description: result.description
           });
-          return;
+          return true;
         }
         const existing = new Set(before.map((resource) => resource.id));
         pushCreatedToast(
@@ -607,15 +612,21 @@ export const OverviewPage = () => {
               !isHeld(resource.environment, resource.path)
           )
         );
+        return true;
       },
-      (error: unknown) =>
-        toast({
-          tone: "bad",
-          title: feedback
-            ? `Could not finish: ${(typeof feedback === "function" ? feedback(() => false) : feedback).title}`
-            : "The change failed",
-          description: errorText(error)
-        })
+      (error: unknown) => {
+        const fieldError = onFieldError && fieldErrorText(error);
+        if (fieldError) onFieldError(fieldError);
+        else if (!wasErrorReported(error))
+          toast({
+            tone: "bad",
+            title: feedback
+              ? `Could not finish: ${(typeof feedback === "function" ? feedback(() => false) : feedback).title}`
+              : "The change failed",
+            description: errorText(error)
+          });
+        return false;
+      }
     );
   };
   const syncs = (adapter.useSecretSyncs(projectId).data ?? []).map((sync): LocalSecretSync => ({
@@ -852,19 +863,22 @@ export const OverviewPage = () => {
               : { tone: "ok", title }
           );
         },
-        (error: unknown) =>
+        (error: unknown) => {
+          if (wasErrorReported(error)) return;
           toast({
             tone: "bad",
             title: "Failed to commit changes",
             description: errorText(error)
-          })
+          });
+        }
       );
   };
-  const secretKeysOnPage = windowRows
-    .filter(([, entries]) => entries[0].kind === "secret")
+  const expandableKeysOnPage = windowRows
+    .filter(([, entries]) => entries[0].kind !== "folder")
     .map(([key]) => key);
   const allOpen =
-    secretKeysOnPage.length > 0 && secretKeysOnPage.every((key) => expandedRows.includes(key));
+    expandableKeysOnPage.length > 0 &&
+    expandableKeysOnPage.every((key) => expandedRows.includes(key));
   const rowEvents = useStableHandlers<
     Required<
       Pick<
@@ -932,9 +946,13 @@ export const OverviewPage = () => {
         resource.kind === "secret" && scopeMatches(resource, entry.source)
     );
 
-  const insert = (created: NewResource[], feedback: FlowFeedback) => {
+  const insert = (
+    created: NewResource[],
+    feedback: FlowFeedback,
+    onFieldError?: (message: string) => void
+  ) => {
     const timestamp = new Date().toISOString();
-    setResources(
+    const saved = setResources(
       (current) => [
         ...current,
         ...created.map(
@@ -947,7 +965,9 @@ export const OverviewPage = () => {
             }) as Resource
         )
       ],
-      feedback
+      feedback,
+      undefined,
+      onFieldError
     );
     setRecent([
       ...new Set(
@@ -956,13 +976,20 @@ export const OverviewPage = () => {
           .map(resourceKey)
       )
     ]);
+    return saved;
   };
   const openFlow = (kind: ResourceKind, initial?: { environments?: string[]; name?: string }) => {
     setFlow({ kind, session: (flow?.session ?? 0) + 1, initial });
     setFlowOpen(true);
     setRecent([]);
   };
-  const create = (name: string, value: string, targets: string[]) =>
+  const create = (
+    name: string,
+    value: string,
+    targets: string[],
+    annotations: QuickAddAnnotations,
+    onFieldError: (message: string) => void
+  ) =>
     insert(
       targets.map((environment) => ({
         kind: "secret",
@@ -972,11 +999,10 @@ export const OverviewPage = () => {
         name,
         value: { status: "present", value },
         version: 1,
-        comment: "",
-        tags: [],
-        metadata: []
+        ...annotations
       })),
-      { title: `Created ${name}`, share: true }
+      { title: `Created ${name}`, share: true },
+      onFieldError
     );
   const folderTargets = (folder: Of<"folder">) =>
     resources.filter(
@@ -1090,6 +1116,7 @@ export const OverviewPage = () => {
     deleteEnvironmentMutation.mutateAsync({ projectId, id: target.id }).then(
       () => toast({ tone: "ok", title: "Successfully removed environment" }),
       (error: unknown) =>
+        !wasErrorReported(error) &&
         toast({
           tone: "bad",
           title: "Failed to remove environment",
@@ -1270,23 +1297,25 @@ export const OverviewPage = () => {
         sourcePath: secret.path,
         secrets: [{ id: secret.id, name: secret.name, path: secret.path }]
       }),
-    onUpdate: (secret, { value, ...patch }, feedback) => {
+    onUpdate: (secret, { value, ...patch }, feedback, onFieldError) => {
       if (single && !("reminder" in patch || "override" in patch || "versions" in patch)) {
         stage(secret, {
           ...secret,
           ...patch,
           ...(value === undefined ? {} : { value: { status: "present", value } })
         });
-        return;
+        return Promise.resolve(true);
       }
-      setResources(
+      return setResources(
         (current) =>
           current.map((resource): Resource => {
             if (resource.id !== secret.id || resource.kind !== "secret") return resource;
             if (value === undefined) return { ...resource, ...patch };
             return { ...resource, ...patch, value: { status: "present", value } };
           }),
-        feedback
+        feedback,
+        undefined,
+        onFieldError
       );
     },
     onNavigate: (environment, nextPath, key) => {
@@ -1771,12 +1800,12 @@ export const OverviewPage = () => {
                             <Button
                               variant="ghost"
                               size="xs"
-                              disabled={!secretKeysOnPage.length}
+                              disabled={!expandableKeysOnPage.length}
                               onClick={() =>
                                 setExpandedRows(
                                   allOpen
                                     ? []
-                                    : [...new Set([...expandedRows, ...secretKeysOnPage])]
+                                    : [...new Set([...expandedRows, ...expandableKeysOnPage])]
                                 )
                               }
                             >
@@ -1935,17 +1964,30 @@ export const OverviewPage = () => {
                               existing={ordered
                                 .filter(([, entries]) => entries[0].kind === "secret")
                                 .map(([, entries]) => entries[0].name)}
-                              onCreate={(key, value) => {
+                              tagOptions={tagOptions}
+                              tagsBlock={deniedEverywhere(
+                                ProjectPermissionSub.Tags,
+                                ProjectPermissionActions.Read
+                              )}
+                              canCreateTags={
+                                !deniedEverywhere(
+                                  ProjectPermissionSub.Tags,
+                                  ProjectPermissionActions.Create
+                                )
+                              }
+                              onCreate={(key, value, annotations, onFieldError) => {
                                 pinQuickAdded(key);
-                                create(
+                                return create(
                                   key,
                                   value,
-                                  visibleEnvironments.map((environment) => environment.value)
+                                  visibleEnvironments.map((environment) => environment.value),
+                                  annotations,
+                                  onFieldError
                                 );
                               }}
                               onQueue={
                                 single
-                                  ? (key, value) => {
+                                  ? (key, value, annotations) => {
                                       pinQuickAdded(key);
                                       const timestamp = new Date().toISOString();
                                       setPending((current) => [
@@ -1962,9 +2004,7 @@ export const OverviewPage = () => {
                                             name: key,
                                             value: { status: "present", value },
                                             version: 1,
-                                            comment: "",
-                                            tags: [],
-                                            metadata: [],
+                                            ...annotations,
                                             createdAt: timestamp,
                                             updatedAt: timestamp
                                           }
@@ -2300,6 +2340,7 @@ export const OverviewPage = () => {
                     toast({ tone: "ok", ...feedback });
                   },
                   (error: unknown) =>
+                    !wasErrorReported(error) &&
                     toast({
                       tone: "bad",
                       title: "Failed to create secret sync",

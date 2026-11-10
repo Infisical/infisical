@@ -49,6 +49,7 @@ Exports: Accordion, AccordionContent, AccordionItem, AccordionTrigger. Source Ty
 
 - Radix single mode uses a string value; multiple mode uses an array. onValueChange reports item values, and collapsible allows the open single item to close.
 - AccordionContent animates its height open and closed, then sizes to its content while open, so content that grows after opening (a revealed list, a loaded result) is never clipped.
+- Hover underlines only the trigger's text: AccordionTrigger wraps each string or number child in a text span and underlines that span, so a Badge, count or icon beside the title never takes the underline. Pass the title as text, not wrapped in an element, to keep the hover cue.
 
 ## Accessibility
 
@@ -269,6 +270,56 @@ export default function Example() {
         {expanded ? "All six versions, grown after opening" : "Two of six versions"}
       </figcaption>
     </figure>
+  );
+}
+```
+
+### Trigger with a badge
+
+Save this example at `src/pages/design-system/examples/accordion/badges.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/accordion, @infisical/badge. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "../../../../components/v4/ui/accordion";
+import { Badge } from "../../../../components/v4/ui/badge";
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Accordion type="single" collapsible defaultValue="saml">
+            <AccordionItem value="saml">
+              <AccordionTrigger>
+                SAML single sign-on
+                <Badge tone="ok" size="sm">
+                  Enabled
+                </Badge>
+              </AccordionTrigger>
+              <AccordionContent>Members sign in through Okta.</AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="ldap">
+              <AccordionTrigger>
+                LDAP
+                <Badge tone="soft" size="sm">
+                  Not configured
+                </Badge>
+              </AccordionTrigger>
+              <AccordionContent>Connect a directory to sync groups.</AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Text and a badge; hover underlines the text only"}
+        </figcaption>
+      </figure>
+    </div>
   );
 }
 ```

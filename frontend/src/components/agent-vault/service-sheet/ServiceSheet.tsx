@@ -110,6 +110,7 @@ import { serverMessage } from "./useOAuthAuthorize";
 const BLANK_SERVICE_FORM: TServiceForm = {
   serviceType: AgentVaultServiceType.Http,
   name: "",
+  description: "",
   serverUrl: "",
   transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: [],
@@ -494,6 +495,7 @@ export const ServiceSheet = ({
       reset({
         ...BLANK_MCP_SERVICE_FORM,
         name: service.name,
+        description: service.description ?? "",
         serverUrl: service.serverUrl,
         transport: service.transport,
         toolScope: service.allowedTools ? McpToolScope.Selected : McpToolScope.All,
@@ -522,6 +524,7 @@ export const ServiceSheet = ({
       reset({
         ...BLANK_SERVICE_FORM,
         name: service.name,
+        description: service.description ?? "",
         hosts: displayHostPattern(service.hostPattern).split(", "),
         credentialType: credential.type,
         // Seeded even for a credential that has no header, so switching the type to Bearer starts from
@@ -697,6 +700,7 @@ export const ServiceSheet = ({
       if (serverResponse?.error === ApiErrorTypes.ValidationError) {
         const STEP_OF_FIELD: Record<string, ServiceStep> = {
           name: ServiceStep.Details,
+          description: ServiceStep.Details,
           hostPattern: ServiceStep.Details,
           serverUrl: ServiceStep.Details,
           transport: ServiceStep.Details,

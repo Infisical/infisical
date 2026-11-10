@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { BookOpen, Github, LogOut, Mail, MessagesSquare } from "lucide-react";
 
 import { type Announcement, Announcements } from "@app/components/v4/ui/announcements";
@@ -9,10 +9,10 @@ import {
   OrgPermissionMemberActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { toV3Href } from "@app/helpers/v4Bridge";
 import type { TAnnouncement } from "@app/hooks/api/announcement/types";
 
 import { accessLinks } from "../access/links";
-import { useOrgPermission } from "../access/permissions";
 import { failed, toast } from "../access/toast";
 import { useV4Adapter, useV4Mode } from "../data/adapters";
 import { useV4Session } from "../data/session/contract";
@@ -68,16 +68,21 @@ Thank you,
 };
 
 export const useShellChrome = () => {
-  const { user } = useV4Session();
-  const { orgId } = useParams({ from: "/v4/organizations/$orgId" });
+  const { user, organization } = useV4Session();
+  const orgId = organization.id;
+  const inServerConsole = useRouterState({
+    select: (state) => toV3Href(state.location.pathname).startsWith("/admin")
+  });
   const navigate = useNavigate();
   const org = useV4Adapter("org");
   const live = useV4Mode() === "live";
   const logout = org.useLogout();
-  const { permission } = useOrgPermission();
+  const { data: orgPermission } = useV4Adapter("access").useOrgPermission({ orgId });
   const { theme, setTheme } = useV4ThemeChoice("profile-menu");
   const go = useGo();
-  const canInvite = permission.can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member);
+  const canInvite = Boolean(
+    orgPermission?.permission.can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member)
+  );
   const copyToken = async () => {
     try {
       await window.navigator.clipboard.writeText(org.getSessionToken());
@@ -98,9 +103,8 @@ export const useShellChrome = () => {
     {
       label: "Personal settings",
       icon: "user",
-      onSelect: () => go(v4Path("/personal-settings")),
-      disabled: !live,
-      disabledReason: "Not available in the demo"
+      onSelect: () =>
+        go(live ? v4Path("/personal-settings") : `${v4Path("/personal-settings")}?org=${orgId}`)
     },
     ...(canInvite
       ? [
@@ -108,6 +112,15 @@ export const useShellChrome = () => {
             label: "Invite users",
             icon: "user-plus" as const,
             onSelect: () => go(`${accessLinks.org(orgId)}&action=invite-members`)
+          }
+        ]
+      : []),
+    ...(user.superAdmin && !inServerConsole
+      ? [
+          {
+            label: "Server console",
+            icon: "settings" as const,
+            onSelect: () => go(live ? v4Path("/admin") : `${v4Path("/admin")}?demo=true`)
           }
         ]
       : [])

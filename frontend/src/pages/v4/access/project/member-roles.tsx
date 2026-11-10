@@ -37,6 +37,7 @@ import { grantLabel, grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED } from "../ui";
 import { useMemberRoleAccess } from "./member-access";
+import { accessLabel, linksMemberRoles, memberDetailId } from "./product";
 import { AddRoleSheet, RoleGrantRow } from "./role-grant";
 import { useProjectScope } from "./scope";
 import { draftOf, DurationBadge, type GrantDraft, toRolesDto } from "./temporary-access";
@@ -107,7 +108,7 @@ export const MemberRolesSection = ({
   const setRoles = async (drafts: GrantDraft[], message: string) => {
     try {
       await updateRoles.mutateAsync({
-        membershipId: member.id,
+        membershipId: memberDetailId(scope.projectType, member),
         projectId,
         projectType: scope.projectType,
         roles: toRolesDto(drafts)
@@ -144,7 +145,11 @@ export const MemberRolesSection = ({
       grow: true,
       render: (grant) => (
         <RowLink
-          {...go.link(accessLinks.projectRole(scope, grantSlug(grant)))}
+          {...go.link(
+            linksMemberRoles(scope.projectType)
+              ? accessLinks.projectRole(scope, grantSlug(grant))
+              : undefined
+          )}
           title={grantLabel(grant)}
         >
           {grantLabel(grant)}
@@ -185,13 +190,13 @@ export const MemberRolesSection = ({
     <>
       <Card
         variant="framed"
-        title="Project roles"
+        title={`${accessLabel(scope.projectType, "roles")}`}
         flush={hasRoles}
         action={isSelf ? undefined : addButton}
       >
         {hasRoles ? (
           <DataTable
-            label="Project roles"
+            label={`${accessLabel(scope.projectType, "roles")}`}
             rows={member.roles}
             columns={columns}
             rowActions={isSelf ? undefined : rowActions}

@@ -116,6 +116,7 @@ export type AccessState = {
 };
 
 export const DEMO_SELF_USER_ID = "u-sarah";
+export const DEMO_PAM_PROJECT_ID = "pam";
 
 const now = Date.now();
 const hours = (h: number) => new Date(now + h * 3_600_000).toISOString();
@@ -627,7 +628,16 @@ const projects: DemoProject[] = [
     name: "internal-pki",
     type: ProjectType.CertificateManager,
     environments: []
-  }
+  },
+  {
+    id: "secret-scanning",
+    name: "secret-scanning",
+    type: ProjectType.SecretScanning,
+    environments: []
+  },
+  { id: DEMO_PAM_PROJECT_ID, name: "pam", type: ProjectType.PAM, environments: [] },
+  { id: "agent-platform", name: "agent-platform", type: ProjectType.AgentVault, environments: [] },
+  { id: "support-agents", name: "support-agents", type: ProjectType.AgentVault, environments: [] }
 ];
 
 const secretSubjects = [
@@ -973,6 +983,170 @@ const projectMemberships: DemoProjectMembership[] = [
     userId: "u-sarah",
     roles: [grant("kpr-4", "admin")],
     createdAt: day("2026-04-22")
+  },
+  {
+    kind: "user",
+    id: "ipm-sarah",
+    projectId: "internal-pki",
+    userId: "u-sarah",
+    roles: [grant("ipmr-1", "admin")],
+    createdAt: day("2025-03-10")
+  },
+  {
+    kind: "user",
+    id: "ipm-marcus",
+    projectId: "internal-pki",
+    userId: "u-marcus",
+    roles: [grant("ipmr-2", "member")],
+    createdAt: day("2025-04-11")
+  },
+  {
+    kind: "group",
+    id: "ipmg-security",
+    projectId: "internal-pki",
+    groupId: "g-security",
+    roles: [grant("ipmg-1", "member")],
+    createdAt: day("2025-08-21")
+  },
+  {
+    kind: "identity",
+    id: "ipmi-1",
+    projectId: "internal-pki",
+    identityId: CI_DEPLOYER,
+    roles: [grant("ipmi-1", "member")],
+    createdAt: day("2026-03-09"),
+    lastLoginTime: minutesAgo(30)
+  },
+  {
+    kind: "user",
+    id: "ssm-sarah",
+    projectId: "secret-scanning",
+    userId: "u-sarah",
+    roles: [grant("ssmr-1", "admin")],
+    createdAt: day("2025-03-10")
+  },
+  {
+    kind: "user",
+    id: "ssm-priya",
+    projectId: "secret-scanning",
+    userId: "u-priya",
+    roles: [grant("ssmr-2", "member")],
+    createdAt: day("2025-04-11")
+  },
+  {
+    kind: "user",
+    id: "ssm-omar",
+    projectId: "secret-scanning",
+    userId: "u-omar",
+    roles: [grant("ssmr-3", "viewer")],
+    createdAt: day("2025-05-12")
+  },
+  {
+    kind: "group",
+    id: "ssmg-security",
+    projectId: "secret-scanning",
+    groupId: "g-security",
+    roles: [grant("ssmg-1", "member")],
+    createdAt: day("2025-08-21")
+  },
+  {
+    kind: "identity",
+    id: "ssmi-1",
+    projectId: "secret-scanning",
+    identityId: CI_DEPLOYER,
+    roles: [grant("ssmi-1", "viewer")],
+    createdAt: day("2026-03-09"),
+    lastLoginTime: minutesAgo(30)
+  },
+  {
+    kind: "user",
+    id: "pmm-sarah",
+    projectId: DEMO_PAM_PROJECT_ID,
+    userId: "u-sarah",
+    roles: [grant("pmmr-1", "admin")],
+    createdAt: day("2025-03-10")
+  },
+  {
+    kind: "user",
+    id: "pmm-marcus",
+    projectId: DEMO_PAM_PROJECT_ID,
+    userId: "u-marcus",
+    roles: [grant("pmmr-2", "member")],
+    createdAt: day("2025-04-11")
+  },
+  {
+    kind: "user",
+    id: "pmm-priya",
+    projectId: DEMO_PAM_PROJECT_ID,
+    userId: "u-priya",
+    roles: [grant("pmmr-3", "member")],
+    createdAt: day("2025-05-12")
+  },
+  {
+    kind: "user",
+    id: "pmm-hana",
+    projectId: DEMO_PAM_PROJECT_ID,
+    userId: "u-hana",
+    roles: [grant("pmmr-4", "member")],
+    createdAt: day("2025-06-13")
+  },
+  {
+    kind: "group",
+    id: "pmmg-platform",
+    projectId: DEMO_PAM_PROJECT_ID,
+    groupId: "g-platform",
+    roles: [grant("pmmg-1", "member")],
+    createdAt: day("2025-08-21")
+  },
+  {
+    kind: "identity",
+    id: "pmmi-1",
+    projectId: DEMO_PAM_PROJECT_ID,
+    identityId: TERRAFORM,
+    roles: [grant("pmmi-1", "member")],
+    createdAt: day("2026-03-09"),
+    lastLoginTime: minutesAgo(30)
+  },
+  {
+    kind: "user",
+    id: "avm-sarah",
+    projectId: "agent-platform",
+    userId: "u-sarah",
+    roles: [grant("avmr-1", "admin")],
+    createdAt: day("2025-03-10")
+  },
+  {
+    kind: "user",
+    id: "avm-diego",
+    projectId: "agent-platform",
+    userId: "u-diego",
+    roles: [grant("avmr-2", "member")],
+    createdAt: day("2025-04-11")
+  },
+  {
+    kind: "user",
+    id: "avm-omar",
+    projectId: "agent-platform",
+    userId: "u-omar",
+    roles: [grant("avmr-3", "member")],
+    createdAt: day("2025-05-12")
+  },
+  {
+    kind: "group",
+    id: "avmg-platform",
+    projectId: "agent-platform",
+    groupId: "g-platform",
+    roles: [grant("avmg-1", "member")],
+    createdAt: day("2025-08-21")
+  },
+  {
+    kind: "identity",
+    id: "avmi-1",
+    projectId: "agent-platform",
+    identityId: WEBHOOK_RELAY,
+    roles: [grant("avmi-1", "member")],
+    createdAt: day("2026-03-09"),
+    lastLoginTime: minutesAgo(30)
   }
 ];
 

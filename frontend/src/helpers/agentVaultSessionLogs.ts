@@ -38,3 +38,39 @@ export const canTurnOnAgentVaultSessionLogs = (
   (isDefaultStorageConfigured &&
     isAgentVaultSessionLogStorageOnPlan(AgentVaultSessionLogStorageType.Default, plan)) ||
   isAgentVaultSessionLogStorageOnPlan(AgentVaultSessionLogStorageType.External, plan);
+
+// Infisical's own domains, such as app.infisical.com.
+export const isInfisicalDomain = (host: string) => {
+  const name = host.toLowerCase();
+  return name === "infisical.com" || name.endsWith(".infisical.com");
+};
+
+// A request to one of Infisical's domains, or to the Infisical this dashboard runs on, which is the one a proxy's
+// --domain names unless the proxy reaches Infisical by another address. The port has to match too, so a request to
+// another service on a dev machine's localhost isn't taken for Infisical.
+export const isInfisicalLogHost = (
+  record: { host: string; port: string },
+  page: { hostname: string; port: string; protocol: string } = window.location
+) => {
+  if (isInfisicalDomain(record.host)) return true;
+  const pagePort = page.port || (page.protocol === "https:" ? "443" : "80");
+  return record.host.toLowerCase() === page.hostname.toLowerCase() && record.port === pagePort;
+};
+
+const SESSION_ENDPOINT_PATHS = [
+  "/v1/agent-vault/session/services",
+  "/v1/agent-vault/session/skills"
+];
+
+// A request to the session's own endpoints on Infisical, such as a POST the proxy refused as the wrong method. Making
+// Infisical's host a service wouldn't help, so the logs offer no Add Service for it.
+export const isInfisicalSessionEndpointRequest = (
+  record: { host: string; port: string; path: string },
+  page: { hostname: string; port: string; protocol: string } = window.location
+) => {
+  const path = record.path.split("?")[0];
+  return (
+    SESSION_ENDPOINT_PATHS.some((endpoint) => path.endsWith(endpoint)) &&
+    isInfisicalLogHost(record, page)
+  );
+};

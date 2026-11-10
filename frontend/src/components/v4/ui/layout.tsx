@@ -36,14 +36,14 @@ export function FormMeasure({
 }
 FormMeasure.displayName = "FormMeasure";
 
-export type LayoutGap = 0 | 4 | 8 | 12 | 16 | 24 | 32 | 48;
+export type LayoutGap = 0 | 2 | 4 | 6 | 8 | 12 | 16 | 20 | 24 | 32 | 48;
 type LayoutProps = React.ComponentPropsWithoutRef<"div"> & {
   gap?: LayoutGap;
   align?: "start" | "center" | "end" | "stretch";
   justify?: "start" | "center" | "end" | "between";
 };
 const spacing = (gap: LayoutGap) => (gap === 0 ? 0 : `var(--v4-space-${gap})`);
-const alignment = (align: LayoutProps["align"]) =>
+const alignment = (align: LayoutProps["align"] | "baseline") =>
   align === "start" ? "flex-start" : align === "end" ? "flex-end" : align;
 export function Stack({
   gap = 16,
@@ -79,7 +79,10 @@ export function Inline({
   className,
   ref,
   ...props
-}: LayoutProps & { wrap?: boolean } & { ref?: React.Ref<HTMLDivElement> }) {
+}: Omit<LayoutProps, "align"> & {
+  align?: LayoutProps["align"] | "baseline";
+  wrap?: boolean;
+} & { ref?: React.Ref<HTMLDivElement> }) {
   return (
     <div
       ref={ref}

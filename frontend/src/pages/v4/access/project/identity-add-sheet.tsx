@@ -23,6 +23,7 @@ import { accessLinks } from "../links";
 import { useGo } from "../navigation";
 import { failed, saved, toast } from "../toast";
 import { Muted } from "../ui";
+import { accessNoun, accessThis } from "./product";
 import { useProjectScope } from "./scope";
 
 export type AddIdentityMode = "create" | "assign";
@@ -43,7 +44,7 @@ const AddIdentityForm = ({
   const scope = useProjectScope();
   const access = useV4Adapter("access");
   const go = useGo();
-  const { data: roles } = access.useProjectRoles(projectId);
+  const { data: roles } = access.useProjectRoles(projectId, scope.projectType);
   const { data: orgIdentities } = access.useSearchOrgIdentities({
     orgId,
     offset: 0,
@@ -51,7 +52,12 @@ const AddIdentityForm = ({
     scope: [SearchIdentitiesScope.OrganizationScope],
     search: {}
   });
-  const { data: members } = access.useProjectIdentities({ projectId, offset: 0, limit: 1000 });
+  const { data: members } = access.useProjectIdentities({
+    projectId,
+    projectType: scope.projectType,
+    offset: 0,
+    limit: 1000
+  });
   const createIdentity = access.useCreateProjectManagedIdentity();
   const updateRoles = access.useUpdateProjectIdentityRoles();
   const addMembership = access.useAddProjectIdentity();
@@ -81,7 +87,12 @@ const AddIdentityForm = ({
     setPending(true);
     try {
       if (currentMode === "assign") {
-        await addMembership.mutateAsync({ projectId, identityId, role: role || undefined });
+        await addMembership.mutateAsync({
+          projectId,
+          projectType: scope.projectType,
+          identityId,
+          role: role || undefined
+        });
         saved("Successfully added machine identity");
         onClose();
         return;
@@ -92,7 +103,12 @@ const AddIdentityForm = ({
         hasDeleteProtection: true
       });
       if (role)
-        await updateRoles.mutateAsync({ projectId, identityId: created.id, roles: [{ role }] });
+        await updateRoles.mutateAsync({
+          projectId,
+          projectType: scope.projectType,
+          identityId: created.id,
+          roles: [{ role }]
+        });
       try {
         await addUniversalAuth.mutateAsync({
           projectId,
@@ -151,7 +167,7 @@ const AddIdentityForm = ({
               <Muted>
                 {currentMode === "assign"
                   ? "Reuse an organization machine identity across projects."
-                  : "Creates a machine identity that belongs to this project only."}
+                  : `Creates a machine identity that belongs to ${accessThis(scope.projectType)} only.`}
               </Muted>
             </Stack>
             {currentMode === "create" ? (
@@ -229,12 +245,13 @@ export const AddProjectIdentitySheet = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
+  const scope = useProjectScope();
   const [pending, setPending] = useState(false);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent pending={pending}>
         <SheetHeader>
-          <SheetTitle>Add machine identity to project</SheetTitle>
+          <SheetTitle>{`Add machine identity to ${accessNoun(scope.projectType)}`}</SheetTitle>
         </SheetHeader>
         {open && (
           <AddIdentityForm

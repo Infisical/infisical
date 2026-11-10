@@ -10,9 +10,13 @@ export const baselineForms = [
     exports: ["Checkbox"],
     referenceNames: ["Checkbox"],
     behavior: [
-      "Checkbox supports checked, unchecked and mixed values, labeled content and disabled policy states. The owner applies or stages its checked change."
+      "Checkbox supports checked, unchecked and mixed values, labeled content and disabled policy states. The owner applies or stages its checked change.",
+      "label and description take a node, so a label can carry emphasis or a link-free phrase. media puts an icon or a provider logo before the label, in a size-icon box centered on the label's first line, for choices a logo identifies faster than words, such as login methods. Control, media, label and description sit inside one label element, so the whole row is one click target."
     ],
-    accessibility: ["Name the control. Screen readers announce the mixed state."],
+    accessibility: [
+      "Name the control. Screen readers announce the mixed state.",
+      "media is decorative and hidden from assistive technology; the label names the choice, so put anything the logo means in the label (a ProviderIcon inside media takes alt empty)."
+    ],
     limitations: [
       "onCheckedChange can report indeterminate; the convenience onChange maps only true to true. The owner computes aggregate mixed state."
     ],
@@ -28,6 +32,12 @@ export const baselineForms = [
         title: "States",
         module: "./examples/checkbox/states.tsx",
         states: ["default", "disabled", "invalid"]
+      },
+      {
+        id: "media",
+        title: "Login methods with logos",
+        module: "./examples/checkbox/media.tsx",
+        states: ["controlled", "default"]
       }
     ],
     coverage: [
@@ -1975,7 +1985,8 @@ export const baselineForms = [
     referenceNames: ["Textarea"],
     behavior: [
       "Textarea forwards native value/defaultValue, onChange events and the textarea ref. Field association and invalid state reach the leaf; content sizing keeps a minimum editing area.",
-      "mono sets the mono type style (14/20) and a 2-space tab size, for machine text such as policies, HCL or JSON."
+      "mono sets the mono type style (14/20) and a 2-space tab size, for machine text such as policies, HCL or JSON.",
+      "rows sets the starting height: that many lines plus the field's padding and border (field-sizing content would otherwise ignore the attribute). Content still grows the field past it, and without rows the minimum editing area stays two space-32 steps."
     ],
     accessibility: [
       "Use Field or an explicit label/id, and connect errors with aria-describedby. Keep readOnly values selectable and distinguish disabled inputs from editable ones."
@@ -1995,6 +2006,12 @@ export const baselineForms = [
         title: "Controlled notes",
         module: "./examples/textarea/editing.tsx",
         states: ["controlled", "read-only", "empty"]
+      },
+      {
+        id: "rows",
+        title: "Starting height from rows",
+        module: "./examples/textarea/rows.tsx",
+        states: ["default", "controlled"]
       }
     ],
     coverage: [

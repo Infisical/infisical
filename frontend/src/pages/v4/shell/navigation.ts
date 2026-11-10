@@ -184,6 +184,12 @@ export const productSections = (product: ShellProduct): readonly ShellNavSection
     items.push(
       { id: "product-insights", label: "Insights", icon: "globe", path: `${base}/insights` },
       {
+        id: "secret-sharing",
+        label: "Secret sharing",
+        icon: "link",
+        path: `${base}/secret-sharing`
+      },
+      {
         id: "product-settings",
         label: "Product settings",
         icon: "settings",
@@ -207,6 +213,54 @@ export const productSections = (product: ShellProduct): readonly ShellNavSection
     );
   }
   return [{ items }];
+};
+
+const settingsTabOf =
+  (path: string) => (id: string, label: string, icon: IconName, selectedTab: string) => ({
+    ...settingsTab(id, label, icon, selectedTab),
+    path
+  });
+
+export const projectSettingsSections = (
+  level: ShellLevel,
+  base: string
+): readonly ShellNavSection[] | undefined => {
+  const tab = settingsTabOf(base);
+  if (level === "project")
+    return [
+      {
+        items: [
+          tab("general", "General", "settings", "tab-project-general"),
+          tab("environments", "Environments", "globe", "tab-secret-environments"),
+          tab("tags", "Tags", "file", "tab-secret-tags"),
+          tab("policies", "Policies", "check-c", "tab-secret-policies"),
+          tab("encryption", "Encryption", "lock", "tab-project-encryption"),
+          tab("workflow", "Workflow integrations", "apps", "tab-workflow-integrations"),
+          tab("webhooks", "Webhooks", "bell", "tab-project-webhooks")
+        ]
+      }
+    ];
+  if (level === "agent-vault")
+    return [
+      {
+        items: [
+          tab("general", "General", "settings", "tab-project-general"),
+          tab("session-logs", "Session logs", "history", "tab-session-logs")
+        ]
+      }
+    ];
+  if (level === "pki")
+    return [
+      {
+        items: [
+          tab("app-connections", "App connections", "link", "app-connections"),
+          tab("hsm-connectors", "HSM connectors", "machine", "hsm-connectors"),
+          tab("cleanup", "Cleanup", "trash", "cleanup"),
+          tab("alerts", "Alerts", "bell", "alerts")
+        ]
+      }
+    ];
+  return undefined;
 };
 
 export const projectSections = (base: string): readonly ShellNavSection[] => [

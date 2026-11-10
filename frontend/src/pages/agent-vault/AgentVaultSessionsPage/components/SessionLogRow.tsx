@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import {
   ArrowRightIcon,
+  BookOpenTextIcon,
   CircleHelpIcon,
   CircleXIcon,
   KeyIcon,
+  ListIcon,
   type LucideIcon,
   PlusIcon,
   ServerIcon,
@@ -22,6 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { isInfisicalLogHost } from "@app/helpers/agentVaultSessionLogs";
 import { AgentVaultServiceType, AgentVaultSessionLogDecision } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultSessionLogMcpCall,
@@ -70,6 +73,18 @@ export const DECISION_PRESENTATION: Record<
     variant: "danger",
     icon: CircleXIcon,
     iconClassName: "text-danger"
+  },
+  [AgentVaultSessionLogDecision.Discovery]: {
+    label: "Listed Services",
+    variant: "neutral",
+    icon: ListIcon,
+    iconClassName: "text-neutral"
+  },
+  [AgentVaultSessionLogDecision.Skills]: {
+    label: "Fetched Skills",
+    variant: "neutral",
+    icon: BookOpenTextIcon,
+    iconClassName: "text-neutral"
   }
 };
 
@@ -86,13 +101,28 @@ const statusTone = (status: number) => {
   return "text-foreground";
 };
 
-// Agent Vault answers Blocked and Error requests itself, so their status is its own reply, not the
-// upstream's.
+// Agent Vault answers Blocked and Error requests itself, so their statuses don't come from the host the request named.
 const isProxyAnswered = (decision: AgentVaultSessionLogDecision) =>
   decision === AgentVaultSessionLogDecision.Blocked ||
   decision === AgentVaultSessionLogDecision.Error;
 
-const proxyAnswerDescription = (record: TAgentVaultSessionLogRecord) => {
+// Discovery and Skills requests go to the session's Infisical, so their status is Infisical's own answer and shows like
+// any host's, while the outcome says what the agent asked for.
+const isSessionEndpoint = (decision: AgentVaultSessionLogDecision) =>
+  decision === AgentVaultSessionLogDecision.Discovery ||
+  decision === AgentVaultSessionLogDecision.Skills;
+
+const outcomeDescription = (record: TAgentVaultSessionLogRecord) => {
+  if (record.decision === AgentVaultSessionLogDecision.Discovery) {
+    return record.status === 200
+      ? "The agent asked Agent Vault which services this session can use, and Agent Vault listed them"
+      : `The agent asked Agent Vault which services this session can use, and Agent Vault returned ${httpStatusLabel(record.status)}`;
+  }
+  if (record.decision === AgentVaultSessionLogDecision.Skills) {
+    return record.status === 200
+      ? "Agent Vault got this session's skills from Infisical"
+      : `Agent Vault asked Infisical for this session's skills, and Infisical returned ${httpStatusLabel(record.status)}`;
+  }
   const answer = `Agent Vault returned ${httpStatusLabel(record.status)}`;
   return record.decision === AgentVaultSessionLogDecision.Blocked
     ? `${answer} without sending this request to ${record.host}`
@@ -198,6 +228,7 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
 
   const presentation = decisionPresentation(record.decision);
   const proxyAnswered = isProxyAnswered(record.decision);
+  const isOutcomeDescribed = proxyAnswered || isSessionEndpoint(record.decision);
   const outcome = (
     <Badge variant={presentation.variant}>
       <presentation.icon />
@@ -206,7 +237,10 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
   );
   const host = (
     <span className="flex w-fit max-w-full items-center gap-2 text-sm">
-      <ServiceIcon hostPattern={record.host} />
+      <ServiceIcon
+        hostPattern={record.host}
+        isInfisical={isSessionEndpoint(record.decision) || isInfisicalLogHost(record)}
+      />
       <span className="truncate" title={record.service ? undefined : record.host}>
         {record.host}
       </span>
@@ -261,10 +295,10 @@ export const SessionLogRow = ({ record, arrivedAt, accessBundleName, onAddServic
         )}
       </TableCell>
       <TableCell>
-        {proxyAnswered && record.status ? (
+        {isOutcomeDescribed && record.status ? (
           <Tooltip>
             <TooltipTrigger asChild>{outcome}</TooltipTrigger>
-            <TooltipContent className="max-w-sm">{proxyAnswerDescription(record)}</TooltipContent>
+            <TooltipContent className="max-w-sm">{outcomeDescription(record)}</TooltipContent>
           </Tooltip>
         ) : (
           outcome

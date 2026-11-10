@@ -1,5 +1,6 @@
 import {
   AgentVaultCredentialType,
+  AgentVaultDelegationScope,
   AgentVaultHttpMethod,
   AgentVaultMemberType,
   AgentVaultServiceType,
@@ -7,13 +8,20 @@ import {
   AgentVaultSessionStatus
 } from "@app/hooks/api/agentVault/enums";
 import type {
+  TAddAgentVaultProductMembersDTO,
   TAgentVaultAccessBundleListItem,
+  TAgentVaultActorIdsDTO,
+  TAgentVaultDelegationDetail,
+  TAgentVaultProductMember,
   TAgentVaultSession,
   TAgentVaultSessionActor,
-  TAgentVaultSessionInlineService
+  TAgentVaultSessionInlineService,
+  TChangeAgentVaultDelegationSubjectsDTO,
+  TSetAgentVaultDelegationDTO,
+  TUpdateAgentVaultMemberRolesDTO
 } from "@app/hooks/api/agentVault/types";
 
-import { createFixtureStore } from "../fixture-store";
+import { createFixtureStore, fixtureMutation } from "../fixture-store";
 import type { AgentVaultAdapter } from "./contract";
 
 const uuid = (prefix: string, index: number) =>
@@ -21,7 +29,7 @@ const uuid = (prefix: string, index: number) =>
 const loadedAt = Date.now();
 const at = (minutes: number) => new Date(loadedAt + minutes * 60_000).toISOString();
 
-const user = (
+const seedUser = (
   id: string | null,
   firstName: string,
   lastName: string
@@ -40,13 +48,13 @@ const machine = (id: string | null, name: string): TAgentVaultSessionActor => ({
   name
 });
 
-const sarah = user(uuid("a1", 1), "Sarah", "Lin");
+const sarah = seedUser(uuid("a1", 1), "Sarah", "Lin");
 const people = [
   sarah,
-  user(uuid("a1", 2), "Marcus", "Webb"),
-  user(uuid("a1", 3), "Priya", "Raman"),
-  user(uuid("a1", 4), "Diego", "Alvarez"),
-  user(null, "Tom", "Becker")
+  seedUser(uuid("a1", 2), "Marcus", "Webb"),
+  seedUser(uuid("a1", 3), "Priya", "Raman"),
+  seedUser(uuid("a1", 4), "Diego", "Alvarez"),
+  seedUser(null, "Tom", "Becker")
 ];
 const machines = [
   machine(uuid("a2", 1), "ci-release-agent"),
@@ -82,6 +90,7 @@ const inline = (
 ): TAgentVaultSessionInlineService => ({
   id: uuid("c1", index),
   name,
+  description: null,
   type: AgentVaultServiceType.Http,
   serverUrl: null,
   transport: null,
@@ -197,6 +206,108 @@ const displayName = (actor: TAgentVaultSessionActor) =>
 const isMine = (session: TAgentVaultSession) =>
   session.actor.id === sarah.id || session.onBehalfOf?.id === sarah.id;
 
+type DemoMember = TAgentVaultProductMember & { projectId: string };
+type DemoUserMember = Extract<TAgentVaultProductMember, { type: AgentVaultMemberType.User }>;
+
+const demoUser = (
+  id: string,
+  firstName: string,
+  lastName: string,
+  isOrgMembershipPending = false
+): DemoUserMember => ({
+  type: AgentVaultMemberType.User,
+  id,
+  username: `${firstName.toLowerCase()}@acme.dev`,
+  email: `${firstName.toLowerCase()}@acme.dev`,
+  firstName,
+  lastName,
+  isOrgMembershipPending,
+  role: "member",
+  isActive: true,
+  addedAt: at(-60 * 24 * 30)
+});
+
+const orgUsers = [
+  demoUser(uuid("a1", 1), "Sarah", "Lin"),
+  demoUser(uuid("a1", 2), "Marcus", "Webb"),
+  demoUser(uuid("a1", 3), "Priya", "Raman", true),
+  demoUser(uuid("a1", 4), "Diego", "Alvarez"),
+  demoUser(uuid("a1", 6), "Omar", "")
+];
+const orgGroups = [
+  { id: uuid("a3", 1), name: "platform-eng" },
+  { id: uuid("a3", 2), name: "security-team" },
+  { id: uuid("a3", 3), name: "support-leads" }
+];
+
+const memberStore = createFixtureStore<DemoMember[]>([
+  { ...orgUsers[0], role: "admin", projectId: "agent-platform" },
+  { ...orgUsers[3], projectId: "agent-platform" },
+  { ...orgUsers[2], projectId: "agent-platform" },
+  { ...orgUsers[4], projectId: "agent-platform" },
+  {
+    type: AgentVaultMemberType.Group,
+    id: orgGroups[0].id,
+    name: orgGroups[0].name,
+    role: "member",
+    isActive: true,
+    addedAt: at(-60 * 24 * 40),
+    projectId: "agent-platform"
+  },
+  {
+    type: AgentVaultMemberType.MachineIdentity,
+    id: machines[0].id as string,
+    name: "ci-release-agent",
+    isManagedByAgentVault: true,
+    orgId: null,
+    role: "member",
+    isActive: true,
+    addedAt: at(-60 * 24 * 20),
+    projectId: "agent-platform"
+  },
+  {
+    type: AgentVaultMemberType.MachineIdentity,
+    id: uuid("a2", 9),
+    name: "terraform-runner",
+    isManagedByAgentVault: false,
+    orgId: "demo",
+    role: "admin",
+    isActive: true,
+    addedAt: at(-60 * 24 * 10),
+    projectId: "agent-platform"
+  }
+]);
+
+const delegations = createFixtureStore<Record<string, TAgentVaultDelegationDetail | null>>({});
+const delegationKey = (projectId: string, identityId: string) => `${projectId}:${identityId}`;
+const now = () => new Date().toISOString();
+const excluded = [{ id: uuid("b1", 2), name: "Billing APIs" }];
+
+const delegationSubjects = (
+  members: DemoMember[],
+  dto: TChangeAgentVaultDelegationSubjectsDTO
+) => ({
+  users: members.filter(
+    (member): member is DemoMember & DemoUserMember =>
+      member.type === AgentVaultMemberType.User && (dto.userIds ?? []).includes(member.id)
+  ),
+  groups: members.flatMap((member) =>
+    member.type === AgentVaultMemberType.Group && (dto.groupIds ?? []).includes(member.id)
+      ? [{ id: member.id, name: member.name }]
+      : []
+  )
+});
+
+const memberName = (member: TAgentVaultProductMember) =>
+  member.type === AgentVaultMemberType.User
+    ? [member.firstName, member.lastName, member.email, member.username].join(" ")
+    : member.name;
+
+const slice = <T>(rows: T[], limit = 20, offset = 0) => ({
+  rows: rows.slice(offset, offset + limit),
+  totalCount: rows.length
+});
+
 export const agentVaultDemo: AgentVaultAdapter = {
   useProjectPermission: () => ({
     data: { memberships: [{ roles: [{ role: "admin" }] }] },
@@ -240,5 +351,235 @@ export const agentVaultDemo: AgentVaultAdapter = {
       isPending: false,
       error: null
     };
-  }
+  },
+  useMembers: (projectId, { actorType, search, limit, offset }) => {
+    const term = search?.trim().toLowerCase();
+    const matched = memberStore
+      .use()
+      .filter(
+        (member) =>
+          member.projectId === projectId &&
+          member.type === actorType &&
+          (!term || memberName(member).toLowerCase().includes(term))
+      );
+    const { rows, totalCount } = slice(matched, limit, offset);
+    return { data: { members: rows as never, totalCount }, isPending: false, error: null };
+  },
+  useAvailableMembers: (projectId, { actorType, search, limit }) => {
+    const term = search?.trim().toLowerCase();
+    const taken = new Set(
+      memberStore
+        .use()
+        .filter((member) => member.projectId === projectId)
+        .map((member) => member.id)
+    );
+    const pool: TAgentVaultProductMember[] =
+      actorType === AgentVaultMemberType.Group
+        ? orgGroups.map((group) => ({
+            type: AgentVaultMemberType.Group,
+            ...group,
+            role: "member",
+            isActive: true,
+            addedAt: at(0)
+          }))
+        : orgUsers;
+    const matched = pool.filter(
+      (actor) => !taken.has(actor.id) && (!term || memberName(actor).toLowerCase().includes(term))
+    );
+    const { rows, totalCount } = slice(matched, limit);
+    return { data: { actors: rows as never, totalCount }, isPending: false, error: null };
+  },
+  useAddMembers: (projectId) =>
+    fixtureMutation(({ userIds = [], groupIds = [], role }: TAddAgentVaultProductMembersDTO) => {
+      const taken = new Set(
+        memberStore
+          .get()
+          .filter((member) => member.projectId === projectId)
+          .map((member) => member.id)
+      );
+      const additions: DemoMember[] = [];
+      const skipped: { type: AgentVaultMemberType; id: string; identifier: string }[] = [];
+      const addedAt = new Date().toISOString();
+      const consider = (
+        type: AgentVaultMemberType,
+        id: string,
+        found: TAgentVaultProductMember | undefined
+      ) => {
+        if (!found || taken.has(id)) {
+          skipped.push({ type, id, identifier: id });
+          return;
+        }
+        additions.push({ ...found, role, addedAt, projectId });
+      };
+      userIds.forEach((id) =>
+        consider(
+          AgentVaultMemberType.User,
+          id,
+          orgUsers.find((user) => user.id === id)
+        )
+      );
+      groupIds.forEach((id) => {
+        const group = orgGroups.find((entry) => entry.id === id);
+        consider(
+          AgentVaultMemberType.Group,
+          id,
+          group && {
+            type: AgentVaultMemberType.Group,
+            ...group,
+            role,
+            isActive: true,
+            addedAt
+          }
+        );
+      });
+      memberStore.update((members) => [...members, ...additions]);
+      return {
+        members: additions.map(({ type, id }) => ({ type, id, role, addedAt })),
+        skipped
+      };
+    })(),
+  useUpdateMemberRoles: (projectId) =>
+    fixtureMutation(
+      ({
+        userIds = [],
+        groupIds = [],
+        machineIdentityIds = [],
+        role
+      }: TUpdateAgentVaultMemberRolesDTO) => {
+        const ids = new Set([...userIds, ...groupIds, ...machineIdentityIds]);
+        const changed = memberStore
+          .get()
+          .filter((member) => member.projectId === projectId && ids.has(member.id));
+        memberStore.update((members) =>
+          members.map((member) =>
+            member.projectId === projectId && ids.has(member.id) ? { ...member, role } : member
+          )
+        );
+        return {
+          members: changed.map(({ type, id, addedAt }) => ({ type, id, role, addedAt })),
+          skipped: []
+        };
+      }
+    )(),
+  useRevokeMembers: (projectId) =>
+    fixtureMutation(
+      ({ userIds = [], groupIds = [], machineIdentityIds = [] }: TAgentVaultActorIdsDTO) => {
+        const ids = new Set([...userIds, ...groupIds, ...machineIdentityIds]);
+        const removed = memberStore
+          .get()
+          .filter((member) => member.projectId === projectId && ids.has(member.id));
+        memberStore.update((members) =>
+          members.filter((member) => !(member.projectId === projectId && ids.has(member.id)))
+        );
+        return { members: removed.map(({ type, id }) => ({ type, id })), skipped: [] };
+      }
+    )(),
+  useDeleteManagedIdentity: (projectId) =>
+    fixtureMutation(({ identityId }: { identityId: string }) => {
+      memberStore.update((members) =>
+        members.filter((member) => !(member.projectId === projectId && member.id === identityId))
+      );
+    })(),
+  useDelegation: (projectId, machineIdentityId) => ({
+    data: delegations.use()[delegationKey(projectId, machineIdentityId)] ?? null,
+    isPending: false,
+    error: null
+  }),
+  useAvailableDelegationSubjects: (projectId, machineIdentityId, { actorType, search, limit }) => {
+    const term = search?.trim().toLowerCase();
+    const current = delegations.use()[delegationKey(projectId, machineIdentityId)];
+    const inDelegation = new Set([
+      ...(current?.users ?? []).map((user) => user.id),
+      ...(current?.groups ?? []).map((group) => group.id)
+    ]);
+    const matched = memberStore
+      .use()
+      .filter(
+        (member) =>
+          member.projectId === projectId &&
+          member.type !== AgentVaultMemberType.MachineIdentity &&
+          (!actorType || member.type === actorType) &&
+          !inDelegation.has(member.id) &&
+          (!term || memberName(member).toLowerCase().includes(term))
+      );
+    const { rows, totalCount } = slice(matched, limit);
+    return { data: { members: rows, totalCount }, isPending: false, error: null };
+  },
+  useSetDelegation: (projectId) =>
+    fixtureMutation((dto: TSetAgentVaultDelegationDTO) => {
+      const { machineIdentityId, scope } = dto;
+      const members = memberStore.get().filter((member) => member.projectId === projectId);
+      const picked = delegationSubjects(members, dto);
+      const detail: TAgentVaultDelegationDetail = {
+        machineIdentity: { id: machineIdentityId, name: "" },
+        scope,
+        users:
+          scope === AgentVaultDelegationScope.AllMembers
+            ? []
+            : picked.users.map((user) => ({ ...user, addedAt: now(), missingAccessBundles: [] })),
+        groups:
+          scope === AgentVaultDelegationScope.AllMembers
+            ? []
+            : picked.groups.map((group) => ({
+                ...group,
+                addedAt: now(),
+                missingAccessBundles: []
+              })),
+        createdAt: now(),
+        updatedAt: now(),
+        missingAccessBundles: scope === AgentVaultDelegationScope.AllMembers ? excluded : []
+      };
+      delegations.update((all) => ({
+        ...all,
+        [delegationKey(projectId, machineIdentityId)]: detail
+      }));
+      return detail;
+    })(),
+  useDeleteDelegation: (projectId) =>
+    fixtureMutation(({ machineIdentityId }: { machineIdentityId: string }) => {
+      delegations.update((all) => ({
+        ...all,
+        [delegationKey(projectId, machineIdentityId)]: null
+      }));
+    })(),
+  useAddDelegationSubjects: (projectId) =>
+    fixtureMutation((dto: TChangeAgentVaultDelegationSubjectsDTO) => {
+      const key = delegationKey(projectId, dto.machineIdentityId);
+      const members = memberStore.get().filter((member) => member.projectId === projectId);
+      const picked = delegationSubjects(members, dto);
+      const existing = delegations.get()[key];
+      const detail: TAgentVaultDelegationDetail = {
+        machineIdentity: { id: dto.machineIdentityId, name: "" },
+        scope: AgentVaultDelegationScope.Selected,
+        users: [
+          ...(existing?.users ?? []),
+          ...picked.users.map((user) => ({
+            ...user,
+            addedAt: now(),
+            missingAccessBundles: excluded
+          }))
+        ],
+        groups: [
+          ...(existing?.groups ?? []),
+          ...picked.groups.map((group) => ({ ...group, addedAt: now(), missingAccessBundles: [] }))
+        ],
+        createdAt: existing?.createdAt ?? now(),
+        updatedAt: now(),
+        missingAccessBundles: []
+      };
+      delegations.update((all) => ({ ...all, [key]: detail }));
+      return detail;
+    })(),
+  useRemoveDelegationSubjects: (projectId) =>
+    fixtureMutation((dto: TChangeAgentVaultDelegationSubjectsDTO) => {
+      const key = delegationKey(projectId, dto.machineIdentityId);
+      const existing = delegations.get()[key];
+      if (!existing) return null;
+      const users = existing.users.filter((user) => !(dto.userIds ?? []).includes(user.id));
+      const groups = existing.groups.filter((group) => !(dto.groupIds ?? []).includes(group.id));
+      const detail =
+        users.length || groups.length ? { ...existing, users, groups, updatedAt: now() } : null;
+      delegations.update((all) => ({ ...all, [key]: detail }));
+      return detail;
+    })()
 };

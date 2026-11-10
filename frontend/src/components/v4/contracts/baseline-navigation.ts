@@ -209,7 +209,8 @@ export const baselineNavigation = [
     ],
     referenceNames: ["Tabs"],
     behavior: [
-      "Use tabs/value/onChange for a typed collection, or compose the retained Radix parts. Tabs and TabsList take the same variant, underline or segmented. underline draws a 2px ink line under the selected tab on a 1px track rule; segmented sits on a tint track and marks the selected tab with the shared selected paint; a horizontal segmented track is control-default tall (a 2px inset around the tabs), so it lines up with Inputs and Buttons in a toolbar row. Both share one measured indicator. A count renders as a neutral Count chip. The panel sits 16px under the track; when no tab has content, Tabs renders only the tab bar, with no empty panels or gap, for a filter or a page section switcher. Overflow scrolls in the selected orientation and reveals the selected tab."
+      "Use tabs/value/onChange for a typed collection, or compose the retained Radix parts. Tabs and TabsList take the same variant, underline or segmented. underline draws a 2px ink line under the selected tab on a 1px track rule; segmented sits on a tint track and marks the selected tab with the shared selected paint; a horizontal segmented track is control-default tall (a 2px inset around the tabs), so it lines up with Inputs and Buttons in a toolbar row. Both share one measured indicator. A count renders as a neutral Count chip. The panel sits 16px under the track; when no tab has content, Tabs renders only the tab bar, with no empty panels or gap, for a filter or a page section switcher. Overflow scrolls in the selected orientation and reveals the selected tab.",
+      "width on Tabs sizes the track and its triggers together, and a composed TabsList reads it from Tabs. The default, content, fits the track to its triggers; full stretches the track to its container and gives every horizontal trigger an equal share, never narrower than its label. There is no full-width track with content-width triggers (rule/tab-width). The underline variant's 1px rule is a divider rather than a track, so it spans its container while content-width triggers sit on it; UNDERLINE_RULE_SPANS in ui/tabs.tsx turns that off."
     ],
     accessibility: [
       "Name the tab list. Arrow keys, Home and End move between tabs and skip disabled ones. A horizontal scroll over the tabs hands back to the page at either end, and reduced motion stops the indicator sliding."
@@ -232,6 +233,14 @@ export const baselineNavigation = [
         shown: [
           { value: "underline", exampleId: "default", label: "underline" },
           { value: "segmented", exampleId: "default", label: "segmented" }
+        ]
+      },
+      {
+        axis: "width",
+        expected: ["content", "full"],
+        shown: [
+          { value: "content", exampleId: "default", label: "segmented" },
+          { value: "full", exampleId: "default", label: "segmented, full width" }
         ]
       },
       {
