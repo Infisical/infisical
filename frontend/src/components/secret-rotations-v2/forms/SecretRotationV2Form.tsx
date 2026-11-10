@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FieldErrors, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -188,6 +188,8 @@ const SecretRotationV2FormContent = ({
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { name: rotationType } = SECRET_ROTATION_MAP[type];
+  const isEditMode = Boolean(secretRotation);
+  const formSteps = isEditMode ? FORM_STEPS.filter((step) => step.key !== "review") : FORM_STEPS;
   const [selectedStepIndex, setSelectedStepIndex] = useState(0);
   const { rotationOption } = useSecretRotationV2Option(type);
   // Fixed at open: a later refetch must not change what a save compares against, or saving an unrelated
@@ -332,12 +334,22 @@ const SecretRotationV2FormContent = ({
     setSelectedStepIndex((previous) => previous - 1);
   };
 
-  const isStepValid = async (index: number) => trigger(FORM_STEPS[index].fields);
-  const isFinalStep = selectedStepIndex === FORM_STEPS.length - 1;
+  const isStepValid = async (index: number) => trigger(formSteps[index].fields);
+  const isFinalStep = selectedStepIndex === formSteps.length - 1;
+
+  const goToFirstErrorStep = (errors: FieldErrors<TSecretRotationV2Form>) => {
+    const erroredFields = Object.keys(errors);
+    const errorStepIndex = formSteps.findIndex((step) =>
+      step.fields.some((field) => erroredFields.includes(field))
+    );
+    if (errorStepIndex >= 0) setSelectedStepIndex(errorStepIndex);
+  };
+
+  const submitForm = () => handleSubmit(onSubmit, goToFirstErrorStep)();
 
   const handleNext = async () => {
     if (isFinalStep) {
-      await handleSubmit(onSubmit)();
+      await submitForm();
       return;
     }
 
@@ -348,7 +360,7 @@ const SecretRotationV2FormContent = ({
 
   const providerStepOffset = secretRotation ? 0 : 1;
   const activeStepperIndex = selectedStepIndex + providerStepOffset;
-  const totalSteps = FORM_STEPS.length + providerStepOffset;
+  const totalSteps = formSteps.length + providerStepOffset;
   const displayedStepNumber = activeStepperIndex + 1;
 
   const handleStepperChange = (stepperIndex: number) => {
@@ -358,23 +370,24 @@ const SecretRotationV2FormContent = ({
     }
 
     const targetStepIndex = stepperIndex - providerStepOffset;
-    if (targetStepIndex >= 0 && targetStepIndex < selectedStepIndex) {
+    if (targetStepIndex >= 0 && (isEditMode || targetStepIndex < selectedStepIndex)) {
       setSelectedStepIndex(targetStepIndex);
     }
   };
 
-  const currentStep = FORM_STEPS[selectedStepIndex];
+  const currentStep = formSteps[selectedStepIndex];
   const stepperSteps = (
     <Stepper
       activeStep={activeStepperIndex}
       orientation="vertical"
+      nonLinear={isEditMode}
       onStepChange={handleStepperChange}
     >
       <StepperList>
         {!secretRotation && (
           <StepperStep index={0} title="Provider" description={SECRET_ROTATION_MAP[type].name} />
         )}
-        {FORM_STEPS.map((step, index) => (
+        {formSteps.map((step, index) => (
           <StepperStep
             key={step.key}
             index={index + providerStepOffset}
@@ -392,7 +405,7 @@ const SecretRotationV2FormContent = ({
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <aside className="hidden w-60 shrink-0 flex-col border-r border-border px-5 py-6 md:flex">
             <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-              Setup steps
+              {isEditMode ? "Sections" : "Setup steps"}
             </p>
             {stepperSteps}
           </aside>
@@ -458,14 +471,34 @@ const SecretRotationV2FormContent = ({
             <Button variant="outline" onClick={handlePrev} isDisabled={formState.isSubmitting}>
               Back
             </Button>
-            <Button
-              variant="project"
-              onClick={handleNext}
-              isPending={formState.isSubmitting}
-              isDisabled={formState.isSubmitting}
-            >
-              {isFinalStep ? `${secretRotation ? "Update" : "Create"} secret rotation` : "Continue"}
-            </Button>
+            {isEditMode ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedStepIndex((previous) => previous + 1)}
+                  isDisabled={isFinalStep}
+                >
+                  Next
+                </Button>
+                <Button
+                  variant="project"
+                  onClick={submitForm}
+                  isPending={formState.isSubmitting}
+                  isDisabled={!hasUnsavedChanges || formState.isSubmitting}
+                >
+                  Save
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="project"
+                onClick={handleNext}
+                isPending={formState.isSubmitting}
+                isDisabled={formState.isSubmitting}
+              >
+                {isFinalStep ? "Create secret rotation" : "Continue"}
+              </Button>
+            )}
           </div>
         </SheetFooter>
       </form>
