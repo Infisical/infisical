@@ -260,10 +260,20 @@ const organizations = createFixtureStore<OrganizationWithProjects[]>([
   },
   {
     ...organization("umbrella", "Umbrella Labs", "umbrella-labs", "2025-10-02T12:00:00Z"),
-    members: [],
+    members: [member(userById("u-oliver"), "m-9", "admin", OrgMembershipStatus.Invited)],
     projects: []
   }
 ]);
+
+const removeUsers = (userIds: string[]) => {
+  users.update((current) => current.filter((entry) => !userIds.includes(entry.id)));
+  organizations.update((current) =>
+    current.map((entry) => ({
+      ...entry,
+      members: entry.members.filter((item) => !userIds.includes(item.user.id))
+    }))
+  );
+};
 
 const identity = (
   id: string,
@@ -520,11 +530,11 @@ export const adminDemo: AdminAdapter = {
     return ok({ users: items, totalCount });
   },
   useDeleteUser: fixtureMutation((userId) => {
-    users.update((current) => current.filter((entry) => entry.id !== userId));
+    removeUsers([userId]);
     return {};
   }),
   useBulkDeleteUsers: fixtureMutation((userIds) => {
-    users.update((current) => current.filter((entry) => !userIds.includes(entry.id)));
+    removeUsers(userIds);
     return {};
   }),
   useGrantServerAdminAccess: fixtureMutation((userId) => {
