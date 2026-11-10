@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { InstanceUserManagementUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { PageTitle } from "@app/components/PageTitle";
 import { FilterBar } from "@app/components/v4/patterns/filter-bar";
 import {
@@ -36,14 +37,13 @@ import { saved } from "../../access/toast";
 import { Muted } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { useUpgradeGate } from "../../license";
 import { GrantServerAdminDialog } from "./GrantServerAdminDialog";
 import { displayName, usernameOf } from "./users";
 
 import styles from "./access-management.module.css";
 
 const PREFERENCE_TABLE = "ServerAdminUsersTable";
-
-const UPGRADE_REASON = "Upgrade your plan to remove server admin permissions";
 
 export const AccessManagementPage = () => {
   const admin = useV4Adapter("admin");
@@ -52,6 +52,7 @@ export const AccessManagementPage = () => {
   const deleteUser = admin.useDeleteUser();
   const deleteUsers = admin.useBulkDeleteUsers();
   const removeAdminAccess = admin.useRemoveServerAdminAccess();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search, 500);
@@ -156,9 +157,14 @@ export const AccessManagementPage = () => {
             renderMenu: (user) => (
               <>
                 <DropdownMenuItem
-                  disabled={!subscription?.instanceUserManagement}
-                  description={subscription?.instanceUserManagement ? undefined : UPGRADE_REASON}
-                  onSelect={() => setRemovingAdmin(user)}
+                  onSelect={() =>
+                    subscription?.instanceUserManagement
+                      ? setRemovingAdmin(user)
+                      : openUpgradeGate({
+                          intent: InstanceUserManagementUpgradeIntent,
+                          paywallKey: "admin.server-admins"
+                        })
+                  }
                 >
                   <Icon name="lock" />
                   Remove server admin
@@ -334,6 +340,7 @@ export const AccessManagementPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {upgradeGate}
     </Stack>
   );
 };

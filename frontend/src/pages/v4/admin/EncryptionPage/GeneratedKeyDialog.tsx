@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Alert } from "@app/components/v4/ui/alert";
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
+import { Code } from "@app/components/v4/ui/code";
 import {
   Dialog,
   DialogContent,
@@ -61,7 +62,20 @@ const GeneratedKey = ({
           <Checkbox
             checked={acceptsReplacement}
             onChange={setAcceptsReplacement}
-            label={`Applying this key removes the key labeled ${removes.label ?? "the key still expiring from an earlier rotation"}. Any instance that started on this removed key will fail. The current active key will not be removed, it will become the new expiring key.`}
+            label={
+              <>
+                Applying this key removes{" "}
+                {removes.label ? (
+                  <>
+                    the key labeled <Code>{removes.label}</Code>
+                  </>
+                ) : (
+                  "the key still expiring from an earlier rotation"
+                )}
+                . Any instance that started on this removed key will fail. The current active key
+                will not be removed, it will become the new expiring key.
+              </>
+            }
           />
         )}
         <Alert tone="info">
