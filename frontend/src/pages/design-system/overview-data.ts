@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "access-undo-toast",
+    title: "Undo revokes from a toast",
+    description:
+      "Revoking access shows a toast with Undo for ten seconds, and focus moves to the next member.",
+    date: "2026-11-07",
+    commit: "2e5c570f39",
+    page: "access-list"
+  },
+  {
     id: "toast-errors",
     title: "Error toasts stay put",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "3f2f553a29",
     page: "table"
-  },
-  {
-    id: "shared-tooltips",
-    title: "One tooltip per table",
-    description:
-      "Tooltips inside a table share a single instance, so large tables mount faster with the same hover and keyboard behavior.",
-    date: "2026-11-07",
-    commit: "9f6084dc3e",
-    page: "tooltip"
   }
 ];
