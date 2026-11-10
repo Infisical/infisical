@@ -245,6 +245,12 @@ const catalog: BillingCatalogProduct[] = [
     plans: [
       productPlan("pro", "Pro", 1, { base: { monthly: 99, annual: 990 } }),
       productPlan("enterprise", "Enterprise", 2)
+    ],
+    compare: [
+      { label: "Internal CAs", cells: { pro: 5, enterprise: "Unlimited" } },
+      { label: "ACME enrollment", cells: { pro: true, enterprise: true } },
+      { label: "Certificate alerts", cells: { pro: true, enterprise: true } },
+      { label: "External CA integrations", cells: { pro: false, enterprise: true } }
     ]
   },
   {
@@ -459,6 +465,7 @@ export const billingDemo: BillingAdapter = {
     );
   },
   useIsSubmitting: () => false,
+  useIsCloud: () => useBillingScenario() !== "self-hosted",
   useCreatePortalSession: mutation(demoPortalUrl),
   useBuyProduct: mutation(() => ({ outcome: "subscription_updated" as const })),
   useAddPaymentMethod: mutation(demoPortalUrl),
@@ -469,7 +476,8 @@ export const billingDemo: BillingAdapter = {
     totalDueNow: 0,
     nextInvoiceTotal: 10800,
     nextRecurringTotal: 10800,
-    lines: []
+    lines: [],
+    toPlanVersionId: "demo-plan-version"
   })),
   useUpgradeProduct: mutation(() => ({ outcome: "upgraded" as const })),
   useChangeCommitment: mutation(() => ({ outcome: "subscription_updated" as const })),

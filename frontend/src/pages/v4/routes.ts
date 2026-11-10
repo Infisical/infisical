@@ -26,6 +26,20 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
   route("/organizations/none", "v4/auth/NoOrgPage/route.tsx"),
   route("/password-setup", "v4/auth/PasswordSetupPage/route.tsx"),
   route("/mfa-session/$mfaSessionId", "v4/auth/MfaSessionPage/route.tsx"),
+  route("/admin", "v4/admin/route.tsx", [
+    route("/welcome", "v4/admin/WelcomePage/route.tsx"),
+    route("/setup", "v4/admin/SetupPage/route.tsx"),
+    layout("v4-admin-shell", "v4/admin/AdminShell/route.tsx", [
+      index("v4/admin/GeneralPage/route.tsx"),
+      route("/encryption", "v4/admin/EncryptionPage/route.tsx"),
+      route("/authentication", "v4/admin/AuthenticationPage/route.tsx"),
+      route("/environment", "v4/admin/EnvironmentPage/route.tsx"),
+      route("/integrations", "v4/admin/IntegrationsPage/route.tsx"),
+      route("/caching", "v4/admin/CachingPage/route.tsx"),
+      route("/resources/overview", "v4/admin/ResourceOverviewPage/route.tsx"),
+      route("/access-management", "v4/admin/AccessManagementPage/route.tsx")
+    ])
+  ]),
   route("/personal-settings", "v4/user/PersonalSettingsPage/route.tsx"),
   route("/organizations/$orgId", "v4/organization/route.tsx", [
     route("/projects", [
@@ -103,6 +117,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       route("/$", "v4/organization/NotPortedPage/projects/route.tsx")
     ]),
     route("/settings", "v4/organization/SettingsPage/route.tsx"),
+    route("/billing", "v4/organization/BillingPage/route.tsx"),
     route("/sso", "v4/organization/SsoPage/route.tsx"),
     route("/oauth-applications", "v4/organization/OauthApplicationsPage/route.tsx"),
     route("/audit-logs", "v4/organization/AuditLogsPage/route.tsx"),
