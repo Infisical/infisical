@@ -3413,7 +3413,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     projectMicrosoftTeamsConfigDAL,
     queueService,
-    secretAccessApprovalGlobalResource
+    secretAccessApprovalGlobalResource,
+    licenseService
   });
 
   const delegatedApprovalDecisionMaps = delegatedApprovalDecisionMapsFactory({
@@ -3437,6 +3438,7 @@ export const registerRoutes = async (
   const secretAccessApprovalPolicyService = secretAccessApprovalPolicyServiceFactory({
     projectDAL,
     permissionService,
+    licenseService,
     projectEnvDAL,
     userDAL,
     groupDAL,
