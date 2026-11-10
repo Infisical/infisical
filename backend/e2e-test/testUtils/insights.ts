@@ -2,12 +2,12 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 
 import { TPlanProps } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
-import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
 
 // The insights service covers both the per-project dashboard and the org-wide aggregates, so its factory
 // takes every dependency both halves need. Specs that only exercise the org-wide methods supply these

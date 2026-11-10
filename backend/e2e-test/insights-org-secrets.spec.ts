@@ -20,15 +20,15 @@ import {
   TSecretSyncsInsert,
   TUsersInsert
 } from "@app/db/schemas";
-import { DynamicSecretLeaseStatus } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
-import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
-import { insightsServiceFactory, TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
-import { TGetSecretsProjectWarningsDTO } from "@app/ee/services/insights/insights-types";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { DynamicSecretLeaseStatus } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
+import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
+import { insightsServiceFactory, TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
+import { TGetSecretsProjectWarningsDTO } from "@app/ee/services/insights/insights-types";
 import { SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
