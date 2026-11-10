@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { SecretType, TSecretFolders } from "@app/db/schemas";
-import { ClientClosedRequestError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, ClientClosedRequestError, DatabaseError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import {
   buildHierarchy,
   expandSecretReferencesGroupedByPath,
   fnSecretBulkDelete,
-  generatePaths
+  generatePaths,
+  throwIfDuplicateSharedSecret
 } from "./secret-v2-bridge-fns";
 
 vi.mock("@app/lib/logger", () => ({
@@ -392,5 +394,33 @@ describe("fnSecretBulkDelete", () => {
       ],
       tx
     );
+  });
+});
+
+describe("throwIfDuplicateSharedSecret", () => {
+  const uniqueViolation = (constraint: string) =>
+    new DatabaseError({
+      name: "BatchInsert",
+      error: Object.assign(new Error("duplicate key value violates unique constraint"), {
+        code: DatabaseErrorCode.UniqueViolation,
+        constraint
+      })
+    });
+
+  test("turns a violation of the shared secret key index into an already exists error", () => {
+    const translate = throwIfDuplicateSharedSecret("Secret 'A' already exists");
+    expect(() => translate(uniqueViolation("uq_secrets_v2_key_folder_id_shared"))).toThrow(
+      new BadRequestError({ message: "Secret 'A' already exists" })
+    );
+  });
+
+  test("rethrows a violation of any other index unchanged", () => {
+    const err = uniqueViolation("secrets_v2_some_other_unique");
+    expect(() => throwIfDuplicateSharedSecret("Secret 'A' already exists")(err)).toThrow(err);
+  });
+
+  test("rethrows errors that are not database errors unchanged", () => {
+    const err = new Error("boom");
+    expect(() => throwIfDuplicateSharedSecret("Secret 'A' already exists")(err)).toThrow(err);
   });
 });
