@@ -62,7 +62,7 @@ export const secretsFlowsLive: SecretsFlowsAdapter = {
   useDeleteReminder,
   useProjectFolders: useListProjectEnvironmentsFolders,
   useSecretsAt: useGetProjectSecrets,
-  useCreateSecretBatch,
+  useCreateSecretBatch: (options) => useCreateSecretBatch({ options: { meta: options } }),
   useUpdateSecretBatch,
   useMoveSecrets,
   useMoveFolder,

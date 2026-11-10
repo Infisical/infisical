@@ -48,7 +48,7 @@ import type {
 } from "@app/hooks/api/secretSharing/types";
 import type { PendingChanges } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
-import type { V4Mutation, V4QueryResult } from "../contract";
+import type { V4ConfigurableMutation, V4Mutation, V4QueryResult } from "../contract";
 import type { SecretsAccessAdapter } from "./contract-access";
 import type { SecretsCommitsAdapter } from "./contract-commits";
 import type { SecretsManagedAdapter } from "./contract-managed";
@@ -103,7 +103,7 @@ export type SecretsFlowsAdapter = SecretsManagedAdapter &
     useSecretsAt: (
       dto: TGetProjectSecretsDTO & { options?: { enabled?: boolean } }
     ) => V4QueryResult<SecretV3RawSanitized[]>;
-    useCreateSecretBatch: V4Mutation<TCreateSecretBatchDTO>;
+    useCreateSecretBatch: V4ConfigurableMutation<TCreateSecretBatchDTO>;
     useUpdateSecretBatch: V4Mutation<TUpdateSecretBatchDTO>;
     useMoveSecrets: V4Mutation<
       TMoveSecretsDTO,

@@ -1,4 +1,5 @@
 import { useRouterState } from "@tanstack/react-router";
+import { AxiosError, AxiosHeaders } from "axios";
 
 import type { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
@@ -111,6 +112,41 @@ export const updateSecrets = (
       return next ? [next] : [];
     })
   }));
+
+const UNIQUE_VALUE_ENVIRONMENT = "prod";
+
+export const assertUniqueValues = (
+  store: DemoStore,
+  scope: { projectId: string; environment: string; path: string },
+  writes: { key: string; value?: string }[]
+) => {
+  if (scope.environment !== UNIQUE_VALUE_ENVIRONMENT) return;
+  const { secrets } = store.get();
+  const failures = writes.flatMap(({ key, value }) => {
+    if (!value) return [];
+    const duplicate = secrets.find(
+      (secret) =>
+        secret.projectId === scope.projectId &&
+        secret.env === scope.environment &&
+        secret.value === value &&
+        !(secret.path === scope.path && secret.key === key)
+    );
+    return duplicate
+      ? [
+          `Secret "${key}": value is already used by secret "${duplicate.key}" in environment "${scope.environment}" at path "${duplicate.path}" (rule: "Unique production values", constraint: Prevent reuse of a value another secret in scope already holds)`
+        ]
+      : [];
+  });
+  if (!failures.length) return;
+  const message = `Secret validation failed:\n${failures.join("\n\n")}`;
+  throw new AxiosError(message, AxiosError.ERR_BAD_REQUEST, undefined, undefined, {
+    status: 400,
+    statusText: "Bad Request",
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+    data: { statusCode: 400, error: "BadRequest", message }
+  });
+};
 
 export const secretAt =
   (projectId: string, environment: string, path: string, key: string) => (secret: DemoSecret) =>

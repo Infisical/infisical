@@ -226,23 +226,33 @@ function InlineEditor({
   saveLabel: string;
   undoLabel: string;
   dirtyFromStart?: boolean;
-  onSave: (value: string) => void;
+  onSave: (value: string, onFieldError: (message: string) => void) => Promise<boolean>;
   onCancel: () => void;
   idle?: ReactNode;
 }) {
   const [draft, setDraft] = useState(initial);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const dirty = dirtyFromStart || draft !== initial;
+  const save = () => {
+    if (saving) return;
+    setSaving(true);
+    onSave(draft, setError).finally(() => setSaving(false));
+  };
   return (
-    <div ref={root} className={styles.inlineEdit}>
+    <div ref={root} className={styles.inlineEdit} data-invalid={error ? "" : undefined}>
       <ReferenceEditor
         value={draft}
         scope={scope}
-        onValueChange={setDraft}
+        onValueChange={(next) => {
+          setDraft(next);
+          setError("");
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter" && dirty) {
             event.preventDefault();
-            onSave(draft);
+            save();
           }
           if (event.key === "Escape") {
             event.preventDefault();
@@ -258,6 +268,7 @@ function InlineEditor({
             {...control}
             autoFocus
             className={styles.inlineInput}
+            aria-invalid={Boolean(error) || undefined}
             aria-label={label}
             placeholder={placeholder}
             autoComplete="off"
@@ -270,12 +281,17 @@ function InlineEditor({
           <Button variant="ghost" size="xs" onClick={onCancel}>
             {undoLabel}
           </Button>
-          <Button size="xs" onClick={() => onSave(draft)}>
+          <Button size="xs" loading={saving} onClick={save}>
             {saveLabel}
           </Button>
         </span>
       ) : (
         idle
+      )}
+      {error && (
+        <span role="alert" className={styles.fieldError}>
+          {error}
+        </span>
       )}
     </div>
   );
@@ -440,8 +456,9 @@ function SecretActionsRow({
   const overrideBlock =
     secret.override !== undefined ? "Override already exists" : describeDenied(["*"]);
   const update: SecretUpdate = (target, patch, feedback) => {
-    handlers.onUpdate(target, patch, feedback);
+    const saved = handlers.onUpdate(target, patch, feedback);
     setOpen(undefined);
+    return saved;
   };
   let editBlock = ctx.writeBlock ?? editDenied;
   if (secret.honeyToken)
@@ -835,15 +852,19 @@ function OverrideValue({
           setEditing(false);
           onStopCreating();
         }}
-        onSave={(override) => {
+        onSave={(override, onFieldError) =>
           onUpdate(
             secret,
             { override },
-            saved(`${creating ? "Created" : "Updated"} your personal override for ${secret.name}`)
-          );
-          setEditing(false);
-          onStopCreating();
-        }}
+            saved(`${creating ? "Created" : "Updated"} your personal override for ${secret.name}`),
+            onFieldError
+          ).then((ok) => {
+            if (!ok) return false;
+            setEditing(false);
+            onStopCreating();
+            return true;
+          })
+        }
       />
     );
   return (
@@ -980,16 +1001,18 @@ function SecretRowView({
     setCreatingOverride((current) => current.filter((entry) => entry !== environment));
   const startCreating = (environment: string) =>
     setCreatingOverride((current) => [...current, environment]);
-  const saveInline = (secret: Secret, value: string) => {
-    handlers.onUpdate(
-      secret,
-      { value },
-      {
-        title: `Updated ${secret.name} in ${environmentLabel(secret.environment)}`
-      }
-    );
-    setEditing(undefined);
-  };
+  const saveInline = (secret: Secret, value: string, onFieldError: (message: string) => void) =>
+    handlers
+      .onUpdate(
+        secret,
+        { value },
+        { title: `Updated ${secret.name} in ${environmentLabel(secret.environment)}` },
+        onFieldError
+      )
+      .then((ok) => {
+        if (ok) setEditing(undefined);
+        return ok;
+      });
   if (ctx.single) {
     const showOverride =
       first.override !== undefined || creatingOverride.includes(first.environment);
@@ -1228,7 +1251,9 @@ function SecretRowView({
                             saveLabel="Save"
                             undoLabel="Undo"
                             onCancel={() => setEditing(undefined)}
-                            onSave={(value) => saveInline(secret, value)}
+                            onSave={(value, onFieldError) =>
+                              saveInline(secret, value, onFieldError)
+                            }
                           />
                         ) : (
                           <div className={styles.nameLine}>

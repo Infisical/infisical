@@ -371,7 +371,12 @@ export function QuickAddRow({
   tagOptions: string[];
   tagsBlock?: string;
   canCreateTags: boolean;
-  onCreate: (key: string, value: string, annotations: QuickAddAnnotations) => void;
+  onCreate: (
+    key: string,
+    value: string,
+    annotations: QuickAddAnnotations,
+    onFieldError: (message: string) => void
+  ) => Promise<boolean>;
   onQueue?: (key: string, value: string, annotations: QuickAddAnnotations) => void;
   onPasteSecrets: (parsed: ReturnType<typeof parsePastedEnv>) => void;
 }) {
@@ -380,6 +385,7 @@ export function QuickAddRow({
   const [error, setError] = useState("");
   const [annotations, setAnnotations] = useState(noAnnotations);
   const [overlay, setOverlay] = useState<QuickAddAnnotation>();
+  const [saving, setSaving] = useState(false);
   const valueRef = useRef<HTMLTextAreaElement>(null);
   const keyRef = useRef<HTMLInputElement>(null);
   const annotating = useRef(false);
@@ -418,9 +424,17 @@ export function QuickAddRow({
       setError("A secret with this name already exists");
       return;
     }
-    if (queue && onQueue) onQueue(name, value, annotations);
-    else onCreate(name, value, annotations);
-    reset();
+    if (queue && onQueue) {
+      onQueue(name, value, annotations);
+      reset();
+      return;
+    }
+    setSaving(true);
+    onCreate(name, value, annotations, setError)
+      .then((ok) => {
+        if (ok) reset();
+      })
+      .finally(() => setSaving(false));
   };
   return (
     <TableRow
@@ -429,6 +443,7 @@ export function QuickAddRow({
       onBlurCapture={(event) => {
         if (
           annotating.current ||
+          saving ||
           !onQueue ||
           !key.trim() ||
           event.currentTarget.contains(event.relatedTarget as Node)
@@ -619,7 +634,7 @@ export function QuickAddRow({
               <Button variant="ghost" size="xs" onClick={reset}>
                 Undo
               </Button>
-              <Button size="xs" onClick={() => save()}>
+              <Button size="xs" loading={saving} onClick={() => save()}>
                 Save
               </Button>
             </span>
