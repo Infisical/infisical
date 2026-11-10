@@ -11,11 +11,16 @@ import {
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   type PamFolderPermissionSet,
+  type TPamIdentityMember,
   type TPamAccountListItem,
   type TPamAccountTypeMetadata,
   type TPamFolderWithCount
 } from "@app/hooks/api/pam";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { V4_DEMO_ORG_ID } from "../../mode";
+import { accessDemo } from "../access/demo";
+import { DEMO_PAM_PROJECT_ID } from "../access/fixtures";
 import { createFixtureStore } from "../fixture-store";
 import type { PamAdapter } from "./contract";
 
@@ -277,6 +282,8 @@ const accounts: TPamAccountListItem[] = seeds.map((seed, index) => {
 const folderStore = createFixtureStore(folders);
 const accountStore = createFixtureStore(accounts);
 
+const PAM_PROJECT_TYPE = ProjectType.PAM;
+
 const memberFolderIds = new Set(
   folders
     .filter(({ callerAccess }) => callerAccess !== PamFolderCallerAccess.None)
@@ -333,5 +340,130 @@ export const pamDemo: PamAdapter = {
     data: accountTypes,
     isPending: false,
     error: null
-  })
+  }),
+  useProductIdentities: () => {
+    const memberships = accessDemo.useProjectIdentities({
+      projectId: DEMO_PAM_PROJECT_ID,
+      offset: 0,
+      limit: 1000
+    });
+    const data = memberships.data?.identityMemberships.map((entry): TPamIdentityMember => ({
+      membershipId: entry.id,
+      identityId: entry.identity.id,
+      name: entry.identity.name,
+      role: entry.roles[0]?.role ?? "member",
+      isActive: true,
+      createdAt: entry.createdAt,
+      identityProjectId: entry.identity.projectId ?? null,
+      identityOrgId: entry.identity.orgId
+    }));
+    return { data, isPending: memberships.isPending, error: memberships.error };
+  },
+  useAddProductUserMember: () => {
+    const add = accessDemo.useAddProjectUsers();
+    const available = accessDemo.useAvailableProjectUsers(DEMO_PAM_PROJECT_ID, PAM_PROJECT_TYPE);
+    return {
+      isPending: add.isPending,
+      mutateAsync: async ({ userIds, emails, role, projectId }) => {
+        const byId = (available.data ?? []).filter((user) => userIds?.includes(user.id));
+        return add.mutateAsync({
+          usernames: [...byId.map((user) => user.username), ...(emails ?? [])],
+          orgId: V4_DEMO_ORG_ID,
+          projectId,
+          projectType: PAM_PROJECT_TYPE,
+          roleSlugs: [role]
+        });
+      }
+    };
+  },
+  useUpdateProductUserMember: () => {
+    const update = accessDemo.useUpdateProjectUserRoles();
+    const members = accessDemo.useProjectUsers(DEMO_PAM_PROJECT_ID);
+    return {
+      isPending: update.isPending,
+      mutateAsync: async ({ userId, role, projectId }) => {
+        const member = members.data?.find((entry) => entry.user.id === userId);
+        return update.mutateAsync({
+          membershipId: member?.id ?? "",
+          projectId,
+          projectType: PAM_PROJECT_TYPE,
+          roles: [{ role }]
+        });
+      }
+    };
+  },
+  useRemoveProductUserMember: () => {
+    const remove = accessDemo.useRemoveProjectUsers();
+    const members = accessDemo.useProjectUsers(DEMO_PAM_PROJECT_ID);
+    return {
+      isPending: remove.isPending,
+      mutateAsync: async ({ userId, projectId }) => {
+        const member = members.data?.find((entry) => entry.user.id === userId);
+        return remove.mutateAsync({
+          usernames: member ? [member.user.username] : [],
+          orgId: V4_DEMO_ORG_ID,
+          projectId,
+          projectType: PAM_PROJECT_TYPE
+        });
+      }
+    };
+  },
+  useAddProductGroupMember: () => {
+    const add = accessDemo.useAddProjectGroup();
+    return {
+      isPending: add.isPending,
+      mutateAsync: ({ groupId, role, projectId }) =>
+        add.mutateAsync({ groupId, role, projectId, projectType: PAM_PROJECT_TYPE })
+    };
+  },
+  useUpdateProductGroupMember: () => {
+    const update = accessDemo.useUpdateProjectGroupRoles();
+    return {
+      isPending: update.isPending,
+      mutateAsync: ({ groupId, role, projectId }) =>
+        update.mutateAsync({
+          groupId,
+          projectId,
+          projectType: PAM_PROJECT_TYPE,
+          roles: [{ role }]
+        })
+    };
+  },
+  useRemoveProductGroupMember: () => {
+    const remove = accessDemo.useRemoveProjectGroup();
+    return {
+      isPending: remove.isPending,
+      mutateAsync: ({ groupId, projectId }) =>
+        remove.mutateAsync({ groupId, projectId, projectType: PAM_PROJECT_TYPE })
+    };
+  },
+  useAddProductIdentityMember: () => {
+    const add = accessDemo.useAddProjectIdentity();
+    return {
+      isPending: add.isPending,
+      mutateAsync: ({ identityId, role, projectId }) =>
+        add.mutateAsync({ identityId, role, projectId, projectType: PAM_PROJECT_TYPE })
+    };
+  },
+  useUpdateProductIdentityMember: () => {
+    const update = accessDemo.useUpdateProjectIdentityRoles();
+    return {
+      isPending: update.isPending,
+      mutateAsync: ({ identityId, role, projectId }) =>
+        update.mutateAsync({
+          identityId,
+          projectId,
+          projectType: PAM_PROJECT_TYPE,
+          roles: [{ role }]
+        })
+    };
+  },
+  useRemoveProductIdentityMember: () => {
+    const remove = accessDemo.useRemoveProjectIdentity();
+    return {
+      isPending: remove.isPending,
+      mutateAsync: ({ identityId, projectId }) =>
+        remove.mutateAsync({ identityId, projectId, projectType: PAM_PROJECT_TYPE })
+    };
+  }
 };
