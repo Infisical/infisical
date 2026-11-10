@@ -665,12 +665,10 @@ function KindRowView({
           expanded={expanded}
           label={first.name}
           onToggle={() => setExpanded(!expanded)}
+          kind={kind}
         />
         <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
           <div className={styles.nameLine}>
-            <span className={styles.nameKind}>
-              <KindIcon kind={kind} />
-            </span>
             <span className={styles.truncate}>{first.name}</span>
             {!expanded && <span className={styles.push}>{spec.flag?.(entries)}</span>}
           </div>

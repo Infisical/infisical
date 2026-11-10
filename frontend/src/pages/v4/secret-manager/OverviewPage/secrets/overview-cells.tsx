@@ -350,23 +350,36 @@ export function ChildSelectHead({
 export function ExpandToggle({
   expanded,
   label,
-  onToggle
+  onToggle,
+  kind
 }: {
   expanded: boolean;
   label: string;
   onToggle: () => void;
+  kind?: ResourceKind;
 }) {
+  const chevron = <Icon name={expanded ? "chev-down" : "chev-right"} />;
   return (
     <Button
       variant="ghost"
       size="icon-row"
       iconOnly
+      aria-expanded={expanded}
       onClick={(event) => {
         event.stopPropagation();
         onToggle();
       }}
     >
-      <Icon name={expanded ? "chev-down" : "chev-right"} />
+      {kind ? (
+        <span className={styles.expandSwap}>
+          <span className={styles.expandKind}>
+            <KindIcon kind={kind} />
+          </span>
+          <span className={styles.expandChevron}>{chevron}</span>
+        </span>
+      ) : (
+        chevron
+      )}
       <span className="sr-only">{`${expanded ? "Collapse" : "Expand"} ${label}`}</span>
     </Button>
   );
@@ -375,16 +388,18 @@ export function ExpandToggle({
 export function ExpandCell({
   expanded,
   label,
-  onToggle
+  onToggle,
+  kind
 }: {
   expanded: boolean;
   label: string;
   onToggle: () => void;
+  kind?: ResourceKind;
 }) {
   return (
     <TableCell pin="start" selection divider={false}>
       <span className={styles.iconSlot}>
-        <ExpandToggle expanded={expanded} label={label} onToggle={onToggle} />
+        <ExpandToggle expanded={expanded} label={label} onToggle={onToggle} kind={kind} />
       </span>
     </TableCell>
   );
