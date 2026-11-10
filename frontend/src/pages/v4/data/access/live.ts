@@ -68,6 +68,7 @@ import {
   useDeleteOrgIdentity,
   useUpdateOrgIdentity
 } from "@app/hooks/api/orgIdentity/mutations";
+import { pamKeys, resolvePamProjectId } from "@app/hooks/api/pam/queries";
 import { useUpdateProjectIdentity } from "@app/hooks/api/projectIdentity";
 import {
   useCreateProjectIdentity,
@@ -141,6 +142,14 @@ export const accessLive: AccessAdapter = {
   useOrganization: useGetOrganizationById,
   useUpdateOrganization: useUpdateOrg,
   useProject: useProjectById,
+  usePamProjectId: (orgId) => {
+    const { data: organization } = useGetOrganizationById(orgId);
+    return useQuery({
+      queryKey: [...pamKeys.all, "project-id", orgId],
+      queryFn: () => resolvePamProjectId(organization?.pamProjectId),
+      enabled: Boolean(organization)
+    });
+  },
 
   useOrgUsers: useGetOrgUserAccess,
   useOrgMembership: useGetOrgMembership,

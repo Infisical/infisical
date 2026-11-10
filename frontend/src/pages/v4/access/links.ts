@@ -2,12 +2,14 @@ import { OrgAccessControlTabSections } from "@app/types/org";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { orgHref } from "../links";
-import { projectBase } from "../shell/navigation";
-import type { ProjectScope } from "./project/scope";
+import { productOf, projectBase } from "../shell/navigation";
+import { ORG_SCOPED_ACCESS_PRODUCTS, type ProjectScope } from "./project/scope";
 
 const org = (orgId: string) => orgHref(orgId);
 const project = ({ orgId, projectId, projectType }: ProjectScope) =>
-  `${org(orgId)}${projectBase(projectType, projectId)}`;
+  ORG_SCOPED_ACCESS_PRODUCTS.has(projectType)
+    ? `${org(orgId)}/${productOf(projectType).slug}`
+    : `${org(orgId)}${projectBase(projectType, projectId)}`;
 
 export const accessLinks = {
   org: (orgId: string, tab: OrgAccessControlTabSections = OrgAccessControlTabSections.Member) =>
