@@ -907,7 +907,7 @@ const session = await client.agentVault().sessions.create({
 });
 ```
 
-- Each service is an HTTP API (`type: "http"`) or an MCP server (`type: "mcp"`)
+- Each service is an HTTP API (`type: "http"`), an MCP server (`type: "mcp"`), or a [database or SSH server](/documentation/platform/agent-vault/databases-and-ssh) (`type: "postgres"`, `"mysql"`, or `"ssh"`)
 - Credentials, custom header values, and substitution values can't contain text in double braces, such as `{{GITHUB_TOKEN}}`, because inline services can't use [variables](/documentation/platform/agent-vault/variables)
 - A session can have up to 20 inline services, and no two of its services can have the same name or host pattern, including the services in its access bundle
 - If a machine identity creates the session on behalf of a user, the machine identity needs the **Admin** role and the user doesn't, and the inline services don't use the user's personal values
@@ -1152,7 +1152,7 @@ const accessBundle = await client.agentVault().accessBundles.get("<access-bundle
 - `accessBundleId` (string): the ID of the access bundle
 
 **Returns:**
-- `AgentVaultAccessBundleWithServices`: the access bundle, with its services in `services`
+- `AgentVaultAccessBundleWithServices`: the access bundle, with its services in `services` (each service has only the fields of its `type`, so check `type` before you read a field such as `hostPattern`)
 
 #### Create access bundle
 
