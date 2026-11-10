@@ -9,4 +9,9 @@ export type TUpdateOrgAiConfigDTO = {
   model: string | null;
 };
 
-export type TAnthropicModel = { id: string; displayName: string };
+export type TAnthropicModel = {
+  id: string;
+  displayName: string;
+  family: string | null;
+  createdAt: string | null;
+};
