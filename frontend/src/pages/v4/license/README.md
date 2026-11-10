@@ -43,7 +43,7 @@ The capability dialog on its own, with main's props: `intent` (a `CapabilityUpgr
 
 ## Plan feature helpers
 
-`PlanFeatureIcon({ value })` and `formatPlanFeatureTitle(feature)` render a `PlanFeature` (`{ label, value?, description? }`, what `getPlanFeatures` returns) the same way the gate does, for the billing plans view.
+`PlanFeatureIcon({ value })` and `formatPlanFeatureTitle(feature)` render a `PlanFeature` (`{ label, value?, description?, badge? }`, what `getPlanFeatures` returns) the same way the gate does, for the billing plans view. A tier badge goes in `badge`, which renders inline after the title, never after the description.
 
 ## Data
 

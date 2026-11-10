@@ -203,10 +203,13 @@ const CapabilityUpgradeDialog = ({
       <section aria-label="Feature details">
         <PlanFeatureList
           features={[
-            { label: intent.title.replace(/^Unlock /, ""), description: intent.description }
+            {
+              label: intent.title.replace(/^Unlock /, ""),
+              description: intent.description,
+              badge: intent.isEnterpriseFeature && <Badge tone="soft">Enterprise feature</Badge>
+            }
           ]}
         />
-        {intent.isEnterpriseFeature && <Badge tone="soft">Enterprise feature</Badge>}
       </section>
       {alternative && (
         <>
