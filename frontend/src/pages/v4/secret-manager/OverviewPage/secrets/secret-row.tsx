@@ -78,7 +78,6 @@ import {
   ChildSelectHead,
   type EnvironmentStatus,
   ExpandCell,
-  KindIcon,
   type KindOverlay,
   NEXT_PHASE,
   PendingBadge,
@@ -1117,12 +1116,14 @@ function SecretRowView({
           }
           onClick={() => setExpanded(!expanded)}
         >
-          <ExpandCell expanded={expanded} label={name} onToggle={() => setExpanded(!expanded)} />
+          <ExpandCell
+            expanded={expanded}
+            label={name}
+            onToggle={() => setExpanded(!expanded)}
+            kind="secret"
+          />
           <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
             <div className={styles.nameLine}>
-              <span className={styles.nameKind}>
-                <KindIcon kind="secret" />
-              </span>
               <span className={styles.truncate} title={name}>
                 {name}
               </span>
