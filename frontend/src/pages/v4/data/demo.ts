@@ -6,6 +6,7 @@ import { billingDemo } from "./billing/demo";
 import { certManagerSettingsDemo } from "./cert-manager-settings/demo";
 import { certificatesDemo } from "./certificates/demo";
 import { integrationsDemo } from "./integrations/demo";
+import { kmipDemo } from "./kmip/demo";
 import { kmsDemo } from "./kms/demo";
 import { orgDemo } from "./org/demo";
 import { pamDemo } from "./pam/demo";
@@ -23,6 +24,7 @@ export const demoAdapters: V4Adapters = {
   agentVault: agentVaultDemo,
   agentVaultSettings: agentVaultSettingsDemo,
   kms: kmsDemo,
+  kmip: kmipDemo,
   org: orgDemo,
   integrations: integrationsDemo,
   secretScanning: secretScanningDemo,

@@ -6,6 +6,7 @@ import { billingLive } from "./billing/live";
 import { certManagerSettingsLive } from "./cert-manager-settings/live";
 import { certificatesLive } from "./certificates/live";
 import { integrationsLive } from "./integrations/live";
+import { kmipLive } from "./kmip/live";
 import { kmsLive } from "./kms/live";
 import { orgLive } from "./org/live";
 import { pamLive } from "./pam/live";
@@ -23,6 +24,7 @@ export const liveAdapters: V4Adapters = {
   agentVault: agentVaultLive,
   agentVaultSettings: agentVaultSettingsLive,
   kms: kmsLive,
+  kmip: kmipLive,
   org: orgLive,
   integrations: integrationsLive,
   secretScanning: secretScanningLive,
