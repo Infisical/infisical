@@ -541,6 +541,36 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
       ]
     ]
   },
+  "action-feedback-in-status": {
+    bad: [
+      [
+        page,
+        'const [notice, setNotice] = useState("");\nconst copy = () => setNotice("Copied the account ID.");\n<DataTable label="Accounts" persistentStatus={notice || undefined} />'
+      ],
+      [
+        example,
+        'const [status, setStatus] = React.useState("");\nconst remove = () => setStatus("Deleted " + name + ".");\n<p role="status" className="sr-only">{status}</p>'
+      ],
+      [
+        page,
+        'const [failure, setFailure] = useState<string>();\nsetFailure("Access was not revoked. Try again.");\n<List label="Members" footer={<span role="status">{failure}</span>} />'
+      ]
+    ],
+    good: [
+      [
+        page,
+        'const [query, setQuery] = useState("");\n<Input onChange={(event) => setQuery(event.target.value)} />\n<DataTable label="Certificates" persistentStatus={query ? "Showing 5 of 120 after filter" : undefined} />'
+      ],
+      [
+        example,
+        'const copy = () => toast("Copied the account ID.");\n<DataTable label="Accounts" persistentStatus={rows.length + " accounts"} />'
+      ],
+      [
+        page,
+        'const [notice, setNotice] = useState("");\nsetNotice("Copied the account ID.");\n<Stack role="status" aria-label="Loading groups" />'
+      ]
+    ]
+  },
   "v4-path-literal": {
     bad: [
       [page, '<Link to="/v4/organizations/demo/projects">Projects</Link>'],

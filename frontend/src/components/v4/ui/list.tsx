@@ -216,6 +216,7 @@ export interface ListHeaderProps {
   action?: React.ReactNode;
 }
 export const ListHeader: React.FC<ListHeaderProps> = () => null;
+/** State that must stay visible under the rows, never an action result; those go to a toast. */
 export const ListFooter: React.FC<{ children: React.ReactNode }> = () => null;
 export interface ListProps extends ListHeaderProps {
   children?: React.ReactNode;
@@ -230,6 +231,7 @@ export interface ListProps extends ListHeaderProps {
   loading?: boolean;
   loadingRows?: number;
   empty?: React.ReactNode;
+  /** State that must stay visible under the rows, never an action result; those go to a toast. */
   footer?: React.ReactNode;
 }
 export function List({

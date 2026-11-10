@@ -94,7 +94,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
         error: <Icon name="alert-c" className="size-4" />,
         loading: <Spinner />
       }}
-      style={{ "--width": "min(400px, calc(100vw - 32px))" } as React.CSSProperties}
+      style={
+        {
+          "--width": "min(var(--v4-size-toast), calc(100vw - 2 * var(--v4-space-16)))"
+        } as React.CSSProperties
+      }
       toastOptions={{
         unstyled: true,
         classNames: {

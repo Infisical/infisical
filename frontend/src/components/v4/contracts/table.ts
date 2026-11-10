@@ -530,6 +530,23 @@ export const tableDefinition = {
         }
       },
       {
+        id: "table-action-feedback",
+        when: "A row, bulk or toolbar action on a table finishes or fails.",
+        do: "Report the result with a toast, and keep DataTable's persistentStatus for state that must stay visible, such as Showing 5 of 120 after filter.",
+        avoid:
+          'Set a notice from the action and show it in persistentStatus, a footer beside the pagination or a role="status" line.',
+        reason:
+          "A footer result replaces the counts it sits in, is easy to miss bottom left and needs its own live region; the toast region already announces it.",
+        evidence: [
+          "src/components/v4/ui/data-table.tsx",
+          "src/pages/design-system/examples/table/row-activation.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: 'ui:lint action-feedback-in-status flags state set to sentence text and rendered in persistentStatus, a List or DataGrid footer or a role="status" element in the same file.'
+        }
+      },
+      {
         id: "table-row-context-menu",
         when: "A native Table row shows RowActions or a TableActionsCell.",
         do: "Wrap the row in RowContextMenu with the same label, inline actions, menu and menuDisabledReason it passes RowActions.",

@@ -115,7 +115,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/multi-step/default.tsx`; its relative imports are generated for that exact path. States: default, invalid, controlled, keyboard.
 
-Registry items used: @infisical/button, @infisical/checkbox, @infisical/field, @infisical/input, @infisical/multi-step. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @infisical/button, @infisical/checkbox, @infisical/field, @infisical/input, @infisical/multi-step, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -126,6 +126,7 @@ import { Checkbox } from "../../../../components/v4/ui/checkbox";
 import { Field } from "../../../../components/v4/ui/field";
 import { Input } from "../../../../components/v4/ui/input";
 import { MultiStep } from "../../../../components/v4/ui/multi-step";
+import { toast } from "../../../../components/v4/ui/sonner";
 
 const useConnection = () => {
   const [team, setTeam] = useState("");
@@ -191,14 +192,13 @@ const Connect = ({
 );
 
 export default function Example() {
-  const [done, setDone] = useState("");
   return (
     <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
       <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
         <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
           <Connect
             variant="dialog"
-            onDone={() => setDone("Vercel connected from the dialog.")}
+            onDone={() => toast("Vercel connected from the dialog.")}
             trigger={<Button variant="outline">Connect Vercel</Button>}
           />
         </div>
@@ -208,7 +208,7 @@ export default function Example() {
         <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
           <Connect
             variant="sheet"
-            onDone={() => setDone("Vercel connected from the sheet.")}
+            onDone={() => toast("Vercel connected from the sheet.")}
             trigger={<Button variant="outline">Open in a sheet</Button>}
           />
         </div>
@@ -216,8 +216,7 @@ export default function Example() {
       </figure>
       <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
         <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
-          <Connect variant="page" onDone={() => setDone("Vercel connected from the page.")} />
-          {done && <p role="status">{done}</p>}
+          <Connect variant="page" onDone={() => toast("Vercel connected from the page.")} />
         </div>
         <figcaption className="text-muted-foreground text-xs">{"page"}</figcaption>
       </figure>

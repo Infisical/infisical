@@ -62,7 +62,7 @@ export default function States() {
           }
           selectedIds={selected}
           onSelectionChange={setSelected}
-          footer={`${selected.length} eligible loaded identities selected`}
+          persistentStatus={`${selected.length} eligible loaded identities selected`}
         />
       </ExampleCell>
       <ExampleCell align="stretch" label="Loading more, retained rows">

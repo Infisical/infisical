@@ -40,7 +40,7 @@ export interface DataGridProps<Row> {
   onSortChange?: (sort: { columnId: string; direction: "asc" | "desc" }) => void;
   onColumnResize?: (columnId: string, width: number | null) => void;
   onCopy?: (text: string, count: number) => void;
-  /** Content of the frame band under the grid: counts, pagination or actions. */
+  /** Content of the frame band under the grid: counts, pagination or actions. Never an action result such as copied, saved or deleted; that goes to a toast. */
   footer?: React.ReactNode;
   empty?: React.ReactNode;
   /** Shows a + at the end of the header that opens a name, type and nullable form. */

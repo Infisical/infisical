@@ -87,6 +87,24 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "action-feedback-toast",
+    title: "Action feedback in toasts",
+    description:
+      "Copy, save, delete and other action results show as toasts. The table footer only carries state that has to stay visible, like a filtered count.",
+    date: "2026-11-07",
+    commit: "878b79110b",
+    page: "toast"
+  },
+  {
+    id: "toast-anatomy",
+    title: "Toast layout",
+    description:
+      "Toast titles take the full width, actions sit as quiet buttons on their own row, and a long title wraps in a wider toast instead of a tall narrow one.",
+    date: "2026-11-07",
+    commit: "12a6830860",
+    page: "toast"
+  },
+  {
     id: "pinned-edge-fade",
     title: "Pinned edge fade",
     description:
@@ -202,23 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "804076293d",
     page: "dropdown-menu"
-  },
-  {
-    id: "row-focus",
-    title: "Row focus",
-    description:
-      "A row being edited can be marked focused, and every other row in the table fades until the edit ends.",
-    date: "2026-11-07",
-    commit: "0da7164369",
-    page: "table"
-  },
-  {
-    id: "bulk-bar-window",
-    title: "Bulk bar at the window",
-    description:
-      "The bulk action bar sits at the bottom center of the window on every table, and the page pads itself so nothing hides behind it.",
-    date: "2026-11-07",
-    commit: "2f8f8ef459",
-    page: "floating-action-bar"
   }
 ];

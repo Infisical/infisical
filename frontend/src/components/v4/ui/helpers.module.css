@@ -416,9 +416,12 @@
 .toastStack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: min(400px, calc(100vw - 32px));
-  max-width: 100%;
+  gap: var(--v4-space-8);
+  width: max-content;
+  max-width: min(var(--v4-size-toast), 100%);
+}
+.toastStack.toastFixed {
+  max-width: min(var(--v4-size-toast), calc(100vw - 2 * var(--v4-space-16)));
 }
 .toast {
   border-radius: 0;
@@ -429,8 +432,7 @@
   background: var(--v4-toast-bg, var(--popover));
   color: var(--v4-ink, var(--foreground));
   box-shadow: var(--v4-shadow-pop, 0 4px 16px rgb(0 0 0 / 0.12));
-  padding: 12px;
-  flex-wrap: wrap;
+  padding: var(--v4-space-12);
   --v4-toast-line: var(--v4-type-row-title-line-height);
 }
 .toast > svg {
@@ -439,16 +441,27 @@
 }
 .toastBody {
   min-width: 0;
-  flex: 1 1 160px;
+  flex: 1 1 auto;
 }
 .toastTitle,
 .toastDescription {
   overflow-wrap: anywhere;
 }
 .toast > button {
+  flex: none;
+  margin-block: calc((var(--v4-toast-line) - var(--v4-action-height)) / 2);
+}
+.toastActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--v4-space-4);
+  margin-top: var(--v4-space-8);
+  margin-inline-start: calc(-1 * var(--v4-space-control-inline-sm));
+  contain: inline-size;
+}
+.toastActions > button {
   white-space: normal;
   max-width: 100%;
-  margin-block: calc((var(--v4-toast-line) - var(--v4-action-height)) / 2);
 }
 .avatarShape {
   border-radius: 0;
