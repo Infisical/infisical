@@ -28,7 +28,7 @@ export type TAgentVaultPersonalValueReferenceDALFactory = ReturnType<typeof agen
 export type TAgentVaultPersonalValueServiceRow = {
   serviceId: string;
   serviceName: string;
-  hostPattern: string;
+  hostPattern: string | null;
   credentialType: string;
   memberProvidedFields: string[];
   accessBundleId: string;

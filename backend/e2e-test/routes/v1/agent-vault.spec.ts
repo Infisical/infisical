@@ -2570,6 +2570,7 @@ describe("Agent Vault V1 Router", async () => {
           id: firstService.id,
           name: "shared-one",
           hostPattern: "shared-one.example.com",
+          type: "http",
           accessBundleId: first.id,
           accessBundleName: first.name
         },
@@ -2577,6 +2578,7 @@ describe("Agent Vault V1 Router", async () => {
           id: secondService.id,
           name: "shared-two",
           hostPattern: "shared-two.example.com",
+          type: "http",
           accessBundleId: second.id,
           accessBundleName: second.name
         }

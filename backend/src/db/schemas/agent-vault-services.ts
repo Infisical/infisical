@@ -13,7 +13,7 @@ export const AgentVaultServicesSchema = z.object({
   id: z.string().uuid(),
   accessBundleId: z.string().uuid(),
   name: z.string(),
-  hostPattern: z.string(),
+  hostPattern: z.string().nullable().optional(),
   credentialType: z.string(),
   credentialConfig: z.unknown(),
   encryptedCredential: zodBuffer.nullable().optional(),

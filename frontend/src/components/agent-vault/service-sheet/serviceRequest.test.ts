@@ -9,7 +9,7 @@ import {
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultCredentialSummary, TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
 import {
   buildCreateServiceRequest,
@@ -28,6 +28,15 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   serverUrl: "",
   transport: AgentVaultMcpTransport.StreamableHttp,
   hosts: ["api.stripe.com"],
+  host: "",
+  port: "",
+  database: "",
+  tlsEnabled: true,
+  tlsVerify: true,
+  tlsCa: "",
+  sshPrivateKey: "",
+  sshCertificate: "",
+  sshCertificateRemoved: false,
   hostDraft: "",
   pathDraft: "",
   toolScope: McpToolScope.All,
@@ -213,7 +222,9 @@ describe("buildCreateServiceRequest", () => {
 
 const MEMBER = [AgentVaultVariableReferenceField.CredentialValue as const];
 
-const storedMcp = (credential: TAgentVaultCredentialSummary): TAgentVaultService => ({
+type TStoredMcp = Extract<TAgentVaultService, { type: AgentVaultServiceType.Mcp }>;
+
+const storedMcp = (credential: TStoredMcp["credential"]): TStoredMcp => ({
   id: "service-1",
   accessBundleId: "bundle-1",
   name: "linear-mcp",
@@ -222,12 +233,9 @@ const storedMcp = (credential: TAgentVaultCredentialSummary): TAgentVaultService
   type: AgentVaultServiceType.Mcp,
   serverUrl: SERVER_URL,
   transport: AgentVaultMcpTransport.StreamableHttp,
-  allowedMethods: null,
-  allowedPathPrefixes: null,
   allowedTools: null,
   credential,
   customHeaders: [],
-  substitutions: [],
   createdAt: "2026-10-15T00:00:00.000Z",
   updatedAt: "2026-10-15T00:00:00.000Z"
 });
@@ -253,15 +261,24 @@ const sharedOAuth = storedMcp({
 });
 
 const storedHttp = {
-  ...storedMcp({
+  id: "service-1",
+  accessBundleId: "bundle-1",
+  name: "linear-mcp",
+  description: null,
+  hostPattern: "mcp.linear.app",
+  type: AgentVaultServiceType.Http,
+  allowedMethods: null,
+  allowedPathPrefixes: null,
+  credential: {
     type: AgentVaultCredentialType.Bearer,
     headerName: "Authorization",
     headerPrefix: "Bearer",
     memberProvidedFields: []
-  }),
-  type: AgentVaultServiceType.Http,
-  serverUrl: null,
-  transport: null
+  },
+  customHeaders: [],
+  substitutions: [],
+  createdAt: "2026-10-15T00:00:00.000Z",
+  updatedAt: "2026-10-15T00:00:00.000Z"
 } satisfies TAgentVaultService;
 
 describe("buildUpdateServiceRequest", () => {
@@ -630,5 +647,212 @@ describe("membersClearedNotice", () => {
     ).toBeNull();
     expect(membersClearedNotice(mcpForm({ name: "renamed" }), sharedOAuth)).toBeNull();
     expect(membersClearedNotice(mcpForm({ memberProvidedFields: MEMBER }))).toBeNull();
+  });
+});
+
+const {
+  hostPattern,
+  allowedMethods,
+  allowedPathPrefixes,
+  credential,
+  customHeaders,
+  substitutions,
+  ...storedNativeBase
+} = storedHttp;
+
+const storedPostgres = {
+  ...storedNativeBase,
+  type: AgentVaultServiceType.Postgres,
+  host: "db.internal",
+  port: 5432,
+  database: "orders",
+  tls: { enabled: true, verify: true, ca: null },
+  credential: { type: AgentVaultCredentialType.Basic, memberProvidedFields: [] }
+} satisfies TAgentVaultService;
+
+const storedSsh = {
+  ...storedNativeBase,
+  type: AgentVaultServiceType.Ssh,
+  host: "build.internal",
+  port: 22,
+  credential: { type: AgentVaultCredentialType.SshKey, hasCertificate: true }
+} satisfies TAgentVaultService;
+
+const postgresForm = (overrides: Partial<TServiceForm> = {}) =>
+  form({
+    serviceType: AgentVaultServiceType.Postgres,
+    name: "orders-db",
+    hosts: [],
+    host: " db.internal ",
+    port: "5432",
+    database: "orders",
+    credentialType: AgentVaultCredentialType.Basic,
+    username: "agent",
+    secret: "pw",
+    ...overrides
+  });
+
+const sshKeyForm = (overrides: Partial<TServiceForm> = {}) =>
+  form({
+    serviceType: AgentVaultServiceType.Ssh,
+    name: "build-server",
+    hosts: [],
+    host: "build.internal",
+    port: "22",
+    credentialType: AgentVaultCredentialType.SshKey,
+    username: "deploy",
+    secret: "",
+    sshPrivateKey: "-----BEGIN OPENSSH PRIVATE KEY-----\nkey\n-----END OPENSSH PRIVATE KEY-----\n",
+    ...overrides
+  });
+
+describe("native service requests", () => {
+  it("builds a database service with its server, TLS and login", () => {
+    expect(buildCreateServiceRequest("bundle-1", postgresForm())).toEqual({
+      accessBundleId: "bundle-1",
+      type: AgentVaultServiceType.Postgres,
+      name: "orders-db",
+      host: "db.internal",
+      port: 5432,
+      database: "orders",
+      tls: { enabled: true, verify: true, ca: null },
+      credential: {
+        type: AgentVaultCredentialType.Basic,
+        username: "agent",
+        password: "pw",
+        memberProvidedFields: []
+      }
+    });
+  });
+
+  it("builds an SSH key service without a certificate when none is given", () => {
+    expect(buildCreateServiceRequest("bundle-1", sshKeyForm())).toEqual({
+      accessBundleId: "bundle-1",
+      type: AgentVaultServiceType.Ssh,
+      name: "build-server",
+      host: "build.internal",
+      port: 22,
+      credential: {
+        type: AgentVaultCredentialType.SshKey,
+        username: "deploy",
+        privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----\nkey\n-----END OPENSSH PRIVATE KEY-----"
+      }
+    });
+  });
+
+  it("leaves untouched SSH key parts out of an update and removes the certificate only when asked", () => {
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        storedSsh,
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: UNCHANGED_SECRET,
+          sshCertificateRemoved: true
+        })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey, certificate: null });
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        storedSsh,
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: "  "
+        })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey });
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        storedSsh,
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: " ssh-ed25519-cert-v01@openssh.com AAAA "
+        })
+      ).credential
+    ).toEqual({
+      type: AgentVaultCredentialType.SshKey,
+      certificate: "ssh-ed25519-cert-v01@openssh.com AAAA"
+    });
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        storedSsh,
+        sshKeyForm({
+          username: UNCHANGED_SECRET,
+          sshPrivateKey: UNCHANGED_SECRET,
+          sshCertificate: UNCHANGED_SECRET
+        })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey });
+  });
+
+  it("keeps the stored SSH username and key when their boxes hold only spaces", () => {
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        storedSsh,
+        sshKeyForm({ username: "   ", sshPrivateKey: " \n ", sshCertificate: UNCHANGED_SECRET })
+      ).credential
+    ).toEqual({ type: AgentVaultCredentialType.SshKey });
+  });
+
+  it("keeps an untouched database password and clears a removed CA on update", () => {
+    expect(
+      buildUpdateServiceRequest(
+        "bundle-1",
+        storedPostgres,
+        postgresForm({ username: UNCHANGED_SECRET, secret: UNCHANGED_SECRET, tlsCa: " " })
+      )
+    ).toEqual({
+      accessBundleId: "bundle-1",
+      serviceId: "service-1",
+      type: AgentVaultServiceType.Postgres,
+      name: "orders-db",
+      host: "db.internal",
+      port: 5432,
+      database: "orders",
+      tls: { enabled: true, verify: true, ca: null },
+      description: null,
+      credential: {
+        type: AgentVaultCredentialType.Basic,
+        username: undefined,
+        password: undefined,
+        memberProvidedFields: []
+      }
+    });
+  });
+
+  it("leaves the CA out while TLS is off, so a stored one is kept", () => {
+    const tlsOff = postgresForm({ tlsEnabled: false, tlsVerify: true, tlsCa: "not sent" });
+    expect(buildCreateServiceRequest("bundle-1", tlsOff)).toMatchObject({
+      tls: { enabled: false, verify: true }
+    });
+    expect(buildUpdateServiceRequest("bundle-1", storedPostgres, tlsOff)).toMatchObject({
+      tls: { enabled: false, verify: true }
+    });
+    expect(buildUpdateServiceRequest("bundle-1", storedPostgres, tlsOff)).not.toHaveProperty(
+      "tls.ca"
+    );
+  });
+
+  it("leaves the CA out while the certificate isn't verified, so a stored one is kept", () => {
+    const noVerify = postgresForm({ tlsVerify: false, tlsCa: "not a certificate" });
+    expect(buildUpdateServiceRequest("bundle-1", storedPostgres, noVerify)).toMatchObject({
+      tls: { enabled: true, verify: false }
+    });
+    expect(buildUpdateServiceRequest("bundle-1", storedPostgres, noVerify)).not.toHaveProperty(
+      "tls.ca"
+    );
+  });
+
+  it("sends a trimmed CA while TLS is on", () => {
+    expect(buildCreateServiceRequest("bundle-1", postgresForm({ tlsCa: " PEM " }))).toMatchObject({
+      tls: { enabled: true, verify: true, ca: "PEM" }
+    });
   });
 });

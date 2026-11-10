@@ -7,6 +7,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
+import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -336,7 +337,10 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
                 <ul className="mt-2 w-full divide-y divide-warning/15 rounded-md border border-warning/20">
                   {shownNeedsSetup.map((service) => (
                     <li key={service.id} className="flex items-center gap-2 px-2.5 py-1.5">
-                      <ServiceIcon hostPattern={service.hostPattern} />
+                      <ServiceIcon
+                        hostPattern={hostPatternOf(service)}
+                        serviceType={service.type}
+                      />
                       <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                         {service.name}
                       </span>

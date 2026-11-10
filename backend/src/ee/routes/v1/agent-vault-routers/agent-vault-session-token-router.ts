@@ -49,7 +49,7 @@ const SessionServiceSchema = z.object({
   status: z.enum(["ready", "needs-personal-values"]).describe(AGENT_VAULT.SESSION_SERVICES.status),
   credential: z
     .object({
-      type: z.enum(["bearer", "oauth", "basic", "none"]).describe(AGENT_VAULT.SESSION_SERVICES.credentialType),
+      type: z.enum(["bearer", "oauth", "basic", "login", "none"]).describe(AGENT_VAULT.SESSION_SERVICES.credentialType),
       header: z.string().optional().describe(AGENT_VAULT.SESSION_SERVICES.credentialHeader),
       addedByProxy: z.boolean().describe(AGENT_VAULT.SESSION_SERVICES.credentialAddedByProxy),
       memberProvided: z.boolean().describe(AGENT_VAULT.SESSION_SERVICES.credentialMemberProvided)
@@ -246,6 +246,34 @@ export const registerAgentVaultSessionTokenRouter = async (server: FastifyZodPro
         proxyId: proxyId.success ? proxyId.data : undefined,
         proxyVersion: proxyVersion.success ? proxyVersion.data : undefined
       });
+    }
+  });
+
+  // Unaudited: the fingerprints are public, and `connect` asks once per start.
+  server.route({
+    method: "GET",
+    url: "/proxy-ca-fingerprints",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: true,
+      operationId: "listAgentVaultSessionProxyCaFingerprints",
+      description:
+        "Get the CA fingerprints of the Agent Vault proxies in the calling session's project, so `infisical agent-vault connect` can check the proxy it talks to. Authenticate with the session token as `Authorization: Bearer agv_...`.",
+      tags: [ApiDocsTags.AgentVaultSessions],
+      response: {
+        200: z.object({
+          fingerprints: z.string().array().describe(AGENT_VAULT.SESSION.proxyCaFingerprints)
+        })
+      }
+    },
+    handler: async (req) => {
+      const authorization = SessionTokenAuthorizationSchema.safeParse(req.headers.authorization);
+      if (!authorization.success) {
+        throw new UnauthorizedError({
+          message: "Send an Agent Vault session token in the Authorization header, as 'Bearer agv_...'."
+        });
+      }
+      return server.services.agentVaultProxy.getSessionProxyCaFingerprints({ sessionToken: authorization.data });
     }
   });
 
