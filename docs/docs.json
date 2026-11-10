@@ -605,6 +605,7 @@
                     "root": "documentation/platform/pam/accounts/account-types",
                     "pages": [
                       "documentation/platform/pam/accounts/postgresql",
+                      "documentation/platform/pam/accounts/cockroachdb",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
                       "documentation/platform/pam/accounts/oracledb",
