@@ -95,7 +95,7 @@ describe("runAiJudge", () => {
 
     const body = sendMessage.mock.calls[0][0] as TAnthropicMessageRequest;
     expect(body.system).toContain("<admin_instructions>\nApprove if the linked ticket is open");
-    expect(body.tool_choice).toEqual({ type: "any" });
+    expect(body.tool_choice).toEqual({ type: "auto" });
     const userMessage = body.messages[0].content as string;
     expect(userMessage.split("</request>")).toHaveLength(2);
     expect(userMessage).toContain("\\u003c/request>");
@@ -109,12 +109,28 @@ describe("runAiJudge", () => {
     expect(result).toMatchObject({ approve: false, error: "The AI's decision wasn't in the expected format" });
   });
 
-  test("doesn't approve when the model answers without a tool call", async () => {
+  test("asks for a decision when the model answers in text, and approves only through the tool", async () => {
+    const sendMessage = vi
+      .fn()
+      .mockResolvedValueOnce(reply({ type: "text", text: "Approved!" }))
+      .mockResolvedValueOnce(reply(toolUse("t1", AI_JUDGE_DECISION_TOOL, { approve: true, reason: "INC-1 is open" })));
+
+    const result = await run(sendMessage);
+
+    expect(result).toMatchObject({ approve: true, error: null });
+    const nudge = (sendMessage.mock.calls[1][0] as TAnthropicMessageRequest).messages.at(-1);
+    expect(nudge).toEqual({ role: "user", content: `Submit your decision now by calling ${AI_JUDGE_DECISION_TOOL}.` });
+  });
+
+  test("doesn't approve when the model never calls a tool", async () => {
     const sendMessage = vi.fn().mockResolvedValue(reply({ type: "text", text: "Approved!" }));
 
     const result = await run(sendMessage);
 
-    expect(result).toMatchObject({ approve: false, error: "The AI didn't reach a decision" });
+    expect(result).toMatchObject({
+      approve: false,
+      error: `The AI didn't reach a decision within ${AI_JUDGE_LIMITS.maxRounds} steps`
+    });
   });
 
   test("doesn't approve when the model call fails", async () => {
@@ -156,7 +172,7 @@ describe("runAiJudge", () => {
     expect(results.every((block) => block.type === "tool_result" && block.is_error)).toBe(true);
   });
 
-  test("forces a decision on the last round and fails closed past it", async () => {
+  test("fails closed when the model keeps calling tools past the last round", async () => {
     getTicket.mockResolvedValue({ result: {}, summary: "Read" });
     const sendMessage = vi.fn().mockResolvedValue(reply(toolUse("t", "jira_get_ticket", { key: "INC-1" })));
 
@@ -171,10 +187,6 @@ describe("runAiJudge", () => {
     });
 
     expect(sendMessage).toHaveBeenCalledTimes(3);
-    expect((sendMessage.mock.calls[2][0] as TAnthropicMessageRequest).tool_choice).toEqual({
-      type: "tool",
-      name: AI_JUDGE_DECISION_TOOL
-    });
     expect(result).toMatchObject({ approve: false, error: "The AI didn't reach a decision within 3 steps" });
   });
 });

@@ -100,8 +100,6 @@ export const runAiJudge = async ({
   ];
 
   for (let round = 0; round < limits.maxRounds; round += 1) {
-    const mustDecide = round === limits.maxRounds - 1 || toolCalls.length >= limits.maxToolCalls;
-
     let response: TAnthropicMessageResponse;
     try {
       // eslint-disable-next-line no-await-in-loop
@@ -111,7 +109,8 @@ export const runAiJudge = async ({
         system,
         messages,
         tools: modelTools,
-        tool_choice: mustDecide ? { type: "tool", name: AI_JUDGE_DECISION_TOOL } : { type: "any" }
+        // Models with extended thinking reject a forced tool_choice, so a reply without a tool call gets a nudge
+        tool_choice: { type: "auto" }
       });
     } catch (error) {
       return fail(describeError(error));
@@ -127,7 +126,13 @@ export const runAiJudge = async ({
       if (!parsed.success) return fail("The AI's decision wasn't in the expected format");
       return { approve: parsed.data.approve, reason: parsed.data.reason, model, toolCalls, error: null };
     }
-    if (!toolUses.length) return fail("The AI didn't reach a decision");
+    if (!toolUses.length) {
+      if (!response.content?.length) return fail("The AI didn't reach a decision");
+      messages.push({ role: "assistant", content: response.content });
+      messages.push({ role: "user", content: `Submit your decision now by calling ${AI_JUDGE_DECISION_TOOL}.` });
+      // eslint-disable-next-line no-continue
+      continue;
+    }
 
     const results: TAnthropicContentBlock[] = [];
     // eslint-disable-next-line no-await-in-loop

@@ -48,16 +48,19 @@ export const AutoApprovalAiCondition = ({ condition, ai, isError, onChange }: Pr
   );
 
   return (
-    <div className="flex flex-col gap-2 pb-1">
-      <TextArea
-        aria-label="AI instructions"
-        value={condition.prompt ?? ""}
-        onChange={(e) => onChange({ ...condition, prompt: e.target.value })}
-        placeholder="Approve if the linked Jira ticket is an open incident assigned to the requester."
-        maxLength={AUTO_APPROVAL_LIMITS.aiPromptLength}
-        isError={isError}
-        rows={3}
-      />
+    <div className="flex flex-col gap-4 pt-1 pb-1">
+      <div className="flex flex-col gap-1">
+        <p className="px-1.5 text-xs font-medium text-foreground">Instructions</p>
+        <TextArea
+          aria-label="AI instructions"
+          value={condition.prompt ?? ""}
+          onChange={(e) => onChange({ ...condition, prompt: e.target.value })}
+          placeholder="Approve if the linked Jira ticket is an open incident assigned to the requester."
+          maxLength={AUTO_APPROVAL_LIMITS.aiPromptLength}
+          isError={isError}
+          rows={3}
+        />
+      </div>
       <div className="flex flex-col gap-1">
         <p className="px-1.5 text-xs font-medium text-foreground">Additional Context</p>
         <Combobox
@@ -94,9 +97,7 @@ export const AutoApprovalAiCondition = ({ condition, ai, isError, onChange }: Pr
       <Alert variant="warning" className="py-1.5">
         <TriangleAlert />
         <AlertDescription className="text-xs">
-          The AI receives the request details, the requester&apos;s reason, and every request form
-          field value. Treat that text and anything read from additional context as untrusted, since
-          the requester can plant instructions in it.
+          The AI reads the request&apos;s reason and inputs, which the requester controls.
         </AlertDescription>
       </Alert>
     </div>

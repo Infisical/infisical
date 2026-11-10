@@ -140,7 +140,7 @@ const ConditionRow = ({
         )}
         <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1">
           <Badge variant="neutral">
-            <Sparkles className="size-3.5 text-info" />
+            <Sparkles className="size-3.5 text-muted" />
             AI
           </Badge>
           <span className="text-sm text-foreground">approves the request</span>
