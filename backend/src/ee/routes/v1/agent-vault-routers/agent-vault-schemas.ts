@@ -624,9 +624,9 @@ const hiddenHttpMcpUpdateFields = {
 };
 
 const nativeServiceTitles = {
-  [AgentVaultServiceType.Postgres]: "PostgreSQL service",
-  [AgentVaultServiceType.Mysql]: "MySQL service",
-  [AgentVaultServiceType.Ssh]: "SSH service"
+  [AgentVaultServiceType.Postgres]: "PostgreSQL",
+  [AgentVaultServiceType.Mysql]: "MySQL",
+  [AgentVaultServiceType.Ssh]: "SSH"
 } as const;
 
 const nativeCreateArm = <
@@ -669,7 +669,7 @@ const nativeUpdateArm = <
         ? { database: hiddenNativeUpdateFields.database, tls: hiddenNativeUpdateFields.tls }
         : {
             database: nativeDatabaseSchema({
-              invalid_type_error: `A ${nativeServiceTitles[type]} always has a database. Send its name, or leave 'database' out to keep it.`
+              invalid_type_error: `A ${nativeServiceTitles[type]} service always has a database. Send its name, or leave 'database' out to keep it.`
             })
               .optional()
               .describe(AGENT_VAULT.SERVICE.database),
@@ -703,7 +703,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
       ...hiddenNativeCreateFields
     })
-    .describe(JSON.stringify({ title: "HTTP service" })),
+    .describe(JSON.stringify({ title: "HTTP" })),
   z
     .object({
       type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
@@ -720,7 +720,7 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
       substitutions: AgentVaultSubstitutionsInputSchema.optional().describe(openApiHidden()),
       ...hiddenNativeCreateFields
     })
-    .describe(JSON.stringify({ title: "MCP service" })),
+    .describe(JSON.stringify({ title: "MCP" })),
   nativeCreateArm(AgentVaultServiceType.Postgres),
   nativeCreateArm(AgentVaultServiceType.Mysql),
   nativeCreateArm(AgentVaultServiceType.Ssh)
@@ -749,7 +749,7 @@ export const AgentVaultUpdateServiceBodySchema = z
         allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
         ...hiddenNativeUpdateFields
       })
-      .describe(JSON.stringify({ title: "HTTP service" })),
+      .describe(JSON.stringify({ title: "HTTP" })),
     z
       .object({
         type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.updateType),
@@ -768,7 +768,7 @@ export const AgentVaultUpdateServiceBodySchema = z
         substitutions: AgentVaultSubstitutionsUpdateSchema.optional().describe(openApiHidden()),
         ...hiddenNativeUpdateFields
       })
-      .describe(JSON.stringify({ title: "MCP service" })),
+      .describe(JSON.stringify({ title: "MCP" })),
     nativeUpdateArm(AgentVaultServiceType.Postgres),
     nativeUpdateArm(AgentVaultServiceType.Mysql),
     nativeUpdateArm(AgentVaultServiceType.Ssh)
@@ -915,7 +915,7 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
       allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
       ...hiddenNativeCreateFields
     })
-    .describe(JSON.stringify({ title: "HTTP service" })),
+    .describe(JSON.stringify({ title: "HTTP" })),
   z
     .object({
       type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
@@ -933,7 +933,7 @@ const AgentVaultInlineServiceInputSchema = z.discriminatedUnion("type", [
       allowedTools: AgentVaultAllowedToolsSchema.optional().describe(openApiHidden()),
       ...hiddenNativeCreateFields
     })
-    .describe(JSON.stringify({ title: "MCP service" })),
+    .describe(JSON.stringify({ title: "MCP" })),
   nativeInlineArm(AgentVaultServiceType.Postgres),
   nativeInlineArm(AgentVaultServiceType.Mysql),
   nativeInlineArm(AgentVaultServiceType.Ssh)
@@ -1073,14 +1073,14 @@ const serviceResponseUnion = <
         ...serviceResponseTypeFields[AgentVaultServiceType.Http],
         ...extras[AgentVaultServiceType.Http]
       })
-      .describe(JSON.stringify({ title: "HTTP service" })),
+      .describe(JSON.stringify({ title: "HTTP" })),
     z
       .object({
         ...base,
         ...serviceResponseTypeFields[AgentVaultServiceType.Mcp],
         ...extras[AgentVaultServiceType.Mcp]
       })
-      .describe(JSON.stringify({ title: "MCP service" })),
+      .describe(JSON.stringify({ title: "MCP" })),
     z
       .object({
         ...base,
