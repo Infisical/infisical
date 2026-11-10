@@ -6,6 +6,7 @@ import { certificatesDemo } from "./certificates/demo";
 import { integrationsDemo } from "./integrations/demo";
 import { kmipDemo } from "./kmip/demo";
 import { kmsDemo } from "./kms/demo";
+import { networkingDemo } from "./networking/demo";
 import { orgDemo } from "./org/demo";
 import { pamDemo } from "./pam/demo";
 import { projectsDemo } from "./projects/demo";
@@ -19,6 +20,7 @@ export const demoAdapters: V4Adapters = {
   kmip: kmipDemo,
   org: orgDemo,
   integrations: integrationsDemo,
+  networking: networkingDemo,
   secretScanning: secretScanningDemo,
   secrets: secretsDemo,
   certificates: certificatesDemo,

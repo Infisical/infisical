@@ -6,6 +6,7 @@ import { certificatesLive } from "./certificates/live";
 import { integrationsLive } from "./integrations/live";
 import { kmipLive } from "./kmip/live";
 import { kmsLive } from "./kms/live";
+import { networkingLive } from "./networking/live";
 import { orgLive } from "./org/live";
 import { pamLive } from "./pam/live";
 import { projectsLive } from "./projects/live";
@@ -19,6 +20,7 @@ export const liveAdapters: V4Adapters = {
   kmip: kmipLive,
   org: orgLive,
   integrations: integrationsLive,
+  networking: networkingLive,
   secretScanning: secretScanningLive,
   secrets: secretsLive,
   certificates: certificatesLive,
