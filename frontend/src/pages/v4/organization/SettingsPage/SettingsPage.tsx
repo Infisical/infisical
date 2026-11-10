@@ -92,12 +92,17 @@ const OrganizationDetails = ({
           failed("Fix the highlighted fields, then save again.");
           return;
         }
-        await updateOrganization.mutateAsync({
-          orgId: organization.id,
-          name: draft.name,
-          slug: draft.slug,
-          defaultMembershipRoleSlug: draft.role || undefined
-        });
+        try {
+          await updateOrganization.mutateAsync({
+            orgId: organization.id,
+            name: draft.name,
+            slug: draft.slug,
+            defaultMembershipRoleSlug: draft.role || undefined
+          });
+        } catch (error) {
+          failed("Failed to save organization details", error);
+          return;
+        }
         setSaved(draft);
         savedToast("Organization details saved");
       }}
@@ -320,7 +325,10 @@ const IncidentContacts = ({ orgId }: { orgId: string }) => {
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (removing) deleteContact.mutateAsync({ orgId, incidentContactId: removing.id });
+                if (removing)
+                  deleteContact
+                    .mutateAsync({ orgId, incidentContactId: removing.id })
+                    .catch((error) => failed("Failed to remove incident contact", error));
                 setRemoving(null);
               }}
             >

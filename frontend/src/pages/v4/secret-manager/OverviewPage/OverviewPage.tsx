@@ -93,7 +93,7 @@ import type { TCreateSecretSyncDTO } from "@app/hooks/api/secretSyncs/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { useProjectPermission } from "../../access/permissions";
-import { dismissToast, toast } from "../../access/toast";
+import { dismissToast, errorMessage, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { v4Path } from "../../links";
@@ -210,8 +210,7 @@ const parseList = (value?: string) =>
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
-const errorText = (error: unknown) =>
-  error instanceof Error && error.message ? error.message : "Please try again.";
+const errorText = (error: unknown) => errorMessage(error) || "Please try again.";
 
 export const OverviewPage = () => {
   const { projectId } = useParams({ from: ROUTE });

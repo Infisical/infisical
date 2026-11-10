@@ -34,7 +34,7 @@ export const secretsLive: SecretsAdapter = {
   useProject: useProjectById,
   useCreateEnvironment: useCreateWsEnvironment,
   useTags: useGetWsTags,
-  useCreateTag: () => useCreateWsTag({ meta: { skipErrorToast: true } }),
+  useCreateTag: (options) => useCreateWsTag({ meta: options?.meta }),
   useOverview: useGetProjectSecretsOverview,
   useSecretValue: useGetSecretValue,
   useSecretReferenceTree: useGetSecretReferenceTree,
