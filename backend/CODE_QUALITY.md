@@ -367,13 +367,3 @@ decides what an already-built thing does.
   how to get it. A hidden feature teaches a customer nothing and looks like it does not
   exist. The modal is the frontend half of the same rule the backend follows: the block
   lands on the attempt to create or edit, never on viewing what is already there.
-
-### The exception: audit logs
-
-`listAuditLogs` in `src/ee/services/audit-log/audit-log-service.ts` checks `plan.auditLogs`
-on the read path, on purpose. Audit logs are recorded for every org whose plan has a
-retention period, including orgs without the `auditLogs` entitlement, so that an org that
-upgrades finds history already there. Viewing them is the paid feature, so the read is the
-only place the entitlement can be enforced. Nothing a customer built depends on that read,
-and losing the entitlement hides the logs without deleting them: they come back on
-resubscription, until each one's own expiry. Do not copy this to another feature.
