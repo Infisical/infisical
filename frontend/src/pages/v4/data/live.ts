@@ -10,6 +10,7 @@ import { pamLive } from "./pam/live";
 import { projectsLive } from "./projects/live";
 import { secretScanningLive } from "./secret-scanning/live";
 import { secretsLive } from "./secrets/live";
+import { ssoLive } from "./sso/live";
 
 export const liveAdapters: V4Adapters = {
   agentVault: agentVaultLive,
@@ -22,5 +23,6 @@ export const liveAdapters: V4Adapters = {
   access: accessLive,
   projects: projectsLive,
   pam: pamLive,
-  billing: billingLive
+  billing: billingLive,
+  sso: ssoLive
 };

@@ -11,6 +11,7 @@ import type { PamAdapter } from "./pam/contract";
 import type { ProjectsAdapter } from "./projects/contract";
 import type { SecretScanningAdapter } from "./secret-scanning/contract";
 import type { SecretsAdapter } from "./secrets/contract";
+import type { SsoAdapter } from "./sso/contract";
 
 export type V4Adapters = {
   kms: KmsAdapter;
@@ -24,6 +25,7 @@ export type V4Adapters = {
   pam: PamAdapter;
   agentVault: AgentVaultAdapter;
   billing: BillingAdapter;
+  sso: SsoAdapter;
 };
 
 export const useV4Mode = () => useRouteContext({ from: "/v4/organizations/$orgId" }).v4Mode;
