@@ -3,6 +3,7 @@ import type { V4Adapters } from "./adapters";
 import { agentVaultLive } from "./agent-vault/live";
 import { certificatesLive } from "./certificates/live";
 import { integrationsLive } from "./integrations/live";
+import { kmipLive } from "./kmip/live";
 import { kmsLive } from "./kms/live";
 import { orgLive } from "./org/live";
 import { pamLive } from "./pam/live";
@@ -13,6 +14,7 @@ import { secretsLive } from "./secrets/live";
 export const liveAdapters: V4Adapters = {
   agentVault: agentVaultLive,
   kms: kmsLive,
+  kmip: kmipLive,
   org: orgLive,
   integrations: integrationsLive,
   secretScanning: secretScanningLive,
