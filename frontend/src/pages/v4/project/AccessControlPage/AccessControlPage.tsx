@@ -75,7 +75,7 @@ const tabs: AccessTab[] = [
   }
 ];
 
-const tab = (value: ProjectAccessControlTabs) => tabs.find((entry) => entry.value === value)!;
+const tabFor = (value: ProjectAccessControlTabs) => tabs.find((entry) => entry.value === value)!;
 
 const PRODUCT_ROLE_MODEL = new Set([ProjectType.PAM, ProjectType.AgentVault]);
 
@@ -91,15 +91,19 @@ const productTabs = (projectType: ProjectType): (AccessTab & { urlOnly?: boolean
         );
     case ProjectType.PAM:
       return [
-        { ...tab(ProjectAccessControlTabs.Member), label: "Members", Body: PamMembersTab },
-        { ...tab(ProjectAccessControlTabs.Groups), Body: PamGroupsTab },
-        { ...tab(ProjectAccessControlTabs.Identities), label: "Identities", Body: PamIdentitiesTab }
+        { ...tabFor(ProjectAccessControlTabs.Member), label: "Members", Body: PamMembersTab },
+        { ...tabFor(ProjectAccessControlTabs.Groups), Body: PamGroupsTab },
+        {
+          ...tabFor(ProjectAccessControlTabs.Identities),
+          label: "Identities",
+          Body: PamIdentitiesTab
+        }
       ];
     case ProjectType.AgentVault:
       return [
-        { ...tab(ProjectAccessControlTabs.Member), Body: AgentVaultMembersTab },
-        { ...tab(ProjectAccessControlTabs.Identities), Body: AgentVaultIdentitiesTab },
-        { ...tab(ProjectAccessControlTabs.Groups), Body: AgentVaultGroupsTab }
+        { ...tabFor(ProjectAccessControlTabs.Member), Body: AgentVaultMembersTab },
+        { ...tabFor(ProjectAccessControlTabs.Identities), Body: AgentVaultIdentitiesTab },
+        { ...tabFor(ProjectAccessControlTabs.Groups), Body: AgentVaultGroupsTab }
       ];
     default:
       return tabs.filter((entry) => entry.value !== ProjectAccessControlTabs.ServiceTokens);
