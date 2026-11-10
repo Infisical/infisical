@@ -166,17 +166,11 @@ const RequestDetail = ({
   const review = secrets.useReviewApprovalRequest();
   const updateStatus = secrets.useUpdateApprovalRequestStatus();
   const merge = secrets.useMergeApprovalRequest();
-  const act = async (task: () => Promise<unknown>, done: string) => {
-    try {
-      await task();
-      toast({ tone: "ok", title: done });
-    } catch (failure) {
-      toast({
-        tone: "bad",
-        title: failure instanceof Error ? failure.message : "The action failed. Try again"
-      });
-    }
-  };
+  const act = (task: () => Promise<unknown>, done: string) =>
+    task().then(
+      () => toast({ tone: "ok", title: done }),
+      () => undefined
+    );
   const reviewerColumns: DataTableColumn<Approver>[] = [
     { id: "approver", header: "Approver", grow: true, text: approverName, render: approverName },
     {

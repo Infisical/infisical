@@ -734,7 +734,7 @@ function SecretActionsRow({
                       "ok"
                     );
                   },
-                  () => ctx.report(`Could not save the reminder on ${secret.name}.`, "bad")
+                  () => undefined
                 );
               }}
             />
@@ -768,7 +768,7 @@ function SecretActionsRow({
                   .then(
                     () =>
                       ctx.report(`Redacted version ${version.version} of ${secret.name}.`, "ok"),
-                    () => ctx.report(`Could not redact version ${version.version}.`, "bad")
+                    () => undefined
                   )
               }
             />
