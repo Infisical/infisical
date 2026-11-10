@@ -98,9 +98,8 @@ export const useShellChrome = () => {
     {
       label: "Personal settings",
       icon: "user",
-      onSelect: () => go(v4Path("/personal-settings")),
-      disabled: !live,
-      disabledReason: "Not available in the demo"
+      onSelect: () =>
+        go(live ? v4Path("/personal-settings") : `${v4Path("/personal-settings")}?org=${orgId}`)
     },
     ...(canInvite
       ? [

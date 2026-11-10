@@ -26,6 +26,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
   route("/organizations/none", "v4/auth/NoOrgPage/route.tsx"),
   route("/password-setup", "v4/auth/PasswordSetupPage/route.tsx"),
   route("/mfa-session/$mfaSessionId", "v4/auth/MfaSessionPage/route.tsx"),
+  route("/personal-settings", "v4/user/PersonalSettingsPage/route.tsx"),
   route("/organizations/$orgId", "v4/organization/route.tsx", [
     route("/projects", [
       index("v4/organization/ProjectsPage/route.tsx"),
