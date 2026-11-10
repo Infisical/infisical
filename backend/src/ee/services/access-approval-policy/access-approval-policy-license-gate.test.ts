@@ -5,7 +5,7 @@ import { TFeatureSet } from "@app/ee/services/license/license-types";
 import { EnforcementLevel } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { accessApprovalPolicyServiceFactory } from "./access-approval-policy-service";
+import { secretAccessApprovalPolicyServiceFactory } from "./access-approval-policy-service";
 import { ApproverType } from "./access-approval-policy-types";
 
 const ORG_ID = "org-id";
@@ -16,7 +16,15 @@ const actor = {
   actor: ActorType.USER as const,
   actorId: "actor-id",
   actorAuthMethod: null,
-  actorOrgId: ORG_ID
+  actorOrgId: ORG_ID,
+  orgActor: {
+    type: ActorType.USER,
+    id: "actor-id",
+    authMethod: null,
+    orgId: ORG_ID,
+    rootOrgId: ORG_ID,
+    parentOrgId: ORG_ID
+  }
 };
 
 const createService = (secretApproval: boolean) => {
@@ -33,22 +41,24 @@ const createService = (secretApproval: boolean) => {
       })
     },
     licenseService: { getPlan },
-    accessApprovalPolicyDAL: {
-      findById: vi.fn().mockResolvedValue({
-        id: POLICY_ID,
-        projectId: PROJECT_ID,
-        secretPath: "/",
-        // zero approvals keeps the "approvals cannot be greater than approvers" check
-        // from firing ahead of the gate with an empty approver list
-        approvals: 0,
-        environments: []
-      })
+    secretAccessApprovalPolicyDAL: {
+      findSecretAccessPolicies: vi.fn().mockResolvedValue([
+        {
+          id: POLICY_ID,
+          projectId: PROJECT_ID,
+          secretPath: "/",
+          // zero approvals keeps the "approvals cannot be greater than approvers" check
+          // from firing ahead of the gate with an empty approver list
+          approvals: 0,
+          environments: []
+        }
+      ])
     },
     projectEnvDAL: { find: vi.fn(), findOne: vi.fn() }
   };
 
-  const service = accessApprovalPolicyServiceFactory(
-    deps as unknown as Parameters<typeof accessApprovalPolicyServiceFactory>[0]
+  const service = secretAccessApprovalPolicyServiceFactory(
+    deps as unknown as Parameters<typeof secretAccessApprovalPolicyServiceFactory>[0]
   );
 
   return { service, getPlan };

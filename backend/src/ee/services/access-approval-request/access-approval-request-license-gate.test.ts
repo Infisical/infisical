@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { TFeatureSet } from "@app/ee/services/license/license-types";
+import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { accessApprovalRequestServiceFactory } from "./access-approval-request-service";
+import { secretAccessApprovalRequestServiceFactory } from "./access-approval-request-service";
 
 vi.mock("@app/lib/config/env", () => ({
   getConfig: () => ({ SITE_URL: "https://example.com" })
@@ -43,8 +44,8 @@ const createService = (secretApproval: boolean) => {
     }
   };
 
-  const service = accessApprovalRequestServiceFactory(
-    deps as unknown as Parameters<typeof accessApprovalRequestServiceFactory>[0]
+  const service = secretAccessApprovalRequestServiceFactory(
+    deps as unknown as Parameters<typeof secretAccessApprovalRequestServiceFactory>[0]
   );
 
   return { service, getPlan };
@@ -68,17 +69,10 @@ describe("access approval request plan gate", () => {
   });
 
   it("rejects request edits without the secretApproval entitlement", async () => {
-    const { service, getPlan } = createService(false);
+    const { service } = createService(false);
 
-    await expect(
-      service.updateAccessApprovalRequest({
-        ...actor,
-        requestId: REQUEST_ID,
-        temporaryRange: "1h",
-        editNote: "shorter please"
-      })
-    ).rejects.toThrow("Upgrade plan to update access approval request");
-
-    expect(getPlan).toHaveBeenCalledWith(ORG_ID);
+    const edit = service.updateAccessApprovalRequest();
+    await expect(edit).rejects.toBeInstanceOf(BadRequestError);
+    await expect(edit).rejects.toThrow("Access requests on the global approval system cannot be edited");
   });
 });
