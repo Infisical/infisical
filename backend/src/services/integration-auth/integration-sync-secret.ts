@@ -45,7 +45,7 @@ import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { blockLocalAndPrivateIpAddresses, isValidAzureAppConfigurationUrl } from "@app/lib/validator";
 import { TCreateManySecretsRawFn, TUpdateManySecretsRawFn } from "@app/services/secret/secret-types";
 
 import { TIntegrationDALFactory } from "../integration/integration-dal";
@@ -319,7 +319,7 @@ const syncSecretsAzureAppConfig = async ({
     value: string;
   }
 
-  if (!integration.app || !integration.app.endsWith(".azconfig.io"))
+  if (!integration.app || !isValidAzureAppConfigurationUrl(integration.app))
     throw new BadRequestError({
       message: "Invalid Azure App Configuration URL provided."
     });

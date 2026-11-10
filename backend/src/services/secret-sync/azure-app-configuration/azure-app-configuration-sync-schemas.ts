@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SecretSyncs } from "@app/lib/api-docs";
+import { isValidAzureAppConfigurationUrl } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -20,6 +21,18 @@ const AzureAppConfigurationSyncDestinationConfigSchema = z.object({
   label: z.string().optional().describe(SecretSyncs.DESTINATION_CONFIG.AZURE_APP_CONFIGURATION.label)
 });
 
+// inputs only, so syncs saved before this check still load
+const AzureAppConfigurationSyncDestinationConfigInputSchema = AzureAppConfigurationSyncDestinationConfigSchema.extend({
+  configurationUrl: z
+    .string()
+    .trim()
+    .max(255)
+    .refine(isValidAzureAppConfigurationUrl, {
+      message: "App Configuration URL must be a valid Azure App Configuration URL (https://<store-name>.azconfig.io)"
+    })
+    .describe(SecretSyncs.DESTINATION_CONFIG.AZURE_APP_CONFIGURATION.configurationUrl)
+});
+
 const AzureAppConfigurationSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
 export const AzureAppConfigurationSyncSchema = BaseSecretSyncSchema(
@@ -36,14 +49,14 @@ export const CreateAzureAppConfigurationSyncSchema = GenericCreateSecretSyncFiel
   SecretSync.AzureAppConfiguration,
   AzureAppConfigurationSyncOptionsConfig
 ).extend({
-  destinationConfig: AzureAppConfigurationSyncDestinationConfigSchema
+  destinationConfig: AzureAppConfigurationSyncDestinationConfigInputSchema
 });
 
 export const UpdateAzureAppConfigurationSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   SecretSync.AzureAppConfiguration,
   AzureAppConfigurationSyncOptionsConfig
 ).extend({
-  destinationConfig: AzureAppConfigurationSyncDestinationConfigSchema.optional()
+  destinationConfig: AzureAppConfigurationSyncDestinationConfigInputSchema.optional()
 });
 
 export const AzureAppConfigurationSyncListItemSchema = z

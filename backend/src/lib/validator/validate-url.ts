@@ -63,6 +63,25 @@ export const isValidAzureKeyVaultUrl = (url: string): boolean => {
   }
 };
 
+const AZURE_APP_CONFIGURATION_HOST_REGEX = new RE2(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.privatelink)?\.azconfig\.io$/);
+
+export const isValidAzureAppConfigurationUrl = (url: string): boolean => {
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    if (parsed.port) return false;
+    // checks the raw string: `search` and `hash` are empty for a bare "?" or "#"
+    if (url.includes("?") || url.includes("#")) return false;
+    if (parsed.pathname !== "/" && parsed.pathname !== "") return false;
+
+    return AZURE_APP_CONFIGURATION_HOST_REGEX.test(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+};
+
 type FQDNOptions = {
   require_tld?: boolean;
   allow_underscores?: boolean;
