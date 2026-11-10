@@ -457,6 +457,7 @@ function ImportSecretsContent({
     ) => {
       const next = [...current];
       const counts = { created: 0, updated: 0, skipped: 0 };
+      const written: { environment: string; secret: string }[] = [];
       selectedEnvs.forEach((environment) => {
         folderPaths.forEach((path) => {
           if (folderExists(next, scope.project, environment, path)) return;
@@ -507,6 +508,7 @@ function ImportSecretsContent({
               next.push(created);
               existing.set(name, created);
               counts.created += 1;
+              written.push({ environment, secret: `${path}\u0000${name}` });
               return;
             }
             if (!overwrite) {
@@ -527,10 +529,11 @@ function ImportSecretsContent({
             next[next.indexOf(match)] = updated;
             existing.set(name, updated);
             counts.updated += 1;
+            written.push({ environment, secret: `${path}\u0000${name}` });
           });
         });
       });
-      return { next, counts };
+      return { next, counts, written };
     };
     const { counts } = plan(resources);
     const targetOf = (environments: string[]) =>
@@ -542,16 +545,17 @@ function ImportSecretsContent({
       onApply(
         (current) => plan(current).next,
         (held) => {
-          const written = plan(resources, held).counts;
+          const result = plan(resources, held);
+          const keys = new Set(result.written.map((entry) => entry.secret)).size;
           const environments = selectedEnvs.filter((environment) =>
-            writes.some(({ path }) => !held(environment, path))
+            result.written.some((entry) => entry.environment === environment)
           );
           return {
-            title: `Uploaded ${plural(secretCount, "secret")}${folderSummary} to ${targetOf(environments)}`,
+            title: `Uploaded ${plural(keys, "secret")}${folderSummary} to ${targetOf(environments)}`,
             description: [
-              written.created && `${plural(written.created, "secret")} created`,
-              written.updated && `${written.updated} updated`,
-              written.skipped && `${written.skipped} skipped`
+              result.counts.created && `${plural(result.counts.created, "secret")} created`,
+              result.counts.updated && `${result.counts.updated} updated`,
+              result.counts.skipped && `${result.counts.skipped} skipped`
             ]
               .filter(Boolean)
               .join(", "),
