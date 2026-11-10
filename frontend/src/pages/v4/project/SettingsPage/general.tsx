@@ -166,7 +166,6 @@ const DeleteProtection = ({ project, canEdit }: { project: Project; canEdit: boo
   const [pending, setPending] = useState(false);
   return (
     <Card
-      variant="framed"
       title="Delete protection"
       description={
         project.hasDeleteProtection
@@ -213,7 +212,6 @@ const LeaveProject = ({
   return (
     <>
       <Card
-        variant="framed"
         title="Leave project"
         description="Removes your access to this project and its contents."
         action={
