@@ -302,11 +302,9 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
     secretKey: (hasSecrets && projectId && value("secret-key")[0]) || undefined,
     projectId: projectId ?? undefined
   };
-  const { data, isPending, hasNextPage, isFetchingNextPage, fetchNextPage } = org.useAuditLogs(
-    query,
-    projectId
-  );
-  const pages = data?.pages ?? [];
+  const { data, isPending, error, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } =
+    org.useAuditLogs(query, projectId);
+  const pages = error ? [] : (data?.pages ?? []);
   const rows = pages.flat();
   const canLoadMore = hasNextPage && pages[pages.length - 1]?.length === PAGE_SIZE;
   const filtered = filters.some((filter) => filter.values.length > 0);
@@ -422,7 +420,21 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
       }
     />
   );
-  if (storage?.storageDisabled)
+  if (error)
+    empty = (
+      <EmptyState
+        size="sm"
+        media="bare"
+        icon="alert"
+        title="Couldn't load audit logs"
+        actions={
+          <Button variant="outline" onClick={() => refetch()}>
+            Try again
+          </Button>
+        }
+      />
+    );
+  else if (storage?.storageDisabled)
     empty = (
       <EmptyState size="sm" media="bare" icon="history" title="Audit log storage is disabled" />
     );
@@ -514,11 +526,13 @@ const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
           <Heading level={2} size="subsection">
             Audit log, {active.title}
           </Heading>
-          <Meta mono={false}>
-            {isPending
-              ? "Loading events"
-              : `Showing ${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events`}
-          </Meta>
+          {!error && (
+            <Meta mono={false}>
+              {isPending
+                ? "Loading events"
+                : `Showing ${rows.length.toLocaleString("en-US")}${canLoadMore ? "+" : ""} events`}
+            </Meta>
+          )}
         </Inline>
         <DataTable<AuditLog>
           key={[active.from, active.to, JSON.stringify(filters)].join()}
