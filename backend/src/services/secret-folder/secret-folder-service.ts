@@ -34,6 +34,8 @@ import {
   checkFolderMovePolicyBlock,
   findFoldersWithContent,
   findPolicyProtectedFolder,
+  resolveBatchFolderEntries,
+  TFolderContentAccess,
   TFolderMoveAccessScope
 } from "@app/services/secret-folder/secret-folder-fns";
 import { TSecretSyncQueueFactory } from "@app/services/secret-sync/secret-sync-queue";
@@ -105,6 +107,7 @@ type TSecretFolderServiceFactoryDep = {
     | "findReferencedSecretReferencesBySecretKey"
     | "updateSecretReferenceEnvAndPath"
     | "findByFolderIds"
+    | "findFolderIdsWithSecrets"
     | "invalidateSecretCacheByProjectId"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -358,6 +361,7 @@ export const secretFolderServiceFactory = ({
     oldPath,
     newPath,
     actor,
+    permission,
     tx
   }: {
     projectId: string;
@@ -366,33 +370,47 @@ export const secretFolderServiceFactory = ({
     oldPath: string;
     newPath: string;
     actor: ActorType;
+    permission: TFolderContentAccess["permission"];
     tx: Knex;
   }) => {
     const subtree = await folderDAL.findByEnvsDeep({ parentIds: [folderId] }, tx);
-    const content = await findFoldersWithContent(
-      subtree.map((folder) => folder.id),
-      { secretV2BridgeDAL, secretImportDAL },
-      tx
-    );
+    const subtreeIds = subtree.map((folder) => folder.id);
+    await folderDAL.lockFoldersForUpdate(subtreeIds, tx);
+    const content = await findFoldersWithContent(subtreeIds, { secretV2BridgeDAL, secretImportDAL }, tx);
 
-    const rootAt = (rootFolderPath: string) => {
-      const toAbsPath = buildToAbsPath(rootFolderPath);
-      return subtree.map((folder) => ({ id: folder.id, path: toAbsPath(folder.path) }));
-    };
+    const toOldPath = buildToAbsPath(oldPath);
+    const toNewPath = buildToAbsPath(newPath);
+    const access = { permission, environment };
 
     const source = await findPolicyProtectedFolder(
-      { folders: rootAt(oldPath), content, projectId, environment, actor },
+      {
+        folders: subtree.map((folder) => ({ id: folder.id, path: toOldPath(folder.path) })),
+        content,
+        projectId,
+        environment,
+        actor
+      },
       { secretApprovalPolicyService },
       tx
     );
-    assertFolderRenameAllowed(source, "source");
+    assertFolderRenameAllowed(source, "source", access);
 
     const destination = await findPolicyProtectedFolder(
-      { folders: rootAt(newPath), content, projectId, environment, actor },
+      {
+        folders: subtree.map((folder) => ({
+          id: folder.id,
+          path: toNewPath(folder.path),
+          contentPath: toOldPath(folder.path)
+        })),
+        content,
+        projectId,
+        environment,
+        actor
+      },
       { secretApprovalPolicyService },
       tx
     );
-    assertFolderRenameAllowed(destination, "destination");
+    assertFolderRenameAllowed(destination, "destination", access);
   };
 
   const updateManyFolders = async ({
@@ -435,40 +453,16 @@ export const secretFolderServiceFactory = ({
     });
 
     const executeBulkUpdate = async (tx: Knex) => {
+      const entries = await resolveBatchFolderEntries(
+        { projectId: projectId as string, folders },
+        { folderDAL, projectEnvDAL },
+        tx
+      );
+
       return Promise.all(
-        folders.map(async (newFolder) => {
-          const { environment, path: secretPath, id, name, description } = newFolder;
+        entries.map(async ({ newFolder, parentFolder, env, folder, folderPath }) => {
+          const { environment, id, name, description } = newFolder;
 
-          const parentFolder = await folderDAL.findBySecretPath(projectId as string, environment, secretPath, tx);
-          if (!parentFolder) {
-            throw new NotFoundError({
-              message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
-              name: "UpdateManyFolders"
-            });
-          }
-
-          const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
-          if (!env) {
-            throw new NotFoundError({
-              message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`,
-              name: "UpdateManyFolders"
-            });
-          }
-          // now folder api accepts id based change
-          // this is for cli backward compatiability and when cli removes this, we will remove this logic
-          const folder = await folderDAL.findOne(
-            uuidValidate(id)
-              ? { envId: env.id, id, parentId: parentFolder.id }
-              : { envId: env.id, name: id, parentId: parentFolder.id },
-            tx
-          );
-
-          if (!folder) {
-            throw new NotFoundError({
-              message: `Folder with id '${id}' in environment with slug '${env.slug}' not found`,
-              name: "UpdateManyFolders"
-            });
-          }
           if (name !== folder.name) {
             // ensure that new folder name is unique
             const folderToCheck = await folderDAL.findOne(
@@ -491,9 +485,10 @@ export const secretFolderServiceFactory = ({
               projectId: projectId as string,
               environment,
               folderId: folder.id,
-              oldPath: path.posix.join(parentFolder.path, folder.name),
-              newPath: path.posix.join(parentFolder.path, name),
+              oldPath: folderPath,
+              newPath: path.posix.join(path.posix.dirname(folderPath), name),
               actor,
+              permission,
               tx
             });
           }
@@ -658,8 +653,9 @@ export const secretFolderServiceFactory = ({
           environment,
           folderId: folder.id,
           oldPath: oldFolderWithPath.path,
-          newPath: path.posix.join(parentFolder.path, name),
+          newPath: path.posix.join(path.posix.dirname(oldFolderWithPath.path), name),
           actor,
+          permission,
           tx
         });
       }
@@ -741,6 +737,7 @@ export const secretFolderServiceFactory = ({
     parentId,
     idOrName,
     actor,
+    permission,
     tx
   }: {
     projectId: string;
@@ -748,6 +745,7 @@ export const secretFolderServiceFactory = ({
     parentId: string;
     idOrName: string;
     actor: ActorType;
+    permission: TFolderContentAccess["permission"];
     tx: Knex;
   }) => {
     let targetFolder = await folderDAL
@@ -819,6 +817,10 @@ export const secretFolderServiceFactory = ({
       path: folder.path,
       id: folder.id
     }));
+    await folderDAL.lockFoldersForUpdate(
+      folderPolicyPaths.map((p) => p.id),
+      tx
+    );
 
     const folderIdsWithOpenRequests = await secretApprovalRequestService.findFolderIdsWithOpenRequests(
       folderPolicyPaths.map((p) => p.id),
@@ -845,7 +847,7 @@ export const secretFolderServiceFactory = ({
       { secretApprovalPolicyService },
       tx
     );
-    assertFolderDeleteAllowed(protectedFolder);
+    assertFolderDeleteAllowed(protectedFolder, { permission, environment: env.slug });
   };
 
   const deleteFolder = async ({
@@ -883,7 +885,7 @@ export const secretFolderServiceFactory = ({
           message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
         });
 
-      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, tx });
+      await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, permission, tx });
 
       let folderToDelete = await folderDAL
         .findOne(
@@ -1597,7 +1599,7 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, tx });
+          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, permission, tx });
 
           let folderToDelete = await folderDAL
             .findOne(

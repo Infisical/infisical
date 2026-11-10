@@ -1,13 +1,16 @@
 import { MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
+import { validate as uuidValidate } from "uuid";
 
 import { TSecretFolders } from "@app/db/schemas";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
+import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionHoneyTokenActions,
+  ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSet,
   ProjectPermissionSub
@@ -15,12 +18,14 @@ import {
 import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
-import { BadRequestError, InternalServerError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import { TFolderMoveBlockingType } from "./secret-folder-types";
 
 export const buildFolderPath = (
@@ -378,24 +383,25 @@ export const findFoldersWithContent = async (
     secretV2BridgeDAL,
     secretImportDAL
   }: {
-    secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findByFolderIds">;
+    secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "findFolderIdsWithSecrets">;
     secretImportDAL: Pick<TSecretImportDALFactory, "findFolderIdsWithImports">;
   },
   tx: Knex
 ): Promise<TFolderContent> => {
   if (!folderIds.length) return { secretFolderIds: new Set(), importFolderIds: new Set() };
 
-  const secrets = await secretV2BridgeDAL.findByFolderIds({ folderIds, tx });
+  const secretFolderIds = await secretV2BridgeDAL.findFolderIdsWithSecrets(folderIds, tx);
   const importFolderIds = await secretImportDAL.findFolderIdsWithImports(folderIds, tx);
 
   return {
-    secretFolderIds: new Set(secrets.map((secret) => secret.folderId)),
+    secretFolderIds: new Set(secretFolderIds),
     importFolderIds: new Set(importFolderIds)
   };
 };
 
 export type TPolicyProtectedFolder = {
   path: string;
+  contentPath: string;
   policyName: string;
   protects: "secret" | "secret_import";
 };
@@ -410,7 +416,7 @@ export const findPolicyProtectedFolder = async (
     environment,
     actor
   }: {
-    folders: { id: string; path: string }[];
+    folders: { id: string; path: string; contentPath?: string }[];
     content: TFolderContent;
     projectId: string;
     environment: string;
@@ -438,6 +444,7 @@ export const findPolicyProtectedFolder = async (
     if (shouldApplyPolicy(policy, actor)) {
       return {
         path: folder.path,
+        contentPath: folder.contentPath ?? folder.path,
         policyName: policy.name,
         protects: content.secretFolderIds.has(folder.id) ? "secret" : "secret_import"
       };
@@ -447,59 +454,173 @@ export const findPolicyProtectedFolder = async (
   return null;
 };
 
-const PROTECTED_CONTENT_LABEL = {
+export type TFolderContentAccess = {
+  permission: MongoAbility<ProjectPermissionSet>;
+  environment: string;
+};
+
+type TVisibleProtectedContent = TPolicyProtectedFolder["protects"] | "content";
+
+const PROTECTED_CONTENT_LABEL: Record<TVisibleProtectedContent, string> = {
   secret: "secrets",
-  secret_import: "secret imports"
-} as const;
+  secret_import: "secret imports",
+  content: "resources"
+};
 
 const FOLDER_CHANGE_BLOCKED_BY_POLICY = {
   delete: {
     secret: "DeleteFolderProtectedByPolicy",
-    secret_import: "DeleteFolderImportProtectedByPolicy"
+    secret_import: "DeleteFolderImportProtectedByPolicy",
+    content: "DeleteFolderProtectedByPolicy"
   },
   rename: {
     secret: "RenameFolderProtectedByPolicy",
-    secret_import: "RenameFolderImportProtectedByPolicy"
+    secret_import: "RenameFolderImportProtectedByPolicy",
+    content: "RenameFolderProtectedByPolicy"
   }
 } as const;
 
-const folderChangeBlockedByPolicyMessage = (
-  action: keyof typeof FOLDER_CHANGE_BLOCKED_BY_POLICY,
-  { path, policyName, protects }: TPolicyProtectedFolder
-) => {
-  const content = PROTECTED_CONTENT_LABEL[protects];
-  return `You cannot ${action} the selected folder because it contains one or more ${content} that are protected by the change policy "${policyName}" at folder path "${path}". Please remove the ${content} at folder path "${path}" and try again.`;
+const visibleProtectedContent = (
+  { contentPath, protects }: TPolicyProtectedFolder,
+  { permission, environment }: TFolderContentAccess
+): TVisibleProtectedContent => {
+  const canRead =
+    protects === "secret_import"
+      ? canActorReadBlock(permission, environment, "secret_import", contentPath)
+      : hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath: contentPath
+        });
+
+  return canRead ? protects : "content";
 };
 
 const throwFolderChangeBlockedByPolicy = (
   action: keyof typeof FOLDER_CHANGE_BLOCKED_BY_POLICY,
-  protectedFolder: TPolicyProtectedFolder
+  { path, policyName }: TPolicyProtectedFolder,
+  visibleContent: TVisibleProtectedContent
 ): never => {
+  const label = PROTECTED_CONTENT_LABEL[visibleContent];
   throw new BadRequestError({
-    message: folderChangeBlockedByPolicyMessage(action, protectedFolder),
-    name: FOLDER_CHANGE_BLOCKED_BY_POLICY[action][protectedFolder.protects]
+    message: `You cannot ${action} the selected folder because it contains one or more ${label} that are protected by the change policy "${policyName}" at folder path "${path}". Please remove the ${label} at folder path "${path}" and try again.`,
+    name: FOLDER_CHANGE_BLOCKED_BY_POLICY[action][visibleContent]
   });
 };
 
-export const assertFolderDeleteAllowed = (protectedFolder: TPolicyProtectedFolder | null) => {
+export const assertFolderDeleteAllowed = (
+  protectedFolder: TPolicyProtectedFolder | null,
+  access: TFolderContentAccess
+) => {
   if (!protectedFolder) return;
-  throwFolderChangeBlockedByPolicy("delete", protectedFolder);
+  throwFolderChangeBlockedByPolicy("delete", protectedFolder, visibleProtectedContent(protectedFolder, access));
 };
 
 export const assertFolderRenameAllowed = (
   protectedFolder: TPolicyProtectedFolder | null,
-  scope: "source" | "destination"
+  scope: "source" | "destination",
+  access: TFolderContentAccess
 ) => {
   if (!protectedFolder) return;
 
-  const { path, policyName, protects } = protectedFolder;
+  const visibleContent = visibleProtectedContent(protectedFolder, access);
 
   if (scope === "destination") {
+    const { path, policyName } = protectedFolder;
     throw new BadRequestError({
-      message: `You cannot rename the selected folder because its ${PROTECTED_CONTENT_LABEL[protects]} would move to folder path "${path}", which is protected by the change policy "${policyName}". Choose a different name and try again.`,
+      message: `You cannot rename the selected folder because its ${PROTECTED_CONTENT_LABEL[visibleContent]} would move to folder path "${path}", which is protected by the change policy "${policyName}". Choose a different name and try again.`,
       name: "RenameFolderIntoProtectedPath"
     });
   }
 
-  throwFolderChangeBlockedByPolicy("rename", protectedFolder);
+  throwFolderChangeBlockedByPolicy("rename", protectedFolder, visibleContent);
+};
+
+export const assertNoOverlappingFolderEntries = (entries: { environment: string; path: string }[]) => {
+  entries.forEach((entry, index) => {
+    const overlapping = entries.find(
+      (other, otherIndex) =>
+        otherIndex !== index &&
+        other.environment === entry.environment &&
+        (other.path === entry.path || entry.path.startsWith(`${other.path}/`))
+    );
+
+    if (overlapping) {
+      throw new BadRequestError({
+        message: `Folder "${entry.path}" overlaps with folder "${overlapping.path}" in environment "${entry.environment}". A batch can include each folder only once and cannot include a folder together with its subfolders. Update them in separate requests.`,
+        name: "UpdateManyFolders"
+      });
+    }
+  });
+};
+
+export const resolveBatchFolderEntries = async <T extends { environment: string; path: string; id: string }>(
+  { projectId, folders }: { projectId: string; folders: T[] },
+  {
+    folderDAL,
+    projectEnvDAL
+  }: {
+    folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findOne" | "findSecretPathByFolderIds">;
+    projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
+  },
+  tx: Knex
+) => {
+  const resolved = await Promise.all(
+    folders.map(async (newFolder) => {
+      const { environment, path: secretPath, id } = newFolder;
+
+      const parentFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, tx);
+      if (!parentFolder) {
+        throw new NotFoundError({
+          message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`,
+          name: "UpdateManyFolders"
+        });
+      }
+
+      const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
+      if (!env) {
+        throw new NotFoundError({
+          message: `Environment with slug '${environment}' in project with ID '${projectId}' not found`,
+          name: "UpdateManyFolders"
+        });
+      }
+      // now folder api accepts id based change
+      // this is for cli backward compatiability and when cli removes this, we will remove this logic
+      const folder = await folderDAL.findOne(
+        uuidValidate(id)
+          ? { envId: env.id, id, parentId: parentFolder.id }
+          : { envId: env.id, name: id, parentId: parentFolder.id },
+        tx
+      );
+
+      if (!folder) {
+        throw new NotFoundError({
+          message: `Folder with id '${id}' in environment with slug '${env.slug}' not found`,
+          name: "UpdateManyFolders"
+        });
+      }
+
+      return { newFolder, parentFolder, env, folder };
+    })
+  );
+
+  const folderPaths = await folderDAL.findSecretPathByFolderIds(
+    projectId,
+    resolved.map(({ folder }) => folder.id),
+    tx
+  );
+
+  const entries = resolved.map((entry, index) => {
+    const folderPath = folderPaths[index]?.path;
+    if (!folderPath) {
+      throw new NotFoundError({
+        message: `Failed to retrieve path for folder with ID '${entry.folder.id}'`,
+        name: "UpdateManyFolders"
+      });
+    }
+    return { ...entry, folderPath };
+  });
+
+  assertNoOverlappingFolderEntries(entries.map(({ env, folderPath }) => ({ environment: env.slug, path: folderPath })));
+
+  return entries;
 };

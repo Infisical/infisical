@@ -10,6 +10,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -191,6 +192,39 @@ func TestFolder_Update(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.ElementsMatch(t, []string{"app", "web"}, folderNames(t, proj, "dev", "/"))
 		require.Equal(t, []string{"API_KEY"}, secretKeys(t, proj, "dev", "/app"))
+	})
+
+	t.Run("should refuse a batch that renames a folder together with its subfolder and keep both names", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		appID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
+		apiID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app/api"))
+		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "value", secretmanager.WithPath("/app/api"))
+		secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/service/web"}, reviewer)
+		batch := api.UpdateSecretFoldersBatchJSONRequestBody{ProjectId: proj.ID}
+		batch.Folders = slices.Grow(batch.Folders, 2)[:2]
+		batch.Folders[0].Id, batch.Folders[0].Environment, batch.Folders[0].Name, batch.Folders[0].Path =
+			appID.String(), "dev", "service", new("/")
+		batch.Folders[1].Id, batch.Folders[1].Environment, batch.Folders[1].Name, batch.Folders[1].Path =
+			apiID.String(), "dev", "web", new("/app")
+		spec.Why(t, `Each rename alone keeps API_KEY outside the policy on /service/web; together they would
+			move it there without approval.`)
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretFoldersBatchWithResponse(t.Context(), batch)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			`Folder "/app/api" overlaps with folder "/app" in environment "dev". A batch can include each folder only once and cannot include a folder together with its subfolders. Update them in separate requests.`,
+			res.JSON400.Message)
+		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
+		require.Equal(t, []string{"API_KEY"}, secretKeys(t, proj, "dev", "/app/api"))
 	})
 
 	t.Run("should refuse a rename when a policy protects a secret import in a subfolder and keep the folder", func(t *testing.T) {

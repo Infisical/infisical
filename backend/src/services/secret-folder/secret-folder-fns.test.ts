@@ -1,26 +1,40 @@
+import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { Knex } from "knex";
 import { vi } from "vitest";
 
 import { TSecretFolders } from "@app/db/schemas";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
+import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretFolderDALFactory } from "./secret-folder-dal";
 import {
   assertFolderDeleteAllowed,
   assertFolderRenameAllowed,
+  assertNoOverlappingFolderEntries,
   buildChildrenMap,
   buildFolderIdMap,
   buildFolderPath,
   checkFolderHasRbacPolicies,
   findFoldersWithContent,
   findPolicyProtectedFolder,
+  resolveBatchFolderEntries,
   resolveClosestFolder,
   resolvePathToFolder,
-  TFolderContent
+  TFolderContent,
+  TFolderContentAccess,
+  TPolicyProtectedFolder
 } from "./secret-folder-fns";
 
 const makeFolder = (id: string, name: string, parentId: string | null, envId: string = "env-1"): TSecretFolders => ({
@@ -397,40 +411,43 @@ describe("findFoldersWithContent", () => {
   const tx = {} as Knex;
 
   const makeDeps = (secretFolderIds: string[], importFolderIds: string[]) => {
-    const findByFolderIds = vi.fn().mockResolvedValue(secretFolderIds.map((folderId) => ({ folderId })));
+    const findFolderIdsWithSecrets = vi.fn().mockResolvedValue(secretFolderIds);
     const findFolderIdsWithImports = vi.fn().mockResolvedValue(importFolderIds);
     return {
       deps: {
-        secretV2BridgeDAL: { findByFolderIds } as unknown as Pick<TSecretV2BridgeDALFactory, "findByFolderIds">,
+        secretV2BridgeDAL: { findFolderIdsWithSecrets } as unknown as Pick<
+          TSecretV2BridgeDALFactory,
+          "findFolderIdsWithSecrets"
+        >,
         secretImportDAL: { findFolderIdsWithImports } as unknown as Pick<
           TSecretImportDALFactory,
           "findFolderIdsWithImports"
         >
       },
-      findByFolderIds,
+      findFolderIdsWithSecrets,
       findFolderIdsWithImports
     };
   };
 
   test("collects the folders holding secrets and the folders holding imports, in the transaction", async () => {
-    const { deps, findByFolderIds, findFolderIdsWithImports } = makeDeps(["a-id", "a-id"], ["b-id"]);
+    const { deps, findFolderIdsWithSecrets, findFolderIdsWithImports } = makeDeps(["a-id"], ["b-id"]);
 
     const content = await findFoldersWithContent(["a-id", "b-id", "c-id"], deps, tx);
 
     expect(content.secretFolderIds).toEqual(new Set(["a-id"]));
     expect(content.importFolderIds).toEqual(new Set(["b-id"]));
-    expect(findByFolderIds).toHaveBeenCalledWith({ folderIds: ["a-id", "b-id", "c-id"], tx });
+    expect(findFolderIdsWithSecrets).toHaveBeenCalledWith(["a-id", "b-id", "c-id"], tx);
     expect(findFolderIdsWithImports).toHaveBeenCalledWith(["a-id", "b-id", "c-id"], tx);
   });
 
   test("returns empty sets without querying for no folders", async () => {
-    const { deps, findByFolderIds, findFolderIdsWithImports } = makeDeps(["a-id"], ["b-id"]);
+    const { deps, findFolderIdsWithSecrets, findFolderIdsWithImports } = makeDeps(["a-id"], ["b-id"]);
 
     const content = await findFoldersWithContent([], deps, tx);
 
     expect(content.secretFolderIds.size).toBe(0);
     expect(content.importFolderIds.size).toBe(0);
-    expect(findByFolderIds).not.toHaveBeenCalled();
+    expect(findFolderIdsWithSecrets).not.toHaveBeenCalled();
     expect(findFolderIdsWithImports).not.toHaveBeenCalled();
   });
 });
@@ -492,6 +509,7 @@ describe("findPolicyProtectedFolder", () => {
 
     await expect(find(makeContent({ secrets: ["web-id", "api-id"] }), deps)).resolves.toEqual({
       path: "/app/api",
+      contentPath: "/app/api",
       policyName: "prod-guard",
       protects: "secret"
     });
@@ -502,9 +520,28 @@ describe("findPolicyProtectedFolder", () => {
 
     await expect(find(makeContent({ imports: ["api-id"] }), deps)).resolves.toEqual({
       path: "/app/api",
+      contentPath: "/app/api",
       policyName: "prod-guard",
       protects: "secret_import"
     });
+  });
+
+  test("reports where the content lives now when it differs from the checked path", async () => {
+    const { deps } = makeService([["/prod/api", guard]]);
+
+    await expect(
+      findPolicyProtectedFolder(
+        {
+          folders: [{ id: "api-id", path: "/prod/api", contentPath: "/staging/api" }],
+          content: makeContent({ secrets: ["api-id"] }),
+          projectId: "project-1",
+          environment: "dev",
+          actor: ActorType.USER
+        },
+        deps,
+        tx
+      )
+    ).resolves.toMatchObject({ path: "/prod/api", contentPath: "/staging/api" });
   });
 
   test("reports a secret when the folder holds both secrets and imports", async () => {
@@ -535,20 +572,35 @@ describe("findPolicyProtectedFolder", () => {
   });
 });
 
-describe("assertFolderDeleteAllowed", () => {
-  const thrown = (fn: () => void) => {
-    try {
-      fn();
-    } catch (error) {
-      return error;
-    }
-    throw new Error("expected the delete to be refused");
-  };
+const buildAccess = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]): TFolderContentAccess => ({
+  permission: createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher }),
+  environment: "dev"
+});
 
+const canReadAll = buildAccess([
+  { action: ProjectPermissionSecretActions.DescribeSecret, subject: ProjectPermissionSub.Secrets },
+  { action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretImports }
+]);
+const canReadNothing = buildAccess([]);
+
+const protectedAt = (
+  path: string,
+  protects: TPolicyProtectedFolder["protects"],
+  contentPath: string = path
+): TPolicyProtectedFolder => ({ path, contentPath, policyName: "prod-guard", protects });
+
+const thrown = (fn: () => void) => {
+  try {
+    fn();
+  } catch (error) {
+    return error;
+  }
+  throw new Error("expected the change to be refused");
+};
+
+describe("assertFolderDeleteAllowed", () => {
   test("refuses a delete when a change policy covers a secret in the tree", () => {
-    const error = thrown(() =>
-      assertFolderDeleteAllowed({ path: "/app/api", policyName: "prod-guard", protects: "secret" })
-    );
+    const error = thrown(() => assertFolderDeleteAllowed(protectedAt("/app/api", "secret"), canReadAll));
 
     expect(error).toBeInstanceOf(BadRequestError);
     expect(error).toMatchObject({
@@ -559,9 +611,7 @@ describe("assertFolderDeleteAllowed", () => {
   });
 
   test("refuses a delete when a change policy covers a secret import in the tree", () => {
-    const error = thrown(() =>
-      assertFolderDeleteAllowed({ path: "/app/api", policyName: "prod-guard", protects: "secret_import" })
-    );
+    const error = thrown(() => assertFolderDeleteAllowed(protectedAt("/app/api", "secret_import"), canReadAll));
 
     expect(error).toBeInstanceOf(BadRequestError);
     expect(error).toMatchObject({
@@ -571,25 +621,45 @@ describe("assertFolderDeleteAllowed", () => {
     });
   });
 
+  test.each(["secret", "secret_import"] as const)(
+    "refuses with a generic error when the caller cannot read the protected %s",
+    (protects) => {
+      const error = thrown(() => assertFolderDeleteAllowed(protectedAt("/app/api", protects), canReadNothing));
+
+      expect(error).toBeInstanceOf(BadRequestError);
+      expect(error).toMatchObject({
+        name: "DeleteFolderProtectedByPolicy",
+        message:
+          'You cannot delete the selected folder because it contains one or more resources that are protected by the change policy "prod-guard" at folder path "/app/api". Please remove the resources at folder path "/app/api" and try again.'
+      });
+    }
+  );
+
+  test("names the content only where the caller can read it", () => {
+    const access = buildAccess([
+      {
+        action: ProjectPermissionActions.Read,
+        subject: ProjectPermissionSub.SecretImports,
+        conditions: { secretPath: { $glob: "/app/web/**" } }
+      }
+    ]);
+
+    expect(thrown(() => assertFolderDeleteAllowed(protectedAt("/app/api", "secret_import"), access))).toMatchObject({
+      name: "DeleteFolderProtectedByPolicy"
+    });
+    expect(thrown(() => assertFolderDeleteAllowed(protectedAt("/app/web", "secret_import"), access))).toMatchObject({
+      name: "DeleteFolderImportProtectedByPolicy"
+    });
+  });
+
   test("allows a delete when nothing is protected", () => {
-    expect(assertFolderDeleteAllowed(null)).toBeUndefined();
+    expect(assertFolderDeleteAllowed(null, canReadNothing)).toBeUndefined();
   });
 });
 
 describe("assertFolderRenameAllowed", () => {
-  const thrown = (fn: () => void) => {
-    try {
-      fn();
-    } catch (error) {
-      return error;
-    }
-    throw new Error("expected the rename to be refused");
-  };
-
   test("refuses a rename when a change policy covers a secret in the tree", () => {
-    const error = thrown(() =>
-      assertFolderRenameAllowed({ path: "/app/api", policyName: "prod-guard", protects: "secret" }, "source")
-    );
+    const error = thrown(() => assertFolderRenameAllowed(protectedAt("/app/api", "secret"), "source", canReadAll));
 
     expect(error).toBeInstanceOf(BadRequestError);
     expect(error).toMatchObject({
@@ -601,7 +671,7 @@ describe("assertFolderRenameAllowed", () => {
 
   test("refuses a rename when a change policy covers a secret import in the tree", () => {
     const error = thrown(() =>
-      assertFolderRenameAllowed({ path: "/app/api", policyName: "prod-guard", protects: "secret_import" }, "source")
+      assertFolderRenameAllowed(protectedAt("/app/api", "secret_import"), "source", canReadAll)
     );
 
     expect(error).toBeInstanceOf(BadRequestError);
@@ -612,9 +682,24 @@ describe("assertFolderRenameAllowed", () => {
     });
   });
 
+  test.each(["secret", "secret_import"] as const)(
+    "refuses with a generic error when the caller cannot read the protected %s",
+    (protects) => {
+      const error = thrown(() =>
+        assertFolderRenameAllowed(protectedAt("/app/api", protects), "source", canReadNothing)
+      );
+
+      expect(error).toMatchObject({
+        name: "RenameFolderProtectedByPolicy",
+        message:
+          'You cannot rename the selected folder because it contains one or more resources that are protected by the change policy "prod-guard" at folder path "/app/api". Please remove the resources at folder path "/app/api" and try again.'
+      });
+    }
+  );
+
   test("refuses a rename that would move secrets under a protected path", () => {
     const error = thrown(() =>
-      assertFolderRenameAllowed({ path: "/prod", policyName: "prod-guard", protects: "secret" }, "destination")
+      assertFolderRenameAllowed(protectedAt("/prod", "secret", "/staging"), "destination", canReadAll)
     );
 
     expect(error).toBeInstanceOf(BadRequestError);
@@ -627,10 +712,7 @@ describe("assertFolderRenameAllowed", () => {
 
   test("refuses a rename that would move secret imports under a protected path", () => {
     const error = thrown(() =>
-      assertFolderRenameAllowed(
-        { path: "/prod/api", policyName: "prod-guard", protects: "secret_import" },
-        "destination"
-      )
+      assertFolderRenameAllowed(protectedAt("/prod/api", "secret_import", "/staging/api"), "destination", canReadAll)
     );
 
     expect(error).toMatchObject({
@@ -640,8 +722,162 @@ describe("assertFolderRenameAllowed", () => {
     });
   });
 
+  test("checks the caller's access where the content lives now, not at the destination", () => {
+    const access = buildAccess([
+      {
+        action: ProjectPermissionSecretActions.DescribeSecret,
+        subject: ProjectPermissionSub.Secrets,
+        conditions: { secretPath: { $glob: "/staging/**" } }
+      }
+    ]);
+
+    expect(() =>
+      assertFolderRenameAllowed(protectedAt("/prod/api", "secret", "/staging/api"), "destination", access)
+    ).toThrow("because its secrets would move");
+    expect(() =>
+      assertFolderRenameAllowed(protectedAt("/staging/api", "secret", "/prod/api"), "destination", access)
+    ).toThrow("because its resources would move");
+  });
+
   test("allows a rename when nothing is protected on either side", () => {
-    expect(assertFolderRenameAllowed(null, "source")).toBeUndefined();
-    expect(assertFolderRenameAllowed(null, "destination")).toBeUndefined();
+    expect(assertFolderRenameAllowed(null, "source", canReadNothing)).toBeUndefined();
+    expect(assertFolderRenameAllowed(null, "destination", canReadNothing)).toBeUndefined();
+  });
+});
+
+describe("assertNoOverlappingFolderEntries", () => {
+  const entry = (path: string, environment: string = "dev") => ({ environment, path });
+
+  test("allows siblings, prefix-named siblings, and the same path in other environments", () => {
+    expect(() =>
+      assertNoOverlappingFolderEntries([entry("/app/api"), entry("/app/web"), entry("/a"), entry("/ab")])
+    ).not.toThrow();
+    expect(() => assertNoOverlappingFolderEntries([entry("/app"), entry("/app", "prod")])).not.toThrow();
+    expect(() => assertNoOverlappingFolderEntries([entry("/app"), entry("/app/api", "prod")])).not.toThrow();
+  });
+
+  test("refuses the same folder twice", () => {
+    expect(() => assertNoOverlappingFolderEntries([entry("/app"), entry("/app")])).toThrow(BadRequestError);
+  });
+
+  test.each([
+    ["parent first", ["/app", "/app/api/v1"]],
+    ["child first", ["/app/api/v1", "/app"]]
+  ])("refuses a folder together with one of its subfolders (%s)", (_, paths) => {
+    const error = thrown(() => assertNoOverlappingFolderEntries(paths.map((path) => entry(path))));
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect(error).toMatchObject({
+      name: "UpdateManyFolders",
+      message:
+        'Folder "/app/api/v1" overlaps with folder "/app" in environment "dev". A batch can include each folder only once and cannot include a folder together with its subfolders. Update them in separate requests.'
+    });
+  });
+});
+
+describe("resolveBatchFolderEntries", () => {
+  const tx = {} as Knex;
+  const appId = "11111111-1111-4111-8111-111111111111";
+
+  const makeDeps = (pathById: Record<string, string>) => {
+    const folders = [
+      { id: appId, name: "app", parentId: "root-id" },
+      { id: "api-id", name: "api", parentId: appId }
+    ];
+    const parentByPath: Record<string, { id: string; path: string }> = {
+      "/": { id: "root-id", path: "/" },
+      app: { id: appId, path: "app" },
+      "/app": { id: appId, path: "/app" }
+    };
+
+    const findBySecretPath = vi.fn(
+      async (_projectId: string, _env: string, secretPath: string) => parentByPath[secretPath]
+    );
+    const findOne = vi.fn(async (filter: { id?: string; name?: string; parentId: string }) =>
+      folders.find(
+        (folder) =>
+          folder.parentId === filter.parentId && (filter.id ? folder.id === filter.id : folder.name === filter.name)
+      )
+    );
+    const findSecretPathByFolderIds = vi.fn(async (_projectId: string, ids: string[]) =>
+      ids.map((id) => (pathById[id] ? { path: pathById[id] } : undefined))
+    );
+    const findEnv = vi.fn(async () => ({ id: "env-1", slug: "dev" }));
+
+    return {
+      deps: {
+        folderDAL: { findBySecretPath, findOne, findSecretPathByFolderIds } as unknown as Pick<
+          TSecretFolderDALFactory,
+          "findBySecretPath" | "findOne" | "findSecretPathByFolderIds"
+        >,
+        projectEnvDAL: { findOne: findEnv } as unknown as Pick<TProjectEnvDALFactory, "findOne">
+      },
+      findSecretPathByFolderIds
+    };
+  };
+
+  const resolve = (
+    folders: { environment: string; path: string; id: string; name: string }[],
+    deps: ReturnType<typeof makeDeps>["deps"]
+  ) => resolveBatchFolderEntries({ projectId: "project-1", folders }, deps, tx);
+
+  test("returns each folder's path from the database, read once for the whole batch", async () => {
+    const { deps, findSecretPathByFolderIds } = makeDeps({ "api-id": "/app/api" });
+
+    const [entry] = await resolve([{ environment: "dev", path: "app", id: "api", name: "web" }], deps);
+
+    expect(entry.folder).toMatchObject({ id: "api-id" });
+    expect(entry.folderPath).toBe("/app/api");
+    expect(findSecretPathByFolderIds).toHaveBeenCalledTimes(1);
+    expect(findSecretPathByFolderIds).toHaveBeenCalledWith("project-1", ["api-id"], tx);
+  });
+
+  test("finds a folder by ID or by name", async () => {
+    const { deps } = makeDeps({ [appId]: "/app" });
+
+    const [byId] = await resolve([{ environment: "dev", path: "/", id: appId, name: "service" }], deps);
+    const [byName] = await resolve([{ environment: "dev", path: "/", id: "app", name: "service" }], deps);
+
+    expect(byId.folder).toMatchObject({ id: appId });
+    expect(byName.folder).toMatchObject({ id: appId });
+  });
+
+  test("refuses the same folder sent once by ID and once by name", async () => {
+    const { deps } = makeDeps({ [appId]: "/app" });
+
+    await expect(
+      resolve(
+        [
+          { environment: "dev", path: "/", id: appId, name: "service" },
+          { environment: "dev", path: "/", id: "app", name: "service" }
+        ],
+        deps
+      )
+    ).rejects.toThrow('Folder "/app" overlaps with folder "/app"');
+  });
+
+  test("refuses a batch that renames a folder and one of its subfolders", async () => {
+    const { deps } = makeDeps({ [appId]: "/app", "api-id": "/app/api" });
+
+    await expect(
+      resolve(
+        [
+          { environment: "dev", path: "/", id: appId, name: "service" },
+          { environment: "dev", path: "/app", id: "api", name: "web" }
+        ],
+        deps
+      )
+    ).rejects.toThrow('Folder "/app/api" overlaps with folder "/app"');
+  });
+
+  test("refuses a folder that does not exist under the given path", async () => {
+    const { deps } = makeDeps({});
+
+    await expect(resolve([{ environment: "dev", path: "/app", id: "missing", name: "web" }], deps)).rejects.toThrow(
+      "Folder with id 'missing' in environment with slug 'dev' not found"
+    );
+    await expect(resolve([{ environment: "dev", path: "/nope", id: "api", name: "web" }], deps)).rejects.toThrow(
+      "Folder with path '/nope' in environment with slug 'dev' not found"
+    );
   });
 });
