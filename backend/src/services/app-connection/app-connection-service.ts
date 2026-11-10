@@ -4,6 +4,13 @@ import { ActionProjectType, OrganizationActionScope, ProjectType, TAppConnection
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionAppConnectionActions,
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects,
+  ProjectPermissionAppConnectionActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
@@ -13,16 +20,7 @@ import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/ga
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import {
-  OrgPermissionAppConnectionActions,
-  OrgPermissionGatewayActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionAppConnectionActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";

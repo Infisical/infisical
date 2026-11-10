@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/organizations-projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { getRevocationReasonLabel } from "@app/services/pki-alert-v2/pki-alert-v2-types";

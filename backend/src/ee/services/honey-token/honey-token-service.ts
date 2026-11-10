@@ -7,7 +7,7 @@ import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig as getAppConfig } from "@app/lib/config/env";

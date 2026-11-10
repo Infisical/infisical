@@ -1,8 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/organizations-projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";

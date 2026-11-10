@@ -1,9 +1,12 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";

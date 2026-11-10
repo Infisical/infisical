@@ -2,6 +2,8 @@ import { ProjectType } from "@app/db/schemas";
 import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
 
+export * from "./service/pam-roles";
+
 export type TPamDeps = {
   organizationsProjectsDomain: TOrganizationsProjectsDomain;
   licenseRegistry: TLicenseRegistry;

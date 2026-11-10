@@ -5,6 +5,12 @@ import RE2 from "re2";
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionKmipActions,
+  OrgPermissionSubjects,
+  ProjectPermissionKmipActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -20,9 +26,7 @@ import { extractAlgorithmsFromCSR } from "@app/services/certificate-common/certi
 import { constructPemChainFromCerts } from "@app/services/certificate/certificate-fns";
 import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
 
-import { OrgPermissionKmipActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionKmipActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TKmipClientCertificateDALFactory } from "./kmip-client-certificate-dal";
 import { TKmipClientDALFactory } from "./kmip-client-dal";
 import { getKmipServerAltNameType, KMIP_SERVER_HOSTNAMES_OR_IPS_MESSAGE } from "./kmip-fns";

@@ -10,10 +10,9 @@ import {
   ResourceType,
   TMemberships
 } from "@app/db/schemas";
+import { OrgPermissionSet, ProjectPermissionSet } from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 
-import { OrgPermissionSet } from "./org-permission";
-import { ProjectPermissionSet } from "./project-permission";
 import { ResourcePermissionSet } from "./resource-permission";
 
 export type TBuildProjectPermissionDTO = {

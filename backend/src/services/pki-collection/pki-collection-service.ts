@@ -1,8 +1,8 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, TPkiCollectionItems } from "@app/db/schemas";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/organizations-projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";

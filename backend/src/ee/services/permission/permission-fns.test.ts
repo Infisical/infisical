@@ -1,6 +1,15 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { describe, expect, test } from "vitest";
 
+import {
+  ProjectPermissionActions,
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { ForbiddenRequestError } from "@app/lib/errors";
@@ -15,15 +24,6 @@ import {
   throwIfMissingSecretReadValueOrDescribePermission,
   validateOrgSSO
 } from "./permission-fns";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionGroupActions,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionMemberActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "./project-permission";
 
 type Rule = RawRuleOf<MongoAbility<ProjectPermissionSet>>;
 

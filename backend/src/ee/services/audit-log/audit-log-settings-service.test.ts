@@ -2,6 +2,16 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import {
+  orgAdminPermissions,
+  orgMemberPermissions,
+  OrgPermissionActions,
+  OrgPermissionAuditLogsActions,
+  OrgPermissionSubjects,
+  ProjectPermissionActions,
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 
@@ -12,18 +22,6 @@ import {
   projectMemberPermissions,
   projectViewerPermission
 } from "../permission/default-roles";
-import {
-  orgAdminPermissions,
-  orgMemberPermissions,
-  OrgPermissionActions,
-  OrgPermissionAuditLogsActions,
-  OrgPermissionSubjects
-} from "../permission/org-permission";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionAuditLogsActions,
-  ProjectPermissionSub
-} from "../permission/project-permission";
 import { AuditLogEventClass } from "./audit-log-event-classes";
 import { auditLogSettingsServiceFactory, isAuditLogEventEnabled } from "./audit-log-settings-service";
 import { TEffectiveAuditLogSettings } from "./audit-log-settings-types";

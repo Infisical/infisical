@@ -19,25 +19,13 @@ import {
 } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
-import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
-import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
-  getRestoredLeaseRevocationJobId,
-  TDynamicSecretLeaseQueueServiceFactory
-} from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
-import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
-import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import {
+  TOrganizationsProjectsDomain,
   OrgPermissionActions,
   OrgPermissionAdminConsoleAction,
   OrgPermissionMemberActions,
   OrgPermissionProjectActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
+  OrgPermissionSubjects,
   ProjectPermissionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
@@ -48,7 +36,17 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
+import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
+import {
+  getRestoredLeaseRevocationJobId,
+  TDynamicSecretLeaseQueueServiceFactory
+} from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
+import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
+import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub

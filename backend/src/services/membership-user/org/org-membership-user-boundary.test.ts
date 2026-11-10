@@ -10,7 +10,7 @@ import {
   orgNoAccessPermissions,
   OrgPermissionMemberActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newOrgMembershipUserFactory } from "./org-membership-user-factory";

@@ -6,7 +6,7 @@ import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 

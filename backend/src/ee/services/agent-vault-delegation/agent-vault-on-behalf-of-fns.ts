@@ -1,9 +1,9 @@
 import { OrgMembershipStatus } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";

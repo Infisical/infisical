@@ -5,7 +5,7 @@ import { Knex } from "knex";
 import {
   backfillPermissionV1SchemaToV2Schema,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
 
 import { TableName } from "../schemas";
 

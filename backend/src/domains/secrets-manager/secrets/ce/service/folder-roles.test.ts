@@ -1,8 +1,6 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
 
 import { SecretFolderRole } from "@app/db/schemas";
-
-import { SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";
 import {
   ProjectPermissionActions,
   ProjectPermissionCommitsActions,
@@ -12,7 +10,9 @@ import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "./project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+
+import { SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";
 
 const abilityFor = (role: SecretFolderRole) =>
   createMongoAbility<MongoAbility<ProjectPermissionSet>>(SECRET_FOLDER_ROLE_PERMISSIONS[role]);

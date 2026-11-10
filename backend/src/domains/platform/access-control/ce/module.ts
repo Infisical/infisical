@@ -21,6 +21,7 @@ export * from "./service/access-control-events";
 export type { TCachedPermissionInput } from "./service/grant-service";
 export { reviveActorGrants } from "./service/grant-service";
 export * from "./service/rule-interpolation";
+export * from "./service/unpacked-permission";
 
 export type TAccessControlDomain = {
   // What the actor holds at the scope: memberships (direct and through groups) with their roles, privileges and

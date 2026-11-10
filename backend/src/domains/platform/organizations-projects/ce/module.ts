@@ -6,7 +6,13 @@ import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module
 import { OrganizationDataAccess } from "./data-access/organization-data-access";
 import { BillableActorDataAccess, TIdentityOwnershipRow } from "./data-access/usage-counter-data-access";
 
+export * from "./service/permission/project-roles";
+
 export type { TIdentityOwnershipRow };
+export * from "./service/permission/org-permission";
+export * from "./service/permission/permission-schemas";
+export * from "./service/permission/permission-types";
+export * from "./service/permission/project-permission";
 
 export type TOrganizationsProjectsDomain = {
   // Billable users and machine identities: org members in a Secret Manager or KMS project or in none.

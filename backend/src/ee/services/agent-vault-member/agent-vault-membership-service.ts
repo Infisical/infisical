@@ -10,14 +10,14 @@ import {
   TMemberships
 } from "@app/db/schemas";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";

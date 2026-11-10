@@ -3,15 +3,15 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
-import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";

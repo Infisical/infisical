@@ -7,14 +7,14 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { NotFoundError } from "@app/lib/errors";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";

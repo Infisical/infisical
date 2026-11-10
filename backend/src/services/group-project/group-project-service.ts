@@ -1,9 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import {
+  ProjectPermissionGroupActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TListProjectGroupUsersDTO } from "@app/ee/services/group/group-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
 

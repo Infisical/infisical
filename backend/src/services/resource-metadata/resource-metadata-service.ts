@@ -1,9 +1,9 @@
 import { TDbClient } from "@app/db";
 import { ActionProjectType } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/organizations-projects/ce/module";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";

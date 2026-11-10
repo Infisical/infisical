@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";

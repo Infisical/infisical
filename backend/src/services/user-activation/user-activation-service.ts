@@ -1,5 +1,8 @@
 import { OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { ms } from "@app/lib/ms";

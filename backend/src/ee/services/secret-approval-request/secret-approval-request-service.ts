@@ -11,6 +11,11 @@ import {
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSecretApprovalRequestActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
@@ -66,11 +71,6 @@ import { ChangeRequestWebhookAction, TWebhookActor, WebhookEvents } from "@app/s
 
 import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import {
-  ProjectPermissionSecretActions,
-  ProjectPermissionSecretApprovalRequestActions,
-  ProjectPermissionSub
-} from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { getCommitterIds } from "../secret-approval-policy/secret-approval-policy-fns";

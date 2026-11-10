@@ -3,11 +3,15 @@ import { packRules } from "@casl/ability/extra";
 import { describe, expect, test } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
 
 import { hasSecretReadValueOrDescribePermission } from "./permission-fns";
 import { buildMergedProjectPermissionRules } from "./permission-service";
-import { ProjectPermissionSecretActions, ProjectPermissionSet, ProjectPermissionSub } from "./project-permission";
 
 const customRole = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]) => ({
   roles: [{ role: ProjectMembershipRole.Custom, permissions: packRules(rules) }]

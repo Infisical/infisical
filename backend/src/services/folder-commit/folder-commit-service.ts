@@ -12,8 +12,11 @@ import {
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import {
+  ProjectPermissionCommitsActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";

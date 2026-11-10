@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { SecretFoldersSchema, SecretImportsSchema, SecretType } from "@app/db/schemas";
 import { RemindersSchema } from "@app/db/schemas/reminders";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/organizations-projects/ce/module";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { SecretRotationV2Schema } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-union-schema";
 import { DASHBOARD } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";

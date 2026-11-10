@@ -6,9 +6,10 @@ import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake
 import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+  OrgPermissionSubjects,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { BadRequestError, ConflictError } from "@app/lib/errors";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 

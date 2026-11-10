@@ -3,17 +3,6 @@ import { packRules } from "@casl/ability/extra";
 import { describe, expect, test } from "vitest";
 
 import { ProjectMembershipRole, ProjectType, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
-import { AgentVaultResourceRole } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
-import { NotFoundError } from "@app/lib/errors";
-
-import {
-  agentVaultProjectAdminPermissions,
-  applicationAuditorPermissions,
-  pamResourceAdminPermissions,
-  signerOperatorPermissions
-} from "./default-roles";
-import { buildProjectPermissionRules, resolveResourceRoleRules } from "./permission-service";
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -27,7 +16,18 @@ import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "./project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { AgentVaultResourceRole } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
+import { NotFoundError } from "@app/lib/errors";
+
+import {
+  agentVaultProjectAdminPermissions,
+  applicationAuditorPermissions,
+  pamResourceAdminPermissions,
+  signerOperatorPermissions
+} from "./default-roles";
+import { buildProjectPermissionRules, resolveResourceRoleRules } from "./permission-service";
 
 const abilityFor = (role: string, permissions?: unknown) =>
   createMongoAbility<ProjectPermissionSet>(

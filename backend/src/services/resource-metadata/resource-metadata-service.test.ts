@@ -2,12 +2,12 @@ import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { Knex } from "knex";
 import { vi } from "vitest";
 
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretActions as Actions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 
 import { resourceMetadataServiceFactory } from "./resource-metadata-service";
 import {

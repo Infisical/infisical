@@ -5,7 +5,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
 
 import { filterIdentitiesByProjectPermission, TProjectPermissionAbility } from "./identity-fns";

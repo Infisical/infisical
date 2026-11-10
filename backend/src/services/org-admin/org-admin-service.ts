@@ -2,7 +2,10 @@ import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionAdminConsoleAction,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { NotFoundError } from "@app/lib/errors";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";

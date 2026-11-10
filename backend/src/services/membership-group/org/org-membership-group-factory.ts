@@ -1,12 +1,12 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
-import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
   OrgPermissionGroupActions,
   OrgPermissionSubjects,
   OrgPermissionSubOrgActions
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
   assertRoleSetBoundary,
   constructPermissionErrorMessage,

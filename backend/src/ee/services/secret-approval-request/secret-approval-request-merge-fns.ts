@@ -3,6 +3,7 @@ import { Knex } from "knex";
 
 import { SecretType } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { ProjectPermissionSet } from "@app/domains/platform/organizations-projects/ce/module";
 import { Actor, Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
@@ -34,7 +35,6 @@ import { SecretOperations } from "@app/services/secret/secret-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { ProjectPermissionSet } from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalRequestCommitFnsFactory } from "./secret-approval-request-commit-fns";
 import { hasSecretUpdateCommitConflict } from "./secret-approval-request-fns";

@@ -14,6 +14,19 @@ import {
   ServiceTokenScopes,
   TProjects
 } from "@app/db/schemas";
+import {
+  orgAdminPermissions,
+  orgMemberPermissions,
+  orgNoAccessPermissions,
+  OrgPermissionSet,
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects,
+  buildServiceTokenProjectPermission,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { AgentVaultResourceRole } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
@@ -67,14 +80,6 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { TServiceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import {
-  orgAdminPermissions,
-  orgMemberPermissions,
-  orgNoAccessPermissions,
-  OrgPermissionSet,
-  OrgPermissionSsoActions,
-  OrgPermissionSubjects
-} from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import {
   buildFolderScopedPrivilegeRules,
@@ -96,13 +101,6 @@ import {
   TPermissionServiceFactory,
   TProjectFolderScopedPrivilege
 } from "./permission-service-types";
-import {
-  buildServiceTokenProjectPermission,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionMemberActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "./project-permission";
 
 // Returns the scopes to narrow this request to, or undefined when no narrowing applies. Any array, even
 // an empty one, means narrowing applies, so [] denies all scope-guarded access. undefined covers

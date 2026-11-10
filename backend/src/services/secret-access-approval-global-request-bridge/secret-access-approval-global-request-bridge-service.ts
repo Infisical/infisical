@@ -1,16 +1,16 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
-import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { verifyRequestedPermissions } from "@app/ee/services/access-approval-request/access-approval-request-fns";
-import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
-import { flattenActiveRolesFromMemberships } from "@app/ee/services/permission/permission-service";
 import {
   ProjectPermissionActions,
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { verifyRequestedPermissions } from "@app/ee/services/access-approval-request/access-approval-request-fns";
+import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
+import { flattenActiveRolesFromMemberships } from "@app/ee/services/permission/permission-service";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { isGlobSubsetOfGlob } from "@app/lib/casl/glob-subset";
 import { getConfig } from "@app/lib/config/env";

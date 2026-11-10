@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { ActionProjectType, ProjectVersion, SecretType } from "@app/db/schemas";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/organizations-projects/ce/module";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";

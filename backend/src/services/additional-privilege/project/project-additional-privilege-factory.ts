@@ -2,16 +2,16 @@ import { ForbiddenError, MongoAbility, RawRule, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";

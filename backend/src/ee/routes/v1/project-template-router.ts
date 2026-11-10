@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectTemplatesSchema, ProjectType } from "@app/db/schemas";
+import { ProjectPermissionV2Schema } from "@app/domains/platform/organizations-projects/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
 import { isInfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
 import { ApiDocsTags, ProjectTemplates } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";

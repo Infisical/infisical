@@ -1,19 +1,17 @@
 import { createMongoAbility, ForbiddenError, MongoAbility } from "@casl/ability";
 
 import { AccessScope } from "@app/db/schemas";
-import { projectAdminPermissions, projectMemberPermissions } from "@app/ee/services/permission/default-roles";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
   OrgPermissionIdentityActions,
   OrgPermissionSet,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
-import {
+  OrgPermissionSubjects,
   ProjectPermissionIdentityActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { projectAdminPermissions, projectMemberPermissions } from "@app/ee/services/permission/default-roles";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { PermissionBoundaryError } from "@app/lib/errors";
 

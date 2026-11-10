@@ -1,12 +1,12 @@
 import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 
 import { registerDashboardRouter } from "./dashboard-router";
 

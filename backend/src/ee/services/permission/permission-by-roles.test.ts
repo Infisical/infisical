@@ -1,11 +1,15 @@
 import { packRules } from "@casl/ability/extra";
 import { vi } from "vitest";
 
+import {
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects,
+  ProjectPermissionActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { NotFoundError } from "@app/lib/errors";
 
-import { OrgPermissionMemberActions, OrgPermissionSubjects } from "./org-permission";
 import { permissionServiceFactory } from "./permission-service";
-import { ProjectPermissionActions, ProjectPermissionSub } from "./project-permission";
 
 // A membership row can outlive the role slug it points at, e.g. a product gets removed and its slugs
 // stop resolving. buildProjectPermissionRules already tolerates that (unknown slug -> no rules); the

@@ -2,13 +2,13 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/organizations-projects/ce/module";
 import { approvalPolicyMembershipVerifierFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-fns";
 import {
   ApproverType,
   BypasserType,
   TCreateAccessApprovalPolicy
 } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";

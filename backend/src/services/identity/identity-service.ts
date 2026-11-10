@@ -3,7 +3,10 @@ import { ForbiddenError } from "@casl/ability";
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations-projects/ce/module";
 import {
   assertRoleSetBoundary,
   constructPermissionErrorMessage,

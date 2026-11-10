@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/organizations-projects/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -9,7 +10,6 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../permission/project-permission";
 import { TTrustedIpDALFactory } from "./trusted-ip-dal";
 import { TTrustedIpServiceFactory } from "./trusted-ip-types";
 

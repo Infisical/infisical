@@ -2,11 +2,11 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, RESOURCE_SCOPE, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
+import { ProjectPermissionMemberActions } from "@app/domains/platform/organizations-projects/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionMemberActions } from "@app/ee/services/permission/project-permission";
 import {
   ResourcePermissionApplicationActions,
   ResourcePermissionSub

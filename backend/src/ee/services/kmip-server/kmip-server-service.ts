@@ -1,11 +1,14 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import {
+  OrgPermissionKmipServerActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 
-import { OrgPermissionKmipServerActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { TKmipServerDALFactory } from "./kmip-server-dal";

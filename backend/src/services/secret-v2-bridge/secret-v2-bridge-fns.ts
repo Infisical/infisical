@@ -13,8 +13,11 @@ import {
   TSecretsV2,
   TSecretVersionsV2
 } from "@app/db/schemas";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import {
   InternalMetadataType,

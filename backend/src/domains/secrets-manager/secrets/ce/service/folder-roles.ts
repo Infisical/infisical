@@ -13,7 +13,7 @@ import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
 
 // Folder RBAC. These are project-subject rules scoped to one folder by
 // additional_privileges.folderId rather than by CASL conditions, so they carry no subject fields.

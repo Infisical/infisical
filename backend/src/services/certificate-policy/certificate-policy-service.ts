@@ -3,11 +3,11 @@ import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
   ResourcePermissionSub

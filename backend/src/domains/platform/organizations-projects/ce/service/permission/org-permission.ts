@@ -1,12 +1,10 @@
 import { AbilityBuilder, createMongoAbility, ForcedSubject, MongoAbility } from "@casl/ability";
 import { z } from "zod";
 
-import {
-  CASL_ACTION_SCHEMA_ENUM,
-  CASL_ACTION_SCHEMA_NATIVE_ENUM
-} from "@app/ee/services/permission/permission-schemas";
-import { PermissionConditionSchema } from "@app/ee/services/permission/permission-types";
 import { PermissionConditionOperators } from "@app/lib/casl";
+
+import { CASL_ACTION_SCHEMA_ENUM, CASL_ACTION_SCHEMA_NATIVE_ENUM } from "./permission-schemas";
+import { PermissionConditionSchema } from "./permission-types";
 
 export enum OrgPermissionActions {
   Read = "read",
@@ -205,7 +203,7 @@ export enum OrgPermissionSubjects {
   SecretsManagementInsights = "secrets-management-insights"
 }
 
-export type AppConnectionSubjectFields = {
+type AppConnectionSubjectFields = {
   connectionId: string;
 };
 

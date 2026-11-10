@@ -2,11 +2,11 @@ import { packRules } from "@casl/ability/extra";
 import { z } from "zod";
 
 import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   backfillPermissionV1SchemaToV2Schema,
   ProjectPermissionV1Schema
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

@@ -3,9 +3,13 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope, ProjectType } from "@app/db/schemas";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";

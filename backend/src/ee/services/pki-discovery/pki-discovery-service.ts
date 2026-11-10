@@ -4,15 +4,16 @@ import { z } from "zod";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionSubjects,
+  ProjectPermissionPkiDiscoveryActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
-import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionPkiDiscoveryActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";

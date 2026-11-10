@@ -10,14 +10,17 @@ import {
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
+import {
+  TOrganizationsProjectsDomain,
+  OrgPermissionBillingActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TLicenseV2BreakdownDALFactory, TScopeOrgRow, TScopeProjectRow } from "./license-v2-breakdown-dal";
 import {

@@ -1,14 +1,17 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
 
-import { projectAdminPermissions, projectMemberPermissions } from "./default-roles";
 import {
   orgAdminPermissions,
   orgMemberPermissions,
   OrgPermissionIdentityActions,
   OrgPermissionSet,
-  OrgPermissionSubjects
-} from "./org-permission";
-import { ProjectPermissionIdentityActions, ProjectPermissionSet, ProjectPermissionSub } from "./project-permission";
+  OrgPermissionSubjects,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
+
+import { projectAdminPermissions, projectMemberPermissions } from "./default-roles";
 
 // Regression guard for the identity auth-method privilege-escalation fix.
 // Configuring an identity's auth methods (attach/update) is gated behind the

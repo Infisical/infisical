@@ -11,6 +11,10 @@ import {
 } from "@app/db/schemas";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
+  OrgPermissionGroupActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations-projects/ce/module";
+import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
 } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
@@ -50,7 +54,6 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { OrgPermissionGroupActions, OrgPermissionSubjects } from "../permission/org-permission";
 import {
   assertRoleSetBoundary,
   constructPermissionErrorMessage,

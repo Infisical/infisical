@@ -3,18 +3,18 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionHsmConnectorActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionCertificateActions,
-  ProjectPermissionCertificateAuthorityActions,
-  ProjectPermissionHsmConnectorActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { Pkcs11Mechanism } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";

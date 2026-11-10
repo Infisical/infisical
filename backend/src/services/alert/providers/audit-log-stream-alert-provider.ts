@@ -2,13 +2,13 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations-projects/ce/module";
 import {
   AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT,
   AUDIT_LOG_STREAM_RESOURCE_TYPE,
   AuditLogStreamDeliveryFailedPayloadSchema
 } from "@app/ee/services/audit-log-stream/audit-log-stream-events";
 import { listProviderOptions } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";

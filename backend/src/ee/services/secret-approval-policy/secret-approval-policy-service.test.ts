@@ -4,13 +4,17 @@ import { describe, expect, test, vi } from "vitest";
 
 import { ProjectVersion } from "@app/db/schemas";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { EnforcementLevel } from "@app/lib/types";
 import { DelegatedApprovalPolicyType } from "@app/services/delegated-approval/delegated-approval-enums";
 
 import { ApproverType } from "../access-approval-policy/access-approval-policy-types";
-import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
 import { secretApprovalPolicyServiceFactory } from "./secret-approval-policy-service";
 
 const ORG_ID = "org-1";

@@ -1,16 +1,16 @@
 import { createMongoAbility, MongoAbility } from "@casl/ability";
 
-import { conditionsMatcher } from "@app/lib/casl";
-import { PermissionBoundaryError } from "@app/lib/errors";
-
-import { projectAdminPermissions, projectMemberPermissions } from "./default-roles";
-import { assertRoleSetBoundary } from "./permission-fns";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "./project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { conditionsMatcher } from "@app/lib/casl";
+import { PermissionBoundaryError } from "@app/lib/errors";
+
+import { projectAdminPermissions, projectMemberPermissions } from "./default-roles";
+import { assertRoleSetBoundary } from "./permission-fns";
 
 // Regression guard for the privilege-boundary fix on membership removal and role assignment.
 // The bug this replaces was `const [first] = await getOrgPermissionByRoles(roles, orgId)`, which

@@ -10,6 +10,22 @@ import {
   interpolateStoredIdentityRules,
   isActiveRole
 } from "@app/domains/platform/access-control/ce/module";
+import {
+  OrgPermissionSet,
+  ActionAllowedConditions,
+  ProjectPermissionGroupActions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub,
+  ProjectPermissionV2Schema,
+  SecretSubjectFields
+} from "@app/domains/platform/organizations-projects/ce/module";
+import {
+  FOLDER_SCOPED_DENY_RULES,
+  SECRET_FOLDER_ROLE_PERMISSIONS
+} from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorAuthMethod, ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
@@ -23,21 +39,8 @@ import {
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
-import { FOLDER_SCOPED_DENY_RULES, SECRET_FOLDER_ROLE_PERMISSIONS } from "./folder-roles";
-import { OrgPermissionSet } from "./org-permission";
 import { TPermissionDALFactory } from "./permission-dal";
 import { TCachedFolderScopedPrivileges, TProjectFolderScopedPrivilege } from "./permission-service-types";
-import {
-  ActionAllowedConditions,
-  ProjectPermissionGroupActions,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionMemberActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub,
-  ProjectPermissionV2Schema,
-  SecretSubjectFields
-} from "./project-permission";
 
 export function throwIfMissingSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet> | PureAbility,

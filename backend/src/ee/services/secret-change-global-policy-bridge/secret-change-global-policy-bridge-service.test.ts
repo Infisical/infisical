@@ -5,6 +5,11 @@ import { describe, expect, test, vi } from "vitest";
 import { ProjectVersion } from "@app/db/schemas";
 import { TPlanProps } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -12,7 +17,6 @@ import { EnforcementLevel } from "@app/lib/types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
-import { ProjectPermissionActions, ProjectPermissionSet, ProjectPermissionSub } from "../permission/project-permission";
 import { RequestState } from "../secret-approval-request/secret-approval-request-types";
 import { TSecretChangePolicyRow } from "./secret-change-global-policy-bridge-dal";
 import { toSecretChangePolicy } from "./secret-change-global-policy-bridge-fns";

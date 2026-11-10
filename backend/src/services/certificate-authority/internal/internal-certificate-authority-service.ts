@@ -8,16 +8,16 @@ import { Knex } from "knex";
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
-import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
+import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";

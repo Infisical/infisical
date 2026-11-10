@@ -7,16 +7,17 @@ import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionS
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
-import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
-import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+  OrgPermissionSubjects,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
+import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
+import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";

@@ -1,6 +1,11 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -10,11 +15,6 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import {
-  ProjectPermissionIdentityActions,
-  ProjectPermissionMemberActions,
-  ProjectPermissionSub
-} from "../permission/project-permission";
 import { TAssumePrivilegeServiceFactory } from "./assume-privilege-types";
 
 type TAssumePrivilegeServiceFactoryDep = {

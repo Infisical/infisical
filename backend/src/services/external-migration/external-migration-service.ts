@@ -3,6 +3,12 @@ import { MongoAbility, subject } from "@casl/ability";
 import { ActionProjectType, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
+  ProjectPermissionActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
+import {
   AuditLogInfo,
   EventType,
   SecretApprovalEvent,
@@ -13,12 +19,6 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";

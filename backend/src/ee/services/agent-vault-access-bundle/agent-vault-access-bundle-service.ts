@@ -12,13 +12,13 @@ import {
   TMemberships
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
-import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";

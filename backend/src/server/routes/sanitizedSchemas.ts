@@ -16,8 +16,8 @@ import {
   SecretTagsSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/organizations-projects/ce/module";
 import { AwsHoneyTokenRowConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import {
   SanitizedProxiedServiceBaseSchema,
   SanitizedProxiedServiceCredentialSchema

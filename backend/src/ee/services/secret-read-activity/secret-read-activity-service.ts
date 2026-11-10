@@ -4,6 +4,10 @@ import { setImmediate } from "node:timers/promises";
 import { SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";
@@ -13,7 +17,6 @@ import {
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";

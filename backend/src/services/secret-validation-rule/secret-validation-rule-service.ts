@@ -3,11 +3,11 @@ import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { KmsDataKey, TCipherPair, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";

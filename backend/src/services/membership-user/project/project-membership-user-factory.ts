@@ -8,16 +8,16 @@ import {
   ProjectMembershipRole
 } from "@app/db/schemas";
 import {
+  isCustomProjectRole,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
+import {
   assertRoleSetBoundary,
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  isCustomProjectRole,
-  ProjectPermissionMemberActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";

@@ -3,7 +3,10 @@ import knex, { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 

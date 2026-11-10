@@ -1,13 +1,13 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   buildServiceTokenProjectPermission,
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";

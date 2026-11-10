@@ -1,15 +1,15 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
-import { ActorType } from "@app/lib/auth/actor-types";
-import { conditionsMatcher } from "@app/lib/casl";
-import { crypto } from "@app/lib/crypto/cryptography";
-
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "../permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { conditionsMatcher } from "@app/lib/casl";
+import { crypto } from "@app/lib/crypto/cryptography";
+
 import { assumePrivilegeServiceFactory } from "./assume-privilege-service";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ AUTH_SECRET: "test-secret" }) }));

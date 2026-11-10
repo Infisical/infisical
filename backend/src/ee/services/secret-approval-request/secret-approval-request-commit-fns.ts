@@ -3,6 +3,11 @@ import { Knex } from "knex";
 
 import { ActionProjectType, SecretType, TableName, TSecretApprovalRequestsSecretsV2Insert } from "@app/db/schemas";
 import { KmsDataKey, TCipherPair, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { diff, groupBy, unique } from "@app/lib/fn";
@@ -22,11 +27,6 @@ import { TValidateSecretsDTO } from "@app/services/secret-validation-rule/secret
 import { SecretOperations } from "@app/services/secret/secret-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import {
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "../permission/project-permission";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TGenerateSecretApprovalRequestV2BridgeDTO,

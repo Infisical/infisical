@@ -1,11 +1,11 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/organizations-projects/ce/module";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 
 import { TPermissionServiceFactory } from "../../ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "../../ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "../../ee/services/permission/resource-permission";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "../certificate/certificate-dal";
 import { CertStatus } from "../certificate/certificate-types";

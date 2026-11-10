@@ -2,8 +2,8 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/organizations-projects/ce/module";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";

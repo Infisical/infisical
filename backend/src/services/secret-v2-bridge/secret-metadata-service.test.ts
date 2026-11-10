@@ -2,12 +2,12 @@ import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
 import { vi } from "vitest";
 
 import { ProjectVersion, SecretType, TSecretFolders } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionSecretActions as Actions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TGetSecretMetadataDTO } from "@app/services/secret/secret-types";
 
 import { secretMetadataServiceFactory } from "./secret-metadata-service";

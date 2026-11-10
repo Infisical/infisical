@@ -3,14 +3,14 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
-import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
-import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
+import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";

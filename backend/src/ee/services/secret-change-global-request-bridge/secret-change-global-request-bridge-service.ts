@@ -3,6 +3,10 @@ import { Knex } from "knex";
 import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import {
+  ProjectPermissionSecretApprovalRequestActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
@@ -55,7 +59,6 @@ import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types"
 import { BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { ProjectPermissionSecretApprovalRequestActions, ProjectPermissionSub } from "../permission/project-permission";
 import {
   pickApprovalCommitColumns,
   secretApprovalRequestCommitFnsFactory

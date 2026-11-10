@@ -4,21 +4,19 @@ import { ForbiddenError } from "@casl/ability";
 import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionSecretsManagementInsightsActions,
+  OrgPermissionSubjects,
+  ProjectPermissionHoneyTokenActions,
+  ProjectPermissionInsightsActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import { TDynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import {
-  OrgPermissionSecretsManagementInsightsActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionHoneyTokenActions,
-  ProjectPermissionInsightsActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";

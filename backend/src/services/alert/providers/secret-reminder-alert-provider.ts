@@ -2,9 +2,12 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
 import { ActionProjectType, SecretType } from "@app/db/schemas";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {

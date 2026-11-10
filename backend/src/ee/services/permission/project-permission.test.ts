@@ -1,13 +1,13 @@
 import { ProjectType } from "@app/db/schemas";
-import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
-
-import { projectAdminPermissions, projectMemberPermissions, projectViewerPermission } from "./default-roles";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
   ProjectPermissionV2Schema
-} from "./project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
+
+import { projectAdminPermissions, projectMemberPermissions, projectViewerPermission } from "./default-roles";
 
 describe("ProjectPermissionV2Schema secret-folders actions", () => {
   test("rejects manage-access, which is only obtainable through the folder access flow", () => {

@@ -14,6 +14,7 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations-projects/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -75,7 +76,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { verifyEmailDomainOwnership as verifyEmailDomainOwnershipValidate } from "../email-domain/email-domain-fns";
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TScimEventsDALFactory } from "./scim-events-dal";
 import {

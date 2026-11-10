@@ -9,6 +9,7 @@ import { Knex } from "knex";
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations-projects/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -37,7 +38,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGithubOrgSyncDALFactory } from "./github-org-sync-dal";
 import {

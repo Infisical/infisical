@@ -3,12 +3,15 @@ import slugify from "@sindresorhus/slugify";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { KmsKeyUsage, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import {
+  OrgPermissionKmipActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { KmipOperationType, recordKmipOperationMetric } from "@app/lib/telemetry/metrics";
 
-import { OrgPermissionKmipActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TKmipClientDALFactory } from "./kmip-client-dal";
 import { KmipPermission } from "./kmip-enum";

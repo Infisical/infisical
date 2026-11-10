@@ -12,16 +12,16 @@ import {
 } from "@app/db/schemas";
 import { KmsDataKey, TCipherPair, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
-  hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretReadValueOrDescribePermission
-} from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
   ProjectPermissionCommitsActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import {
+  hasSecretReadValueOrDescribePermission,
+  throwIfMissingSecretReadValueOrDescribePermission
+} from "@app/ee/services/permission/permission-fns";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";

@@ -3,9 +3,12 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import {
+  ProjectPermissionSecretActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";

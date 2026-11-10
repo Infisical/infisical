@@ -9,6 +9,8 @@ import {
   TPkiRootOrgUsageRow
 } from "./data-access/usage-counter-data-access";
 
+export * from "./service/application-roles";
+
 export type { TCertificateOrgUnitRow, TOrgUnitCountRow, TPkiRootOrgUsageRow };
 
 export type TCertManagerDomain = {

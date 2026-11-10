@@ -4,6 +4,11 @@ import msFn from "ms";
 
 import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import {
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -45,11 +50,6 @@ import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/acces
 import { TGroupDALFactory } from "../group/group-dal";
 import { flattenActiveRolesFromMemberships } from "../permission/permission-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import {
-  ProjectPermissionApprovalRequestActions,
-  ProjectPermissionMemberActions,
-  ProjectPermissionSub
-} from "../permission/project-permission";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";

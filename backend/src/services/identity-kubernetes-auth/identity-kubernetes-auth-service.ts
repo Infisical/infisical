@@ -16,6 +16,15 @@ import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates"
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import {
+  OrgPermissionGatewayActions,
+  OrgPermissionGatewayPoolActions,
+  OrgPermissionIdentityActions,
+  OrgPermissionMachineIdentityAuthTemplateActions,
+  OrgPermissionSubjects,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/organizations-projects/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -26,15 +35,7 @@ import { TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-
 import { IdentityAuthTemplateMethod } from "@app/ee/services/identity-auth-template/identity-auth-template-enums";
 import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { TKubernetesTemplateFields } from "@app/ee/services/identity-auth-template/identity-auth-template-types";
-import {
-  OrgPermissionGatewayActions,
-  OrgPermissionGatewayPoolActions,
-  OrgPermissionIdentityActions,
-  OrgPermissionMachineIdentityAuthTemplateActions,
-  OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";

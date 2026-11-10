@@ -1,8 +1,8 @@
 import { MongoAbility, MongoQuery } from "@casl/ability";
 
 import { SecretFolderRole, TProjectEnvironments, TSecretFolders, TSecretReadActivity } from "@app/db/schemas";
+import { ProjectPermissionSet } from "@app/domains/platform/organizations-projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 

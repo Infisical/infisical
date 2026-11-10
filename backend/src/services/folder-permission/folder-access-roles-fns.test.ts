@@ -2,12 +2,12 @@ import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import { ProjectMembershipRole, ProjectType, TAdditionalPrivileges } from "@app/db/schemas";
-import { FOLDER_SCOPED_DENY_RULES } from "@app/ee/services/permission/folder-roles";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { FOLDER_SCOPED_DENY_RULES } from "@app/domains/secrets-manager/secrets/ce/module";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import {

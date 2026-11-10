@@ -1,13 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, OrgMembershipStatus, TOauthClients, TOrganizations } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import {
   OrgPermissionActions,
   OrgPermissionSsoActions,
   OrgPermissionSubjects
-} from "@app/ee/services/permission/org-permission";
+} from "@app/domains/platform/organizations-projects/ce/module";
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
