@@ -62,8 +62,8 @@ const OauthClientsList = ({
 }) => {
   const sso = useV4Adapter("sso");
   const { permission } = useOrgPermission();
-  const { data: oauthClients = [], isPending, error } = sso.useOauthClients(orgId);
-  if (error) throw error;
+  const { data: oauthClients = [], isPending, error: loadError } = sso.useOauthClients(orgId);
+  if (loadError) throw loadError;
   const deleteOauthClient = sso.useDeleteOauthClient();
   const rotateOauthClientSecret = sso.useRotateOauthClientSecret();
   const [search, setSearch] = useState("");
