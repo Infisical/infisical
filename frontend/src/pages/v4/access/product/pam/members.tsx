@@ -336,11 +336,14 @@ export const PamMembersTab = () => {
         sort={list.sort}
         onSortChange={list.setSort}
         empty={
-          list.search.trim() ? (
+          (Boolean(members.error) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load members" />
+          )) ||
+          (list.search.trim() ? (
             <EmptyState size="sm" icon="search" title="No members match search" />
           ) : (
             <EmptyState size="sm" icon="user" title="No members found" />
-          )
+          ))
         }
         pagination={members.isPending ? undefined : list.pagination}
       />

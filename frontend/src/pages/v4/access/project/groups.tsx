@@ -138,7 +138,10 @@ export const ProjectGroupsTab = () => {
         sort={list.sort}
         onSortChange={list.setSort}
         empty={
-          list.search.trim() ? (
+          (Boolean(groups.error) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load groups" />
+          )) ||
+          (list.search.trim() ? (
             <EmptyState
               size="sm"
               icon="search"
@@ -150,7 +153,7 @@ export const ProjectGroupsTab = () => {
               icon="user"
               title={`No ${accessLabel(scope.projectType, "groups").toLowerCase()} found`}
             />
-          )
+          ))
         }
         pagination={groups.isPending ? undefined : list.pagination}
       />

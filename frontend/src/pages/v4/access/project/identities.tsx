@@ -77,7 +77,11 @@ export const ProjectIdentitiesTab = () => {
   const [sort, setSort] = useState<Sort>({ columnId: "name", direction: "asc" });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(20);
-  const { data, isPending } = access.useProjectIdentities({
+  const {
+    data,
+    isPending,
+    error: identitiesError
+  } = access.useProjectIdentities({
     projectId,
     projectType: scope.projectType,
     offset: (page - 1) * perPage,
@@ -285,7 +289,10 @@ export const ProjectIdentitiesTab = () => {
           setPage(1);
         }}
         empty={
-          searching ? (
+          (Boolean(identitiesError) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load machine identities" />
+          )) ||
+          (searching ? (
             <EmptyState size="sm" icon="search" title="No machine identities match search" />
           ) : (
             <EmptyState
@@ -293,7 +300,7 @@ export const ProjectIdentitiesTab = () => {
               icon="machine"
               title={`No machine identities have been added to ${accessThis(scope.projectType)}`}
             />
-          )
+          ))
         }
         pagination={
           !isPending && totalCount > 0 ? (

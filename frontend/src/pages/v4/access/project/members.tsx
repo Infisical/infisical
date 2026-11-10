@@ -222,7 +222,10 @@ export const ProjectMembersTab = () => {
         sort={list.sort}
         onSortChange={list.setSort}
         empty={
-          searching ? (
+          (Boolean(members.error) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load users" />
+          )) ||
+          (searching ? (
             <EmptyState
               size="sm"
               icon="search"
@@ -234,7 +237,7 @@ export const ProjectMembersTab = () => {
               icon="user"
               title={`No ${accessLabel(scope.projectType, "users").toLowerCase()} found`}
             />
-          )
+          ))
         }
         pagination={members.isPending ? undefined : list.pagination}
       />

@@ -176,11 +176,14 @@ export const AgentVaultIdentitiesTab = () => {
         loading={list.isPending}
         loadingRows={10}
         empty={
-          list.searching ? (
+          (Boolean(list.error) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load machine identities" />
+          )) ||
+          (list.searching ? (
             <EmptyState size="sm" icon="search" title="No machine identities match search" />
           ) : (
             <EmptyState size="sm" icon="machine" title="No machine identities yet" />
-          )
+          ))
         }
         pagination={list.pagination}
       />

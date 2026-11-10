@@ -160,11 +160,14 @@ export const AgentVaultMembersTab = () => {
         loading={list.isPending}
         loadingRows={10}
         empty={
-          list.searching ? (
+          (Boolean(list.error) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load users" />
+          )) ||
+          (list.searching ? (
             <EmptyState size="sm" icon="search" title="No users match search" />
           ) : (
             <EmptyState size="sm" icon="user" title="No users yet" />
-          )
+          ))
         }
         pagination={list.pagination}
       />

@@ -295,11 +295,14 @@ export const PamGroupsTab = () => {
         sort={list.sort}
         onSortChange={list.setSort}
         empty={
-          list.search.trim() ? (
+          (Boolean(groups.error) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load groups" />
+          )) ||
+          (list.search.trim() ? (
             <EmptyState size="sm" icon="search" title="No groups match search" />
           ) : (
             <EmptyState size="sm" icon="user" title="No groups found" />
-          )
+          ))
         }
         pagination={groups.isPending ? undefined : list.pagination}
       />

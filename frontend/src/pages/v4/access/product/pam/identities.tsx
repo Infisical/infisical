@@ -428,11 +428,14 @@ export const PamIdentitiesTab = () => {
         sort={list.sort}
         onSortChange={list.setSort}
         empty={
-          list.search.trim() ? (
+          (Boolean(identities.error) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load identities" />
+          )) ||
+          (list.search.trim() ? (
             <EmptyState size="sm" icon="search" title="No machine identities match search" />
           ) : (
             <EmptyState size="sm" icon="machine" title="No machine identities found" />
-          )
+          ))
         }
         pagination={identities.isPending ? undefined : list.pagination}
       />

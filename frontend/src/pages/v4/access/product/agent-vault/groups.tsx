@@ -120,11 +120,14 @@ export const AgentVaultGroupsTab = () => {
         loading={list.isPending}
         loadingRows={10}
         empty={
-          list.searching ? (
+          (Boolean(list.error) && (
+            <EmptyState size="sm" icon="alert" title="Couldn't load groups" />
+          )) ||
+          (list.searching ? (
             <EmptyState size="sm" icon="search" title="No groups match search" />
           ) : (
             <EmptyState size="sm" icon="user" title="No groups yet" />
-          )
+          ))
         }
         pagination={list.pagination}
       />

@@ -104,6 +104,7 @@ export const useMemberList = <T extends AgentVaultMemberType>(projectId: string,
   return {
     rows,
     isPending: list.isPending,
+    error: list.error,
     search,
     searching: Boolean(debouncedSearch),
     setSearch: (value: string) => {
