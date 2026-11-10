@@ -66,7 +66,10 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists(TableName.ApprovalPolicyAutoApprovalConditionContexts);
 
   if (await knex.schema.hasColumn(TableName.ApprovalPolicyAutoApprovalConditions, "prompt")) {
-    await knex(TableName.ApprovalPolicyAutoApprovalConditions).whereNotNull("prompt").delete();
+    // Dropping only the AI condition would leave its rule approving on the remaining checks alone
+    await knex(TableName.ApprovalPolicyAutoApprovalRules)
+      .whereIn("id", knex(TableName.ApprovalPolicyAutoApprovalConditions).select("ruleId").whereNotNull("prompt"))
+      .delete();
     await knex.raw(`ALTER TABLE ?? DROP CONSTRAINT IF EXISTS ??`, [
       TableName.ApprovalPolicyAutoApprovalConditions,
       CONDITION_TARGET_CHECK
