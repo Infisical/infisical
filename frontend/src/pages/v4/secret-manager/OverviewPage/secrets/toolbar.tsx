@@ -281,7 +281,7 @@ export function FolderBreadcrumbBar({
   actions?: ReactNode;
   onManageAccess?: () => void;
   onNavigate: (path: string) => void;
-  report: (message: string) => void;
+  report: (message: string, tone: "ok" | "bad") => void;
 }) {
   const segments = path.split("/").filter(Boolean);
   return (
@@ -316,9 +316,9 @@ export function FolderBreadcrumbBar({
               onClick={async () => {
                 try {
                   await navigator.clipboard.writeText(path);
-                  report("Folder path copied to clipboard.");
+                  report("Folder path copied to clipboard.", "ok");
                 } catch {
-                  report("Failed to copy folder path to clipboard.");
+                  report("Failed to copy folder path to clipboard.", "bad");
                 }
               }}
             >
@@ -394,14 +394,14 @@ export function QuickAddRow({
         save(true);
       }}
     >
-      <TableCell selection divider={false}>
+      <TableCell pin="start" selection divider={false}>
         <span className={styles.iconSlot}>
           <Button variant="ghost" size="icon-row" iconOnly icon="plus" disabledReason={NEXT_PHASE}>
             Add another resource type
           </Button>
         </span>
       </TableCell>
-      <TableCell className={styles.nameCell}>
+      <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
         <Input
           className={styles.inlineInput}
           aria-label="New secret name"
@@ -437,7 +437,11 @@ export function QuickAddRow({
           }}
         />
       </TableCell>
-      <TableCell colSpan={colSpan} className={styles.valueCell}>
+      <TableCell
+        pin={multiple ? "viewport" : undefined}
+        colSpan={colSpan}
+        className={styles.valueCell}
+      >
         <div className={styles.nameLine}>
           <SecretInput
             className={styles.inlineInput}

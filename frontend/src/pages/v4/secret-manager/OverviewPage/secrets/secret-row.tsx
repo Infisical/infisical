@@ -141,13 +141,13 @@ const copy = async (
   value: string,
   done: string,
   failed: string,
-  report: (message: string) => void
+  report: (message: string, tone: "ok" | "bad") => void
 ) => {
   try {
     await navigator.clipboard.writeText(value);
-    report(done);
+    report(done, "ok");
   } catch {
-    report(failed);
+    report(failed, "bad");
   }
 };
 
@@ -400,7 +400,7 @@ function SecretActionsRow({
       const loaded =
         values[valueKey(secret.environment, secret.path, secret.name, false, secret.version)];
       if (typeof loaded === "string") run(loaded);
-      else ctx.report(`Could not read ${secret.name}.`);
+      else ctx.report(`Could not read ${secret.name}.`, "bad");
     });
   };
   const label = environmentLabel(secret.environment);
@@ -730,10 +730,11 @@ function SecretActionsRow({
                     ctx.report(
                       reminder
                         ? `${secret.reminder ? "Updated" : "Created"} the reminder on ${secret.name}.`
-                        : `Deleted the reminder on ${secret.name}.`
+                        : `Deleted the reminder on ${secret.name}.`,
+                      "ok"
                     );
                   },
-                  () => ctx.report(`Could not save the reminder on ${secret.name}.`)
+                  () => ctx.report(`Could not save the reminder on ${secret.name}.`, "bad")
                 );
               }}
             />
@@ -765,8 +766,9 @@ function SecretActionsRow({
                 redactVersion
                   .mutateAsync({ versionId: version.id ?? "", secretId: secret.id })
                   .then(
-                    () => ctx.report(`Redacted version ${version.version} of ${secret.name}.`),
-                    () => ctx.report(`Could not redact version ${version.version}.`)
+                    () =>
+                      ctx.report(`Redacted version ${version.version} of ${secret.name}.`, "ok"),
+                    () => ctx.report(`Could not redact version ${version.version}.`, "bad")
                   )
               }
             />
@@ -1017,6 +1019,8 @@ function SecretRowView({
             overlay={overlayOf(first)}
           />
           <TableCell
+            pin="start"
+            pinOffset="var(--v4-size-row)"
             className={styles.nameCell}
             data-override-rule={first.override !== undefined || undefined}
           >
@@ -1047,12 +1051,17 @@ function SecretRowView({
             ctx={ctx}
             onUpdate={handlers.onUpdate}
           >
-            <TableCell selection divider={false}>
+            <TableCell pin="start" selection divider={false}>
               <span className={styles.iconSlot}>
                 <Icon icon={GitBranchIcon} label="Personal override" />
               </span>
             </TableCell>
-            <TableCell className={styles.nameCell} data-override-rule>
+            <TableCell
+              pin="start"
+              pinOffset="var(--v4-size-row)"
+              className={styles.nameCell}
+              data-override-rule
+            >
               <span className={styles.truncate}>{name}</span>
             </TableCell>
             <TableCell className={styles.valueCell}>
@@ -1111,7 +1120,7 @@ function SecretRowView({
           onClick={() => setExpanded(!expanded)}
         >
           <ExpandCell expanded={expanded} label={name} onToggle={() => setExpanded(!expanded)} />
-          <TableCell className={styles.nameCell}>
+          <TableCell pin="start" pinOffset="var(--v4-size-row)" className={styles.nameCell}>
             <div className={styles.nameLine}>
               <span className={styles.nameKind}>
                 <KindIcon kind="secret" />
@@ -1150,7 +1159,11 @@ function SecretRowView({
       </RowContextMenu>
       {expanded && (
         <TableRow className={styles.nestedRow}>
-          <TableCell colSpan={ctx.environments.length + 3} className={styles.nestedCell}>
+          <TableCell
+            pin="viewport"
+            colSpan={ctx.environments.length + 3}
+            className={styles.nestedCell}
+          >
             <Table className={styles.nestedTable}>
               <TableHeader>
                 <TableRow>

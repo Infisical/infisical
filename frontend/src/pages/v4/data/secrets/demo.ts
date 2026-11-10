@@ -115,7 +115,7 @@ const overviewOf = (
   const kinds = [
     ordered(
       imports,
-      (entry) => entry.id,
+      (entry) => `${entry.importEnv.slug}:${entry.importPath}`,
       (entry) => entry.environment,
       (entry) => entry
     ),
@@ -178,7 +178,7 @@ const overviewOf = (
       .sort((a, b) => kinds[kind].indexOf(name(a)) - kinds[kind].indexOf(name(b)));
 
   return {
-    imports: paged(imports, 0, (entry) => entry.id),
+    imports: paged(imports, 0, (entry) => `${entry.importEnv.slug}:${entry.importPath}`),
     folders: paged(folders, 1, (entry) => entry.name),
     dynamicSecrets: paged(dynamicSecrets, 2, (entry) => entry.name),
     secretRotations: paged(rotations, 3, (entry) => entry.name).map((entry) => ({

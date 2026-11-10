@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-import { createPortal } from "react-dom";
 
-import { useV4PortalContainer } from "@app/components/v4/scope";
 import { Button } from "@app/components/v4/ui/button";
 import {
   Dialog,
@@ -11,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
-import { type ToastItem, ToastStack } from "@app/components/v4/ui/toast-stack";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { environments, type Resource, type Secret } from "../../secrets-model";
@@ -102,19 +99,5 @@ export function DiscardDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-export function FlowToasts({
-  items,
-  onDismiss
-}: {
-  items: readonly ToastItem[];
-  onDismiss: (id: string) => void;
-}) {
-  const container = useV4PortalContainer();
-  return createPortal(
-    <ToastStack className={styles.toastDock} items={items} onDismiss={onDismiss} />,
-    container ?? document.body
   );
 }

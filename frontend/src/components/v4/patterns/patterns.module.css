@@ -21,18 +21,6 @@
   position: relative;
   padding-bottom: calc(var(--v4-space-48) + var(--v4-space-32));
 }
-.statusLine {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--v4-space-8);
-}
-.failure {
-  color: var(--v4-bad);
-}
-.statusLine:focus,
-.failure:focus {
-  outline: none;
-}
 .queueTitleLine,
 .queueSmallLine {
   display: flex;

@@ -51,7 +51,7 @@ export type RowContext = {
   expanded: string[];
   onExpand: (key: string, open: boolean) => void;
   onToggleSelect: (keys: string[]) => void;
-  report: (message: string) => void;
+  report: (message: string, tone: "ok" | "bad") => void;
   onAction: (action: RowAction) => void;
   pending?: Record<string, PendingType>;
   selectionDisabled?: boolean;
@@ -283,7 +283,7 @@ export function SelectCell({
 }) {
   const { all, some } = selectionState(keys, ctx.selected);
   return (
-    <TableCell selection divider={false}>
+    <TableCell pin="start" selection divider={false}>
       <span
         className={styles.iconSlot}
         data-selectable={selectable || undefined}
@@ -382,7 +382,7 @@ export function ExpandCell({
   onToggle: () => void;
 }) {
   return (
-    <TableCell selection divider={false}>
+    <TableCell pin="start" selection divider={false}>
       <span className={styles.iconSlot}>
         <ExpandToggle expanded={expanded} label={label} onToggle={onToggle} />
       </span>

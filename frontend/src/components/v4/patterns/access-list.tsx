@@ -11,6 +11,7 @@ import {
 import { EmptyState } from "../ui/empty";
 import { FloatingActionBar } from "../ui/floating-action-bar";
 import { List, ListRow } from "../ui/list";
+import { toast } from "../ui/sonner";
 
 import styles from "./patterns.module.css";
 
@@ -36,6 +37,9 @@ export type AccessListProps = {
   onChangeRole?: (id: string) => void;
 };
 
+const UNDO_WINDOW_MS = 10_000;
+const plural = (count: number) => `${count} ${count === 1 ? "member" : "members"}`;
+
 export const AccessList = ({
   project,
   members,
@@ -47,34 +51,53 @@ export const AccessList = ({
   onChangeRole
 }: AccessListProps) => {
   const [picked, setPicked] = React.useState<string[]>([]);
-  const [revoked, setRevoked] = React.useState<string[]>([]);
-  const [failure, setFailure] = React.useState<string>();
-  const status = React.useRef<HTMLSpanElement | null>(null);
+  const stage = React.useRef<HTMLDivElement | null>(null);
+  const refocus = React.useRef<{ revoked: string[]; next: string | null } | null>(null);
   const selectable = new Set(members.filter((member) => !member.owner).map((member) => member.id));
   const selected = picked.filter((id) => selectable.has(id));
+  React.useEffect(() => {
+    const pending = refocus.current;
+    if (!pending || members.some((member) => pending.revoked.includes(member.id))) return;
+    refocus.current = null;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    const row =
+      pending.next &&
+      stage.current?.querySelector<HTMLElement>(
+        `[data-list-row="${CSS.escape(pending.next)}"] [data-list-target]`
+      );
+    (row || stage.current?.querySelector<HTMLElement>("ul[aria-label]"))?.focus();
+  });
+  const restore = async (ids: string[]) => {
+    if (!onRestore) return;
+    try {
+      await onRestore(ids);
+      toast.success(`Restored access for ${plural(ids.length)}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Access was not restored. Try again.");
+    }
+  };
   const revoke = async (ids: string[]) => {
     const targets = ids.filter((id) => selectable.has(id));
     if (!targets.length) return;
-    setFailure(undefined);
-    status.current?.focus();
+    const first = members.findIndex((member) => targets.includes(member.id));
+    const kept = (member: AccessMember) => !targets.includes(member.id);
     try {
       await onRevoke(targets);
-      setRevoked((value) => [...new Set([...value, ...targets])]);
-      setPicked((value) => value.filter((id) => !targets.includes(id)));
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : "Access was not revoked. Try again.");
+      toast.error(error instanceof Error ? error.message : "Access was not revoked. Try again.");
+      return;
     }
-  };
-  const restore = async () => {
-    if (!onRestore) return;
-    setFailure(undefined);
-    try {
-      const restored = revoked;
-      await onRestore(restored);
-      setRevoked((value) => value.filter((id) => !restored.includes(id)));
-    } catch (error) {
-      setFailure(error instanceof Error ? error.message : "Access was not restored. Try again.");
-    }
+    refocus.current = {
+      revoked: targets,
+      next:
+        (members.slice(first).find(kept) ?? members.slice(0, first).reverse().find(kept))?.id ??
+        null
+    };
+    setPicked((value) => value.filter((id) => !targets.includes(id)));
+    toast.success(`Revoked access for ${plural(targets.length)}`, {
+      duration: UNDO_WINDOW_MS,
+      action: onRestore && { label: "Undo", onClick: () => restore(targets) }
+    });
   };
   return (
     <div data-slot="access-list" className={styles.pattern}>
@@ -88,7 +111,7 @@ export const AccessList = ({
           </Button>
         )}
       </div>
-      <div className={styles.stage}>
+      <div ref={stage} className={styles.stage}>
         <List
           label="Members"
           title="Members"
@@ -97,27 +120,6 @@ export const AccessList = ({
           onSelectionChange={setPicked}
           empty={
             <EmptyState size="sm" media="bare" icon="user" title="Nobody else has access yet" />
-          }
-          footer={
-            <span
-              ref={status}
-              tabIndex={-1}
-              role="status"
-              className={failure ? styles.failure : styles.statusLine}
-            >
-              {failure ??
-                (revoked.length > 0 && (
-                  <>
-                    Revoked access for {revoked.length}{" "}
-                    {revoked.length === 1 ? "member" : "members"}.
-                    {onRestore && (
-                      <Button variant="link" size="sm" onClick={restore}>
-                        Undo
-                      </Button>
-                    )}
-                  </>
-                ))}
-            </span>
           }
         >
           {members.map((member) => (

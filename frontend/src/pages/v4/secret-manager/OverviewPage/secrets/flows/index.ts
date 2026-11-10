@@ -7,7 +7,6 @@ import { CreateSecretFlow } from "./create-secret-flow";
 import { CreateSecretRotationFlow } from "./create-secret-rotation-flow";
 import type { AddFlowRegistry } from "./types";
 
-export { FlowToasts } from "./shared";
 export type {
   AddFlowProps,
   AddFlowRegistry,

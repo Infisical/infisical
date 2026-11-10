@@ -32,7 +32,7 @@ const ToneDemo = ({ tone }: { tone: keyof typeof tones }) => {
         Show {tone} notice
       </Button>
       <div id={regionId} className="min-h-14 w-full">
-        {item && <ToastStack inline items={[item]} onDismiss={() => setItem(null)} />}
+        <ToastStack inline items={item ? [item] : []} onDismiss={() => setItem(null)} />
       </div>
     </div>
   );

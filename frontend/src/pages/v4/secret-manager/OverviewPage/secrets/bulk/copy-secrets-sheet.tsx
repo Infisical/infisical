@@ -342,7 +342,7 @@ function CopySecretsSession({
       sourceFolders.some(({ path }) => path === joinCopyPath(normalizedSourcePath, name))
     ).length;
     if (!sourceEnvironment) {
-      bulkSelectionSummary = `${count} selected items. Choose a source environment to confirm availability.`;
+      bulkSelectionSummary = `${count} selected ${count === 1 ? "item" : "items"}. Choose a source environment to confirm availability.`;
     } else if (availableSecretCount + availableFolderCount < count) {
       bulkSelectionSummary = `${availableSecretCount + availableFolderCount} of ${count} originally selected items are available in ${sourceEnvironment.name} at ${normalizedSourcePath}. Unavailable items won’t be copied.`;
     }
