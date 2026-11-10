@@ -137,7 +137,9 @@ export type SsoAdapter = {
   useExternalGroupRoleMappings: () => V4QueryResult<TExternalGroupOrgRoleMappingList>;
   useUpdateExternalGroupRoleMappings: V4Mutation<TSyncExternalGroupOrgRoleMappingsDTO, unknown>;
 
-  useGithubOrgSyncConfig: () => V4QueryResult<TGithubOrgSyncConfig | undefined>;
+  useGithubOrgSyncConfig: (options?: {
+    enabled?: boolean;
+  }) => V4QueryResult<TGithubOrgSyncConfig | undefined>;
   useCreateGithubOrgSyncConfig: V4Mutation<TCreateGithubOrgSyncDTO, unknown>;
   useUpdateGithubOrgSyncConfig: V4Mutation<TUpdateGithubOrgSyncDTO, unknown>;
   useDeleteGithubOrgSyncConfig: V4Mutation<void, unknown>;

@@ -113,16 +113,18 @@ const scimTokens = createFixtureStore<ScimTokenData[]>([
   }
 ]);
 
-const scimEvents: ScimEventData[] = [
-  ScimEvent.CREATE_USER,
-  ScimEvent.UPDATE_GROUP,
-  ScimEvent.LIST_USERS,
-  ScimEvent.DELETE_USER
-].map((eventType, index) => ({
+const scimEvents: ScimEventData[] = (
+  [
+    [ScimEvent.CREATE_USER, { email: "jordan@acme.com" }],
+    [ScimEvent.UPDATE_GROUP, { groupName: "engineering" }],
+    [ScimEvent.LIST_USERS, { numberOfUsers: 42 }],
+    [ScimEvent.DELETE_USER, { email: "sam@acme.com" }]
+  ] as const
+).map(([eventType, event], index) => ({
   id: `scim-event-${index}`,
   orgId: V4_DEMO_ORG_ID,
   eventType,
-  event: { userName: "jordan@acme.com" },
+  event,
   createdAt: new Date(Date.UTC(2026, 10, 10, 15 - index * 3)).toISOString(),
   updatedAt: at
 }));

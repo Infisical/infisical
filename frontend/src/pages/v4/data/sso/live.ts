@@ -72,7 +72,8 @@ export const ssoLive: SsoAdapter = {
   useScimEvents: useGetScimEvents,
   useExternalGroupRoleMappings: () => useGetExternalGroupOrgRoleMappings(),
   useUpdateExternalGroupRoleMappings: useUpdateExternalGroupOrgRoleMappings,
-  useGithubOrgSyncConfig: () => useQuery(githubOrgSyncConfigQueryKeys.get()),
+  useGithubOrgSyncConfig: ({ enabled } = {}) =>
+    useQuery({ ...githubOrgSyncConfigQueryKeys.get(), enabled, retry: false }),
   useCreateGithubOrgSyncConfig: useCreateGithubSyncOrgConfig,
   useUpdateGithubOrgSyncConfig: useUpdateGithubSyncOrgConfig,
   useDeleteGithubOrgSyncConfig: useDeleteGithubSyncOrgConfig,
