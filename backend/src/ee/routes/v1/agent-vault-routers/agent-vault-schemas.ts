@@ -378,7 +378,12 @@ const credentialUpdateSchema = ({
           type: z.literal(AgentVaultCredentialType.SshKey),
           username: sshUsernameSchema.optional().describe(AGENT_VAULT.SERVICE.sshUsername),
           privateKey: sshPrivateKeySchema.optional().describe(AGENT_VAULT.SERVICE.sshPrivateKey),
-          certificate: sshCertificateSchema.nullable().optional().describe(AGENT_VAULT.SERVICE.sshCertificate),
+          // An emptied field is not a removal: only null removes the stored certificate.
+          certificate: sshCertificateSchema
+            .transform((value) => value || undefined)
+            .nullable()
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.sshCertificate),
           memberProvidedFields: z
             .enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS)
             .array()
@@ -524,9 +529,14 @@ const AgentVaultNativeDatabaseSchema = nativeDatabaseSchema();
 const nativeTlsSchema = (params?: z.RawCreateParams) =>
   z.object(
     {
-      enabled: z.boolean().optional(),
-      verify: z.boolean().optional(),
-      ca: z.string().max(AGENT_VAULT_NATIVE_MAX_CA_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.caTooLong).nullable().optional()
+      enabled: z.boolean().optional().describe(AGENT_VAULT.SERVICE.tlsEnabled),
+      verify: z.boolean().optional().describe(AGENT_VAULT.SERVICE.tlsVerify),
+      ca: z
+        .string()
+        .max(AGENT_VAULT_NATIVE_MAX_CA_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.caTooLong)
+        .nullable()
+        .optional()
+        .describe(AGENT_VAULT.SERVICE.tlsCa)
     },
     params
   );
@@ -911,7 +921,11 @@ export const AgentVaultInlineServiceSchema = z.object({
   port: z.number().nullable().describe(AGENT_VAULT.SERVICE.portRead),
   database: z.string().nullable().describe(AGENT_VAULT.SERVICE.databaseRead),
   tls: z
-    .object({ enabled: z.boolean(), verify: z.boolean(), ca: z.string().nullable() })
+    .object({
+      enabled: z.boolean().describe(AGENT_VAULT.SERVICE.tlsEnabled),
+      verify: z.boolean().describe(AGENT_VAULT.SERVICE.tlsVerify),
+      ca: z.string().nullable().describe(AGENT_VAULT.SERVICE.tlsCaRead)
+    })
     .nullable()
     .describe(AGENT_VAULT.SERVICE.tlsRead),
   hostPattern: z.string().nullable().describe(AGENT_VAULT.SERVICE.hostPatternRead),
@@ -1004,7 +1018,11 @@ export const AgentVaultServiceSchema = z.object({
   port: z.number().nullable().describe(AGENT_VAULT.SERVICE.portRead),
   database: z.string().nullable().describe(AGENT_VAULT.SERVICE.databaseRead),
   tls: z
-    .object({ enabled: z.boolean(), verify: z.boolean(), ca: z.string().nullable() })
+    .object({
+      enabled: z.boolean().describe(AGENT_VAULT.SERVICE.tlsEnabled),
+      verify: z.boolean().describe(AGENT_VAULT.SERVICE.tlsVerify),
+      ca: z.string().nullable().describe(AGENT_VAULT.SERVICE.tlsCaRead)
+    })
     .nullable()
     .describe(AGENT_VAULT.SERVICE.tlsRead),
   hostPattern: z.string().nullable().describe(AGENT_VAULT.SERVICE.hostPatternRead),

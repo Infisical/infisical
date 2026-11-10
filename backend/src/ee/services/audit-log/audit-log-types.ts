@@ -7027,6 +7027,10 @@ interface AgentVaultSessionMintEvent {
       host?: string;
       port?: number;
       database?: string;
+      tlsEnabled?: boolean;
+      tlsVerify?: boolean;
+      // Whether the proxy checks the server's certificate against a CA sent with the service rather than the system's.
+      hasTlsCa?: boolean;
       credentialType: string;
       headerName?: string;
       allowedMethods: string[] | null;

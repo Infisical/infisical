@@ -220,7 +220,7 @@ export const nativeDatabaseError = (value: string): string | null => {
 };
 
 export const certificateAuthorityError = (value: string): string | null => {
-  const pem = value.trim();
+  const pem = value.replace(/\r\n?/g, "\n").trim();
   if (!pem) return null;
   if (pem.length > MAX_NATIVE_CA_LENGTH) {
     return `The certificate authority can be at most ${MAX_NATIVE_CA_LENGTH} characters.`;
@@ -230,6 +230,9 @@ export const certificateAuthorityError = (value: string): string | null => {
   if (PEM_CONTROL_CHARS_RE.test(pem)) return invalid;
   const blocks = pem.match(PEM_BLOCK_RE);
   if (!blocks?.length) return invalid;
+  if ((pem.match(/-----BEGIN /g) ?? []).length !== blocks.length) {
+    return "Paste only the CA certificate. This text also contains a private key or other data that isn't a certificate.";
+  }
   try {
     blocks.forEach((block) => new x509.X509Certificate(block));
   } catch {

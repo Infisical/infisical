@@ -86,6 +86,32 @@ describe("matchesSessionLogSearch", () => {
   it("finds a native row by the type name the Method column shows", () => {
     expect(matchesSessionLogSearch(native, "PostgreSQL")).toBe(true);
   });
+
+  it("matches a statement or command whole, keeping its ? and #", () => {
+    const statement = record({
+      native: { statement: "SELECT * FROM orders WHERE id = ? AND tenant = ?" }
+    });
+    expect(matchesSessionLogSearch(statement, "WHERE id = ? AND tenant")).toBe(true);
+    expect(matchesSessionLogSearch(statement, "WHERE id = ? AND user")).toBe(false);
+    const command = record({ native: { command: "ls -la # deploy check" } });
+    expect(matchesSessionLogSearch(command, "# deploy")).toBe(true);
+  });
+
+  it("finds a multi-line statement by the one-line form its row shows", () => {
+    const statement = record({ native: { statement: "SELECT *\n  FROM orders\n WHERE id = 1" } });
+    expect(matchesSessionLogSearch(statement, "select * from orders where id = 1")).toBe(true);
+  });
+
+  it("still cuts a pasted URL back to its host and path for HTTP rows", () => {
+    const http = record({
+      method: "GET",
+      host: "api.example.com",
+      port: "443",
+      path: "/v1/orders",
+      serviceType: AgentVaultServiceType.Http
+    });
+    expect(matchesSessionLogSearch(http, "https://api.example.com/v1/orders?page=2")).toBe(true);
+  });
 });
 
 describe("sessionLogMethodLabel", () => {

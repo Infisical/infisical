@@ -1934,6 +1934,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         allowedMethods,
         allowedPathPrefixes,
         allowedTools,
+        customHeaders,
         substitutions
       },
       credentialReplaced,

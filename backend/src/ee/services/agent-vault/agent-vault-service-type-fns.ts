@@ -6,7 +6,8 @@ import { shake } from "@app/lib/fn";
 
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
-  AGENT_VAULT_NO_CONTROL_CHARS_RE
+  AGENT_VAULT_NO_CONTROL_CHARS_RE,
+  hasLoneSurrogate
 } from "./agent-vault-credential-schemas";
 import { AgentVaultCredentialType, AgentVaultMcpTransport, AgentVaultServiceType } from "./agent-vault-enums";
 import { AGENT_VAULT_DEFAULT_PORT, parseHostPatterns } from "./agent-vault-host-pattern-fns";
@@ -27,12 +28,7 @@ const TRAILING_HOST_DOT_RE = new RE2(/\.$/);
 const describeServerUrlProblem = (raw: string): string | null => {
   if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(raw)) return AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE;
   // URL replaces lone surrogates, but keeping the raw value would make jsonb reject the write.
-  if (
-    [...raw].some((character) => {
-      const codePoint = character.codePointAt(0)!;
-      return codePoint >= 0xd800 && codePoint <= 0xdfff;
-    })
-  )
+  if (hasLoneSurrogate(raw))
     return "The server URL contains invalid text. Copy the URL from the browser and try again.";
   if ([...raw].some((character) => !character.trim())) return "The server URL can't contain spaces.";
   // Checked on the raw text because the URL parser accepts "https:host" and backslashes as if they were "https://".

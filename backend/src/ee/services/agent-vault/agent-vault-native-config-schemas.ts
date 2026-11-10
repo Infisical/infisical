@@ -3,6 +3,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import type { TResolvedNativeTarget } from "../agent-vault-proxy/agent-vault-proxy-types";
+import { hasLoneSurrogate } from "./agent-vault-credential-schemas";
 import { AgentVaultServiceType } from "./agent-vault-enums";
 
 export const AGENT_VAULT_NATIVE_SERVICE_TYPES = [
@@ -39,8 +40,14 @@ export const AGENT_VAULT_NATIVE_MESSAGES = {
   databaseRequired: "Enter the database to connect to.",
   databaseTooLong: `The database name can be at most ${AGENT_VAULT_NATIVE_MAX_DATABASE_LENGTH} characters.`,
   databaseControlChars: "The database name can't contain control characters.",
+  databaseInvalidText: "The database name contains invalid text. Type the name rather than pasting it.",
   databaseVariable: "Variables aren't supported in the database name yet. Enter the name itself.",
-  caTooLong: `The certificate authority can be at most ${AGENT_VAULT_NATIVE_MAX_CA_LENGTH} characters.`
+  caTooLong: `The certificate authority can be at most ${AGENT_VAULT_NATIVE_MAX_CA_LENGTH} characters.`,
+  caInvalid:
+    "The certificate authority isn't a valid PEM certificate. Paste the CA certificate, starting with -----BEGIN CERTIFICATE-----.",
+  caInvalidText: "The certificate authority contains invalid text. Copy the CA certificate from its file again.",
+  caNotOnlyCertificates:
+    "Paste only the CA certificate. This text also contains a private key or other data that isn't a certificate."
 } as const;
 
 // Underscores are allowed because Docker Compose service names use them and Go's resolver accepts them.
@@ -52,6 +59,7 @@ const NO_CONTROL_CHARS_RE = new RE2(/^[^\x00-\x1f\x7f]*$/);
 // eslint-disable-next-line no-control-regex
 const PEM_CONTROL_CHARS_RE = new RE2(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/);
 const PEM_BLOCK_RE = new RE2(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g);
+const PEM_BEGIN_RE = new RE2(/-----BEGIN /g);
 
 const nativeHostSchema = z
   .string()
@@ -87,6 +95,7 @@ const nativeDatabaseSchema = z
   .trim()
   .min(1, AGENT_VAULT_NATIVE_MESSAGES.databaseRequired)
   .max(AGENT_VAULT_NATIVE_MAX_DATABASE_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.databaseTooLong)
+  .refine((value) => !hasLoneSurrogate(value), AGENT_VAULT_NATIVE_MESSAGES.databaseInvalidText)
   .refine((value) => NO_CONTROL_CHARS_RE.test(value), AGENT_VAULT_NATIVE_MESSAGES.databaseControlChars)
   .refine((value) => !value.includes("{{"), AGENT_VAULT_NATIVE_MESSAGES.databaseVariable);
 
@@ -96,22 +105,23 @@ const certificateAuthoritySchema = z
   .max(AGENT_VAULT_NATIVE_MAX_CA_LENGTH, AGENT_VAULT_NATIVE_MESSAGES.caTooLong)
   .superRefine((pem, ctx) => {
     if (!pem) return;
-    const fail = () =>
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "The certificate authority isn't a valid PEM certificate. Paste the CA certificate, starting with -----BEGIN CERTIFICATE-----."
-      });
+    const fail = (message: string = AGENT_VAULT_NATIVE_MESSAGES.caInvalid) =>
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message });
+    if (hasLoneSurrogate(pem)) return fail(AGENT_VAULT_NATIVE_MESSAGES.caInvalidText);
     if (PEM_CONTROL_CHARS_RE.test(pem)) return fail();
     const blocks = pem.match(PEM_BLOCK_RE);
     if (!blocks?.length) return fail();
+    // Every Read member and every proxy gets the CA, so a private key pasted along with it must not be stored.
+    if ((pem.match(PEM_BEGIN_RE) ?? []).length !== blocks.length) {
+      return fail(AGENT_VAULT_NATIVE_MESSAGES.caNotOnlyCertificates);
+    }
     try {
       blocks.forEach((block) => new x509.X509Certificate(block));
     } catch {
       fail();
     }
   })
-  .transform((pem) => pem || undefined);
+  .transform((pem) => pem.match(PEM_BLOCK_RE)?.join("\n") || undefined);
 
 const nativeTlsSchema = z
   .object({

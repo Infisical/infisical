@@ -64,6 +64,7 @@ import {
   groupSessionLogGaps,
   isNativeSessionLogRecord,
   matchesSessionLogSearch,
+  nativeSessionLogSearchTerm,
   sessionLogSearchTerm
 } from "./SessionLogsPanel.utils";
 import { useNewRequestsCounter } from "./useNewRequestsCounter";
@@ -228,7 +229,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
     [records, search, decisionFilter]
   );
 
-  const hasBrowserFilter = Boolean(sessionLogSearchTerm(search)) || decisionFilter !== "all";
+  const hasBrowserFilter =
+    Boolean(sessionLogSearchTerm(search) || nativeSessionLogSearchTerm(search)) ||
+    decisionFilter !== "all";
   const isFiltered = hasBrowserFilter || Boolean(range);
 
   // Counted once opened: a chunk's request count isn't known until it is decrypted.
@@ -257,6 +260,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const filterKey = [
     sessionLogSearchTerm(search),
+    nativeSessionLogSearchTerm(search),
     decisionFilter,
     range?.startDate.getTime(),
     range?.endDate.getTime()

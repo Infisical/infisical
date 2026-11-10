@@ -774,9 +774,12 @@ code exchange and refresh; the proxy only ever receives the access token.
 
 ## Session logs
 
-Metadata only (method, host, path, status, decision). Bodies, headers and the query string are never stored;
-for an MCP service the proxy reads only the JSON-RPC method and tool name of each call from the body. The agent is
-hostile input: nothing it sends may erase or hide its own records, so the proxy logs every request it drops.
+HTTP and MCP records are metadata only (method, host, path, status, decision). Bodies, headers and the query string
+are never stored; for an MCP service the proxy reads only the JSON-RPC method and tool name of each call from the
+body. Database and SSH records are not metadata only: they hold the SQL statements, the SSH commands, piped input (up
+to 8 KiB) and output (up to 64 KiB), and any of these can carry a secret, such as a password typed into a statement.
+Treat session logs as sensitive data when widening who can read them or adding an export. The agent is hostile
+input: nothing it sends may erase or hide its own records, so the proxy logs every request it drops.
 
 - **Bytes go proxy to the bucket to the browser, and S3 is the index.** Infisical stores nothing per chunk and never
   seals or opens one. The bucket is default storage (the instance's, `OBJECT_STORAGE_S3_*`) or external storage (the

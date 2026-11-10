@@ -55,6 +55,7 @@ export type TProxyRootCa = {
 
 export type THeartbeatDTO = {
   proxyId: string;
+  tokenVersion: number;
 };
 
 export type TAuthorizeSessionDTO = {

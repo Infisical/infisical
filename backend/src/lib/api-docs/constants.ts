@@ -4713,6 +4713,12 @@ export const AGENT_VAULT = {
     databaseRead: "The database the proxy logs in to. Null for an `ssh`, `http` or `mcp` service.",
     tls: "How the proxy connects to the database. `enabled` (default true) uses TLS, `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's. Send `ca: null` to remove a stored one.",
     tlsRead: "How the proxy connects to the database. Null for an `ssh`, `http` or `mcp` service.",
+    tlsEnabled: "Whether the proxy connects to the database over TLS. Defaults to true.",
+    tlsVerify: "Whether the proxy checks the database's certificate. Defaults to true.",
+    tlsCa:
+      "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Send null to remove a stored one.",
+    tlsCaRead:
+      "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Null when none is stored.",
     nativeCredential:
       "The account the proxy logs in as. A username and password for `postgres` and `mysql`, and a username with a password or an SSH key for `ssh`.",
     sshUsername: "The user the proxy logs in to the SSH server as.",

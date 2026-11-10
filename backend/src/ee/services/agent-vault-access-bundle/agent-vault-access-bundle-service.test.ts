@@ -97,6 +97,16 @@ const updatePort = (
     credential
   });
 
+const updateSsh = (service: ReturnType<typeof buildService>["service"], fields: Partial<TUpdateServiceInput>) =>
+  service.updateService({
+    projectId: PROJECT_ID,
+    ctx,
+    accessBundleId: BUNDLE_ID,
+    serviceId: SERVICE_ID,
+    type: AgentVaultServiceType.Ssh,
+    ...fields
+  });
+
 const writtenColumns = (dal: ReturnType<typeof buildService>["agentVaultServiceDAL"]) =>
   dal.updateById.mock.calls[0][1] as Partial<TAgentVaultServices>;
 
@@ -166,5 +176,30 @@ describe("updateService, an SSH key save that writes no secret", () => {
     expect(columns.credentialConfig).toEqual({ type: AgentVaultCredentialType.SshKey, hasCertificate: false });
     expect(result.credentialReplaced).toBe(false);
     expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateService, what the audit is told changed", () => {
+  test("an empty certificate with none stored writes no secret and replaces no credential", async () => {
+    const stored = sshService({ hasCertificate: false, secret: "key" });
+    const { service, agentVaultServiceDAL, kmsService } = buildService({ firstRead: stored, locked: stored });
+
+    const result = await updateSsh(service, {
+      port: 2222,
+      credential: { type: AgentVaultCredentialType.SshKey, certificate: "" }
+    });
+
+    expect(writtenColumns(agentVaultServiceDAL)).not.toHaveProperty("encryptedCredential");
+    expect(result.credentialReplaced).toBe(false);
+    expect(kmsService.createCipherPairWithDataKey).not.toHaveBeenCalled();
+  });
+
+  test("custom headers read back from an SSH service are not reported as changed", async () => {
+    const stored = sshService({ hasCertificate: false, secret: "key" });
+    const { service } = buildService({ firstRead: stored, locked: stored });
+
+    const result = await updateSsh(service, { port: 2222, customHeaders: [] });
+
+    expect(result.update.customHeaders).toBeUndefined();
   });
 });

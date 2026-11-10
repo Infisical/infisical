@@ -539,9 +539,12 @@ export const agentVaultProxyServiceFactory = ({
     return { proxyId: proxy.id, name: proxy.name, config: toConfig(proxy), rootCa: infisicalCa?.rootCa };
   };
 
-  const heartbeat = async ({ proxyId }: THeartbeatDTO) => {
-    const proxy = await agentVaultProxyDAL.recordHeartbeat(proxyId);
-    if (!proxy) throw new UnauthorizedError({ message: "This proxy no longer exists" });
+  const heartbeat = async ({ proxyId, tokenVersion }: THeartbeatDTO) => {
+    // The auth check ran on an earlier read, so a revoke or rotation landing in between leaves no row to update.
+    const proxy = await agentVaultProxyDAL.recordHeartbeat(proxyId, tokenVersion);
+    if (!proxy) {
+      throw new UnauthorizedError({ name: "ProxyTokenRejected", message: "Agent Vault proxy token has been revoked" });
+    }
     return { config: toConfig(proxy) };
   };
 
@@ -1333,7 +1336,7 @@ export const agentVaultProxyServiceFactory = ({
   // Lets `infisical agent-vault connect` pin the proxy's CA without trusting the proxy for it. Only the fingerprint
   // each proxy serves is returned: a stored certificate that differs from it is one no proxy serves.
   const getSessionProxyCaFingerprints = async ({ sessionToken }: TGetSessionProxyCaFingerprintsDTO) => {
-    const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
+    const session = await agentVaultSessionDAL.findByTokenHashOnPrimary(hashSessionToken(sessionToken));
     const project = session ? await projectDAL.findById(session.projectId) : undefined;
     if (!session || !project) {
       throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });

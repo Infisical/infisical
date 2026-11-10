@@ -56,13 +56,19 @@ export const storedHasCertificate = (stored: TAgentVaultServices) =>
   stored.credentialType === AgentVaultCredentialType.SshKey &&
   Boolean((stored.credentialConfig as { hasCertificate?: boolean } | null)?.hasCertificate);
 
+// Only null removes the certificate, so an emptied field can't remove one by accident.
+const sentSshKeyPart = (credential: TSshKeyUpdate, part: (typeof SSH_KEY_PARTS)[number]) =>
+  part === "certificate" && typeof credential.certificate === "string" && !credential.certificate.trim()
+    ? undefined
+    : credential[part];
+
 // Removing a certificate that isn't stored changes nothing, so it rewrites no secret and audits no replaced credential.
 // The edit form sends `certificate: null` only when the user removes the certificate.
 const sendsSshKeyPart = (credential: TSshKeyUpdate, stored: TAgentVaultServices) =>
   SSH_KEY_PARTS.some((part) =>
     part === "certificate" && credential.certificate === null
       ? storedHasCertificate(stored)
-      : credential[part] !== undefined
+      : sentSshKeyPart(credential, part) !== undefined
   );
 
 const assertNoSshKeyMemberFields = (credential: TSshKeyUpdate) => {
@@ -255,8 +261,10 @@ export const mergeCredential = (
         memberProvidedFields: null
       };
     }
-    const keep = (part: (typeof SSH_KEY_PARTS)[number]) =>
-      credential[part] === undefined ? storedSecret?.[part] : credential[part];
+    const keep = (part: (typeof SSH_KEY_PARTS)[number]) => {
+      const sent = sentSshKeyPart(credential, part);
+      return sent === undefined ? storedSecret?.[part] : sent;
+    };
     return sshKeyWrite({
       username: keep("username"),
       privateKey: keep("privateKey"),

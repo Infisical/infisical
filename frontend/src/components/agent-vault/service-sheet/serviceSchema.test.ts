@@ -569,6 +569,20 @@ describe("certificateAuthorityError", () => {
     expect(certificateAuthorityError(TEST_CA.replace("MIIBVzCB", "MIIBVzXX"))).toBe(invalid);
     expect(certificateAuthorityError(`${TEST_CA}\u0000`)).toBe(invalid);
   });
+
+  it("accepts a certificate pasted with Windows line endings", () => {
+    expect(certificateAuthorityError(TEST_CA.replace(/\n/g, "\r\n"))).toBeNull();
+  });
+
+  it("refuses a certificate pasted together with its private key", () => {
+    expect(
+      certificateAuthorityError(
+        `${TEST_CA}\n-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg\n-----END PRIVATE KEY-----\n`
+      )
+    ).toBe(
+      "Paste only the CA certificate. This text also contains a private key or other data that isn't a certificate."
+    );
+  });
 });
 
 describe("buildServiceSchema with native validation", () => {

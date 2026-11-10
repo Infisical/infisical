@@ -134,7 +134,15 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ config: ProxyConfigSchema }) }
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
-    handler: async (req) => server.services.agentVaultProxy.heartbeat({ proxyId: req.permission.id })
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN) {
+        throw new UnauthorizedError({ message: "A proxy token is required" });
+      }
+      return server.services.agentVaultProxy.heartbeat({
+        proxyId: req.permission.id,
+        tokenVersion: req.auth.token.tokenVersion
+      });
+    }
   });
 
   server.route({

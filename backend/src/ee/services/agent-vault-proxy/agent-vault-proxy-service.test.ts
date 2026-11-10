@@ -78,6 +78,13 @@ const setup = (
   } = {}
 ) => {
   const findCaFingerprintsByProjectId = vi.fn(async () => ["SHA256:AA:BB"]);
+  const findSession = async () =>
+    ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt, expiresAt: null }) as never;
+  const findSessionOnPrimary = vi.fn(findSession);
+  // The stored token version is 1; the DAL's update matches no row for any other.
+  const recordHeartbeat = vi.fn(async (_proxyId: string, tokenVersion: number) =>
+    tokenVersion === 1 ? { id: "proxy-1", pollInterval: 60, heartbeatTTL: 60 } : undefined
+  );
   const refreshServiceToken = vi.fn(refresh);
   const reportMissingScopes = vi.fn(async () => {});
   const findInlineServices = vi.fn(async () => inlineRows);
@@ -87,7 +94,8 @@ const setup = (
   const service = agentVaultProxyServiceFactory({
     agentVaultProxyDAL: {
       findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 }),
-      findCaFingerprintsByProjectId
+      findCaFingerprintsByProjectId,
+      recordHeartbeat
     } as never,
     agentVaultResolveDAL: { findResolvableServices: async () => rows, findSessionSkills: async () => [] },
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
@@ -95,8 +103,8 @@ const setup = (
     agentVaultVariableDAL: { findValuesForResolve: async () => variables },
     agentVaultPersonalValueDAL: { findForResolve: async () => personalRows },
     agentVaultSessionDAL: {
-      findByTokenHash: async () =>
-        ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt, expiresAt: null }) as never
+      findByTokenHash: findSession,
+      findByTokenHashOnPrimary: findSessionOnPrimary
     } as never,
     agentVaultSessionInlineServiceDAL: {
       findBySessionId: findInlineServices,
@@ -134,6 +142,8 @@ const setup = (
   });
   return {
     service,
+    findSessionOnPrimary,
+    recordHeartbeat,
     refreshServiceToken,
     reportMissingScopes,
     findInlineServices,
@@ -644,13 +654,28 @@ describe("database and SSH services on resolve", () => {
   });
 });
 
+describe("a proxy heartbeat", () => {
+  test("is recorded for the token version the request was authenticated with", async () => {
+    const { service, recordHeartbeat } = setup(async () => refreshed);
+    await expect(service.heartbeat({ proxyId: "proxy-1", tokenVersion: 1 })).resolves.toHaveProperty("config");
+    expect(recordHeartbeat).toHaveBeenCalledWith("proxy-1", 1);
+  });
+
+  test("whose token was revoked after the auth check is a 401", async () => {
+    const { service } = setup(async () => refreshed);
+    await expect(service.heartbeat({ proxyId: "proxy-1", tokenVersion: 0 })).rejects.toBeInstanceOf(UnauthorizedError);
+  });
+});
+
 describe("proxy CA fingerprints for a session", () => {
   test("lists the fingerprints of the proxies in the session's project", async () => {
-    const { service, findCaFingerprintsByProjectId } = setup(async () => refreshed);
+    const { service, findCaFingerprintsByProjectId, findSessionOnPrimary } = setup(async () => refreshed);
     await expect(service.getSessionProxyCaFingerprints({ sessionToken: "token" })).resolves.toEqual({
       fingerprints: ["SHA256:AA:BB"]
     });
     expect(findCaFingerprintsByProjectId).toHaveBeenCalledWith(PROJECT_ID);
+    // A connect straight after the mint would otherwise miss the session on a replica.
+    expect(findSessionOnPrimary).toHaveBeenCalled();
   });
 
   test("a revoked session's token is a 401", async () => {

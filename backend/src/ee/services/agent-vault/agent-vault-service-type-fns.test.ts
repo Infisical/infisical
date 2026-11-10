@@ -1,4 +1,7 @@
-import { describe, expect, test } from "vitest";
+import { webcrypto } from "node:crypto";
+
+import * as x509 from "@peculiar/x509";
+import { beforeAll, describe, expect, test } from "vitest";
 
 import { AgentVaultCredentialType, AgentVaultMcpTransport, AgentVaultServiceType } from "./agent-vault-enums";
 import { describeNativeTlsCaChange } from "./agent-vault-native-config-schemas";
@@ -301,6 +304,62 @@ describe("database and SSH services", () => {
     expect(
       dropReadBackServiceFields(ssh, { hostPattern: null, serverUrl: null, customHeaders: [], database: null }, null)
     ).toEqual({ hostPattern: undefined, serverUrl: undefined, customHeaders: undefined, database: undefined });
+  });
+});
+
+describe("a database service's text fields", () => {
+  const postgres = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Postgres];
+  let certA = "";
+  let certB = "";
+
+  beforeAll(async () => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+    const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+    const selfSigned = async (name: string) => {
+      const keys = (await webcrypto.subtle.generateKey(alg, true, ["sign", "verify"])) as CryptoKeyPair;
+      const cert = await x509.X509CertificateGenerator.createSelfSigned({
+        serialNumber: "01",
+        name,
+        notBefore: new Date(Date.now() - 86_400_000),
+        notAfter: new Date(Date.now() + 86_400_000),
+        signingAlgorithm: alg,
+        keys
+      });
+      return cert.toString("pem");
+    };
+    certA = await selfSigned("CN=Test CA A");
+    certB = await selfSigned("CN=Test CA B");
+  });
+
+  const withCa = (ca: string) => ({ host: "db.internal", database: "app", tls: { ca } });
+  const storedCaOf = (ca: string) => (buildServiceConfig(postgres, withCa(ca)) as { tls: { ca?: string } }).tls.ca;
+
+  test("refuse a database name with a lone surrogate by name rather than failing the write", () => {
+    expect(() => buildServiceConfig(postgres, { host: "db.internal", database: "orders\uD800" })).toThrow(
+      "'database': The database name contains invalid text."
+    );
+  });
+
+  test("refuse a certificate authority with a lone surrogate by name", () => {
+    expect(() => buildServiceConfig(postgres, withCa(`${certA}\uD800`))).toThrow(
+      "'tls.ca': The certificate authority contains invalid text."
+    );
+  });
+
+  test("refuse a certificate authority pasted with its private key", () => {
+    const key =
+      "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg\n-----END PRIVATE KEY-----";
+    expect(() => buildServiceConfig(postgres, withCa(`${certA}\n${key}`))).toThrow(
+      "'tls.ca': Paste only the CA certificate. This text also contains a private key or other data that isn't a certificate."
+    );
+  });
+
+  test("store two certificates as two blocks", () => {
+    expect(storedCaOf(`${certA}\r\n\r\n${certB}`)).toBe(`${certA.trim()}\n${certB.trim()}`);
+  });
+
+  test("drop the text around the certificate blocks", () => {
+    expect(storedCaOf(`Subject: CN=Test CA A\n${certA}\nIssued for the staging database`)).toBe(certA.trim());
   });
 });
 

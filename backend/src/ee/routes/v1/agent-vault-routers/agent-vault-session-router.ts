@@ -341,6 +341,9 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                 host: service.host ?? undefined,
                 port: service.port ?? undefined,
                 database: service.database ?? undefined,
+                tlsEnabled: service.tls?.enabled,
+                tlsVerify: service.tls?.verify,
+                hasTlsCa: service.tls ? Boolean(service.tls.ca) : undefined,
                 credentialType: service.credential.type,
                 headerName:
                   service.credential.type === AgentVaultCredentialType.Bearer

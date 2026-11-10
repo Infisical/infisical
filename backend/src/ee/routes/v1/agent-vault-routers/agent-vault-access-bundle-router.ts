@@ -515,10 +515,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               service.credential.type !== AgentVaultCredentialType.SshKey
                 ? service.credential.memberProvidedFields
                 : undefined,
-            customHeaderNames: req.body.customHeaders?.map((header) => header.name),
+            customHeaderNames: update.customHeaders?.map((header) => header.name),
             // A row omitting a value keeps the stored secret, so sending one is what marks a rotation.
             // Without this a rotation and a no-op save write the same row.
-            customHeadersReplaced: req.body.customHeaders
+            customHeadersReplaced: update.customHeaders
               ?.filter((header) => header.value !== undefined)
               .map((header) => header.name),
             substitutionPlaceholders: update.substitutions?.map((substitution) => substitution.placeholder),
@@ -528,9 +528,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             credentialReplaced,
             personalValuesCleared,
             variableKeys:
-              req.body.credential || req.body.customHeaders || update.substitutions
-                ? variableKeysOf(service)
-                : undefined
+              req.body.credential || update.customHeaders || update.substitutions ? variableKeysOf(service) : undefined
           }
         }
       });

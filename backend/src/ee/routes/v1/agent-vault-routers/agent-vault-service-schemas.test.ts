@@ -60,4 +60,16 @@ describe("database and SSH service request schemas", () => {
   test("an update to an SSH service takes back the null database and TLS it reads", () => {
     expect(updateMessages({ type: "ssh", port: 2222, database: null, tls: null })).toEqual([]);
   });
+
+  test.each([
+    ["", undefined],
+    ["   ", undefined],
+    [null, null]
+  ])("an SSH key update reads the certificate %j as %j", (certificate, expected) => {
+    const parsed = AgentVaultUpdateServiceBodySchema.parse({
+      type: "ssh",
+      credential: { type: "ssh-key", certificate }
+    }) as { credential: { certificate?: string | null } };
+    expect(parsed.credential.certificate).toBe(expected);
+  });
 });

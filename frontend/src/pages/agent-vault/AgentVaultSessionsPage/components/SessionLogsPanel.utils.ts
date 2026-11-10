@@ -134,6 +134,11 @@ export const sessionLogSearchTerm = (search: string) =>
     .replace(/^https?:\/\//, "")
     .replace(/[?#].*$/, "");
 
+// Statements and commands keep their ? and #, and rows show them on one line, so they are matched whole with runs of
+// whitespace collapsed.
+export const nativeSessionLogSearchTerm = (search: string) =>
+  search.trim().toLowerCase().replace(/\s+/g, " ");
+
 export const isNativeSessionLogRecord = (record: TAgentVaultSessionLogRecord) =>
   isNativeServiceType(record.serviceType) || record.native !== undefined;
 
@@ -159,7 +164,17 @@ const NATIVE_SEARCH_FIELDS = [
 
 export const matchesSessionLogSearch = (record: TAgentVaultSessionLogRecord, search: string) => {
   const term = sessionLogSearchTerm(search);
-  if (!term) return true;
+  const nativeTerm = nativeSessionLogSearchTerm(search);
+  if (!term && !nativeTerm) return true;
+  if (
+    nativeTerm &&
+    NATIVE_SEARCH_FIELDS.some((field) =>
+      nativeSessionLogSearchTerm(record.native?.[field] ?? "").includes(nativeTerm)
+    )
+  ) {
+    return true;
+  }
+  if (!term) return false;
   const host = record.host.toLowerCase();
   const path = record.path.toLowerCase();
   return [
@@ -171,7 +186,6 @@ export const matchesSessionLogSearch = (record: TAgentVaultSessionLogRecord, sea
     ...(record.mcp?.calls ?? []).flatMap((call) =>
       [call.method, call.tool ?? ""].map((field) => field.toLowerCase())
     ),
-    ...NATIVE_SEARCH_FIELDS.map((field) => (record.native?.[field] ?? "").toLowerCase()),
     `${host}${path}`,
     `${host}:${record.port}${path}`
   ].some((field) => field.includes(term));

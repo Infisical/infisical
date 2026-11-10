@@ -26,6 +26,9 @@ export const AGENT_VAULT_NO_CONTROL_CHARS_RE = new RE2(/^[^\x00-\x1f\x7f]*$/);
 export const AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE =
   "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
+// jsonb refuses a lone surrogate and the write 500s. RE2 reads one as U+FFFD, so the regex checks can't see it.
+export const hasLoneSurrogate = (value: string) => !value.isWellFormed();
+
 const AGENT_VAULT_DEFAULT_HEADER_NAME = "Authorization";
 const AGENT_VAULT_DEFAULT_HEADER_PREFIX = "Bearer";
 
