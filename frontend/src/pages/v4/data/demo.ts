@@ -1,5 +1,6 @@
 import { accessDemo } from "./access/demo";
 import type { V4Adapters } from "./adapters";
+import { agentVaultSettingsDemo } from "./agent-vault-settings/demo";
 import { agentVaultDemo } from "./agent-vault/demo";
 import { certificatesDemo } from "./certificates/demo";
 import { integrationsDemo } from "./integrations/demo";
@@ -13,6 +14,7 @@ import { secretsDemo } from "./secrets/demo";
 
 export const demoAdapters: V4Adapters = {
   agentVault: agentVaultDemo,
+  agentVaultSettings: agentVaultSettingsDemo,
   kms: kmsDemo,
   org: orgDemo,
   integrations: integrationsDemo,

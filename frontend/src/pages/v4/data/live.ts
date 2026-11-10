@@ -1,5 +1,6 @@
 import { accessLive } from "./access/live";
 import type { V4Adapters } from "./adapters";
+import { agentVaultSettingsLive } from "./agent-vault-settings/live";
 import { agentVaultLive } from "./agent-vault/live";
 import { certificatesLive } from "./certificates/live";
 import { integrationsLive } from "./integrations/live";
@@ -13,6 +14,7 @@ import { secretsLive } from "./secrets/live";
 
 export const liveAdapters: V4Adapters = {
   agentVault: agentVaultLive,
+  agentVaultSettings: agentVaultSettingsLive,
   kms: kmsLive,
   org: orgLive,
   integrations: integrationsLive,

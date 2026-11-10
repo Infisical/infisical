@@ -7,6 +7,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { orgHref } from "../../links";
 import { ProjectGeneralSettings } from "../../project/SettingsPage/general";
 import { ProjectSettingsLayout } from "../../project/SettingsPage/layout";
+import { SessionLogsTab } from "./session-logs/session-logs";
 
 const AgentVaultGeneral = () => <ProjectGeneralSettings adminOnlyDanger />;
 
@@ -23,7 +24,13 @@ export const AgentVaultSettingsPage = () => {
     <ProjectSettingsLayout
       tabs={[
         { key: "tab-project-general", name: "General", Body: AgentVaultGeneral },
-        { key: "tab-session-logs", name: "Session logs", hidden: !isAdmin }
+        {
+          key: "tab-session-logs",
+          name: "Session logs",
+          description: "Record your agents' requests and choose where the logs are stored.",
+          hidden: !isAdmin,
+          Body: SessionLogsTab
+        }
       ]}
       selectedTab={selectedTab}
       generalHref={orgHref(orgId, `/projects/agent-vault/${projectId}/settings`)}
