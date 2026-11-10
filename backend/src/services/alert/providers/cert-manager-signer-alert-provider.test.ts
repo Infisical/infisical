@@ -240,8 +240,20 @@ describe("cert manager signer alert provider", () => {
     expect(payload.items[0].summary).toMatch(/^Certificate 'release signing' of signer 'release-signer' expires on /);
     expect(payload.items[0].fields?.[0]).toEqual({ label: "Signer", value: "release-signer" });
     expect(payload.items[0].resource).toMatchObject({ signerIds: ["signer-1"], signerNames: ["release-signer"] });
+    expect(payload.alert.viewUrl).toBe(
+      "https://app.infisical.com/organizations/org-1/projects/cert-manager/proj-1/certificates/cert-signer"
+    );
     expect(provider.dedupWindowHours?.({ alertBefore: "30d" })).toBe(44);
     expect(provider.dedupWindowHours?.({ alertBefore: "30d", dailyReminder: true })).toBe(20);
+  });
+
+  test("buildPayload keeps the Code Signing link when the alert covers several certificates", () => {
+    const payload = buildProvider().buildPayload(
+      signerAlert,
+      [signerCertificate(), signerCertificate({ id: "cert-signer-2" })],
+      "https://app.infisical.com/organizations/org-1/cert-manager/code-signing"
+    );
+    expect(payload.alert.viewUrl).toBe("https://app.infisical.com/organizations/org-1/cert-manager/code-signing");
   });
 
   test("a certificate shared by several signers is one item naming every signer", () => {

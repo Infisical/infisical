@@ -211,6 +211,32 @@ describe("cert manager application alert provider", () => {
     });
   });
 
+  test("buildPayload links an alert about one certificate to that certificate", async () => {
+    const { provider } = buildProvider();
+    const payload = provider.buildPayload(alertContext(), [sampleCertificate()], "https://app.infisical.com/view");
+    expect(payload.alert.viewUrl).toBe(
+      "https://app.infisical.com/organizations/org-1/projects/cert-manager/proj-1/certificates/cert-1"
+    );
+  });
+
+  test("buildPayload keeps the application link when the alert covers several certificates", async () => {
+    const { provider } = buildProvider();
+    const payload = provider.buildPayload(
+      alertContext(),
+      [sampleCertificate(), sampleCertificate({ id: "cert-2" })],
+      "https://app.infisical.com/view"
+    );
+    expect(payload.alert.viewUrl).toBe("https://app.infisical.com/view");
+  });
+
+  test("buildPayload links to the certificate without a project when the alert has none", async () => {
+    const { provider } = buildProvider();
+    const payload = provider.buildPayload(alertContext({ projectId: null }), [sampleCertificate()], "https://x");
+    expect(payload.alert.viewUrl).toBe(
+      "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-1"
+    );
+  });
+
   test("buildPayload names a certificate without a common name by its first SAN, then its serial", async () => {
     const { provider } = buildProvider();
     const issuance = alertContext({ eventType: ISSUANCE_EVENT, condition: null });

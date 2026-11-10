@@ -7,6 +7,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // Certificate Manager used to live under /projects/cert-manager/$projectId. Old links and bookmarks
 // keep working: the project they named becomes the active one (the cookie the backend and the
 // cert-manager layout both resolve from), so a link to a legacy instance still opens that instance.
+// Certificate alerts link here too (buildCertificateUrl in the backend alert module), so every
+// emailed, Slack and PagerDuty certificate link breaks if this route goes away.
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-manager/$projectId/$"
 )({

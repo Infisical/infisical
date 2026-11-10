@@ -5,6 +5,7 @@ import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";
 import { getRevocationReasonLabel } from "@app/services/pki-alert-v2/pki-alert-v2-types";
@@ -208,6 +209,15 @@ const certificateSeverity = (kind: CertificateAlertKind, targets: TAlertCertific
   return "info";
 };
 
+// The project-scoped route makes the alert's project the active instance before opening the
+// certificate, so the link also works in orgs with more than one Certificate Manager project.
+export const buildCertificateUrl = (alert: Pick<TAlertContext, "orgId" | "projectId">, certificateId: string) => {
+  const orgUrl = `${getConfig().SITE_URL}/organizations/${alert.orgId}`;
+  return alert.projectId
+    ? `${orgUrl}/projects/cert-manager/${alert.projectId}/certificates/${certificateId}`
+    : `${orgUrl}/cert-manager/certificates/${certificateId}`;
+};
+
 const inApplication = (applicationName?: string | null) =>
   applicationName ? ` in application '${applicationName}'` : "";
 
@@ -250,7 +260,7 @@ export const buildCertificateAlertPayload = ({
       resourceType: alert.resourceType,
       ...(alert.resourceId ? { resourceId: alert.resourceId } : {}),
       ...(alertBefore ? { condition: alertBefore } : {}),
-      viewUrl
+      viewUrl: targets.length === 1 ? buildCertificateUrl(alert, targets[0].id) : viewUrl
     },
     eventKey: alert.eventType,
     eventLabel: CERTIFICATE_ALERT_KIND_LABELS[kind],
