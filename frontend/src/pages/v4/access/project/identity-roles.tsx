@@ -29,6 +29,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { RowLink } from "@app/components/v4/ui/row-link";
 import { ProjectPermissionIdentityActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import type { TProjectRole } from "@app/hooks/api/roles/types";
 import { TemporaryPermissionMode } from "@app/hooks/api/shared/types";
 
@@ -40,6 +41,7 @@ import { grantLabel, grantSlug } from "../roles";
 import { failed, saved } from "../toast";
 import { Gate, RESTRICTED } from "../ui";
 import { identitySubject, type ProjectIdentityMembership } from "./identity-common";
+import { accessLabel, linksIdentityRoles } from "./product";
 import { AddRoleSheet, RoleGrantRow } from "./role-grant";
 import { useProjectScope } from "./scope";
 import { draftOf, DurationBadge, type GrantDraft, permanent, toRolesDto } from "./temporary-access";
@@ -52,10 +54,12 @@ const ALL_ASSIGNED = "This machine identity already has every project role";
 type Grant = ProjectIdentityMembership["roles"][number];
 
 const useSetRoles = (projectId: string, identityId: string) => {
+  const { projectType } = useProjectScope();
   const update = useV4Adapter("access").useUpdateProjectIdentityRoles();
   return (roles: readonly GrantDraft[]) =>
     update.mutateAsync({
       projectId,
+      projectType,
       identityId,
       roles: toRolesDto(roles).map((role) =>
         role.isTemporary ? { ...role, temporaryMode: TemporaryPermissionMode.Relative } : role
@@ -127,7 +131,7 @@ export const IdentityRoleDetailsSection = ({
   const go = useGo();
   const scope = useProjectScope();
   const { permission } = useProjectPermission(projectId);
-  const { data: roles = [] } = useV4Adapter("access").useProjectRoles(projectId);
+  const { data: roles = [] } = useV4Adapter("access").useProjectRoles(projectId, scope.projectType);
   const setRoles = useSetRoles(projectId, membership.identity.id);
   const [adding, setAdding] = useState<number>();
   const [modifying, setModifying] = useState<Grant>();
@@ -163,7 +167,11 @@ export const IdentityRoleDetailsSection = ({
       grow: true,
       render: (grant) => (
         <RowLink
-          {...go.link(accessLinks.projectRole(scope, grantSlug(grant)))}
+          {...go.link(
+            linksIdentityRoles(scope.projectType)
+              ? accessLinks.projectRole(scope, grantSlug(grant))
+              : undefined
+          )}
           title={grantLabel(grant)}
         >
           {grantLabel(grant)}
@@ -207,15 +215,21 @@ export const IdentityRoleDetailsSection = ({
   };
 
   const hasRoles = membership.roles.length > 0;
+  const rolesEditable = scope.projectType !== ProjectType.PAM;
   return (
     <>
-      <Card variant="framed" title="Project roles" flush={hasRoles} action={addButton}>
+      <Card
+        variant="framed"
+        title={accessLabel(scope.projectType, "roles")}
+        flush={hasRoles}
+        action={rolesEditable ? addButton : undefined}
+      >
         {hasRoles ? (
           <DataTable
             label="Project roles"
             rows={membership.roles}
             columns={columns}
-            rowActions={rowActions}
+            rowActions={rolesEditable ? rowActions : undefined}
             getRowId={(grant) => grant.id}
             rowLabel={grantLabel}
           />

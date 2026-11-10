@@ -37,6 +37,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { supportsAssumePrivileges } from "@app/helpers/project";
 import type { Identity } from "@app/hooks/api/identities/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
@@ -60,6 +61,7 @@ import {
   type ProjectIdentityMembership
 } from "./identity-common";
 import { IdentityRoleDetailsSection } from "./identity-roles";
+import { accessLabel, accessNoun } from "./product";
 import { useProjectScope } from "./scope";
 
 import styles from "./identity.module.css";
@@ -274,6 +276,7 @@ const DetailsCard = ({
   canEdit: boolean;
   onEdit: () => void;
 }) => {
+  const scope = useProjectScope();
   const { identity } = membership;
   const isOrgIdentity = !isProjectManaged(identity);
   const metadata = identity.metadata ?? [];
@@ -329,7 +332,10 @@ const DetailsCard = ({
               <Muted key="metadata">-</Muted>
             )
           ],
-          [isOrgIdentity ? "Joined project" : "Created", formatDateTime(membership.createdAt)],
+          [
+            isOrgIdentity ? `Joined ${accessNoun(scope.projectType)}` : "Created",
+            formatDateTime(membership.createdAt)
+          ],
           ...(isOrgIdentity
             ? []
             : ([
@@ -401,7 +407,8 @@ export const ProjectIdentityDetail = () => {
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
   const { data: membership, isPending } = useV4Adapter("access").useProjectIdentity(
     projectId,
-    identityId
+    identityId,
+    scope.projectType
   );
   const [editing, setEditing] = useState(false);
   const [assuming, setAssuming] = useState(false);
@@ -411,7 +418,9 @@ export const ProjectIdentityDetail = () => {
   const backLink = (
     <div>
       <Button variant="link" icon="chev-left" asChild>
-        <RouteLink href={listHref}>Project machine identities</RouteLink>
+        <RouteLink
+          href={listHref}
+        >{`${accessLabel(scope.projectType, "machine identities")}`}</RouteLink>
       </Button>
     </div>
   );
@@ -435,7 +444,9 @@ export const ProjectIdentityDetail = () => {
   const target = identitySubject(identity.id);
   const canEdit = permission.can(ProjectPermissionIdentityActions.Edit, target);
   const canDelete = permission.can(ProjectPermissionIdentityActions.Delete, target);
-  const canAssume = permission.can(ProjectPermissionIdentityActions.AssumePrivileges, target);
+  const canAssume =
+    supportsAssumePrivileges(scope.projectType) &&
+    permission.can(ProjectPermissionIdentityActions.AssumePrivileges, target);
 
   return (
     <Stack gap={24}>
@@ -472,7 +483,9 @@ export const ProjectIdentityDetail = () => {
                   onSelect={() => setRemoving(true)}
                 >
                   {isProjectIdentity ? <Icon name="trash" /> : <Icon icon={UserRoundXIcon} />}
-                  {isProjectIdentity ? "Delete machine identity" : "Remove from project"}
+                  {isProjectIdentity
+                    ? "Delete machine identity"
+                    : `Remove from ${accessNoun(scope.projectType)}`}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

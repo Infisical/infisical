@@ -22,7 +22,6 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { supportsAssumePrivileges } from "@app/helpers/project";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
@@ -38,6 +37,7 @@ import { AccessRestricted, Muted, RESTRICTED } from "../ui";
 import { personName } from "./member-access";
 import { type AssumeTarget, AssumePrivilegesDialog, RemoveMemberDialog } from "./member-dialogs";
 import { MemberRolesSection } from "./member-roles";
+import { accessLabel, accessNoun, canAssumeUserIn } from "./product";
 import { useProjectScope } from "./scope";
 
 import styles from "./project.module.css";
@@ -80,13 +80,13 @@ export const ProjectMemberDetail = () => {
   const [removing, setRemoving] = useState(false);
   const [assuming, setAssuming] = useState<AssumeTarget>();
   const listHref = accessLinks.project(scope, ProjectAccessControlTabs.Member);
-  const breadcrumb = [{ label: "Project users", href: listHref }];
+  const breadcrumb = [{ label: `${accessLabel(scope.projectType, "users")}`, href: listHref }];
 
   if (permissionPending || query.isPending) return <PageLoader label="Loading user" />;
   if (!permission.can(ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member))
     return (
       <Stack gap={24}>
-        <PageHeader breadcrumb={breadcrumb} title="Project user" />
+        <PageHeader breadcrumb={breadcrumb} title={`${accessLabel(scope.projectType, "user")}`} />
         <AccessRestricted requirement="read Member" />
       </Stack>
     );
@@ -95,7 +95,7 @@ export const ProjectMemberDetail = () => {
   if (!member)
     return (
       <Stack gap={24}>
-        <PageHeader breadcrumb={breadcrumb} title="Project user" />
+        <PageHeader breadcrumb={breadcrumb} title={`${accessLabel(scope.projectType, "user")}`} />
         <EmptyState title="User not found" />
       </Stack>
     );
@@ -104,7 +104,7 @@ export const ProjectMemberDetail = () => {
   const isSelf = user.email === session.user.email;
   const name = personName(user) ?? user.email;
   const canAssume =
-    supportsAssumePrivileges(scope.projectType) &&
+    canAssumeUserIn(scope.projectType) &&
     permission.can(
       ProjectPermissionMemberActions.AssumePrivileges,
       subject(ProjectPermissionSub.Member, { userEmail: user.email })
@@ -123,10 +123,10 @@ export const ProjectMemberDetail = () => {
         projectId,
         projectType: scope.projectType
       });
-      saved("Successfully removed user from project");
+      saved(`Successfully removed user from ${accessNoun(scope.projectType)}`);
       go(listHref);
     } catch (error) {
-      failed("Failed to remove user from project", error);
+      failed(`Failed to remove user from ${accessNoun(scope.projectType)}`, error);
     }
   };
 
@@ -202,7 +202,7 @@ export const ProjectMemberDetail = () => {
                   ["ID", <CopyValue key="id" value={user.id} what="User ID" />],
                   ["Email", <CopyValue key="email" value={user.email} what="User email" />],
                   ...(user.username !== user.email ? ([["Username", user.username]] as const) : []),
-                  ["Joined project", formatDate(member.createdAt)]
+                  [`Joined ${accessNoun(scope.projectType)}`, formatDate(member.createdAt)]
                 ]}
               />
             </CardContent>

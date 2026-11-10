@@ -19,7 +19,6 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { supportsAssumePrivileges } from "@app/helpers/project";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import type { TWorkspaceUser } from "@app/hooks/api/users/types";
 
@@ -33,6 +32,7 @@ import { Gate, Muted, RESTRICTED, RoleBadges, usePagedList } from "../ui";
 import { personName, useMemberRoleAccess } from "./member-access";
 import { AddMemberDialog } from "./member-add-dialog";
 import { type AssumeTarget, AssumePrivilegesDialog, RemoveMemberDialog } from "./member-dialogs";
+import { accessLabel, accessNoun, accessThis, canAssumeUserIn, memberDetailId } from "./product";
 import { useProjectScope } from "./scope";
 
 const SELF_REASON = "You cannot modify your own membership";
@@ -70,7 +70,7 @@ export const ProjectMembersTab = () => {
     ProjectPermissionSub.Member
   );
   const canAssume = (member: TWorkspaceUser) =>
-    supportsAssumePrivileges(scope.projectType) &&
+    canAssumeUserIn(scope.projectType) &&
     permission.can(
       ProjectPermissionMemberActions.AssumePrivileges,
       subject(ProjectPermissionSub.Member, { userEmail: member.user.email })
@@ -103,7 +103,7 @@ export const ProjectMembersTab = () => {
       grow: true,
       render: (member) => (
         <RowLink
-          {...go.link(accessLinks.projectMember(scope, member.id))}
+          {...go.link(accessLinks.projectMember(scope, memberDetailId(scope.projectType, member)))}
           title={personName(member.user) ?? undefined}
         >
           {personName(member.user) ?? <Muted>-</Muted>}
@@ -119,7 +119,7 @@ export const ProjectMembersTab = () => {
     },
     {
       id: "role",
-      header: "Project role",
+      header: `${accessLabel(scope.projectType, "role")}`,
       render: (member) => <RoleBadges roles={member.roles} />
     }
   ];
@@ -162,20 +162,20 @@ export const ProjectMembersTab = () => {
         projectId,
         projectType: scope.projectType
       });
-      saved("Successfully removed user from project");
+      saved(`Successfully removed user from ${accessNoun(scope.projectType)}`);
     } catch (error) {
-      failed("Failed to remove user from project", error);
+      failed(`Failed to remove user from ${accessNoun(scope.projectType)}`, error);
     }
   };
 
   return (
     <Stack gap={16}>
       <FilterBar
-        label="Project user filters"
+        label={`${accessLabel(scope.projectType, "user")} filters`}
         fields={[
           {
             key: "role",
-            label: "Project role",
+            label: `${accessLabel(scope.projectType, "role")}`,
             type: "multi-select",
             options: roles.map((role) => ({ value: role.slug, label: role.name }))
           }
@@ -188,14 +188,17 @@ export const ProjectMembersTab = () => {
         search={
           <Input
             icon="search"
-            aria-label="Search project users..."
-            placeholder="Search project users..."
+            aria-label={`Search ${accessLabel(scope.projectType, "users").toLowerCase()}...`}
+            placeholder={`Search ${accessLabel(scope.projectType, "users").toLowerCase()}...`}
             value={list.search}
             onChange={(event) => list.setSearch(event.target.value)}
           />
         }
         actions={
-          <Gate allowed={canCreate} reason="You don't have permission to add users to this project">
+          <Gate
+            allowed={canCreate}
+            reason={`You don't have permission to add users to ${accessThis(scope.projectType)}`}
+          >
             <Button
               variant="accent"
               icon="user-plus"
@@ -208,7 +211,7 @@ export const ProjectMembersTab = () => {
         }
       />
       <DataTable
-        label="Project users"
+        label={`${accessLabel(scope.projectType, "users")}`}
         rows={list.pageRows}
         columns={columns}
         rowActions={rowActions}
@@ -220,9 +223,17 @@ export const ProjectMembersTab = () => {
         onSortChange={list.setSort}
         empty={
           searching ? (
-            <EmptyState size="sm" icon="search" title="No project users match search" />
+            <EmptyState
+              size="sm"
+              icon="search"
+              title={`No ${accessLabel(scope.projectType, "users").toLowerCase()} match search`}
+            />
           ) : (
-            <EmptyState size="sm" icon="user" title="No project users found" />
+            <EmptyState
+              size="sm"
+              icon="user"
+              title={`No ${accessLabel(scope.projectType, "users").toLowerCase()} found`}
+            />
           )
         }
         pagination={members.isPending ? undefined : list.pagination}

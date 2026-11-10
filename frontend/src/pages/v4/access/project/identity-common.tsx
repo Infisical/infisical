@@ -24,6 +24,7 @@ import type { Identity, IdentityProjectMembershipV2 } from "@app/hooks/api/ident
 import { useV4Adapter } from "../../data/adapters";
 import { V4_DEMO_ORG_ID } from "../../mode";
 import { failed, saved } from "../toast";
+import { accessLabel, accessNoun, accessThe, accessThis } from "./product";
 import { useProjectScope } from "./scope";
 
 import styles from "./identity.module.css";
@@ -147,6 +148,7 @@ export const IdentityRemovalDialog = ({
   onOpenChange: (open: boolean) => void;
   onDone?: () => void;
 }) => {
+  const { projectType } = useProjectScope();
   const access = useV4Adapter("access");
   const removeMembership = access.useRemoveProjectIdentity();
   const deleteIdentity = access.useDeleteProjectManagedIdentity();
@@ -154,25 +156,27 @@ export const IdentityRemovalDialog = ({
   const isProjectIdentity = Boolean(identity && isProjectManaged(identity));
   const name = identity?.name || "machine identity";
   const removeTitle =
-    from === "list" ? `Remove ${name} from project?` : `Remove ${name} from the project?`;
+    from === "list"
+      ? `Remove ${name} from ${accessNoun(projectType)}?`
+      : `Remove ${name} from ${accessThe(projectType)}?`;
   const run = async () => {
     if (!identity) return;
     setPending(true);
     try {
       if (isProjectIdentity) {
         await deleteIdentity.mutateAsync({ projectId, identityId: identity.id });
-        saved("Successfully deleted project machine identity");
+        saved(`Successfully deleted ${accessLabel(projectType, "machine identity").toLowerCase()}`);
       } else {
-        await removeMembership.mutateAsync({ projectId, identityId: identity.id });
-        saved("Successfully removed machine identity from project");
+        await removeMembership.mutateAsync({ projectId, projectType, identityId: identity.id });
+        saved(`Successfully removed machine identity from ${accessNoun(projectType)}`);
       }
       onOpenChange(false);
       onDone?.();
     } catch (error) {
       failed(
         isProjectIdentity
-          ? "Failed to delete project machine identity"
-          : "Failed to remove machine identity from project",
+          ? `Failed to delete ${accessLabel(projectType, "machine identity").toLowerCase()}`
+          : `Failed to remove machine identity from ${accessNoun(projectType)}`,
         error
       );
     } finally {
@@ -191,7 +195,7 @@ export const IdentityRemovalDialog = ({
           <AlertDialogDescription>
             {isProjectIdentity
               ? "Deletes the machine identity and revokes its access. This cannot be undone."
-              : "It loses access to this project but stays in the organization."}
+              : `It loses access to ${accessThis(projectType)} but stays in the organization.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
