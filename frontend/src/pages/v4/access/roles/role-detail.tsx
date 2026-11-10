@@ -460,8 +460,8 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
   const access = useV4Adapter("access");
   const go = useGo();
   const { permission, isPending: permissionPending } = useProjectPermission(projectId);
-  const { data: role, isPending } = access.useProjectRole(projectId, roleSlug);
-  const { data: roles } = access.useProjectRoles(projectId);
+  const { data: role, isPending } = access.useProjectRole(projectId, roleSlug, scope.projectType);
+  const { data: roles } = access.useProjectRoles(projectId, scope.projectType);
   const { data: project } = access.useProject(projectId);
   const { data: tags } = access.useProjectTags(projectId);
   const canEdit = permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
@@ -502,13 +502,19 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
       savePermissions={async (permissions) => {
         await updateRole.mutateAsync({
           projectId,
+          projectType: scope.projectType,
           id: role.id,
           permissions: projectToApi(permissions)
         });
       }}
       update={async (draft) => {
         try {
-          const next = await updateRole.mutateAsync({ projectId, id: role.id, ...draft });
+          const next = await updateRole.mutateAsync({
+            projectId,
+            projectType: scope.projectType,
+            id: role.id,
+            ...draft
+          });
           saved(`Project role "${next.name}" updated`);
           if (next.slug !== roleSlug) go(accessLinks.projectRole(scope, next.slug));
           return true;
@@ -521,6 +527,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
         try {
           const created = await createRole.mutateAsync({
             projectId,
+            projectType: scope.projectType,
             ...draft,
             permissions: sanitizeDuplicateRolePermissions(role.permissions)
           });
@@ -534,7 +541,7 @@ const ProjectRoleDetail = ({ projectId, roleSlug }: { projectId: string; roleSlu
       }}
       remove={async () => {
         try {
-          await deleteRole.mutateAsync({ projectId, id: role.id });
+          await deleteRole.mutateAsync({ projectId, projectType: scope.projectType, id: role.id });
           saved("Successfully deleted project role");
           go(backHref);
         } catch (error) {

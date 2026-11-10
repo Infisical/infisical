@@ -13,6 +13,7 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { useV4Adapter } from "../../data/adapters";
 import { accessLinks } from "../links";
 import { failed, saved } from "../toast";
+import { accessThe } from "./product";
 import { useProjectScope } from "./scope";
 
 export type AssumeTarget = { id: string; type: ActorType.USER | ActorType.IDENTITY };
@@ -74,21 +75,24 @@ export const RemoveMemberDialog = ({
   name?: string;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
-}) => (
-  <AlertDialog open={Boolean(name)} onOpenChange={onOpenChange}>
-    <AlertDialogContent tone="danger" confirmText="remove">
-      <AlertDialogHeader>
-        <AlertDialogTitle>{`Remove ${name ?? "this user"} from the project?`}</AlertDialogTitle>
-        <AlertDialogDescription>
-          They lose the access this membership grants.
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>Cancel</AlertDialogCancel>
-        <AlertDialogAction variant="destructive" onClick={onConfirm}>
-          Remove user
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
-);
+}) => {
+  const scope = useProjectScope();
+  return (
+    <AlertDialog open={Boolean(name)} onOpenChange={onOpenChange}>
+      <AlertDialogContent tone="danger" confirmText="remove">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{`Remove ${name ?? "this user"} from ${accessThe(scope.projectType)}?`}</AlertDialogTitle>
+          <AlertDialogDescription>
+            They lose the access this membership grants.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+            Remove user
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
