@@ -834,7 +834,9 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   saved, so a bucket the operator adds later doesn't turn logs back on. Health and the CORS probe only run while
   external storage is on and on the plan, since nothing else is recorded or shown.
 - **Usage is counted on the way out, not from the cap counter.** Each upload link sends the aggregated PostHog event
-  `Agent Vault Session Log Chunk Accepted` (`bytes`, `storageType`, and `records`, the proxy's own unchecked count), and
+  `Agent Vault Session Log Chunk Accepted` (`bytes`, `storageType`, and `records`, the proxy's own unchecked count,
+  with its split into `brokered`, `passthrough`, `blocked` and `error` only when the split adds up to `records`;
+  `getChunkDecisionProperties`), and
   the layer counts links on `infisical.object_storage.upload.*` for operators. The cap counter floors at 16 KiB, mixes
   storage types and stops at the cap, so it isn't a usage number.
 - **The settings body is `{ enabled: false }` or `{ enabled: true, storage }`.** Turning on always names the
