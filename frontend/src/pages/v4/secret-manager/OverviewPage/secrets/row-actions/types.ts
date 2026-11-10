@@ -1,5 +1,5 @@
 import type { Resource, ResourceApplyOptions, Secret } from "../../secrets-model";
-import type { FlowFeedback, FlowScope } from "../flows";
+import type { ApplyFeedback, FlowFeedback, FlowScope } from "../flows";
 
 export type SecretPatch = Partial<
   Pick<
@@ -36,7 +36,7 @@ export type OverlayHostProps = {
   resources: readonly Resource[];
   onApply: (
     update: (current: Resource[]) => Resource[],
-    feedback: FlowFeedback,
+    feedback: ApplyFeedback,
     options?: ResourceApplyOptions
   ) => void;
   onToast: (tone: RowActionTone, feedback: FlowFeedback) => void;
@@ -49,7 +49,7 @@ export type RowActionHostProps<K extends RowAction["kind"]> = {
   resources: readonly Resource[];
   onApply: (
     update: (current: Resource[]) => Resource[],
-    feedback: FlowFeedback,
+    feedback: ApplyFeedback,
     options?: ResourceApplyOptions
   ) => void;
   onToast: (tone: RowActionTone, feedback: FlowFeedback) => void;

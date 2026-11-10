@@ -21,6 +21,9 @@ export type SecretHooks = {
   reminder?: (before: Secret, after: Secret) => Promise<unknown>;
 };
 
+export type ApplyScope = { environment: string; path: string };
+export type ApplyResult = { written: ApplyScope[]; held: ApplyScope[] };
+
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const within = (path: string, root: string) => path === root || path.startsWith(`${root}/`);
 const groupBy = <T>(items: T[], key: (item: T) => string) =>
@@ -85,7 +88,14 @@ export const useResourceApply = ({
     before: readonly Resource[],
     after: readonly Resource[],
     { shouldOverwrite = false }: ResourceApplyOptions = {}
-  ) => {
+  ): Promise<ApplyResult> => {
+    const result: ApplyResult = { written: [], held: [] };
+    const record = async (environment: string, path: string, pending?: Promise<unknown>) => {
+      if (!pending) return;
+      const response = await pending;
+      const held = typeof response === "object" && response !== null && "approval" in response;
+      result[held ? "held" : "written"].push({ environment, path });
+    };
     const previous = new Map(
       before.map((resource) => [`${resource.kind}:${resource.id}`, resource])
     );
@@ -164,35 +174,50 @@ export const useResourceApply = ({
     );
     await Promise.all(
       Object.values(groupBy(removedSecrets, scopeOf)).map((group) =>
-        deleteSecretBatch.mutateAsync({
-          projectId,
-          environment: group[0].environment,
-          secretPath: group[0].path,
-          secrets: group.map((secret) => ({ secretKey: secret.name, type: SecretType.Shared }))
-        })
+        record(
+          group[0].environment,
+          group[0].path,
+          deleteSecretBatch.mutateAsync({
+            projectId,
+            environment: group[0].environment,
+            secretPath: group[0].path,
+            secrets: group.map((secret) => ({ secretKey: secret.name, type: SecretType.Shared }))
+          })
+        )
       )
     );
     await Promise.all(
       removed.map((resource) => {
-        if (insideRemoved(resource)) return undefined;
+        if (insideRemoved(resource) || resource.kind === "secret") return undefined;
         if (resource.kind === "folder")
-          return deleteFolder.mutateAsync({
-            projectId,
-            environment: resource.environment,
-            folderId: resource.id,
-            path: resource.path
-          });
+          return record(
+            resource.environment,
+            resource.path,
+            deleteFolder.mutateAsync({
+              projectId,
+              environment: resource.environment,
+              folderId: resource.id,
+              path: resource.path
+            })
+          );
         if (resource.kind === "import")
-          return deleteImport.mutateAsync({
-            id: resource.id,
-            projectId,
-            environment: resource.environment,
-            path: resource.path
-          });
-        if (resource.kind === "secret") return undefined;
-        return (
-          handlers[resource.kind]?.remove as ((item: Resource) => Promise<unknown>) | undefined
-        )?.(resource);
+          return record(
+            resource.environment,
+            resource.path,
+            deleteImport.mutateAsync({
+              id: resource.id,
+              projectId,
+              environment: resource.environment,
+              path: resource.path
+            })
+          );
+        return record(
+          resource.environment,
+          resource.path,
+          (handlers[resource.kind]?.remove as ((item: Resource) => Promise<unknown>) | undefined)?.(
+            resource
+          )
+        );
       })
     );
 
@@ -206,26 +231,34 @@ export const useResourceApply = ({
           chain
             .then(() =>
               from.path !== to.path || from.environment !== to.environment
-                ? moveFolder.mutateAsync({
-                    projectId,
-                    folderId: from.id,
-                    sourceEnvironment: from.environment,
-                    sourcePath: from.path,
-                    destinationEnvironment: to.environment,
-                    destinationPath: to.path
-                  })
+                ? record(
+                    to.environment,
+                    to.path,
+                    moveFolder.mutateAsync({
+                      projectId,
+                      folderId: from.id,
+                      sourceEnvironment: from.environment,
+                      sourcePath: from.path,
+                      destinationEnvironment: to.environment,
+                      destinationPath: to.path
+                    })
+                  )
                 : undefined
             )
             .then(() =>
               from.name !== to.name || from.description !== to.description
-                ? updateFolder.mutateAsync({
-                    projectId,
-                    environment: to.environment,
-                    folderId: to.id,
-                    name: to.name,
-                    description: to.description,
-                    path: to.path
-                  })
+                ? record(
+                    to.environment,
+                    to.path,
+                    updateFolder.mutateAsync({
+                      projectId,
+                      environment: to.environment,
+                      folderId: to.id,
+                      name: to.name,
+                      description: to.description,
+                      path: to.path
+                    })
+                  )
                 : undefined
             ),
         Promise.resolve<unknown>(undefined)
@@ -240,13 +273,17 @@ export const useResourceApply = ({
       .reduce(
         (chain, folder) =>
           chain.then(() =>
-            createFolder.mutateAsync({
-              projectId,
-              environment: folder.environment,
-              name: folder.name,
-              path: folder.path,
-              description: folder.description
-            })
+            record(
+              folder.environment,
+              folder.path,
+              createFolder.mutateAsync({
+                projectId,
+                environment: folder.environment,
+                name: folder.name,
+                path: folder.path,
+                description: folder.description
+              })
+            )
           ),
         Promise.resolve<unknown>(undefined)
       );
@@ -260,40 +297,53 @@ export const useResourceApply = ({
     await Promise.all(
       Object.values(
         groupBy(movedSecrets, ([from, to]) => `${scopeOf(from)}\u0000${scopeOf(to)}`)
-      ).map((group) =>
-        moveSecrets.mutateAsync({
+      ).map(async (group) => {
+        const [from, to] = group[0];
+        const response = (await moveSecrets.mutateAsync({
           projectId,
           projectSlug,
-          sourceEnvironment: group[0][0].environment,
-          sourceSecretPath: group[0][0].path,
-          destinationEnvironment: group[0][1].environment,
-          destinationSecretPath: group[0][1].path,
-          secretIds: group.map(([from]) => from.id),
+          sourceEnvironment: from.environment,
+          sourceSecretPath: from.path,
+          destinationEnvironment: to.environment,
+          destinationSecretPath: to.path,
+          secretIds: group.map(([secret]) => secret.id),
           shouldOverwrite
-        })
-      )
+        })) as { isSourceUpdated?: boolean; isDestinationUpdated?: boolean } | undefined;
+        result[response?.isDestinationUpdated === false ? "held" : "written"].push({
+          environment: to.environment,
+          path: to.path
+        });
+        result[response?.isSourceUpdated === false ? "held" : "written"].push({
+          environment: from.environment,
+          path: from.path
+        });
+      })
     );
 
     await Promise.all(
       Object.values(groupBy(createdSecrets, scopeOf)).map((group) =>
-        createSecretBatch.mutateAsync({
-          projectId,
-          environment: group[0].environment,
-          secretPath: group[0].path,
-          secrets: group.map((secret) => ({
-            secretKey: secret.name,
-            secretValue: valueOf(secret) ?? "",
-            secretComment: secret.comment,
-            skipMultilineEncoding: secret.skipMultilineEncoding,
-            tagIds: tagIds(secret.tags),
-            secretMetadata: secret.metadata.map((entry) => ({
-              key: entry.key,
-              value: entry.value,
-              isEncrypted: entry.encrypted
-            })),
-            type: SecretType.Shared
-          }))
-        })
+        record(
+          group[0].environment,
+          group[0].path,
+          createSecretBatch.mutateAsync({
+            projectId,
+            environment: group[0].environment,
+            secretPath: group[0].path,
+            secrets: group.map((secret) => ({
+              secretKey: secret.name,
+              secretValue: valueOf(secret) ?? "",
+              secretComment: secret.comment,
+              skipMultilineEncoding: secret.skipMultilineEncoding,
+              tagIds: tagIds(secret.tags),
+              secretMetadata: secret.metadata.map((entry) => ({
+                key: entry.key,
+                value: entry.value,
+                isEncrypted: entry.encrypted
+              })),
+              type: SecretType.Shared
+            }))
+          })
+        )
       )
     );
 
@@ -325,47 +375,72 @@ export const useResourceApply = ({
             : {})
         };
         if (Object.keys(patch).length)
-          await updateSecret.mutateAsync({ ...scope, ...patch, type: SecretType.Shared });
+          await record(
+            to.environment,
+            to.path,
+            updateSecret.mutateAsync({ ...scope, ...patch, type: SecretType.Shared })
+          );
         const personal = { ...scope, secretKey: to.name };
         if (from.override === undefined && to.override !== undefined)
-          await createSecret.mutateAsync({
-            ...personal,
-            secretValue: to.override,
-            secretComment: "",
-            type: SecretType.Personal
-          });
+          await record(
+            to.environment,
+            to.path,
+            createSecret.mutateAsync({
+              ...personal,
+              secretValue: to.override,
+              secretComment: "",
+              type: SecretType.Personal
+            })
+          );
         else if (from.override !== undefined && to.override === undefined)
-          await deleteSecret.mutateAsync({ ...personal, type: SecretType.Personal });
+          await record(
+            to.environment,
+            to.path,
+            deleteSecret.mutateAsync({ ...personal, type: SecretType.Personal })
+          );
         else if (to.override !== undefined && from.override !== to.override)
-          await updateSecret.mutateAsync({
-            ...personal,
-            secretValue: to.override,
-            type: SecretType.Personal
-          });
-        if (!same(from.reminder, to.reminder)) await secretHooks.reminder?.(from, to);
+          await record(
+            to.environment,
+            to.path,
+            updateSecret.mutateAsync({
+              ...personal,
+              secretValue: to.override,
+              type: SecretType.Personal
+            })
+          );
+        if (!same(from.reminder, to.reminder))
+          await record(to.environment, to.path, secretHooks.reminder?.(from, to));
       })
     );
 
     await Promise.all(
       created.map((resource) => {
         if (resource.kind === "import")
-          return createImport.mutateAsync({
-            projectId,
-            environment: resource.environment,
-            path: resource.path,
-            import: {
-              environment: resource.source.environment,
-              path: resource.source.path,
-              ...(resource.source.project !== projectId
-                ? { sourceProjectId: resource.source.project }
-                : {})
-            },
-            isReplication: resource.replicated
-          });
+          return record(
+            resource.environment,
+            resource.path,
+            createImport.mutateAsync({
+              projectId,
+              environment: resource.environment,
+              path: resource.path,
+              import: {
+                environment: resource.source.environment,
+                path: resource.source.path,
+                ...(resource.source.project !== projectId
+                  ? { sourceProjectId: resource.source.project }
+                  : {})
+              },
+              isReplication: resource.replicated
+            })
+          );
         if (resource.kind === "secret" || resource.kind === "folder") return undefined;
-        return (
-          handlers[resource.kind]?.create as ((item: Resource) => Promise<unknown>) | undefined
-        )?.(resource);
+        return record(
+          resource.environment,
+          resource.path,
+          (handlers[resource.kind]?.create as ((item: Resource) => Promise<unknown>) | undefined)?.(
+            resource
+          )
+        );
       })
     );
     await Promise.all(
@@ -375,23 +450,32 @@ export const useResourceApply = ({
             from.lastReplicated !== to.lastReplicated ||
             from.replicationStatus !== to.replicationStatus
           )
-            return resyncImport.mutateAsync({
-              id: to.id,
-              projectId,
-              environment: to.environment,
-              path: to.path
-            });
+            return record(
+              to.environment,
+              to.path,
+              resyncImport.mutateAsync({
+                id: to.id,
+                projectId,
+                environment: to.environment,
+                path: to.path
+              })
+            );
           return undefined;
         }
         if (from.kind === "secret" || from.kind === "folder" || from.kind === "import")
           return undefined;
         if (implied(from, to)) return undefined;
-        return (
-          handlers[from.kind]?.update as
-            | ((a: Resource, b: Resource) => Promise<unknown>)
-            | undefined
-        )?.(from, to);
+        return record(
+          to.environment,
+          to.path,
+          (
+            handlers[from.kind]?.update as
+              | ((a: Resource, b: Resource) => Promise<unknown>)
+              | undefined
+          )?.(from, to)
+        );
       })
     );
+    return result;
   };
 };

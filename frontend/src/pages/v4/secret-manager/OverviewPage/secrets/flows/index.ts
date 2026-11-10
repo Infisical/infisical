@@ -7,7 +7,14 @@ import { CreateSecretFlow } from "./create-secret-flow";
 import { CreateSecretRotationFlow } from "./create-secret-rotation-flow";
 import type { AddFlowRegistry } from "./types";
 
-export type { AddFlowProps, AddFlowRegistry, FlowFeedback, FlowScope, NewResource } from "./types";
+export type {
+  AddFlowProps,
+  AddFlowRegistry,
+  ApplyFeedback,
+  FlowFeedback,
+  FlowScope,
+  NewResource
+} from "./types";
 
 export const addFlows: AddFlowRegistry = {
   secret: CreateSecretFlow,

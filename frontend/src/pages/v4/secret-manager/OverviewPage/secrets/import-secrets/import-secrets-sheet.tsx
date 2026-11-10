@@ -67,6 +67,7 @@ import type { TParsedEnv } from "@app/pages/secret-manager/OverviewPage/componen
 
 import type { Resource, Secret } from "../../secrets-model";
 import { environmentLabel, folderExists, Gate, secretsAt } from "../flows/shared";
+import type { FlowFeedback } from "../flows/types";
 import { useManagedBlock } from "../row-actions/permissions";
 import type { OverlayHostProps } from "../row-actions/types";
 import {
@@ -451,9 +452,13 @@ function ImportSecretsContent({
       ...(scope.path === "/" ? [] : [scope.path]),
       ...(nestedImport?.folderPaths.map((path) => joinSecretPath(scope.path, path)) ?? [])
     ];
-    const plan = (current: readonly Resource[]) => {
+    const plan = (
+      current: readonly Resource[],
+      held: (environment: string, path: string) => boolean = () => false
+    ) => {
       const next = [...current];
-      const counts = { created: 0, updated: 0, skipped: 0 };
+      const counts = { created: 0, updated: 0, skipped: 0, folders: 0 };
+      const written: { environment: string; secret: string }[] = [];
       selectedEnvs.forEach((environment) => {
         folderPaths.forEach((path) => {
           if (folderExists(next, scope.project, environment, path)) return;
@@ -469,8 +474,10 @@ function ImportSecretsContent({
             createdAt: timestamp,
             updatedAt: timestamp
           });
+          counts.folders += 1;
         });
         writes.forEach(({ path, secrets }) => {
+          if (held(environment, path)) return;
           const existing = new Map(
             secretsAt(next, scope.project, environment, path).map((secret) => [secret.name, secret])
           );
@@ -503,6 +510,7 @@ function ImportSecretsContent({
               next.push(created);
               existing.set(name, created);
               counts.created += 1;
+              written.push({ environment, secret: `${path}\u0000${name}` });
               return;
             }
             if (!overwrite) {
@@ -523,32 +531,54 @@ function ImportSecretsContent({
             next[next.indexOf(match)] = updated;
             existing.set(name, updated);
             counts.updated += 1;
+            written.push({ environment, secret: `${path}\u0000${name}` });
           });
         });
       });
-      return { next, counts };
+      return { next, counts, written };
     };
     const { counts } = plan(resources);
-    const environmentNames = selectedEnvs.map(environmentLabel).join(", ");
-    const outcome = [
-      counts.created && `${plural(counts.created, "secret")} created`,
-      counts.updated && `${counts.updated} updated`,
-      counts.skipped &&
-        `${counts.skipped} skipped because ${counts.skipped === 1 ? "it already exists" : "they already exist"}`
-    ]
-      .filter(Boolean)
-      .join(", ");
-    if (counts.created || counts.updated || (nestedImport && folderCount)) {
-      onApply((current) => plan(current).next, {
-        title: `Uploaded ${plural(secretCount, "secret")}${folderSummary} into ${environmentNames}`,
-        description: `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}.`,
-        share: true
-      });
+    const targetOf = (environments: string[]) =>
+      environments.length === 1
+        ? environmentLabel(environments[0])
+        : plural(environments.length, "environment");
+    const target = targetOf(selectedEnvs);
+    const noneUploaded = (result: typeof counts): FlowFeedback => ({
+      tone: "neutral",
+      title: `No secrets uploaded to ${target}`,
+      description: [
+        result.folders && `Created ${plural(result.folders, "folder")}.`,
+        result.skipped &&
+          `${result.skipped === 1 ? "1 secret already exists" : `${result.skipped} secrets already exist`}. Turn on overwrite existing secrets to update them.`
+      ]
+        .filter(Boolean)
+        .join(" ")
+    });
+    if (counts.created || counts.updated || counts.folders) {
+      onApply(
+        (current) => plan(current).next,
+        (held) => {
+          const result = plan(resources, held);
+          const keys = new Set(result.written.map((entry) => entry.secret)).size;
+          if (!keys) return noneUploaded(result.counts);
+          const environments = selectedEnvs.filter((environment) =>
+            result.written.some((entry) => entry.environment === environment)
+          );
+          return {
+            title: `Uploaded ${plural(keys, "secret")}${folderSummary} to ${targetOf(environments)}`,
+            description: [
+              result.counts.created && `${plural(result.counts.created, "secret")} created`,
+              result.counts.updated && `${result.counts.updated} updated`,
+              result.counts.skipped && `${result.counts.skipped} skipped`
+            ]
+              .filter(Boolean)
+              .join(", "),
+            share: true
+          };
+        }
+      );
     } else {
-      onToast("neutral", {
-        title: `No secrets uploaded into ${environmentNames}`,
-        description: `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}. Turn on overwrite existing secrets to update them.`
-      });
+      onToast("neutral", noneUploaded(counts));
     }
     onClose();
     onComplete?.(selectedEnvs);

@@ -25,7 +25,7 @@ import {
 
 import type { Resource, Secret } from "../../secrets-model";
 import { childPath, Gate } from "../flows/shared";
-import type { EnvironmentOption, FlowFeedback } from "../flows/types";
+import type { ApplyFeedback, EnvironmentOption, FlowFeedback } from "../flows/types";
 import { useManagedBlock } from "../row-actions/permissions";
 import type { OverlayHostProps } from "../row-actions/types";
 import {
@@ -420,7 +420,7 @@ function MoveSecretsDialogContent({
     if ("next" in outcome) working = outcome.next;
     return outcome;
   };
-  const apply = (steps: Step[], feedback: FlowFeedback) =>
+  const apply = (steps: Step[], feedback: ApplyFeedback) =>
     onApply(
       (current) =>
         steps.reduce((state, step) => {
@@ -430,6 +430,15 @@ function MoveSecretsDialogContent({
       feedback,
       { shouldOverwrite }
     );
+  const waitingForReview = (removed: string[]): FlowFeedback => ({
+    tone: "neutral",
+    title: "Move waiting for review",
+    description: removed.length
+      ? `Already removed from ${sourcePath} in ${new Intl.ListFormat("en").format(
+          removed.map((env) => environments.find((entry) => entry.value === env)?.label ?? env)
+        )}`
+      : undefined
+  });
   const folderMove = (folder: Folder, destination: string): FolderMove => ({
     environment: folder.environment,
     destinationEnvironment: destination,
@@ -460,7 +469,11 @@ function MoveSecretsDialogContent({
         }
         onToast("bad", { title: `Failed to move selected secrets: ${outcome.error}` });
       } else {
-        apply([step], { title: "Successfully moved selected secrets" });
+        apply([step], (held) =>
+          held(destinationEnv, selectedPath)
+            ? waitingForReview(held(env, sourcePath) ? [] : [env])
+            : { title: "Successfully moved selected secrets" }
+        );
       }
     }
     const rotationSteps: Step[] = [];
@@ -513,6 +526,7 @@ function MoveSecretsDialogContent({
     const steps: Step[] = [];
     const moved: FolderMove[] = [];
     const changed = new Set<string>();
+    const nonSecretMoves = new Set<string>();
     const selectedCount = secrets.size + rotations.size + folders.size;
     let selectedPluralNoun = noun;
     let selectedNoun = noun === "items" ? "item" : noun.slice(0, -1);
@@ -564,13 +578,16 @@ function MoveSecretsDialogContent({
       }
       rotationsToMove.forEach((rotation) => {
         const step = moveRotationStep(rotation, env);
-        record(
-          env,
-          step,
-          `${env}-${rotation.name}`,
-          `${environment.label} / ${rotation.name}`,
-          "Secret rotation moved."
-        );
+        if (
+          record(
+            env,
+            step,
+            `${env}-${rotation.name}`,
+            `${environment.label} / ${rotation.name}`,
+            "Secret rotation moved."
+          )
+        )
+          nonSecretMoves.add(env);
       });
       foldersToMove.forEach((folder) => {
         const step = moveFolderStep(folder, env);
@@ -582,13 +599,20 @@ function MoveSecretsDialogContent({
             `${environment.label} / ${folder.name}`,
             "Folder moved."
           )
-        )
+        ) {
           moved.push(folderMove(folder, env));
+          nonSecretMoves.add(env);
+        }
       });
     });
     if (steps.length) {
-      apply(steps, {
-        title: `Moved selected ${noun} in ${plural(changed.size, "environment")}`
+      apply(steps, (held) => {
+        const written = [...changed].filter(
+          (env) => nonSecretMoves.has(env) || !held(env, selectedPath)
+        );
+        if (!written.length)
+          return waitingForReview([...changed].filter((env) => !held(env, sourcePath)));
+        return { title: `Moved selected ${noun} in ${plural(written.length, "environment")}` };
       });
       if (moved.length) onFoldersMoved?.(moved);
     }
