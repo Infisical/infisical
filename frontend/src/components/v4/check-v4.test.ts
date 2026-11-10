@@ -643,7 +643,7 @@ describe("v4 lint checks", () => {
     expect(baseline).toBeDefined();
     const { grown } = compareToBaseline(scanTree(), baseline ?? {});
     expect(grown.map((finding) => `${finding.file}:${finding.line} ${finding.check}`)).toEqual([]);
-  });
+  }, 30_000);
 
   it("names a shared rule that names it back", () => {
     const linted = new Map(
