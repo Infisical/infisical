@@ -42,18 +42,18 @@ export class InstanceConfigService {
   }
 
   async getServerConfig(): Promise<TServerConfigView> {
-    const config = await this.require();
+    const config = await this.getCachedConfigOrThrow();
     return config.toSettings();
   }
 
   async getAdminIdentityIds(): Promise<string[]> {
-    const config = await this.require();
+    const config = await this.getCachedConfigOrThrow();
     return config.adminIdentityIds;
   }
 
   async updateConfig(patch: TInstanceConfigPatch): Promise<TServerConfigView> {
     const { env, cache } = this.deps;
-    const columns = this.toColumns(patch);
+    const columns = this.encryptPatchIntoColumns(patch);
 
     const config = await this.deps.transactionRunner.run(async ({ dataAccess, tx }) => {
       await dataAccess.instanceConfig.update(columns);
@@ -71,8 +71,8 @@ export class InstanceConfigService {
 
   // The stored credentials, or WORKFLOW_SLACK_CLIENT_ID and WORKFLOW_SLACK_CLIENT_SECRET when none are stored.
   async getSlackCredentials(): Promise<{ clientId: string; clientSecret: string }> {
-    const config = await this.require();
-    const slack = this.slackOf(config);
+    const config = await this.getCachedConfigOrThrow();
+    const slack = this.decryptSlackCredentials(config);
     const envCfg = this.deps.env.getConfig();
     return {
       clientId: slack.clientId || envCfg.WORKFLOW_SLACK_CLIENT_ID || "",
@@ -82,22 +82,22 @@ export class InstanceConfigService {
 
   // Reads the cached row unless the caller asks for the primary, as a caller acting on its own update must.
   async getMicrosoftTeamsCredentials(options?: TReadOptions): Promise<TMicrosoftTeamsCredentials> {
-    const config = await this.require(options);
-    return { ...this.microsoftTeamsOf(config), updatedAt: config.updatedAt };
+    const config = await this.getCachedConfigOrThrow(options);
+    return { ...this.decryptMicrosoftTeamsCredentials(config), updatedAt: config.updatedAt };
   }
 
   async getIntegrationCredentials(): Promise<TIntegrationCredentials> {
-    const config = await this.require();
+    const config = await this.getCachedConfigOrThrow();
     return {
-      slack: this.slackOf(config),
-      microsoftTeams: this.microsoftTeamsOf(config),
-      gitHubAppConnection: this.gitHubAppConnectionOf(config)
+      slack: this.decryptSlackCredentials(config),
+      microsoftTeams: this.decryptMicrosoftTeamsCredentials(config),
+      gitHubAppConnection: this.decryptGitHubAppCredentials(config)
     };
   }
 
   // No row yet means no overrides: a new instance boots before its replica has the row initialize() just created.
   async getEnvOverrides(): Promise<Record<string, string>> {
-    const config = await this.read();
+    const config = await this.findCachedConfig();
     const cipherText = config?.encrypted("encryptedEnvOverrides");
     if (!cipherText) return {};
     return JSON.parse(this.deps.kmsCoreDomain.decryptWithRootKey()(cipherText).toString()) as Record<string, string>;
@@ -128,8 +128,9 @@ export class InstanceConfigService {
     this.deps.env.overrideEnvConfig(overrides);
   }
 
-  // The shared cached row, filled from the replica on a miss. ReadFrom.Primary skips the cache.
-  private async read(options?: TReadOptions): Promise<InstanceConfig | undefined> {
+  // The config row from the shared cache, read from the replica and cached on a miss. ReadFrom.Primary reads the
+  // primary and leaves the cache alone. Undefined when the instance has no row yet.
+  private async findCachedConfig(options?: TReadOptions): Promise<InstanceConfig | undefined> {
     const { cache, dataAccess } = this.deps;
     if (options?.readFrom === ReadFrom.Primary) return dataAccess.instanceConfig.findById(options);
 
@@ -140,46 +141,50 @@ export class InstanceConfigService {
     return config;
   }
 
-  private async require(options?: TReadOptions): Promise<InstanceConfig> {
-    const config = await this.read(options);
+  // As findCachedConfig, but refuses with "Admin config not found" when there is no row.
+  private async getCachedConfigOrThrow(options?: TReadOptions): Promise<InstanceConfig> {
+    const config = await this.findCachedConfig(options);
     if (!config) throw new NotFoundError({ message: "Admin config not found" });
     return config;
   }
 
-  // Each integration is decrypted on its own, so a column that cannot be decrypted breaks only its integration.
-  private slackOf(config: InstanceConfig): TIntegrationCredentials["slack"] {
+  // Each integration's credentials are decrypted on their own, once per row version (the holder keeps them), so a column
+  // that cannot be decrypted breaks only its own integration.
+  private decryptSlackCredentials(config: InstanceConfig): TIntegrationCredentials["slack"] {
     return this.deps.credentials.remember(config.updatedAt, "slack", () => ({
-      clientId: this.decrypt(config, "encryptedSlackClientId"),
-      clientSecret: this.decrypt(config, "encryptedSlackClientSecret")
+      clientId: this.decryptColumn(config, "encryptedSlackClientId"),
+      clientSecret: this.decryptColumn(config, "encryptedSlackClientSecret")
     }));
   }
 
-  private microsoftTeamsOf(config: InstanceConfig): TIntegrationCredentials["microsoftTeams"] {
+  private decryptMicrosoftTeamsCredentials(config: InstanceConfig): TIntegrationCredentials["microsoftTeams"] {
     return this.deps.credentials.remember(config.updatedAt, "microsoftTeams", () => ({
-      appId: this.decrypt(config, "encryptedMicrosoftTeamsAppId"),
-      clientSecret: this.decrypt(config, "encryptedMicrosoftTeamsClientSecret"),
-      botId: this.decrypt(config, "encryptedMicrosoftTeamsBotId")
+      appId: this.decryptColumn(config, "encryptedMicrosoftTeamsAppId"),
+      clientSecret: this.decryptColumn(config, "encryptedMicrosoftTeamsClientSecret"),
+      botId: this.decryptColumn(config, "encryptedMicrosoftTeamsBotId")
     }));
   }
 
-  private gitHubAppConnectionOf(config: InstanceConfig): TIntegrationCredentials["gitHubAppConnection"] {
+  private decryptGitHubAppCredentials(config: InstanceConfig): TIntegrationCredentials["gitHubAppConnection"] {
     return this.deps.credentials.remember(config.updatedAt, "gitHubAppConnection", () => ({
-      clientId: this.decrypt(config, "encryptedGitHubAppConnectionClientId"),
-      clientSecret: this.decrypt(config, "encryptedGitHubAppConnectionClientSecret"),
-      appSlug: this.decrypt(config, "encryptedGitHubAppConnectionSlug"),
-      appId: this.decrypt(config, "encryptedGitHubAppConnectionId"),
-      privateKey: this.decrypt(config, "encryptedGitHubAppConnectionPrivateKey")
+      clientId: this.decryptColumn(config, "encryptedGitHubAppConnectionClientId"),
+      clientSecret: this.decryptColumn(config, "encryptedGitHubAppConnectionClientSecret"),
+      appSlug: this.decryptColumn(config, "encryptedGitHubAppConnectionSlug"),
+      appId: this.decryptColumn(config, "encryptedGitHubAppConnectionId"),
+      privateKey: this.decryptColumn(config, "encryptedGitHubAppConnectionPrivateKey")
     }));
   }
 
-  private decrypt(config: InstanceConfig, column: TEncryptedColumn): string {
+  // One encrypted column as text; "" when it is not set.
+  private decryptColumn(config: InstanceConfig, column: TEncryptedColumn): string {
     const cipherText = config.encrypted(column);
     return cipherText ? this.deps.kmsCoreDomain.decryptWithRootKey()(cipherText).toString() : "";
   }
 
-  // Slack and Teams credentials can be changed but not cleared; GitHub app credentials and env overrides are encrypted
-  // whenever present, so "" clears them.
-  private toColumns(patch: TInstanceConfigPatch): TInstanceConfigUpdate {
+  // The super_admin columns a patch writes: settings as given, credentials and env overrides validated and encrypted with
+  // the root key. Slack and Teams credentials can be changed but not cleared; GitHub app credentials and env overrides
+  // are encrypted whenever present, so "" clears them. Refuses a patch that writes nothing.
+  private encryptPatchIntoColumns(patch: TInstanceConfigPatch): TInstanceConfigUpdate {
     const {
       slackClientId,
       slackClientSecret,
