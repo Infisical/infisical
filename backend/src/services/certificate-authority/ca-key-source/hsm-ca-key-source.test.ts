@@ -64,7 +64,7 @@ describe("HSM CA key source", () => {
   let isOpensslAvailable = false;
 
   beforeAll(async () => {
-    await crypto.initialize(null);
+    await crypto.initialize(async () => null);
     isOpensslAvailable = await verifyPqcOpenSSLAvailability();
   });
 

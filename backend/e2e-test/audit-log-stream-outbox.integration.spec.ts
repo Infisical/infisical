@@ -129,8 +129,7 @@ describe("audit log stream outbox (postgres)", () => {
     // Spec files run in a separate module graph from the test server, so the logger and env config the
     // outbox service and the providers read have to be initialized here as well.
     initLogger();
-    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-    await initEnvConfig(fipsSetting, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
     ({ orgId, cleanup: cleanupOrg } = await createIsolatedOrgAndProject("audit-log-stream-outbox-e2e"));
     await cleanupEvents();
   });

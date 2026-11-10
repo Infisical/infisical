@@ -150,8 +150,7 @@ const deletePolicyThroughGenericEndpoint = (policyId: string, token: string) =>
 describe("Access approval policy router", async () => {
   beforeAll(async () => {
     initLogger();
-    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-    await initEnvConfig(fipsSetting, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
   });
 
   afterEach(async () => {

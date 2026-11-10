@@ -61,8 +61,7 @@ export const getMigrationEnvConfig = async (db: Knex) => {
 
   let envCfg = Object.freeze(parsedEnv.data);
 
-  const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(db);
-  const fipsEnabled = await crypto.initialize(fipsSetting);
+  const fipsEnabled = await crypto.initialize(() => InstanceConfigCoreModule.readFipsSetting(db));
 
   // Fix for 128-bit entropy encryption key expansion issue:
   // In FIPS it is not ideal to expand a 128-bit key into 256-bit. We solved this issue in the past by creating the ROOT_ENCRYPTION_KEY.

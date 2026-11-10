@@ -148,9 +148,7 @@ describe("Service token secret ops", async () => {
   beforeAll(async () => {
     initLogger();
 
-    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-
-    await initEnvConfig(fipsSetting, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
 
     serviceToken = await createServiceToken(
       [{ secretPath: "/**", environment: seedData1.environment.slug }],

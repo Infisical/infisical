@@ -106,9 +106,10 @@ const cryptographyFactory = () => {
     $isInitialized = true;
   };
 
-  // fipsSetting is the stored super_admin.fipsEnabled, read at boot by InstanceConfigCoreModule.readFipsSetting: null
-  // when the instance has no config row yet, which with FIPS_ENABLED=true means a fresh FIPS deployment.
-  const initialize = async (fipsSetting: boolean | null) => {
+  // readFipsSetting returns the stored super_admin.fipsEnabled (InstanceConfigCoreModule.readFipsSetting), or null when
+  // the instance has no config row yet, which with FIPS_ENABLED=true means a fresh FIPS deployment. It is called only
+  // when FIPS_ENABLED=true, so a non-FIPS boot never touches the database here.
+  const initialize = async (readFipsSetting: () => Promise<boolean | null>) => {
     if ($isInitialized) {
       return isFipsModeEnabled();
     }
@@ -120,6 +121,7 @@ const cryptographyFactory = () => {
     }
 
     // if fips mode is enabled, we need to check if the deployment is a new deployment or an old one.
+    const fipsSetting = await readFipsSetting();
     if (fipsSetting !== null) {
       if (fipsSetting) {
         logger.info("[FIPS]: Instance is configured for FIPS mode of operation. Continuing startup with FIPS enabled.");

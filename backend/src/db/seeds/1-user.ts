@@ -17,8 +17,7 @@ export async function seed(knex: Knex): Promise<void> {
 
   initLogger();
 
-  const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(knex);
-  await initEnvConfig(fipsSetting, logger);
+  await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(knex), logger);
 
   await knex(TableName.SuperAdmin).insert([
     {

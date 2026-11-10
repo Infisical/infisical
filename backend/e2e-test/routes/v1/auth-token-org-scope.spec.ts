@@ -152,8 +152,7 @@ const postOauthToken = (body: Record<string, string>) =>
 describe("Org scope of user tokens after root membership deactivation", () => {
   beforeAll(async () => {
     initLogger();
-    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-    await initEnvConfig(fipsSetting, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
   });
 
   afterEach(async () => {

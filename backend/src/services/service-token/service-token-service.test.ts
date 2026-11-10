@@ -132,7 +132,7 @@ const callCreate = ({
 describe("createServiceToken authorization", () => {
   beforeAll(async () => {
     process.env.FIPS_ENABLED = "false";
-    await crypto.initialize(null);
+    await crypto.initialize(async () => null);
   });
 
   afterAll(() => {

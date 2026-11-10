@@ -55,8 +55,7 @@ describe("INFISICAL_RUN_MODES route registration", () => {
       // the env config here rebinds only this file's copy — the running test server is untouched.
       initLogger();
       process.env.INFISICAL_RUN_MODES = `${RunMode.GeneralWorkers},${RunMode.SecretScanning}`;
-      const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-      const envConfig = await initEnvConfig(fipsSetting);
+      const envConfig = await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb));
 
       workerQueue = queueServiceFactory(envConfig);
       workerRedis = buildRedisFromConfig(envConfig);
@@ -90,8 +89,7 @@ describe("INFISICAL_RUN_MODES route registration", () => {
 
       if (originalRunModes === undefined) delete process.env.INFISICAL_RUN_MODES;
       else process.env.INFISICAL_RUN_MODES = originalRunModes;
-      const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-      await initEnvConfig(fipsSetting);
+      await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb));
     });
 
     test("still serves the status endpoint so probes keep working", async () => {

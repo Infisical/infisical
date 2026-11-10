@@ -36,9 +36,7 @@ export default {
       dbRootCert: databaseCredentials.dbRootCert
     });
 
-    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(db);
-
-    const envCfg = await initEnvConfig(fipsSetting, logger);
+    const envCfg = await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(db), logger);
 
     const redis = buildRedisFromConfig(envCfg);
     await redis.flushdb("SYNC");

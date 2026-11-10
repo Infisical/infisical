@@ -119,8 +119,7 @@ const main = async () => {
 
   initLogger();
 
-  const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(knex);
-  const envConfig = await initEnvConfig(fipsSetting, logger);
+  const envConfig = await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(knex), logger);
   // Loads only the root key, as a migration does: enough for createCipherPairWithDataKey against an org.
   const kmsCoreDomain = await startStandaloneKmsCore({ db: knex, envConfig });
 

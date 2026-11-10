@@ -58,8 +58,7 @@ const folderVersionKey = KeyStorePrefixes.ProjectFolderPermissionVersion(project
 
 beforeAll(async () => {
   initLogger();
-  const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-  await initEnvConfig(fipsSetting, logger);
+  await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
   const keyStore = keyStoreFactory(getConfig(), keyValueStoreDALFactory(testDb));
 
   permissionService = permissionServiceFactory({

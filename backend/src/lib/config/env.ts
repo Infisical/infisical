@@ -875,8 +875,9 @@ export const getConfig = () => envCfg;
 export const getOriginalConfig = () => originalEnvConfig;
 
 // cannot import singleton logger directly as it needs config to load various transport
-// fipsSetting comes from InstanceConfigCoreModule.readFipsSetting; leave it undefined to skip initializing cryptography.
-export const initEnvConfig = async (fipsSetting?: boolean | null, logger?: CustomLogger) => {
+// readFipsSetting is InstanceConfigCoreModule.readFipsSetting bound to a connection; leave it undefined to skip
+// initializing cryptography.
+export const initEnvConfig = async (readFipsSetting?: () => Promise<boolean | null>, logger?: CustomLogger) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     (logger ?? console).error("Invalid environment variables. Check the error below");
@@ -891,8 +892,8 @@ export const initEnvConfig = async (fipsSetting?: boolean | null, logger?: Custo
     originalEnvConfig = config;
   }
 
-  if (fipsSetting !== undefined) {
-    const fipsEnabled = await crypto.initialize(fipsSetting);
+  if (readFipsSetting) {
+    const fipsEnabled = await crypto.initialize(readFipsSetting);
 
     await initializePqcSupport();
 

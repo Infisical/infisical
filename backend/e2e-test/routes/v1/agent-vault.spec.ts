@@ -293,8 +293,7 @@ const createAccessBundle = async (name: string) => {
 let kmsCoreDomain: TKmsCoreDomain | undefined;
 const projectCipher = async (projectId: string) => {
   if (!kmsCoreDomain) {
-    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-    await initEnvConfig(fipsSetting, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
     kmsCoreDomain = await startStandaloneKmsCore({ db: testDb, envConfig: getConfig() });
   }
   return kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });

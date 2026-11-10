@@ -50,9 +50,8 @@ const run = async () => {
   // Register connection-pool and entity-count observable gauges. No-ops when telemetry is disabled.
   registerInfrastructureMetrics(db);
 
-  // Before migrations: the FIPS mode an existing instance stored, or null on a new one.
-  const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(db);
-  const envConfig = await initEnvConfig(fipsSetting, logger);
+  // Before migrations: with FIPS_ENABLED=true, cryptography reads the FIPS mode an existing instance stored.
+  const envConfig = await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(db), logger);
 
   logger.info(
     `Running Infisical ${envConfig.INFISICAL_PLATFORM_VERSION ? `v${envConfig.INFISICAL_PLATFORM_VERSION}` : "Development Mode"}`

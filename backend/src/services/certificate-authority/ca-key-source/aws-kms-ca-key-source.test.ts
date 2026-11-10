@@ -191,7 +191,7 @@ describe("AWS KMS CA key source", () => {
   let isOpensslAvailable = false;
 
   beforeAll(async () => {
-    await crypto.initialize(null);
+    await crypto.initialize(async () => null);
     x509.cryptoProvider.set(webcrypto as unknown as Crypto);
     isOpensslAvailable = await verifyPqcOpenSSLAvailability();
   });

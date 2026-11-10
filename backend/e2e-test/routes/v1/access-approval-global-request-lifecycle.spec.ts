@@ -229,8 +229,7 @@ describe("Additional privilege list on the global system", () => {
 
   beforeAll(async () => {
     initLogger();
-    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-    await initEnvConfig(fipsSetting, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
     approver = await createApproverUser();
     approvers.push(approver);
   });

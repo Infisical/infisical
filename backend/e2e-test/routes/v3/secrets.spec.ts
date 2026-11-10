@@ -201,8 +201,7 @@ describe("Secret V3 Router", async () => {
   let folderId = "";
   beforeAll(async () => {
     initLogger();
-    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-    await initEnvConfig(fipsSetting, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
 
     const projectKeyRes = await testServer.inject({
       method: "GET",

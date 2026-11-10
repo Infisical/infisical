@@ -103,8 +103,7 @@ describe("SCIM group to org role mappings", () => {
 
   beforeAll(async () => {
     initLogger();
-    const fipsSetting = await InstanceConfigCoreModule.readFipsSetting(testDb);
-    await initEnvConfig(fipsSetting, logger);
+    await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
 
     // `scim` edit alone: enough for the route's own check, not enough to hand out org roles.
     const [role] = await testDb(TableName.Role)
