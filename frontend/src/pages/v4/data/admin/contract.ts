@@ -23,9 +23,9 @@ import type {
   TUsageReportResponse
 } from "@app/hooks/api/admin/types";
 import type { Identity } from "@app/hooks/api/identities/types";
-import type { Organization } from "@app/hooks/api/organization/types";
+import type { Organization, UpdateOrgDTO } from "@app/hooks/api/organization/types";
 import type { SubscriptionPlan } from "@app/hooks/api/subscriptions/types";
-import type { User } from "@app/hooks/api/users/types";
+import type { RenameUserDTO, User } from "@app/hooks/api/users/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
 
@@ -96,4 +96,7 @@ export type AdminAdapter = {
     isFetching: boolean;
     refetch: () => Promise<{ data?: boolean }>;
   };
+  useCurrentUser: () => V4QueryResult<User>;
+  useRenameUser: V4Mutation<RenameUserDTO, object>;
+  useUpdateOrganization: V4Mutation<UpdateOrgDTO, object>;
 };

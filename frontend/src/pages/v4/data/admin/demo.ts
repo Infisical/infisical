@@ -649,5 +649,25 @@ export const adminDemo: AdminAdapter = {
     ...ok(invalidating.use()),
     isFetching: false,
     refetch: async () => ({ data: invalidating.get() })
+  }),
+  useCurrentUser: () => ok(users.use().find((entry) => entry.id === "u-sarah")),
+  useRenameUser: fixtureMutation(({ newName }) => {
+    const [firstName, ...rest] = newName.split(" ");
+    users.update((current) =>
+      current.map((entry) =>
+        entry.id === "u-sarah" ? { ...entry, firstName, lastName: rest.join(" ") } : entry
+      )
+    );
+    return {};
+  }),
+  useUpdateOrganization: fixtureMutation(({ orgId, name, slug }) => {
+    organizations.update((current) =>
+      current.map((entry) =>
+        entry.id === orgId
+          ? { ...entry, name: name ?? entry.name, slug: slug ?? entry.slug }
+          : entry
+      )
+    );
+    return {};
   })
 };

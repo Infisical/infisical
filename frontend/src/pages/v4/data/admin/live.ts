@@ -32,8 +32,9 @@ import {
   useGetServerConfig,
   useGetServerRootKmsEncryptionDetails
 } from "@app/hooks/api/admin/queries";
-import { useGetOrganizations } from "@app/hooks/api/organization/queries";
+import { useGetOrganizations, useUpdateOrg } from "@app/hooks/api/organization/queries";
 import { useGetOrgSubscription } from "@app/hooks/api/subscriptions/queries";
+import { useGetUser, useRenameUser } from "@app/hooks/api/users/queries";
 
 import type { AdminAdapter } from "./contract";
 
@@ -70,5 +71,8 @@ export const adminLive: AdminAdapter = {
   useInvalidatingCacheStatus: useGetInvalidatingCacheStatus,
   useInvalidateCache,
   useEnvOverrides: useGetEnvOverrides,
-  useCacheInvalidationStatus: useGetInvalidatingCacheStatus
+  useCacheInvalidationStatus: useGetInvalidatingCacheStatus,
+  useCurrentUser: useGetUser,
+  useRenameUser,
+  useUpdateOrganization: useUpdateOrg
 };
