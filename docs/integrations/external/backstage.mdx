@@ -17,14 +17,14 @@ Manage your Infisical secrets from your developer portal with the Infisical plug
 - **Multiple machine identities:** Give each entity or environment its own Infisical [machine identity](/documentation/platform/identities/machine-identities)
 
 <Info>
-    Access control, RBAC plugin support, and multiple machine identities need version 0.2.0 or later of the frontend and backend plugins. Earlier versions don't check permissions, so any user who can see an entity can read and change its secrets. To upgrade, see [Upgrade from version 0.1.1 or earlier](#upgrade-from-version-0-1-1-or-earlier).
+    Access control, RBAC plugin support, and multiple machine identities need version 1.0.0 or later of the frontend and backend plugins. Earlier versions don't check permissions, so any user who can see an entity can read and change its secrets. To upgrade, see [Upgrade from version 0.1.1 or earlier](#upgrade-from-version-0-1-1-or-earlier).
 </Info>
 
 ## Prerequisites
 
 - An Infisical account on [Infisical Cloud](https://app.infisical.com) or a [self-hosted instance](/self-hosting/overview)
 - An Infisical [project](/documentation/platform/secrets-mgmt/project) with the secrets you want to show in Backstage
-- A Backstage app that uses the [new backend system](https://backstage.io/docs/backend-system/) and has the [software catalog](https://backstage.io/docs/features/software-catalog/) installed
+- A Backstage app on version 1.36 or later that uses the [new backend system](https://backstage.io/docs/backend-system/) and has the [software catalog](https://backstage.io/docs/features/software-catalog/) installed
 
 ## Step 1: Create a machine identity
 
@@ -163,7 +163,7 @@ The plugin checks each request against five permissions, with the entity as the 
 | `infisical.secret.read` | List secrets, folders, and environments |
 | `infisical.secret.value.read` | Reveal secret values (without it, values are empty) |
 | `infisical.secret.create` | Create secrets |
-| `infisical.secret.update` | Update secrets |
+| `infisical.secret.update` | Update secrets (without `infisical.secret.value.read`, the edit dialog hides the current value) |
 | `infisical.secret.delete` | Delete secrets |
 
 <Warning>
@@ -258,7 +258,7 @@ When you add identities:
 ## Upgrade from version 0.1.1 or earlier
 
 <Warning>
-    Upgrade the frontend and backend plugins to version 0.2.0 together, because version 0.2.0 of each plugin doesn't work with earlier versions of the other.
+    Upgrade the frontend and backend plugins to version 1.0.0 together, because version 1.0.0 of each plugin doesn't work with earlier versions of the other.
 </Warning>
 
 When you upgrade:
