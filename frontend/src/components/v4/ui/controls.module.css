@@ -26,7 +26,8 @@
   --v4-field-height: var(--v4-size-control-xs);
   --v4-field-inline: var(--v4-space-6);
   --v4-field-nested: calc(
-    var(--v4-size-control-xs) - 2 * (var(--v4-space-control-slot-inset) + var(--v4-size-control-border))
+    var(--v4-size-control-xs) - 2 *
+      (var(--v4-space-control-slot-inset) + var(--v4-size-control-border))
   );
   padding-block: calc(
     (var(--v4-field-height) - var(--v4-type-caption-line-height)) / 2 -
@@ -470,17 +471,23 @@
   height: var(--v4-size-icon);
   border-radius: 50%;
 }
+.choiceCardHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--v4-space-8);
+  min-width: 0;
+}
 .choiceCardMedia {
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: var(--v4-size-icon-xl);
-  height: var(--v4-size-icon-xl);
+  width: var(--v4-type-field-label-line-height);
+  height: var(--v4-type-field-label-line-height);
 }
 .choiceCardMedia > :is(svg, img) {
-  width: var(--v4-size-icon-xl);
-  height: var(--v4-size-icon-xl);
+  width: var(--v4-type-field-label-line-height);
+  height: var(--v4-type-field-label-line-height);
   object-fit: contain;
 }
 .choiceRow {

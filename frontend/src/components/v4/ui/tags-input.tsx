@@ -123,7 +123,7 @@ export function TagsInput({
           className={cn(styles.chip, mono && styles.mono)}
           data-locked={disabled || undefined}
         >
-          <span>{tag}</span>
+          <span title={tag}>{tag}</span>
           <Button
             type="button"
             variant="ghost"

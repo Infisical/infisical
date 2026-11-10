@@ -72,7 +72,7 @@ Exports: RadioGroup, RadioGroupCard, RadioGroupItem. Source TypeScript defines t
 ## Behavior
 
 - RadioGroup uses one string value with value/defaultValue and onValueChange. Each RadioGroupItem contributes its own value and disabled state.
-- RadioGroupCard is a RadioGroup item drawn as a selectable card: the radio mark, optional media (an icon or logo at size-icon-xl, hidden from assistive technology), a title and an optional description. The whole card is the radio and its click target; the title names it and the description describes it. Checked takes the choice selected paint (choice-selected-border and choice-selected-surface), hover and press lay the shared translucent hover and press over it, and disabled dims it. It is a bordered tile with a line-soft edge, not a frame, so a set of cards may sit inside a framed Card or SettingsCard, but never put a Card or other framed container inside one. Lay the cards out with a grid class on RadioGroup.
+- RadioGroupCard is a RadioGroup item drawn as a selectable card: the radio mark in its own column, then the title line and an optional description. Optional media (an icon or logo, hidden from assistive technology) sits inline before the title on the title line, sized to the title's line height, and the description runs under both from the start of the media, not indented under the title, so the card's height follows its content. The whole card is the radio and its click target; the title names it and the description describes it. Checked takes the choice selected paint (choice-selected-border and choice-selected-surface), hover and press lay the shared translucent hover and press over it, and disabled dims it. It is a bordered tile with a line-soft edge, not a frame, so a set of cards may sit inside a framed Card or SettingsCard, but never put a Card or other framed container inside one. Lay the cards out with a grid class on RadioGroup.
 
 ## Accessibility
 
@@ -106,6 +106,7 @@ Source declarations and review criteria only. Generation checks references and c
 ### RadioGroupCard content
 
 - media and description: example `cards`, visible label "Media and description, one disabled".
+- media only: example `cards`, visible label "Media only".
 - title only: example `cards`, visible label "Title only, nothing chosen yet".
 - disabled card: example `cards`, visible label "Media and description, one disabled".
 
@@ -246,6 +247,7 @@ import { RadioGroup, RadioGroupCard } from "../../../../components/v4/ui/radio-g
 export default function Example() {
   const [protocol, setProtocol] = useState("saml");
   const [expiry, setExpiry] = useState<string>();
+  const [direction, setDirection] = useState("push");
   return (
     <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
       <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
@@ -280,6 +282,21 @@ export default function Example() {
         <figcaption className="text-muted-foreground text-xs">
           {"Media and description, one disabled"}
         </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <RadioGroup
+            aria-label="Sync direction"
+            value={direction}
+            onValueChange={setDirection}
+            className="grid-cols-3"
+          >
+            <RadioGroupCard value="push" title="Push" media={<Icon name="upload" />} />
+            <RadioGroupCard value="pull" title="Pull" media={<Icon name="download" />} />
+            <RadioGroupCard value="both" title="Both ways" media={<Icon name="sync" />} />
+          </RadioGroup>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Media only"}</figcaption>
       </figure>
       <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
         <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">

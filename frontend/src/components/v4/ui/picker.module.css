@@ -110,7 +110,9 @@
 }
 .chip > span:first-child {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .chip > [data-v4-button] {
   flex-shrink: 0;

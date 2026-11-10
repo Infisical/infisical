@@ -89,7 +89,7 @@ function RadioGroupCard({
 }: Omit<React.ComponentProps<typeof RadioGroupPrimitive.Item>, "title" | "children" | "asChild"> & {
   title: React.ReactNode;
   description?: React.ReactNode;
-  /** An icon or logo before the title, sized to size-icon-xl and hidden from assistive technology; anything it means belongs in title. */
+  /** An icon or logo inline before the title, sized to the title's line height and hidden from assistive technology; anything it means belongs in title. */
   media?: React.ReactNode;
 }) {
   const reduced = useReducedMotion();
@@ -125,14 +125,16 @@ function RadioGroupCard({
           />
         </span>
       </span>
-      {media && (
-        <span aria-hidden className={controlStyles.choiceCardMedia}>
-          {media}
-        </span>
-      )}
       <span className={controlStyles.choiceText}>
-        <span id={titleId} className={controlStyles.choiceTitle}>
-          {title}
+        <span className={controlStyles.choiceCardHead}>
+          {media && (
+            <span aria-hidden className={controlStyles.choiceCardMedia}>
+              {media}
+            </span>
+          )}
+          <span id={titleId} className={controlStyles.choiceTitle}>
+            {title}
+          </span>
         </span>
         {description && (
           <span id={descriptionId} className={controlStyles.choiceDescription}>

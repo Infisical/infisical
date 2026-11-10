@@ -1121,7 +1121,7 @@ export const baselineForms = [
     referenceNames: ["RadioGroup"],
     behavior: [
       "RadioGroup uses one string value with value/defaultValue and onValueChange. Each RadioGroupItem contributes its own value and disabled state.",
-      "RadioGroupCard is a RadioGroup item drawn as a selectable card: the radio mark, optional media (an icon or logo at size-icon-xl, hidden from assistive technology), a title and an optional description. The whole card is the radio and its click target; the title names it and the description describes it. Checked takes the choice selected paint (choice-selected-border and choice-selected-surface), hover and press lay the shared translucent hover and press over it, and disabled dims it. It is a bordered tile with a line-soft edge, not a frame, so a set of cards may sit inside a framed Card or SettingsCard, but never put a Card or other framed container inside one. Lay the cards out with a grid class on RadioGroup."
+      "RadioGroupCard is a RadioGroup item drawn as a selectable card: the radio mark in its own column, then the title line and an optional description. Optional media (an icon or logo, hidden from assistive technology) sits inline before the title on the title line, sized to the title's line height, and the description runs under both from the start of the media, not indented under the title, so the card's height follows its content. The whole card is the radio and its click target; the title names it and the description describes it. Checked takes the choice selected paint (choice-selected-border and choice-selected-surface), hover and press lay the shared translucent hover and press over it, and disabled dims it. It is a bordered tile with a line-soft edge, not a frame, so a set of cards may sit inside a framed Card or SettingsCard, but never put a Card or other framed container inside one. Lay the cards out with a grid class on RadioGroup."
     ],
     accessibility: [
       "Name the group and each option with explicit labels. Arrow keys move the choice within the group, and each option announces whether it is checked. Associate any group error explicitly."
@@ -1211,12 +1211,17 @@ export const baselineForms = [
       },
       {
         axis: "RadioGroupCard content",
-        expected: ["media and description", "title only", "disabled card"],
+        expected: ["media and description", "media only", "title only", "disabled card"],
         shown: [
           {
             value: "media and description",
             exampleId: "cards",
             label: "Media and description, one disabled"
+          },
+          {
+            value: "media only",
+            exampleId: "cards",
+            label: "Media only"
           },
           {
             value: "title only",
