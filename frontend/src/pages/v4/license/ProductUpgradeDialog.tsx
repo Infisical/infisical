@@ -3,12 +3,13 @@ import { Infinity as InfinityIcon } from "lucide-react";
 
 import { Badge } from "@app/components/v4/ui/badge";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Item, ItemGroup } from "@app/components/v4/ui/item";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v4/ui/tabs";
 import type { BillingCatalogPlan, BillingCatalogProduct } from "@app/hooks/api/billing/types";
 
 import { ProductIcon } from "./product-icon";
 import { UpgradeDialogLayout } from "./UpgradeDialogLayout";
+
+import styles from "./upgrade-dialog.module.css";
 
 export type PlanFeature = {
   label: string;
@@ -47,6 +48,22 @@ export const PlanFeatureIcon = ({ value }: { value?: string }) => {
   return <Icon name="check" />;
 };
 
+export const PlanFeatureList = ({ features }: { features: PlanFeature[] }) => (
+  <ul className={styles.features}>
+    {features.map((feature) => (
+      <li key={feature.label} className={styles.feature}>
+        <PlanFeatureIcon value={feature.value} />
+        <div className="min-w-0">
+          <div className={styles.featureTitle}>{formatPlanFeatureTitle(feature)}</div>
+          {feature.description && (
+            <div className={styles.featureDescription}>{feature.description}</div>
+          )}
+        </div>
+      </li>
+    ))}
+  </ul>
+);
+
 export const ProductUpgradeDialog = ({
   product,
   upgradeLabel,
@@ -70,7 +87,12 @@ export const ProductUpgradeDialog = ({
     onOpenChange={onOpenChange}
     footer={footer}
   >
-    <Tabs value={selectedTier} onValueChange={onTierChange} variant="segmented">
+    <Tabs
+      value={selectedTier}
+      onValueChange={onTierChange}
+      variant="segmented"
+      className="items-start"
+    >
       <TabsList variant="segmented" aria-label={`${product.name} plans`}>
         {plans.map((candidate) => (
           <TabsTrigger key={candidate.tier} value={candidate.tier}>
@@ -83,22 +105,10 @@ export const ProductUpgradeDialog = ({
           </TabsTrigger>
         ))}
       </TabsList>
-      <TabsContent value={selectedTier}>
-        <section aria-label="Selected plan features" className="flex flex-col gap-6 pt-4">
+      <TabsContent value={selectedTier} className="self-stretch">
+        <section aria-label="Selected plan features" className="flex flex-col gap-4">
           {notice}
-          {features.length > 0 && (
-            <ItemGroup>
-              {features.map((feature) => (
-                <Item
-                  key={feature.label}
-                  truncate={false}
-                  media={<PlanFeatureIcon value={feature.value} />}
-                  title={formatPlanFeatureTitle(feature)}
-                  description={feature.description}
-                />
-              ))}
-            </ItemGroup>
-          )}
+          {features.length > 0 && <PlanFeatureList features={features} />}
         </section>
       </TabsContent>
     </Tabs>

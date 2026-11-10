@@ -12,7 +12,6 @@ import { Alert } from "@app/components/v4/ui/alert";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Item } from "@app/components/v4/ui/item";
 import { Separator } from "@app/components/v4/ui/separator";
 import { Heading, Text } from "@app/components/v4/ui/text";
 import {
@@ -28,6 +27,7 @@ import { useV4Adapter, useV4Mode } from "../data/adapters";
 import { orgHref } from "../links";
 import { useResolveV4Href } from "../resolveV4Href";
 import { ProductPlanSummaryList } from "./ProductPlanSummaryList";
+import { PlanFeatureList } from "./ProductUpgradeDialog";
 import { UpgradeDialogLayout } from "./UpgradeDialogLayout";
 
 type Props = {
@@ -201,15 +201,12 @@ const CapabilityUpgradeDialog = ({
       }
     >
       <section aria-label="Feature details">
-        <Item
-          truncate={false}
-          media={<Icon name="check" />}
-          title={intent.title.replace(/^Unlock /, "")}
-          description={intent.description}
-          badge={
-            intent.isEnterpriseFeature ? <Badge tone="soft">Enterprise feature</Badge> : undefined
-          }
+        <PlanFeatureList
+          features={[
+            { label: intent.title.replace(/^Unlock /, ""), description: intent.description }
+          ]}
         />
+        {intent.isEnterpriseFeature && <Badge tone="soft">Enterprise feature</Badge>}
       </section>
       {alternative && (
         <>

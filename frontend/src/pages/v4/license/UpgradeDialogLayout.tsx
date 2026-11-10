@@ -4,11 +4,10 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
-import { SmallText } from "@app/components/v4/ui/text";
+
+import styles from "./upgrade-dialog.module.css";
 
 type Props = {
   scopeName: string;
@@ -21,6 +20,11 @@ type Props = {
   children: ReactNode;
   footer: ReactNode;
 };
+
+const dots = Array.from({ length: 30 }, (_, index) => ({
+  x: 40 + (index % 6) * 16,
+  y: 24 + Math.floor(index / 6) * 16
+}));
 
 export const focusUpgradeContinuation = (event: Event) => {
   const action = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>(
@@ -45,28 +49,42 @@ export const UpgradeDialogLayout = ({
 }: Props) => (
   <Dialog open onOpenChange={onOpenChange}>
     <DialogContent
+      className={styles.content}
       onOpenAutoFocus={(event) => {
         onOpenAutoFocus?.(event);
         if (!event.defaultPrevented) focusUpgradeContinuation(event);
       }}
       onCloseAutoFocus={onCloseAutoFocus}
     >
-      <DialogHeader>
-        <div className="flex items-center gap-3">
-          <span aria-hidden="true" className="flex shrink-0">
+      <div className={styles.split}>
+        <aside className={styles.aside}>
+          <svg className={styles.art} viewBox="0 0 160 120" aria-hidden="true" focusable="false">
+            <rect className={styles.artBlock} x="8" y="88" width="24" height="24" />
+            {dots.map((dot) => (
+              <rect
+                key={`${dot.x}-${dot.y}`}
+                className={styles.artDot}
+                x={dot.x}
+                y={dot.y}
+                width="4"
+                height="4"
+              />
+            ))}
+          </svg>
+          <span aria-hidden="true" className={styles.heading}>
             {icon}
           </span>
-          <div className="flex min-w-0 flex-col">
-            <SmallText muted>{scopeName}</SmallText>
-            <DialogTitle>{title}</DialogTitle>
+          <div className={styles.heading}>
+            <span className={styles.scope}>{scopeName}</span>
+            <DialogTitle className={styles.title}>{title}</DialogTitle>
+            {description && <DialogDescription>{description}</DialogDescription>}
           </div>
+        </aside>
+        <div className={styles.main}>
+          <div className={styles.body}>{children}</div>
+          <div className={styles.footer}>{footer}</div>
         </div>
-        {description && <DialogDescription>{description}</DialogDescription>}
-      </DialogHeader>
-      <div className="flex min-w-0 flex-col gap-6">{children}</div>
-      <DialogFooter>
-        <div className="flex w-full flex-col gap-4">{footer}</div>
-      </DialogFooter>
+      </div>
     </DialogContent>
   </Dialog>
 );
