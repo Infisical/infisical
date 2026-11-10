@@ -91,7 +91,7 @@ export const MCP_SERVICE_STEPS: StepMeta[] = [
     rightDescription:
       "The proxy refuses a call to any tool that isn't selected and hides it from the agent's tool list. The rule applies to every member and session using this service.",
     rightTip:
-      "Turning off All Tools asks the server for its list with the credential from the previous step. To allow a tool the server doesn't list, type its exact name in Allowed Tools."
+      "Turning off All Tools asks the server for its list with the credential from the previous step. If members provide their own credential, enter a token or sign in with your own account to load the list. Infisical doesn't save it. To allow a tool the server doesn't list, type its exact name in Allowed Tools."
   },
   REVIEW_STEP
 ];

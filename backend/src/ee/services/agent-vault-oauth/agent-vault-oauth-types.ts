@@ -6,6 +6,7 @@ import {
   AgentVaultOauthAuthorizationStatus,
   AgentVaultOauthStatus
 } from "../agent-vault/agent-vault-enums";
+import type { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 
 export enum AgentVaultOauthRegistration {
   Dynamic = "dynamic",
@@ -61,6 +62,18 @@ export type TAgentVaultOauthConfig = {
   lastError: string | null;
 };
 
+// A service whose OAuth sign-in each member does keeps only what every member's sign-in shares: the server, the issuer
+// discovery found there, and the client. Its `encryptedCredential` holds `{ clientSecret }` for an admin-entered client
+// with a secret, and is NULL otherwise. Each member's tokens and their TAgentVaultOauthConfig are a personal value.
+export type TAgentVaultOauthMemberConfig = {
+  type: AgentVaultCredentialType.OAuth;
+  serverUrl: string;
+  issuer: string;
+  registration: AgentVaultOauthRegistration;
+  // Set only for an admin-entered client. A dynamic one is registered at each member's sign-in.
+  clientId: string | null;
+};
+
 // Sealed with the project cipher in `encryptedCredential`.
 export type TAgentVaultOauthSecret = {
   accessToken: string;
@@ -74,6 +87,10 @@ export type TAgentVaultOauthAuthorization = {
   accessBundleId: string;
   // The service being reauthorized, null for a new service.
   serviceId: string | null;
+  // A member's own sign-in for a service that leaves it to members, claimed only by a personal values save.
+  personal?: boolean;
+  // `memberOauthSetupOf` the service when a personal sign-in started, so a save after an admin changed it is refused.
+  memberSetup?: string;
   actorUserId: string;
   serverUrl: string;
   state: string;
@@ -115,6 +132,7 @@ export type TCreateAuthorizationDTO = {
   clientId?: string;
   clientSecret?: string;
   registration?: AgentVaultOauthRegistration.Dynamic;
+  personal?: boolean;
 };
 
 export type TCompleteAuthorizationDTO = {
@@ -142,6 +160,7 @@ export type TClaimAuthorizationDTO = {
   serviceId?: string;
   ctx: TGenericPermission;
   serverUrl: string;
+  personal?: boolean;
 };
 
 export type TResolvedOauthCredential = {
@@ -155,6 +174,8 @@ export type TResolvedOauthCredential = {
 
 export type TReportMissingScopesDTO = {
   serviceId: string;
+  // Set for a service whose sign-in each member does: the report is about this owner's connection.
+  owner?: TAgentVaultOwner;
   // The sha256 of the token the upstream refused with `insufficient_scope`.
   rejectedTokenHash: string;
   requiredScopes: string[];
@@ -165,6 +186,8 @@ export type TReportMissingScopesDTO = {
 export type TRefreshServiceTokenDTO = {
   serviceId: string;
   projectId: string;
+  // Set for a service whose sign-in each member does: the token refreshed is this owner's.
+  owner?: TAgentVaultOwner;
   // On demand: the sha256 of the token the upstream rejected.
   rejectedTokenHash?: string;
   // Lazy, from resolve: refresh when the token expires within this many seconds.

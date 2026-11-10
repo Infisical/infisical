@@ -307,6 +307,13 @@ export type TDuplicateSecretResponse = {
   results: TDuplicateSecretResult[];
 };
 
+export type TGetExpandedSecretValueDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
+};
+
 export type TGetSecretReferenceTreeDTO = {
   secretKey: string;
   secretPath: string;

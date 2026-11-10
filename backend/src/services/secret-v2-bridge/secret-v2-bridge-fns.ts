@@ -1010,11 +1010,13 @@ export const fnUpdateSecretLinkedReferences = async ({
       tx
     );
 
-    const changes = secretVersions.map((sv) => ({
-      type: CommitType.ADD,
-      isUpdate: true,
-      secretVersionId: sv.id
-    }));
+    const changes = secretVersions
+      .filter(({ type }) => type === SecretType.Shared)
+      .map((sv) => ({
+        type: CommitType.ADD,
+        isUpdate: true,
+        secretVersionId: sv.id
+      }));
 
     if (changes.length > 0) {
       await folderCommitService.createCommit(
@@ -1424,11 +1426,13 @@ export const fnUpdateMovedSecretReferences = async ({
       tx
     );
 
-    const changes = secretVersions.map((sv) => ({
-      type: CommitType.ADD,
-      isUpdate: true,
-      secretVersionId: sv.id
-    }));
+    const changes = secretVersions
+      .filter(({ type }) => type === SecretType.Shared)
+      .map((sv) => ({
+        type: CommitType.ADD,
+        isUpdate: true,
+        secretVersionId: sv.id
+      }));
 
     if (changes.length > 0) {
       await folderCommitService.createCommit(

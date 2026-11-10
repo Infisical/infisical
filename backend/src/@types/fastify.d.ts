@@ -162,6 +162,7 @@ import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-r
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TOrgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
+import { TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
@@ -330,6 +331,7 @@ declare module "fastify" {
     oidcIssuer: TOidcIssuerServiceFactory;
     permission: TPermissionServiceFactory;
     org: TOrgServiceFactory;
+    orgDeletion: TOrgDeletionServiceFactory;
     oidc: TOidcConfigServiceFactory;
     superAdmin: TSuperAdminServiceFactory;
     encryptionKeyRotation: TEncryptionKeyRotationServiceFactory;

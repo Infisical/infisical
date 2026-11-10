@@ -141,7 +141,8 @@ export const useUpdateSecretV3 = ({
       });
       queryClient.invalidateQueries({
         predicate: (query) =>
-          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[0] === "secret-reference-tree" ||
+            query.queryKey[0] === "expanded-secret-value") &&
           (query.queryKey[1] as { projectId?: string })?.projectId === projectId
       });
       queryClient.invalidateQueries({
@@ -284,7 +285,8 @@ export const useUpdateSecretBatch = ({
       });
       queryClient.invalidateQueries({
         predicate: (query) =>
-          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[0] === "secret-reference-tree" ||
+            query.queryKey[0] === "expanded-secret-value") &&
           (query.queryKey[1] as { projectId?: string })?.projectId === projectId
       });
       queryClient.invalidateQueries({
@@ -523,19 +525,21 @@ export const createSecret = async (dto: TCreateSecretsV3DTO) => {
   return data;
 };
 
-export const useCreateCommit = () => {
+type TCreateCommitDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  pendingChanges: PendingChanges;
+  message: string;
+};
+
+export const useCreateCommit = ({
+  options
+}: {
+  options?: Omit<MutationOptions<TCreateCommitResponse, object, TCreateCommitDTO>, "mutationFn">;
+} = {}) => {
   const queryClient = useQueryClient();
-  return useMutation<
-    TCreateCommitResponse,
-    object,
-    {
-      projectId: string;
-      environment: string;
-      secretPath: string;
-      pendingChanges: PendingChanges;
-      message: string;
-    }
-  >({
+  return useMutation<TCreateCommitResponse, object, TCreateCommitDTO>({
     mutationFn: async ({ projectId, environment, secretPath, pendingChanges, message }) => {
       const secretCreates: PendingSecretCreate[] = [];
       const secretUpdates: PendingSecretUpdate[] = [];
@@ -612,7 +616,8 @@ export const useCreateCommit = () => {
       });
       queryClient.invalidateQueries({
         predicate: (query) =>
-          query.queryKey[0] === "secret-reference-tree" &&
+          (query.queryKey[0] === "secret-reference-tree" ||
+            query.queryKey[0] === "expanded-secret-value") &&
           (query.queryKey[1] as { projectId?: string })?.projectId === projectId
       });
       queryClient.invalidateQueries({
@@ -625,7 +630,8 @@ export const useCreateCommit = () => {
       queryClient.invalidateQueries({
         queryKey: secretApprovalRequestKeys.listAllForProject({ projectId })
       });
-    }
+    },
+    ...options
   });
 };
 

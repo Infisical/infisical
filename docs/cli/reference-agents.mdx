@@ -24,15 +24,15 @@ The moved anchors:
 - `#sm-secrets-folders-delete--flag-name` is now `#secrets-manager-folders-delete--arg-name`
 - `#sm-secrets-generate-example-env` is now `#secrets-manager-secrets`
 - `#dynamic-secrets` is now `#secrets-manager-dynamic-secrets`
-- `#export` is now `#secrets-manager-export`
+- `#export` is now `#secrets-manager-secrets-export`
 - `#run` is now `#secrets-manager-run`
 - `#secrets` is now `#secrets-manager-secrets`
-- `#secrets-agent-proxy` is now `#secrets-manager-agent-proxy`
 - `#secrets-folders` is now `#secrets-manager-folders`
 - `#secrets-folders-create--flag-name` is now `#secrets-manager-folders-create--arg-name`
 - `#secrets-folders-delete--flag-name` is now `#secrets-manager-folders-delete--arg-name`
 - `#secrets-generate-example-env` is now `#secrets-manager-secrets`
 - `#secrets-set` is now `#secrets-manager-secrets-create`
+
 
 ## Global flags
 
@@ -248,7 +248,7 @@ infisical agent-vault
 
 Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI agents call services such as LLM providers, GitHub, and Slack without holding the credentials. A proxy adds the real credential to each request the agent sends. Run the proxy with [infisical agent-vault proxy](#agent-vault-proxy), usually where agent traffic leaves your network, and launch agents through it with [infisical agent-vault run](#agent-vault-run). Create and revoke sessions on their own with [infisical agent-vault sessions create](#agent-vault-sessions-create) and [infisical agent-vault sessions revoke](#agent-vault-sessions-revoke). Upload skills for those agents with [infisical agent-vault skills push](#agent-vault-skills-push).
 
-`av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does. Agent Vault is a different product from the agent proxy that [infisical secrets-manager agent-proxy](#secrets-manager-agent-proxy) runs.
+`av` is an alias, so `infisical av run` works wherever `infisical agent-vault run` does.
 
 Agent Vault commands don't read `domain` from [the project config file](/cli/project-config#set-the-infisical-instance). To connect them to an instance other than US Cloud, pass `--domain`, set `INFISICAL_DOMAIN`, or log in to that instance.
 
@@ -1394,7 +1394,7 @@ Show which profile the CLI uses in this terminal and directory, and why. The out
 
 The command also shows the project, environment, and folder that `secrets-manager` commands use in this directory when you don't pass `--projectId`, `--env`, or `--path`, and where each value comes from, such as `INFISICAL_ENVIRONMENT` or `.infisical.yaml`. Run it before you write secrets, to check where they'll go.
 
-If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `run`, `export`, and `secrets get` don't read the project from the [project config file](/cli/project-config), so pass `--projectId` or set `INFISICAL_PROJECT_ID`.
+If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `run`, `secrets export`, and `secrets get` don't read the project from the [project config file](/cli/project-config), so pass `--projectId` or set `INFISICAL_PROJECT_ID`.
 
 ### Flags
 
@@ -1923,7 +1923,7 @@ infisical scan install --pre-commit-hook
 infisical secrets-manager
 ```
 
-Manage secrets, and the projects, environments, and folders that hold them. The `secrets-manager` commands inject secrets into a process, export them to a file, read and write them, lease credentials from [dynamic secrets](/documentation/platform/dynamic-secrets/overview), and run the [Agent Proxy](/documentation/platform/agent-proxy/overview). `sm` is an alias, so `infisical sm run` is the same command as `infisical secrets-manager run`.
+Manage secrets, and the projects, environments, and folders that hold them. The `secrets-manager` commands inject secrets into a process, export them to a file, read and write them, and lease credentials from [dynamic secrets](/documentation/platform/dynamic-secrets/overview). `sm` is an alias, so `infisical sm run` is the same command as `infisical secrets-manager run`.
 
 ### Confirm before deleting
 
@@ -1970,175 +1970,6 @@ If Infisical returned the error, the JSON also has `statusCode` and `requestId`.
 | `token_project_mismatch` | The service token belongs to a different project than the one you selected |
 | `confirmation_required` | A delete ran without a terminal and without `--yes` |
 | `confirmation_declined` | What you typed didn't match what the question asked for, you cancelled the question, or the project, environment, or folder changed before you answered |
-
-## `secrets-manager agent-proxy`
-
-```text
-infisical secrets-manager agent-proxy
-```
-
-Run the [Infisical Agent Proxy](/documentation/platform/agent-proxy/overview), which lets AI agents and untrusted code use secrets without holding them. Agents send their HTTP requests through the proxy, which replaces placeholder credentials with real ones before forwarding each request, so the agent never holds the real secret.
-
-For an agent on your own computer, [infisical secrets-manager agent-proxy run](#secrets-manager-agent-proxy-run) starts a proxy and a sandboxed agent together. For a proxy shared across your network, run [infisical secrets-manager agent-proxy start](#secrets-manager-agent-proxy-start) on its own host, and launch agents behind it with [infisical secrets-manager agent-proxy connect](#secrets-manager-agent-proxy-connect).
-
-## `secrets-manager agent-proxy connect`
-
-```text
-infisical secrets-manager agent-proxy connect [flags] -- <command>
-```
-
-Launch an agent that sends its requests through an agent proxy on another host, started with [infisical secrets-manager agent-proxy start](#secrets-manager-agent-proxy-start). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
-
-The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust your organization's root certificate. See [what `connect` puts in the agent's environment](/documentation/platform/agent-proxy/standalone-agent-proxy#what-connect-puts-in-the-agent’s-environment).
-
-If the agent can read a secret or lease a dynamic secret that a proxied service brokers to it, the command refuses to start, because the agent would get the real value and bypass the proxy.
-
-The command exits with the agent's exit code.
-
-### Arguments
-
-- `command` (required): The agent's command, after `--`. Everything after `--` is passed to it unchanged.
-
-### Flags
-
-- `--allow-readable-brokered-secrets`: Start the agent even if it can read the real value of a secret that a proxied service substitutes into its requests. Without this flag, the command exits with an error, and you fix it by removing the agent's read permission on that secret. Can also be set with `INFISICAL_AGENT_PROXY_ALLOW_READABLE_BROKERED_SECRETS`.
-- `--client-id <string>`: The client ID of the agent's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`.
-- `--client-secret <string>`: The client secret of the agent's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
-- `--env <string>` (`-e`, required): The environment to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.yaml` maps to your git branch, then its `secrets-management.environment`.
-- `--no-proxy <string>`: More hosts for the agent to reach directly instead of through the proxy, separated by commas. Always merged with `localhost,127.0.0.1` and any `NO_PROXY` in your environment.
-- `--path <string>` (default `/`): The folder to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_SECRET_PATH`, then `secrets-management.secret-path` in `.infisical.yaml`.
-- `--projectId <string>` (required): The project to fetch proxied services and secrets from. Can also be set with `INFISICAL_PROJECT_ID`, or read from `.infisical.yaml`.
-- `--proxy <string>` (required): The agent proxy's address as `host:port`. Can also be set with `INFISICAL_AGENT_PROXY_ADDRESS`. It's never read from `.infisical.yaml`.
-- `--token <string>`: A machine identity access token to authenticate with, instead of `--client-id` and `--client-secret`. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`.
-
-### Examples
-
-Launch an agent behind a proxy
-
-```bash
-infisical secrets-manager agent-proxy connect --proxy=<proxy-host>:17322 --projectId=<project-id> --env=prod --path=/ai-agents -- claude
-```
-
-Read the settings from environment variables
-
-```bash
-export INFISICAL_AGENT_PROXY_ADDRESS=<proxy-host>:17322
-export INFISICAL_PROJECT_ID=<project-id>
-export INFISICAL_ENVIRONMENT=prod
-infisical secrets-manager agent-proxy connect -- claude
-```
-
-Authenticate as a machine identity
-
-```bash
-infisical secrets-manager agent-proxy connect \
-  --proxy=<proxy-host>:17322 \
-  --env=prod \
-  --client-id=<client-id> \
-  --client-secret=<client-secret> \
-  -- codex
-```
-
-## `secrets-manager agent-proxy run`
-
-```text
-infisical secrets-manager agent-proxy run [flags] -- <command>
-```
-
-Launch an agent on your own computer in an OS sandbox, with a proxy that brokers credentials onto its requests. The command starts the proxy, runs the agent, and stops the proxy when the agent exits. It authenticates as your login, or with `--token`. See [Local Agent Proxy](/documentation/platform/agent-proxy/local-agent-proxy).
-
-The [sandbox](/documentation/platform/agent-proxy/local-agent-proxy#the-sandbox) stops the agent from reading credential files such as `~/.ssh` and `~/.aws`. If the host supports it, the sandbox also blocks every network connection except the one to the proxy. The sandbox needs macOS, or Linux with `bubblewrap` installed. On any other system, the command won't start unless you pass `--no-sandbox`.
-
-The agent never gets real secret values or an Infisical token. It gets placeholder values for [proxied services](/documentation/platform/agent-proxy/proxied-services) that substitute credentials into requests. The command [removes variables that look like credentials](/documentation/platform/agent-proxy/local-agent-proxy#environment-scrubbed) from the agent's environment, such as any variable with `TOKEN` or `SECRET` in its name. To keep one of those variables, pass its name to `--pass-env`.
-
-The command always starts its own proxy. To use a proxy on another host, run [infisical secrets-manager agent-proxy connect](#secrets-manager-agent-proxy-connect).
-
-### Arguments
-
-- `command` (required): The agent's command, after `--`. Everything after `--` is passed to it unchanged.
-
-### Flags
-
-- `--allow-host <stringArray>`: A host the agent can reach, without a credential, when `--unmatched-host=block` is set. Repeatable.
-- `--allow-read <stringArray>`: A path the agent can read even though the sandbox blocks it by default, such as `~/.aws/config`. The path stays read-only, and the rest of a denied directory stays denied. Repeatable.
-- `--allow-write <stringArray>`: A path the agent can write, beyond the working directory, the temporary directory, and the state directories of Claude Code, Codex, and Gemini CLI. Repeatable.
-- `--env <string>` (`-e`, required): The environment to fetch proxied services from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.yaml` maps to your git branch, then its `secrets-management.environment`.
-- `--log-file <string>`: A file to write the proxy's per-request activity to. The file is appended to. Without it, nothing is written, and only warnings and errors print to stderr unless you pass `--log-level`.
-- `--no-sandbox`: Run the agent without the OS sandbox. Credentials are still brokered, but the agent can read your files and keyring and reach the network directly.
-- `--pass-env <stringArray>`: One of your environment variables to pass through to the agent, by name, when the command would otherwise remove it. Repeatable.
-- `--path <string>` (default `/`): The folder to fetch proxied services from. Without it, the CLI reads `INFISICAL_SECRET_PATH`, then `secrets-management.secret-path` in `.infisical.yaml`.
-- `--poll-interval <int>` (default `60`): The number of seconds between refreshes of permissions and credentials.
-- `--projectId <string>` (required): The project to fetch proxied services from. Can also be set with `INFISICAL_PROJECT_ID`, or read from `.infisical.yaml`.
-- `--sandbox` (default `true`): Run the agent inside the OS sandbox. Pass `--sandbox=false` or `--no-sandbox` to turn it off. Can also be set with `INFISICAL_AGENT_PROXY_SANDBOX`, where `0`, `false`, or `off` turns it off.
-- `--set-env <stringArray>`: An environment variable to set in the agent, as `KEY=VALUE`. It overrides every other value. Repeatable.
-- `--token <string>`: A token to broker with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`, then uses your login.
-- `--unmatched-host <string>` (default `allow`): What to do with requests to a host that has no proxied service: `allow` forwards them with no credential, and `block` rejects them.
-
-### Examples
-
-Run an agent in the sandbox
-
-```bash
-infisical secrets-manager agent-proxy run --projectId=<project-id> --env=dev --path=/coding-agent -- claude
-```
-
-Read the project and environment from .infisical.yaml
-
-```bash
-infisical secrets-manager agent-proxy run -- claude
-```
-
-Allow only proxied services and one registry
-
-```bash
-infisical secrets-manager agent-proxy run --env=dev --unmatched-host=block --allow-host=registry.npmjs.org -- claude
-```
-
-Keep a log of proxied requests
-
-```bash
-infisical secrets-manager agent-proxy run --env=dev --log-file=/tmp/agent-proxy.log -- claude
-```
-
-## `secrets-manager agent-proxy start`
-
-```text
-infisical secrets-manager agent-proxy start [flags]
-```
-
-Start an agent proxy in the foreground, for agents on other hosts to connect to with [infisical secrets-manager agent-proxy connect](#secrets-manager-agent-proxy-connect). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
-
-The proxy authenticates as its own machine identity, which needs read access to the secrets your proxied services reference, and renews its access token as it runs. The proxy logs brokered requests at `info` and blocked requests at `warn`. To also see requests passed through without a credential, pass `--log-level=debug`.
-
-### Flags
-
-- `--client-id <string>` (required): The client ID of the proxy's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`.
-- `--client-secret <string>` (required): The client secret of the proxy's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`.
-- `--log-file <string>`: A file to also write logs to, as JSON lines. The file is appended to.
-- `--log-format <string>` (default `console`): The format of the logs written to stderr: `console` or `json`.
-- `--poll-interval <int>` (default `60`): The number of seconds between refreshes of permissions and credentials for active agents.
-- `--port <int>` (default `17322`): The port to listen on, on all interfaces.
-- `--unmatched-host <string>` (default `allow`): What to do with requests to a host that has no proxied service: `allow` forwards them with no credential, and `block` rejects them. `block` also rejects requests to your Infisical instance.
-
-### Examples
-
-Start the proxy
-
-```bash
-infisical secrets-manager agent-proxy start --client-id=<client-id> --client-secret=<client-secret>
-```
-
-Block hosts with no proxied service
-
-```bash
-infisical secrets-manager agent-proxy start --port=17322 --unmatched-host=block
-```
-
-Log JSON to a file
-
-```bash
-infisical secrets-manager agent-proxy start --log-format=json --log-file=/var/log/infisical/agent-proxy.log
-```
 
 ## `secrets-manager dynamic-secrets`
 
@@ -2483,58 +2314,6 @@ Change an environment's slug
 
 ```bash
 infisical secrets-manager environments update qa --slug=testing --projectId=<project-id>
-```
-
-## `secrets-manager export`
-
-```text
-infisical secrets-manager export [flags]
-```
-
-Print an environment's secrets in a file format such as `.env` or JSON, for tools that read configuration from a file. Output goes to standard output unless you pass `--output-file`.
-
-`dotenv` writes each secret as `KEY='value'`, and `dotenv-export` adds `export` in front. Neither escapes quotes inside values. `dotenv-eval` also writes `export` statements, but quotes each value so the output is safe to load with `eval` or `source`. No format escapes secret names, so load output into a shell only when every name is a valid shell variable name.
-
-`--template` takes a Go template that fetches secrets with the functions the [Infisical Agent](/integrations/platforms/infisical-agent#available-secret-template-functions) provides, such as `listSecrets` and `getSecretByName`.
-
-### Flags
-
-- `--env <string>` (`-e`, default `dev`): The environment to export secrets from, such as `dev`, `staging`, or `prod`. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`.
-- `--expand` (default `true`): Resolve secret references and shell parameter expansions in secret values. Pass `--expand=false` to export values exactly as stored.
-- `--format <string>` (`-f`, default `dotenv`): The output format: `dotenv`, `dotenv-export`, `dotenv-eval`, `csv`, `json`, or `yaml`.
-- `--include-imports` (default `true`): Include secrets imported into the environment from other environments or folders.
-- `--output-file <string>` (`-o`): A file or directory to write to, instead of standard output. In a directory, the CLI writes `.env`, `secrets.json`, `secrets.csv`, or `secrets.yaml`, depending on the format. A file name without an extension gets the format's extension, and missing parent directories are created.
-- `--path <string>` (default `/`): The folder to export secrets from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`.
-- `--projectId <string>`: The project to export secrets from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`.
-- `--secret-overriding` (default `true`): Export your personal secrets in place of shared secrets with the same name. Pass `--secret-overriding=false` to export only shared secrets.
-- `--tags <string>` (`-t`): Only export secrets with these tag slugs, separated by commas.
-- `--template <string>`: The path to a Go template to render and print instead of a file format. The template chooses its own project, environment, and folder, so every other `export` flag except `--token` is ignored.
-- `--token <string>`: A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`.
-
-### Examples
-
-Write a .env file
-
-```bash
-infisical secrets-manager export --output-file=./.env
-```
-
-Export production secrets as JSON
-
-```bash
-infisical secrets-manager export --env=prod --format=json > secrets.json
-```
-
-Load secrets into the current shell
-
-```bash
-eval "$(infisical secrets-manager export --format=dotenv-eval)"
-```
-
-Render secrets through a template
-
-```bash
-infisical secrets-manager export --template=./secrets.tmpl
 ```
 
 ## `secrets-manager folders`
@@ -3042,6 +2821,60 @@ Remove your personal override of a secret
 
 ```bash
 infisical secrets-manager secrets delete API_URL
+```
+
+## `secrets-manager secrets export`
+
+```text
+infisical secrets-manager secrets export [flags]
+```
+
+Print an environment's secrets in a file format such as `.env` or JSON, for tools that read configuration from a file. Output goes to standard output unless you pass `--output-file`.
+
+This command used to be `infisical export`, which still works.
+
+`dotenv` writes each secret as `KEY='value'`, and `dotenv-export` adds `export` in front. Neither escapes quotes inside values. `dotenv-eval` also writes `export` statements, but quotes each value so the output is safe to load with `eval` or `source`. No format escapes secret names, so load output into a shell only when every name is a valid shell variable name.
+
+`--template` takes a Go template that fetches secrets with the functions the [Infisical Agent](/integrations/platforms/infisical-agent#available-secret-template-functions) provides, such as `listSecrets` and `getSecretByName`.
+
+### Flags
+
+- `--env <string>` (`-e`, default `dev`): The environment to export secrets from, such as `dev`, `staging`, or `prod`. Defaults to `INFISICAL_ENVIRONMENT`, then the [default environment](/cli/project-config#set-the-environment) in `.infisical.yaml`, then `dev`.
+- `--expand` (default `true`): Resolve secret references and shell parameter expansions in secret values. Pass `--expand=false` to export values exactly as stored.
+- `--format <string>` (`-f`, default `dotenv`): The output format: `dotenv`, `dotenv-export`, `dotenv-eval`, `csv`, `json`, or `yaml`.
+- `--include-imports` (default `true`): Include secrets imported into the environment from other environments or folders.
+- `--output-file <string>` (`-o`): A file or directory to write to, instead of standard output. In a directory, the CLI writes `.env`, `secrets.json`, `secrets.csv`, or `secrets.yaml`, depending on the format. A file name without an extension gets the format's extension, and missing parent directories are created.
+- `--path <string>` (default `/`): The folder to export secrets from. Defaults to `INFISICAL_SECRET_PATH`, then the [default folder](/cli/project-config#set-the-folder) in `.infisical.yaml`, then `/`.
+- `--projectId <string>`: The project to export secrets from. Required when you authenticate with a machine identity. Can also be set with `INFISICAL_PROJECT_ID`.
+- `--secret-overriding` (default `true`): Export your personal secrets in place of shared secrets with the same name. Pass `--secret-overriding=false` to export only shared secrets.
+- `--tags <string>` (`-t`): Only export secrets with these tag slugs, separated by commas.
+- `--template <string>`: The path to a Go template to render and print instead of a file format. The template chooses its own project, environment, and folder, so every other `export` flag except `--token` is ignored.
+- `--token <string>`: A machine identity access token to authenticate with, instead of your login. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`.
+
+### Examples
+
+Write a .env file
+
+```bash
+infisical secrets-manager secrets export --output-file=./.env
+```
+
+Export production secrets as JSON
+
+```bash
+infisical secrets-manager secrets export --env=prod --format=json > secrets.json
+```
+
+Load secrets into the current shell
+
+```bash
+eval "$(infisical secrets-manager secrets export --format=dotenv-eval)"
+```
+
+Render secrets through a template
+
+```bash
+infisical secrets-manager secrets export --template=./secrets.tmpl
 ```
 
 ## `secrets-manager secrets get`

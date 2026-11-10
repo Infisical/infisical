@@ -29,6 +29,11 @@ export const SQL_CONNECTION_CLIENT_MAP = {
   [AppConnection.OracleDB]: "oracledb"
 };
 
+// Pinned so knex skips its version() probe, which throws on servers that don't report as PostgreSQL (CockroachDB)
+const SQL_CONNECTION_CLIENT_VERSION: Partial<Record<keyof typeof SQL_CONNECTION_CLIENT_MAP, string>> = {
+  [AppConnection.Postgres]: "16"
+};
+
 // Trivial "is this credential valid" query, per dialect (Oracle's SELECT needs a FROM clause).
 export const getSqlConnectionVerifyQuery = (app: keyof typeof SQL_CONNECTION_CLIENT_MAP) =>
   app === AppConnection.OracleDB ? "SELECT 1 FROM DUAL" : "Select 1";
@@ -133,6 +138,7 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
 
   const client = knex({
     client: SQL_CONNECTION_CLIENT_MAP[app],
+    version: SQL_CONNECTION_CLIENT_VERSION[app],
     connection: {
       database,
       port,
@@ -191,6 +197,7 @@ export const executeWithPotentialGateway = async <T>(
 
       return knex({
         client: SQL_CONNECTION_CLIENT_MAP[app],
+        version: SQL_CONNECTION_CLIENT_VERSION[app],
         connection: {
           database: credentials.database,
           port: proxyPort,
