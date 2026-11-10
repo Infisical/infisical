@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Control, Controller, useForm } from "react-hook-form";
+import { Control, Controller, FieldPath, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
@@ -148,7 +148,7 @@ const STEPS = [
     rightLabel: "DETAILS",
     rightDescription:
       "A clear name and description help your team identify what this profile issues. The name is used to reference the profile when requesting certificates.",
-    fields: ["slug", "description"] as string[]
+    fields: ["slug", "description"] as FieldPath<FormData>[]
   },
   {
     name: "Issuer",
@@ -164,7 +164,7 @@ const STEPS = [
       "certificateAuthorityId",
       "certificatePolicyId",
       "externalConfigs"
-    ] as string[]
+    ] as FieldPath<FormData>[]
   },
   {
     name: "Certificate Defaults",
@@ -175,7 +175,7 @@ const STEPS = [
     rightLabel: "CERTIFICATE DEFAULTS",
     rightDescription:
       "These defaults pre-fill certificate requests issued from this profile. A request can override any of them, within the bounds of the selected policy. Leave a field empty to apply no default.",
-    fields: ["defaults"] as string[]
+    fields: ["defaults"] as FieldPath<FormData>[]
   }
 ] as const;
 
@@ -971,7 +971,7 @@ export const CreateProfileForm = ({
   const isStepValid = async (index: number) => {
     const { fields } = steps[index];
     if (fields.length === 0) return true;
-    return trigger(fields as any, { shouldFocus: true });
+    return trigger(fields, { shouldFocus: true });
   };
 
   const goNext = async () => {

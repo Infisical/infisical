@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 
@@ -255,8 +256,8 @@ export const useDownloadCertPkcs12 = () => {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-      } catch (error: any) {
-        if (error.response?.data instanceof ArrayBuffer) {
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.data instanceof ArrayBuffer) {
           const decoder = new TextDecoder();
           const errorText = decoder.decode(error.response.data);
           const errorData = JSON.parse(errorText);

@@ -218,7 +218,7 @@ export const TeamcityConfigurePage = () => {
               </SelectTrigger>
               <SelectContent>
                 {targetBuildConfigs.length ? (
-                  targetBuildConfigs.map((buildConfig: any) => (
+                  targetBuildConfigs.map((buildConfig) => (
                     <SelectItem
                       value={buildConfig.buildConfigId}
                       key={`target-build-config-${buildConfig.buildConfigId}`}

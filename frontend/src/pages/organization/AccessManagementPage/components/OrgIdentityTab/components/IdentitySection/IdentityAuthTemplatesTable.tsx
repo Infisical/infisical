@@ -75,7 +75,7 @@ type Props = {
     popUpName: keyof UsePopUpState<
       ["deleteTemplate", "createTemplate", "editTemplate", "viewUsages"]
     >,
-    data?: any
+    data?: unknown
   ) => void;
 };
 

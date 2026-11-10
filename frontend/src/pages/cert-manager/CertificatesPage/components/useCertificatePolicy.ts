@@ -8,6 +8,8 @@ import {
   KEY_USAGES_OPTIONS,
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
+import type { TCertificatePolicy } from "@app/hooks/api/certificatePolicies/types";
+import type { TCertificateProfileWithDetails } from "@app/hooks/api/certificateProfiles/types";
 import {
   CertPolicyState,
   CertSubjectAlternativeNameType,
@@ -106,7 +108,7 @@ export const DEFAULT_TEMPLATE_CONSTRAINTS: TemplateConstraints = {
   maxPathLength: undefined
 };
 
-export const deriveTemplateConstraints = (templateData: any): TemplateConstraints => {
+export const deriveTemplateConstraints = (templateData: TCertificatePolicy): TemplateConstraints => {
   const isCaPolicy =
     (templateData.basicConstraints?.isCA as CertPolicyState) || CertPolicyState.DENIED;
   const templateAllowsCA =
@@ -116,7 +118,7 @@ export const deriveTemplateConstraints = (templateData: any): TemplateConstraint
     ? Array.from(
         new Set<CertSubjectAlternativeNameType>(
           templateData.sans.map(
-            (sanPolicy: any) => sanPolicy.type as CertSubjectAlternativeNameType
+            (sanPolicy) => sanPolicy.type as CertSubjectAlternativeNameType
           )
         )
       )
@@ -125,7 +127,7 @@ export const deriveTemplateConstraints = (templateData: any): TemplateConstraint
     ? Array.from(
         new Set<CertSubjectAttributeType>(
           templateData.subject.map(
-            (subjectPolicy: any) => subjectPolicy.type as CertSubjectAttributeType
+            (subjectPolicy) => subjectPolicy.type as CertSubjectAttributeType
           )
         )
       )
@@ -214,8 +216,8 @@ export const useCertificatePolicyOptions = (constraints: TemplateConstraints) =>
 };
 
 export const useCertificatePolicy = (
-  templateData: any,
-  selectedProfile: any,
+  templateData: TCertificatePolicy | undefined,
+  selectedProfile: TCertificateProfileWithDetails | undefined,
   isModalOpen: boolean,
   setValue: UseFormSetValue<any>,
   watch: UseFormWatch<any>
@@ -325,9 +327,9 @@ export const useCertificatePolicy = (
           defaults.subjectAltNames.length > 0
         ) {
           // Filter to only allowed SAN types
-          nextSans = defaults.subjectAltNames.filter((san: SubjectAltName) =>
-            newConstraints.allowedSanTypes.includes(san.type)
-          );
+          nextSans = defaults.subjectAltNames.filter((san) =>
+            newConstraints.allowedSanTypes.includes(san.type as SubjectAltName["type"])
+          ) as SubjectAltName[];
         } else {
           nextSans = [];
         }

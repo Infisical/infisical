@@ -43,6 +43,7 @@ import {
   PROJECT_ACCESS_CONTROL_SUBMENU,
   SM_SETTINGS_SUBMENU
 } from "./submenus";
+import { projectLinkProps } from "./sidebarLinkProps";
 import { ProjectSubmenuView } from "./SubmenuViews";
 import type { Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
@@ -144,13 +145,16 @@ export const ProjectNav = () => {
       ? `/organizations/${currentOrg.id}/${typePath}/${submenu.pathSuffix}`
       : `/organizations/${currentOrg.id}/projects/${typePath}/${currentProject.id}/${submenu.pathSuffix}`;
     if (pathname === submenuPath || pathname.startsWith(`${submenuPath}/`)) return;
-    navigate({
-      to: isOrgScoped
-        ? (`/organizations/$orgId/${typePath}/${submenu.pathSuffix}` as any)
-        : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any),
-      params: { orgId: currentOrg.id, projectId: currentProject.id } as any,
-      search: { selectedTab: submenu.defaultTab } as any
-    });
+    navigate(
+      projectLinkProps({
+        orgId: currentOrg.id,
+        projectId: currentProject.id,
+        typePath,
+        pathSuffix: submenu.pathSuffix,
+        isOrgScoped,
+        search: { selectedTab: submenu.defaultTab }
+      })
+    );
   };
 
   return (

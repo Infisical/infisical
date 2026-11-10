@@ -43,7 +43,13 @@ export type ScimEventData = {
   id: string;
   orgId: string;
   eventType: ScimEvent;
-  event?: any | null;
+  event?: {
+    numberOfUsers?: number;
+    numberOfGroups?: number;
+    email?: string;
+    groupName?: string;
+    detail?: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 };

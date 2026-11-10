@@ -40,6 +40,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { getApiErrorMessage } from "@app/helpers/errors";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -96,9 +97,9 @@ const AddEmailDomainContent = ({ onClose }: { onClose: () => void }) => {
         type: "success"
       });
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       createNotification({
-        text: err?.response?.data?.message || "Failed to add email domain",
+        text: getApiErrorMessage(err) || "Failed to add email domain",
         type: "error"
       });
     }

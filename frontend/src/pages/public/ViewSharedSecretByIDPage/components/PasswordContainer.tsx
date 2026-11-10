@@ -8,7 +8,7 @@ import { Button, Field, FieldError, FieldLabel, Input } from "@app/components/v3
 import { BrandingTheme } from "../ViewSharedSecretByIDPage";
 
 type Props = {
-  onPasswordSubmit: (val: any) => void;
+  onPasswordSubmit: (val: string) => void;
   isSubmitting?: boolean;
   isInvalidCredential?: boolean;
   brandingTheme?: BrandingTheme;

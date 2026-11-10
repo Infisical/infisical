@@ -12,9 +12,9 @@ export type TMfaSessionError = {
 };
 
 export const isMfaSessionError = (
-  error: any
+  error: unknown
 ): error is { response: { data: TMfaSessionError } } => {
-  return error?.response?.data?.name === "SESSION_MFA_REQUIRED";
+  return axios.isAxiosError(error) && error.response?.data?.name === "SESSION_MFA_REQUIRED";
 };
 
 export type TMfaStepUpChallenge = { mfaSessionId: string; mfaMethod: MfaMethod };
@@ -29,7 +29,7 @@ export const getMfaStepUpChallenge = (error: unknown): TMfaStepUpChallenge | nul
 };
 
 export const isMfaLockoutError = (
-  error: any
+  error: unknown
 ): error is { response: { data: { message: string } } } =>
   axios.isAxiosError(error) &&
   error.response?.status === 403 &&

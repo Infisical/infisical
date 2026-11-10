@@ -13,6 +13,7 @@ import {
 import { useOrganization, useProject } from "@app/context";
 import { isOrgScopedProduct } from "@app/helpers/project";
 
+import { projectLinkProps } from "./sidebarLinkProps";
 import type { Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
 
@@ -72,13 +73,14 @@ export const ProjectSubmenuView = ({
                 tooltip={sub.label}
               >
                 <Link
-                  to={
-                    isOrgScoped
-                      ? (`/organizations/$orgId/${typePath}/${submenu.pathSuffix}` as any)
-                      : (`/organizations/$orgId/projects/${typePath}/$projectId/${submenu.pathSuffix}` as any)
-                  }
-                  params={{ orgId: currentOrg.id, projectId: currentProject.id } as any}
-                  search={{ selectedTab: sub.tab } as any}
+                  {...projectLinkProps({
+                    orgId: currentOrg.id,
+                    projectId: currentProject.id,
+                    typePath,
+                    pathSuffix: submenu.pathSuffix,
+                    isOrgScoped,
+                    search: { selectedTab: sub.tab }
+                  })}
                 >
                   <sub.icon className="size-4" />
                   <span>{sub.label}</span>

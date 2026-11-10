@@ -45,6 +45,12 @@ export type TPermissionAction = {
 
 type AnyPermissionSubject = ProjectPermissionSub | OrgPermissionSubjects;
 
+type PermissionRuleForm = Record<string, unknown>;
+
+type PermissionsFormValues = {
+  permissions: Record<string, PermissionRuleForm[]>;
+};
+
 export enum PermissionScope {
   Project = "project",
   Organization = "org"
@@ -71,7 +77,7 @@ type ActionsMultiSelectProps = {
   rootIndex: number;
   actions: readonly TPermissionAction[];
   isDisabled?: boolean;
-  control: Control<any>;
+  control: Control<PermissionsFormValues>;
   menuPortalContainerRef?: RefObject<HTMLElement | null>;
   subjectScope: PermissionScope;
 };
@@ -85,17 +91,17 @@ const ActionsMultiSelect = ({
   menuPortalContainerRef,
   subjectScope
 }: ActionsMultiSelectProps) => {
-  const { setValue, trigger } = useFormContext();
+  const { setValue, trigger } = useFormContext<PermissionsFormValues>();
 
   const { errors } = useFormState({
     control,
-    name: `permissions.${subject}.${rootIndex}.actionRequired` as any
+    name: `permissions.${subject}.${rootIndex}.actionRequired`
   });
-  const actionsError = (errors?.permissions as any)?.[subject]?.[rootIndex]?.actionRequired;
+  const actionsError = errors?.permissions?.[subject]?.[rootIndex]?.actionRequired;
 
   const permissionRule = useWatch({
     control,
-    name: `permissions.${subject}.${rootIndex}` as any,
+    name: `permissions.${subject}.${rootIndex}`,
     defaultValue: {}
   });
 
@@ -180,7 +186,7 @@ const ActionsMultiSelect = ({
     visibleActions.forEach(({ value }) => {
       const valueStr = String(value);
       const isSelected = selectedActionsValue.some((selected) => selected.value === valueStr);
-      setValue(`permissions.${subject}.${rootIndex}.${valueStr}` as any, isSelected, {
+      setValue(`permissions.${subject}.${rootIndex}.${valueStr}`, isSelected, {
         shouldDirty: true,
         shouldTouch: true
       });
@@ -233,14 +239,14 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
   menuPortalContainerRef,
   subjectScope
 }: Props<T>) => {
-  const { control, watch } = useFormContext<any>();
-  const { fields, remove, insert } = useFieldArray<any>({
+  const { control, watch } = useFormContext<PermissionsFormValues>();
+  const { fields, remove, insert } = useFieldArray<PermissionsFormValues>({
     control,
     name: `permissions.${subject}`
   });
 
   // scott: this is a hacky work-around to resolve bug of fields not updating UI when removed
-  const watchFields = useWatch({ control, name: `permissions.${subject}` as any }) as unknown[];
+  const watchFields = useWatch({ control, name: `permissions.${subject}` });
   const wasPresentRef = useRef(false);
   const onPolicyAddedRef = useRef(onPolicyAdded);
   onPolicyAddedRef.current = onPolicyAdded;
@@ -300,7 +306,7 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
                       },
                       {} as Record<string, boolean>
                     );
-                    insert(fields.length, [defaultRule as any]);
+                    insert(fields.length, [defaultRule]);
                   }}
                   isDisabled={isDisabled}
                 >
@@ -315,7 +321,7 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
       <AccordionContent className="!p-0">
         <div key={`select-${subject}-type`} className="flex flex-col space-y-3 bg-container p-3">
           {fields.map((el, rootIndex) => {
-            const isInverted = watch(`permissions.${subject}.${rootIndex}.inverted` as any);
+            const isInverted = watch(`permissions.${subject}.${rootIndex}.inverted`);
 
             return (
               <Fragment key={el.id}>
@@ -346,8 +352,8 @@ export const GeneralPermissionPolicies = <T extends AnyPermissionSubject>({
                   <div className="flex items-start gap-2">
                     {isConditional && (
                       <Controller
-                        defaultValue={false as any}
-                        name={`permissions.${subject}.${rootIndex}.inverted`}
+                        defaultValue={false}
+                        name={`permissions.${String(subject)}.${rootIndex}.inverted`}
                         render={({ field }) => (
                           <Select
                             value={String(field.value)}
