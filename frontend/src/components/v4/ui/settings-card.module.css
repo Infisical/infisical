@@ -99,12 +99,6 @@
   border-radius: 50%;
   background: var(--v4-warn);
 }
-.saved {
-  color: var(--v4-ok);
-}
-.failed {
-  color: var(--v4-bad);
-}
 .buttons {
   display: flex;
   flex: none;

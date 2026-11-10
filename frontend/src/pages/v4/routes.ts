@@ -29,7 +29,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
   route("/organizations/$orgId", "v4/organization/route.tsx", [
     route("/projects", [
       index("v4/organization/ProjectsPage/route.tsx"),
+      route("/kms/kmip-servers/", "v4/kms/KmipServersPage/route.tsx"),
+      route("/kms/kmip-servers/$kmipServerId", "v4/kms/KmipServerDetailsByIDPage/route.tsx"),
       route("/kms/$projectId/overview", "v4/kms/OverviewPage/route.tsx"),
+      route("/kms/$projectId/kmip", "v4/kms/KmipPage/route.tsx"),
       route("/kms/$projectId/access-management", "v4/project/AccessControlPage/kms/route.tsx"),
       route(
         "/kms/$projectId/members/$membershipId",
@@ -76,6 +79,8 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       route("/$", "v4/organization/NotPortedPage/projects/route.tsx")
     ]),
     route("/settings", "v4/organization/SettingsPage/route.tsx"),
+    route("/sso", "v4/organization/SsoPage/route.tsx"),
+    route("/oauth-applications", "v4/organization/OauthApplicationsPage/route.tsx"),
     route("/audit-logs", "v4/organization/AuditLogsPage/route.tsx"),
     route("/integrations", "v4/organization/IntegrationsPage/route.tsx"),
     route("/networking/", "v4/organization/NetworkingPage/route.tsx"),

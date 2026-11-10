@@ -287,13 +287,13 @@ export const orgDemo: OrgAdapter = {
   useOrganization: () => ({ data: organization.use(), isPending: false, error: null }),
   useProductStats: () => ({ data: productStats(), isPending: false, error: null }),
   useUpdateOrganization: fixtureMutation(
-    ({ name, slug, defaultMembershipRoleSlug, requireGatewayPools }) => {
+    ({ orgId, name, slug, defaultMembershipRoleSlug, ...rest }) => {
       organization.update((current) => ({
         ...current,
+        ...Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== undefined)),
         name: name ?? current.name,
         slug: slug ?? current.slug,
-        defaultMembershipRole: defaultMembershipRoleSlug ?? current.defaultMembershipRole,
-        requireGatewayPools: requireGatewayPools ?? current.requireGatewayPools
+        defaultMembershipRole: defaultMembershipRoleSlug ?? current.defaultMembershipRole
       }));
       return {};
     }
