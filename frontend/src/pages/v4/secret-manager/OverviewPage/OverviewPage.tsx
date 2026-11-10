@@ -580,7 +580,7 @@ export const OverviewPage = () => {
           ? {
               ...resolved,
               description: [
-                resolved.description,
+                resolved.description?.replace(/\.$/, ""),
                 `Change request opened for ${new Intl.ListFormat("en").format(heldNames)}`
               ]
                 .filter(Boolean)
@@ -588,7 +588,11 @@ export const OverviewPage = () => {
             }
           : resolved;
         if (!result.share) {
-          toast({ tone: "ok", title: result.title, description: result.description });
+          toast({
+            tone: result.tone ?? "ok",
+            title: result.title,
+            description: result.description
+          });
           return;
         }
         const existing = new Set(before.map((resource) => resource.id));
@@ -1060,9 +1064,19 @@ export const OverviewPage = () => {
               );
             })
         ),
-      {
-        title: title ?? `Deleted ${[...new Set(targets.map((target) => target.name))].join(", ")}`
-      }
+      (held) => ({
+        title:
+          title ??
+          `Deleted ${[
+            ...new Set(
+              targets
+                .filter(
+                  (target) => target.kind !== "secret" || !held(target.environment, target.path)
+                )
+                .map((target) => target.name)
+            )
+          ].join(", ")}`
+      })
     );
     setDeleting(undefined);
     setSelected([]);

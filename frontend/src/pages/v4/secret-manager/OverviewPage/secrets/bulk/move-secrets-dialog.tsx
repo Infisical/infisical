@@ -25,7 +25,7 @@ import {
 
 import type { Resource, Secret } from "../../secrets-model";
 import { childPath, Gate } from "../flows/shared";
-import type { EnvironmentOption, FlowFeedback } from "../flows/types";
+import type { ApplyFeedback, EnvironmentOption } from "../flows/types";
 import { useManagedBlock } from "../row-actions/permissions";
 import type { OverlayHostProps } from "../row-actions/types";
 import {
@@ -420,7 +420,7 @@ function MoveSecretsDialogContent({
     if ("next" in outcome) working = outcome.next;
     return outcome;
   };
-  const apply = (steps: Step[], feedback: FlowFeedback) =>
+  const apply = (steps: Step[], feedback: ApplyFeedback) =>
     onApply(
       (current) =>
         steps.reduce((state, step) => {
@@ -513,6 +513,7 @@ function MoveSecretsDialogContent({
     const steps: Step[] = [];
     const moved: FolderMove[] = [];
     const changed = new Set<string>();
+    const nonSecretMoves = new Set<string>();
     const selectedCount = secrets.size + rotations.size + folders.size;
     let selectedPluralNoun = noun;
     let selectedNoun = noun === "items" ? "item" : noun.slice(0, -1);
@@ -564,13 +565,16 @@ function MoveSecretsDialogContent({
       }
       rotationsToMove.forEach((rotation) => {
         const step = moveRotationStep(rotation, env);
-        record(
-          env,
-          step,
-          `${env}-${rotation.name}`,
-          `${environment.label} / ${rotation.name}`,
-          "Secret rotation moved."
-        );
+        if (
+          record(
+            env,
+            step,
+            `${env}-${rotation.name}`,
+            `${environment.label} / ${rotation.name}`,
+            "Secret rotation moved."
+          )
+        )
+          nonSecretMoves.add(env);
       });
       foldersToMove.forEach((folder) => {
         const step = moveFolderStep(folder, env);
@@ -582,14 +586,19 @@ function MoveSecretsDialogContent({
             `${environment.label} / ${folder.name}`,
             "Folder moved."
           )
-        )
+        ) {
           moved.push(folderMove(folder, env));
+          nonSecretMoves.add(env);
+        }
       });
     });
     if (steps.length) {
-      apply(steps, {
-        title: `Moved selected ${noun} in ${plural(changed.size, "environment")}`
-      });
+      apply(steps, (held) => ({
+        title: `Moved selected ${noun} in ${plural(
+          [...changed].filter((env) => nonSecretMoves.has(env) || !held(env, selectedPath)).length,
+          "environment"
+        )}`
+      }));
       if (moved.length) onFoldersMoved?.(moved);
     }
     setResults(nextResults);

@@ -67,6 +67,7 @@ import type { TParsedEnv } from "@app/pages/secret-manager/OverviewPage/componen
 
 import type { Resource, Secret } from "../../secrets-model";
 import { environmentLabel, folderExists, Gate, secretsAt } from "../flows/shared";
+import type { FlowFeedback } from "../flows/types";
 import { useManagedBlock } from "../row-actions/permissions";
 import type { OverlayHostProps } from "../row-actions/types";
 import {
@@ -456,7 +457,7 @@ function ImportSecretsContent({
       held: (environment: string, path: string) => boolean = () => false
     ) => {
       const next = [...current];
-      const counts = { created: 0, updated: 0, skipped: 0 };
+      const counts = { created: 0, updated: 0, skipped: 0, folders: 0 };
       const written: { environment: string; secret: string }[] = [];
       selectedEnvs.forEach((environment) => {
         folderPaths.forEach((path) => {
@@ -473,6 +474,7 @@ function ImportSecretsContent({
             createdAt: timestamp,
             updatedAt: timestamp
           });
+          counts.folders += 1;
         });
         writes.forEach(({ path, secrets }) => {
           if (held(environment, path)) return;
@@ -541,12 +543,24 @@ function ImportSecretsContent({
         ? environmentLabel(environments[0])
         : plural(environments.length, "environment");
     const target = targetOf(selectedEnvs);
-    if (counts.created || counts.updated || (nestedImport && folderCount)) {
+    const noneUploaded = (result: typeof counts): FlowFeedback => ({
+      tone: "neutral",
+      title: `No secrets uploaded to ${target}`,
+      description: [
+        result.folders && `Created ${plural(result.folders, "folder")}.`,
+        result.skipped &&
+          `${result.skipped === 1 ? "1 secret already exists" : `${result.skipped} secrets already exist`}. Turn on overwrite existing secrets to update them.`
+      ]
+        .filter(Boolean)
+        .join(" ")
+    });
+    if (counts.created || counts.updated || counts.folders) {
       onApply(
         (current) => plan(current).next,
         (held) => {
           const result = plan(resources, held);
           const keys = new Set(result.written.map((entry) => entry.secret)).size;
+          if (!keys) return noneUploaded(result.counts);
           const environments = selectedEnvs.filter((environment) =>
             result.written.some((entry) => entry.environment === environment)
           );
@@ -564,10 +578,7 @@ function ImportSecretsContent({
         }
       );
     } else {
-      onToast("neutral", {
-        title: `No secrets uploaded to ${target}`,
-        description: `${counts.skipped === 1 ? "1 secret already exists" : `${counts.skipped} secrets already exist`}. Turn on overwrite existing secrets to update them.`
-      });
+      onToast("neutral", noneUploaded(counts));
     }
     onClose();
     onComplete?.(selectedEnvs);

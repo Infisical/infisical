@@ -93,7 +93,12 @@ export const useResourceApply = ({
     const record = async (environment: string, path: string, pending?: Promise<unknown>) => {
       if (!pending) return;
       const response = await pending;
-      const held = typeof response === "object" && response !== null && "approval" in response;
+      const held =
+        typeof response === "object" &&
+        response !== null &&
+        ("approval" in response ||
+          ("isDestinationUpdated" in response && !response.isDestinationUpdated) ||
+          ("isSourceUpdated" in response && !response.isSourceUpdated));
       result[held ? "held" : "written"].push({ environment, path });
     };
     const previous = new Map(
