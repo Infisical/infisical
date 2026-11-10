@@ -233,7 +233,6 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          secretRequestId: req.params.id,
           organizationId: req.permission.orgId,
           ...req.auditLogInfo
         }
@@ -355,7 +354,6 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
         distinctId: getTelemetryDistinctId(req),
         organizationId: req.permission.orgId,
         properties: {
-          secretRequestId: shareRequest.id,
           organizationId: req.permission.orgId,
           secretRequestName: req.body.name,
           ...req.auditLogInfo

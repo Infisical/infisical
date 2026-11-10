@@ -13,7 +13,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/doordash-oss/oapi-codegen-dd/v3 v3.75.5
-	github.com/go-chi/chi/v5 v5.2.4
+	github.com/go-chi/chi/v5 v5.4.0
 	github.com/go-chi/httprate v0.15.0
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/go-resty/resty/v2 v2.17.2

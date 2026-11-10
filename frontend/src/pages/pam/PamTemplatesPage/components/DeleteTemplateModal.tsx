@@ -1,16 +1,12 @@
-import { useEffect, useState } from "react";
-
 import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Field,
-  FieldContent,
-  FieldLabel,
-  Input
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  ConfirmationAlertDialog
 } from "@app/components/v3";
 import { TPamAccountTemplateWithCount } from "@app/hooks/api/pam";
 
@@ -31,79 +27,38 @@ export const DeleteTemplateModal = ({
 }: Props) => {
   const templateName = template?.name ?? "";
   const accountCount = template?.accountCount ?? 0;
-  const hasAccounts = accountCount > 0;
 
-  const [confirmInput, setConfirmInput] = useState("");
-  const canDelete = confirmInput === templateName && templateName.length > 0;
-
-  useEffect(() => {
-    setConfirmInput("");
-  }, [isOpen]);
-
-  const renderBody = () => {
-    if (hasAccounts) {
-      return (
-        <div className="grid gap-4">
-          <p className="text-sm text-muted">
-            <span className="font-medium text-foreground">{templateName}</span> is used by{" "}
-            {accountCount} account{accountCount === 1 ? "" : "s"}. Update them to use a different
-            template or delete {accountCount === 1 ? "it" : "them"} before this template can be
-            deleted.
-          </p>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </div>
-      );
-    }
-
+  if (accountCount > 0) {
     return (
-      <form
-        className="grid gap-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canDelete && !isDeleting && template) onConfirm(template.id);
-        }}
-      >
-        <p className="text-sm text-muted">
-          Are you sure you want to delete{" "}
-          <span className="font-medium text-foreground">{templateName}</span>? This action cannot be
-          undone.
-        </p>
-        <Field>
-          <FieldLabel>
-            Type <span className="font-medium text-foreground">{templateName}</span> to confirm
-          </FieldLabel>
-          <FieldContent>
-            <Input
-              value={confirmInput}
-              onChange={(e) => setConfirmInput(e.target.value)}
-              placeholder={templateName}
-            />
-          </FieldContent>
-        </Field>
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="danger" isPending={isDeleting} isDisabled={!canDelete}>
-            Delete
-          </Button>
-        </DialogFooter>
-      </form>
+      <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{`Delete "${templateName}"`}</AlertDialogTitle>
+            <AlertDialogDescription>
+              This template is used by {accountCount} account{accountCount === 1 ? "" : "s"}. Update{" "}
+              {accountCount === 1 ? "it" : "them"} to use a different template or delete{" "}
+              {accountCount === 1 ? "it" : "them"} before this template can be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     );
-  };
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Delete Template</DialogTitle>
-        </DialogHeader>
-        {renderBody()}
-      </DialogContent>
-    </Dialog>
+    <ConfirmationAlertDialog
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      title={`Delete "${templateName}"`}
+      description="This permanently deletes the template. This cannot be undone."
+      confirmKey={templateName}
+      isPending={isDeleting}
+      onConfirm={() => {
+        if (template) onConfirm(template.id);
+      }}
+    />
   );
 };

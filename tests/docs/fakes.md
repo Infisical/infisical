@@ -104,6 +104,25 @@ type SecretDeleted struct{ SecretDetail }
 func (SecretDeleted) EventName() string { return "github.secret-deleted" }
 ```
 
+## Identity providers
+
+The test plays the workload or the person and holds the credential; the fake plays the
+provider that checks it.
+
+| Fake | Host | Scope | Used by |
+|---|---|---|---|
+| `oidcidp` | `idp.oidc.test/<scope>` | path | OIDC SSO; machine identity OIDC, JWT (jwks) and SPIFFE (`TrustKey` publishes a key the test signs with) |
+| `oauth` | `www.googleapis.com`, `github.com`, `gitlab.com` | authorization code, which is also the access token | Google, GitHub, GitLab login; GCP service account certificates |
+| `kubernetes` | `api.kubernetes.test` | reviewer JWT | machine identity Kubernetes auth (TokenReview) |
+| `aws` | `sts.amazonaws.com`, `sts.us-east-1.amazonaws.com` | access key id | AWS IAM auth (JSON when asked) |
+| `azure` | `login.microsoftonline.com/<tenant>` | tenant id | Azure auth signing keys |
+| `alicloud` | `sts.aliyuncs.com` | access key id | Alibaba Cloud auth (checks the signature) |
+| `oci` | `identity.us-ashburn-1.oraclecloud.com` | signature key id | OCI auth (checks the signature) |
+| `ldap` | LDAP on port 389, any name | `dc=<scope>,dc=ldap,dc=test` | LDAP SSO and machine identity LDAP auth |
+
+LDAP is not HTTP: fakenet serves it on its own listener and finds the directory by the
+DN of each bind or search. Seed it through the admin API like any other fake.
+
 ## DNS records
 
 Every A query resolves to fakenet. A product that proves domain ownership reads a TXT

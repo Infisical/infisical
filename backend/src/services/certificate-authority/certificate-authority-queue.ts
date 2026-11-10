@@ -26,9 +26,10 @@ import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
 import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-fns";
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
+import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 import { CaType } from "./certificate-authority-enums";
-import { getCaSigner } from "./certificate-authority-fns";
+import { getCaCrlIssuer, getCaSigner } from "./certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
 import { TInternalCertificateAuthorityDALFactory } from "./internal/internal-certificate-authority-dal";
@@ -36,6 +37,7 @@ import { TOrderCertificateForSubscriberDTO } from "./internal/internal-certifica
 
 type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
@@ -66,6 +68,7 @@ export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAut
 export const certificateAuthorityQueueFactory = ({
   certificateAuthorityCrlDAL,
   certificateAuthorityDAL,
+  certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateDAL,
   projectDAL,
@@ -185,8 +188,15 @@ export const certificateAuthorityQueueFactory = ({
               const nextUpdate = new Date(thisUpdate);
               nextUpdate.setDate(nextUpdate.getDate() + DEFAULT_CRL_VALIDITY_DAYS);
 
+              const issuer = await getCaCrlIssuer({
+                internalCa,
+                kmsId: keyId,
+                certificateAuthorityCertDAL,
+                kmsService
+              });
+
               const crl = await signer.createCrl({
-                issuer: internalCa.dn,
+                issuer,
                 thisUpdate,
                 nextUpdate,
                 entries: revokedCerts.map((revokedCert) => ({

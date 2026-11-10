@@ -13,12 +13,13 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext } from "./agent-vault-router-fns";
-import { agentVaultListQuery } from "./agent-vault-schemas";
+import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import { AgentVaultDescriptionSchema, agentVaultListQuery, AgentVaultProjectIdSchema } from "./agent-vault-schemas";
 
 const ProxyMemberViewSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId),
   name: z.string().describe(AGENT_VAULT.PROXY.name),
+  description: z.string().nullable().describe(AGENT_VAULT.PROXY.description),
   heartbeat: z.date().nullable().describe(AGENT_VAULT.PROXY.heartbeat),
   isHealthy: z.boolean().describe(AGENT_VAULT.PROXY.isHealthy),
   rootCaFingerprint: z.string().nullable().describe(AGENT_VAULT.PROXY.rootCaFingerprint),
@@ -26,7 +27,9 @@ const ProxyMemberViewSchema = z.object({
 });
 
 const ProxyAdminViewSchema = ProxyMemberViewSchema.extend({
-  trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
+  trafficPolicy: z
+    .enum([AgentVaultTrafficPolicy.AnyHost, AgentVaultTrafficPolicy.ServiceHosts])
+    .describe(AGENT_VAULT.PROXY.trafficPolicyRead),
   allowedHosts: z.string().nullable().describe(AGENT_VAULT.PROXY.allowedHosts),
   pollInterval: z.number().describe(AGENT_VAULT.PROXY.pollInterval),
   createdAt: z.date().describe(AGENT_VAULT.PROXY.createdAt)
@@ -36,6 +39,8 @@ const ProxyWithTokenSchema = z.object({
   proxy: ProxyAdminViewSchema,
   proxyToken: z.string().describe(AGENT_VAULT.PROXY.proxyToken)
 });
+
+const ProxyDescriptionSchema = AgentVaultDescriptionSchema.describe(AGENT_VAULT.PROXY.description);
 
 const ProxySettingsSchema = {
   trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
@@ -51,9 +56,10 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       operationId: "listAgentVaultProxies",
-      description: "List the organization's Agent Vault proxies",
+      description: "List the proxies in an Agent Vault project",
       tags: [ApiDocsTags.AgentVaultProxies],
       querystring: z.object({
+        projectId: AgentVaultProjectIdSchema,
         orderBy: z.enum(["name", "createdAt"]).default("createdAt").describe(AGENT_VAULT.PROXY.orderBy),
         orderDirection: z.enum(["asc", "desc"]).default("desc").describe(AGENT_VAULT.PROXY.orderDirection),
         ...agentVaultListQuery(AGENT_VAULT.PROXY)
@@ -68,12 +74,54 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultProxy.listProxies({
-        projectId: req.internalAgentVaultProjectId,
+    handler: async (req) => {
+      const { projectId: requestedProjectId, ...query } = req.query;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "query");
+      return server.services.agentVaultProxy.listProxies({
+        projectId,
         ctx: actorContext(req),
-        ...req.query
-      })
+        ...query
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:proxyId/ca",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getAgentVaultProxyCa",
+      description:
+        "Get the certificate authority an Agent Vault proxy serves. Returns 409 when the proxy serves its own certificate authority, which Infisical does not hold.",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      params: z.object({
+        proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId)
+      }),
+      response: {
+        200: z.object({
+          ca: z
+            .object({
+              certificate: z.string().describe(AGENT_VAULT.PROXY.rootCaCertificatePem),
+              fingerprint: z.string().describe(AGENT_VAULT.PROXY.rootCaFingerprint),
+              expiresAt: z.date().describe(AGENT_VAULT.PROXY.rootCaExpiresAt)
+            })
+            .describe(AGENT_VAULT.PROXY.ca)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromProxy(
+        actorContext(req),
+        req.params.proxyId
+      );
+      return server.services.agentVaultProxy.getProxyCa({
+        projectId,
+        ctx: actorContext(req),
+        proxyId: req.params.proxyId
+      });
+    }
   });
 
   server.route({
@@ -86,7 +134,9 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       description: "Register an Agent Vault proxy and issue its proxy token",
       tags: [ApiDocsTags.AgentVaultProxies],
       body: z.object({
+        projectId: AgentVaultProjectIdSchema,
         name: slugSchema({ max: 64, field: "Name" }).describe(AGENT_VAULT.PROXY.name),
+        description: ProxyDescriptionSchema.optional(),
         trafficPolicy: ProxySettingsSchema.trafficPolicy.default(AgentVaultTrafficPolicy.AnyHost),
         allowedHosts: ProxySettingsSchema.allowedHosts.default(null),
         pollInterval: ProxySettingsSchema.pollInterval.default(60)
@@ -95,10 +145,12 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const { projectId: requestedProjectId, ...body } = req.body;
+      const projectId = await resolveRequestedProjectId(req, requestedProjectId, "body");
       const { proxy, proxyToken } = await server.services.agentVaultProxy.createProxy({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
-        ...req.body
+        ...body
       });
 
       // The proxy exists and this response is the only copy of its token, so an audit failure must not fail it.
@@ -106,10 +158,10 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
-          projectId: req.internalAgentVaultProjectId,
+          projectId,
           event: {
             type: EventType.AGENT_VAULT_PROXY_REGISTER,
-            metadata: { proxyId: proxy.id, name: proxy.name }
+            metadata: { proxyId: proxy.id, name: proxy.name, description: proxy.description ?? null }
           }
         });
       } catch (error) {
@@ -138,12 +190,13 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       operationId: "updateAgentVaultProxy",
-      description: "Update an Agent Vault proxy's name or settings",
+      description: "Update an Agent Vault proxy's name, description, or settings",
       tags: [ApiDocsTags.AgentVaultProxies],
       params: z.object({ proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId) }),
       body: z
         .object({
           name: slugSchema({ max: 64, field: "Name" }).optional().describe(AGENT_VAULT.PROXY.name),
+          description: ProxyDescriptionSchema.nullable().optional(),
           trafficPolicy: ProxySettingsSchema.trafficPolicy.optional(),
           allowedHosts: ProxySettingsSchema.allowedHosts.optional(),
           pollInterval: ProxySettingsSchema.pollInterval.optional()
@@ -151,6 +204,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         .refine(
           (body) =>
             body.name !== undefined ||
+            body.description !== undefined ||
             body.trafficPolicy !== undefined ||
             body.allowedHosts !== undefined ||
             body.pollInterval !== undefined,
@@ -160,8 +214,12 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromProxy(
+        actorContext(req),
+        req.params.proxyId
+      );
       const proxy = await server.services.agentVaultProxy.updateProxy({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         proxyId: req.params.proxyId,
         ...req.body
@@ -170,10 +228,17 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_PROXY_UPDATE,
-          metadata: { proxyId: proxy.id, ...req.body }
+          // The proxy's name as it stands after the change, so a settings-only update still names it, and the policy as
+          // the proxy now reports it, so an audit log never shows the old name.
+          metadata: {
+            proxyId: proxy.id,
+            ...req.body,
+            name: proxy.name,
+            ...(req.body.trafficPolicy && { trafficPolicy: proxy.trafficPolicy })
+          }
         }
       });
 
@@ -206,8 +271,12 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromProxy(
+        actorContext(req),
+        req.params.proxyId
+      );
       const proxy = await server.services.agentVaultProxy.deleteProxy({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         proxyId: req.params.proxyId
       });
@@ -215,7 +284,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: { type: EventType.AGENT_VAULT_PROXY_DELETE, metadata: { proxyId: proxy.id, name: proxy.name } }
       });
 
@@ -243,8 +312,12 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromProxy(
+        actorContext(req),
+        req.params.proxyId
+      );
       const { proxy, proxyToken } = await server.services.agentVaultProxy.rotateProxyToken({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         proxyId: req.params.proxyId
       });
@@ -255,7 +328,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         await server.services.auditLog.createAuditLog({
           ...req.auditLogInfo,
           orgId: req.permission.orgId,
-          projectId: req.internalAgentVaultProjectId,
+          projectId,
           event: {
             type: EventType.AGENT_VAULT_PROXY_TOKEN_ROTATE,
             metadata: { proxyId: proxy.id, name: proxy.name }
@@ -288,8 +361,12 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const projectId = await server.services.agentVaultProjectResolver.resolveFromProxy(
+        actorContext(req),
+        req.params.proxyId
+      );
       const proxy = await server.services.agentVaultProxy.revokeProxyAccess({
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         ctx: actorContext(req),
         proxyId: req.params.proxyId
       });
@@ -297,7 +374,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.internalAgentVaultProjectId,
+        projectId,
         event: {
           type: EventType.AGENT_VAULT_PROXY_REVOKE,
           metadata: { proxyId: proxy.id, name: proxy.name }

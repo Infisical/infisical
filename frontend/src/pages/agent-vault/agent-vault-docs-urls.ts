@@ -6,9 +6,11 @@ export const AgentVaultDocsUrls = {
   accessBundles: `${AGENT_VAULT_DOCS_BASE_URL}/access-bundles`,
   services: `${AGENT_VAULT_DOCS_BASE_URL}/services`,
   memberProvidedValues: `${AGENT_VAULT_DOCS_BASE_URL}/http-apis#member-provided-values`,
+  mcpMemberProvidedCredential: `${AGENT_VAULT_DOCS_BASE_URL}/mcp-servers#leave-the-credential-to-each-member`,
   variables: `${AGENT_VAULT_DOCS_BASE_URL}/variables`,
   skills: `${AGENT_VAULT_DOCS_BASE_URL}/skills`,
   sessions: `${AGENT_VAULT_DOCS_BASE_URL}/sessions`,
+  sessionsOnBehalfOfUsers: `${AGENT_VAULT_DOCS_BASE_URL}/sessions-on-behalf-of-users`,
   proxies: `${AGENT_VAULT_DOCS_BASE_URL}/proxies`,
   sessionLogs: `${AGENT_VAULT_DOCS_BASE_URL}/session-logs`
 } as const;

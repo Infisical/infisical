@@ -18,6 +18,7 @@ import {
   TSecretRotationSendNotificationJobPayload
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import {
+  TQueueSecretScanningDataSourceEvent,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
   TQueueSecretScanningResourceDiffScanPayload,
@@ -130,9 +131,11 @@ export enum QueueName {
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
   ProjectEnvHardDelete = "project-env-hard-delete",
+  HoneyTokenCleanup = "honey-token-cleanup",
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event",
+  MeteringEvent = "metering-event",
   IntegrationDeprecationNotice = "integration-deprecation-notice",
   LegacyPkiDeprecationNotice = "legacy-pki-deprecation-notice"
 }
@@ -189,6 +192,7 @@ export enum QueueJobs {
   // name carry it, and the drain branch on QueueName.SecretScanningV2 matches on it.
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
+  SecretScanningV2DataSourceEvent = "secret-scanning-v2-data-source-event",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
   CaIssueCertificateFromProfile = "ca-issue-certificate-from-profile",
   PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
@@ -223,9 +227,11 @@ export enum QueueJobs {
   GoDaddyOrderPolling = "godaddy-order-polling-job",
   ProjectHardDelete = "project-hard-delete-job",
   ProjectEnvHardDelete = "project-env-hard-delete-job",
+  HoneyTokenCleanup = "honey-token-cleanup-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event-job",
+  MeteringEvent = "metering-event-job",
   SendIntegrationDeprecationNotice = "send-integration-deprecation-notice",
   SendLegacyPkiDeprecationNotice = "send-legacy-pki-deprecation-notice"
 }
@@ -495,6 +501,10 @@ export type TQueueJobTypes = {
     | {
         name: QueueJobs.SecretScanningV2SendNotification;
         payload: TQueueSecretScanningSendNotification;
+      }
+    | {
+        name: QueueJobs.SecretScanningV2DataSourceEvent;
+        payload: TQueueSecretScanningDataSourceEvent;
       };
   [QueueName.SecretScanningV2FullScan]: {
     name: QueueJobs.SecretScanningV2FullScan;
@@ -631,6 +641,10 @@ export type TQueueJobTypes = {
     name: QueueJobs.ProjectEnvHardDelete;
     payload: { envId: string; projectId: string };
   };
+  [QueueName.HoneyTokenCleanup]: {
+    name: QueueJobs.HoneyTokenCleanup;
+    payload: { honeyTokenId: string };
+  };
   [QueueName.SignerAutoRenewal]: {
     name: QueueJobs.SignerDailyAutoRenewal;
     payload: undefined;
@@ -643,6 +657,13 @@ export type TQueueJobTypes = {
   [QueueName.UsageEvent]: {
     name: QueueJobs.UsageEvent;
     payload: { orgId: string; dimensionKey: string };
+  };
+  [QueueName.MeteringEvent]: {
+    name: QueueJobs.MeteringEvent;
+    payload: {
+      orgId: string;
+      events: { eventId: string; dimensionKey: string; quantity: number; occurredAt: string }[];
+    };
   };
   [QueueName.IntegrationDeprecationNotice]: {
     name: QueueJobs.SendIntegrationDeprecationNotice;

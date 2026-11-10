@@ -55,6 +55,9 @@ export const PgSqlLock = {
   AuditLogSettingsUpdate: (scopeId: string) => pgAdvisoryLockHashText(`audit-log-settings-update:${scopeId}`)
 } as const;
 
+// Shared by the secret list cache keys and the pattern the admin cache wipe deletes, so they cannot drift apart.
+export const SECRET_MANAGER_CACHE_PREFIX = "secret-manager";
+
 // all the key prefixes used must be set here to avoid conflict
 export const KeyStorePrefixes = {
   SecretReplication: "secret-replication-import-lock",
@@ -69,6 +72,8 @@ export const KeyStorePrefixes = {
   SyncSecretIntegrationLastRunTimestamp: (projectId: string, environmentSlug: string, secretPath: string) =>
     `sync-integration-last-run-${projectId}-${environmentSlug}-${secretPath}` as const,
   SecretSyncLock: (syncId: string) => `secret-sync-mutex-${syncId}` as const,
+  CloudflareWorkerVersionLock: (accountId: string, scriptId: string) =>
+    `cloudflare-worker-version-mutex-${accountId}-${scriptId}` as const,
   PkiSyncLock: (syncId: string) => `pki-sync-mutex-${syncId}` as const,
   PkiSyncFilterLock: (syncId: string) => `pki-sync-filter-mutex-${syncId}` as const,
   AppConnectionConcurrentJobs: (connectionId: string, targetHost?: string) =>
@@ -165,19 +170,30 @@ export const KeyStorePrefixes = {
     `project-sse-conn:${projectId}:${connectionId}` as const,
 
   ProjectDeleteLock: (projectId: string) => `project-delete-lock-${projectId}` as const,
+  HoneyTokenCreateLock: (orgId: string) => `honey-token-create-lock-${orgId}` as const,
 
   TelemetryIdentifyIdentity: (dedupKey: string) => `telemetry-identify-identity:${dedupKey}` as const,
   TelemetryGroupIdentify: (orgId: string) => `telemetry-group-identify:${orgId}` as const,
   TelemetryAuditLogsViewed: (orgId: string, distinctId: string) =>
     `telemetry-audit-logs-viewed:${orgId}:${distinctId}` as const,
   TelemetryIdentify: (distinctId: string) => `telemetry-identify:${distinctId}` as const,
+  SecretDalVersion: (projectId: string) =>
+    `${SECRET_MANAGER_CACHE_PREFIX}:${projectId}:secrets_v2-dal-version` as const,
+  SecretsServiceLayerCache: (arg: {
+    projectId: string;
+    version: number;
+    actorId: string;
+    permissionFingerprint: string;
+    permissionHash: string;
+    requestParamsHash: string;
+  }) =>
+    `${SECRET_MANAGER_CACHE_PREFIX}:${arg.projectId}:secrets_v2-dal:v${arg.version}:get-secrets-service-layer-zstd:${arg.actorId}-${arg.permissionFingerprint}-${arg.permissionHash}-${arg.requestParamsHash}` as const,
   SecretEtag: (projectId: string, dayStamp: string) => `secret-etag:${projectId}:${dayStamp}` as const,
   SecretPermissionFingerprint: (projectId: string, actorType: string, actorId: string) =>
     `secret-perm-fingerprint:${projectId}:${actorType}:${actorId}` as const,
 
   PamAwsIamAccessKeyId: (sessionId: string) => `pam-aws-iam-access-key-id:${sessionId}` as const,
   PamDefaultProject: (orgId: string) => `pam-default-project:${orgId}` as const,
-  AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
   // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
   AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
   AgentVaultOauthAuthorization: (authorizationId: string) =>
@@ -185,6 +201,9 @@ export const KeyStorePrefixes = {
   AgentVaultOauthAuthorizationCompleteLock: (authorizationId: string) =>
     `agent-vault-oauth-authorization:${authorizationId}:complete` as const,
   AgentVaultOauthRefreshLock: (serviceId: string) => `agent-vault-oauth-refresh-lock:${serviceId}` as const,
+  // By service and owner, not row id: a reconnect replaces the member's row.
+  AgentVaultOauthPersonalRefreshLock: (serviceId: string, ownerId: string) =>
+    `agent-vault-oauth-refresh-lock:${serviceId}:${ownerId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
 
@@ -216,7 +235,7 @@ export const KeyStorePrefixes = {
   AdminConfig: "infisical-admin-cfg",
   UpdateCheckLatestVersion: "update-check-latest-version",
   InvalidatingCache: "invalidating-cache",
-  SecretManagerCachePattern: "secret-manager:*",
+  SecretManagerCachePattern: `${SECRET_MANAGER_CACHE_PREFIX}:*` as const,
   AuditLogMigrationAlert: "audit-log-migration-alert-last-row-count",
   LicenseCloudPlan: (orgId: string) => `infisical-cloud-plan-${orgId}` as const,
   // Set alongside the free plan getPlan caches when the License Server fails, so callers can tell it from a real answer.
@@ -261,7 +280,10 @@ export const KeyStorePrefixes = {
     `native-integration-deprecation-notice:${orgId}:${period}` as const,
 
   LegacyPkiDeprecationNotice: (orgId: string, period: string) =>
-    `legacy-pki-deprecation-notice:${orgId}:${period}` as const
+    `legacy-pki-deprecation-notice:${orgId}:${period}` as const,
+
+  SamlAssertionReplay: (samlConfigId: string, assertionIdHash: string) =>
+    `saml-assertion-replay:${samlConfigId}:${assertionIdHash}` as const
 };
 
 export const KeyStoreTtls = {
@@ -307,7 +329,6 @@ export const KeyStoreTtls = {
   LicenseCloudPlanLastKnownInSeconds: 86400, // 24 hours
   AuditLogSettingsInSeconds: 600, // 10 minutes
   PamDefaultProjectInSeconds: 300, // 5 minutes
-  AgentVaultDefaultProjectInSeconds: 300, // 5 minutes
   OrgSecretScanningFindingsCountInSeconds: 300, // 5 minutes
   // How long reads stay in stale-while-revalidate mode after a billing mutation (covers Stripe reconciliation).
   LicenseCachePassThroughInSeconds: 180, // 3 minutes

@@ -60,7 +60,8 @@ export const CA_TYPE_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {
   [CaType.DIGICERT]: [
     CaCapability.ISSUE_CERTIFICATES,
     CaCapability.REVOKE_CERTIFICATES,
-    CaCapability.RENEW_CERTIFICATES
+    CaCapability.RENEW_CERTIFICATES,
+    CaCapability.REISSUE_CERTIFICATES
   ],
   [CaType.AWS_ACM_PUBLIC_CA]: [
     CaCapability.ISSUE_CERTIFICATES,

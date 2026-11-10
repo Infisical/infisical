@@ -112,6 +112,10 @@ SecretProviderClass
 CustomResourceDefinition
 Kubebuilder
 Kyverno
+gVisor
+Kata
+containerd
+RuntimeClass
 minikube
 Traefik
 Bitnami
@@ -170,6 +174,10 @@ Authenticode
 signtool
 DevOps
 BigQuery
+NodeLocal DNSCache
+DNSCache
+Dataplane
+Dataplane V2
 Cloud SQL
 Cloud Run
 Cloud 66
@@ -252,6 +260,7 @@ Devin
 Mintlify
 Ona
 Daytona
+E2B
 DBT
 Ab Initio
 Initio
@@ -308,6 +317,7 @@ Tomcat
 HAProxy
 JBoss
 WildFly
+Imperva
 Kemp
 LoadMaster
 NetScaler
@@ -331,6 +341,7 @@ Patroni
 # --- Databases ---
 PostgreSQL
 MySQL
+CockroachDB
 MongoDB
 MongoDB Atlas
 Redis
@@ -359,6 +370,8 @@ LiteLLM
 Fireworks
 Cohere
 Cursor
+Cursor Cloud Agents
+Superserve
 DeepSeek
 Gemini
 Grok
@@ -553,6 +566,7 @@ VPC(?:s)?
 VPN(?:s)?
 vCPU(?:s)?
 
+booleans
 walkthrough
 walkthroughs
 
@@ -677,6 +691,7 @@ dce
 dcr
 als
 ua
+amr
 iss
 
 # --- Surfaced by the code-signing pages ---
@@ -692,3 +707,6 @@ Stripe
 
 # --- Surfaced by the Agent Vault Docker guide ---
 gVisor
+
+# --- Surfaced by the Agent Vault E2B guide ---
+SOCKS5

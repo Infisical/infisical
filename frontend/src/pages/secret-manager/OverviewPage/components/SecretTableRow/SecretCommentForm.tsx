@@ -2,7 +2,6 @@ import { HTMLAttributes, useEffect, useRef } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { GripHorizontalIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -11,6 +10,8 @@ import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/con
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
+
+import { AnnotationPopoverHeader } from "./AnnotationPopoverHeader";
 
 const formSchema = z.object({
   comment: z.string()
@@ -26,6 +27,8 @@ type Props = {
   onClose?: () => void;
   isBatchMode?: boolean;
   onCommentChange?: (comment: string) => void;
+  onBatchSave?: () => void;
+  isBatchSavePending?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
 };
 
@@ -37,6 +40,8 @@ export const SecretCommentForm = ({
   onClose,
   isBatchMode,
   onCommentChange,
+  onBatchSave,
+  isBatchSavePending,
   dragHandleProps
 }: Props) => {
   const { projectId } = useProject();
@@ -115,18 +120,7 @@ export const SecretCommentForm = ({
     onClose?.();
   };
 
-  const header = (
-    <div
-      {...dragHandleProps}
-      role="button"
-      tabIndex={0}
-      aria-label="Move comment (drag or use arrow keys)"
-      className="-mx-4 -mt-4 flex cursor-grab touch-none items-center justify-between rounded-t-lg px-4 pt-4 outline-none select-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
-    >
-      <p className="text-sm font-medium">Comment</p>
-      <GripHorizontalIcon className="size-4 text-accent" />
-    </div>
-  );
+  const header = <AnnotationPopoverHeader title="Comment" dragHandleProps={dragHandleProps} />;
 
   if (!canEdit) {
     return (
@@ -155,15 +149,31 @@ export const SecretCommentForm = ({
             <TextArea
               {...field}
               autoFocus
+              disabled={isBatchSavePending}
               placeholder="Add a comment..."
               className="max-h-48 min-h-24 resize-none"
             />
           )}
         />
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
           <Button variant="ghost" size="xs" type="button" onClick={onClose}>
             Close
           </Button>
+          {onBatchSave && (
+            <Button
+              variant="project"
+              size="xs"
+              type="button"
+              isDisabled={isBatchSavePending}
+              isPending={isBatchSavePending}
+              onClick={() => {
+                onCommentChange?.(watchedComment);
+                onBatchSave();
+              }}
+            >
+              Save Comment
+            </Button>
+          )}
         </div>
       </div>
     );

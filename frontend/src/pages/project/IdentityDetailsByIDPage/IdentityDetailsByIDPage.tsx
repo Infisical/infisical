@@ -14,6 +14,7 @@ import {
   VenetianMaskIcon
 } from "lucide-react";
 
+import { IdentityDelegationSection } from "@app/components/agent-vault/IdentityDelegationSection";
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
 import { PageTitle } from "@app/components/PageTitle";
@@ -97,7 +98,7 @@ const Page = () => {
 
   const { mutateAsync: removeIdentityMutateAsync } = useDeleteProjectIdentityMembership();
   const { mutateAsync: removePamIdentityMutateAsync } = useRemovePamProductIdentityMember();
-  const { mutateAsync: revokeAgentVaultMembers } = useRevokeAgentVaultMembers();
+  const { mutateAsync: revokeAgentVaultMembers } = useRevokeAgentVaultMembers(projectId);
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
@@ -116,20 +117,16 @@ const Page = () => {
     removeMenuItemLabel = "Remove From Certificate Manager";
   } else if (isPam) {
     removeMenuItemLabel = "Remove From PAM";
-  } else if (isAgentVault) {
-    removeMenuItemLabel = "Remove From Agent Vault";
   }
 
   const projectsHidden = hidesProjects(currentProject?.type);
-  const namesProduct = isStandaloneProduct || projectsHidden;
+  const namesProduct = isCertManager || isPam || projectsHidden;
 
   let accessControlLabel = "project";
   if (projectsHidden) {
     accessControlLabel = getProjectLabel(currentProject?.type).toLowerCase();
   } else if (isPam) {
     accessControlLabel = "PAM";
-  } else if (isAgentVault) {
-    accessControlLabel = "Agent Vault";
   }
   const pageDescription = `Configure and manage${
     isProjectIdentity ? " machine identity and " : " "
@@ -404,6 +401,12 @@ const Page = () => {
                   </CardContent>
                 </Card>
               )}
+              {isAgentVault && (
+                <IdentityDelegationSection
+                  machineIdentityId={identityId}
+                  machineIdentityName={identityMembershipDetails.identity.name}
+                />
+              )}
               {!isAgentVault && (
                 <IdentityRoleDetailsSection
                   identityMembershipDetails={identityMembershipDetails}
@@ -420,7 +423,7 @@ const Page = () => {
                 !currentProject.isLegacyAdditionalPrivilegesEnabled && (
                   <AdditionalPrivilegesRemovedSection />
                 )}
-              {isSecretManager && hasFolderRbacPlan && (
+              {isSecretManager && (
                 <FolderAccessSection
                   actor={{
                     type: "identity",

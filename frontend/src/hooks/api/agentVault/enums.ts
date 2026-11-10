@@ -52,8 +52,13 @@ export enum AgentVaultMemberType {
 
 export enum AgentVaultTrafficPolicy {
   AnyHost = "any-host",
+  ServiceHosts = "service-hosts",
+  // The old name of service-hosts, which an API that predates the rename still returns.
   BundleHosts = "bundle-hosts"
 }
+
+export const isServiceHostsPolicy = (policy: AgentVaultTrafficPolicy | undefined) =>
+  policy === AgentVaultTrafficPolicy.ServiceHosts || policy === AgentVaultTrafficPolicy.BundleHosts;
 
 export enum AgentVaultSessionStatus {
   Active = "active",
@@ -64,6 +69,12 @@ export enum AgentVaultSessionStatus {
 export enum AgentVaultSessionScope {
   Mine = "mine",
   All = "all"
+}
+
+/** Which users a machine identity can start sessions on behalf of. */
+export enum AgentVaultDelegationScope {
+  AllMembers = "all-members",
+  Selected = "selected"
 }
 
 /** Global variables are an admin's, for services; personal ones are the caller's own, for their personal values. */

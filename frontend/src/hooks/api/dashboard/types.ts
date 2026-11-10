@@ -1,4 +1,3 @@
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
@@ -237,6 +236,13 @@ export type TSearchSecretsByMetadataResponse = {
   searchLimit: number;
 };
 
+export type TGetSecretKeyExistsDTO = {
+  projectId: string;
+  environments: string[];
+  secretPath: string;
+  secretKey: string;
+};
+
 export type TGetDashboardProjectSecretsByKeys = {
   projectId: string;
   secretPath: string;
@@ -244,16 +250,6 @@ export type TGetDashboardProjectSecretsByKeys = {
   keys: string[];
   viewSecretValue?: boolean;
   hideUnreadableValues?: boolean;
-};
-
-export type TGetAccessibleSecretsDTO = {
-  projectId: string;
-  secretPath: string;
-  environment: string;
-  recursive?: boolean;
-  filterByAction:
-    | ProjectPermissionSecretActions.DescribeSecret
-    | ProjectPermissionSecretActions.ReadValue;
 };
 
 export type TGetSecretValueDTO = {

@@ -1,5 +1,6 @@
 import {
   AgentVaultCredentialType,
+  AgentVaultDelegationScope,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
   AgentVaultMemberType,
@@ -21,9 +22,15 @@ export type TAgentVaultMemberProvidedField =
   | AgentVaultVariableReferenceField.CredentialValue
   | AgentVaultVariableReferenceField.CredentialUsername;
 
+export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.CredentialValue;
+
+export type TAgentVaultOauthRegistration = "manual" | "dynamic";
+
+// With the sign-in left to each member, the service holds no tokens of its own, so it has no status.
 export type TAgentVaultOauthCredentialSummary = {
   type: AgentVaultCredentialType.OAuth;
-  status: AgentVaultOauthStatus;
+  memberProvidedFields: TAgentVaultBearerMemberField[];
+  status?: AgentVaultOauthStatus;
   issuer: string;
   grantedScopes: string[];
   requiredScopes: string[];
@@ -31,9 +38,14 @@ export type TAgentVaultOauthCredentialSummary = {
   expiresAt?: string | null;
   authorizedAt?: string | null;
   lastError?: string | null;
+  // Only when each member signs in: the client every member signs in with.
+  registration?: TAgentVaultOauthRegistration;
+  clientId?: string | null;
 };
 
-export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.CredentialValue;
+export type TAgentVaultSharedOauthCredentialSummary = TAgentVaultOauthCredentialSummary & {
+  status: AgentVaultOauthStatus;
+};
 export type TAgentVaultBasicMemberField = TAgentVaultMemberProvidedField;
 
 export type TAgentVaultCredentialSummary =
@@ -47,9 +59,15 @@ export type TAgentVaultCredentialSummary =
   | { type: AgentVaultCredentialType.Passthrough }
   | TAgentVaultOauthCredentialSummary;
 
+// Either the admin's own sign-in (authorizationId) or, with memberProvidedFields, a sign-in left to each member, who
+// all sign in with the client set here (or one registered automatically).
 export type TAgentVaultOauthCredentialInput = {
   type: AgentVaultCredentialType.OAuth;
-  authorizationId: string;
+  authorizationId?: string;
+  memberProvidedFields?: TAgentVaultBearerMemberField[];
+  clientId?: string;
+  clientSecret?: string;
+  registration?: "dynamic";
 };
 
 // A member-provided field is sent without a value: each member sets their own.
@@ -122,6 +140,8 @@ export type TAgentVaultService = TAgentVaultServiceConfig & {
   // null means unrestricted.
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
+  // Only an MCP service ever has a list.
+  allowedTools: string[] | null;
   credential: TAgentVaultCredentialSummary;
   customHeaders: TAgentVaultCustomHeaderSummary[];
   substitutions: TAgentVaultSubstitutionSummary[];
@@ -147,7 +167,12 @@ export type TAgentVaultActor =
 
 export type TAgentVaultActorRef = { type: AgentVaultMemberType; id: string };
 
-export type TAgentVaultMember = TAgentVaultActor & { grantedAt: string };
+export type TAgentVaultMember = (
+  | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
+      isOrgMembershipPending: boolean;
+    })
+  | Exclude<TAgentVaultActor, { type: AgentVaultMemberType.User }>
+) & { grantedAt: string };
 
 export type TAgentVaultProductActor =
   | (Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }> & {
@@ -248,7 +273,25 @@ export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
 export type TAgentVaultSessionAccessBundle = {
   id: string | null;
   name: string;
-  position: number;
+};
+
+/** A service an admin sent with the session itself. Its secrets are never returned. */
+export type TAgentVaultSessionInlineService = {
+  id: string;
+  // The name it was sent with, or its first host when it was sent without one.
+  name: string;
+  type: AgentVaultServiceType;
+  serverUrl: string | null;
+  transport: AgentVaultMcpTransport | null;
+  hostPattern: string;
+  allowedMethods: AgentVaultHttpMethod[] | null;
+  allowedPathPrefixes: string[] | null;
+  credential:
+    | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
+    | { type: AgentVaultCredentialType.Basic }
+    | { type: AgentVaultCredentialType.Passthrough };
+  customHeaders: { name: string; prefix: string }[];
+  substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
 };
 
 export type TAgentVaultSessionActor =
@@ -259,15 +302,63 @@ export type TAgentVaultSessionActor =
       id: string | null;
     });
 
+/** The user a machine identity started a session on behalf of. `id` is null once the user is deleted. */
+export type TAgentVaultSessionOnBehalfOf = Extract<
+  TAgentVaultSessionActor,
+  { type: AgentVaultMemberType.User }
+>;
+
 export type TAgentVaultSession = {
   id: string;
   label: string | null;
   actor: TAgentVaultSessionActor;
+  onBehalfOf: TAgentVaultSessionOnBehalfOf | null;
   status: AgentVaultSessionStatus;
   expiresAt: string | null;
   revokedAt: string | null;
   createdAt: string;
-  accessBundles: TAgentVaultSessionAccessBundle[];
+  accessBundle: TAgentVaultSessionAccessBundle | null;
+  services: TAgentVaultSessionInlineService[];
+};
+
+export type TAgentVaultDelegation = {
+  machineIdentity: { id: string; name: string };
+  scope: AgentVaultDelegationScope;
+  users: (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.User }>, "type"> & {
+    addedAt: string;
+  })[];
+  groups: (Omit<Extract<TAgentVaultActor, { type: AgentVaultMemberType.Group }>, "type"> & {
+    addedAt: string;
+  })[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TAgentVaultMissingAccessBundle = { id: string; name: string };
+
+// Reading or writing one delegation also says which bundles its machine identity can't act on: the ones each user and
+// group can use and the identity can't.
+export type TAgentVaultDelegationDetail = Omit<TAgentVaultDelegation, "users" | "groups"> & {
+  users: (TAgentVaultDelegation["users"][number] & {
+    missingAccessBundles: TAgentVaultMissingAccessBundle[];
+  })[];
+  groups: (TAgentVaultDelegation["groups"][number] & {
+    missingAccessBundles: TAgentVaultMissingAccessBundle[];
+  })[];
+  missingAccessBundles: TAgentVaultMissingAccessBundle[];
+};
+
+export type TChangeAgentVaultDelegationSubjectsDTO = {
+  machineIdentityId: string;
+  userIds?: string[];
+  groupIds?: string[];
+};
+
+export type TSetAgentVaultDelegationDTO = {
+  machineIdentityId: string;
+  scope: AgentVaultDelegationScope;
+  userIds?: string[];
+  groupIds?: string[];
 };
 
 export type TAgentVaultMintedSession = {
@@ -276,12 +367,15 @@ export type TAgentVaultMintedSession = {
   token: string;
   expiresAt: string | null;
   createdAt: string;
-  accessBundles: TAgentVaultSessionAccessBundle[];
+  projectId: string;
+  accessBundle: TAgentVaultSessionAccessBundle | null;
+  services: TAgentVaultSessionInlineService[];
 };
 
 export type TAgentVaultProxy = {
   id: string;
   name: string;
+  description: string | null;
   heartbeat: string | null;
   isHealthy: boolean;
   rootCaFingerprint: string | null;
@@ -290,6 +384,12 @@ export type TAgentVaultProxy = {
   allowedHosts?: string | null;
   pollInterval?: number;
   createdAt?: string;
+};
+
+export type TAgentVaultProxyCa = {
+  certificate: string;
+  fingerprint: string;
+  expiresAt: string;
 };
 
 export type TAgentVaultProxyToken = {
@@ -337,6 +437,7 @@ export type TCreateAgentVaultServiceDTO =
       name: string;
       serverUrl: string;
       transport: AgentVaultMcpTransport;
+      allowedTools?: string[] | null;
       credential:
         | Extract<TAgentVaultCredentialInput, { type: AgentVaultCredentialType.Bearer }>
         | TAgentVaultOauthCredentialInput;
@@ -354,9 +455,25 @@ export type TUpdateAgentVaultServiceDTO = {
   allowedPathPrefixes?: string[] | null;
   serverUrl?: string;
   transport?: AgentVaultMcpTransport;
+  allowedTools?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;
   customHeaders?: TAgentVaultCustomHeaderInput[];
   substitutions?: TAgentVaultSubstitutionInput[];
+};
+
+/** Credential and header values left out fall back to what the saved service stores, as on update. */
+export type TListAgentVaultMcpToolsDTO = {
+  accessBundleId: string;
+  serviceId?: string;
+  serverUrl: string;
+  transport: AgentVaultMcpTransport;
+  credential?: TAgentVaultCredentialUpdate;
+  customHeaders?: TAgentVaultCustomHeaderInput[];
+};
+
+export type TAgentVaultMcpTool = {
+  name: string;
+  description: string | null;
 };
 
 export type TAgentVaultOauthAuthorization = {
@@ -373,6 +490,8 @@ export type TCreateAgentVaultOauthAuthorizationDTO = {
   clientId?: string;
   clientSecret?: string;
   registration?: "dynamic";
+  // A member's own sign-in for a service that leaves it to each member.
+  personal?: boolean;
 };
 
 export type TCreateAgentVaultOauthAuthorizationResponse = {
@@ -400,7 +519,7 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
 };
 
 export type TCreateAgentVaultSessionDTO = {
-  accessBundles: string[];
+  accessBundle: string;
   ttl: string;
   label?: string;
 };
@@ -415,6 +534,15 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
+};
+
+export type TCreateAgentVaultProxyDTO = TAgentVaultProxySettingsDTO & {
+  description?: string;
+};
+
+export type TUpdateAgentVaultProxyDTO = Partial<TAgentVaultProxySettingsDTO> & {
+  proxyId: string;
+  description?: string | null;
 };
 
 export type TAgentVaultSessionLogExternalStorage = {
@@ -587,22 +715,44 @@ export type TUpdateAgentVaultVariableDTO = {
 };
 
 // The caller's own values for one service, and which of them they have set. Values never come back.
+export type TAgentVaultPersonalOauthConnection = {
+  status: AgentVaultOauthStatus;
+  issuer: string;
+  grantedScopes: string[];
+  requiredScopes: string[];
+  expiresAt: string | null;
+  authorizedAt: string | null;
+  lastError: string | null;
+};
+
 export type TAgentVaultPersonalValues = {
+  // False while the caller's connection needs reauthorization.
   isConfigured: boolean;
   fields: {
     field: TAgentVaultMemberProvidedField;
     isSet: boolean;
     updatedAt: string | null;
     variableReferences: { variableId: string; key: string }[];
+    // The caller's own account connection, on the credential-value field of a service that leaves its OAuth
+    // sign-in to each member. Null for a typed value.
+    oauth: TAgentVaultPersonalOauthConnection | null;
   }[];
 };
 
 export type TSetAgentVaultPersonalValuesDTO = {
   accessBundleId: string;
   serviceId: string;
-  values: { field: TAgentVaultMemberProvidedField; value: string }[];
   /** The type the dialog shows. If an admin changed it since, the save fails with a 409 instead of mislabeling a value. */
   credentialType: AgentVaultCredentialType;
+  values: { field: TAgentVaultMemberProvidedField; value: string }[];
+};
+
+/** A completed sign-in, which connects the caller's account and replaces any connection they had. */
+export type TConnectAgentVaultPersonalOauthDTO = {
+  accessBundleId: string;
+  serviceId: string;
+  credentialType: AgentVaultCredentialType;
+  authorizationId: string;
 };
 
 export type TDeleteAgentVaultPersonalValuesDTO = { accessBundleId: string; serviceId: string };

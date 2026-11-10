@@ -97,17 +97,17 @@ type Props = {
 };
 
 export const SessionLogModal = ({ isOpen, onOpenChange, onSaved, onEditCredentials }: Props) => {
-  const { currentProject } = useProject();
+  const { currentProject, projectId } = useProject();
   const { permission } = useProjectPermission();
   const { subscription } = useSubscription();
-  const { data: state } = useGetAgentVaultSessionLogSettings();
+  const { data: state } = useGetAgentVaultSessionLogSettings(projectId);
   const settings = state?.settings ?? null;
   const isDefaultStorageConfigured = Boolean(state?.defaultStorage.configured);
   const { data: connections, isPending: isLoadingConnections } = useListAvailableAppConnections(
     AppConnection.AWS,
     currentProject.id
   );
-  const updateConfig = useUpdateAgentVaultSessionLogSettings();
+  const updateConfig = useUpdateAgentVaultSessionLogSettings(projectId);
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "addConnection",
     "awsSetup"

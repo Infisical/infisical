@@ -31,3 +31,21 @@ describe("Markdown GitHub additions", () => {
     assert.ok(!markup.includes("<script"));
   });
 });
+
+describe("Markdown links", () => {
+  it("opens every link in a new tab by default", () => {
+    const markup = renderToStaticMarkup(<Markdown>[guide](references/guide.md)</Markdown>);
+    assert.match(markup, /<a[^>]*target="_blank"[^>]*href="references\/guide.md"/);
+  });
+
+  it("keeps relative links in the page when a handler takes them", () => {
+    const markup = renderToStaticMarkup(
+      <Markdown onRelativeLinkClick={() => {}}>
+        [guide](references/guide.md) and [docs](https://infisical.com/docs)
+      </Markdown>
+    );
+    assert.match(markup, /<a(?![^>]*target=)[^>]*href="#"/);
+    assert.ok(!markup.includes("references/guide.md"));
+    assert.match(markup, /<a[^>]*target="_blank"[^>]*href="https:\/\/infisical.com\/docs"/);
+  });
+});

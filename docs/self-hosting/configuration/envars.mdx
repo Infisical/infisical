@@ -184,10 +184,13 @@ Defaults to the same value as your `SITE_URL` environment variable.
 
 </ParamField>
 
-<ParamField query="CORS_ALLOWED_METHODS" type="string" optional>
-  Array of HTTP methods allowed for CORS requests.
+<ParamField query="CORS_ALLOWED_HEADERS" type="string" optional>
 
-Defaults to reflecting the headers specified in the request's Access-Control-Request-Headers header.
+Specify a list of request headers that are allowed in CORS requests to the Infisical API.
+
+An example value would be `CORS_ALLOWED_HEADERS=["Authorization","Content-Type"]`.
+
+Defaults to reflecting the headers specified in the request's `Access-Control-Request-Headers` header.
 
 </ParamField>
 

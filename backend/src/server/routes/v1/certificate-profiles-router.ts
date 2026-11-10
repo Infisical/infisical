@@ -810,6 +810,7 @@ export const registerCertificateProfilesRouter = async (
               notBefore: z.date(),
               notAfter: z.date(),
               revokedAt: z.date().nullable().optional(),
+              deletedAt: z.date().nullable().optional(),
               createdAt: z.date()
             })
           )

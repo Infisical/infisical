@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, fn, userEvent, within } from "storybook/test";
 
 import { Markdown } from "./Markdown";
 
@@ -53,5 +54,27 @@ Run these steps **before** tagging a release, and read [the guide](https://examp
 - Raw <b>HTML</b> is left out.
 - Images show their alt text: ![build status](https://example.com/badge.svg)
 `
+  }
+};
+
+export const RelativeLinks: Story = {
+  args: {
+    children: "Read [the guide](references/guide.md) or [the docs](https://infisical.com/docs).",
+    onRelativeLinkClick: fn()
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = canvasElement.ownerDocument.defaultView!.location.href;
+    const guide = canvas.getByRole("link", { name: "the guide" });
+
+    await userEvent.click(guide);
+    await expect(args.onRelativeLinkClick).toHaveBeenCalledWith("references/guide.md");
+    await expect(canvasElement.ownerDocument.defaultView!.location.href).toBe(page);
+    await expect(guide).toHaveAttribute("href", "#");
+
+    const docs = canvas.getByRole("link", { name: "the docs" });
+    await expect(docs).toHaveAttribute("href", "https://infisical.com/docs");
+    await expect(docs).toHaveAttribute("target", "_blank");
+    await expect(args.onRelativeLinkClick).toHaveBeenCalledTimes(1);
   }
 };

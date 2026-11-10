@@ -1,7 +1,10 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import type { TAgentVaultOauthConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
+import type {
+  TAgentVaultOauthConfig,
+  TAgentVaultOauthMemberConfig
+} from "../agent-vault-oauth/agent-vault-oauth-types";
 import { AgentVaultCredentialType } from "./agent-vault-enums";
 
 // credentialConfig is plaintext jsonb, read on the list page without a decrypt; encryptedCredential is
@@ -68,9 +71,12 @@ export const AgentVaultCredentialConfigSchema = z.discriminatedUnion("type", [
   AgentVaultPassthroughConfigSchema.extend({ type: z.literal(AgentVaultCredentialType.Passthrough) })
 ]);
 
-// OAuth's config is written whole from a completed authorization and patched by refresh, never parsed from a
-// request, so it has a type rather than a schema.
-export type TAgentVaultCredentialConfig = z.infer<typeof AgentVaultCredentialConfigSchema> | TAgentVaultOauthConfig;
+// OAuth's config is written whole from a completed authorization (or, when each member signs in, from discovery) and
+// patched by refresh, never parsed from a request, so it has a type rather than a schema.
+export type TAgentVaultCredentialConfig =
+  | z.infer<typeof AgentVaultCredentialConfigSchema>
+  | TAgentVaultOauthConfig
+  | TAgentVaultOauthMemberConfig;
 
 export const AgentVaultSecretSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(AgentVaultCredentialType.Bearer), value: z.string().min(1).max(8192) }),

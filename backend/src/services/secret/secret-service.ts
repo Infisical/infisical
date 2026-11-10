@@ -65,7 +65,7 @@ import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
-import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
+import { TGetSecretKeyEnvironmentsDTO, TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
@@ -94,7 +94,6 @@ import {
   TDeleteManySecretRawDTO,
   TDeleteSecretDTO,
   TDeleteSecretRawDTO,
-  TGetAccessibleSecretsDTO,
   TGetASecretByIdRawDTO,
   TGetASecretDTO,
   TGetASecretRawDTO,
@@ -1330,6 +1329,16 @@ export const secretServiceFactory = ({
     return secrets;
   };
 
+  const getSecretKeyEnvironments = async (dto: TGetSecretKeyEnvironmentsDTO) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({
+        message: "Project version does not support checking secret names"
+      });
+
+    return secretV2BridgeService.getSecretKeyEnvironments(dto);
+  };
+
   const getSecretReferenceTree = async (dto: TGetSecretReferencesTreeDTO) => {
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
 
@@ -1445,41 +1454,6 @@ export const secretServiceFactory = ({
     }));
 
     return { users, identities, groups };
-  };
-
-  const getAccessibleSecrets = async ({
-    projectId,
-    secretPath,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    environment,
-    filterByAction,
-    recursive
-  }: TGetAccessibleSecretsDTO) => {
-    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
-
-    if (!shouldUseSecretV2Bridge) {
-      throw new BadRequestError({
-        message: "Project version does not support this endpoint.",
-        name: "ProjectVersionNotSupported"
-      });
-    }
-
-    const secrets = await secretV2BridgeService.getAccessibleSecrets({
-      projectId,
-      secretPath,
-      environment,
-      filterByAction,
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod,
-      recursive
-    });
-
-    return secrets;
   };
 
   const getSecretMetadata = async (dto: TGetSecretMetadataDTO) => {
@@ -4063,11 +4037,11 @@ export const secretServiceFactory = ({
     getSecretsCount,
     getSecretsCountMultiEnv,
     getSecretsRawMultiEnv,
+    getSecretKeyEnvironments,
     getSecretReferenceTree,
     getSecretsRawByFolderMappings,
     getSecretAccessList,
     getSecretByIdRaw,
-    getAccessibleSecrets,
     getSecretMetadata,
     getSecretVersionsV2ByIds,
     getChangeVersions,

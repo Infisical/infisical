@@ -65,8 +65,9 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.NetScaler]: "NetScaler",
   [AppConnection.PaloAltoNetworks]: "Palo Alto Networks",
   [AppConnection.KempLoadMaster]: "Kemp LoadMaster",
+  [AppConnection.Imperva]: "Imperva",
   [AppConnection.Anthropic]: "Anthropic",
-  [AppConnection.OVH]: "OVH",
+  [AppConnection.OVH]: "OVHcloud",
   [AppConnection.Devin]: "Devin",
   [AppConnection.Ona]: "Ona",
   [AppConnection.DigiCert]: "DigiCert",
@@ -94,7 +95,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.HpeIloRedFish]: "HPE iLO",
   [AppConnection.ServiceNow]: "ServiceNow",
   [AppConnection.S3Compatible]: "S3-Compatible Storage",
-  [AppConnection.Jira]: "Jira"
+  [AppConnection.Jira]: "Jira",
+  [AppConnection.ClickHouse]: "ClickHouse"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -162,6 +164,7 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.NetScaler]: AppConnectionPlanType.Regular,
   [AppConnection.PaloAltoNetworks]: AppConnectionPlanType.Regular,
   [AppConnection.KempLoadMaster]: AppConnectionPlanType.Regular,
+  [AppConnection.Imperva]: AppConnectionPlanType.Regular,
   [AppConnection.Anthropic]: AppConnectionPlanType.Regular,
   [AppConnection.OVH]: AppConnectionPlanType.Regular,
   [AppConnection.Devin]: AppConnectionPlanType.Regular,
@@ -191,5 +194,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.HpeIloRedFish]: AppConnectionPlanType.Regular,
   [AppConnection.ServiceNow]: AppConnectionPlanType.Enterprise,
   [AppConnection.S3Compatible]: AppConnectionPlanType.Regular,
-  [AppConnection.Jira]: AppConnectionPlanType.Regular
+  [AppConnection.Jira]: AppConnectionPlanType.Regular,
+  [AppConnection.ClickHouse]: AppConnectionPlanType.Regular
 };
