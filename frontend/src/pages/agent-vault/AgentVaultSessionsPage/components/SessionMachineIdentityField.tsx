@@ -1,0 +1,261 @@
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { BotIcon, TriangleAlertIcon } from "lucide-react";
+
+import { createNotification } from "@app/components/notifications";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+  Button,
+  Combobox,
+  Field,
+  FieldContent,
+  FieldLabel
+} from "@app/components/v3";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject,
+  useProjectPermission
+} from "@app/context";
+import { useDebounce } from "@app/hooks";
+import {
+  useAddAgentVaultAccessBundleMembers,
+  useListAgentVaultAccessBundleMembers,
+  useListAgentVaultMembers
+} from "@app/hooks/api/agentVault";
+import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
+import { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types";
+import { useGetIdentityUniversalAuth } from "@app/hooks/api/identities";
+import { ProjectType } from "@app/hooks/api/projects/types";
+import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { CreateProjectIdentityForm } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/CreateProjectIdentity/CreateProjectIdentityForm";
+
+export type TSnippetIdentity = { id: string; name: string };
+
+type Props = {
+  identity: TSnippetIdentity | null;
+  onIdentityChange: (identity: TSnippetIdentity | null) => void;
+  accessBundle: TAgentVaultAccessBundleListItem | null;
+};
+
+type TSnippetClientId = {
+  identity: TSnippetIdentity | null;
+  clientId: string | null;
+  hasNoUniversalAuth: boolean;
+};
+
+// Holds the last loaded result while the next identity's loads, so switching identities doesn't
+// blank the snippet and the notices before filling them back in.
+export const useSnippetClientId = (identity: TSnippetIdentity | null): TSnippetClientId => {
+  const { data, isError, isPending } = useGetIdentityUniversalAuth(identity?.id ?? "");
+  const isLoading = Boolean(identity) && isPending;
+  const latest: TSnippetClientId = {
+    identity,
+    clientId: identity && data?.identityId === identity.id ? data.clientId : null,
+    hasNoUniversalAuth: Boolean(identity) && isError
+  };
+
+  const [settled, setSettled] = useState(latest);
+  const isSettledStale =
+    settled.identity?.id !== latest.identity?.id ||
+    settled.clientId !== latest.clientId ||
+    settled.hasNoUniversalAuth !== latest.hasNoUniversalAuth;
+  if (!isLoading && isSettledStale) setSettled(latest);
+
+  return isLoading ? settled : latest;
+};
+
+export const SessionMachineIdentityField = ({
+  identity,
+  onIdentityChange,
+  accessBundle
+}: Props) => {
+  const { projectId } = useProject();
+  const { currentOrg } = useOrganization();
+  const { permission } = useProjectPermission();
+  const canCreateIdentity = permission.can(
+    ProjectPermissionIdentityActions.Create,
+    ProjectPermissionSub.Identity
+  );
+
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
+  const { data: identities, isFetching } = useListAgentVaultMembers(projectId, {
+    actorType: AgentVaultMemberType.MachineIdentity,
+    search: debouncedSearch.trim() || undefined,
+    limit: 50
+  });
+  const selectedMember = identities?.members.find((member) => member.id === identity?.id);
+  const isAdminIdentity = selectedMember?.role === ProjectMembershipRole.Admin;
+
+  const snippet = useSnippetClientId(identity);
+
+  const {
+    data: bundleIdentities,
+    isPlaceholderData: isBundleListStale,
+    refetch: refetchBundleIdentities
+  } = useListAgentVaultAccessBundleMembers(projectId, accessBundle?.id ?? "", {
+    actorType: AgentVaultMemberType.MachineIdentity,
+    search: identity?.name,
+    limit: 50
+  });
+  const isGranted = bundleIdentities?.members.some((member) => member.id === identity?.id);
+  const latestGrant = {
+    identity,
+    needsGrant:
+      Boolean(identity && accessBundle && bundleIdentities) && !isAdminIdentity && !isGranted
+  };
+  // The list keeps the previous identity's members until the new search loads, which would
+  // flash the warning for an identity that has the bundle.
+  const [settledGrant, setSettledGrant] = useState(latestGrant);
+  if (
+    !isBundleListStale &&
+    (settledGrant.identity?.id !== latestGrant.identity?.id ||
+      settledGrant.needsGrant !== latestGrant.needsGrant)
+  )
+    setSettledGrant(latestGrant);
+  const grant = isBundleListStale ? settledGrant : latestGrant;
+
+  const grantAccess = useAddAgentVaultAccessBundleMembers(projectId);
+
+  const onGrant = async () => {
+    if (!identity || !accessBundle) return;
+    try {
+      await grantAccess.mutateAsync({
+        accessBundleId: accessBundle.id,
+        machineIdentityIds: [identity.id]
+      });
+      await refetchBundleIdentities();
+      createNotification({
+        text: `Granted ${accessBundle.name} to ${identity.name}`,
+        type: "success"
+      });
+    } catch {
+      // A failed request returns a 4xx that the global request handler surfaces as a toast
+    }
+  };
+
+  const renderIdentityPageLink = (target: TSnippetIdentity | null, text?: string) =>
+    target && (
+      <Link
+        to="/organizations/$orgId/projects/agent-vault/$projectId/identities/$identityId"
+        params={{ orgId: currentOrg.id, projectId, identityId: target.id }}
+        className="underline underline-offset-2 hover:text-foreground"
+      >
+        {text ?? `${target.name}'s page`}
+      </Link>
+    );
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Field>
+        <FieldLabel htmlFor="agent-vault-session-snippet-identity">Machine Identity</FieldLabel>
+        <FieldContent>
+          <Combobox
+            id="agent-vault-session-snippet-identity"
+            options={identities?.members ?? []}
+            value={identity}
+            shouldFilter={false}
+            isLoading={isFetching}
+            includeMissingSelectedOptions
+            onInputValueChange={setSearch}
+            getOptionValue={(option) => option.id}
+            getOptionLabel={(option) => option.name}
+            placeholder="Pick a machine identity"
+            searchPlaceholder="Search machine identities..."
+            emptyMessage="No machine identity matches."
+            modal
+            renderOption={(option) => (
+              <span className="flex min-w-0 items-center gap-2">
+                <BotIcon className="size-4 shrink-0 text-muted" />
+                <span className="truncate">{option.name}</span>
+              </span>
+            )}
+            renderValue={(option) => (
+              <span className="flex min-w-0 items-center gap-2">
+                <BotIcon className="size-4 shrink-0 text-muted" />
+                <span className="truncate">{option.name}</span>
+              </span>
+            )}
+            onValueChange={(option) =>
+              onIdentityChange(option ? { id: option.id, name: option.name } : null)
+            }
+            onClear={() => onIdentityChange(null)}
+            creation={
+              canCreateIdentity
+                ? {
+                    mode: "sheet",
+                    title: "Add Machine Identity to Agent Vault",
+                    description: "Create a new machine identity or assign an existing one",
+                    emptyLabel: "Create New Machine Identity",
+                    formatLabel: () => "Create New Machine Identity",
+                    renderForm: ({ cancel }) => (
+                      <CreateProjectIdentityForm
+                        projectId={projectId}
+                        projectType={ProjectType.AgentVault}
+                        productLabel="Agent Vault"
+                        canGrantPrivileges={false}
+                        onClose={cancel}
+                        onComplete={onIdentityChange}
+                      />
+                    )
+                  }
+                : undefined
+            }
+          />
+        </FieldContent>
+      </Field>
+
+      {snippet.hasNoUniversalAuth && (
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            <p>
+              {snippet.identity?.name} doesn&apos;t use Universal Auth, so it has no client ID. Add
+              Universal Auth on {renderIdentityPageLink(snippet.identity)}.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {grant.needsGrant && (
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertTitle>
+            {grant.identity?.name} can&apos;t use {accessBundle?.name}
+          </AlertTitle>
+          <AlertDescription>
+            <p>Creating a session fails until the access bundle is granted to it.</p>
+            <Button
+              variant="warning"
+              size="xs"
+              className="mt-2"
+              isPending={grantAccess.isPending}
+              onClick={onGrant}
+            >
+              Grant Access
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Holds two lines before and after the pick, so the snippets below don't jump when it fills in. */}
+      {!snippet.hasNoUniversalAuth && (
+        <p className="min-h-8 text-xs text-accent">
+          {identity ? (
+            <>
+              The snippets below have {identity.name}&apos;s client ID. Replace{" "}
+              <span className="font-mono">&lt;client-secret&gt;</span> with one of its{" "}
+              {renderIdentityPageLink(identity, "client secrets")}.
+            </>
+          ) : (
+            "Your code creates sessions as a machine identity. Pick one to fill in its client ID below."
+          )}
+        </p>
+      )}
+    </div>
+  );
+};

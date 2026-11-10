@@ -12,5 +12,11 @@ export const AgentVaultDocsUrls = {
   sessions: `${AGENT_VAULT_DOCS_BASE_URL}/sessions`,
   sessionsOnBehalfOfUsers: `${AGENT_VAULT_DOCS_BASE_URL}/sessions-on-behalf-of-users`,
   proxies: `${AGENT_VAULT_DOCS_BASE_URL}/proxies`,
+  modalGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/modal`,
+  daytonaGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/daytona`,
+  e2bGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/e2b`,
+  dockerGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/docker`,
+  kubernetesGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/kubernetes`,
+  cursorGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/cursor`,
   sessionLogs: `${AGENT_VAULT_DOCS_BASE_URL}/session-logs`
 } as const;

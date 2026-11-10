@@ -83,7 +83,7 @@ import {
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
 import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
-import { TAgentVaultMintedSession, TAgentVaultSession } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
@@ -91,12 +91,11 @@ import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogReadAccessAlert";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
-import { CreateSessionDialog } from "./components/CreateSessionDialog";
+import { CreateSessionSheet } from "./components/CreateSessionSheet";
 import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
 import { InlineServicesList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SampleSessionSheet, SampleSessionTable } from "./components/SampleSessionSheet";
-import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
 import { SessionIdentity } from "./components/SessionIdentity";
@@ -145,8 +144,7 @@ export const AgentVaultSessionsPage = () => {
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
   const [sessionToLabel, setSessionToLabel] = useState<TAgentVaultSession | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
+  const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const { id: openSessionId, openSheet } = useAgentVaultSheetState();
 
@@ -186,7 +184,7 @@ export const AgentVaultSessionsPage = () => {
   // off the live input would caption a stale result set.
   const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
-  useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
+  useAgentVaultCreateIntent(() => setIsCreateSheetOpen(true), hasReachableBundles);
 
   const setupProgress = useAgentVaultSetupProgress();
   const openSetupStep = useOpenAgentVaultSetupStep(setupProgress);
@@ -349,7 +347,7 @@ export const AgentVaultSessionsPage = () => {
               <Button
                 variant="av"
                 isDisabled={!hasReachableBundles}
-                onClick={() => setIsCreateDialogOpen(true)}
+                onClick={() => setIsCreateSheetOpen(true)}
               >
                 <PlusIcon />
                 Create Session
@@ -609,18 +607,7 @@ export const AgentVaultSessionsPage = () => {
         </Card>
       </div>
 
-      <CreateSessionDialog
-        isOpen={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        onCreated={setMintedSession}
-      />
-
-      <SessionCreatedDialog
-        session={mintedSession}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) setMintedSession(null);
-        }}
-      />
+      <CreateSessionSheet isOpen={isCreateSheetOpen} onOpenChange={setIsCreateSheetOpen} />
 
       <RevokeSessionDialog
         session={sessionToRevoke}

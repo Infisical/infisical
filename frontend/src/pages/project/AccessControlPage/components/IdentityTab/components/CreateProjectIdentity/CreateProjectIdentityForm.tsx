@@ -85,6 +85,8 @@ type Props = {
   productLabel: string;
   canGrantPrivileges: boolean;
   onClose: () => void;
+  // Replaces the redirect to the identity page, for callers that keep the user in their own flow.
+  onComplete?: (identity: TAssignableIdentity) => void;
 };
 
 type TAssignableIdentity = { id: string; name: string };
@@ -95,6 +97,7 @@ const ProjectIdentityFormContent = ({
   productLabel,
   canGrantPrivileges,
   onClose,
+  onComplete,
   assignableIdentities
 }: Props & { assignableIdentities: TAssignableIdentity[] }) => {
   const navigate = useNavigate();
@@ -259,7 +262,16 @@ const ProjectIdentityFormContent = ({
 
       onClose();
 
-      if (data.mode === CreateProjectIdentityMode.Create || (hasTemplateGrants && !grantFailed)) {
+      if (onComplete) {
+        onComplete({
+          id: identityId,
+          name:
+            data.mode === CreateProjectIdentityMode.Create ? data.name!.trim() : data.identity!.name
+        });
+      } else if (
+        data.mode === CreateProjectIdentityMode.Create ||
+        (hasTemplateGrants && !grantFailed)
+      ) {
         navigate({
           to: `${getProjectBaseURL(projectType)}/identities/$identityId`,
           params: { identityId }
