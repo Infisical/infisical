@@ -3,6 +3,7 @@ import * as React from "react";
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import { DataTable, type DataTableColumn, EnvMark } from "@app/components/v4/ui/data-table";
+import { Input } from "@app/components/v4/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -193,6 +194,15 @@ function Matrix() {
             )}
           </React.Fragment>
         ))}
+        <TableRow>
+          <TableCell selection pin="start" />
+          <TableCell pin="start">
+            <Input aria-label="New secret name" placeholder="Add a secret name" />
+          </TableCell>
+          <TableCell colSpan={environments.length + 1}>
+            <Input aria-label="New secret value" placeholder="Add a secret value" />
+          </TableCell>
+        </TableRow>
       </TableBody>
     </Table>
   );

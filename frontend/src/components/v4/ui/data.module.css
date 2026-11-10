@@ -1048,7 +1048,7 @@ tbody > .nativeTableRow[data-loading] {
   background: var(--v4-surface);
 }
 .tableShell[data-embedded] td:is([data-pin="true"], [data-pin="start"]:first-child) {
-  box-shadow: none;
+  --v4-pin-frame: 0 0 transparent;
 }
 .tableShell[data-embedded] .tablePagination {
   border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
@@ -1103,10 +1103,10 @@ tbody > .nativeTableRow[data-loading] {
   position: sticky;
   right: 0;
   border-left: var(--v4-size-control-border) solid var(--v4-line-soft);
-  box-shadow: var(--v4-frame-pad) 0 0 var(--v4-tint);
+  --v4-pin-frame: var(--v4-frame-pad) 0 0 var(--v4-tint);
 }
 .tableScroll td[data-pin="true"] {
-  box-shadow:
+  --v4-pin-frame:
     inset calc(-1 * var(--v4-size-control-border)) 0 0 var(--v4-line-soft),
     var(--v4-frame-pad) 0 0 var(--v4-tint);
 }
@@ -1114,7 +1114,7 @@ tbody > .nativeTableRow[data-loading] {
   background: var(--v4-tint);
 }
 .tableScroll :is(td, th)[data-pin="start"]:first-child {
-  box-shadow: calc(-1 * var(--v4-frame-pad)) 0 0 var(--v4-tint);
+  --v4-pin-frame: calc(-1 * var(--v4-frame-pad)) 0 0 var(--v4-tint);
 }
 .tableSort {
   display: inline-flex;
@@ -1405,6 +1405,17 @@ th[data-pin="start"] {
 .tableSelectionCell[data-pin="start"] ~ [data-pin="start"] {
   --v4-pin-offset: var(--v4-size-row);
 }
+/* A pinned cell draws its column edge and DataTable's frame-pad cover as inset and outer shadows, so both stick with the cell; a table border would stay with the scrolled columns. */
+:is(td, th):is([data-pin], .tableActions) {
+  box-shadow: var(--v4-pin-edge, 0 0 transparent), var(--v4-pin-frame, 0 0 transparent);
+}
+:is([data-scroll-start-x] > table, [data-scroll-start-x] > .nativeTableContainer > table)
+  > *
+  > tr
+  > [data-pin="start"][data-pin-edge] {
+  --v4-pin-edge: inset calc(-1 * var(--v4-size-control-border)) 0 0 var(--v4-line-soft);
+  border-inline-end-color: transparent;
+}
 /* Pinned columns fade scrolled content into their own paint, inherited from the cell so stripe, hover, selected and the header band all match; it shows only while the scroll-edge watcher reports content past that edge. */
 :is(td, th)[data-pin="start"][data-pin-edge]::before,
 :is(td, th):is(.tableActions, [data-pin="true"])::before {
@@ -1442,11 +1453,12 @@ th[data-pin="start"] {
   > :is(.tableActions, [data-pin="true"])::before {
   opacity: 1;
 }
-/* The fade replaces the trailing divider while content passes under it; the colour clears instead of the border so the column keeps its width. */
+/* While content passes under the tail its divider moves into the cell as an inset edge; the border colour clears instead of the border so the column keeps its width. */
 :is([data-scroll-end-x] > table, [data-scroll-end-x] > .nativeTableContainer > table)
   > *
   > tr
   > :is(.tableActions, [data-pin="true"]) {
+  --v4-pin-edge: inset var(--v4-size-control-border) 0 0 var(--v4-line-soft);
   border-inline-start-color: transparent;
 }
 @media (prefers-reduced-motion: reduce) {
