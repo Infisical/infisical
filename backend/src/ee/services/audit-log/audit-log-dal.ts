@@ -4,12 +4,12 @@ import { v4 as uuidv4 } from "uuid";
 
 import { TDbClient } from "@app/db";
 import { TableName, TAuditLogs, TAuditLogsInsert } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { DatabaseError, GatewayTimeoutError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { ormify, selectAllTableCols, TOrmify } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";
 

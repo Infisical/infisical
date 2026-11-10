@@ -3,9 +3,9 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TCipherPair } from "@app/domains/platform/kms-core/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { SecretOperations } from "@app/services/secret/secret-types";
 

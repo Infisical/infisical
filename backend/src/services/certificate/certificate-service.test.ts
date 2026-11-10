@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { certificateServiceFactory } from "./certificate-service";
 import { CertStatus } from "./certificate-types";

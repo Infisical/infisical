@@ -1,12 +1,12 @@
 import { Knex } from "knex";
 
 import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { generateUserSrpKeys } from "@app/lib/crypto/srp";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { AuthMethod } from "@app/services/auth/auth-type";
 import { membershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";

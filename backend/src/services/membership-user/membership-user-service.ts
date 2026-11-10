@@ -16,6 +16,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -29,7 +30,6 @@ import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
-import { AuthMethod } from "../auth/auth-type";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";

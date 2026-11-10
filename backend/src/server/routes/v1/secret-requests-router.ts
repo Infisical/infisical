@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import { SecretSharingSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { SecretSharingAccessType } from "@app/lib/types";
 import { publicEndpointLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { SecretSharingType } from "@app/services/secret-sharing/secret-sharing-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 

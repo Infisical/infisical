@@ -6,6 +6,7 @@ import {
   ResourcePermissionApprovalPolicyActions,
   ResourcePermissionPamResourceActions
 } from "@app/ee/services/permission/resource-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
@@ -13,7 +14,6 @@ import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/app
 import { TApprovalActor } from "@app/services/approval-policy/approval-policy-types";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TPamAccessPolicyInputs } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TWorkflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";

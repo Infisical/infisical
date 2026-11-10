@@ -2,6 +2,7 @@ import { AccessScope, OrgMembershipStatus, TSignupOnboardingResponsesUpdate } fr
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain } from "@app/ee/services/email-domain/email-domain-fns";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -29,7 +30,7 @@ import { extractBearerToken, resolveInvitingOrgId } from "./auth-fns";
 import { TAuthLoginFactory } from "./auth-login-service";
 import { TSignupOnboardingResponseDALFactory } from "./auth-signup-onboarding-dal";
 import { CompleteAccountType, TCompleteAccountDTO, TRecordSignupOnboardingDTO } from "./auth-signup-type";
-import { AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType } from "./auth-type";
+import { AuthModeSignUpTokenPayload } from "./auth-type";
 import { verifyPublicEmailCaptcha } from "./captcha-fns";
 import { EmailDispatchPurpose, TEmailDispatchGuardFactory } from "./email-dispatch-guard";
 

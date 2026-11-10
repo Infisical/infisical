@@ -7,10 +7,10 @@ import {
   THoneyTokenTestConnectionResponseByType
 } from "@app/ee/services/honey-token/honey-token-provider-types";
 import { HoneyTokenWebhookPayloadSchema } from "@app/ee/services/honey-token/honey-token-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedHoneyTokenConfigSchema = HoneyTokenConfigsSchema.pick({
   id: true,

@@ -1,7 +1,7 @@
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { OrgServiceActor, TOrgPermission } from "@app/lib/types";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TSecretServiceFactory } from "../secret/secret-service";
 import { SecretProtectionType } from "../secret/secret-types";
 import { ExternalMigrationProviders } from "./external-migration-schemas";

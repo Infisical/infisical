@@ -2,10 +2,10 @@ import { z } from "zod";
 
 import { MicrosoftTeamsIntegrationsSchema, WorkflowIntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { WorkflowIntegrationStatus } from "@app/services/workflow-integration/workflow-integration-types";
 
 const sanitizedMicrosoftTeamsIntegrationSchema = WorkflowIntegrationsSchema.pick({

@@ -10,12 +10,12 @@ import {
   TSecretRotationV2Input
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
 import { ApiDocsTags, SecretRotations } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { startsWithVowel } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretRotationEndpoints = <

@@ -2,13 +2,13 @@ import crypto from "node:crypto";
 
 import jwt from "jsonwebtoken";
 
-import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 declare const testKeyStore: TKeyStoreFactory;

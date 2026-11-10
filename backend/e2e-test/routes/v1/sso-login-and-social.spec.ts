@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 // Services live inside the encapsulated route plugin, so e2e reaches them through the harness global

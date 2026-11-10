@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { MfaMethod } from "@app/services/auth/auth-type";
+import { MfaMethod } from "@app/lib/auth/actor-types";
 
 import { ensureFactorEnrollmentStepUpMfa, ensureStepUpMfa, MfaStepUpResource } from "./mfa-step-up-fns";
 

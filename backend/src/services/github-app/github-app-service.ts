@@ -19,6 +19,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -37,7 +38,6 @@ import {
   sanitizeGitHubAxiosError,
   signGitHubAppJwt
 } from "@app/services/app-connection/github/github-connection-fns";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TGitHubAppDALFactory } from "./github-app-dal";

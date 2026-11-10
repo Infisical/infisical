@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
 import { backfillPermissionV1SchemaToV2Schema } from "@app/ee/services/permission/project-permission";
 import { ApiDocsTags, IDENTITY_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -15,7 +16,6 @@ import {
   ProjectSpecificPrivilegePermissionSchema,
   SanitizedIdentityPrivilegeSchema
 } from "@app/server/routes/sanitizedSchemas";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: FastifyZodProvider) => {
   server.route({

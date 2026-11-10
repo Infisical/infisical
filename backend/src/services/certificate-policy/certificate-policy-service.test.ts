@@ -8,9 +8,9 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { ActorType, AuthMethod } from "../auth/auth-type";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,

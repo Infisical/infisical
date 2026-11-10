@@ -3,9 +3,9 @@ import RE2 from "re2";
 
 import { TDbClient } from "@app/db";
 import { IdentityAuthMethod, TableName, TAuditLogs } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { TPamAuditLogScope } from "./audit-log-dal";
 import { ACTOR_TYPE_TO_METADATA_ID_KEY, EventType, filterableSecretEvents } from "./audit-log-types";

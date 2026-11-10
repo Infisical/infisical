@@ -2,7 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { FakeKmsCoreDomain } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core-domain";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { SecretProtectionType } from "../secret/secret-types";
 import { externalMigrationServiceFactory } from "./external-migration-service";

@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, ProjectMembershipRole, TableName } from "@app/db/schemas";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 
 // Writes the rows directly rather than going through signup, which needs SRP. The user can be named
 // in memberships and reminders but cannot log in.

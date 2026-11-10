@@ -1,9 +1,9 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import {
   ProjectPermissionMemberActions,

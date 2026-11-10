@@ -1,4 +1,4 @@
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 
 export type TGetSecretsActivationStatusDTO = {
   actor: ActorType;

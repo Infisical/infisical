@@ -5,8 +5,8 @@ import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipS
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import { bootstrapCertManagerProject } from "@app/services/cert-manager-instance/cert-manager-project-bootstrap";
 import { TCertificatePolicyDALFactory } from "@app/services/certificate-policy/certificate-policy-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";

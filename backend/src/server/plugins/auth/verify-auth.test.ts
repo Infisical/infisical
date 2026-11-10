@@ -1,8 +1,8 @@
 import type { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from "fastify";
 import { describe, expect, test, vi } from "vitest";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { verifyAuth } from "./verify-auth";
 

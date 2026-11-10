@@ -11,6 +11,7 @@ import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/servi
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -18,7 +19,6 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { matchesAllowedEmailDomain } from "@app/lib/validator";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import {
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs

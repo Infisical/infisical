@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { MfaMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 
-import { MfaMethod } from "../auth/auth-type";
 import { userServiceFactory } from "./user-service";
 
 let isSmtpConfigured = true;

@@ -5,17 +5,13 @@ import jwt, { type JwtPayload } from "jsonwebtoken";
 
 import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
+import { ActorType, AuthMethod, AuthMode, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import {
-  ActorType,
-  AuthMethod,
-  AuthMode,
   AuthModeJwtTokenPayload,
-  AuthTokenType,
-  MfaMethod,
   TAgentVaultProxyAccessTokenJwtPayload,
   TGatewayAccessTokenJwtPayload,
   TKmipServerAccessTokenJwtPayload,

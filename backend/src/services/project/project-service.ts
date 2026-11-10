@@ -58,6 +58,7 @@ import {
   TProjectTemplateServiceFactory
 } from "@app/ee/services/project-template/project-template-types";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { getConfig } from "@app/lib/config/env";
@@ -75,7 +76,6 @@ import { TSecretSyncDALFactory } from "@app/services/secret-sync/secret-sync-dal
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { expandInternalCa } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateTemplateDALFactory } from "../certificate-template/certificate-template-dal";

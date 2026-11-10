@@ -8,6 +8,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -17,7 +18,6 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
-import { ActorType } from "../auth/auth-type";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectDALFactory } from "../project/project-dal";

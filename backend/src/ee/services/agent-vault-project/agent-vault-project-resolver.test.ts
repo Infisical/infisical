@@ -1,6 +1,6 @@
 import { ActionProjectType, ProjectType, TableName } from "@app/db/schemas";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { agentVaultProjectResolverFactory } from "./agent-vault-project-resolver";
 

@@ -25,9 +25,9 @@ import {
   ResourcePermissionApprovalPolicyActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";

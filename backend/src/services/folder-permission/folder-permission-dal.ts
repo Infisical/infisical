@@ -2,11 +2,11 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { AccessScope, ProjectMembershipRole, TableName } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { sqlNestRelationships } from "@app/lib/knex";
 
-import { ActorType } from "../auth/auth-type";
 import { TProjectMemberIdentity, TProjectMemberRoleRow, TProjectMemberUser } from "./folder-permission-types";
 
 export type TFolderPermissionDALFactory = ReturnType<typeof folderPermissionDALFactory>;

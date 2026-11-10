@@ -1,6 +1,5 @@
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TProjectPermission } from "@app/lib/types";
-
-import { ActorType } from "../auth/auth-type";
 
 export type TCreateWebhookDTO = {
   environment: string;

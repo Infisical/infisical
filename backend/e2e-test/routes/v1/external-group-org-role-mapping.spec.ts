@@ -3,14 +3,14 @@ import { randomUUID } from "node:crypto";
 import { packRules } from "@casl/ability/extra";
 import jwt from "jsonwebtoken";
 
-import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 // SCIM applies a stored mapping to newly provisioned members with no user in the loop, so saving a
 // mapping is the grant. These cases run against real Postgres, which the service tests cannot: a

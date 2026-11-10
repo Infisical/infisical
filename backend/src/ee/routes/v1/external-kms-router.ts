@@ -8,9 +8,9 @@ import {
   ExternalKmsInputUpdateSchema,
   SanitizedExternalKmsAwsSchema
 } from "@app/ee/services/external-kms/providers/model";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const sanitizedExternalSchema = KmsKeysSchema.extend({
   external: ExternalKmsSchema.pick({

@@ -11,6 +11,7 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { isGlobSubsetOfGlob } from "@app/lib/casl/glob-subset";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -35,7 +36,6 @@ import {
   validateSecretAccessConstraints
 } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { externallyReviewedAccessRequestMessage } from "./secret-access-approval-global-request-bridge-constants";

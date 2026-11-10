@@ -1,4 +1,4 @@
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { getWebhookPayload, isWebhookPathSubscribed, TEST_EVENT_PAYLOAD_BUILDERS } from "./webhook-fns";
 import { AccessRequestWebhookAction, ChangeRequestWebhookAction, WebhookEvents, WebhookType } from "./webhook-types";

@@ -1,8 +1,8 @@
 import { vi } from "vitest";
 
 import { FakeKmsCoreDomain } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core-domain";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import { ChangeType, ResourceType } from "@app/services/folder-commit/folder-commit-service";
 
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";

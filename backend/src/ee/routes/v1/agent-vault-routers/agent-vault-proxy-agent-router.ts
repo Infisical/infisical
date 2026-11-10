@@ -18,6 +18,7 @@ import {
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import {
   agentVaultBootstrapLimit,
@@ -27,7 +28,6 @@ import {
   agentVaultSessionLogChunkLimit
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { AgentVaultHostPatternSchema } from "./agent-vault-schemas";

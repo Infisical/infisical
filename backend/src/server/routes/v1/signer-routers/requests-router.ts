@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { auditSafeText } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -11,7 +12,6 @@ import {
   CodeSigningScopeInputSchema,
   SigningWindowDurationSchema
 } from "@app/services/approval-policy/code-signing/code-signing-policy-schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { SignerIdParamsSchema, SignerRequestParamsSchema } from "./schemas";
 

@@ -8,6 +8,7 @@ import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -15,7 +16,6 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { logger } from "@app/lib/logger";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import {

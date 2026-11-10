@@ -2,12 +2,13 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { TUsers } from "@app/db/schemas";
+import { AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { mfaRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
-import { AuthModeMfaJwtTokenPayload, AuthTokenType, MfaMethod } from "@app/services/auth/auth-type";
+import { AuthModeMfaJwtTokenPayload } from "@app/services/auth/auth-type";
 
 const handleMfaVerification = async (
   req: FastifyRequest & { mfa: { userId: string; orgId?: string; user: TUsers; requiredMfaMethod: MfaMethod } },

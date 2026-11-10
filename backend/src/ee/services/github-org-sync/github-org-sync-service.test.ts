@@ -2,8 +2,8 @@ import { Octokit } from "@octokit/core";
 import { describe, expect, test, vi } from "vitest";
 
 import { AuditLogInfo, EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import {
   assertGithubGroupMembersLinked,

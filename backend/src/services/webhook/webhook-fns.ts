@@ -3,6 +3,7 @@ import picomatch from "picomatch";
 import { TWebhooks } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory, WebhookTriggeredEvent } from "@app/ee/services/audit-log/audit-log-types";
 import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { haveDisjointLiteralPrefixes } from "@app/lib/casl/glob-subset";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
@@ -10,7 +11,6 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { safeRequest } from "@app/lib/validator";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectDALFactory } from "../project/project-dal";

@@ -1,7 +1,7 @@
 import picomatch from "picomatch";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { containsGlobPatterns } from "@app/lib/picomatch";
-import { ActorType } from "@app/services/auth/auth-type";
 
 export const getPolicyScore = (policy: { secretPath?: string | null }) =>
   // if glob pattern score is 1, if not exist score is 0 and if its not both then its exact path meaning score 2

@@ -1,10 +1,10 @@
 import { describe, expect, type Mocked, test, vi } from "vitest";
 
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { MfaMethod } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 
 import { RECOVERY_CODE_MFA_ASSURANCE } from "./auth-fns";
-import { MfaMethod } from "./auth-type";
 import { mfaLockoutServiceFactory } from "./mfa-lockout-service";
 
 vi.mock("@app/lib/config/env", () => ({

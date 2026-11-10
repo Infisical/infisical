@@ -31,15 +31,15 @@ import knexLib from "knex";
 import promptSync from "prompt-sync";
 
 import { startStandaloneKmsCore } from "@app/domains/domains";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { SamlProviders } from "@app/ee/services/saml-config/saml-config-types";
-import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "../src/db/schemas";
-import { AuthTokenType } from "../src/services/auth/auth-type";
 
 // Mock IdP hosted in preview-environments. The entryPoint is where gamma
 // redirects the browser to start SAML SSO; the issuer matches the IdP's

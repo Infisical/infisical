@@ -1,4 +1,4 @@
-import { MfaMethod } from "@app/services/auth/auth-type";
+import { MfaMethod } from "@app/lib/auth/actor-types";
 
 export enum MfaSessionStatus {
   PENDING = "PENDING",

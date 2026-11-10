@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { ProjectType } from "@app/db/schemas";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { projectTemplateServiceFactory } from "./project-template-service";
 

@@ -86,6 +86,7 @@ import { TSecretScanningV2ServiceFactory } from "@app/ee/services/secret-scannin
 import { TSecretScanningServiceFactory } from "@app/ee/services/secret-scanning/secret-scanning-service";
 import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
+import { ActorAuthMethod, ActorType, MfaMethod } from "@app/lib/auth/actor-types";
 import { RequestMemoizer } from "@app/lib/request-context/request-memoizer";
 import { RateLimitConfiguration } from "@app/server/config/rateLimiter";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
@@ -101,7 +102,7 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { TAuthPasswordFactory } from "@app/services/auth/auth-password-service";
 import { TAuthSignupFactory } from "@app/services/auth/auth-signup-service";
-import { ActorAuthMethod, ActorType, MfaMethod, TProviderAuthCallback } from "@app/services/auth/auth-type";
+import { TProviderAuthCallback } from "@app/services/auth/auth-type";
 import { TCertManagerExportServiceFactory } from "@app/services/cert-manager-export/cert-manager-export-service";
 import { TCertManagerInstanceServiceFactory } from "@app/services/cert-manager-instance/cert-manager-instance-service";
 import { TCertManagerProjectResolverFactory } from "@app/services/cert-manager-instance/cert-manager-project-resolver";

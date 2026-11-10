@@ -2,12 +2,12 @@ import z from "zod";
 
 import { KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { isUuidV4 } from "@app/lib/validator/validate-uuid";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
   server.decorateRequest("kmipUser");

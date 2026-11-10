@@ -1,10 +1,10 @@
 import { Knex } from "knex";
 
 import { TCertificateRequests } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
-import { ActorType } from "../auth/auth-type";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { caUsesExternalIssuanceQueue } from "../certificate-authority/certificate-authority-maps";

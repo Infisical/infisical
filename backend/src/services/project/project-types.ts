@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
 import { ProjectType, SortDirection, TProjectKeys } from "@app/db/schemas";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
 
 enum KmsType {

@@ -14,9 +14,9 @@ import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 // Run: `make seed-dev-saml` / `npm run seed-saml`. See sso.md.
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { SamlProviders } from "@app/ee/services/saml-config/saml-config-types";
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
-import { AuthTokenType } from "@app/services/auth/auth-type";
 
 import { initDbConnection } from "./instance";
 import { getMigrationEnvConfig } from "./migrations/utils/env-config";

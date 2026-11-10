@@ -1,5 +1,5 @@
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { OrgServiceActor } from "@app/lib/types";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 export type TAssumeProjectPrivilegeDTO = {
   targetActorType: ActorType.USER | ActorType.IDENTITY;

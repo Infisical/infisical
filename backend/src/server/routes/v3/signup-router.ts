@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -11,7 +12,6 @@ import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { CompleteAccountType } from "@app/services/auth/auth-signup-type";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes, SignupAttributionType, SignupSource } from "@app/services/telemetry/telemetry-types";
 
 import { SanitizedUserSchema } from "../sanitizedSchemas";

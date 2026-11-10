@@ -3,9 +3,9 @@ import { z } from "zod";
 import { PkiAlertsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ALERTS, ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 
 export const registerDeprecatedPkiAlertRouter = async (server: FastifyZodProvider) => {

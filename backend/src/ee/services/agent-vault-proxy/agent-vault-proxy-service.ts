@@ -16,6 +16,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import {
   BadRequestError,
   ConflictError,
@@ -25,7 +26,6 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";

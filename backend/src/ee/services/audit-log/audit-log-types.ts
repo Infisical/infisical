@@ -31,6 +31,7 @@ import {
   TUpdateSecretScanningDataSourceDTO,
   TUpdateSecretScanningFindingDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -38,7 +39,6 @@ import { TOrgPermission, TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";

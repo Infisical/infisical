@@ -2,11 +2,11 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TAdditionalPrivileges } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError } from "@app/lib/errors";
 import { chunkArray } from "@app/lib/fn";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter } from "@app/lib/knex";
 import { ApprovalRequestGrantStatus } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType } from "@app/services/auth/auth-type";
 
 export type TAdditionalPrivilegeDALFactory = ReturnType<typeof additionalPrivilegeDALFactory>;
 

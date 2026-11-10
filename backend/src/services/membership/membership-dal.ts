@@ -2,9 +2,9 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { AccessScope, RESOURCE_SCOPE, TableName, TMemberships } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
-import { ActorType } from "@app/services/auth/auth-type";
 
 export type TMembershipDALFactory = ReturnType<typeof membershipDALFactory>;
 

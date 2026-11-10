@@ -9,6 +9,7 @@ import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -19,7 +20,6 @@ import {
   recordDynamicSecretRevocationOutcomeMetric,
   recordDynamicSecretUnrecordedCredentialMetric
 } from "@app/lib/telemetry/metrics";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";

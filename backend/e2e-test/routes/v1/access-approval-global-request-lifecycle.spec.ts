@@ -10,13 +10,13 @@ import {
   TAccessApprovalPoliciesInsert,
   TAccessApprovalRequestsInsert
 } from "@app/db/schemas";
-import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { seedData1 } from "@app/db/seed-data";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
 

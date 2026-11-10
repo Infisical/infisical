@@ -2,10 +2,10 @@ import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { TSecretApprovalPolicies } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { QueueJobs, QueueName } from "@app/queue";
-import { ActorType } from "@app/services/auth/auth-type";
 import { ChangeRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { sendApprovalEmailsFn } from "./secret-approval-request-fns";

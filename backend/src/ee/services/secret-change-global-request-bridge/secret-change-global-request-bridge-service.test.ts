@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import {
   ApprovalPolicyType,
@@ -11,7 +12,6 @@ import {
   ApprovalRequestStatus,
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType } from "@app/services/auth/auth-type";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-fns";
 import { SecretOperations } from "@app/services/secret/secret-types";
 import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types";

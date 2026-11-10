@@ -121,7 +121,7 @@ export const ${dalName} = (db: TDbClient) => {
     path.join(__dirname, `../src/server/routes/v${Number(version)}/${name}-router.ts`),
     `import { z } from "zod";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 
 export const register${pascalCase}Router = async (server: FastifyZodProvider) => {

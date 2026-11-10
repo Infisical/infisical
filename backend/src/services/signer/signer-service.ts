@@ -23,6 +23,7 @@ import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -65,7 +66,6 @@ import {
   TCodeSigningGrantAttributes,
   TCodeSigningRequestData
 } from "../approval-policy/code-signing/code-signing-policy-types";
-import { ActorType } from "../auth/auth-type";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority/certificate-authority-enums";
 import { TDigiCertCertificateAuthorityFns } from "../certificate-authority/digicert/digicert-certificate-authority-fns";

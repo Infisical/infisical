@@ -5,8 +5,8 @@ import argon2, { argon2id } from "argon2";
 import jsrp from "jsrp";
 import { Knex } from "knex";
 
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
-import { AuthMethod } from "@app/services/auth/auth-type";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "./schemas";
 

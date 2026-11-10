@@ -1,11 +1,11 @@
 import { z } from "zod";
 
+import { AuthMode, AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { getMinExpiresIn } from "@app/lib/fn";
 import { authRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode, AuthTokenType } from "@app/services/auth/auth-type";
 
 export const registerAuthRoutes = async (server: FastifyZodProvider) => {
   server.route({

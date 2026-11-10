@@ -2,6 +2,7 @@ import { IncomingHttpHeaders } from "node:http";
 
 import jwt from "jsonwebtoken";
 
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
@@ -9,7 +10,6 @@ import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { TIp } from "@app/lib/ip";
 
-import { AuthTokenType } from "../auth/auth-type";
 import {
   CERTIFICATE_THUMBPRINT_CLAIM,
   TCertificateConfirmation,

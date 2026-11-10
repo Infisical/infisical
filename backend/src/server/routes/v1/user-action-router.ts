@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import { UserActionsSchema } from "@app/db/schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerUserActionRouter = async (server: FastifyZodProvider) => {
   server.route({

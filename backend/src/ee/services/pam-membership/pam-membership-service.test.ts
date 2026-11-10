@@ -4,7 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { PamProductRole } from "../pam/pam-enums";

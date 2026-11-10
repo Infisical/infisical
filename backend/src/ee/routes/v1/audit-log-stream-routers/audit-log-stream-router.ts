@@ -24,9 +24,9 @@ import {
   SanitizedSumoLogicProviderSchema,
   SumoLogicProviderListItemSchema
 } from "@app/ee/services/audit-log-stream/sumo-logic/sumo-logic-provider-schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedAuditLogStreamSchema = z.union([
   SanitizedCustomProviderSchema,

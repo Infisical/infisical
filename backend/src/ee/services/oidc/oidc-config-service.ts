@@ -19,6 +19,7 @@ import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -46,7 +47,6 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { matchIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";

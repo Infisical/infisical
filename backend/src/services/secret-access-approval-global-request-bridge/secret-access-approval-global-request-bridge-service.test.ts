@@ -4,9 +4,9 @@ import { describe, expect, test, vi } from "vitest";
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { DelegatedApprovalRequestStatus } from "@app/services/delegated-approval/delegated-approval-enums";
 
 import { externallyReviewedAccessRequestMessage } from "./secret-access-approval-global-request-bridge-constants";

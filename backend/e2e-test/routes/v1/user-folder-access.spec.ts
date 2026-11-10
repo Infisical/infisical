@@ -17,14 +17,14 @@ import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { AuthMethod } from "@app/services/auth/auth-type";
+import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
-import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
 

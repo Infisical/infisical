@@ -4,11 +4,11 @@ import path from "node:path";
 import { stat } from "node:fs/promises";
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { BUNDLED_IMAGE_DIR } from "@app/services/announcement/announcement-service";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 const AnnouncementSchema = z.object({
   id: z.string(),

@@ -3,7 +3,7 @@ import { MongoAbility, MongoQuery } from "@casl/ability";
 import { SecretFolderRole, TProjectEnvironments, TSecretFolders, TSecretReadActivity } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 // A reader's last read of an object. The table also keys it by month (its partition key), which the DAL adds

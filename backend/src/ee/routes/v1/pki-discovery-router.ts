@@ -12,12 +12,12 @@ import {
 import { DiscoveryTargetConfigInputSchema } from "@app/ee/services/pki-discovery/pki-discovery-schemas";
 import { PkiDiscoveryType, TPkiDiscoveryTargetConfig } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { AuthMode } from "@app/services/auth/auth-type";
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 

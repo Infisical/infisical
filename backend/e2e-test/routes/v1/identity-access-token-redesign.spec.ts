@@ -17,7 +17,7 @@ import jwt from "jsonwebtoken";
 import { AccessScope, IdentityAuthMethod, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
-import { AuthTokenType } from "@app/services/auth/auth-type";
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 
 // ---------------------------------------------------------------------------
 // helpers

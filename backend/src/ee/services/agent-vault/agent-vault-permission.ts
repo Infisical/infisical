@@ -3,8 +3,8 @@ import { Knex } from "knex";
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { TGenericPermission } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 type TProjectPermissionResult = Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>;

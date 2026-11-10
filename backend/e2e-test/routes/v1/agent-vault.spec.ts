@@ -1,22 +1,17 @@
 import crypto from "node:crypto";
 
 import * as x509 from "@peculiar/x509";
-import { fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
-import {
-  agentVaultRequester,
-  createAgentVaultProject,
-  deleteAgentVaultProject,
-  markAgentVaultProjectOriginal
-} from "e2e-test/testUtils/agent-vault";
-import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
-import { createIdentityActor } from "e2e-test/testUtils/identities";
-import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
-import { pollUntil } from "e2e-test/testUtils/poll";
-import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
-import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { startStandaloneKmsCore } from "@app/domains/domains";
+import { DataAccessDb } from "@app/domains/lib/data-access-db";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
+import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { Meter } from "@app/domains/platform/license/ce/module";
+import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
+import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
@@ -30,31 +25,24 @@ import {
   agentVaultProxyServiceFactory
 } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
+import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import {
   agentVaultSessionInlineServiceDALFactory,
   DELETE_SECRETS_BATCH_SIZE
 } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
-import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger, logger } from "@app/lib/logger";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { ActorType } from "@app/services/auth/auth-type";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { startStandaloneKmsCore } from "@app/domains/domains";
-import { DataAccessDb } from "@app/domains/lib/data-access-db";
-import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
-import { Meter } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
-import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
@@ -64,10 +52,26 @@ import { serviceTokenDALFactory } from "@app/services/service-token/service-toke
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
 
+import { fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
+import {
+  agentVaultRequester,
+  createAgentVaultProject,
+  deleteAgentVaultProject,
+  markAgentVaultProjectOriginal
+} from "e2e-test/testUtils/agent-vault";
+import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
+import { createIdentityActor } from "e2e-test/testUtils/identities";
+import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
+import { pollUntil } from "e2e-test/testUtils/poll";
+import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
+
 // The Agent Vault seat meter, as the License domain counts it.
 const countAgentVaultSeats = (orgId: string) => {
   const licenseRegistry = new FakeLicenseRegistry();
-  const organizationsProjectsDomain = new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(testDb), licenseRegistry }).service;
+  const organizationsProjectsDomain = new OrganizationsProjectsModule({
+    db: DataAccessDb.fromClient(testDb),
+    licenseRegistry
+  }).service;
   // eslint-disable-next-line no-new
   new AgentVaultModule({ organizationsProjectsDomain, licenseRegistry });
   return licenseRegistry.counter(Meter.AgentVaultIdentities.key).count(orgId);
@@ -521,12 +525,7 @@ describe("Agent Vault V1 Router", async () => {
           .update({ createdAt: new Date(Date.now() - 60 * 60 * 1000) });
 
         const createBundle = async (projectId: string, name: string) => {
-          const res = await injectRaw(
-            "POST",
-            "/api/v1/agent-vault/access-bundles",
-            { projectId, name },
-            org.authToken
-          );
+          const res = await injectRaw("POST", "/api/v1/agent-vault/access-bundles", { projectId, name }, org.authToken);
           expect(res.statusCode, res.payload).toBe(200);
         };
         await createBundle(original, "in-original");
@@ -4401,9 +4400,9 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a member can be added by a username that isn't an email", async () => {
       const username = `av-ldap-${crypto.randomUUID()}`;
-      const [user] = (await testDb("users")
-        .insert({ username, isAccepted: true, isGhost: false })
-        .returning("*")) as { id: string }[];
+      const [user] = (await testDb("users").insert({ username, isAccepted: true, isGhost: false }).returning("*")) as {
+        id: string;
+      }[];
       try {
         await addUserMembership({ userId: user.id, orgId: seedData1.organization.id, role: OrgMembershipRole.Member });
 
@@ -6093,7 +6092,11 @@ describe("Agent Vault V1 Router", async () => {
       const bob = await createAgentVaultUser("obo-subjects-bob", projectId);
       const carol = await createAgentVaultUser("obo-subjects-carol", projectId);
       const outsider = await createAgentVaultUser("obo-subjects-outsider", null);
-      const group = await createProjectGroup(projectId, `obo-subjects-group-${Date.now()}`, ProjectMembershipRole.Member);
+      const group = await createProjectGroup(
+        projectId,
+        `obo-subjects-group-${Date.now()}`,
+        ProjectMembershipRole.Member
+      );
       const subjectsUrl = `${delegationUrl(bot.id)}/subjects`;
       const ours = new Set([alice.userId, bob.userId, carol.userId, group.id]);
       const available = async (query = "") => {
@@ -6103,7 +6106,12 @@ describe("Agent Vault V1 Router", async () => {
       };
       const named = (res: { json: () => { delegation: TDelegationDetail | null } }) => {
         const { delegation } = res.json();
-        return delegation && { users: delegation.users.map((row) => row.id).sort(), groups: delegation.groups.map((row) => row.id) };
+        return (
+          delegation && {
+            users: delegation.users.map((row) => row.id).sort(),
+            groups: delegation.groups.map((row) => row.id)
+          }
+        );
       };
       try {
         expect((await available()).sort()).toEqual([...ours].sort());
@@ -6629,9 +6637,8 @@ describe("Agent Vault V1 Router", async () => {
       expect(byId.json().session.services).toEqual(session.services);
       const list = await inject("GET", `${sessionsUrl}?limit=100`);
       expect(
-        (list.json().sessions as { id: string; services: TInlineSummary[] }[]).find(
-          (row) => row.id === session.id
-        )?.services
+        (list.json().sessions as { id: string; services: TInlineSummary[] }[]).find((row) => row.id === session.id)
+          ?.services
       ).toEqual(session.services);
 
       // No read returns a secret, and the rows hold them only sealed.
@@ -6716,7 +6723,9 @@ describe("Agent Vault V1 Router", async () => {
         ]
       });
       expect(memberField.statusCode).toBe(400);
-      expect(memberField.json().message).toMatch(/^Service at index 0: Services sent with a session can't leave a field/);
+      expect(memberField.json().message).toMatch(
+        /^Service at index 0: Services sent with a session can't leave a field/
+      );
     });
 
     test("only an Agent Vault admin can start a session with inline services", async () => {
@@ -8477,7 +8486,10 @@ describe("Agent Vault V1 Router", async () => {
         trafficPolicy: "service-hosts"
       });
       expect(created.statusCode).toBe(200);
-      const { proxy, proxyToken } = created.json() as { proxy: { id: string; trafficPolicy: string }; proxyToken: string };
+      const { proxy, proxyToken } = created.json() as {
+        proxy: { id: string; trafficPolicy: string };
+        proxyToken: string;
+      };
       expect(proxy.trafficPolicy).toBe("service-hosts");
       expect((await testDb("agent_vault_proxies").where({ id: proxy.id }).first()).trafficPolicy).toBe("bundle-hosts");
       expect((await asProxy(proxyToken, "bootstrap", {})).json().config.trafficPolicy).toBe("bundle-hosts");
@@ -9673,9 +9685,7 @@ describe("Agent Vault V1 Router", async () => {
         skipped: [{ type: "machineIdentity", id: identity.id }]
       });
 
-      expect(await countAgentVaultSeats(seedData1.organization.id)).toBe(
-        seatsBefore
-      );
+      expect(await countAgentVaultSeats(seedData1.organization.id)).toBe(seatsBefore);
 
       await deleteOrgIdentity(identity.id);
     });

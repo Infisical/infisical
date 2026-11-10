@@ -20,11 +20,11 @@ import {
   InternalMetadataType,
   TInternalMetadata
 } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, throwIfAnySettledClientClosed } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
-import { ActorType } from "../auth/auth-type";
 import { EventModificationType } from "../event-outbox/event-definition";
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { CommitType, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";

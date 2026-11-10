@@ -1,4 +1,4 @@
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { MAX_OUTBOX_PAYLOAD_BYTES, TEventInput } from "@app/services/event-outbox/event-outbox-types";
 
 import {

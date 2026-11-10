@@ -2,9 +2,9 @@ import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 // Plan reads only. The cloud billing surface (checkout, portal, payment methods, tax ids, invoices)
 // lives on the License Server v2 routes in license-v2-router; the License Server v1 endpoints these

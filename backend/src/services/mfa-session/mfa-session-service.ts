@@ -1,11 +1,11 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { MfaMethod } from "@app/lib/auth/actor-types";
 import { isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { isMfaProofAccepted } from "@app/services/auth/auth-fns";
-import { MfaMethod } from "@app/services/auth/auth-type";
 import { TMfaLockoutServiceFactory } from "@app/services/auth/mfa-lockout-service";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTotpServiceFactory } from "@app/services/totp/totp-service";

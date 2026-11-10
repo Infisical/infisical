@@ -7,9 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import type { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import type { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";

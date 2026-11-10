@@ -1,17 +1,11 @@
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
+import { AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 
 import { LoginMethod } from "../super-admin/super-admin-types";
-import {
-  AuthMethod,
-  AuthModeAccountRecoveryTokenPayload,
-  AuthModeSignUpTokenPayload,
-  AuthTokenType,
-  MfaMethod,
-  SsoMfaTrust
-} from "./auth-type";
+import { AuthModeAccountRecoveryTokenPayload, AuthModeSignUpTokenPayload, SsoMfaTrust } from "./auth-type";
 
 const oauthLoginMethods = {
   [AuthMethod.GITHUB]: {

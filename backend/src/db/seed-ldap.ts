@@ -19,9 +19,9 @@ import jsrp from "jsrp";
 
 import { KmsDataKey } from "@app/domains/platform/kms-core/ce/module";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { AuthMethod } from "@app/lib/auth/actor-types";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
-import { AuthMethod } from "@app/services/auth/auth-type";
 import { orgDALFactory } from "@app/services/org/org-dal";
 
 import { initDbConnection } from "./instance";

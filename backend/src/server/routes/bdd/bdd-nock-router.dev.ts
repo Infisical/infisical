@@ -1,11 +1,11 @@
 import type { Definition } from "nock";
 import { z } from "zod";
 
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 // When running in production, we don't want to even import nock, because it's not needed and it increases memory usage a lots.
 // It once caused an outage in the production environment.

@@ -2,12 +2,12 @@ import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import {
   recordDynamicSecretRevocationOutcomeMetric,
   recordDynamicSecretStatusChangeMetric,
   recordDynamicSecretUnrecordedCredentialMetric
 } from "@app/lib/telemetry/metrics";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { DynamicSecretProviders } from "../dynamic-secret/providers/models";
 import { dynamicSecretLeaseServiceFactory } from "./dynamic-secret-lease-service";

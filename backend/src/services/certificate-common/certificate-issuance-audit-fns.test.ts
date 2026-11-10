@@ -2,8 +2,8 @@ import { ForbiddenError } from "@casl/ability";
 import { describe, expect, it, vi } from "vitest";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { CertificateIssuanceOperation } from "./certificate-constants";
 import { recordCertificateIssuanceFailure, tagErrorWithCertificateRequest } from "./certificate-issuance-audit-fns";

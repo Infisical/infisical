@@ -7,10 +7,10 @@ import {
   KmsProviders,
   TExternalKmsGcpCredentialSchema
 } from "@app/ee/services/external-kms/providers/model";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { NotFoundError } from "@app/lib/errors";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerExternalKmsEndpoints } from "./external-kms-endpoints";
 

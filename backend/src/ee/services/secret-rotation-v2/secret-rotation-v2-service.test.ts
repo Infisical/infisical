@@ -2,8 +2,8 @@ import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { fnSecretBulkUpdate } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";

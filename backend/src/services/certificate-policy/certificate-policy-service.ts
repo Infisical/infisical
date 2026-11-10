@@ -12,11 +12,11 @@ import {
   ResourcePermissionApplicationActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import {
   CertPolicyState,
   CertSubjectAlternativeNameType,

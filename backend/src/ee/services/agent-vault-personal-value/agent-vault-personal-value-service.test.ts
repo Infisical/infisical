@@ -1,8 +1,8 @@
 import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ConflictError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { memberOauthSetupOf } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import { AgentVaultOauthRegistration } from "../agent-vault-oauth/agent-vault-oauth-types";

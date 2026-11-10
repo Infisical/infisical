@@ -18,13 +18,13 @@ import {
   ResourcePermissionApplicationActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 
 import { TAlertServiceFactory } from "../alert/alert-service";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
-import { ActorType } from "../auth/auth-type";
 import { CERT_MANAGER_APPLICATION_RESOURCE_TYPE } from "../certificate/certificate-alert-events";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";

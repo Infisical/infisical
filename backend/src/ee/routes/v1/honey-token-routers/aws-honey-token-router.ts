@@ -4,9 +4,9 @@ import { AwsHoneyTokenDeploymentUnavailableReason } from "@app/ee/services/honey
 import { HoneyTokenManagedBy, HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
 import { AwsHoneyTokenConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
 import { AWS_HONEY_TOKENS } from "@app/lib/api-docs";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerHoneyTokenEndpoints } from "./honey-token-endpoints";
 

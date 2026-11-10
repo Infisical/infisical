@@ -4,6 +4,7 @@ import { requestContext } from "@fastify/request-context";
 import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
@@ -12,7 +13,6 @@ import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars
 import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { ActorType } from "../auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "../external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TProjectDALFactory } from "../project/project-dal";

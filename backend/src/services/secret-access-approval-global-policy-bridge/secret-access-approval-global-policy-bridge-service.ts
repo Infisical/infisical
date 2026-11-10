@@ -9,11 +9,11 @@ import {
   TCreateAccessApprovalPolicy
 } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
-import { ActorType } from "@app/services/auth/auth-type";
 import { assertDelegatedApprovalPolicyConstraints } from "@app/services/delegated-approval/delegated-approval-fns";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 

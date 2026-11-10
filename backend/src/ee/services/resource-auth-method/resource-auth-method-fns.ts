@@ -1,7 +1,7 @@
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { AuthTokenType } from "@app/services/auth/auth-type";
 
 /**
  * Mints a GATEWAY_ACCESS_TOKEN JWT for a gateway. Same payload shape that the legacy

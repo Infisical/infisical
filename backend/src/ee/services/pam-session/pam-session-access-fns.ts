@@ -1,8 +1,8 @@
 import { Knex } from "knex";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";

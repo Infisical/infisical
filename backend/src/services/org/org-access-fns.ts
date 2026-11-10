@@ -1,8 +1,8 @@
 import { Knex } from "knex";
 
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { TRevokedProjectAccess } from "../membership/project-access-revoke-service";
 import { TOrgDALFactory } from "./org-dal";

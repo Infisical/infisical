@@ -1,7 +1,6 @@
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
-
-import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 
 export enum ReservedFolders {
   SecretReplication = "__reserve_replication_"

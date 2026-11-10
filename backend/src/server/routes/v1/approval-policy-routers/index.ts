@@ -1,3 +1,4 @@
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { BaseCheckPolicyMatchResponseSchema } from "@app/services/approval-policy/approval-policy-schemas";
 import {
@@ -27,7 +28,6 @@ import {
   PamAccessRequestSchema,
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 import { registerApprovalPolicyEndpoints } from "./approval-policy-endpoints";
 

@@ -2,6 +2,7 @@ import { AxiosError, isAxiosError } from "axios";
 import { resolve4, Resolver } from "node:dns/promises";
 
 import { TPkiAcmeChallenges } from "@app/db/schemas/pki-acme-challenges";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -10,7 +11,6 @@ import { isValidIp } from "@app/lib/ip";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";

@@ -50,4 +50,16 @@ export class InMemoryKeyStore implements TDomainKeyStore {
   };
 
   deleteItem = async (key: string) => (this.entries.delete(key) ? 1 : 0);
+
+  // The Postgres-backed counters (key_value_store) are a separate namespace from the Redis keys above.
+  // Expiry is not modelled: the counters only ever grow, and a test never outlives one.
+  private readonly counters = new Map<string, number>();
+
+  pgIncrementBy = async (key: string, { incr = 1 }: { incr?: number; expiry?: string; tx?: unknown }) => {
+    const next = (this.counters.get(key) ?? 0) + incr;
+    this.counters.set(key, next);
+    return next;
+  };
+
+  pgGetIntItem = async (key: string, prefix?: string) => this.counters.get(InMemoryKeyStore.key(key, prefix));
 }

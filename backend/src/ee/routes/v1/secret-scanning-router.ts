@@ -6,11 +6,11 @@ import {
   SecretScanningResolvedStatus,
   SecretScanningRiskStatus
 } from "@app/ee/services/secret-scanning/secret-scanning-types";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerSecretScanningRouter = async (server: FastifyZodProvider) => {
   server.route({

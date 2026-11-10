@@ -2,10 +2,10 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName, TAgentVaultSessions, TAgentVaultSessionsInsert } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultSessionActor, TAgentVaultSessionOnBehalfOf } from "./agent-vault-session-types";

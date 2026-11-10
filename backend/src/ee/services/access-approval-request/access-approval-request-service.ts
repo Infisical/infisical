@@ -4,6 +4,7 @@ import msFn from "ms";
 
 import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -22,7 +23,6 @@ import {
   TSecretAccessPolicy,
   TSecretAccessPolicyInputs
 } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";

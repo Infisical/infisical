@@ -2,9 +2,9 @@ import { authenticator } from "otplib";
 
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { MfaMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { MfaMethod } from "../auth/auth-type";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserServiceFactory } from "../user/user-service";
 import { TTotpConfigDALFactory } from "./totp-config-dal";

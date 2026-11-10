@@ -2,7 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType } from "@app/lib/auth/actor-types";
 import {
   emitIdentityAuthMethodChanged,
   IdentityAuthMethodChange,

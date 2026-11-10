@@ -1,4 +1,5 @@
 import { AccessScope } from "@app/db/schemas";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -15,7 +16,6 @@ import {
 import { isAliasedEmail, normalizeEmail, sanitizeEmail } from "@app/lib/validator";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";

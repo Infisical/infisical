@@ -6,9 +6,9 @@ import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope, Project
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 import {
   IDENTITY_AUTH_METHOD_CHANGED_EVENT,
   IDENTITY_AUTHENTICATION_RESOURCE_TYPE,

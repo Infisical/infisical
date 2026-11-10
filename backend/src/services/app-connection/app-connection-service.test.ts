@@ -7,8 +7,8 @@ import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { AppConnection } from "./app-connection-enums";
 import { appConnectionServiceFactory } from "./app-connection-service";

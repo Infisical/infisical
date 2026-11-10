@@ -1,10 +1,10 @@
-import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { SecretType, TSecrets } from "@app/db/schemas";
 import { decryptSecret, encryptSecret, getUserPrivateKey, seedData1 } from "@app/db/seed-data";
+import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
+import { AuthMode } from "@app/lib/auth/actor-types";
 import { initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
-import { AuthMode } from "@app/services/auth/auth-type";
 
 // Secrets registered here are torn down after the test that made them. Cleanup
 // used to sit at the end of each test body, so a failing assertion skipped it

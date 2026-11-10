@@ -3,10 +3,10 @@ import jwt from "jsonwebtoken";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod, TableName } from "@app/db/schemas";
+import { AuthTokenType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto";
 import { IPType, TIp } from "@app/lib/ip";
 
-import { AuthTokenType } from "../auth/auth-type";
 import {
   computeCertificateThumbprint,
   signIdentityAccessToken,

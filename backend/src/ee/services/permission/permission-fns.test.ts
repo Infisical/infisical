@@ -1,9 +1,9 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { describe, expect, test } from "vitest";
 
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { ForbiddenRequestError } from "@app/lib/errors";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import {
   checkForInvalidPermissionCombination,

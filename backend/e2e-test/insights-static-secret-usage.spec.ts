@@ -18,7 +18,7 @@ import {
 import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { TOrgInsightsDTO } from "@app/ee/services/insights/insights-types";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 import {
   buildOrgInsightsGateStubs,

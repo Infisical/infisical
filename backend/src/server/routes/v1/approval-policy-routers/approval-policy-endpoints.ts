@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { APPROVAL_POLICY_AUTO_APPROVAL } from "@app/lib/api-docs";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -38,7 +39,6 @@ import {
   CreatePamAccessPolicySchema,
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes, TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
 type TCreatePolicySchema =

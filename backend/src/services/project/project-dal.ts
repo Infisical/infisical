@@ -13,6 +13,7 @@ import {
   TProjects,
   TProjectsUpdate
 } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, DatabaseError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
 import {
@@ -24,7 +25,6 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 
-import { ActorType } from "../auth/auth-type";
 import {
   hardDeleteApprovalSecretLinksInBatches,
   hardDeleteSecretReferencesInBatches,

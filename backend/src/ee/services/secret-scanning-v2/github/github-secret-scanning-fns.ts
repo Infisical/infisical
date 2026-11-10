@@ -32,11 +32,11 @@ import {
 } from "@app/ee/services/secret-scanning/secret-scanning-exec";
 import { scanContentsAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { chunkArray } from "@app/lib/fn/array";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { GitHubPullRequestEvent } from "./github-secret-scanning-enums";
 import { GitHubPullRequestScanMetadataSchema } from "./github-secret-scanning-schemas";

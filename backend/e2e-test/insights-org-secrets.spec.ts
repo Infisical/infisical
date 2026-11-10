@@ -31,7 +31,7 @@ import {
 } from "@app/ee/services/permission/org-permission";
 import { SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { SecretSyncStatus } from "@app/services/secret-sync/secret-sync-types";

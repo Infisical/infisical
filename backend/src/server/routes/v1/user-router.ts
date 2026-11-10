@@ -2,12 +2,12 @@ import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simp
 import { z } from "zod";
 
 import { UsersSchema } from "@app/db/schemas";
+import { AuthMode, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { authRateLimit, readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode, MfaMethod } from "@app/services/auth/auth-type";
 
 import {
   ensureFactorEnrollmentStepUpMfa,

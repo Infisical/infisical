@@ -3,8 +3,8 @@ import crypto from "node:crypto";
 import { Knex } from "knex";
 import { z } from "zod";
 
+import { ActorType } from "@app/lib/auth/actor-types";
 import { chunkArray } from "@app/lib/fn";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter, TEventInput } from "@app/services/event-outbox/event-outbox-types";
 
 export const GROUP_MEMBERSHIP_REMOVED_EVENT = "com.infisical.organization.group-membership.removed.v1";

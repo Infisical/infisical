@@ -2,10 +2,10 @@ import { requestContext } from "@fastify/request-context";
 import fp from "fastify-plugin";
 
 import { UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { BadRequestError } from "@app/lib/errors";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 export const getUserAgentType = (userAgent: string | undefined) => {
   if (userAgent === undefined) {

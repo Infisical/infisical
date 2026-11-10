@@ -5,7 +5,8 @@ import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { ActorType, AuthMethod, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
+import { ProviderAuthResult } from "@app/services/auth/auth-type";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { cleanupEmailDomains, seedVerifiedEmailDomain } from "../../testUtils/email-domains";

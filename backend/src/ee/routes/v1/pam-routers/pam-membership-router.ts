@@ -4,10 +4,10 @@ import z from "zod";
 import { EventType, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { PamProductRole, PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
+import { ActorAuthMethod, ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorAuthMethod, ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const MemberSchema = z.object({

@@ -14,8 +14,8 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { PermissionBoundaryError } from "@app/lib/errors";
-import { ActorType } from "@app/services/auth/auth-type";
 
 import { assertIdentityAuthAccessAllowed } from "./identity-auth-permission-fns";
 

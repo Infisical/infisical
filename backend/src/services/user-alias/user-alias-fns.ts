@@ -8,13 +8,13 @@ import {
 } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { verifyEmailDomainOwnership } from "@app/ee/services/email-domain/email-domain-fns";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { DatabaseError, ForbiddenRequestError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { sanitizeEmail } from "@app/lib/validator/validate-email";
 
-import { ActorType } from "../auth/auth-type";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "./user-alias-dal";

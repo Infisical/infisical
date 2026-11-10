@@ -1,5 +1,5 @@
+import { ActorAuthMethod } from "@app/lib/auth/actor-types";
 import { EnforcementLevel, OrgServiceActor, TProjectPermission } from "@app/lib/types";
-import { ActorAuthMethod } from "@app/services/auth/auth-type";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";

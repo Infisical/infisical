@@ -5,7 +5,8 @@ import { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
-import { AuthMethod, AuthTokenType, ProviderAuthResult } from "@app/services/auth/auth-type";
+import { AuthMethod, AuthTokenType } from "@app/lib/auth/actor-types";
+import { ProviderAuthResult } from "@app/services/auth/auth-type";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TTestSmtpService } from "../../mocks/smtp";

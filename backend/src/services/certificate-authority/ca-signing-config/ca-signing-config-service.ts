@@ -7,11 +7,11 @@ import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
 import { TCaAutoRenewalQueueFactory } from "../ca-auto-renewal-queue";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";

@@ -6,6 +6,7 @@ import * as x509 from "@peculiar/x509";
 import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -13,7 +14,6 @@ import { groupBy } from "@app/lib/fn";
 import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
-import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import {
   createSerialNumber,
   getNotAfterWithClockSkew,
