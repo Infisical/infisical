@@ -62,6 +62,7 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TableHeadButton,
   TableHeader,
   TableRow
 } from "@app/components/v4/ui/table";
@@ -1128,9 +1129,6 @@ export const OverviewPage = () => {
     if (!envSecrets(activeEnvironment).length) return "No secrets in this folder";
     return undefined;
   })();
-  const sortLabel = sortOptions.find(
-    (option) => option.field === sort.field && option.direction === sort.direction
-  )?.label;
   const colSpan = visibleEnvironments.length + 3;
   const commitCount =
     adapter.useCommitCount({
@@ -1477,15 +1475,14 @@ export const OverviewPage = () => {
   })();
   const sortMenu = (
     <DropdownMenu>
-      <Tooltip content={`Sort: ${sortLabel ?? "Name (A to Z)"}`}>
-        <span className={styles.actionSlot}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-xs" icon="chev-down" iconOnly>
-              Sort resources
-            </Button>
-          </DropdownMenuTrigger>
-        </span>
-      </Tooltip>
+      <DropdownMenuTrigger asChild>
+        <TableHeadButton aria-label="Name column menu">
+          Name
+          <span className={styles.push}>
+            <Icon name="chev-down" size="var(--v4-size-icon-xs)" />
+          </span>
+        </TableHeadButton>
+      </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuLabel>Sort by</DropdownMenuLabel>
         <DropdownMenuRadioGroup
@@ -1510,16 +1507,16 @@ export const OverviewPage = () => {
   );
   const environmentMenu = (environment: { value: string; label: string }) => (
     <DropdownMenu>
-      <span className={styles.truncate} title={environment.label}>
-        {environment.label}
-      </span>
-      <span className={styles.push}>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-xs" icon="chev-down" iconOnly>
-            {`${environment.label} options`}
-          </Button>
-        </DropdownMenuTrigger>
-      </span>
+      <DropdownMenuTrigger asChild>
+        <TableHeadButton aria-label={`${environment.label} column menu`}>
+          <span className={styles.truncate} title={environment.label}>
+            {environment.label}
+          </span>
+          <span className={styles.push}>
+            <Icon name="chev-down" size="var(--v4-size-icon-xs)" />
+          </span>
+        </TableHeadButton>
+      </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Sort secrets by recency</DropdownMenuSubTrigger>
@@ -1820,10 +1817,7 @@ export const OverviewPage = () => {
                               </span>
                             </TableHead>
                             <TableHead pin="start" pinOffset="var(--v4-size-row)">
-                              <div className={styles.headLine}>
-                                Name
-                                <span className={styles.push}>{sortMenu}</span>
-                              </div>
+                              {sortMenu}
                             </TableHead>
                             {single ? (
                               <TableHead>
@@ -1862,9 +1856,7 @@ export const OverviewPage = () => {
                             ) : (
                               visibleEnvironments.map((environment) => (
                                 <TableHead key={environment.value}>
-                                  <div className={styles.headLine}>
-                                    {environmentMenu(environment)}
-                                  </div>
+                                  {environmentMenu(environment)}
                                 </TableHead>
                               ))
                             )}
