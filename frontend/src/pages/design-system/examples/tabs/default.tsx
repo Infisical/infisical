@@ -36,6 +36,18 @@ export default function Example() {
           ]}
         />
       </ExampleCell>
+      <ExampleCell label="segmented, full width" align="stretch">
+        <Tabs
+          label="Plan"
+          variant="segmented"
+          width="full"
+          tabs={[
+            { value: "pro", label: "Pro", content: "Pro features." },
+            { value: "advanced", label: "Advanced", content: "Advanced features." },
+            { value: "enterprise", label: "Enterprise", content: "Enterprise features." }
+          ]}
+        />
+      </ExampleCell>
     </ExampleGrid>
   );
 }

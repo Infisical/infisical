@@ -1,3 +1,5 @@
+import { isAxiosError } from "axios";
+
 import { toast as v4Toast } from "@app/components/v4/ui/sonner";
 import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 
@@ -21,9 +23,20 @@ export const dismissToast = (id: string | number) => v4Toast.dismiss(id);
 
 export const saved = (title: string) => toast({ tone: "ok", title });
 
+type ValidationIssue = { path?: (string | number)[]; message?: unknown };
+
+export const errorMessage = (error: unknown) => {
+  const serverMessage: unknown = isAxiosError(error) ? error.response?.data?.message : undefined;
+  if (typeof serverMessage === "string" && serverMessage) return serverMessage;
+  if (Array.isArray(serverMessage)) {
+    const issues = serverMessage.flatMap(({ path, message }: ValidationIssue) => {
+      if (typeof message !== "string") return [];
+      return [path?.length ? `${path.join(".")}: ${message}` : message];
+    });
+    if (issues.length) return issues.join("; ");
+  }
+  return error instanceof Error ? error.message : undefined;
+};
+
 export const failed = (title: string, error?: unknown) =>
-  toast({
-    tone: "bad",
-    title,
-    description: error instanceof Error ? error.message : undefined
-  });
+  toast({ tone: "bad", title, description: errorMessage(error) });

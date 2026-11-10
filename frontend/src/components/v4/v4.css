@@ -552,6 +552,18 @@
   overflow: hidden;
   gap: 0;
 }
+.v4 [data-slot="sheet-sections"] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+.v4 [data-slot="sheet-foot"] {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  border-top: var(--v4-size-control-border) solid var(--v4-line-soft);
+}
 /* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .v4 :is([data-slot="sheet-scroll"]) {
   display: flex;

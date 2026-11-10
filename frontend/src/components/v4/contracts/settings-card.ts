@@ -12,8 +12,10 @@ export const settingsCardDefinition = {
   exports: ["SettingsCard"],
   referenceNames: ["SettingsCard"],
   behavior: [
-    "The footer shows one status at a time: the hint, Unsaved changes, Saving, Saved for three seconds, the failure message, or the lock reason.",
-    "Save runs from the button or Enter in a field. A returned promise shows Saving; a rejection shows the Error's message and keeps the typed values.",
+    "The footer shows one state at a time: the hint, Unsaved changes, Saving, or the lock reason. It never shows a save's result: like every v4 primitive, the card raises no toast itself, so onSave reports success and failure with a toast from @infisical/sonner (adapter mutations already toast their errors).",
+    "Save runs from the button or Enter in a field. A returned promise shows Saving; a rejection ends Saving and keeps the typed values without showing anything.",
+    "saveDisabledReason blocks Save and Enter, and passes to the Save Button's disabledReason: the button stays focusable, shows the reason in a tooltip on hover and keyboard focus, and carries it as aria-description.",
+    "With no children and not loading, the card renders no body, so a card holding only a title, description and actions has no empty padded band.",
     "Discard appears only while there are changes and calls onDiscard.",
     "locked disables the fields, hides the buttons and shows the reason. tone danger draws the bad line and wash and shows your own actions.",
     "flush renders the same header with the body edge to edge under a line-soft rule and no form or footer, for content that is not saved by the card, such as a list of incident contacts in a DataTable.",
@@ -32,7 +34,7 @@ export const settingsCardDefinition = {
       id: "default",
       title: "Save, locked and danger",
       module: "./examples/settings-card/default.tsx",
-      states: ["default", "editing", "loading", "success", "error", "read-only"]
+      states: ["default", "editing", "loading", "success", "error", "disabled", "read-only"]
     },
     {
       id: "embedded-table",
@@ -72,7 +74,7 @@ export const settingsCardDefinition = {
       {
         id: "settings-card-errors",
         when: "A save fails.",
-        do: "Reject with an Error whose message says what failed and what to do, and keep what was typed.",
+        do: "Toast an error that says what failed and what to do, and keep what was typed.",
         avoid: "Clear the fields or show a generic Something went wrong.",
         reason: "People should be able to fix the value and save again without retyping.",
         evidence: [
@@ -81,7 +83,7 @@ export const settingsCardDefinition = {
         ],
         detect: {
           by: "review",
-          how: "Clear the name in the example and save; the message explains the fix and the field keeps its value."
+          how: "Clear the name in the example and save; the error toast explains the fix and the field keeps its value."
         }
       },
       {

@@ -55,6 +55,7 @@ Exports: ToggleGroup, ToggleGroupItem. Source TypeScript defines the API.
 
 - Radix type=single uses a string and type=multiple uses a string array with onValueChange. Items are joined into one segmented control by default (spacing 0), drawn like segmented Tabs: a tint track with 2px inset, borderless segments 4px shorter than the requested size, and the on item as the same raised chip as the segmented Tabs indicator. bare drops the track so the segments can sit on a track the host already draws, such as a toolbar; the host supplies the tint and padding. spacing={n} separates the items by n times 4px as standalone Toggles with the pressed fill. Shared size, variant and orientation apply to the group; sizes follow Button.
 - The group never shrinks below its items in a flex row (flex-shrink 0), so a sibling such as a full-width Select trigger takes the leftover space instead of sliding over the last segments.
+- width sizes the group and its items together, as on Tabs: the default, content, fits the track to its items, and full stretches the track to its container and gives every horizontal item an equal share. There is no full-width track with content-width items (rule/tab-width).
 
 ## Accessibility
 
@@ -96,6 +97,11 @@ Source declarations and review criteria only. Generation checks references and c
 - single: example `default`, visible label "single".
 - multiple: example `permissions`, visible label "multiple".
 
+### width
+
+- content: example `default`, visible label "single".
+- full: example `default`, visible label "single, full width".
+
 ### orientation
 
 - horizontal: example `default`, visible label "single".
@@ -122,16 +128,33 @@ import { ToggleGroup, ToggleGroupItem } from "../../../../components/v4/ui/toggl
 
 export default function Example() {
   return (
-    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
-      <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
-        <ToggleGroup type="single" defaultValue="all" aria-label="Connection status">
-          <ToggleGroupItem value="all">All</ToggleGroupItem>
-          <ToggleGroupItem value="active">Active</ToggleGroupItem>
-          <ToggleGroupItem value="failing">Failing</ToggleGroupItem>
-        </ToggleGroup>
-      </div>
-      <figcaption className="text-muted-foreground text-xs">{"single"}</figcaption>
-    </figure>
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-start gap-3">
+          <ToggleGroup type="single" defaultValue="all" aria-label="Connection status">
+            <ToggleGroupItem value="all">All</ToggleGroupItem>
+            <ToggleGroupItem value="active">Active</ToggleGroupItem>
+            <ToggleGroupItem value="failing">Failing</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"single"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <ToggleGroup
+            type="single"
+            width="full"
+            defaultValue="all"
+            aria-label="Connection status, full width"
+          >
+            <ToggleGroupItem value="all">All</ToggleGroupItem>
+            <ToggleGroupItem value="active">Active</ToggleGroupItem>
+            <ToggleGroupItem value="failing">Failing</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"single, full width"}</figcaption>
+      </figure>
+    </div>
   );
 }
 ```
