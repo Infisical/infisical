@@ -6,8 +6,8 @@ import { ProjectPermissionSecretActions } from "../permission/project-permission
 import {
   buildSecretApprovalCommitValueAccess,
   formatSecretApprovalCommitsV2Bridge
-} from "./secret-approval-request-details-fns";
-import { TSecretApprovalBridgeCommit } from "./secret-approval-request-merge-fns";
+} from "./secret-change-request-details-fns";
+import { TSecretApprovalBridgeCommit } from "./secret-change-request-merge-fns";
 
 const decryptor = vi.fn(({ cipherTextBlob }: { cipherTextBlob: Buffer }) =>
   Buffer.from(`plain:${cipherTextBlob.toString()}`)

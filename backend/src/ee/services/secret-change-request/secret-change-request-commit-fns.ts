@@ -29,7 +29,7 @@ import {
   ProjectPermissionSub
 } from "../permission/project-permission";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
-import { TGenerateSecretApprovalRequestV2BridgeDTO } from "./secret-approval-request-types";
+import { TGenerateSecretApprovalRequestV2BridgeDTO } from "./secret-change-request-types";
 
 type TSecretApprovalRequestCommitFnsFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;

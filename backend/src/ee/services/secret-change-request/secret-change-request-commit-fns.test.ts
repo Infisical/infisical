@@ -14,7 +14,7 @@ import {
   ProjectPermissionSub
 } from "../permission/project-permission";
 import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
-import { pickApprovalCommitColumns, secretApprovalRequestCommitFnsFactory } from "./secret-approval-request-commit-fns";
+import { pickApprovalCommitColumns, secretApprovalRequestCommitFnsFactory } from "./secret-change-request-commit-fns";
 
 vi.mock("../secret-scanning-v2/secret-scanning-v2-fns", () => ({
   scanSecretPolicyViolations: vi.fn().mockResolvedValue(undefined)

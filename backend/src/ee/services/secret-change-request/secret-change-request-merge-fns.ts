@@ -36,10 +36,10 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { ProjectPermissionSet } from "../permission/project-permission";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
-import { TSecretApprovalRequestCommitFnsFactory } from "./secret-approval-request-commit-fns";
-import { hasSecretUpdateCommitConflict } from "./secret-approval-request-fns";
-import { TSecretApprovalRequestSecretDALFactory } from "./secret-approval-request-secret-dal";
-import { InternalMetadataType, TInternalMetadata } from "./secret-approval-request-types";
+import { TSecretApprovalRequestCommitFnsFactory } from "./secret-change-request-commit-fns";
+import { TSecretChangeRequestDALFactory } from "./secret-change-request-dal";
+import { hasSecretUpdateCommitConflict } from "./secret-change-request-fns";
+import { InternalMetadataType, TInternalMetadata } from "./secret-change-request-types";
 
 type TSecretApprovalRequestMergeFnsFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
@@ -64,7 +64,7 @@ type TSecretApprovalRequestMergeFnsFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
-  secretApprovalRequestSecretDAL: Pick<TSecretApprovalRequestSecretDALFactory, "updateV2ById">;
+  secretChangeRequestDAL: Pick<TSecretChangeRequestDALFactory, "updateV2ById">;
   validateSecrets: TSecretApprovalRequestCommitFnsFactory["validateSecrets"];
   userDAL: Pick<TUserDALFactory, "find" | "findOne">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -74,7 +74,7 @@ type TSecretApprovalRequestMergeFnsFactoryDep = {
 export type TSecretApprovalRequestMergeFnsFactory = ReturnType<typeof secretApprovalRequestMergeFnsFactory>;
 
 export type TSecretApprovalBridgeCommit = Awaited<
-  ReturnType<TSecretApprovalRequestSecretDALFactory["findByRequestIdBridgeSecretV2"]>
+  ReturnType<TSecretChangeRequestDALFactory["findBySecretChangeIdBridgeSecretV2"]>
 >[number];
 
 export type TSecretApprovalCommitConflict = { secretId: string; op: SecretOperations };
@@ -258,7 +258,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
   folderCommitService,
   eventEmitter,
   secretQueueService,
-  secretApprovalRequestSecretDAL,
+  secretChangeRequestDAL,
   validateSecrets,
   userDAL,
   notificationService,
@@ -473,7 +473,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
         creates
           .filter((commit) => newSecretsByKey.has(commit.key))
           .map((commit) =>
-            secretApprovalRequestSecretDAL.updateV2ById(commit.id, { secretId: newSecretsByKey.get(commit.key)! }, tx)
+            secretChangeRequestDAL.updateV2ById(commit.id, { secretId: newSecretsByKey.get(commit.key)! }, tx)
           )
       );
     }

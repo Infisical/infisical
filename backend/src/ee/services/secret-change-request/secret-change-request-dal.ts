@@ -1,19 +1,26 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TApprovalRequests, TSecretChangeRequests } from "@app/db/schemas";
+import {
+  SecretApprovalRequestsSecretsV2Schema,
+  TableName,
+  TApprovalRequests,
+  TSecretChangeRequests,
+  TSecretTags
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
-import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 
 import {
-  applyRequestOrdering,
+  RequestState,
+  SecretApprovalRequestOrderBy,
   TSecretApprovalRequestListFilter
-} from "../secret-approval-request/secret-approval-request-dal";
-import { RequestState } from "../secret-approval-request/secret-approval-request-types";
+} from "./secret-change-request-types";
 
-export type TSecretChangeGlobalRequestBridgeDALFactory = ReturnType<typeof secretChangeGlobalRequestBridgeDALFactory>;
+export type TSecretChangeRequestDALFactory = ReturnType<typeof secretChangeRequestDALFactory>;
 
 export type TSecretChangeRequestListRow = TApprovalRequests &
   Pick<
@@ -41,6 +48,31 @@ export type TSecretChangeRequestListRow = TApprovalRequests &
     committerUserLastName: string | null;
     committerIdentityName: string | null;
   };
+
+const getOrderExpression = (orderBy = SecretApprovalRequestOrderBy.CreatedAt) => {
+  switch (orderBy) {
+    case SecretApprovalRequestOrderBy.Environment:
+      return 'LOWER(COALESCE("environmentName", "environment", \'\'))';
+    case SecretApprovalRequestOrderBy.SecretPath:
+      return "LOWER(COALESCE(\"policySecretPath\", ''))";
+    case SecretApprovalRequestOrderBy.Author:
+      return `LOWER(COALESCE(
+        NULLIF(TRIM(CONCAT_WS(' ', "committerUserFirstName", "committerUserLastName")), ''),
+        "committerUserEmail",
+        "committerIdentityName",
+        ''
+      ))`;
+    case SecretApprovalRequestOrderBy.CreatedAt:
+    default:
+      return '"createdAt"';
+  }
+};
+
+const applyRequestOrdering = (
+  query: Knex.QueryBuilder,
+  orderBy?: SecretApprovalRequestOrderBy,
+  orderDirection = OrderByDirection.DESC
+) => query.orderByRaw(`${getOrderExpression(orderBy)} ${orderDirection}`).orderBy("id", OrderByDirection.ASC);
 
 export type TSecretChangeRequestListResultRows = { rows: TSecretChangeRequestListRow[]; totalCount: number };
 
@@ -90,8 +122,189 @@ const buildCoreQuery = (dbInstance: Knex, projectId: string) =>
     .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
     .whereNull(`${TableName.Project}.deleteAfter`);
 
-export const secretChangeGlobalRequestBridgeDALFactory = (db: TDbClient) => {
+export const secretChangeRequestDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.SecretChangeRequests);
+  const commitOrm = ormify(db, TableName.SecretApprovalRequestSecretV2);
+  const commitTagOrm = ormify(db, TableName.SecretApprovalRequestSecretTagV2);
+
+  const queryBridgeSecretV2 = (tx?: Knex) =>
+    (tx || db.replicaNode())({
+      secVerTag: TableName.SecretTag
+    })
+      .from(TableName.SecretApprovalRequestSecretV2)
+      .leftJoin(
+        TableName.SecretApprovalRequestSecretTagV2,
+        `${TableName.SecretApprovalRequestSecretV2}.id`,
+        `${TableName.SecretApprovalRequestSecretTagV2}.secretId`
+      )
+      .leftJoin(TableName.SecretTag, `${TableName.SecretApprovalRequestSecretTagV2}.tagId`, `${TableName.SecretTag}.id`)
+      .leftJoin(TableName.SecretV2, `${TableName.SecretApprovalRequestSecretV2}.secretId`, `${TableName.SecretV2}.id`)
+      .leftJoin(
+        TableName.SecretVersionV2,
+        `${TableName.SecretVersionV2}.id`,
+        `${TableName.SecretApprovalRequestSecretV2}.secretVersion`
+      )
+      .leftJoin(
+        TableName.SecretVersionV2Tag,
+        `${TableName.SecretVersionV2Tag}.${TableName.SecretVersionV2}Id`,
+        `${TableName.SecretVersionV2}.id`
+      )
+      .leftJoin<TSecretTags>(
+        db.ref(TableName.SecretTag).as("secVerTag"),
+        `${TableName.SecretVersionV2Tag}.${TableName.SecretTag}Id`,
+        db.ref("id").withSchema("secVerTag")
+      )
+      .leftJoin(TableName.ResourceMetadata, `${TableName.SecretV2}.id`, `${TableName.ResourceMetadata}.secretId`)
+      .leftJoin(
+        TableName.SecretRotationV2SecretMapping,
+        `${TableName.SecretV2}.id`,
+        `${TableName.SecretRotationV2SecretMapping}.secretId`
+      )
+      .select(selectAllTableCols(TableName.SecretApprovalRequestSecretV2))
+      .select({
+        secVerTagId: "secVerTag.id",
+        secVerTagColor: "secVerTag.color",
+        secVerTagSlug: "secVerTag.slug"
+      })
+      .select(
+        db.ref("id").withSchema(TableName.SecretTag).as("tagId"),
+        db.ref("id").withSchema(TableName.SecretApprovalRequestSecretTagV2).as("tagJnId"),
+        db.ref("color").withSchema(TableName.SecretTag).as("tagColor"),
+        db.ref("slug").withSchema(TableName.SecretTag).as("tagSlug")
+      )
+      .select(
+        db.ref("version").withSchema(TableName.SecretV2).as("orgSecVersion"),
+        db.ref("key").withSchema(TableName.SecretV2).as("orgSecKey"),
+        db.ref("encryptedValue").withSchema(TableName.SecretV2).as("orgSecValue"),
+        db.ref("encryptedComment").withSchema(TableName.SecretV2).as("orgSecComment")
+      )
+      .select(
+        db.ref("version").withSchema(TableName.SecretVersionV2).as("secVerVersion"),
+        db.ref("key").withSchema(TableName.SecretVersionV2).as("secVerKey"),
+        db.ref("encryptedValue").withSchema(TableName.SecretVersionV2).as("secVerValue"),
+        db.ref("encryptedComment").withSchema(TableName.SecretVersionV2).as("secVerComment"),
+        db.ref("skipMultilineEncoding").withSchema(TableName.SecretVersionV2).as("secVerSkipMultilineEncoding")
+      )
+      .select(
+        db.ref("id").withSchema(TableName.ResourceMetadata).as("metadataId"),
+        db.ref("key").withSchema(TableName.ResourceMetadata).as("metadataKey"),
+        db.ref("value").withSchema(TableName.ResourceMetadata).as("metadataValue"),
+        db.ref("encryptedValue").withSchema(TableName.ResourceMetadata).as("metadataEncryptedValue")
+      )
+      .select(db.ref("rotationId").withSchema(TableName.SecretRotationV2SecretMapping));
+
+  const formatBridgeSecretV2 = (doc: Awaited<ReturnType<typeof queryBridgeSecretV2>>) => {
+    const formatedDoc = sqlNestRelationships({
+      data: doc,
+      key: "id",
+      parentMapper: (data) => SecretApprovalRequestsSecretsV2Schema.omit({ secretVersion: true }).parse(data),
+      childrenMapper: [
+        {
+          key: "tagJnId",
+          label: "tags" as const,
+          mapper: ({ tagId: id, tagSlug: slug, tagColor: color }) => ({
+            id,
+            name: slug,
+            slug,
+            color
+          })
+        },
+        {
+          key: "secretId",
+          label: "secret" as const,
+          mapper: ({ orgSecVersion, orgSecKey, orgSecValue, orgSecComment, secretId, rotationId }) =>
+            secretId
+              ? {
+                  id: secretId,
+                  version: orgSecVersion,
+                  key: orgSecKey,
+                  encryptedValue: orgSecValue,
+                  encryptedComment: orgSecComment,
+                  isRotatedSecret: Boolean(rotationId),
+                  rotationId
+                }
+              : undefined
+        },
+        {
+          key: "secretVersion",
+          label: "secretVersion" as const,
+          mapper: ({
+            secretVersion,
+            secVerVersion,
+            secVerKey,
+            secVerValue,
+            secVerComment,
+            secVerSkipMultilineEncoding
+          }) =>
+            secretVersion
+              ? {
+                  version: secVerVersion,
+                  id: secretVersion,
+                  key: secVerKey,
+                  encryptedValue: secVerValue,
+                  encryptedComment: secVerComment,
+                  skipMultilineEncoding: secVerSkipMultilineEncoding
+                }
+              : undefined,
+          childrenMapper: [
+            {
+              key: "secVerTagId",
+              label: "tags" as const,
+              mapper: ({ secVerTagId: id, secVerTagSlug: slug, secVerTagColor: color }) => ({
+                // eslint-disable-next-line
+                id,
+                // eslint-disable-next-line
+                name: slug,
+                // eslint-disable-next-line
+                slug,
+                // eslint-disable-next-line
+                color
+              })
+            }
+          ]
+        },
+        {
+          key: "metadataId",
+          label: "oldSecretMetadata" as const,
+          mapper: ({ metadataKey, metadataEncryptedValue, metadataValue, metadataId }) => ({
+            id: metadataId,
+            key: metadataKey,
+            value: metadataValue,
+            encryptedValue: metadataEncryptedValue
+          })
+        }
+      ]
+    });
+
+    return formatedDoc?.map(({ secret, secretVersion, ...el }) => ({
+      ...el,
+      secret: secret?.[0],
+      secretVersion: secretVersion?.[0]
+    }));
+  };
+
+  const findBySecretChangeIdBridgeSecretV2 = async (secretChangeId: string, tx?: Knex) => {
+    try {
+      const doc = await queryBridgeSecretV2(tx).where(
+        `${TableName.SecretApprovalRequestSecretV2}.secretChangeId`,
+        secretChangeId
+      );
+      return formatBridgeSecretV2(doc);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindBySecretChangeIdBridgeSecretV2" });
+    }
+  };
+
+  const findCommitsBySecretChangeIds = async (secretChangeIds: string[], tx?: Knex) => {
+    if (!secretChangeIds.length) return [];
+    const rows = await commitOrm.find({ $in: { secretChangeId: secretChangeIds } }, { tx });
+    return rows.map(({ id, op, secretId, secretChangeId }) => ({
+      id,
+      op,
+      secretId: secretId ?? null,
+      secretChangeId: secretChangeId as string
+    }));
+  };
 
   const findByProjectId = async (
     {
@@ -234,5 +447,14 @@ export const secretChangeGlobalRequestBridgeDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByProjectId, countByProjectId };
+  return {
+    ...orm,
+    findByProjectId,
+    countByProjectId,
+    insertV2Bridge: commitOrm.insertMany,
+    updateV2ById: commitOrm.updateById,
+    insertApprovalSecretV2Tags: commitTagOrm.insertMany,
+    findBySecretChangeIdBridgeSecretV2,
+    findCommitsBySecretChangeIds
+  };
 };

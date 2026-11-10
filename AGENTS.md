@@ -146,9 +146,11 @@ A policy type plugs in through **one** extension point, a `TApprovalResource` (s
 constructed with its own dependencies and registered in the `approvalResources` map in
 `server/routes/index.ts`; that also gives it the generic `/v1/approval-policies/<type>/...` endpoints,
 which every type now uses for policy CRUD, requests, approve, reject and grant revocation. **Do not stand up a per-product approval service, request table, or review
-endpoint**: `secret-approval-*` predates this module and is what we are converging away from
-(`access-approval-*` has finished moving: it runs on this module and no longer reads the legacy
-`access_approval_*` tables). A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
+endpoint**: secret access (`ee/services/access-approval-*`) and secret change
+(`ee/services/secret-change-policy/`, `ee/services/secret-change-request/`) approvals both run on this module and no
+longer read the legacy `access_approval_*` / `secret_approval_*` tables. The one exception is
+`secret_approval_requests_secrets_v2` (and its tags table), which still stores the commits of a secret change request.
+Secret change policies exist only on V3 projects, so older projects have no secret approval path. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.

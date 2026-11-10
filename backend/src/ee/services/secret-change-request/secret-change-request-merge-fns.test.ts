@@ -12,7 +12,7 @@ import {
   secretApprovalRequestMergeFnsFactory,
   TMergedSecretsV2Bridge,
   TSecretApprovalBridgeCommit
-} from "./secret-approval-request-merge-fns";
+} from "./secret-change-request-merge-fns";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ SITE_URL: "https://app.test" }) }));
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
