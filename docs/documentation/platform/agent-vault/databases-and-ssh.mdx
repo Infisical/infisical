@@ -109,7 +109,7 @@ If the proxy can't use the key, such as a key with a passphrase or a certificate
       Example:  ssh -p 52818 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null agent@127.0.0.1
     ```
 
-    Agents don't know about this command on their own. In the agent's instructions, or in a [skill](/documentation/platform/agent-vault/skills), tell the agent to run the command, read the addresses it prints, and leave it running while it uses the services.
+    The agent's [list of services](/documentation/platform/agent-vault/service-discovery) tells it to run this command for each database and SSH service. To make sure the agent uses them, also tell it in its instructions, or in a [skill](/documentation/platform/agent-vault/skills), to run the command, read the addresses it prints, and leave it running while it uses the services.
   </Step>
   <Step>
     The agent connects its client to the printed address, as in the example command. Any username works, and the agent must not pass a password: the proxy logs in with the service's account.

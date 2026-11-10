@@ -3323,6 +3323,7 @@ interface ImportCert {
     profileName?: string;
     caId?: string;
     caName?: string;
+    hasCsr?: boolean;
   };
 }
 
@@ -6673,6 +6674,7 @@ interface AgentVaultServiceCreateEvent {
     accessBundleName: string;
     serviceId: string;
     name: string;
+    description?: string | null;
     serviceType: string;
     // MCP services only.
     serverUrl?: string;
@@ -6712,6 +6714,8 @@ interface AgentVaultServiceUpdateEvent {
     accessBundleName: string;
     serviceId: string;
     name?: string;
+    // Null when the update removed it.
+    description?: string | null;
     // The service's type, which never changes, so present on every update.
     serviceType: string;
     serverUrl?: string;
@@ -7020,6 +7024,7 @@ interface AgentVaultSessionMintEvent {
       serviceId: string;
       // The name it was sent with, or its first host when it was sent without one.
       name: string;
+      description?: string | null;
       serviceType: string;
       serverUrl?: string;
       // Absent for a database or SSH service, which reports host, port and database instead.

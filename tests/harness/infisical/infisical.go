@@ -119,6 +119,16 @@ func (m *module) Start(ctx context.Context, d infra.Deps) (infra.Handle, error) 
 		// supports ML-DSA, so the suites run the same backend code against that build instead
 		// of the release's.
 		"PQC_OPENSSL_BIN_PATH": "/usr/bin/openssl",
+		// bcrypt cost for passwords, email and invite codes, and client secrets. Every
+		// tenant and user the harness creates pays several hashes and compares, and at
+		// the default cost they saturate the server's CPU and the libuv pool its other
+		// crypto shares. 4 is bcrypt's minimum; nothing a test asserts depends on it.
+		"SALT_ROUNDS": "4",
+		// At info the instance logs several lines per request, mostly plan lookups. Under
+		// a full run that was hundreds of lines a second, serialized by the server and
+		// again by Docker's log driver, for nothing a failing test reads. Warnings and
+		// errors still reach the container log.
+		"PINO_LOG_LEVEL": "warn",
 	}
 	if m.runModes != "" {
 		env["INFISICAL_RUN_MODES"] = m.runModes

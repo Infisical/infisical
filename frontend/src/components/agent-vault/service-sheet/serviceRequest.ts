@@ -298,20 +298,23 @@ export const buildCreateServiceRequest = (
   accessBundleId: string,
   data: TServiceForm
 ): TCreateAgentVaultServiceDTO => {
+  const description = data.description.trim() || undefined;
   if (isNativeServiceType(data.serviceType)) {
-    return buildNativeCreateRequest(accessBundleId, data, data.serviceType);
+    return { ...buildNativeCreateRequest(accessBundleId, data, data.serviceType), description };
   }
   return data.serviceType === AgentVaultServiceType.Mcp
     ? {
         accessBundleId,
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
+        description,
         credential: buildMcpCredential(data)
       }
     : {
         accessBundleId,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
+        description,
         credential: buildHttpCredential(data)
       };
 };
@@ -321,12 +324,15 @@ export const buildUpdateServiceRequest = (
   service: TAgentVaultService,
   data: TServiceForm
 ): TUpdateAgentVaultServiceDTO => {
+  // Null rather than left out, so clearing the field removes the saved description.
+  const description = data.description.trim() || null;
   if (isNativeServiceType(data.serviceType)) {
     return {
       accessBundleId,
       serviceId: service.id,
       type: data.serviceType,
       ...buildNativeConnection(data, data.serviceType),
+      description,
       credential: buildNativeCredentialPatch(data)
     };
   }
@@ -336,6 +342,7 @@ export const buildUpdateServiceRequest = (
         serviceId: service.id,
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
+        description,
         ...withCredential(buildMcpCredentialPatch(data, service))
       }
     : {
@@ -343,6 +350,7 @@ export const buildUpdateServiceRequest = (
         serviceId: service.id,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
+        description,
         credential: buildHttpCredentialPatch(data)
       };
 };

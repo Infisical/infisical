@@ -11,16 +11,10 @@ import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
 import { registerV3EERoutes } from "@app/ee/routes/v3";
-import {
-  accessApprovalPolicyApproverDALFactory,
-  accessApprovalPolicyBypasserDALFactory
-} from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
-import { accessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
-import { accessApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-environment-dal";
-import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
-import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
-import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
-import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
+import { secretAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
+import { secretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
+import { secretAccessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
+import { secretAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { agentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { orgAgentProxyConfigDALFactory } from "@app/ee/services/agent-proxy-ca/org-agent-proxy-config-dal";
 import { agentVaultAccessBundleDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-dal";
@@ -510,9 +504,11 @@ import { orgMembershipDALFactory } from "@app/services/org-membership/org-member
 import { orgProductStatsDALFactory } from "@app/services/org-product-stats/org-product-stats-dal";
 import { orgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
+import { licenseOrgDeletedConsumerFactory } from "@app/services/org/license-org-deleted-consumer";
 import { orgAccessReconcileConsumerFactory } from "@app/services/org/org-access-reconcile-consumer";
 import { orgAccessSweepQueueFactory } from "@app/services/org/org-access-sweep-queue";
 import { orgDALFactory } from "@app/services/org/org-dal";
+import { orgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { pkiAlertChannelDALFactory } from "@app/services/pki-alert-v2/pki-alert-channel-dal";
 import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-history-dal";
@@ -564,10 +560,6 @@ import { resourceMetadataDALFactory } from "@app/services/resource-metadata/reso
 import { resourceMetadataServiceFactory } from "@app/services/resource-metadata/resource-metadata-service";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { roleServiceFactory } from "@app/services/role/role-service";
-import { secretAccessApprovalGlobalPolicyBridgeDALFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-dal";
-import { secretAccessApprovalGlobalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-service";
-import { secretAccessApprovalGlobalRequestBridgeDALFactory } from "@app/services/secret-access-approval-global-request-bridge/secret-access-approval-global-request-bridge-dal";
-import { secretAccessApprovalGlobalRequestBridgeServiceFactory } from "@app/services/secret-access-approval-global-request-bridge/secret-access-approval-global-request-bridge-service";
 import { secretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { secretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -815,12 +807,8 @@ export const registerRoutes = async (
   const ldapGroupMapDAL = ldapGroupMapDALFactory(db);
 
   const oidcConfigDAL = oidcConfigDALFactory(db);
-  const accessApprovalPolicyDAL = accessApprovalPolicyDALFactory(db);
-  const accessApprovalRequestDAL = accessApprovalRequestDALFactory(db);
-  const accessApprovalPolicyApproverDAL = accessApprovalPolicyApproverDALFactory(db);
-  const accessApprovalPolicyBypasserDAL = accessApprovalPolicyBypasserDALFactory(db);
-  const accessApprovalRequestReviewerDAL = accessApprovalRequestReviewerDALFactory(db);
-  const accessApprovalPolicyEnvironmentDAL = accessApprovalPolicyEnvironmentDALFactory(db);
+  const secretAccessApprovalPolicyDAL = secretAccessApprovalPolicyDALFactory(db);
+  const secretAccessApprovalRequestDAL = secretAccessApprovalRequestDALFactory(db);
 
   const sapApproverDAL = secretApprovalPolicyApproverDALFactory(db);
   const sapBypasserDAL = secretApprovalPolicyBypasserDALFactory(db);
@@ -1048,8 +1036,6 @@ export const registerRoutes = async (
   const membershipGroupService = membershipGroupServiceFactory({
     membershipGroupDAL,
     membershipRoleDAL,
-    accessApprovalPolicyDAL,
-    accessApprovalPolicyApproverDAL,
     secretApprovalPolicyDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     approvalPolicyDAL,
@@ -1786,14 +1772,24 @@ export const registerRoutes = async (
 
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
 
+  const orgDeletionService = orgDeletionServiceFactory({
+    orgDAL,
+    projectDAL,
+    secretDAL,
+    folderDAL,
+    projectBotService,
+    reminderService,
+    honeyTokenCleanupService,
+    eventEmitter: eventOutboxService
+  });
+
   const orgService = orgServiceFactory({
     auditLogSettingsService,
     userAliasDAL,
     identityMetadataDAL,
-    secretDAL,
     secretV2BridgeDAL,
-    folderDAL,
     licenseService,
+    orgDeletionService,
     samlConfigDAL,
     permissionService,
     orgDAL,
@@ -1808,8 +1804,6 @@ export const registerRoutes = async (
     oidcConfigDAL,
     ldapConfigDAL,
     loginService,
-    projectBotService,
-    reminderService,
     membershipRoleDAL,
     membershipUserDAL,
     membershipDAL,
@@ -1821,8 +1815,7 @@ export const registerRoutes = async (
     usageMeteringService,
     pamSessionDAL,
     gatewayV2Service: deferredGatewayV2Service,
-    eventEmitter: eventOutboxService,
-    honeyTokenCleanupService
+    eventEmitter: eventOutboxService
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1830,6 +1823,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     orgDAL,
+    orgDeletionService,
     projectDAL,
     permissionService,
     certificatePolicyDAL,
@@ -1943,8 +1937,6 @@ export const registerRoutes = async (
     notificationService,
     membershipUserDAL,
     additionalPrivilegeDAL,
-    accessApprovalPolicyApproverDAL,
-    accessApprovalPolicyDAL,
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     secretApprovalPolicyDAL,
     approvalPolicyDAL,
@@ -2046,8 +2038,6 @@ export const registerRoutes = async (
   const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
   const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
   const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
-  const secretAccessApprovalGlobalPolicyBridgeDAL = secretAccessApprovalGlobalPolicyBridgeDALFactory(db);
-  const secretAccessApprovalGlobalRequestBridgeDAL = secretAccessApprovalGlobalRequestBridgeDALFactory(db);
   const secretChangeGlobalRequestBridgeDAL = secretChangeGlobalRequestBridgeDALFactory(db);
   const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
@@ -2645,7 +2635,6 @@ export const registerRoutes = async (
     keyStore,
     licenseService,
     folderDAL,
-    accessApprovalPolicyEnvironmentDAL,
     secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL,
     approvalPolicySecretEnvironmentDAL
   });
@@ -3307,6 +3296,7 @@ export const registerRoutes = async (
       usageMeteringService
     })
   );
+  eventOutboxRegistry.register(licenseOrgDeletedConsumerFactory({ envConfig, licenseClient }));
   const orgAccessSweepQueue = orgAccessSweepQueueFactory({
     cronJob,
     orgDAL,
@@ -3490,7 +3480,7 @@ export const registerRoutes = async (
     eventEmitter: eventOutboxService
   });
 
-  const secretAccessApprovalGlobalRequestBridgeService = secretAccessApprovalGlobalRequestBridgeServiceFactory({
+  const secretAccessApprovalRequestService = secretAccessApprovalRequestServiceFactory({
     projectDAL,
     projectEnvDAL,
     permissionService,
@@ -3502,8 +3492,8 @@ export const registerRoutes = async (
     approvalRequestApprovalsDAL,
     approvalRequestGrantsDAL,
     additionalPrivilegeDAL,
-    secretAccessApprovalGlobalPolicyBridgeDAL,
-    secretAccessApprovalGlobalRequestBridgeDAL,
+    secretAccessApprovalPolicyDAL,
+    secretAccessApprovalRequestDAL,
     approvalPolicyDAL,
     delegatedApprovalService,
     smtpService,
@@ -3518,7 +3508,7 @@ export const registerRoutes = async (
 
   const delegatedApprovalDecisionMaps = delegatedApprovalDecisionMapsFactory({
     secretAccessApprovalGlobalResource,
-    secretAccessApprovalGlobalRequestBridgeService
+    secretAccessApprovalRequestService
   });
 
   const delegatedApprovalDecisionService = delegatedApprovalDecisionServiceFactory({
@@ -3534,65 +3524,24 @@ export const registerRoutes = async (
   });
   eventOutboxRegistry.register(delegatedApprovalDecisionConsumerFactory({ delegatedApprovalDecisionService }));
 
-  const accessApprovalRequestService = accessApprovalRequestServiceFactory({
-    projectDAL,
-    permissionService,
-    accessApprovalRequestReviewerDAL,
-    accessApprovalPolicyDAL,
-    secretAccessApprovalGlobalResource,
-    secretAccessApprovalGlobalRequestBridge: secretAccessApprovalGlobalRequestBridgeService,
-    accessApprovalRequestDAL,
-    projectEnvDAL,
-    userDAL,
-    smtpService,
-    accessApprovalPolicyApproverDAL,
-    projectSlackConfigDAL,
-    kmsService,
-    groupDAL,
-    microsoftTeamsService,
-    projectMicrosoftTeamsConfigDAL,
-    notificationService,
-    additionalPrivilegeDAL,
-    queueService
-  });
-
-  const secretAccessApprovalGlobalPolicyBridgeService = secretAccessApprovalGlobalPolicyBridgeServiceFactory({
+  const secretAccessApprovalPolicyService = secretAccessApprovalPolicyServiceFactory({
     projectDAL,
     permissionService,
     projectEnvDAL,
     userDAL,
     groupDAL,
-    accessApprovalPolicyDAL,
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
     approvalPolicyStepApproversDAL,
     approvalPolicyBypassersDAL,
     approvalPolicySecretEnvironmentDAL,
-    secretAccessApprovalGlobalPolicyBridgeDAL,
+    secretAccessApprovalPolicyDAL,
     approvalRequestDAL,
     approvalRequestStepsDAL,
     approvalRequestStepEligibleApproversDAL,
     approvalRequestGrantsDAL,
     additionalPrivilegeDAL,
     delegatedApprovalService
-  });
-
-  const accessApprovalPolicyService = accessApprovalPolicyServiceFactory({
-    accessApprovalPolicyDAL,
-    accessApprovalPolicyApproverDAL,
-    accessApprovalPolicyBypasserDAL,
-    accessApprovalPolicyEnvironmentDAL,
-    groupDAL,
-    permissionService,
-    projectEnvDAL,
-    projectDAL,
-    userDAL,
-    accessApprovalRequestDAL,
-    accessApprovalRequestReviewerDAL,
-    additionalPrivilegeDAL,
-    approvalPolicyDAL,
-    approvalPolicySecretEnvironmentDAL,
-    secretAccessApprovalGlobalPolicyBridge: secretAccessApprovalGlobalPolicyBridgeService
   });
 
   const objectStorageService = objectStorageServiceFactory({ appConnectionDAL, kmsService, keyStore });
@@ -5008,6 +4957,7 @@ export const registerRoutes = async (
     groupProject: groupProjectService,
     permission: permissionService,
     org: orgService,
+    orgDeletion: orgDeletionService,
     subOrganization: subOrgService,
     oidc: oidcService,
     authToken: tokenService,
@@ -5052,10 +5002,8 @@ export const registerRoutes = async (
     identityJwtAuth: identityJwtAuthService,
     identitySpiffeAuth: identitySpiffeAuthService,
     identityLdapAuth: identityLdapAuthService,
-    accessApprovalPolicy: accessApprovalPolicyService,
-    secretAccessApprovalGlobalPolicyBridge: secretAccessApprovalGlobalPolicyBridgeService,
-    secretAccessApprovalGlobalRequestBridge: secretAccessApprovalGlobalRequestBridgeService,
-    accessApprovalRequest: accessApprovalRequestService,
+    secretAccessApprovalPolicy: secretAccessApprovalPolicyService,
+    secretAccessApprovalRequest: secretAccessApprovalRequestService,
     secretApprovalPolicy: secretApprovalPolicyService,
     secretChangeGlobalPolicyBridge: secretChangeGlobalPolicyBridgeService,
     secretApprovalRequest: secretApprovalRequestService,

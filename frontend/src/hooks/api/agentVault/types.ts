@@ -195,6 +195,7 @@ export type TAgentVaultService = TAgentVaultServiceConfig & {
   id: string;
   accessBundleId: string;
   name: string;
+  description: string | null;
   // null means unrestricted.
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
@@ -340,6 +341,7 @@ export type TAgentVaultSessionInlineService = {
   id: string;
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
+  description: string | null;
   type: AgentVaultServiceType;
   serverUrl: string | null;
   transport: AgentVaultMcpTransport | null;
@@ -490,6 +492,7 @@ export type TCreateAgentVaultServiceDTO =
       accessBundleId: string;
       type: AgentVaultServiceType.Http;
       name: string;
+      description?: string;
       hostPattern: string;
       allowedMethods?: AgentVaultHttpMethod[] | null;
       allowedPathPrefixes?: string[] | null;
@@ -501,6 +504,7 @@ export type TCreateAgentVaultServiceDTO =
       accessBundleId: string;
       type: AgentVaultServiceType.Mcp;
       name: string;
+      description?: string;
       serverUrl: string;
       transport: AgentVaultMcpTransport;
       allowedTools?: string[] | null;
@@ -513,6 +517,7 @@ export type TCreateAgentVaultServiceDTO =
       accessBundleId: string;
       type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql;
       name: string;
+      description?: string;
       host: string;
       port?: number;
       database: string;
@@ -523,6 +528,7 @@ export type TCreateAgentVaultServiceDTO =
       accessBundleId: string;
       type: AgentVaultServiceType.Ssh;
       name: string;
+      description?: string;
       host: string;
       port?: number;
       credential: TAgentVaultBasicCredentialInput | TAgentVaultSshKeyCredentialInput;
@@ -534,6 +540,7 @@ export type TUpdateAgentVaultServiceDTO = {
   // Must match the service's type, which never changes.
   type: AgentVaultServiceType;
   name?: string;
+  description?: string | null;
   hostPattern?: string;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;

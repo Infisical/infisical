@@ -313,11 +313,11 @@ describe("Secret approval policy bridge routing", () => {
 
     const softDeleteRes = await deleteEnv(false);
     expect(softDeleteRes.statusCode).toBe(400);
-    expect(softDeleteRes.json().message).toBe("Environment is in use by a secret approval policy");
+    expect(softDeleteRes.json().message).toBe("Environment is in use by an approval policy");
 
     const hardDeleteRes = await deleteEnv(true);
     expect(hardDeleteRes.statusCode).toBe(400);
-    expect(hardDeleteRes.json().message).toBe("Environment is in use by a secret approval policy");
+    expect(hardDeleteRes.json().message).toBe("Environment is in use by an approval policy");
 
     expect(await getDb()(TableName.Environment).where({ id: guardedEnvId }).first()).toMatchObject({
       deleteAfter: null

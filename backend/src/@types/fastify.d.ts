@@ -3,8 +3,8 @@ import "fastify";
 import { Cluster, Redis } from "ioredis";
 
 import { TUsers } from "@app/db/schemas";
-import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
+import { TSecretAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-service";
+import { TSecretAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { TAgentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import { TAgentVaultDelegationServiceFactory } from "@app/ee/services/agent-vault-delegation/agent-vault-delegation-service";
@@ -162,6 +162,7 @@ import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-r
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TOrgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
+import { TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
@@ -181,8 +182,6 @@ import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TReminderServiceFactory } from "@app/services/reminder/reminder-types";
 import { TResourceMetadataServiceFactory } from "@app/services/resource-metadata/resource-metadata-service";
 import { TRoleServiceFactory } from "@app/services/role/role-service";
-import { TSecretAccessApprovalGlobalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-service";
-import { TSecretAccessApprovalGlobalRequestBridgeServiceFactory } from "@app/services/secret-access-approval-global-request-bridge/secret-access-approval-global-request-bridge-service";
 import { TSecretBlindIndexServiceFactory } from "@app/services/secret-blind-index/secret-blind-index-service";
 import { TSecretFolderServiceFactory } from "@app/services/secret-folder/secret-folder-service";
 import { TSecretImportServiceFactory } from "@app/services/secret-import/secret-import-service";
@@ -330,6 +329,7 @@ declare module "fastify" {
     oidcIssuer: TOidcIssuerServiceFactory;
     permission: TPermissionServiceFactory;
     org: TOrgServiceFactory;
+    orgDeletion: TOrgDeletionServiceFactory;
     oidc: TOidcConfigServiceFactory;
     superAdmin: TSuperAdminServiceFactory;
     encryptionKeyRotation: TEncryptionKeyRotationServiceFactory;
@@ -372,10 +372,8 @@ declare module "fastify" {
     identityJwtAuth: TIdentityJwtAuthServiceFactory;
     identitySpiffeAuth: TIdentitySpiffeAuthServiceFactory;
     identityLdapAuth: TIdentityLdapAuthServiceFactory;
-    accessApprovalPolicy: TAccessApprovalPolicyServiceFactory;
-    secretAccessApprovalGlobalPolicyBridge: TSecretAccessApprovalGlobalPolicyBridgeServiceFactory;
-    secretAccessApprovalGlobalRequestBridge: TSecretAccessApprovalGlobalRequestBridgeServiceFactory;
-    accessApprovalRequest: TAccessApprovalRequestServiceFactory;
+    secretAccessApprovalPolicy: TSecretAccessApprovalPolicyServiceFactory;
+    secretAccessApprovalRequest: TSecretAccessApprovalRequestServiceFactory;
     secretApprovalPolicy: TSecretApprovalPolicyServiceFactory;
     secretChangeGlobalPolicyBridge: TSecretChangeGlobalPolicyBridgeServiceFactory;
     secretApprovalRequest: TSecretApprovalRequestServiceFactory;

@@ -4,6 +4,7 @@ import { GlobeIcon, LucideIcon, ServerIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { cn } from "@app/components/v3/utils";
+import { isInfisicalDomain } from "@app/helpers/agentVaultSessionLogs";
 import { findAnyTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 import { AgentVaultServiceType, isNativeServiceType } from "@app/hooks/api/agentVault";
 
@@ -26,8 +27,15 @@ const labelOf = (pattern: string) => {
   return host || trimmed;
 };
 
+const INFISICAL_ICON: TServiceIcon = {
+  key: "host:Infisical",
+  label: "Infisical",
+  image: "Infisical.png"
+};
+
 const iconFromHostPattern = (hostPattern: string): TServiceIcon => {
   const template = findAnyTemplateForHostPattern(hostPattern);
+  if (!template && isInfisicalDomain(labelOf(hostPattern))) return INFISICAL_ICON;
   const label = template?.name ?? labelOf(hostPattern);
   return { key: `host:${label}`, label, image: template?.image };
 };
@@ -105,16 +113,22 @@ const ServiceChip = forwardRef<HTMLDivElement, TServiceChipProps>(
 
 ServiceChip.displayName = "ServiceChip";
 
+// isInfisical shows Infisical's icon for a host the caller knows is Infisical, such as a self-hosted instance.
 export const ServiceIcon = ({
   hostPattern,
   serviceType,
+  isInfisical = false,
   className
 }: {
   hostPattern?: string | null;
   serviceType?: AgentVaultServiceType | null;
+  isInfisical?: boolean;
   className?: string;
 }) => {
-  const icon = useMemo(() => iconOf({ hostPattern, serviceType }), [hostPattern, serviceType]);
+  const icon = useMemo(
+    () => (isInfisical ? INFISICAL_ICON : iconOf({ hostPattern, serviceType })),
+    [hostPattern, serviceType, isInfisical]
+  );
   return <ServiceChip icon={icon} className={className} />;
 };
 

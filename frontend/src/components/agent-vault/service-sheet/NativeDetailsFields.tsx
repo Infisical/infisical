@@ -14,12 +14,19 @@ import {
 } from "@app/components/v3";
 import { AgentVaultServiceType } from "@app/hooks/api/agentVault";
 
+import { DescriptionField } from "./DescriptionField";
 import { hasDatabase, MAX_NATIVE_SERVICE_NAME_LENGTH, TServiceForm } from "./serviceSchema";
 
 const NAME_PLACEHOLDERS: Partial<Record<AgentVaultServiceType, string>> = {
   [AgentVaultServiceType.Postgres]: "orders-db",
   [AgentVaultServiceType.Mysql]: "orders-db",
   [AgentVaultServiceType.Ssh]: "build-server"
+};
+
+const DESCRIPTION_PLACEHOLDERS: Record<string, string> = {
+  [AgentVaultServiceType.Postgres]: "Read orders and refunds for support questions",
+  [AgentVaultServiceType.Mysql]: "Read orders and refunds for support questions",
+  [AgentVaultServiceType.Ssh]: "Run builds and read their logs"
 };
 
 export const NativeDetailsFields = () => {
@@ -52,6 +59,8 @@ export const NativeDetailsFields = () => {
           </Field>
         )}
       />
+
+      <DescriptionField placeholder={DESCRIPTION_PLACEHOLDERS[serviceType]} />
 
       <div className="flex items-start gap-3">
         <Controller

@@ -5,6 +5,7 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/helpers/agentVaultControlChars";
+import { agentVaultServiceDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
 import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import { variableReferenceError } from "@app/helpers/agentVaultVariables";
@@ -399,7 +400,15 @@ export enum ServiceStep {
 
 export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
-  [ServiceStep.Details]: ["name", "hosts", "hostDraft", "methods", "pathPrefixes", "pathDraft"],
+  [ServiceStep.Details]: [
+    "name",
+    "description",
+    "hosts",
+    "hostDraft",
+    "methods",
+    "pathPrefixes",
+    "pathDraft"
+  ],
   [ServiceStep.Credential]: [
     "credentialType",
     "headerName",
@@ -416,7 +425,16 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
 
 export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
-  [ServiceStep.Details]: ["name", "host", "port", "database", "tlsEnabled", "tlsVerify", "tlsCa"],
+  [ServiceStep.Details]: [
+    "name",
+    "description",
+    "host",
+    "port",
+    "database",
+    "tlsEnabled",
+    "tlsVerify",
+    "tlsCa"
+  ],
   [ServiceStep.Credential]: [
     "credentialType",
     "username",
@@ -431,7 +449,7 @@ export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
 
 export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Template]: [],
-  [ServiceStep.Details]: ["name", "serverUrl", "transport"],
+  [ServiceStep.Details]: ["name", "description", "serverUrl", "transport"],
   [ServiceStep.Credential]: [
     "credentialType",
     "headerName",
@@ -517,6 +535,7 @@ export const buildServiceSchema = (
     .object({
       serviceType: z.nativeEnum(AgentVaultServiceType),
       name: slugSchema({ max: 64, field: "Name" }),
+      description: agentVaultServiceDescriptionSchema,
       serverUrl: z.string(),
       transport: z.nativeEnum(AgentVaultMcpTransport),
       hosts: z.array(z.string()),

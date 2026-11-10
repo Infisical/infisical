@@ -195,13 +195,17 @@ Use **Service hosts only** if the proxy can reach systems that agents shouldn't 
 
 #### Blocked requests
 
-If the policy blocks a request, the proxy still accepts the connection and completes the TLS handshake, so the agent gets a 403 response instead of a connection error:
+If the policy blocks a request, the proxy still accepts the connection and completes the TLS handshake, so the agent gets a 403 response instead of a connection error. The response body is JSON with an error code, the reason, and a hint for the agent:
 
 ```text
 HTTP/1.1 403 Forbidden
+Content-Type: application/json
+X-Agent-Vault-Decision: blocked
 
-no service covers host "internal.example.com": host blocked by policy
+{"error":"host_not_allowed","message":"no service covers host \"internal.example.com\": host blocked by policy","hint":"This is the Agent Vault proxy, not the API: it only lets through hosts a service in this session covers. https://app.infisical.com/api/v1/agent-vault/session/services lists them."}
 ```
+
+The `X-Agent-Vault-Decision` header is on every response that goes through the proxy, so an agent can tell the proxy's responses apart from the API's. For its values, see [Responses from the proxy](/documentation/platform/agent-vault/service-discovery#responses-from-the-proxy).
 
 The proxy also returns a 403 for:
 

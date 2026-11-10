@@ -38,6 +38,7 @@ const PROJECT_LEVEL_PATHS = new Set([
   "/api/v1/agent-vault/access-bundles",
   "/api/v1/agent-vault/variables",
   "/api/v1/agent-vault/skills",
+  "/api/v1/agent-vault/skills/builtin",
   "/api/v1/agent-vault/proxies",
   "/api/v1/agent-vault/sessions",
   "/api/v1/agent-vault/members",

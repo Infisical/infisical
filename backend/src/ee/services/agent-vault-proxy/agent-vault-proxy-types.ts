@@ -72,6 +72,13 @@ export type TGetSessionProxyCaFingerprintsDTO = {
   sessionToken: string;
 };
 
+export type TGetSessionServicesDTO = {
+  sessionToken: string;
+  // Set by a proxy that forwarded the request, naming itself and its version.
+  proxyId?: string;
+  proxyVersion?: string;
+};
+
 export type TRevokeSessionByTokenDTO = {
   sessionToken: string;
 };
