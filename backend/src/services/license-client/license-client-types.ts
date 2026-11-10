@@ -335,7 +335,7 @@ export const checkoutResultSchema = z
   })
   .passthrough();
 
-// Idempotent, so a repeat just reports zero licenses closed.
+// Safe to retry, a repeat just closes 0 licenses.
 export const orgDeletedResultSchema = z
   .object({
     licensesClosed: z.number().int(),
@@ -644,6 +644,6 @@ export type TLicenseClientBackend = {
   confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
   // The org's trial history, used to tell which products have already used their one-time trial.
   fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
-  // Cancels the org's subscription right away and closes its licenses.
+  // Cancels the sub right away and closes the org's licenses.
   deleteOrganization: (orgId: string) => Promise<TOrgDeletedResult>;
 };

@@ -70,8 +70,7 @@ func (o *Org) routes() *http.ServeMux {
 		writeJSON(w, payload)
 	})
 
-	// The instance retries this through the outbox until it gets a parseable body, so
-	// without it every deleted tenant keeps retrying all run.
+	// Without this, every deleted tenant keeps retrying through the outbox all run.
 	mux.HandleFunc("DELETE /v1/organizations/{orgId}", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]any{"licensesClosed": 1, "canceledSubscriptionIds": []string{}, "commitmentForfeited": false})
 	})

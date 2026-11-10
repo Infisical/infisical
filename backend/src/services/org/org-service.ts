@@ -901,7 +901,7 @@ export const orgServiceFactory = ({
 
     const deletedOrg = await orgDeletionService.deleteOrganization(orgId);
 
-    // Generate new tokens without the organization ID present
+    // Fresh tokens so the session stops pointing at the deleted org
     const user = await userDAL.findById(userId);
     const { access: accessToken, refresh: refreshToken } = await loginService.generateUserTokens({
       userId: user.id,

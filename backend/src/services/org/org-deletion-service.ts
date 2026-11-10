@@ -25,8 +25,8 @@ type TOrgDeletionServiceFactoryDep = {
 
 export type TOrgDeletionServiceFactory = ReturnType<typeof orgDeletionServiceFactory>;
 
-// Every org delete goes through here. The outbox event is written in the delete's tx, so the license
-// server still hears about it if we crash right after commit.
+// Event goes out in the delete's tx, so the license server still hears about it if we crash right
+// after commit.
 export const orgDeletionServiceFactory = ({
   orgDAL,
   projectDAL,
@@ -38,8 +38,8 @@ export const orgDeletionServiceFactory = ({
   eventEmitter
 }: TOrgDeletionServiceFactoryDep) => {
   const deleteOrganization = async (orgId: string) => {
-    // Kept outside the tx: the cleanup runs its own queries, so inside it each delete would hold one
-    // pool connection while waiting on another.
+    // Outside the tx on purpose: the cleanup grabs its own connections, so inside it we'd hold one
+    // pool conn while waiting on another.
     const projects = await projectDAL.find({ orgId });
     for await (const project of projects) {
       await fnDeleteProjectSecretReminders(project.id, {

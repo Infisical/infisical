@@ -129,9 +129,8 @@ func TestSubOrganization_Delete(t *testing.T) {
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
 		require.Empty(t, subOrgNames(t, tn))
-		// Sub-orgs bill through their root, so the license server shouldn't hear about this one.
-		// Waiting on the root's later call gives the sub-org's event time to run, but ordering is
-		// best-effort so it's not a hard guarantee.
+		// Sub-orgs bill through the root, so this one shouldn't reach the license server. Waiting on
+		// the root's call gives the sub-org event time to run, not a hard guarantee though.
 		root, err := tn.Admin.API.DeleteOrganizationWithResponse(t.Context(), tn.OrgID.String())
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, root.StatusCode(), root.Body)

@@ -20,8 +20,7 @@ type TLicenseOrgDeletedConsumerDep = {
   licenseClient: Pick<TLicenseClientFactory, "deleteOrganization" | "invalidateEntitlements">;
 };
 
-// Cloud only, since that's the only place orgs bill on their own. Sub-orgs bill through their root, so
-// we skip them.
+// Cloud only. Sub-orgs bill through their root, so we skip them.
 export const licenseOrgDeletedConsumerFactory = ({
   envConfig,
   licenseClient
