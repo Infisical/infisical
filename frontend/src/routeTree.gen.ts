@@ -23,6 +23,7 @@ import { Route as indexImport } from './pages/index'
 import { Route as designSystemRoutesFallbackImport } from './pages/design-system/routes/fallback'
 import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
 import { Route as designSystemRoutesOverviewImport } from './pages/design-system/routes/overview'
+import { Route as v4UserPersonalSettingsPageRouteImport } from './pages/v4/user/PersonalSettingsPage/route'
 import { Route as v4AuthPasswordSetupPageRouteImport } from './pages/v4/auth/PasswordSetupPage/route'
 import { Route as v4AuthRouteImport } from './pages/v4/auth/route'
 import { Route as publicShareSecretPageRouteImport } from './pages/public/ShareSecretPage/route'
@@ -591,6 +592,13 @@ const designSystemRoutesOverviewRoute = designSystemRoutesOverviewImport.update(
     getParentRoute: () => designSystemRouteRoute,
   } as any,
 )
+
+const v4UserPersonalSettingsPageRouteRoute =
+  v4UserPersonalSettingsPageRouteImport.update({
+    id: '/personal-settings',
+    path: '/personal-settings',
+    getParentRoute: () => v4RouteRoute,
+  } as any)
 
 const v4AuthPasswordSetupPageRouteRoute =
   v4AuthPasswordSetupPageRouteImport.update({
@@ -3502,6 +3510,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4AuthPasswordSetupPageRouteImport
       parentRoute: typeof v4RouteImport
     }
+    '/v4/personal-settings': {
+      id: '/v4/personal-settings'
+      path: '/personal-settings'
+      fullPath: '/v4/personal-settings'
+      preLoaderRoute: typeof v4UserPersonalSettingsPageRouteImport
+      parentRoute: typeof v4RouteImport
+    }
     '/design-system/': {
       id: '/design-system/'
       path: '/'
@@ -6356,6 +6371,7 @@ const v4OrganizationRouteRouteWithChildren =
 interface v4RouteRouteChildren {
   v4AuthRouteRoute: typeof v4AuthRouteRouteWithChildren
   v4AuthPasswordSetupPageRouteRoute: typeof v4AuthPasswordSetupPageRouteRoute
+  v4UserPersonalSettingsPageRouteRoute: typeof v4UserPersonalSettingsPageRouteRoute
   v4AuthMfaSessionPageRouteRoute: typeof v4AuthMfaSessionPageRouteRoute
   v4OrganizationRouteRoute: typeof v4OrganizationRouteRouteWithChildren
   v4AuthNoOrgPageRouteRoute: typeof v4AuthNoOrgPageRouteRoute
@@ -6365,6 +6381,7 @@ interface v4RouteRouteChildren {
 const v4RouteRouteChildren: v4RouteRouteChildren = {
   v4AuthRouteRoute: v4AuthRouteRouteWithChildren,
   v4AuthPasswordSetupPageRouteRoute: v4AuthPasswordSetupPageRouteRoute,
+  v4UserPersonalSettingsPageRouteRoute: v4UserPersonalSettingsPageRouteRoute,
   v4AuthMfaSessionPageRouteRoute: v4AuthMfaSessionPageRouteRoute,
   v4OrganizationRouteRoute: v4OrganizationRouteRouteWithChildren,
   v4AuthNoOrgPageRouteRoute: v4AuthNoOrgPageRouteRoute,
@@ -7765,6 +7782,7 @@ export interface FileRoutesByFullPath {
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/shared/new': typeof publicShareSecretPageRouteRoute
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
+  '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
   '/design-system/': typeof designSystemRoutesOverviewRoute
   '/personal-settings': typeof userLayoutRouteWithChildren
   '/login': typeof RestrictLoginSignupLoginRouteWithChildren
@@ -8143,6 +8161,7 @@ export interface FileRoutesByTo {
   '/signupinvite': typeof authSignUpInvitePageRouteRoute
   '/shared/new': typeof publicShareSecretPageRouteRoute
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
+  '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
   '/design-system': typeof designSystemRoutesOverviewRoute
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
   '/design-system/$': typeof designSystemRoutesFallbackRoute
@@ -8493,6 +8512,7 @@ export interface FileRoutesById {
   '/shared/new': typeof publicShareSecretPageRouteRoute
   '/v4/_v4-auth': typeof v4AuthRouteRouteWithChildren
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
+  '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
   '/design-system/': typeof designSystemRoutesOverviewRoute
   '/_authenticate/_inject-org-details': typeof middlewaresInjectOrgDetailsRouteWithChildren
   '/_authenticate/personal-settings': typeof AuthenticatePersonalSettingsRouteWithChildren
@@ -8884,6 +8904,7 @@ export interface FileRouteTypes {
     | '/signupinvite'
     | '/shared/new'
     | '/v4/password-setup'
+    | '/v4/personal-settings'
     | '/design-system/'
     | '/personal-settings'
     | '/login'
@@ -9261,6 +9282,7 @@ export interface FileRouteTypes {
     | '/signupinvite'
     | '/shared/new'
     | '/v4/password-setup'
+    | '/v4/personal-settings'
     | '/design-system'
     | '/personal-settings'
     | '/design-system/$'
@@ -9609,6 +9631,7 @@ export interface FileRouteTypes {
     | '/shared/new'
     | '/v4/_v4-auth'
     | '/v4/password-setup'
+    | '/v4/personal-settings'
     | '/design-system/'
     | '/_authenticate/_inject-org-details'
     | '/_authenticate/personal-settings'
@@ -10057,6 +10080,7 @@ export const routeTree = rootRoute
       "children": [
         "/v4/_v4-auth",
         "/v4/password-setup",
+        "/v4/personal-settings",
         "/v4/mfa-session/$mfaSessionId",
         "/v4/organizations/$orgId",
         "/v4/organizations/none",
@@ -10135,6 +10159,10 @@ export const routeTree = rootRoute
     },
     "/v4/password-setup": {
       "filePath": "v4/auth/PasswordSetupPage/route.tsx",
+      "parent": "/v4"
+    },
+    "/v4/personal-settings": {
+      "filePath": "v4/user/PersonalSettingsPage/route.tsx",
       "parent": "/v4"
     },
     "/design-system/": {
