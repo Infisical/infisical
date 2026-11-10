@@ -91,4 +91,9 @@ export type AdminAdapter = {
   useInvalidateCache: V4Mutation<TInvalidateCacheDTO, void>;
 
   useEnvOverrides: () => V4QueryResult<TGetEnvOverrides>;
+
+  useCacheInvalidationStatus: (enabled: boolean) => V4QueryResult<boolean> & {
+    isFetching: boolean;
+    refetch: () => Promise<{ data?: boolean }>;
+  };
 };
