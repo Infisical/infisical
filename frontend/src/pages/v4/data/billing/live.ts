@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 
+import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   billingSubmitMutationKey,
   useAddBillingPaymentMethod,
@@ -49,6 +50,7 @@ export const billingLive: BillingAdapter = {
   useUsageBreakdown: useGetBillingUsageBreakdown,
   useOrganizations: useGetBillingOrganizations,
   useIsSubmitting: () => useIsMutating({ mutationKey: billingSubmitMutationKey }) > 0,
+  useIsCloud: isInfisicalCloud,
   useCreatePortalSession: useCreateBillingPortalSession,
   useBuyProduct: useBuyBillingProduct,
   useAddPaymentMethod: useAddBillingPaymentMethod,

@@ -266,8 +266,15 @@ button.tile:focus-visible {
   gap: var(--v4-space-12);
 }
 
-a.tile:hover {
-  background: var(--v4-hover);
+.summaryTiles > .tile {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.summaryTiles > :is(a, button).tile:not(:disabled):hover {
+  background: none;
+  color: var(--v4-ink);
 }
 
 .productCard {

@@ -20,7 +20,6 @@ import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { isInfisicalCloud } from "@app/helpers/platform";
 import { useDebounce } from "@app/hooks";
 import type { BillingBreakdownScopeKind } from "@app/hooks/api/billing/types";
 
@@ -254,7 +253,8 @@ export const BillingPage = () => {
     window.open(CONTACT_SALES_URL, "_blank", "noopener,noreferrer");
   };
 
-  const isManaged = overview ? overview.mode === "managed" : !isInfisicalCloud();
+  const isCloud = billing.useIsCloud();
+  const isManaged = overview ? overview.mode === "managed" : !isCloud;
   const pageDescription = isManaged
     ? SELF_HOSTED_LICENSE_COPY[getSelfHostedLicenseState(subscription)].pageDescription
     : "Manage your subscription, products and payment. Payment is handled securely through Stripe.";

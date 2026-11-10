@@ -465,6 +465,7 @@ export const billingDemo: BillingAdapter = {
     );
   },
   useIsSubmitting: () => false,
+  useIsCloud: () => useBillingScenario() !== "self-hosted",
   useCreatePortalSession: mutation(demoPortalUrl),
   useBuyProduct: mutation(() => ({ outcome: "subscription_updated" as const })),
   useAddPaymentMethod: mutation(demoPortalUrl),
