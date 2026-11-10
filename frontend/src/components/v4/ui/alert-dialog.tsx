@@ -292,7 +292,7 @@ function AlertDialogAction({
   ...props
 }: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> &
   Pick<React.ComponentPropsWithoutRef<typeof Button>, "variant" | "size"> & {
-    /** Button's loading: the spinner takes the label's place at the same width and the action stays focusable but cannot fire again. While true, the dialog is pending (Escape and Cancel blocked). Passing loading at all, even false, means the host closes the dialog: a click runs onClick and does not close it. */
+    /** Button's loading: the spinner takes the label's place at the same width and the action stays focusable but cannot fire again. With asChild the composed child gets the same guard, aria-busy and aria-disabled; pass loading to the child too for the spinner. While true, the dialog is pending (Escape and Cancel blocked). Passing loading at all, even false, means the host closes the dialog: a click runs onClick and does not close it. */
     loading?: boolean;
     ref?: React.Ref<React.ComponentRef<typeof AlertDialogPrimitive.Action>>;
   }) {
@@ -307,10 +307,15 @@ function AlertDialogAction({
     loading === undefined
       ? onClick
       : (event) => {
-          onClick?.(event);
           event.preventDefault();
+          if (!loading) onClick?.(event);
         };
-  if (asChild)
+  if (asChild) {
+    const { onClickCapture, onPointerDownCapture, onKeyDownCapture, ...rest } = props;
+    const block = (event: React.SyntheticEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
     return (
       <AlertDialogPrimitive.Action
         ref={ref}
@@ -318,10 +323,20 @@ function AlertDialogAction({
         data-slot="alert-dialog-action"
         className={className}
         disabled={disabled || !ready}
+        {...rest}
+        aria-busy={loading || rest["aria-busy"] || undefined}
+        aria-disabled={loading || rest["aria-disabled"] || undefined}
         onClick={handleClick}
-        {...props}
+        onClickCapture={(event) => (loading ? block(event) : onClickCapture?.(event))}
+        onPointerDownCapture={(event) => (loading ? block(event) : onPointerDownCapture?.(event))}
+        onKeyDownCapture={(event) =>
+          loading && (event.key === "Enter" || event.key === " ")
+            ? block(event)
+            : onKeyDownCapture?.(event)
+        }
       />
     );
+  }
   return (
     <Button variant={variant} size={size} disabled={disabled || !ready} loading={loading} asChild>
       <AlertDialogPrimitive.Action

@@ -69,7 +69,7 @@ Exports: DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 - Open menus retain Radix typeahead and directional keys. Shortcut text requires a matching host handler.
 - Radix Root owns open/onOpenChange. Action items close after onSelect; checkbox/radio changes stay open by default and can opt into closeOnSelect.
 - DropdownMenuItem, DropdownMenuCheckboxItem and DropdownMenuRadioItem take an optional description, a muted second line under the label. A disabled item uses it for the reason it is unavailable, so the action or setting stays visible and explains itself.
-- DropdownMenuItem takes disabledReason for an action blocked by a permission or state: the item stays in the keyboard order, dims like a disabled row, shows the reason in place of its description, exposes it as the accessible description, and choosing it with Enter or Space does nothing and keeps the menu open, so onSelect never runs. Prefer it to disabled with a description whenever the person should be able to reach the reason by keyboard.
+- DropdownMenuItem takes disabledReason for an action blocked by a permission or state: the item stays in the keyboard order, dims like a disabled row, shows the reason in place of its description (under an element label and inside an asChild child too), exposes it as the accessible description, and choosing it with Enter or Space does nothing and keeps the menu open, so onSelect never runs. Prefer it to disabled with a description whenever the person should be able to reach the reason by keyboard.
 - DropdownMenuSubContent portals into the V4Scope container like the root menu, never inside its parent panel, so the parent's overflow and entry motion cannot clip or hide it. It opens beside its SubTrigger row: sideOffset 4 (space-4) and alignOffset -3 (the menu inset) line its first row up with the trigger, and when the trailing side has no room within the collision padding (8, space-8) it flips to the leading side, still beside the parent and never over it.
 
 ## Accessibility
@@ -354,6 +354,12 @@ export default function Example() {
               <UI.DropdownMenuItem disabledReason="Versioning is off for this project">
                 <Icon name="history" />
                 Version history
+              </UI.DropdownMenuItem>
+              <UI.DropdownMenuItem asChild disabledReason="Exports are off on this plan">
+                <a href="https://infisical.com/docs">
+                  <Icon name="download" />
+                  Export
+                </a>
               </UI.DropdownMenuItem>
               <UI.DropdownMenuSeparator />
               <UI.DropdownMenuItem

@@ -103,6 +103,7 @@ function DropdownMenuItem({
   description,
   disabledReason,
   onSelect,
+  onClick,
   children,
   ref,
   ...props
@@ -115,6 +116,11 @@ function DropdownMenuItem({
 } & { ref?: React.Ref<React.ComponentRef<typeof DropdownMenuPrimitive.Item>> }) {
   const Primitive = useMenuPrimitive();
   const reason = disabledReason || undefined;
+  const rowDescription = reason ? <span aria-hidden>{reason}</span> : description;
+  const slotted =
+    props.asChild && React.isValidElement<{ children?: React.ReactNode }>(children)
+      ? children
+      : null;
   return (
     <Primitive.Item
       ref={ref}
@@ -126,6 +132,10 @@ function DropdownMenuItem({
       {...props}
       aria-disabled={reason ? true : props["aria-disabled"]}
       aria-description={reason ?? props["aria-description"]}
+      onClick={(event) => {
+        if (reason) event.preventDefault();
+        onClick?.(event);
+      }}
       onSelect={(event) => {
         if (reason) {
           event.preventDefault();
@@ -134,7 +144,13 @@ function DropdownMenuItem({
         onSelect?.(event);
       }}
     >
-      {menuRowContent(children, reason ? <span aria-hidden>{reason}</span> : description)}
+      {slotted
+        ? React.cloneElement(
+            slotted,
+            undefined,
+            menuRowContent(slotted.props.children, rowDescription)
+          )
+        : menuRowContent(children, rowDescription)}
     </Primitive.Item>
   );
 }

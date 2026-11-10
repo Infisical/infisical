@@ -11,7 +11,7 @@ export const snippetDefinition = {
   behavior: [
     "The prompt is visual context and is never copied. Size defaults to sm32; explicit md is 36px, with nested copy actions at 24/28px.",
     "The read-only input supports selection; copy waits for clipboard fulfillment.",
-    "maxLines shows the value on several lines in a read-only textarea: line breaks stay, long lines wrap anywhere, the field grows with its content up to that many lines and then scrolls. The copy action and prompt sit at the first line, and copy still copies the whole value, every line included. The value stays Geist Mono, so keep it to machine values (certificates, keys, records, commands); prose goes in Text."
+    "maxLines shows the value on several lines in a read-only textarea: line breaks stay, long lines wrap anywhere, the field grows with its content up to that many lines and then scrolls. Where field-sizing is unsupported, the value's line count (capped at maxLines) still sets the starting height, and wrapped lines past it scroll. The copy action and prompt sit at the first line, and copy still copies the whole value, every line included. The value stays Geist Mono, so keep it to machine values (certificates, keys, records, commands); prose goes in Text."
   ],
   accessibility: ["Caller supplies an input label; the copy control is separately named."],
   limitations: ["Do not imply that copying executes the command or conceals sensitive arguments."],

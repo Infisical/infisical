@@ -65,6 +65,7 @@ function Switch({
   const generated = React.useId();
   const titleId = `${generated}-title`;
   const descriptionId = `${generated}-description`;
+  const reasonId = `${generated}-reason`;
   const fieldAttributes = useFieldControlAttributes(props);
   const control = (
     <SwitchPrimitive.Root
@@ -83,11 +84,14 @@ function Switch({
       data-disabled={inactive ? "" : undefined}
       data-disabled-reason={reason ? "" : undefined}
       aria-disabled={inactive || undefined}
-      aria-description={reason ?? props["aria-description"]}
       id={fieldAttributes.id ?? generated}
       aria-labelledby={label ? titleId : fieldAttributes["aria-labelledby"]}
       aria-describedby={
-        [fieldAttributes["aria-describedby"], label && description ? descriptionId : undefined]
+        [
+          fieldAttributes["aria-describedby"],
+          reason ? reasonId : undefined,
+          label && description ? descriptionId : undefined
+        ]
           .filter(Boolean)
           .join(" ") || undefined
       }
@@ -129,11 +133,16 @@ function Switch({
     </SwitchPrimitive.Root>
   );
   const anchored = reason ? (
-    <Tooltip content={reason}>
-      <span data-slot="switch-anchor" className={controlStyles.switchAnchor}>
-        {control}
+    <>
+      <Tooltip content={reason}>
+        <span data-slot="switch-anchor" className={controlStyles.switchAnchor}>
+          {control}
+        </span>
+      </Tooltip>
+      <span id={reasonId} className="sr-only">
+        {reason}
       </span>
-    </Tooltip>
+    </>
   ) : (
     control
   );

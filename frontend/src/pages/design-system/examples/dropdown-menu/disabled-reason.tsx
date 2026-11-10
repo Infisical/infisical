@@ -23,6 +23,12 @@ export default function Example() {
               <Icon name="history" />
               Version history
             </UI.DropdownMenuItem>
+            <UI.DropdownMenuItem asChild disabledReason="Exports are off on this plan">
+              <a href="https://infisical.com/docs">
+                <Icon name="download" />
+                Export
+              </a>
+            </UI.DropdownMenuItem>
             <UI.DropdownMenuSeparator />
             <UI.DropdownMenuItem
               variant="destructive"

@@ -185,9 +185,10 @@
   padding-block: calc((var(--v4-nested-action-height) - 1lh) / 2);
 }
 /* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
+/* field-sizing: content ignores rows and is missing in older targets, so the line count also sets a minimum height; content past it scrolls. */
 .snippetLines {
   box-sizing: content-box;
-  min-height: 1lh;
+  min-height: calc(var(--v4-snippet-rows) * 1lh);
   max-height: calc(var(--v4-snippet-lines) * 1lh);
   padding-block: calc((var(--v4-nested-action-height) - 1lh) / 2);
   overflow-y: auto;

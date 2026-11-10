@@ -86,7 +86,7 @@ function RadioGroupCard({
   media,
   ref,
   ...props
-}: Omit<React.ComponentProps<typeof RadioGroupPrimitive.Item>, "title" | "children"> & {
+}: Omit<React.ComponentProps<typeof RadioGroupPrimitive.Item>, "title" | "children" | "asChild"> & {
   title: React.ReactNode;
   description?: React.ReactNode;
   /** An icon or logo before the title, sized to size-icon-xl and hidden from assistive technology; anything it means belongs in title. */

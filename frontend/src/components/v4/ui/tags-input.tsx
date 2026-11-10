@@ -75,11 +75,12 @@ export function TagsInput({
     (chip ?? input.current)?.focus();
   });
 
-  const commit = (parts: string[]) => {
+  const commit = (text: string) => {
     const accepted: string[] = [];
     const refused: string[] = [];
     let reason: string | undefined;
-    parts
+    text
+      .split(separators)
       .map((part) => part.trim())
       .filter(Boolean)
       .forEach((part) => {
@@ -154,16 +155,19 @@ export function TagsInput({
         placeholder={tags.length ? undefined : placeholder}
         disabled={disabled}
         value={draft}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          if (!event.target.value.trim()) onValidationChange?.(undefined);
+        }}
         onBlur={() => {
-          if (draft.trim()) commit([draft]);
+          if (draft.trim()) commit(draft);
         }}
         onKeyDown={(event) => {
           if (event.nativeEvent.isComposing || event.keyCode === 229) return;
           if (event.key === "Enter" || event.key === ",") {
             if (event.key === "Enter" && !draft.trim()) return;
             event.preventDefault();
-            commit([draft]);
+            commit(draft);
             return;
           }
           if (event.key === "Backspace" && !draft && tags.length) {
@@ -177,9 +181,7 @@ export function TagsInput({
           event.preventDefault();
           const { selectionStart, selectionEnd } = event.currentTarget;
           commit(
-            `${draft.slice(0, selectionStart ?? draft.length)}${pasted}${draft.slice(selectionEnd ?? draft.length)}`.split(
-              separators
-            )
+            `${draft.slice(0, selectionStart ?? draft.length)}${pasted}${draft.slice(selectionEnd ?? draft.length)}`
           );
         }}
       />
