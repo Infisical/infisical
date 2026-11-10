@@ -48,7 +48,6 @@ const Toast = ({ item, onDismiss }: { item: ToastItem; onDismiss?: (id: string) 
       }}
       data-slot="toast"
       data-tone={item.tone ?? "neutral"}
-      role={item.tone === "bad" ? "alert" : "status"}
       className={styles.toast}
     >
       {item.tone === "loading" ? (
@@ -85,6 +84,18 @@ const Toast = ({ item, onDismiss }: { item: ToastItem; onDismiss?: (id: string) 
     </div>
   );
 };
+type Announcement = { key: string; text: string };
+const announcementKey = (item: ToastItem) => `${item.id}:${item.tone ?? "neutral"}:${item.title}`;
+const announce = (fresh: ToastItem[]): Announcement | null =>
+  fresh.length
+    ? {
+        key: fresh.map(announcementKey).join("|"),
+        text: fresh
+          .map((item) => [item.title, item.description].filter(Boolean).join(" "))
+          .join(" ")
+      }
+    : null;
+
 export const ToastStack = ({
   items,
   onDismiss,
@@ -95,13 +106,33 @@ export const ToastStack = ({
   onDismiss?: (id: string) => void;
   inline?: boolean;
   className?: string;
-}) => (
-  <div
-    data-slot="toast-stack"
-    className={cn(styles.toastStack, !inline && styles.toastFixed, className)}
-  >
-    {items.map((item) => (
-      <Toast key={item.id} item={item} onDismiss={onDismiss} />
-    ))}
-  </div>
-);
+}) => {
+  const [previous, setPrevious] = React.useState(items);
+  const [polite, setPolite] = React.useState<Announcement | null>(null);
+  const [assertive, setAssertive] = React.useState<Announcement | null>(null);
+  if (previous !== items) {
+    setPrevious(items);
+    const known = new Set(previous.map(announcementKey));
+    const fresh = items.filter((item) => !known.has(announcementKey(item)));
+    const errors = announce(fresh.filter((item) => item.tone === "bad"));
+    const others = announce(fresh.filter((item) => item.tone !== "bad"));
+    if (errors) setAssertive(errors);
+    if (others) setPolite(others);
+  }
+  return (
+    <div
+      data-slot="toast-stack"
+      className={cn(styles.toastStack, !inline && styles.toastFixed, className)}
+    >
+      <div role="status" className="sr-only" data-slot="toast-live-polite">
+        {polite && <p key={polite.key}>{polite.text}</p>}
+      </div>
+      <div role="alert" className="sr-only" data-slot="toast-live-assertive">
+        {assertive && <p key={assertive.key}>{assertive.text}</p>}
+      </div>
+      {items.map((item) => (
+        <Toast key={item.id} item={item} onDismiss={onDismiss} />
+      ))}
+    </div>
+  );
+};
