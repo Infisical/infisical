@@ -24,6 +24,12 @@ export default function Example() {
           <ProviderIcon icon="Anthropic.png" alt="Anthropic logo" size="xl" />
         </div>
       </ExampleCell>
+      <ExampleCell label="Workflow integrations">
+        <div className="flex items-center gap-3">
+          <ProviderIcon icon="Slack.svg" alt="Slack logo" size="xl" />
+          <ProviderIcon icon="Microsoft Teams.svg" alt="Microsoft Teams logo" size="xl" />
+        </div>
+      </ExampleCell>
       <ExampleCell label="Missing file, fallback">
         <ProviderIcon icon="Retired Provider.png" alt="Retired Provider logo" size="xl" />
       </ExampleCell>

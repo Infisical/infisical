@@ -10,7 +10,8 @@ export const baselineContent = [
     exports: ["Accordion", "AccordionContent", "AccordionItem", "AccordionTrigger"],
     referenceNames: ["Accordion"],
     behavior: [
-      "Radix single mode uses a string value; multiple mode uses an array. onValueChange reports item values, and collapsible allows the open single item to close."
+      "Radix single mode uses a string value; multiple mode uses an array. onValueChange reports item values, and collapsible allows the open single item to close.",
+      "AccordionContent animates its height open and closed, then sizes to its content while open, so content that grows after opening (a revealed list, a loaded result) is never clipped."
     ],
     accessibility: [
       "Each trigger is a button inside a heading and controls its own panel. Arrow keys, Home and End move between triggers."
@@ -36,6 +37,12 @@ export const baselineContent = [
         title: "Controlled open section",
         module: "./examples/accordion/controlled.tsx",
         states: ["default", "controlled"]
+      },
+      {
+        id: "growing",
+        title: "Content that grows",
+        module: "./examples/accordion/growing.tsx",
+        states: ["default", "overflow"]
       }
     ],
     coverage: [

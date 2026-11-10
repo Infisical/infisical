@@ -112,6 +112,15 @@ function AlertDialogContent({
         spellCheck={false}
         value={typed}
         onChange={(event) => setTyped(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+          event.preventDefault();
+          if (busy || typed !== confirmText) return;
+          event.currentTarget
+            .closest("[data-slot=alert-dialog-content]")
+            ?.querySelector<HTMLElement>("[data-slot=alert-dialog-action]")
+            ?.click();
+        }}
       />
     </div>
   );

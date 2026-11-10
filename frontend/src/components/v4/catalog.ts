@@ -8,6 +8,7 @@ import { approvalQueueDefinition } from "./contracts/approval-queue";
 import { baselineDefinitions } from "./contracts/baseline";
 import { codeDefinition } from "./contracts/code";
 import { codeBlockDefinition } from "./contracts/code-block";
+import { colorPickerDefinition } from "./contracts/color-picker";
 import { comboboxDefinition } from "./contracts/combobox";
 import { coverDefinition } from "./contracts/cover";
 import { dataGridDefinition } from "./contracts/data-grid";
@@ -51,6 +52,7 @@ export const componentCatalog: readonly ComponentDefinition[] = [
   ...baselineDefinitions,
   codeDefinition,
   codeBlockDefinition,
+  colorPickerDefinition,
   comboboxDefinition,
   coverDefinition,
   dataGridDefinition,

@@ -236,3 +236,10 @@
   flex: none;
   max-width: 100%;
 }
+.pathAnchor {
+  width: 100%;
+  min-width: 0;
+}
+.pathList {
+  width: var(--radix-popover-trigger-width);
+}

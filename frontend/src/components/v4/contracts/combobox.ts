@@ -8,6 +8,7 @@ export const comboboxDefinition = {
   sourceFiles: [
     "src/components/v4/ui/combobox.tsx",
     "src/components/v4/ui/tags-input.tsx",
+    "src/components/v4/ui/secret-path-input.tsx",
     "src/components/v4/ui/picker.module.css",
     "src/components/v4/lib/use-option-creation.ts"
   ],
@@ -17,10 +18,13 @@ export const comboboxDefinition = {
     "ComboboxCreationFormProps",
     "ComboboxOption",
     "ComboboxProps",
+    "GlobPatternHelp",
+    "SecretPathInput",
+    "SecretPathInputProps",
     "TagsInput",
     "TagsInputProps"
   ],
-  referenceNames: ["Combobox", "TagsInput"],
+  referenceNames: ["Combobox", "TagsInput", "SecretPathInput"],
   behavior: [
     "Single selection uses Radix Popover and cmdk; multiple selection composes the shared ARIA listbox with removable chips and empty-query Backspace. Chips sit on a tint; a chip that cannot be removed (locked, for example required by policy) drops the tint and its text goes muted so the whole chip reads as disabled, and its remove button stays visible but disabled.",
     "ArrowDown or ArrowUp on the focused closed trigger opens the list with focus in the search field and the active option highlighted, like Enter and Space.",
@@ -35,13 +39,15 @@ export const comboboxDefinition = {
     "renderForm receives query (the trimmed search text), formId, complete, dismiss, onDirtyChange and onPendingChange, and remounts on every open. complete(option) selects the option (its label shows on the trigger even before the host adds it to options), closes the Dialog and returns focus to the trigger; a complete that arrives after the Dialog was dismissed is ignored. onPendingChange(true) makes the Dialog pending, which blocks Escape, outside clicks and the corner close, disables Cancel and shows the submit Button loading.",
     "Escape, an outside click, the corner close, Cancel and dismiss all go through useDiscardChangesGuard: with the form dirty (onDirtyChange(true)) they open DiscardChangesAlertDialog with discardTitle and discardDescription, and only Discard closes; a clean form closes at once. A submit inside the Dialog never reaches a form around the Combobox.",
     "disabledReason on either mode keeps the Create row visible but disabled, with the reason beside its label (disable, do not hide). Gate it on the create permission.",
-    "TagsInput is the free-text sibling of multiple mode, for values people type rather than pick (domains, claim values, labels). It draws the same field and chips with no list. Enter or a comma commits the typed text, and so does leaving the field; Backspace in the empty input removes the last tag; each chip has a remove button that takes Enter, Space, Backspace or Delete and moves focus to the next chip, else the previous one, else the input. Pasting text with commas or line breaks splits it into tags. Text is trimmed and an exact duplicate is dropped without a message. validate(tag, tags) returns a reason to refuse a tag; refused text stays in the input, comma separated when several were refused, and every later commit splits it again, so each value is validated on its own. onValidationChange receives the first reason on every commit, or undefined when nothing was refused, and undefined again when the input is cleared, so the host can show it in the Field error. value or defaultValue with onChange or onValueChange; mono for machine values; disabled locks the chips and input."
+    "TagsInput is the free-text sibling of multiple mode, for values people type rather than pick (domains, claim values, labels). It draws the same field and chips with no list. Enter or a comma commits the typed text, and so does leaving the field; Backspace in the empty input removes the last tag; each chip has a remove button that takes Enter, Space, Backspace or Delete and moves focus to the next chip, else the previous one, else the input. Pasting text with commas or line breaks splits it into tags. Text is trimmed and an exact duplicate is dropped without a message. validate(tag, tags) returns a reason to refuse a tag; refused text stays in the input, comma separated when several were refused, and every later commit splits it again, so each value is validated on its own. onValidationChange receives the first reason on every commit, or undefined when nothing was refused, and undefined again when the input is cleared, so the host can show it in the Field error. value or defaultValue with onChange or onValueChange; mono for machine values; disabled locks the chips and input.",
+    'SecretPathInput is a mono text input for a folder path in one environment that suggests child folders as you type, like main\'s secret path input. It holds no data: it calls onParentPathChange on mount and whenever the typed path enters another folder, with that folder\'s path ("/" or "/app/api", no trailing slash), and lists the names the host passes in folders whose start matches the segment after the last slash, case-insensitively and sorted. The list opens under the field while it is focused and has matches; ArrowDown and ArrowUp move the active row, Enter or a click fills the folder and a trailing slash so the next level loads, and Escape or blur closes it until the next keystroke. A value with a glob character (* ? [ ] { }) shows no suggestions. value or defaultValue (default /) with onChange; disabled and readOnly never open the list. GlobPatternHelp is the FieldHelp to pass as Field help on a path field that accepts globs: it explains *, **, /app/* and /app/**.'
   ],
   accessibility: [
     "Caller supplies a visible or programmatic label.",
     "Disabled options cannot be selected."
   ],
   limitations: [
+    "SecretPathInput suggests one level at a time from folders and does not validate that the path exists; loading, errors and debouncing stay with the host, and while folders is empty the list stays closed.",
     "mono is for a picker of machine values such as secret keys, key IDs or folder paths; a picker of projects, environments or other named entities stays in the sans (rule/mono-machine-values).",
     "Without onSearch, filtering is in memory. Async search does not virtualize results; keep the host's result page short.",
     "onSearch and loading are single-selection props. Multiple mode filters its options in memory and orders the value by them, so it needs every selectable option up front.",
@@ -84,12 +90,18 @@ export const comboboxDefinition = {
       title: "Free-text tags",
       module: "./examples/combobox/tags.tsx",
       states: ["controlled", "empty", "invalid", "disabled"]
+    },
+    {
+      id: "secret-path",
+      title: "Secret path",
+      module: "./examples/combobox/secret-path.tsx",
+      states: ["controlled", "keyboard", "disabled"]
     }
   ],
   coverage: [
     {
       axis: "mode",
-      expected: ["single", "multiple", "free text"],
+      expected: ["single", "multiple", "free text", "path autocomplete"],
       shown: [
         {
           value: "single",
@@ -105,6 +117,11 @@ export const comboboxDefinition = {
           value: "free text",
           exampleId: "tags",
           label: "Mono values with validation"
+        },
+        {
+          value: "path autocomplete",
+          exampleId: "secret-path",
+          label: "Suggests child folders after each slash"
         }
       ]
     },
@@ -219,7 +236,7 @@ export const comboboxDefinition = {
     ],
     avoid: [],
     decision:
-      "Choose Combobox when a known option list needs search. Use TagsInput when people type the values and there is no list to pick from, Select for a short grouped choice and CommandMenu for executing actions.",
+      "Choose Combobox when a known option list needs search. Use TagsInput when people type the values and there is no list to pick from, SecretPathInput for a folder path typed segment by segment, Select for a short grouped choice and CommandMenu for executing actions.",
     rules: [
       {
         id: "combobox-usage",

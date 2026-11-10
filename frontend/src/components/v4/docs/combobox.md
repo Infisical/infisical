@@ -4,7 +4,7 @@ Search and choose one option from a provided list.
 
 ## Choose this component
 
-Choose Combobox when a known option list needs search. Use TagsInput when people type the values and there is no list to pick from, Select for a short grouped choice and CommandMenu for executing actions.
+Choose Combobox when a known option list needs search. Use TagsInput when people type the values and there is no list to pick from, SecretPathInput for a folder path typed segment by segment, Select for a short grouped choice and CommandMenu for executing actions.
 
 ## Usage rules
 
@@ -104,10 +104,11 @@ Why: Pending, rejection and cancellation have different outcomes and recovery pa
 
 - src/components/v4/ui/combobox.tsx
 - src/components/v4/ui/tags-input.tsx
+- src/components/v4/ui/secret-path-input.tsx
 - src/components/v4/ui/picker.module.css
 - src/components/v4/lib/use-option-creation.ts
 
-Exports: Combobox, ComboboxCreation, ComboboxCreationFormProps, ComboboxOption, ComboboxProps, TagsInput, TagsInputProps. Source TypeScript defines the API.
+Exports: Combobox, ComboboxCreation, ComboboxCreationFormProps, ComboboxOption, ComboboxProps, GlobPatternHelp, SecretPathInput, SecretPathInputProps, TagsInput, TagsInputProps. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -125,6 +126,7 @@ Exports: Combobox, ComboboxCreation, ComboboxCreationFormProps, ComboboxOption, 
 - Escape, an outside click, the corner close, Cancel and dismiss all go through useDiscardChangesGuard: with the form dirty (onDirtyChange(true)) they open DiscardChangesAlertDialog with discardTitle and discardDescription, and only Discard closes; a clean form closes at once. A submit inside the Dialog never reaches a form around the Combobox.
 - disabledReason on either mode keeps the Create row visible but disabled, with the reason beside its label (disable, do not hide). Gate it on the create permission.
 - TagsInput is the free-text sibling of multiple mode, for values people type rather than pick (domains, claim values, labels). It draws the same field and chips with no list. Enter or a comma commits the typed text, and so does leaving the field; Backspace in the empty input removes the last tag; each chip has a remove button that takes Enter, Space, Backspace or Delete and moves focus to the next chip, else the previous one, else the input. Pasting text with commas or line breaks splits it into tags. Text is trimmed and an exact duplicate is dropped without a message. validate(tag, tags) returns a reason to refuse a tag; refused text stays in the input, comma separated when several were refused, and every later commit splits it again, so each value is validated on its own. onValidationChange receives the first reason on every commit, or undefined when nothing was refused, and undefined again when the input is cleared, so the host can show it in the Field error. value or defaultValue with onChange or onValueChange; mono for machine values; disabled locks the chips and input.
+- SecretPathInput is a mono text input for a folder path in one environment that suggests child folders as you type, like main's secret path input. It holds no data: it calls onParentPathChange on mount and whenever the typed path enters another folder, with that folder's path ("/" or "/app/api", no trailing slash), and lists the names the host passes in folders whose start matches the segment after the last slash, case-insensitively and sorted. The list opens under the field while it is focused and has matches; ArrowDown and ArrowUp move the active row, Enter or a click fills the folder and a trailing slash so the next level loads, and Escape or blur closes it until the next keystroke. A value with a glob character (* ? [ ] { }) shows no suggestions. value or defaultValue (default /) with onChange; disabled and readOnly never open the list. GlobPatternHelp is the FieldHelp to pass as Field help on a path field that accepts globs: it explains *, **, /app/* and /app/**.
 
 ## Accessibility
 
@@ -137,6 +139,7 @@ Exports: Combobox, ComboboxCreation, ComboboxCreationFormProps, ComboboxOption, 
 
 ## Limits
 
+- SecretPathInput suggests one level at a time from folders and does not validate that the path exists; loading, errors and debouncing stay with the host, and while folders is empty the list stays closed.
 - mono is for a picker of machine values such as secret keys, key IDs or folder paths; a picker of projects, environments or other named entities stays in the sans (rule/mono-machine-values).
 - Without onSearch, filtering is in memory. Async search does not virtualize results; keep the host's result page short.
 - onSearch and loading are single-selection props. Multiple mode filters its options in memory and orders the value by them, so it needs every selectable option up front.
@@ -152,6 +155,7 @@ Source declarations and review criteria only. Generation checks references and c
 - single: example `default`, visible label "Single environment".
 - multiple: example `multiple`, visible label "Visible environments".
 - free text: example `tags`, visible label "Mono values with validation".
+- path autocomplete: example `secret-path`, visible label "Suggests child folders after each slash".
 
 ### state
 
@@ -531,6 +535,75 @@ export default function Example() {
               defaultValue={["acme.test", "corp.acme.test"]}
               disabled
             />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
+      </figure>
+    </div>
+  );
+}
+```
+
+### Secret path
+
+Save this example at `src/pages/design-system/examples/combobox/secret-path.tsx`; its relative imports are generated for that exact path. States: controlled, keyboard, disabled.
+
+Registry items used: @infisical/field, @infisical/secret-path-input. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import { Field } from "../../../../components/v4/ui/field";
+import { GlobPatternHelp, SecretPathInput } from "../../../../components/v4/ui/secret-path-input";
+
+const tree: Record<string, string[]> = {
+  "/": ["app", "billing", "infrastructure-shared-configuration-for-all-regions"],
+  "/app": ["api", "web", "worker"],
+  "/app/api": ["v1", "v2"],
+  "/billing": ["stripe"]
+};
+
+export default function Example() {
+  const [path, setPath] = useState("/app/");
+  const [parent, setParent] = useState("/");
+  const [scope, setScope] = useState("/app/**");
+  const [scopeParent, setScopeParent] = useState("/");
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Secret path">
+            <SecretPathInput
+              value={path}
+              onChange={setPath}
+              folders={tree[parent]}
+              onParentPathChange={setParent}
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Suggests child folders after each slash"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Folder scope" help={<GlobPatternHelp />}>
+            <SecretPathInput
+              value={scope}
+              onChange={setScope}
+              folders={tree[scopeParent]}
+              onParentPathChange={setScopeParent}
+            />
+          </Field>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Glob value, no suggestions"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Field label="Source path">
+            <SecretPathInput defaultValue="/billing/stripe" disabled />
           </Field>
         </div>
         <figcaption className="text-muted-foreground text-xs">{"Disabled"}</figcaption>
