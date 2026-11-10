@@ -1,6 +1,7 @@
 import { accessDemo } from "./access/demo";
 import type { V4Adapters } from "./adapters";
 import { agentVaultDemo } from "./agent-vault/demo";
+import { auditLogsDemo } from "./audit-logs/demo";
 import { certificatesDemo } from "./certificates/demo";
 import { integrationsDemo } from "./integrations/demo";
 import { kmsDemo } from "./kms/demo";
@@ -20,5 +21,6 @@ export const demoAdapters: V4Adapters = {
   certificates: certificatesDemo,
   access: accessDemo,
   projects: projectsDemo,
-  pam: pamDemo
+  pam: pamDemo,
+  auditLogs: auditLogsDemo
 };

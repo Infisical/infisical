@@ -7,6 +7,7 @@ import {
   type FilterBarField,
   type FilterBarFilter
 } from "@app/components/v4/patterns/filter-bar";
+import { Alert, AlertDescription } from "@app/components/v4/ui/alert";
 import { Button } from "@app/components/v4/ui/button";
 import { Calendar } from "@app/components/v4/ui/calendar";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
@@ -29,13 +30,23 @@ import {
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { Heading, Meta } from "@app/components/v4/ui/text";
 import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
-import { eventToNameMap, userAgentTypeToNameMap } from "@app/hooks/api/auditLogs/constants";
+import {
+  eventToNameMap,
+  projectToEventsMap,
+  userAgentTypeToNameMap
+} from "@app/hooks/api/auditLogs/constants";
 import { ActorType, EventType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
 import type { Actor, AuditLog, TGetAuditLogsFilter } from "@app/hooks/api/auditLogs/types";
+import {
+  AUDIT_LOG_EVENT_CLASSES,
+  auditLogEventClassToNameMap
+} from "@app/hooks/api/auditLogSettings/constants";
+import type { AuditLogEventClass } from "@app/hooks/api/auditLogSettings/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { useV4Adapter, useV4Mode } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
-import { v4Path } from "../../links";
+import { orgHref, v4Path } from "../../links";
 
 const PAGE_SIZE = 500;
 const rowHeight = 48;
@@ -107,7 +118,10 @@ const truncate = {
   whiteSpace: "nowrap"
 } as const;
 
-const makeColumns = (onOpen: (log: AuditLog) => void): DataTableColumn<AuditLog>[] => [
+const makeColumns = (
+  onOpen: (log: AuditLog) => void,
+  showProject: boolean
+): DataTableColumn<AuditLog>[] => [
   {
     id: "time",
     header: "Time",
@@ -130,7 +144,7 @@ const makeColumns = (onOpen: (log: AuditLog) => void): DataTableColumn<AuditLog>
     primary: true,
     text: (row) => row.event.type,
     render: (row) => {
-      const detail = [row.projectName, environmentOf(row), targetOf(row)]
+      const detail = [showProject && row.projectName, environmentOf(row), targetOf(row)]
         .filter(Boolean)
         .join(", ");
       return (
@@ -222,16 +236,22 @@ const LogDetails = ({ log, onClose }: { log: AuditLog | null; onClose: () => voi
   </Sheet>
 );
 
-const LogsTab = () => {
+export type AuditLogsProject = { id: string; type: ProjectType };
+
+const productsWithoutSecrets = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
+
+const LogsTable = ({ project }: { project?: AuditLogsProject }) => {
   const { projects } = useV4Session();
   const org = useV4Adapter("org");
+  const access = useV4Adapter("access");
+  const { data: storage } = useV4Adapter("auditLogs").useStorage();
   const [range, setRange] = useState<string>("30d");
   const [custom, setCustom] = useState<DateRange>();
   const [anchor, setAnchor] = useState(() => Date.now());
   const [filters, setFilters] = useState<FilterBarFilter[]>([]);
   const [frame, setFrame] = useState(initialFrame);
   const [opened, setOpened] = useState<AuditLog | null>(null);
-  const columns = useMemo(() => makeColumns(setOpened), []);
+  const columns = useMemo(() => makeColumns(setOpened, !project), [project]);
   const preset = ranges.find((item) => item.value === range);
   const active =
     !preset && custom?.from && custom.to
@@ -243,15 +263,43 @@ const LogsTab = () => {
       : { from: anchor - (preset ?? ranges[3]).ms, to: anchor, title: (preset ?? ranges[3]).title };
 
   const value = (field: string) => filters.find((filter) => filter.field === field)?.values ?? [];
-  const projectId = value("project")[0] ?? null;
+  const projectId = project?.id ?? value("project")[0] ?? null;
+  const projectType = project?.type ?? projects.find((entry) => entry.id === projectId)?.type;
+  const hasSecrets = !projectType || !productsWithoutSecrets.has(projectType);
+  const actorType = value("actor-type")[0] as ActorType | undefined;
+  const [pickedActorType, pickedActor] = (value("actor")[0] ?? "").split(":");
+
+  const users = access.useProjectUsers(projectId ?? "", false, [], { enabled: Boolean(projectId) });
+  const identities = access.useProjectIdentities(
+    { projectId: projectId ?? "", limit: 100 },
+    { enabled: Boolean(projectId) }
+  );
+  const actorOptions = [
+    ...(actorType && actorType !== ActorType.USER ? [] : (users.data ?? [])).map((member) => ({
+      value: `${ActorType.USER}:${member.user.id}`,
+      label: member.user.email || member.user.username
+    })),
+    ...(actorType && actorType !== ActorType.IDENTITY
+      ? []
+      : (identities.data?.identityMemberships ?? [])
+    ).map((membership) => ({
+      value: `${ActorType.IDENTITY}:${membership.identity.id}`,
+      label: membership.identity.name
+    }))
+  ];
+
   const query: TGetAuditLogsFilter = {
     startDate: new Date(active.from),
     endDate: new Date(active.to),
     limit: PAGE_SIZE,
     eventType: value("event") as EventType[],
-    actorType: value("actor-type")[0] as ActorType | undefined,
+    eventClass: value("class") as AuditLogEventClass[],
+    actorType: actorType ?? ((pickedActorType || undefined) as ActorType | undefined),
+    actor: pickedActor || undefined,
     userAgentType: value("source")[0] as UserAgentType | undefined,
-    environment: value("environment")[0] || undefined,
+    environment: (hasSecrets && value("environment")[0]) || undefined,
+    secretPath: (hasSecrets && projectId && value("secret-path")[0]) || undefined,
+    secretKey: (hasSecrets && projectId && value("secret-key")[0]) || undefined,
     projectId: projectId ?? undefined
   };
   const { data, isPending, hasNextPage, isFetchingNextPage, fetchNextPage } = org.useAuditLogs(
@@ -262,6 +310,7 @@ const LogsTab = () => {
   const rows = pages.flat();
   const canLoadMore = hasNextPage && pages[pages.length - 1]?.length === PAGE_SIZE;
   const filtered = filters.some((filter) => filter.values.length > 0);
+  const productEvents = projectType ? projectToEventsMap[projectType] : undefined;
 
   const fields: FilterBarField[] = [
     {
@@ -269,9 +318,18 @@ const LogsTab = () => {
       label: "Event type",
       type: "multi-select",
       searchable: true,
-      options: Object.values(EventType).map((type) => ({
+      options: (productEvents ?? Object.values(EventType)).map((type) => ({
         value: type,
         label: eventToNameMap[type] ?? type
+      }))
+    },
+    {
+      key: "class",
+      label: "Event class",
+      type: "multi-select",
+      options: AUDIT_LOG_EVENT_CLASSES.map((eventClass) => ({
+        value: eventClass,
+        label: auditLogEventClassToNameMap[eventClass]
       }))
     },
     {
@@ -283,14 +341,49 @@ const LogsTab = () => {
         label: actorTypeLabel[type] ?? type
       }))
     },
-    {
-      key: "project",
-      label: "Project",
-      type: "select",
-      searchable: true,
-      options: projects.map((project) => ({ value: project.id, label: project.name }))
-    },
-    { key: "environment", label: "Environment", type: "text", placeholder: "Environment slug" },
+    ...(projectId
+      ? [
+          {
+            key: "actor",
+            label: "Actor",
+            type: "select" as const,
+            searchable: true,
+            options: actorOptions
+          }
+        ]
+      : []),
+    ...(project
+      ? []
+      : [
+          {
+            key: "project",
+            label: "Project",
+            type: "select" as const,
+            searchable: true,
+            options: projects.map((entry) => ({ value: entry.id, label: entry.name }))
+          }
+        ]),
+    ...(hasSecrets
+      ? [
+          {
+            key: "environment",
+            label: "Environment",
+            type: "text" as const,
+            placeholder: "Environment slug"
+          }
+        ]
+      : []),
+    ...(hasSecrets && projectId
+      ? [
+          {
+            key: "secret-path",
+            label: "Secret path",
+            type: "text" as const,
+            placeholder: "/app/services"
+          },
+          { key: "secret-key", label: "Secret key", type: "text" as const, placeholder: "API_KEY" }
+        ]
+      : []),
     {
       key: "source",
       label: "Source",
@@ -307,8 +400,58 @@ const LogsTab = () => {
     setAnchor(Date.now());
   };
 
+  let empty = (
+    <EmptyState
+      size="sm"
+      media="bare"
+      icon="history"
+      title="No events match these filters"
+      description={`Nothing in the ${active.title}. Try a wider date range.`}
+      actions={
+        filtered ? (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setFilters([]);
+              reset();
+            }}
+          >
+            Clear filters
+          </Button>
+        ) : undefined
+      }
+    />
+  );
+  if (storage?.storageDisabled)
+    empty = (
+      <EmptyState size="sm" media="bare" icon="history" title="Audit log storage is disabled" />
+    );
+
   return (
     <>
+      {storage?.volumeWarning && (
+        <Alert tone="warn">
+          <AlertDescription>
+            Your audit log volume is growing. To keep searches fast, stream logs to an{" "}
+            <a
+              href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              external destination
+            </a>{" "}
+            or use the{" "}
+            <a
+              href="https://infisical.com/docs/documentation/platform/audit-logs-clickhouse-setup"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ClickHouse integration
+            </a>
+            .
+          </AlertDescription>
+        </Alert>
+      )}
       <FilterBar
         label="Audit log filters"
         fields={fields}
@@ -402,34 +545,31 @@ const LogsTab = () => {
                 }
               : undefined
           }
-          end={isPending ? undefined : "End of logs"}
-          empty={
-            <EmptyState
-              size="sm"
-              media="bare"
-              icon="history"
-              title="No events match these filters"
-              description={`Nothing in the ${active.title}. Try a wider date range.`}
-              actions={
-                filtered ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setFilters([]);
-                      reset();
-                    }}
-                  >
-                    Clear filters
-                  </Button>
-                ) : undefined
-              }
-            />
-          }
+          end={isPending || rows.length === 0 ? undefined : "End of logs"}
+          empty={empty}
         />
       </Stack>
       <LogDetails log={opened} onClose={() => setOpened(null)} />
     </>
   );
+};
+
+export const AuditLogsTab = ({ project }: { project?: AuditLogsProject }) => {
+  const { organization } = useV4Session();
+  const { data: plan } = useV4Adapter("auditLogs").usePlan(organization.id);
+  if (plan && !plan.auditLogs)
+    return (
+      <EmptyState
+        icon="lock"
+        title="Upgrade your plan to view audit logs"
+        actions={
+          <Button variant="outline" asChild>
+            <a href={orgHref(organization.id, "/billing")}>View plans</a>
+          </Button>
+        }
+      />
+    );
+  return <LogsTable project={project} />;
 };
 
 export const AuditLogsPage = () => {
@@ -465,7 +605,7 @@ export const AuditLogsPage = () => {
         }
       />
       {activeTab === "audit-logs" ? (
-        <LogsTab />
+        <AuditLogsTab />
       ) : (
         <Empty>
           <EmptyHeader>
