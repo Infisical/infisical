@@ -29,7 +29,7 @@ export const daysLeftLabel = (daysLeft: number | null): string | null => {
 // top banner + its "See what changes" dialog, so this stays short and truncates rather than wrapping.
 export const deprecationSubline = (deprecation: Deprecation, planTier?: string): string => {
   if (deprecation.kind === "product") {
-    return deprecation.date ? `Discontinued — access ends ${deprecation.date}` : "Discontinued";
+    return deprecation.date ? `Discontinued, access ends ${deprecation.date}` : "Discontinued";
   }
   const tier = planTier ? tierLabel(planTier) : "This plan";
   const base = deprecation.date

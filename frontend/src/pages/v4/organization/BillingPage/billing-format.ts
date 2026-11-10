@@ -119,7 +119,7 @@ export const cadencePeriod = (cadence: BillingCadence | null | undefined): strin
 
 // A per_resource dimension carrying a prepaid annual commitment: usage above `committed` is billed
 // monthly on-demand. A commitment is identified by a non-null committed quantity, NOT by the product's
-// cadence — a monthly-cadence product can still prepay an annual commitment on a dimension. Metered
+// cadence: a monthly-cadence product can still prepay an annual commitment on a dimension. Metered
 // dimensions are usage-based (no buyer-selected quantity), so they are never "committed" even if the
 // server reports a committed value, which keeps the commitment UI off usage-based pricing.
 export const dimCommitted = (dim: BillingEntitlementDim): boolean =>

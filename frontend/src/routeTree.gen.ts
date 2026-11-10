@@ -66,7 +66,6 @@ import { Route as redirectsPamAccessRedirectImport } from './pages/redirects/pam
 import { Route as adminLayoutImport } from './pages/admin/layout'
 import { Route as v4OrganizationSettingsPageRouteImport } from './pages/v4/organization/SettingsPage/route'
 import { Route as v4OrganizationIntegrationsPageRouteImport } from './pages/v4/organization/IntegrationsPage/route'
-import { Route as v4OrganizationBillingPageRouteImport } from './pages/v4/organization/BillingPage/route'
 import { Route as v4OrganizationAuditLogsPageRouteImport } from './pages/v4/organization/AuditLogsPage/route'
 import { Route as v4OrganizationAccessManagementPageRouteImport } from './pages/v4/organization/AccessManagementPage/route'
 import { Route as v4OrganizationNotPortedPageRouteImport } from './pages/v4/organization/NotPortedPage/route'
@@ -893,13 +892,6 @@ const v4OrganizationIntegrationsPageRouteRoute =
   v4OrganizationIntegrationsPageRouteImport.update({
     id: '/integrations',
     path: '/integrations',
-    getParentRoute: () => v4OrganizationRouteRoute,
-  } as any)
-
-const v4OrganizationBillingPageRouteRoute =
-  v4OrganizationBillingPageRouteImport.update({
-    id: '/billing',
-    path: '/billing',
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
@@ -3801,13 +3793,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof v4OrganizationAuditLogsPageRouteImport
       parentRoute: typeof v4OrganizationRouteImport
     }
-    '/v4/organizations/$orgId/billing': {
-      id: '/v4/organizations/$orgId/billing'
-      path: '/billing'
-      fullPath: '/v4/organizations/$orgId/billing'
-      preLoaderRoute: typeof v4OrganizationBillingPageRouteImport
-      parentRoute: typeof v4OrganizationRouteImport
-    }
     '/v4/organizations/$orgId/integrations': {
       id: '/v4/organizations/$orgId/integrations'
       path: '/integrations'
@@ -6105,7 +6090,6 @@ interface v4OrganizationRouteRouteChildren {
   v4OrganizationNotPortedPageRouteRoute: typeof v4OrganizationNotPortedPageRouteRoute
   v4OrganizationAccessManagementPageRouteRoute: typeof v4OrganizationAccessManagementPageRouteRoute
   v4OrganizationAuditLogsPageRouteRoute: typeof v4OrganizationAuditLogsPageRouteRoute
-  v4OrganizationBillingPageRouteRoute: typeof v4OrganizationBillingPageRouteRoute
   v4OrganizationIntegrationsPageRouteRoute: typeof v4OrganizationIntegrationsPageRouteRoute
   v4OrganizationSettingsPageRouteRoute: typeof v4OrganizationSettingsPageRouteRoute
   V4OrganizationsOrgIdProjectsRoute: typeof V4OrganizationsOrgIdProjectsRouteWithChildren
@@ -6129,7 +6113,6 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
   v4OrganizationAccessManagementPageRouteRoute:
     v4OrganizationAccessManagementPageRouteRoute,
   v4OrganizationAuditLogsPageRouteRoute: v4OrganizationAuditLogsPageRouteRoute,
-  v4OrganizationBillingPageRouteRoute: v4OrganizationBillingPageRouteRoute,
   v4OrganizationIntegrationsPageRouteRoute:
     v4OrganizationIntegrationsPageRouteRoute,
   v4OrganizationSettingsPageRouteRoute: v4OrganizationSettingsPageRouteRoute,
@@ -7625,7 +7608,6 @@ export interface FileRoutesByFullPath {
   '/v4/organizations/$orgId/$': typeof v4OrganizationNotPortedPageRouteRoute
   '/v4/organizations/$orgId/access-management': typeof v4OrganizationAccessManagementPageRouteRoute
   '/v4/organizations/$orgId/audit-logs': typeof v4OrganizationAuditLogsPageRouteRoute
-  '/v4/organizations/$orgId/billing': typeof v4OrganizationBillingPageRouteRoute
   '/v4/organizations/$orgId/integrations': typeof v4OrganizationIntegrationsPageRouteRoute
   '/v4/organizations/$orgId/settings': typeof v4OrganizationSettingsPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
@@ -7987,7 +7969,6 @@ export interface FileRoutesByTo {
   '/v4/organizations/$orgId/$': typeof v4OrganizationNotPortedPageRouteRoute
   '/v4/organizations/$orgId/access-management': typeof v4OrganizationAccessManagementPageRouteRoute
   '/v4/organizations/$orgId/audit-logs': typeof v4OrganizationAuditLogsPageRouteRoute
-  '/v4/organizations/$orgId/billing': typeof v4OrganizationBillingPageRouteRoute
   '/v4/organizations/$orgId/integrations': typeof v4OrganizationIntegrationsPageRouteRoute
   '/v4/organizations/$orgId/settings': typeof v4OrganizationSettingsPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
@@ -8334,7 +8315,6 @@ export interface FileRoutesById {
   '/v4/organizations/$orgId/$': typeof v4OrganizationNotPortedPageRouteRoute
   '/v4/organizations/$orgId/access-management': typeof v4OrganizationAccessManagementPageRouteRoute
   '/v4/organizations/$orgId/audit-logs': typeof v4OrganizationAuditLogsPageRouteRoute
-  '/v4/organizations/$orgId/billing': typeof v4OrganizationBillingPageRouteRoute
   '/v4/organizations/$orgId/integrations': typeof v4OrganizationIntegrationsPageRouteRoute
   '/v4/organizations/$orgId/settings': typeof v4OrganizationSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
@@ -8711,7 +8691,6 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/$'
     | '/v4/organizations/$orgId/access-management'
     | '/v4/organizations/$orgId/audit-logs'
-    | '/v4/organizations/$orgId/billing'
     | '/v4/organizations/$orgId/integrations'
     | '/v4/organizations/$orgId/settings'
     | '/integrations'
@@ -9072,7 +9051,6 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/$'
     | '/v4/organizations/$orgId/access-management'
     | '/v4/organizations/$orgId/audit-logs'
-    | '/v4/organizations/$orgId/billing'
     | '/v4/organizations/$orgId/integrations'
     | '/v4/organizations/$orgId/settings'
     | '/integrations'
@@ -9417,7 +9395,6 @@ export interface FileRouteTypes {
     | '/v4/organizations/$orgId/$'
     | '/v4/organizations/$orgId/access-management'
     | '/v4/organizations/$orgId/audit-logs'
-    | '/v4/organizations/$orgId/billing'
     | '/v4/organizations/$orgId/integrations'
     | '/v4/organizations/$orgId/settings'
     | '/_authenticate/_inject-org-details/_org-layout/integrations'
@@ -10017,7 +9994,6 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/$",
         "/v4/organizations/$orgId/access-management",
         "/v4/organizations/$orgId/audit-logs",
-        "/v4/organizations/$orgId/billing",
         "/v4/organizations/$orgId/integrations",
         "/v4/organizations/$orgId/settings",
         "/v4/organizations/$orgId/projects",
@@ -10167,10 +10143,6 @@ export const routeTree = rootRoute
     },
     "/v4/organizations/$orgId/audit-logs": {
       "filePath": "v4/organization/AuditLogsPage/route.tsx",
-      "parent": "/v4/organizations/$orgId"
-    },
-    "/v4/organizations/$orgId/billing": {
-      "filePath": "v4/organization/BillingPage/route.tsx",
       "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/integrations": {
