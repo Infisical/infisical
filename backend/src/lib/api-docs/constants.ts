@@ -2438,8 +2438,8 @@ export const CERTIFICATES = {
     serialNumber: "The serial number of the certificate to get.",
     includeDeleted: "Return the certificate even if it was deleted. Without it, a deleted certificate returns 404.",
     hasPrivateKey: "Whether Infisical holds the private key for this certificate.",
-    hasCsr:
-      "Whether Infisical holds a CSR generated from this certificate's private key, either the one the request that produced it carried or the one supplied at import. Without the private key, this CSR is what lets the certificate renew, and auto-renew, on its existing key pair.",
+    canRenewFromCsr:
+      "Whether Infisical can renew this certificate on its existing key pair from a CSR it holds, without its private key: a CSR the request that produced it carried or one supplied at import, a certificate enrolled through the API, and a profile whose certificate authority issues from a CSR. When true, renewing with renewalKeySource 'reuse' renews from that CSR, and auto-renewal can be turned on.",
     externalMetadata:
       "Identifies this certificate at the provider that issued it, for certificates issued by or linked to an external certificate authority. Null for everything else.",
     latestRenewalCertificateId:
@@ -2505,7 +2505,7 @@ export const CERTIFICATES = {
     certificatePem: "The PEM-encoded leaf certificate.",
     privateKeyPem: "Optional PEM-encoded private key associated with the certificate.",
     chainPem: "Optional PEM-encoded chain of intermediate certificates.",
-    csr: "Optional PEM-encoded certificate signing request generated from the certificate's private key, typically the one it was issued from. Lets renewal reuse the existing key pair, including automatic renewal, without Infisical holding the private key. Requires a profile that issues from a certificate authority, must carry the certificate's public key, and can't name anything the certificate doesn't.",
+    csr: "Optional PEM-encoded certificate signing request generated from the certificate's private key, typically the one it was issued from. Lets renewal reuse the existing key pair, including automatic renewal, without Infisical holding the private key. Requires a profile backed by a certificate authority that issues from a CSR (not AWS Certificate Manager). The CSR must carry the certificate's public key, can't name anything the certificate doesn't, and must satisfy the profile's certificate policy.",
     friendlyName: "A friendly name for the certificate.",
     pkiCollectionId: "The ID of the PKI collection to add the certificate to.",
     profileId:

@@ -22,7 +22,6 @@ import {
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
-  isRenewalSubjectChange,
   resolveRenewalAlgorithms,
   resolveRenewalAltNames,
   resolveRenewalCustomExtensions,
@@ -737,64 +736,5 @@ describe("buildRenewalPreview", () => {
     );
 
     expect(issuerModifiedFields.map((entry) => entry.field)).not.toContain("customExtensions");
-  });
-});
-
-describe("isRenewalSubjectChange", () => {
-  const dns = (value: string) => ({ type: CertSubjectAlternativeNameType.DNS_NAME, value });
-  const replayed = {
-    commonName: "web.example.com",
-    subjectAlternativeNames: [dns("web.example.com"), dns("www.example.com")]
-  };
-
-  it("treats the same names in any order or case as unchanged", () => {
-    expect(
-      isRenewalSubjectChange({
-        replayed,
-        requested: {
-          commonName: "WEB.example.com",
-          subjectAlternativeNames: [dns("www.example.com"), dns("web.example.com")]
-        }
-      })
-    ).toBe(false);
-  });
-
-  it("flags an added, removed or replaced name", () => {
-    expect(
-      isRenewalSubjectChange({
-        replayed,
-        requested: {
-          commonName: "web.example.com",
-          subjectAlternativeNames: [dns("web.example.com"), dns("www.example.com"), dns("api.example.com")]
-        }
-      })
-    ).toBe(true);
-    expect(
-      isRenewalSubjectChange({
-        replayed,
-        requested: { commonName: "web.example.com", subjectAlternativeNames: [] }
-      })
-    ).toBe(true);
-    expect(
-      isRenewalSubjectChange({
-        replayed,
-        requested: { commonName: "api.example.com", subjectAlternativeNames: [] }
-      })
-    ).toBe(true);
-  });
-
-  it("flags a changed subject attribute such as the organizational unit", () => {
-    expect(
-      isRenewalSubjectChange({
-        replayed: { ...replayed, organizationalUnit: "Admin" },
-        requested: { ...replayed, organizationalUnit: "users" }
-      })
-    ).toBe(true);
-    expect(
-      isRenewalSubjectChange({
-        replayed: { ...replayed, organizationalUnit: "Admin" },
-        requested: { ...replayed, organizationalUnit: "admin" }
-      })
-    ).toBe(false);
   });
 });

@@ -255,12 +255,12 @@ describe("canRenewOnExistingKeyPair", () => {
     expect(canRenewOnExistingKeyPair({ hasPrivateKey: true })).toBe(true);
   });
 
-  it("allows a certificate without its private key when Infisical holds a CSR for it", () => {
-    expect(canRenewOnExistingKeyPair({ hasPrivateKey: false, hasCsr: true })).toBe(true);
+  it("allows a certificate without its private key when it can renew from a stored CSR", () => {
+    expect(canRenewOnExistingKeyPair({ hasPrivateKey: false, canRenewFromCsr: true })).toBe(true);
   });
 
-  it("refuses a certificate with neither its private key nor a CSR", () => {
-    expect(canRenewOnExistingKeyPair({ hasPrivateKey: false, hasCsr: false })).toBe(false);
+  it("refuses a certificate without its private key that can't renew from a CSR", () => {
+    expect(canRenewOnExistingKeyPair({ hasPrivateKey: false, canRenewFromCsr: false })).toBe(false);
     expect(canRenewOnExistingKeyPair({ hasPrivateKey: false })).toBe(false);
   });
 });

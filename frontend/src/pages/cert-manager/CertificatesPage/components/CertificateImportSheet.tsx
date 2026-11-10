@@ -42,6 +42,7 @@ import { useOrganization, useProject } from "@app/context";
 import type { TCertificatePemSummary } from "@app/helpers/certificatePem";
 import type { TPkcs12Entry } from "@app/helpers/pkcs12";
 import { useImportCertificate, useImportPkcs12Entries } from "@app/hooks/api";
+import { CaType } from "@app/hooks/api/ca/enums";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 import { useWizardSteps } from "@app/hooks/useWizardSteps";
 
@@ -318,8 +319,13 @@ export const CertificateImportSheet = ({ popUp, handlePopUpToggle, applicationId
 
   const isKeystore = format === ImportFormat.Keystore;
   const privateKeyPem = useWatch({ control, name: "privateKeyPem" });
-  // A CSR only matters when a CA-backed profile will renew the certificate without its private key.
-  const isCsrApplicable = !isKeystore && Boolean(selectedProfile?.caId) && !privateKeyPem?.trim();
+  // A CSR only matters when a CA-backed profile will renew the certificate without its private key, and
+  // AWS Certificate Manager can't issue from one.
+  const isCsrApplicable =
+    !isKeystore &&
+    Boolean(selectedProfile?.caId) &&
+    selectedProfile?.caType !== CaType.AWS_ACM_PUBLIC_CA &&
+    !privateKeyPem?.trim();
 
   const selectableEntries = useMemo(
     () => (entries ?? []).filter((entry) => !importedFingerprints.has(entry.fingerprintSha256)),

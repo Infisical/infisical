@@ -27,7 +27,7 @@ import type { TCaKeySourceServiceFactory } from "@app/services/certificate-autho
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
-import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
+import { caIssuesFromCsr, caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { DigiCertCertificateAuthorityFns } from "@app/services/certificate-authority/digicert/digicert-certificate-authority-fns";
@@ -93,7 +93,7 @@ import {
 } from "../certificate-common/certificate-issuance-utils";
 import { assertCanRevokeCertificate } from "../certificate-common/certificate-permission-fns";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
-import { certificateSpanToTtl } from "../certificate-v3/certificate-renewal-fns";
+import { buildCsrRenewalCertificateRequest, certificateSpanToTtl } from "../certificate-v3/certificate-renewal-fns";
 import { parseExtendedKeyUsages, parseKeyUsages } from "../certificate-v3/certificate-v3-fns";
 import {
   assertCertificateMaterialAvailable,
@@ -1087,6 +1087,7 @@ export const certificateServiceFactory = ({
         caType: null,
         externalMetadata: undefined,
         profileName: profile.slug,
+        policyId: profile.certificatePolicyId,
         caName: null,
         profileApiConfig: profile.apiConfig,
         verifyCertificate: $buildImportCertificateVerifier({
@@ -1116,6 +1117,7 @@ export const certificateServiceFactory = ({
         caType,
         externalMetadata: undefined,
         profileName: profile.slug,
+        policyId: profile.certificatePolicyId,
         caName,
         profileApiConfig: profile.apiConfig,
         verifyCertificate: $buildImportCertificateVerifier({
@@ -1147,6 +1149,7 @@ export const certificateServiceFactory = ({
       caType,
       externalMetadata: parsedMetadata,
       profileName: profile.slug,
+      policyId: profile.certificatePolicyId,
       caName,
       profileApiConfig: profile.apiConfig,
       verifyCertificate: $buildImportCertificateVerifier({
@@ -1272,6 +1275,12 @@ export const certificateServiceFactory = ({
       });
     }
 
+    if (csr && linkage?.caType && !caIssuesFromCsr(linkage.caType)) {
+      throw new BadRequestError({
+        message: `Certificate profile '${linkage.profileName}' issues from ${CA_TYPE_LABEL[linkage.caType] ?? linkage.caType}, which can't issue a certificate from a signing request. Remove 'csr', or import the certificate into a profile backed by another certificate authority.`
+      });
+    }
+
     const leafCert = new x509.X509Certificate(certificatePem);
 
     // Verify the certificate chain when one is provided
@@ -1344,8 +1353,24 @@ export const certificateServiceFactory = ({
       }
     }
 
-    if (csr) {
+    if (csr && linkage) {
       await assertCsrMatchesCertificate(csr, leafCert);
+
+      // Renewal from the stored CSR runs as a CSR renewal, so refuse here any CSR that renewal would refuse.
+      const csrRenewalRequest = buildCsrRenewalCertificateRequest({
+        csr,
+        attributes: { ttl: certificateSpanToTtl(leafCert.notBefore, leafCert.notAfter) }
+      });
+      const csrValidation = await certificatePolicyService.validateCertificateRequest(
+        linkage.policyId,
+        csrRenewalRequest
+      );
+      if (!csrValidation.isValid) {
+        const violations = csrValidation.errors.map((error) => `- ${error}`).join("\n");
+        throw new BadRequestError({
+          message: `This certificate signing request can't be used to renew the certificate, because it does not satisfy the policy of certificate profile '${linkage.profileName}':\n${violations}\nSupply a CSR the policy allows, or import the certificate without one.`
+        });
+      }
     }
 
     // Get certificate attributes

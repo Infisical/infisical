@@ -60,7 +60,7 @@ export type TCertificate = {
   renewedByCertificateId?: string;
   renewalError?: string;
   hasPrivateKey?: boolean;
-  hasCsr?: boolean;
+  canRenewFromCsr?: boolean;
   keyAlgorithm?: string | null;
   signatureAlgorithm?: string | null;
   subject?: TCertificateSubject;

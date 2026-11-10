@@ -155,6 +155,34 @@ describe("buildRenewalRequestAttributes", () => {
     expect(attributes.keyUsages).toEqual(["key_agreement", "digital_signature"]);
     expect(attributes.extendedKeyUsages).toEqual(["client_auth"]);
   });
+
+  it("sends only what a CSR renewal accepts when reuse renews from the stored CSR", () => {
+    const formData = {
+      ...buildRenewalFormDefaults(certificate, constraints),
+      keySource: CertificateRenewalKeySource.Reuse,
+      renewsFromStoredCsr: true,
+      ttl: "30d"
+    };
+
+    expect(buildRenewalRequestAttributes({ formData, constraints })).toEqual({
+      ttl: "30d",
+      customExtensions: []
+    });
+  });
+
+  it("sends the subject and usages when reuse renews from the private key Infisical holds", () => {
+    const formData = {
+      ...buildRenewalFormDefaults(certificate, constraints),
+      keySource: CertificateRenewalKeySource.Reuse,
+      renewsFromStoredCsr: false
+    };
+
+    const attributes = buildRenewalRequestAttributes({ formData, constraints });
+
+    expect(attributes.commonName).toBe("ca-rewrote.example.com");
+    expect(attributes.altNames).toBeDefined();
+    expect(attributes.keyUsages).toBeDefined();
+  });
 });
 
 describe("capTtlToDays", () => {
