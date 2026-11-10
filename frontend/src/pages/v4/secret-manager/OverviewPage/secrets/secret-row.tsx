@@ -360,7 +360,6 @@ function SecretActionsRow({
   children: ReactNode;
 }) {
   const pending = useRef<() => void>(undefined);
-  const keepFocus = useRef(false);
   const [seen, setSeen] = useState<Overlay[]>([]);
   if (open && !seen.includes(open)) setSeen([...seen, open]);
   const loader = useValueLoader();
@@ -633,16 +632,14 @@ function SecretActionsRow({
                 {...rowActions}
                 menuLabel="More secret actions"
                 onOpenChange={(next) => {
-                  const run = pending.current;
-                  pending.current = undefined;
-                  if (next || !run) return;
-                  keepFocus.current = true;
-                  setTimeout(run, 0);
+                  if (next) pending.current = undefined;
                 }}
                 onMenuCloseAutoFocus={(event) => {
-                  if (!keepFocus.current) return;
-                  keepFocus.current = false;
+                  const run = pending.current;
+                  pending.current = undefined;
+                  if (!run) return;
                   event.preventDefault();
+                  run();
                 }}
               />
             </PopoverAnchor>
