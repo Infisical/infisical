@@ -121,11 +121,19 @@ const isAutoApprovalEvidence = (value: unknown): value is TAutoApprovalEvidence 
   (value as { version?: unknown }).version === 1 &&
   Array.isArray((value as { rules?: unknown }).rules);
 
+export const AUTO_APPROVAL_AI_HIDDEN_REASON = "The AI didn't approve this request, so it went to the approvers";
+
+const getVisibleReason = (condition: { subject: string; passed: boolean; reason: string | null }, hideAi: boolean) =>
+  hideAi && isAiCondition(condition) && !condition.passed ? AUTO_APPROVAL_AI_HIDDEN_REASON : condition.reason;
+
 // What the API returns about an evaluation: results and reasons
-export const toAutoApprovalOutcome = (request: {
-  autoApprovedAt?: Date | null;
-  autoApprovalEvidence?: unknown;
-}): TAutoApprovalOutcome | null => {
+export const toAutoApprovalOutcome = (
+  request: {
+    autoApprovedAt?: Date | null;
+    autoApprovalEvidence?: unknown;
+  },
+  { hideAi = false }: { hideAi?: boolean } = {}
+): TAutoApprovalOutcome | null => {
   const evidence = request.autoApprovalEvidence;
   if (!isAutoApprovalEvidence(evidence)) return null;
 
@@ -137,26 +145,27 @@ export const toAutoApprovalOutcome = (request: {
       id: rule.id,
       name: rule.name,
       passed: rule.passed,
-      conditions: rule.conditions.map(({ id, description, passed, reason, ai }) => ({
+      conditions: rule.conditions.map(({ id, subject, description, passed, reason, ai }) => ({
         id,
         description,
         passed,
-        reason,
-        ai: ai
-          ? {
-              model: ai.model,
-              approve: ai.approve,
-              reason: ai.reason,
-              error: ai.error,
-              toolCalls: ai.toolCalls.map(({ tool, connectionName, input, summary, error }) => ({
-                tool,
-                connectionName,
-                input,
-                summary,
-                error
-              }))
-            }
-          : null
+        reason: getVisibleReason({ subject, passed, reason }, hideAi),
+        ai:
+          ai && !hideAi
+            ? {
+                model: ai.model,
+                approve: ai.approve,
+                reason: ai.reason,
+                error: ai.error,
+                toolCalls: ai.toolCalls.map(({ tool, connectionName, input, summary, error }) => ({
+                  tool,
+                  connectionName,
+                  input,
+                  summary,
+                  error
+                }))
+              }
+            : null
       }))
     }))
   };
@@ -190,6 +199,9 @@ export const getClosestFailedRule = (evidence: Pick<TAutoApprovalEvidence, "rule
   const failedCondition = closest.rule.conditions.find((condition) => !condition.passed);
   return {
     ruleName: closest.rule.name,
-    reason: failedCondition?.reason ?? failedCondition?.description ?? "a condition didn't pass"
+    reason:
+      (failedCondition && getVisibleReason(failedCondition, true)) ??
+      failedCondition?.description ??
+      "a condition didn't pass"
   };
 };

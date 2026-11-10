@@ -1,4 +1,5 @@
 import {
+  AUTO_APPROVAL_AI_HIDDEN_REASON,
   evaluateAutoApprovalRules,
   getAutoApprovalSummary,
   getClosestFailedRule,
@@ -342,5 +343,30 @@ describe("AI conditions", () => {
     ]);
     expect(JSON.stringify(outcome)).not.toContain("secret details");
     expect(outcome?.rules[0].conditions[0].ai).toBeNull();
+  });
+
+  test("hides the AI's reasoning and lookups from the requester", () => {
+    const declined = { ...aiResult, approve: false, reason: "INC-1 is closed" };
+    const evidence = {
+      version: 1,
+      evaluatedAt: new Date().toISOString(),
+      inputs: [],
+      subjects: [],
+      ...evaluateAutoApprovalRules(
+        rules,
+        resolved("Scheduled"),
+        ctx,
+        new Map([["c-ai", { passed: false, reason: "INC-1 is closed", ai: declined }]])
+      )
+    };
+
+    const outcome = toAutoApprovalOutcome({ autoApprovalEvidence: evidence }, { hideAi: true });
+
+    expect(outcome?.rules[0].conditions[1]).toMatchObject({ reason: AUTO_APPROVAL_AI_HIDDEN_REASON, ai: null });
+    expect(JSON.stringify(outcome)).not.toContain("INC-1 is closed");
+    expect(getClosestFailedRule(evidence)?.reason).toBe(AUTO_APPROVAL_AI_HIDDEN_REASON);
+    expect(toAutoApprovalOutcome({ autoApprovalEvidence: evidence })?.rules[0].conditions[1].reason).toBe(
+      "INC-1 is closed"
+    );
   });
 });

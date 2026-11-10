@@ -273,7 +273,7 @@ export const approvalPolicyServiceFactory = ({
     actor: TApprovalActor,
     ctx: TDecorationContext = $buildDecorationContext(actor)
   ): Promise<R & TBypassAffordances & TAutoApprovalAffordance> => {
-    const autoApproval = toAutoApprovalOutcome(request);
+    const autoApproval = toAutoApprovalOutcome(request, { hideAi: request.requesterId === actor.id });
 
     if (!resources[request.type as ApprovalPolicyType]?.isBreakGlassEligible) {
       return { ...request, canBreakGlass: false, isBreakGlass: false, bypassReason: null, autoApproval };
