@@ -5,6 +5,7 @@ import type { AgentVaultAdapter } from "./agent-vault/contract";
 import type { CertificatesAdapter } from "./certificates/contract";
 import type { IntegrationsAdapter } from "./integrations/contract";
 import type { KmsAdapter } from "./kms/contract";
+import type { NetworkingAdapter } from "./networking/contract";
 import type { OrgAdapter } from "./org/contract";
 import type { PamAdapter } from "./pam/contract";
 import type { ProjectsAdapter } from "./projects/contract";
@@ -15,6 +16,7 @@ export type V4Adapters = {
   kms: KmsAdapter;
   org: OrgAdapter;
   integrations: IntegrationsAdapter;
+  networking: NetworkingAdapter;
   secretScanning: SecretScanningAdapter;
   secrets: SecretsAdapter;
   certificates: CertificatesAdapter;
