@@ -10,7 +10,6 @@ import { TImmutableDBKeys } from "./models";
 export const ApprovalPolicyAutoApprovalConditionContextsSchema = z.object({
   id: z.string().uuid(),
   conditionId: z.string().uuid(),
-  position: z.number(),
   connectionId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date()

@@ -50,7 +50,8 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
               "conditionId",
               conditions.map((condition) => condition.id)
             )
-            .orderBy("position", "asc")
+            .orderBy("createdAt", "asc")
+            .orderBy("connectionId", "asc")
         : [];
 
       const inputById = new Map(inputs.map((input) => [input.id, input]));
@@ -166,9 +167,8 @@ export const approvalPolicyAutoApprovalDALFactory = (db: TDbClient) => {
 
     const contextRows = config.rules.flatMap((rule, rulePosition) =>
       rule.conditions.flatMap((condition, position) =>
-        (condition.contextConnectionIds ?? []).map((connectionId, contextPosition) => ({
+        (condition.contextConnectionIds ?? []).map((connectionId) => ({
           conditionId: conditionIdByPosition.get(`${ruleIdByPosition.get(rulePosition)}:${position}`) as string,
-          position: contextPosition,
           connectionId
         }))
       )
