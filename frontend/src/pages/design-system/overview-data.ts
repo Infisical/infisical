@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "pinned-edge-line",
+    title: "Pinned edges hold their line",
+    description:
+      "Pinned name and action columns keep a hard edge as content scrolls under them, with the fade outside it.",
+    date: "2026-11-07",
+    commit: "c631c433d4",
+    page: "table"
+  },
+  {
     id: "toast-live-regions",
     title: "Toasts announce reliably",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "f2ee386887",
     page: "floating-action-bar"
-  },
-  {
-    id: "leading-pin",
-    title: "Leading pins",
-    description:
-      "Selection and name columns can pin to the start of a wide table, and an expanded row's nested content stays in view while the table scrolls sideways.",
-    date: "2026-11-07",
-    commit: "cb490b4bba",
-    page: "table"
   }
 ];
