@@ -10,7 +10,6 @@ const ORG_ID = "11111111-1111-1111-1111-111111111111";
 
 const entitlements = { slug: "enterprise", features: {}, products: [] } as unknown as TEntitlementsResponse;
 
-// A backend that records the orgs it was asked about, and fails when told to.
 const stubBackend = ({ fail = false } = {}) => {
   const asked: TEntitlementOrg[] = [];
   const backend = {

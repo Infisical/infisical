@@ -1,5 +1,4 @@
-// Package offlineterminated_test covers an instance booted with a correctly signed
-// offline license whose termination date has passed.
+// Package offlineterminated_test boots with a validly signed offline license that's past its termination date.
 package offlineterminated_test
 
 import (

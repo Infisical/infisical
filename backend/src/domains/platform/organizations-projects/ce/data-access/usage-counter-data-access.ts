@@ -6,20 +6,16 @@ import { DatabaseError } from "@app/lib/errors";
 
 import { TBillableActorDataAccess, TIdentityOwnership } from "../service/dependencies";
 
-// A user/identity occupies a billable seat only when it is (a) an org member, and (b) either a member
-// of a Secret-Management-flavoured project (Secret Manager or KMS) or not a member of any project at
-// all. Actors that only live in other project types (PAM, PKI, ...) do not count. Membership can be
-// direct or inherited through a group.
+// A user/identity takes a billable seat only if it's an org member AND either in a Secret Manager/KMS
+// project or in no project at all (direct or via a group). Actors only in PAM, PKI etc. don't count.
 const COUNTED_PROJECT_TYPES = [ProjectType.SecretManager, ProjectType.KMS];
 
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
-// Reads tables a future domain will own (memberships, group memberships, users, identities, projects,
-// organizations); see ../../AGENTS.md.
+// Reads tables a future domain will own; see ../../AGENTS.md.
 export class BillableActorDataAccess implements TBillableActorDataAccess {
   constructor(private readonly db: TDbClient) {}
 
-  // Billable users and machine identities. A null orgId counts the whole instance.
   async countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }> {
     try {
       const knex = this.db.replicaNode();
@@ -52,11 +48,8 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     }
   }
 
-  // The same seats countBillableOrgActors bills for, attributed to where each machine identity was
-  // created. Seats are held by membership (an identity can sit in many projects), so grouping on
-  // membership would count one identity several times; identities.projectId is a single column, so
-  // grouping on ownership partitions the billed total exactly once across the tree.
-  // orgId null means the whole instance, matching countBillableOrgActors and the meter it feeds.
+  // Attributed by where each identity was created, not by membership: an identity can sit in many
+  // projects, but identities.projectId is one column, so the billed total splits exactly once.
   async getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]> {
     try {
       const knex = this.db.replicaNode();
@@ -83,10 +76,8 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     }
   }
 
-  // Users and machine identities in projects of one type, directly or through a group. orgId omitted counts
-  // the whole instance.
   async countProjectIdentities(projectType: ProjectType, orgId?: string): Promise<number> {
-    // .as() on a union builder is typed as any, so cast the awaited row before counting.
+    // .as() on a union builder is typed as any, so cast before counting.
     const row = (await this.db
       .replicaNode()
       .count("* as count")
@@ -110,10 +101,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     return { users: byKind("u"), identities: byKind("i") };
   }
 
-  // Machine identities from the same metered set, attributed to where each was created: the project
-  // that owns it, or the org itself when org-owned. Seats are held by membership, which is
-  // many-to-many, so grouping on membership would count one identity once per project it sits in;
-  // identities.projectId is a single column and partitions the metered total exactly once.
+  // Attributed by owner (project, or the org when org-owned), not membership, for the same reason as above.
   async getProjectIdentityOwnershipBreakdown(projectType: ProjectType, orgId?: string): Promise<TIdentityOwnership[]> {
     const rows = (await this.db
       .replicaNode()({ i: TableName.Identity })
@@ -132,8 +120,6 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     return rows.map((row) => ({ orgId: row.orgId, projectId: row.projectId, count: Number(row.count) }));
   }
 
-  // The orgs in scope (the org and its sub-orgs, or every org), their live projects, their accepted
-  // non-ghost users, and their identities.
   private withBillableScopes(orgId: string | null) {
     const knex = this.db.replicaNode();
     const orgIds = orgId
@@ -173,15 +159,13 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
             .where("u.isAccepted", true)
             .distinct({ id: "m.actorUserId" });
         })
-        // Identities that belong to an org in scope, deduped.
         .with("org_identities", (qb) => {
           void qb.from(TableName.Identity).whereIn("orgId", knex.select("id").from("orgs")).distinct("id");
         })
     );
   }
 
-  // Actors present in at least one counted (SM/KMS) project, direct or via a group. UNION dedupes
-  // across the four sources, and kind ('u'/'i') lets the caller split by actor type.
+  // UNION dedupes across the four sources; kind ('u'/'i') lets the caller split by actor type.
   private countedMembersCte() {
     const knex = this.db.replicaNode();
     return (qb: Knex.QueryBuilder) => {
@@ -231,7 +215,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     };
   }
 
-  // Org users with no project membership at all (direct or via a group) count as present in the org.
+  // Org users with no project membership at all (direct or via a group) still count.
   private projectlessUsersCte() {
     const knex = this.db.replicaNode();
     return (qb: Knex.QueryBuilder) => {
@@ -281,9 +265,7 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
     };
   }
 
-  // The distinct actor set behind the project-scoped identity meters, as ('u' | 'i', entityId) rows.
-  // Shared by the meter and the usage breakdown so a breakdown can never disagree with the number the
-  // customer is billed on.
+  // Shared by the meter and the usage breakdown so the breakdown can't disagree with what gets billed.
   private projectIdentityEntities(projectType: ProjectType, orgId?: string) {
     const { db } = this;
     const scopedOrgIds = () => {
@@ -319,15 +301,14 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
       return qb;
     };
 
-    // Identities that actually belong to the org / child orgs.
     const orgIdentityIds = () => {
       const qb = db.replicaNode()(TableName.Identity).select(`${TableName.Identity}.id`);
       if (orgId) void qb.whereIn(`${TableName.Identity}.orgId`, scopedOrgIds());
       return qb;
     };
 
-    // scope = project + a non-null actor column + whereIn against the typed project ids matches the
-    // partial unique indexes exactly; each project-scope row carries exactly one actor column.
+    // scope = project + non-null actor column + whereIn on the typed project ids lines up with the
+    // partial unique indexes; each project-scope row has exactly one actor column.
     const directUsers = db
       .replicaNode()(TableName.Membership)
       .where(`${TableName.Membership}.scope`, AccessScope.Project)
@@ -348,8 +329,8 @@ export class BillableActorDataAccess implements TBillableActorDataAccess {
             .whereIn(`${TableName.Membership}.actorIdentityId`, orgIdentityIds())
             .select(db.raw("'i' as kind"))
             .select(`${TableName.Membership}.actorIdentityId as entityId`),
-        // A group assigned to a project (membership with actorGroupId) brings its members into it. A
-        // pending group membership (invited, not yet joined) does not occupy a seat.
+        // A group assigned to a project brings its members in. Pending group members (invited, not
+        // joined) don't take a seat.
         (qb) =>
           void qb
             .from(TableName.UserGroupMembership)

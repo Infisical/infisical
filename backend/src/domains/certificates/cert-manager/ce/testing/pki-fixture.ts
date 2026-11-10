@@ -6,7 +6,6 @@ import { TPlatformFactories } from "@app/domains/lib/testing/integration/factori
 
 const DAY = 24 * 60 * 60 * 1000;
 
-// A root org and a sub-org, each with a Certificate Manager project, and helpers to add PKI rows to them.
 export const seedPkiOrgs = async (db: TDbClient, factories: TPlatformFactories) => {
   const root = await factories.organization();
   const sub = await factories.organization({ rootOrgId: root.id, parentOrgId: root.id });
@@ -62,7 +61,7 @@ export const seedPkiOrgs = async (db: TDbClient, factories: TPlatformFactories) 
     return cert;
   };
 
-  // A code-signing signer whose certificate carries this name; its whole chain is excluded from the quota.
+  // Its whole chain is excluded from the quota.
   const signer = async (projectId: string, name: string) => {
     const cert = await certificate(projectId, name);
     await db(TableName.PkiSigners).insert({

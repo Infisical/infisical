@@ -1,5 +1,5 @@
-// Package offline_test covers an instance booted with a valid offline license, signed
-// by a key the test generates and trusts in place of Infisical's own.
+// Package offline_test boots with a valid offline license signed by a test key we
+// trust in place of Infisical's.
 package offline_test
 
 import (
@@ -13,7 +13,6 @@ import (
 
 const licenseID = "harness-offline"
 
-// licenseKey is the signed offline key the instance boots with.
 var licenseKey string
 
 func TestMain(m *testing.M) {

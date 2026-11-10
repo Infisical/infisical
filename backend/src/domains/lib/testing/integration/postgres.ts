@@ -23,12 +23,12 @@ import {
 } from "./postgres-connection";
 import { DATABASE_PREFIX, randomId } from "./run";
 
-// Matches docker-compose.test.yml, which is what CI points INTEGRATION_POSTGRES_URL at.
+// Matches docker-compose.test.yml, which CI points INTEGRATION_POSTGRES_URL at.
 const POSTGRES_IMAGE = "postgres:14-alpine";
 
 const MIGRATIONS_DIRECTORY = path.join(__dirname, "../../../../db/migrations");
 
-// Arbitrary, fixed: every run against the same server builds templates under this one lock.
+// Any fixed number works; every run on a server builds templates under this one lock.
 const TEMPLATE_LOCK_KEY = 4_716_220_118;
 
 export type TOpenDatabase = {
@@ -43,7 +43,7 @@ const startPostgresServer = async (): Promise<TPostgresServer> => {
 
   const started = await container(POSTGRES_IMAGE)
     .withEnvironment({ POSTGRES_USER: "infisical", POSTGRES_PASSWORD: "infisical", POSTGRES_DB: "postgres" })
-    // Durability settings off: the data lives as long as the run. max_locks matches the dev database.
+    // Durability off since the data only lives for the run. max_locks matches the dev DB.
     .withCommand([
       "postgres",
       "-c",
@@ -56,7 +56,7 @@ const startPostgresServer = async (): Promise<TPostgresServer> => {
       "full_page_writes=off"
     ])
     .withExposedPorts(5432)
-    // The entrypoint starts Postgres once to initialise, stops it, then starts it for real.
+    // The entrypoint starts Postgres to init, stops it, then starts it for real, hence 2.
     .withWaitStrategy(Wait.forLogMessage(/database system is ready to accept connections/, 2))
     .start();
 
@@ -77,7 +77,7 @@ const listFiles = async (directory: string): Promise<string[]> => {
     .sort();
 };
 
-// The template is named after its migrations, so an unchanged tree reuses it across runs on the same server.
+// Named after its migrations, so an unchanged tree reuses it across runs on the same server.
 const templateName = async () => {
   const files = await listFiles(MIGRATIONS_DIRECTORY);
   const contents = await Promise.all(files.map((file) => readFile(file)));
@@ -94,12 +94,11 @@ const buildTemplate = async (server: TPostgresServer): Promise<{ name: string }>
   const admin = connectMaintenance(server);
 
   try {
-    // startOnce serialises workers in this run; the advisory lock serialises separate runs sharing one server.
+    // startOnce serialises workers in this run; the advisory lock serialises runs sharing a server.
     await admin.raw("SELECT pg_advisory_lock(?)", [TEMPLATE_LOCK_KEY]);
     if (await databaseExists(admin, name)) return { name };
 
-    // Migrated under another name and renamed when done, so a crash mid-migration never leaves a template
-    // that looks complete.
+    // Built under another name and renamed at the end, so a crash mid-migration never leaves a template that looks done.
     const building = `${name}_building`;
     await dropDatabase(admin, building);
     await createDatabase(admin, building);
@@ -119,7 +118,7 @@ const buildTemplate = async (server: TPostgresServer): Promise<{ name: string }>
     await admin.raw("ALTER DATABASE ?? RENAME TO ??", [building, name]);
 
     const stale = (await listHarnessDatabases(admin, `${DATABASE_PREFIX}tpl_`)).filter((other) => other !== name);
-    // Not forced: a template another run is cloning right now stays, and a later build drops it.
+    // Not forced: a template another run is cloning stays, and a later build drops it.
     await Promise.all(stale.map((other) => dropDatabase(admin, other, { force: false }).catch(() => undefined)));
 
     return { name };
@@ -169,10 +168,7 @@ const withMaintenance = async <T>(
 
 export const runDatabasePrefix = (runId: string) => `${DATABASE_PREFIX}${runId}_`;
 
-/**
- * This worker's clone of the migrated template. Files in one worker run one after another and
- * reuse it; workers never share one.
- */
+// One clone per worker, reused by its files since they run one after another.
 export const openWorkerDatabase = async (): Promise<TOpenDatabase> => {
   const { server, template } = await startPostgres();
   const name = `${runDatabasePrefix(getRunId())}w${process.env.VITEST_POOL_ID ?? "0"}`;
@@ -184,7 +180,6 @@ export const openWorkerDatabase = async (): Promise<TOpenDatabase> => {
   return open(server, name, async () => undefined);
 };
 
-/** A clone of the migrated template for one describe, dropped when it closes. */
 export const openFreshDatabase = async (): Promise<TOpenDatabase> => {
   const { server, template } = await startPostgres();
   const name = `${runDatabasePrefix(getRunId())}f${randomId(8)}`;
@@ -196,7 +191,6 @@ export const openFreshDatabase = async (): Promise<TOpenDatabase> => {
 
 export type TEmptyDatabase = TOpenDatabase & { connectionUri: string };
 
-/** An empty database (no Infisical schema) on the same server, dropped when it closes. */
 export const openEmptyDatabase = async (server: TPostgresServer): Promise<TEmptyDatabase> => {
   const name = `${runDatabasePrefix(getRunId())}e${randomId(8)}`;
 

@@ -21,8 +21,7 @@ export type TBuildLicenseOptions = {
   organizations?: Partial<TLicenseOrganizations>;
 };
 
-// ROOT with SUB_ORG_ID under it, and OTHER_ROOT, with no seats used. resolveRootOrgId reads findRootOrgId, so
-// overriding one overrides both.
+// resolveRootOrgId reads findRootOrgId, so overriding one overrides both.
 const buildOrganizations = (overrides: Partial<TLicenseOrganizations> = {}): TLicenseOrganizations => {
   const organizations: TLicenseOrganizations = {
     findRootOrgId: async (orgId) =>
@@ -36,8 +35,6 @@ const buildOrganizations = (overrides: Partial<TLicenseOrganizations> = {}): TLi
   return organizations;
 };
 
-// A started License module over an in-memory key store and queue, with the organizations above and the
-// given counters.
 export const buildLicense = async ({
   licenseServer = new FakeLicenseServer(),
   counters = [],

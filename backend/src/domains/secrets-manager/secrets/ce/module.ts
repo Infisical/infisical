@@ -6,7 +6,6 @@ export type TSecretsDeps = {
   organizationsProjectsService: TOrganizationsProjectsService;
 };
 
-// Holds only its usage counter for now; it grows as Secret Manager moves into a domain.
 export class SecretsModule {
   readonly usageCounters: TUsageCounter[];
 

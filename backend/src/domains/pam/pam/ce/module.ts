@@ -6,7 +6,6 @@ export type TPamDeps = {
   organizationsProjectsService: TOrganizationsProjectsService;
 };
 
-// Holds only its usage counter for now; it grows as PAM moves into a domain.
 export class PamModule {
   readonly usageCounters: TUsageCounter[];
 

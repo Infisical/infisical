@@ -3,7 +3,6 @@ import { TLicenseServerBilling } from "../service/license-server-types/license-s
 
 const notConfigured = () => Promise.reject(new Error("license client backend is not configured"));
 
-// Billing with no License Server behind it: reads return nothing and changes are refused.
 export class FakeLicenseServerBilling implements TLicenseServerBilling {
   isEnabled: TLicenseServerBilling["isEnabled"] = () => false;
 

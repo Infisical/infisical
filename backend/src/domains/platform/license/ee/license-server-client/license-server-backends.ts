@@ -59,8 +59,7 @@ export const readLicenseRequestId = (res: Response): string => res.headers.get(L
 export const licenseErrorMessage = (requestId: string, message: string): string =>
   `license-client: [licenseRequestId=${requestId}] ${message}`;
 
-// One License Server deployment: cloud signs requests with the service key, self-hosted with a token
-// exchanged for its license key.
+// Cloud signs with the service key, self-hosted with a token it gets for its license key.
 export type TLicenseClientBackend = {
   fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
   // Org-scoped on cloud (the catalog is filtered per calling org). The self-hosted backend ignores the

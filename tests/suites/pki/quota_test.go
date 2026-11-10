@@ -181,7 +181,6 @@ func createRootCA(t *testing.T, client *api.ClientWithResponses) {
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "creating a CA: %s", apierr.Body(res.Body))
 }
 
-// selfSigned is a fresh certificate for commonName, also its only SAN.
 func selfSigned(t *testing.T, commonName string) string {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

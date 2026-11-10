@@ -3,26 +3,23 @@ import { SeatUsage } from "@app/domains/platform/license/ce/module";
 
 import { TBillableActorDataAccess, TIdentityOwnership, TOrganization, TOrganizationDataAccess } from "./dependencies";
 
-// An org's root never changes, so the mapping is kept for the life of the process. Bounded so a long-lived
-// pod does not grow without limit.
+// An org's root never changes, so cache it for the process. Capped so long-lived pods don't grow forever.
 const ROOT_ORG_CACHE_LIMIT = 10_000;
 
 export type TOrganizationsProjectsService = {
-  // The org's root: itself for a root org, the root a sub-org belongs to. Null when the org does not exist.
+  // Null when the org doesn't exist.
   findRootOrgId(orgId: string): Promise<string | null>;
-  // The org's root, or the org itself when it does not exist.
+  // Falls back to the org itself when it doesn't exist.
   resolveRootOrgId(orgId: string): Promise<string>;
-  // Read fresh, not cached: an org's name and slug can change. Null when the org does not exist.
+  // Not cached: name and slug can change.
   findOrganization(orgId: string): Promise<TOrganization | null>;
-  // Live projects that take a workspace slot on a plan, in the org and its sub-orgs.
+  // Includes sub-orgs.
   countWorkspaces(orgId: string): Promise<number>;
-  // Seats in use: org members, and members plus machine identities. A null orgId counts the whole instance.
+  // Null orgId = whole instance.
   countSeats(orgId: string | null): Promise<SeatUsage>;
-  // Billable users and machine identities: org members in a Secret Manager or KMS project or in none.
-  // A null orgId counts the whole instance.
+  // Org members in a Secret Manager/KMS project or in none. Null orgId = whole instance.
   countBillableOrgActors(orgId: string | null): Promise<{ users: number; identities: number }>;
   getBillableIdentityOwnershipBreakdown(orgId: string | null): Promise<TIdentityOwnership[]>;
-  // Users and machine identities in projects of one type, directly or through a group.
   countProjectIdentities(projectType: ProjectType, orgId?: string): Promise<number>;
   countProjectIdentitiesByKind(
     projectType: ProjectType,

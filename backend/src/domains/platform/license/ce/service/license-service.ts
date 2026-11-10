@@ -22,8 +22,6 @@ export type TRefreshPlanOptions = {
   afterBillingChange?: { checkout?: boolean };
 };
 
-// What the instance and each org are licensed for, the seats and metered usage that count against it, and
-// reporting that usage to the License Server.
 export type TLicenseService = {
   getInstanceEntitlements(): TInstanceEntitlementsProps;
   getInstanceType(): InstanceType;
@@ -66,8 +64,7 @@ export type TLicenseServiceDeps = {
   licenseServer: TLicenseServer;
 };
 
-// handleUsageEvent, handleMeteringEvents and flushInstanceUsage are not on TLicenseService: only the workers
-// LicenseModule.start() registers call them.
+// The worker handlers are public but not on TLicenseService: only LicenseModule.start() should call them.
 export class LicenseService implements TLicenseService {
   constructor(private readonly deps: TLicenseServiceDeps) {}
 

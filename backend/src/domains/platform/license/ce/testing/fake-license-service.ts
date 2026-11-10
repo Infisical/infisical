@@ -7,7 +7,7 @@ import { testFeatures } from "./test-features";
 
 const noSeatsUsed = () => SeatUsage.create({ membersUsed: 0, identitiesUsed: 0 });
 
-// For consumers of the License domain: a plan per org that the test sets. Usage reports are dropped.
+// For tests of code that uses License: set a plan per org, usage reports get dropped.
 export class FakeLicenseService implements TLicenseService {
   instance: TInstanceEntitlementsProps = {
     instanceType: InstanceType.Cloud,

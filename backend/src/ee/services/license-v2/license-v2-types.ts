@@ -395,8 +395,7 @@ export type TConfirmBillingV2TrialPaymentDTO = {
   returnPath?: string;
 };
 
-// The metered dimensions the usage breakdown can explain. Values are License Server dimension keys and
-// must match the License domain's meters (Meter in domains/platform/license/ce/model/meter.ts).
+// License Server dimension keys, keep in sync with Meter in domains/platform/license/ce/model/meter.ts.
 export const BillingV2BreakdownDimension = {
   Identities: "identities",
   UserIdentities: "user_identities",

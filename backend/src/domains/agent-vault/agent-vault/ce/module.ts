@@ -6,7 +6,6 @@ export type TAgentVaultDeps = {
   organizationsProjectsService: TOrganizationsProjectsService;
 };
 
-// Holds only its usage counter for now; it grows as Agent Vault moves into a domain.
 export class AgentVaultModule {
   readonly usageCounters: TUsageCounter[];
 

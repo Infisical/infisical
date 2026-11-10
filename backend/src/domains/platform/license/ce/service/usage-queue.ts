@@ -7,8 +7,8 @@ import { CounterRegistry } from "./counter-registry";
 import { TLicenseServer, TUsageReportCache } from "./dependencies";
 import { MAX_USAGE_EVENTS_PER_REQUEST } from "./license-server-types/usage-reports";
 
-// Named as before the domain existed so jobs queued by older pods still run. Typed against the queue catalog
-// without loading it: the queue module sits in an import cycle with the crypto module.
+// Names match the old pods' so jobs they queued still run. Typed against the queue catalog without importing
+// it since the queue module is in an import cycle with crypto.
 export const UsageQueues = {
   usageEvent: "usage-event" as QueueName.UsageEvent,
   usageEventJob: "usage-event-job" as QueueJobs.UsageEvent,
@@ -37,8 +37,8 @@ export type TUsageQueueDeps = {
 
 const USAGE_DEBOUNCE_MS = 5000;
 
-// Puts usage on the queues the usage workers drain. Nothing here throws into the caller: a metered write
-// has already happened, and a lost report is corrected by the next one or by reconcile.
+// Never throws into the caller: the metered write already happened, and a lost report gets fixed by the
+// next one or by reconcile.
 export class UsageQueue {
   constructor(private readonly deps: TUsageQueueDeps) {}
 

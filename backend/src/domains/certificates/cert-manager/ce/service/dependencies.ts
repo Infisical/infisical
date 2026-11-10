@@ -1,9 +1,7 @@
-// A metered PKI unit count for one org in the tree. Certificates carry no per-project attribution here
-// because the meter dedupes by quotaKey across the whole tree (see getActiveCertificateOrgBreakdown).
+// No per-project split: the meter dedupes by quotaKey across the whole tree (see getActiveCertificateOrgBreakdown).
 export type TOrgUnitCount = { orgId: string; count: number };
 
-// Active certificates for one org, with the wildcard subset that active_certs and wildcard_certs both
-// read, so the two meters can never disagree about which certificates are live.
+// One query feeds both active_certs and wildcard_certs so the two meters can't disagree.
 export type TCertificateOrgUnitCount = TOrgUnitCount & { wildcard: number };
 
 export type TPkiRootOrgUsage = {
@@ -14,7 +12,7 @@ export type TPkiRootOrgUsage = {
   wildcardCertificates: number;
 };
 
-// Implemented by data-access/usage-counter-data-access.ts. orgId omitted counts the whole instance.
+// No orgId = whole instance.
 export type TCertificateUsageDataAccess = {
   countInternalCas(orgId?: string): Promise<number>;
   countActiveCertificateQuotaKeys(orgId?: string): Promise<{ total: number; wildcard: number }>;

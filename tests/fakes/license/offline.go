@@ -16,13 +16,11 @@ import (
 	"time"
 )
 
-// PublicKeyPath is where the instance reads the key it verifies offline licenses
-// against: beside signing.mjs in the built image (backend/src/lib/crypto/signing.ts).
+// Sits next to signing.mjs in the built image (see backend/src/lib/crypto/signing.ts).
 const PublicKeyPath = "/app/dist/lib/crypto/license_public_key.pem"
 
-// Signer stands in for Infisical's license signing key, so a test can issue a valid
-// offline license. The instance trusts it only once its public key replaces the one
-// in the image (harness.WithInfisicalFile(signer.PublicKeyFile, PublicKeyPath)).
+// Signer fakes Infisical's license signing key. The instance only trusts it once you
+// swap its public key into the image with harness.WithInfisicalFile.
 type Signer struct {
 	key *rsa.PrivateKey
 
@@ -31,8 +29,7 @@ type Signer struct {
 	PublicKeyFile string
 }
 
-// NewSigner generates a signing key. Generated rather than committed, like the
-// service key: a private key in the repo would be flagged by secret scanning.
+// Generated, not committed: secret scanning would flag a private key in the repo.
 func NewSigner() (*Signer, error) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -50,7 +47,6 @@ func NewSigner() (*Signer, error) {
 	return &Signer{key: key, PublicKeyFile: file}, nil
 }
 
-// OfflineLicense is the signed body of an offline license key.
 type OfflineLicense struct {
 	IssuedTo     string     `json:"issuedTo"`
 	LicenseID    string     `json:"licenseId"`
@@ -66,8 +62,6 @@ type OfflineLicense struct {
 	Entitlements any            `json:"entitlements,omitempty"`
 }
 
-// V2 is an offline license carrying a plan's entitlements, as the License Server
-// issues them now.
 func V2(licenseID string, p Plan) OfflineLicense {
 	return OfflineLicense{
 		IssuedTo:     "harness",
@@ -79,12 +73,8 @@ func V2(licenseID string, p Plan) OfflineLicense {
 	}
 }
 
-// Key signs a license and returns it in the LICENSE_KEY format: base64 of
-// {"license": ..., "signature": ...}.
-//
-// The instance checks the signature against JSON.stringify of the parsed license, so
-// the signed bytes are compact JSON with HTML escaping off, which JSON.stringify
-// reproduces exactly for these values.
+// The instance verifies against JSON.stringify of the parsed license, so we sign
+// compact JSON with HTML escaping off to match it byte for byte.
 func (s *Signer) Key(l OfflineLicense) (string, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)

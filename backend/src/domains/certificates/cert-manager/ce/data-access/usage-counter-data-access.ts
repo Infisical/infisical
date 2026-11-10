@@ -16,14 +16,12 @@ import {
 
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
-// Reads tables this domain will own once certificate issuance moves in: certificate_authorities,
-// internal_certificate_authorities, certificates and pki_signers (see ../../AGENTS.md).
+// Reads tables we'll own once cert issuance moves in (see ../../AGENTS.md).
 export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
   constructor(private readonly db: TDbClient) {}
 
-  // orgId omitted means instance-wide: self-hosted is one licence over the whole database and reports
-  // under an identity that is not an org id, so the org filter has to come off rather than be handed a
-  // non-uuid.
+  // No orgId = whole instance. Self-hosted reports under a non-uuid identity, so drop the org filter
+  // instead of passing it.
   private internalCas(orgId?: string) {
     const qb = this.db
       .replicaNode()(TableName.CertificateAuthority)
@@ -49,13 +47,10 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
     }
   }
 
-  // Code signing is licensed separately, so signer certificates are excluded. Anchored on the signer
-  // rather than on the code_signing EKU: that usage is caller-supplied, so a tenant could append it to
-  // every request and escape the quota entirely.
-  //
-  // Matched on quotaKey rather than on pki_signers.certificateId, which points only at a signer's
-  // current certificate. Every certificate a signer issues carries the signer's commonName, so the
-  // whole renewal chain shares one quotaKey and this covers it without a schema change.
+  // Code signing is licensed separately, so skip signer certs. Keyed on the signer, not the code_signing
+  // EKU, since callers set the EKU and could use it to dodge the quota. Matched on quotaKey, not
+  // pki_signers.certificateId (current cert only): every cert a signer issues shares its commonName, so
+  // this covers the whole renewal chain.
   private excludeSignerCertificates(qb: Knex.QueryBuilder) {
     return qb.whereNotExists((sub) => {
       void sub
@@ -63,13 +58,12 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
         .from(`${TableName.PkiSigners} as s`)
         .join(`${TableName.Certificate} as sc`, "sc.id", "s.certificateId")
         .whereRaw(`sc."quotaKey" = ??`, [`${TableName.Certificate}.quotaKey`])
-        // Same project, so one tenant cannot exempt a certificate by matching another's signer names.
+        // Same project, so a tenant can't exempt certs by matching someone else's signer names.
         .whereRaw(`s."projectId" = ??`, [`${TableName.Certificate}.projectId`]);
     });
   }
 
-  // No `status = 'active'` filter: nothing writes EXPIRED or RENEWED, both are derived at read time.
-  // orgId omitted means instance-wide; see countInternalCas.
+  // No status = 'active' filter: EXPIRED and RENEWED are derived at read time, never written.
   private activeQuotaCertificates(orgId?: string) {
     const qb = this.db
       .replicaNode()(TableName.Certificate)
@@ -89,9 +83,8 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
     return this.excludeSignerCertificates(qb);
   }
 
-  // Joins on projectId rather than caId, which is nullable and would drop imported and discovered
-  // certificates. Both counts read hasWildcard from the covering index; filtering with LIKE over
-  // commonName/altNames instead forces a sequential scan (measured: ~2x at 600k rows).
+  // Join on projectId, not caId: caId is nullable and would drop imported/discovered certs. hasWildcard
+  // comes from the covering index; LIKE over commonName/altNames forces a seq scan (~2x slower at 600k rows).
   async countActiveCertificateQuotaKeys(orgId?: string): Promise<{ total: number; wildcard: number }> {
     try {
       const row = (await this.activeQuotaCertificates(orgId)
@@ -110,8 +103,7 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
     }
   }
 
-  // Lets an org at its cap keep renewing: reissuing names it already holds cannot raise the count.
-  // orgId omitted means instance-wide
+  // Lets an org at its cap keep renewing, since reissuing names it already has can't raise the count.
   async isCertificateQuotaKeyActive(orgId: string | undefined, quotaKey: string): Promise<boolean> {
     try {
       const row = (await this.activeQuotaCertificates(orgId)
@@ -140,10 +132,9 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
     }
   }
 
-  // The meter counts DISTINCT quotaKey across the whole org tree, so one certificate name issued in two
-  // orgs is a single billable unit. Splitting that by org therefore needs each quotaKey attributed to
-  // exactly one of them, else the parts sum past the billed total. The earliest issuance wins (org id
-  // breaks a tie) so the attribution is stable between reads rather than shifting with row order.
+  // The meter counts DISTINCT quotaKey across the org tree, so for a per-org split each quotaKey has to land
+  // in exactly one org or the parts add up past the billed total. Earliest issuance wins (org id breaks
+  // ties) so the split stays stable between reads.
   async getActiveCertificateOrgBreakdown(orgId?: string): Promise<TCertificateOrgUnitCount[]> {
     try {
       const attributed = this.activeQuotaCertificates(orgId)
@@ -158,7 +149,7 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
           quotaKey: `${TableName.Certificate}.quotaKey`,
           orgId: `${TableName.Project}.orgId`
         })
-        // For each certificate row, it looks at all rows with the same quotaKey and sets hasWildcard to true if any of them is wildcard.
+        // A quotaKey is wildcard if any of its rows is.
         .select(
           this.db.raw(`bool_or(??) OVER (PARTITION BY ??) as "hasWildcard"`, [
             `${TableName.Certificate}.hasWildcard`,
@@ -188,8 +179,8 @@ export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
     }
   }
 
-  // Orgs with a Certificate Manager project are included even at zero, so one that stops using PKI is
-  // overwritten with zeros rather than keeping stale counts. The last such project cannot be deleted.
+  // Orgs with a Certificate Manager project show up even at zero, so one that stops using PKI gets zeros
+  // instead of stale counts. The last such project can't be deleted.
   async getPkiUsageByRootOrg(): Promise<TPkiRootOrgUsage[]> {
     const orgColumns = [`${TableName.Organization}.rootOrgId`, `${TableName.Organization}.id`];
     const rootOrgIdSql = this.db.raw(`COALESCE(??, ??)`, orgColumns);

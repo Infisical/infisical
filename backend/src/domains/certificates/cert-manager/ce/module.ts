@@ -13,7 +13,6 @@ export type TCertManagerDeps = {
   organizationsProjectsService: TOrganizationsProjectsService;
 };
 
-// Holds only the PKI usage counters and quota reads for now; it grows as certificate management moves in.
 export class CertManagerModule {
   readonly service: TCertManagerService;
 
@@ -23,7 +22,7 @@ export class CertManagerModule {
     const certificateUsage = new CertificateUsageDataAccess(db);
     this.service = new CertManagerService({ certificateUsage, organizationsProjectsService });
 
-    // Each counts the whole org tree, so it is reported once, at the root.
+    // These count the whole org tree, so report once at the root.
     this.usageCounters = [
       { meter: Meter.InternalCas, count: (orgId) => certificateUsage.countInternalCas(orgId ?? undefined) },
       {

@@ -10,7 +10,6 @@ export type TPlanNotice = {
   cause: string | null;
 };
 
-// What an org is entitled to: feature flags, limits and the products it holds.
 export type TPlanProps = {
   _id: null;
   slug: string | null;
@@ -126,7 +125,6 @@ export type TPlanProps = {
 
 export type TPlanFeature = keyof typeof Plan.featureNames;
 
-// The plan's props are read-only fields on it, so callers read `plan.rbac` directly.
 export class Plan extends withProps<TPlanProps>() {
   // The plan features that gate a capability, with the name a refusal shows the customer.
   static readonly featureNames = {

@@ -68,7 +68,6 @@ import { serviceTokenDALFactory } from "@app/services/service-token/service-toke
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
 
-// The Agent Vault seat meter, as the License domain counts it.
 const countAgentVaultSeats = (orgId: string) => {
   const organizationsProjectsService = new OrganizationsProjectsModule({ db: testDb }).service;
   const { usageCounters } = new AgentVaultModule({ organizationsProjectsService });

@@ -12,7 +12,6 @@ export type TOrganizationsProjectsDeps = {
   db: TDbClient;
 };
 
-// Holds only usage counting for now; it grows as organizations and projects move into domains.
 export class OrganizationsProjectsModule {
   readonly service: TOrganizationsProjectsService;
 

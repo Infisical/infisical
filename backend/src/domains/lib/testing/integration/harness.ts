@@ -18,7 +18,7 @@ const LOCK_POLL_MS = 200;
 
 export const getRunId = () => inject("integrationRunId");
 
-// mkdir is atomic across processes: exactly one caller creates the directory, the rest get EEXIST and wait.
+// mkdir is atomic across processes: one caller creates the dir, the rest get EEXIST and wait.
 const withLock = async <T>(name: string, work: () => Promise<T>): Promise<T> => {
   const lockDirectory = path.join(runDirectory(getRunId()), `${name}.lock`);
   const deadline = Date.now() + LOCK_TIMEOUT_MS;
@@ -48,16 +48,9 @@ const withLock = async <T>(name: string, work: () => Promise<T>): Promise<T> => 
   }
 };
 
-/**
- * Starts something once for the whole test run, however many workers ask for it.
- *
- * The first caller runs `start` and records the address it returns. Every other caller, in this
- * worker or another, waits for that and gets the same address. If `start` throws, nothing is
- * recorded and the next caller tries again.
- *
- * The address crosses process boundaries, so it must be plain JSON: hosts, ports, names,
- * credentials. Never a live client.
- */
+// Starts something once per test run, across all workers. The first caller runs start and records the
+// address; everyone else waits and reuses it. If start throws, nothing's recorded and the next caller
+// retries. The address crosses processes, so plain JSON only, never a live client.
 export const startOnce = async <T>(name: string, start: () => Promise<T>): Promise<T> => {
   if (!/^[a-z0-9-]+$/.test(name)) {
     throw new Error(`startOnce name "${name}" must be lowercase letters, digits and dashes`);
@@ -74,13 +67,8 @@ export const startOnce = async <T>(name: string, start: () => Promise<T>): Promi
   });
 };
 
-/**
- * A Testcontainers container that belongs to this test run.
- *
- * The worker that starts a container may exit while other workers still use it, so these
- * containers are not tied to the worker's process. Global teardown removes every container
- * carrying this run's label instead.
- */
+// Not tied to the worker's process since other workers may still use it after that worker exits;
+// global teardown removes every container with this run's label.
 export const container = (image: string) => {
   const runId = getRunId();
   // Recorded before the container exists, so teardown still runs if a start fails halfway.

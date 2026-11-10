@@ -2,8 +2,7 @@ import { QueueName } from "@app/queue";
 
 type TQueued = { queue: QueueName; data: unknown; opts: Record<string, unknown> | undefined };
 
-// Holds queued jobs until the test runs them, replacing a waiting job that shares a deduplication id the way
-// BullMQ's replace option does.
+// Jobs wait until the test runs them. Same dedup id replaces the waiting job, like BullMQ's replace option.
 export class FakeQueue {
   jobs: TQueued[] = [];
 

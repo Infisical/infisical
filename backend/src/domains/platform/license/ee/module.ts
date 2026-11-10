@@ -15,8 +15,6 @@ export type TLicenseEeDeps = {
   >;
 };
 
-// Licensing policy (the free tier, license keys, plans from entitlements) and the License Server, which the
-// License domain takes as its provider, License Server and billing.
 export class LicenseEeModule {
   readonly resolver: LicenseResolver;
 

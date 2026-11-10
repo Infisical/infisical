@@ -26,7 +26,6 @@ const readBody = (fetchMock: typeof fetch): Record<string, unknown> =>
 
 const readUrl = (fetchMock: typeof fetch): URL => new URL(String(vi.mocked(fetchMock).mock.calls[0][0]));
 
-// The License Server records the name and slug in its org directory, which is where it learns them.
 describe("licenseServerBackend fetchEntitlements", () => {
   afterEach(() => {
     vi.unstubAllGlobals();

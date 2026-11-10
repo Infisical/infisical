@@ -1,6 +1,6 @@
-// A base class that copies a model's props onto the instance as read-only fields, so callers read
-// `plan.rbac` and spreading or serialising the model gives its props. A model that extends it must not
-// declare instance fields of its own: with useDefineForClassFields they would be reset after the copy.
+// Copies a model's props onto the instance as read-only fields, so `plan.rbac` works and spreading or
+// serialising gives the props. Subclasses can't declare their own fields: with useDefineForClassFields
+// they'd get reset after the copy.
 export const withProps = <TProps extends object>() =>
   class {
     constructor(props: TProps) {

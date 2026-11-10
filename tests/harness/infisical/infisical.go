@@ -64,8 +64,6 @@ func WithImage(img Image) Option { return func(m *module) { m.image = img } }
 // WithEnv overrides or adds an environment variable.
 func WithEnv(k, v string) Option { return func(m *module) { m.env[k] = v } }
 
-// WithFile places a host file in the container before it starts, replacing what the
-// image holds at that path.
 func WithFile(src, dst string) Option {
 	return func(m *module) { m.files = append(m.files, infra.File{Src: src, Dst: dst}) }
 }

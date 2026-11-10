@@ -1,7 +1,6 @@
 export class KeyedMutex {
   private readonly tails = new Map<string, Promise<void>>();
 
-  // Resolves once the key is free, with the function that frees it.
   async acquire(key: string): Promise<() => void> {
     const previous = this.tails.get(key) ?? Promise.resolve();
     let release!: () => void;

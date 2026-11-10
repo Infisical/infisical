@@ -1,5 +1,4 @@
-// Package online_test covers an instance booted with an online self-hosted license
-// key, which it exchanges at the License Server for its entitlements.
+// Package online_test boots with an online self-hosted license key.
 package online_test
 
 import (
@@ -10,8 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/internal/id"
 )
 
-// licenseKey scopes this instance's state in the fake. It carries the binary's prefix
-// so the fake's events reach this package.
+// Needs the binary's prefix or the fake's events never reach this package.
 var licenseKey = id.Nonce()
 
 func TestMain(m *testing.M) {

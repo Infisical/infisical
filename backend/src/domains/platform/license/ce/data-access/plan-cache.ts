@@ -4,8 +4,8 @@ import { applyJitter } from "@app/lib/dates";
 import { Plan, TPlanProps } from "../model/plan";
 import { TPlanCache } from "../service/dependencies";
 
-// Names and lifetimes are kept from before the domain existed, so a rolling deploy reads the cache old pods
-// wrote. Every key is the root org's, since the License Server answers for the root.
+// Key names and TTLs match the old pods' so a rolling deploy shares the cache. Keys are always the root org's
+// since the License Server answers for the root.
 const PlanKeys = {
   plan: (rootOrgId: string) => `infisical-cloud-plan-${rootOrgId}`,
   // Set alongside the community plan cached when the License Server fails, so callers can tell it from a
@@ -29,7 +29,6 @@ const PlanKeyTtls = {
 
 const jitteredPlanTtl = () => applyJitter(PlanKeyTtls.planInSeconds, 90);
 
-// The cloud plan cache, in the key store.
 export class PlanCache implements TPlanCache {
   constructor(private readonly keyStore: TDomainKeyStore) {}
 

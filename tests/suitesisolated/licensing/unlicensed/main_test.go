@@ -1,5 +1,4 @@
-// Package unlicensed_test covers an instance booted with no license at all: no
-// License Server service key and no license key.
+// Package unlicensed_test boots with no service key and no license key.
 package unlicensed_test
 
 import (

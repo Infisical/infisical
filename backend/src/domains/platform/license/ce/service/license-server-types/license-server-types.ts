@@ -458,7 +458,7 @@ export const billingProfileResponseSchema = z
 export type TEntitlementFeature = z.infer<typeof entitlementFeatureSchema>;
 export type TEntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
 
-// The License Server records an org's name and slug in its org directory when they are sent.
+// Send name and slug when you have them: it's how the License Server's org directory learns them.
 export type TEntitlementOrg = { id: string; name?: string; slug?: string };
 export type TCatalogProduct = z.infer<typeof catalogProductSchema>;
 export type TCatalogResponse = z.infer<typeof catalogResponseSchema>;
@@ -620,11 +620,9 @@ const trialsResponseSchema = z.object({ trials: z.array(trialHistoryItemSchema).
 export type TTrialsResponse = z.infer<typeof trialsResponseSchema>;
 export { trialsResponseSchema };
 
-// A self-hosted license is one tenant on the License Server, so its reads and reports carry this id in
-// place of an org id.
+// A self-hosted license is one tenant on the License Server, so it uses this id instead of an org id.
 export const SELF_HOSTED_LICENSE_ORG_ID = "self-hosted";
 
-// The billing calls the domain exposes to the billing portal.
 export type TLicenseServerBilling = {
   isEnabled: () => boolean;
   getEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse | null>;

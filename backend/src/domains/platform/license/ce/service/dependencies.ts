@@ -5,10 +5,10 @@ import { SeatUsage } from "../model/seat-usage";
 import { TEntitlementOrg, TOrgDeletedResult } from "./license-server-types/license-server-types";
 import { TUsageEvent, TUsageEventResult, TUsageSnapshot } from "./license-server-types/usage-reports";
 
-// What LicenseService needs from outside it. Data access, other domains and the EE edition implement these;
-// License imports none of them, so every product can depend on License.
+// Implemented outside License (data access, other domains, EE). License imports none of them so any product
+// can depend on it.
 
-// The cloud plan cache, implemented by data-access/plan-cache.ts. Every key is the root org's.
+// Keys are always the root org's.
 export type TPlanCache = {
   read(rootOrgId: string): Promise<{ plan: Plan | null; passThrough: boolean }>;
   write(rootOrgId: string, plan: Plan): Promise<void>;
@@ -20,7 +20,6 @@ export type TPlanCache = {
   acquireRevalidateLock(rootOrgId: string): Promise<boolean>;
 };
 
-// What has been reported to the License Server, implemented by data-access/usage-report-cache.ts.
 export type TUsageReportCache = {
   acquireReconcileMarker(orgId: string): Promise<boolean>;
   isReconciled(orgId: string): Promise<boolean>;
@@ -28,7 +27,6 @@ export type TUsageReportCache = {
   recordReported(reportOrgId: string, meterKey: string, value: number): Promise<void>;
 };
 
-// Organizations, implemented by the organizations-projects domain's service.
 export type TLicenseOrganizations = {
   // The org's root: itself for a root org, the root a sub-org belongs to. Null when the org does not exist.
   // The License Server knows only root orgs.
@@ -43,16 +41,14 @@ export type TLicenseOrganizations = {
   countSeats(orgId: string | null): Promise<SeatUsage>;
 };
 
-// A meter's live count, built by the domain that owns the data it counts.
 export type TUsageCounter = {
   readonly meter: Meter;
   // A null orgId counts the whole instance: a self-hosted license covers every org in the database.
   count(orgId: string | null): Promise<number>;
 };
 
-// Licensing policy, implemented by the EE edition's LicenseResolver. CE holds the mechanism (caching, queues,
-// counting, gating) and asks this for every licensing decision; there is no community fallback, so the free
-// tier's features stay EE-licensed.
+// Every licensing decision goes through EE. No CE fallback on purpose, so the free tier's features stay
+// EE-licensed.
 export type TLicenseProvider = {
   // The instance's own license, read once at boot.
   resolveInstanceEntitlements(): Promise<InstanceEntitlements>;
@@ -68,7 +64,6 @@ export type TLicenseProvider = {
   fallbackPlan(): Plan;
 };
 
-// The License Server's usage and subscription endpoints, implemented by the EE edition's LicenseServerClient.
 export type TLicenseServer = {
   // False when no License Server is configured, so usage is not queued.
   isEnabled(): boolean;

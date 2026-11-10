@@ -15,8 +15,8 @@ import {
   TUsersInsert
 } from "@app/db/schemas";
 
-// A root org and a sub-org whose members cover every billing rule: billable users u1, u3, u4, u7, u8; billable
-// identities i1, i3, i4, i5. Every id is fresh, so tests sharing a database never see each other's rows.
+// Covers every billing rule: billable users u1, u3, u4, u7, u8; billable identities i1, i3, i4, i5.
+// Ids are fresh so tests sharing a database never see each other's rows.
 export const seedBillableActors = async (testDb: Knex) => {
   const ROOT_ORG_ID = randomUUID();
   const SUB_ORG_ID = randomUUID();
@@ -124,8 +124,7 @@ export const seedBillableActors = async (testDb: Knex) => {
   ];
   await testDb(TableName.Groups).insert(groupRows);
 
-  // Org memberships (every real actor belongs to the org). u5/u6 belong too but are filtered as
-  // ghost / unaccepted.
+  // u5/u6 are members too but get filtered out (ghost / unaccepted).
   await testDb(TableName.Membership).insert([
     orgMembership(ids.u1),
     orgMembership(ids.u2),
@@ -139,7 +138,6 @@ export const seedBillableActors = async (testDb: Knex) => {
     orgMembership(ids.u10)
   ]);
 
-  // Project memberships (direct).
   await testDb(TableName.Membership).insert([
     projectMembership({ userId: ids.u1 }, ids.pSm),
     projectMembership({ userId: ids.u2 }, ids.pPam),
@@ -150,12 +148,11 @@ export const seedBillableActors = async (testDb: Knex) => {
     projectMembership({ userId: ids.u10 }, ids.pPam),
     projectMembership({ identityId: ids.i1 }, ids.pSm),
     projectMembership({ identityId: ids.i2 }, ids.pPam),
-    // Group -> project assignments.
     projectMembership({ groupId: ids.gLive }, ids.pKms),
     projectMembership({ groupId: ids.gPending }, ids.pSm)
   ]);
 
-  // Group memberships: gLive (KMS) has a non-pending user + identity; gPending (SM) has a pending user.
+  // gLive (KMS) has a non-pending user + identity; gPending (SM) has a pending user.
   const userGroupRows: (TUserGroupMembershipInsert & { id: string })[] = [
     { id: randomUUID(), userId: ids.u4, groupId: ids.gLive, isPending: false },
     { id: randomUUID(), userId: ids.u8, groupId: ids.gPending, isPending: true }

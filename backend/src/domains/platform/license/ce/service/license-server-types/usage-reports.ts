@@ -1,5 +1,3 @@
-// The License Server's usage API: what a report carries and how a refusal comes back.
-
 export type TUsageSnapshot = {
   dimension_key: string;
   value: number;

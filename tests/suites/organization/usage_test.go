@@ -14,8 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Usage reports are queued with a five second debounce, so every wait here allows
-// for it on top of the default.
+// Reports sit behind a 5s debounce, so waits need extra room on top of the default.
 const reportWithin = 30 * time.Second
 
 func TestUsageReport_Send(t *testing.T) {
@@ -190,12 +189,10 @@ func TestUsageReport_Send(t *testing.T) {
 	})
 }
 
-// meteredDimensions is how many dimensions a new paid org reports once, on its first
-// plan read.
+// A new paid org reports this many dimensions once, on its first plan read.
 const meteredDimensions = 8
 
-// awaitFirstReport waits for a new org's first report of every dimension, so a failure
-// injected afterwards lands on the report the test triggers.
+// Wait for the initial reports so an injected failure hits the one the test triggers.
 func awaitFirstReport(t *testing.T, sc *fakenet.Scope[license.State]) {
 	t.Helper()
 	wait.Until(t, "the first report of every dimension", func() bool {
@@ -203,7 +200,6 @@ func awaitFirstReport(t *testing.T, sc *fakenet.Scope[license.State]) {
 	}, wait.Timeout(reportWithin))
 }
 
-// refused says whether the License Server answered a usage report with an error.
 func refused(t *testing.T, sc *fakenet.Scope[license.State], path string) bool {
 	t.Helper()
 	for _, c := range sc.Calls(t) {
@@ -214,7 +210,6 @@ func refused(t *testing.T, sc *fakenet.Scope[license.State], path string) bool {
 	return false
 }
 
-// expectSnapshot waits for the License Server to receive a value for a dimension.
 func expectSnapshot(t *testing.T, sc *fakenet.Scope[license.State], dimension string, value float64, opts ...fakenet.WaitOption) {
 	t.Helper()
 	sc.ExpectEvent[license.SnapshotReceived](t, func(e license.SnapshotReceived) bool {

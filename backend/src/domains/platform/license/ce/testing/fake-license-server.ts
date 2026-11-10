@@ -9,9 +9,7 @@ import { TUsageEvent, TUsageSnapshot, UsageReportError } from "../service/licens
 import { FakeLicenseServerBilling } from "./fake-license-server-billing";
 import { enterprisePlan, testFeatures } from "./test-features";
 
-// The EE edition in memory, as both the License domain's provider and its License Server: the instance's
-// license, a plan per root org, the reports the License Server received, and failures to inject. A cloud
-// instance by default.
+// Plays both EE's provider and the License Server in memory. Cloud by default.
 export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
   instance: TInstanceEntitlementsProps = {
     instanceType: InstanceType.Cloud,

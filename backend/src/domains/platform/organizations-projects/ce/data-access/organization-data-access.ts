@@ -4,28 +4,24 @@ import { DatabaseError } from "@app/lib/errors";
 
 import { TOrganization, TOrganizationDataAccess } from "../service/dependencies";
 
-// The columns of an organizations row this domain reads.
 type TOrganizationRow = { id: string; name: string; slug: string };
 
 const toOrganization = (row: TOrganizationRow): TOrganization => ({ id: row.id, name: row.name, slug: row.slug });
 
-// Project types that do not take a workspace slot on a plan.
 const UNCOUNTED_WORKSPACE_TYPES = [
   ProjectType.CertificateManager,
   ProjectType.SecretScanning,
   ProjectType.PAM,
   ProjectType.AgentVault,
-  // Rows of the removed SSH and Agent Sentinel products are left in place (see migration 20260729150000)
-  // but must not consume workspace quota.
+  // Removed products, rows kept (see migration 20260729150000) but they shouldn't use workspace quota.
   "ssh",
   "ai"
 ];
 
-// Reads the organizations and projects tables, which a future domain will own; see ../../AGENTS.md.
+// Reads tables a future domain will own; see ../../AGENTS.md.
 export class OrganizationDataAccess implements TOrganizationDataAccess {
   constructor(private readonly db: TDbClient) {}
 
-  // The org's root: itself for a root org, the root a sub-org belongs to. Null when the org does not exist.
   async findRootOrgId(orgId: string): Promise<string | null> {
     try {
       const row = (await this.db
@@ -52,7 +48,6 @@ export class OrganizationDataAccess implements TOrganizationDataAccess {
     }
   }
 
-  // Live projects that take a workspace slot, in the org and its sub-orgs.
   async countWorkspaces(orgId: string): Promise<number> {
     try {
       const knex = this.db.replicaNode();

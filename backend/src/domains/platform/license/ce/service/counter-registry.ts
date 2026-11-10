@@ -1,6 +1,5 @@
 import { TUsageCounter } from "./dependencies";
 
-// The usage counters the owning domains built, one per meter.
 export class CounterRegistry {
   private readonly byKey = new Map<string, TUsageCounter>();
 
