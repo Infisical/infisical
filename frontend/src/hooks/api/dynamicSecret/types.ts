@@ -47,7 +47,13 @@ export enum DynamicSecretProviders {
   IbmApiConnect = "ibm-api-connect",
   Tailscale = "tailscale",
   OAuth2 = "oauth2",
-  Kafka = "kafka"
+  Kafka = "kafka",
+  Neon = "neon"
+}
+
+export enum NeonLeaseType {
+  Role = "role",
+  Branch = "branch"
 }
 
 export enum KafkaSaslMechanism {
@@ -656,6 +662,20 @@ export type TDynamicSecretProvider =
         sslEnabled?: boolean;
         ca?: string;
         sslRejectUnauthorized?: boolean;
+      };
+    }
+  | {
+      type: DynamicSecretProviders.Neon;
+      inputs: {
+        apiKey: string;
+        projectId: string;
+        leaseType: NeonLeaseType;
+        branchId?: string;
+        databaseName: string;
+        roleName?: string;
+        pooled?: boolean;
+        resetRolePassword?: boolean;
+        setBranchExpiration?: boolean;
       };
     };
 
