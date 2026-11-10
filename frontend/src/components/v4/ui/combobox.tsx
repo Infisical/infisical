@@ -238,28 +238,31 @@ export function Combobox({
         data-size="sm"
         data-field-box=""
       >
-        {selected.map((value) => (
-          <span key={value} className={styles.chip} data-locked={isLocked(value) || undefined}>
-            <span>{options.find((option) => option.value === value)?.label ?? value}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label={`Remove ${options.find((option) => option.value === value)?.label ?? value}`}
-              data-slot="combobox-chip-remove"
-              data-value={value}
-              disabled={isLocked(value)}
-              onClick={() => remove(value)}
-              onKeyDown={(event) => {
-                if (event.key !== "Backspace" && event.key !== "Delete") return;
-                event.preventDefault();
-                remove(value);
-              }}
-            >
-              <Icon name="x" size={12} />
-            </Button>
-          </span>
-        ))}
+        {selected.map((value) => {
+          const chipLabel = options.find((option) => option.value === value)?.label ?? value;
+          return (
+            <span key={value} className={styles.chip} data-locked={isLocked(value) || undefined}>
+              <span title={chipLabel}>{chipLabel}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label={`Remove ${chipLabel}`}
+                data-slot="combobox-chip-remove"
+                data-value={value}
+                disabled={isLocked(value)}
+                onClick={() => remove(value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Backspace" && event.key !== "Delete") return;
+                  event.preventDefault();
+                  remove(value);
+                }}
+              >
+                <Icon name="x" size={12} />
+              </Button>
+            </span>
+          );
+        })}
         <MultiSelect
           ref={ref}
           id={props.id}

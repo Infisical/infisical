@@ -8,6 +8,7 @@ import { ExampleCell, ExampleGrid } from "../../example-presentation";
 export default function Example() {
   const [protocol, setProtocol] = useState("saml");
   const [expiry, setExpiry] = useState<string>();
+  const [direction, setDirection] = useState("push");
   return (
     <ExampleGrid width="full">
       <ExampleCell align="stretch" label="Media and description, one disabled">
@@ -36,6 +37,18 @@ export default function Example() {
             media={<Icon name="user" />}
             disabled
           />
+        </RadioGroup>
+      </ExampleCell>
+      <ExampleCell align="stretch" label="Media only">
+        <RadioGroup
+          aria-label="Sync direction"
+          value={direction}
+          onValueChange={setDirection}
+          className="grid-cols-3"
+        >
+          <RadioGroupCard value="push" title="Push" media={<Icon name="upload" />} />
+          <RadioGroupCard value="pull" title="Pull" media={<Icon name="download" />} />
+          <RadioGroupCard value="both" title="Both ways" media={<Icon name="sync" />} />
         </RadioGroup>
       </ExampleCell>
       <ExampleCell align="stretch" label="Title only, nothing chosen yet">
