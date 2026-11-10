@@ -19,6 +19,7 @@ import { CertManagerModule } from "./certificates/cert-manager/ce/module";
 import { DataAccessDb } from "./lib/data-access-db";
 import { TDomainKeyStore } from "./lib/key-store";
 import { PamModule } from "./pam/pam/ce/module";
+import { AccessControlModule } from "./platform/access-control/ce/module";
 import { InstanceConfigCoreModule, TInstanceConfigEnv } from "./platform/instance-config-core/ce/module";
 import { KmsCoreModule, TKmsCoreDomain } from "./platform/kms-core/ce/module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
@@ -146,6 +147,10 @@ export const createDomains = (deps: TDomainDeps) => {
     startLocalRefresh
   });
 
+  // Access Control is a base domain: memberships, roles, privileges, groups and attributes, and the building
+  // blocks every scope owner's permission function uses. It depends on no other domain.
+  const accessControl = new AccessControlModule({ db, keyStore: deps.keyStore });
+
   const organizationsProjects = new OrganizationsProjectsModule({ db, licenseRegistry: license.registry });
   const productDeps = {
     organizationsProjectsDomain: organizationsProjects.service,
@@ -161,6 +166,7 @@ export const createDomains = (deps: TDomainDeps) => {
     kmsCoreEe,
     kmsCore,
     instanceConfigCore,
+    accessControl,
     organizationsProjects,
     secrets,
     pam,
