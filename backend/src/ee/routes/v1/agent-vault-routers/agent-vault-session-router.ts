@@ -31,7 +31,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, resolveRequestedProjectId, serviceTypeReportFieldsOf } from "./agent-vault-router-fns";
+import {
+  actorContext,
+  resolveRequestedProjectId,
+  serviceTransformationNamesOf,
+  serviceTypeReportFieldsOf
+} from "./agent-vault-router-fns";
 import {
   AgentVaultInlineServiceSchema,
   AgentVaultInlineServicesInputSchema,
@@ -354,8 +359,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                       : undefined,
                   allowedMethods: fields.allowedMethods ?? null,
                   allowedPathPrefixes: fields.allowedPathPrefixes ?? null,
-                  customHeaderNames: service.customHeaders.map((header) => header.name),
-                  substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder)
+                  ...serviceTransformationNamesOf(service)
                 };
               })
             }),

@@ -92,3 +92,13 @@ export const serviceTypeReportFieldsOf = (
       };
   }
 };
+
+// Only HTTP and MCP services have custom headers, and only HTTP services have substitutions.
+export const serviceTransformationNamesOf = (service: {
+  type: AgentVaultServiceType;
+  customHeaders?: { name: string }[];
+  substitutions?: { placeholder: string }[];
+}) => ({
+  customHeaderNames: service.customHeaders?.map((header) => header.name) ?? [],
+  substitutionPlaceholders: service.substitutions?.map((substitution) => substitution.placeholder) ?? []
+});

@@ -196,8 +196,6 @@ describe("updateService, the service it returns", () => {
         "host",
         "port",
         "credential",
-        "customHeaders",
-        "substitutions",
         "variableReferences",
         "createdAt",
         "updatedAt"

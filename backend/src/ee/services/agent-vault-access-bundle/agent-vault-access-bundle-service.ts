@@ -19,7 +19,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { shake } from "@app/lib/fn";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -97,6 +97,7 @@ import {
   dropReadBackServiceFields,
   getAgentVaultServiceType,
   getServiceServerUrl,
+  isCredentialOfType,
   resolveServiceHostPattern,
   TAgentVaultServiceConfig,
   toServiceTypeFields
@@ -482,28 +483,71 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     substitutions: TAgentVaultServiceSubstitutions[],
     variableReferences: TAgentVaultVariableReferenceWithKey[]
   ): TAgentVaultServiceSummary => {
-    const typeFields = toServiceTypeFields(service);
-    return {
+    const base = {
       id: service.id,
       accessBundleId: service.accessBundleId,
       name: service.name,
       description: service.description ?? null,
-      // Only the fields of the service's own type. A client that sends back what it read still gets through an
-      // update, which drops the read-only fields it echoes.
-      ...(typeFields.type === AgentVaultServiceType.Mcp
-        ? { ...typeFields, allowedTools: service.allowedTools ?? null }
-        : typeFields),
-      credential: summarizeCredential(service),
-      customHeaders: customHeaders.map((header) => ({ id: header.id, name: header.name, prefix: header.prefix })),
-      substitutions: substitutions.map((substitution) => ({
-        id: substitution.id,
-        placeholder: substitution.placeholder,
-        surfaces: substitution.surfaces as AgentVaultSubstitutionSurface[]
-      })),
       variableReferences: variableReferences.map(summarizeVariableReference),
       createdAt: service.createdAt,
       updatedAt: service.updatedAt
     };
+    const credential = summarizeCredential(service);
+    const customHeaderSummaries = customHeaders.map((header) => ({
+      id: header.id,
+      name: header.name,
+      prefix: header.prefix
+    }));
+    // Every create and update checks the credential against the type, so this means a row written some other way.
+    const unsupportedCredential = () =>
+      new InternalServerError({
+        message: `The service '${service.name}' has a credential its type doesn't support. Set its credential again.`
+      });
+    // Only the fields of the service's own type. A client that sends back what it read still gets through an
+    // update, which drops the read-only fields it echoes.
+    const typeFields = toServiceTypeFields(service);
+    switch (typeFields.type) {
+      case AgentVaultServiceType.Http:
+        if (
+          !isCredentialOfType(credential, [
+            AgentVaultCredentialType.Bearer,
+            AgentVaultCredentialType.Basic,
+            AgentVaultCredentialType.Passthrough
+          ])
+        ) {
+          throw unsupportedCredential();
+        }
+        return {
+          ...base,
+          ...typeFields,
+          credential,
+          customHeaders: customHeaderSummaries,
+          substitutions: substitutions.map((substitution) => ({
+            id: substitution.id,
+            placeholder: substitution.placeholder,
+            surfaces: substitution.surfaces as AgentVaultSubstitutionSurface[]
+          }))
+        };
+      case AgentVaultServiceType.Mcp:
+        if (!isCredentialOfType(credential, [AgentVaultCredentialType.Bearer, AgentVaultCredentialType.OAuth])) {
+          throw unsupportedCredential();
+        }
+        return {
+          ...base,
+          ...typeFields,
+          allowedTools: service.allowedTools ?? null,
+          credential,
+          customHeaders: customHeaderSummaries
+        };
+      case AgentVaultServiceType.Ssh:
+        if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey])) {
+          throw unsupportedCredential();
+        }
+        return { ...base, ...typeFields, credential };
+      default:
+        if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic])) throw unsupportedCredential();
+        return { ...base, ...typeFields, credential };
+    }
   };
 
   const loadTransformations = async (

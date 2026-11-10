@@ -76,16 +76,25 @@ export type TAgentVaultOauthCredentialSummary = {
   lastError?: string | null;
 };
 
+export type TAgentVaultBearerCredentialSummary = {
+  type: AgentVaultCredentialType.Bearer;
+  headerName: string;
+  headerPrefix: string;
+  memberProvidedFields: TAgentVaultBearerMemberField[];
+};
+
+export type TAgentVaultBasicCredentialSummary = {
+  type: AgentVaultCredentialType.Basic;
+  memberProvidedFields: TAgentVaultBasicMemberField[];
+};
+
+export type TAgentVaultSshKeyCredentialSummary = { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
+
 export type TAgentVaultCredentialSummary =
-  | {
-      type: AgentVaultCredentialType.Bearer;
-      headerName: string;
-      headerPrefix: string;
-      memberProvidedFields: TAgentVaultBearerMemberField[];
-    }
-  | { type: AgentVaultCredentialType.Basic; memberProvidedFields: TAgentVaultBasicMemberField[] }
+  | TAgentVaultBearerCredentialSummary
+  | TAgentVaultBasicCredentialSummary
   | { type: AgentVaultCredentialType.Passthrough }
-  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean }
+  | TAgentVaultSshKeyCredentialSummary
   | TAgentVaultOauthCredentialSummary;
 
 export type TAgentVaultVariableReferenceSummary = { variableId: string; key: string } & (
@@ -94,21 +103,40 @@ export type TAgentVaultVariableReferenceSummary = { variableId: string; key: str
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
 );
 
-export type TAgentVaultServiceSummary = (
-  | Exclude<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }>
-  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & { allowedTools: string[] | null })
-) & {
+type TAgentVaultCustomHeaderSummary = { id: string; name: string; prefix: string };
+
+// Each type carries only the credentials it accepts and the transformations it applies.
+export type TAgentVaultServiceSummary = {
   id: string;
   accessBundleId: string;
   name: string;
   description: string | null;
-  credential: TAgentVaultCredentialSummary;
-  customHeaders: { id: string; name: string; prefix: string }[];
-  substitutions: { id: string; placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
   variableReferences: TAgentVaultVariableReferenceSummary[];
   createdAt: Date;
   updatedAt: Date;
-};
+} & (
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
+      credential: Extract<
+        TAgentVaultCredentialSummary,
+        {
+          type: AgentVaultCredentialType.Bearer | AgentVaultCredentialType.Basic | AgentVaultCredentialType.Passthrough;
+        }
+      >;
+      customHeaders: TAgentVaultCustomHeaderSummary[];
+      substitutions: { id: string; placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & {
+      allowedTools: string[] | null;
+      credential: TAgentVaultBearerCredentialSummary | TAgentVaultOauthCredentialSummary;
+      customHeaders: TAgentVaultCustomHeaderSummary[];
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql }> & {
+      credential: TAgentVaultBasicCredentialSummary;
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Ssh }> & {
+      credential: TAgentVaultBasicCredentialSummary | TAgentVaultSshKeyCredentialSummary;
+    })
+);
 
 export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermission };
 

@@ -19,7 +19,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, resolveRequestedProjectId, serviceTypeReportFieldsOf } from "./agent-vault-router-fns";
+import {
+  actorContext,
+  resolveRequestedProjectId,
+  serviceTransformationNamesOf,
+  serviceTypeReportFieldsOf
+} from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
   AgentVaultBundleSkillSchema,
@@ -373,6 +378,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         ...req.body
       });
       const serviceTypeFields = serviceTypeReportFieldsOf(service);
+      const transformationNames = serviceTransformationNamesOf(service);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -402,8 +408,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               service.credential.type === AgentVaultCredentialType.SshKey
                 ? undefined
                 : service.credential.memberProvidedFields,
-            customHeaderNames: service.customHeaders.map((header) => header.name),
-            substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder),
+            ...transformationNames,
             variableKeys: variableKeysOf(service)
           }
         }
@@ -422,8 +427,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           allowedMethodCount: serviceTypeFields.allowedMethods?.length ?? 0,
           allowedPathPrefixCount: serviceTypeFields.allowedPathPrefixes?.length ?? 0,
           allowedToolCount: serviceTypeFields.allowedTools?.length ?? 0,
-          customHeaderCount: service.customHeaders.length,
-          substitutionCount: service.substitutions.length,
+          customHeaderCount: transformationNames.customHeaderNames.length,
+          substitutionCount: transformationNames.substitutionPlaceholders.length,
           variableReferenceCount: service.variableReferences.length
         }
       });
@@ -467,6 +472,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       const isOauthAuthorized =
         req.body.credential?.type === AgentVaultCredentialType.OAuth && Boolean(req.body.credential.authorizationId);
       const serviceTypeFields = serviceTypeReportFieldsOf(service);
+      const transformationNames = serviceTransformationNamesOf(service);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -548,8 +554,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           allowedMethodCount: serviceTypeFields.allowedMethods?.length ?? 0,
           allowedPathPrefixCount: serviceTypeFields.allowedPathPrefixes?.length ?? 0,
           allowedToolCount: serviceTypeFields.allowedTools?.length ?? 0,
-          customHeaderCount: service.customHeaders.length,
-          substitutionCount: service.substitutions.length,
+          customHeaderCount: transformationNames.customHeaderNames.length,
+          substitutionCount: transformationNames.substitutionPlaceholders.length,
           variableReferenceCount: service.variableReferences.length
         }
       });

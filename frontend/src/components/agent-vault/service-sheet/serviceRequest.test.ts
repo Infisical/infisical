@@ -9,7 +9,7 @@ import {
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultCredentialSummary, TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
 import {
   buildCreateServiceRequest,
@@ -222,9 +222,9 @@ describe("buildCreateServiceRequest", () => {
 
 const MEMBER = [AgentVaultVariableReferenceField.CredentialValue as const];
 
-const storedMcp = (
-  credential: TAgentVaultCredentialSummary
-): Extract<TAgentVaultService, { type: AgentVaultServiceType.Mcp }> => ({
+type TStoredMcp = Extract<TAgentVaultService, { type: AgentVaultServiceType.Mcp }>;
+
+const storedMcp = (credential: TStoredMcp["credential"]): TStoredMcp => ({
   id: "service-1",
   accessBundleId: "bundle-1",
   name: "linear-mcp",
@@ -236,7 +236,6 @@ const storedMcp = (
   allowedTools: null,
   credential,
   customHeaders: [],
-  substitutions: [],
   createdAt: "2026-10-15T00:00:00.000Z",
   updatedAt: "2026-10-15T00:00:00.000Z"
 });
@@ -261,18 +260,25 @@ const sharedOAuth = storedMcp({
   requiredScopes: []
 });
 
-const { serverUrl, transport, allowedTools, ...storedBase } = storedMcp({
-  type: AgentVaultCredentialType.Bearer,
-  headerName: "Authorization",
-  headerPrefix: "Bearer",
-  memberProvidedFields: []
-});
-
 const storedHttp = {
-  ...storedBase,
+  id: "service-1",
+  accessBundleId: "bundle-1",
+  name: "linear-mcp",
+  description: null,
+  hostPattern: "mcp.linear.app",
   type: AgentVaultServiceType.Http,
   allowedMethods: null,
-  allowedPathPrefixes: null
+  allowedPathPrefixes: null,
+  credential: {
+    type: AgentVaultCredentialType.Bearer,
+    headerName: "Authorization",
+    headerPrefix: "Bearer",
+    memberProvidedFields: []
+  },
+  customHeaders: [],
+  substitutions: [],
+  createdAt: "2026-10-15T00:00:00.000Z",
+  updatedAt: "2026-10-15T00:00:00.000Z"
 } satisfies TAgentVaultService;
 
 describe("buildUpdateServiceRequest", () => {
@@ -644,7 +650,15 @@ describe("membersClearedNotice", () => {
   });
 });
 
-const { hostPattern, ...storedNativeBase } = storedBase;
+const {
+  hostPattern,
+  allowedMethods,
+  allowedPathPrefixes,
+  credential,
+  customHeaders,
+  substitutions,
+  ...storedNativeBase
+} = storedHttp;
 
 const storedPostgres = {
   ...storedNativeBase,

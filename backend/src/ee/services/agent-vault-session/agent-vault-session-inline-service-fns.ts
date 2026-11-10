@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { TAgentVaultSessionInlineServices } from "@app/db/schemas";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { assertCustomHeadersDoNotShadowCredential } from "../agent-vault-access-bundle/agent-vault-transformation-fns";
 import { TResolvedService } from "../agent-vault-proxy/agent-vault-proxy-types";
@@ -26,17 +26,24 @@ import {
   getAgentVaultServiceType,
   getServiceServerUrl,
   getServiceTransport,
+  isCredentialOfType,
   resolveServiceHostPattern,
   TAgentVaultServiceConfig,
   toServiceTypeFields
 } from "../agent-vault/agent-vault-service-type-fns";
-import { TAgentVaultInlineServiceInput, TAgentVaultInlineServiceSummary } from "./agent-vault-session-types";
+import {
+  TAgentVaultInlineCredentialSummary,
+  TAgentVaultInlineCustomHeaderSummary,
+  TAgentVaultInlineServiceInput,
+  TAgentVaultInlineServiceSummary,
+  TAgentVaultInlineSubstitutionSummary
+} from "./agent-vault-session-types";
 
 export const AGENT_VAULT_MAX_SESSION_INLINE_SERVICES = 20;
 
-type TInlineCredentialConfig = TAgentVaultInlineServiceSummary["credential"];
-type TInlineCustomHeader = TAgentVaultInlineServiceSummary["customHeaders"][number];
-type TInlineSubstitution = TAgentVaultInlineServiceSummary["substitutions"][number];
+type TInlineCredentialConfig = TAgentVaultInlineCredentialSummary;
+type TInlineCustomHeader = TAgentVaultInlineCustomHeaderSummary;
+type TInlineSubstitution = TAgentVaultInlineSubstitutionSummary;
 
 // Values are kept in the order of the names and placeholders stored beside them.
 const InlineServiceSecretsSchema = z.object({
@@ -312,15 +319,44 @@ const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCred
 export const toInlineServiceSummary = (
   row: TAgentVaultSessionInlineServiceSummaryRow
 ): TAgentVaultInlineServiceSummary => {
-  return {
-    id: row.id,
-    name: inlineServiceDisplayName(row),
-    description: row.description ?? null,
-    ...toServiceTypeFields(row),
-    credential: toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig),
-    customHeaders: row.customHeaders as TInlineCustomHeader[],
-    substitutions: row.substitutions as TInlineSubstitution[]
-  };
+  const base = { id: row.id, name: inlineServiceDisplayName(row), description: row.description ?? null };
+  const credential = toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig);
+  // Every mint checks the credential against the type, so this means a row written some other way.
+  const unsupportedCredential = () =>
+    new InternalServerError({
+      message: `The session's service '${base.name}' has a credential its type doesn't support. Mint a new session.`
+    });
+  const typeFields = toServiceTypeFields(row);
+  switch (typeFields.type) {
+    case AgentVaultServiceType.Http:
+      if (
+        !isCredentialOfType(credential, [
+          AgentVaultCredentialType.Bearer,
+          AgentVaultCredentialType.Basic,
+          AgentVaultCredentialType.Passthrough
+        ])
+      ) {
+        throw unsupportedCredential();
+      }
+      return {
+        ...base,
+        ...typeFields,
+        credential,
+        customHeaders: row.customHeaders as TInlineCustomHeader[],
+        substitutions: row.substitutions as TInlineSubstitution[]
+      };
+    case AgentVaultServiceType.Mcp:
+      if (!isCredentialOfType(credential, [AgentVaultCredentialType.Bearer])) throw unsupportedCredential();
+      return { ...base, ...typeFields, credential, customHeaders: row.customHeaders as TInlineCustomHeader[] };
+    case AgentVaultServiceType.Ssh:
+      if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey])) {
+        throw unsupportedCredential();
+      }
+      return { ...base, ...typeFields, credential };
+    default:
+      if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic])) throw unsupportedCredential();
+      return { ...base, ...typeFields, credential };
+  }
 };
 
 export const parseInlineServiceSecrets = (decrypted: unknown) => InlineServiceSecretsSchema.parse(decrypted);

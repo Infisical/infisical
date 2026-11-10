@@ -161,6 +161,10 @@ describe("service description", () => {
 
 const TLS = { enabled: true, verify: true, ca: undefined };
 
+const BEARER = { type: AgentVaultCredentialType.Bearer, headerName: "Authorization", headerPrefix: "Bearer" };
+const BASIC = { type: AgentVaultCredentialType.Basic };
+const SSH_KEY = { type: AgentVaultCredentialType.SshKey, hasCertificate: false };
+
 // What each type keeps, stored as it is in a row, with every other type's columns set the way the database leaves them.
 const STORED_TYPES = [
   {
@@ -169,7 +173,10 @@ const STORED_TYPES = [
     hostPattern: "api.example.com",
     allowedMethods: ["GET"],
     allowedPathPrefixes: ["/v1"],
-    fields: ["hostPattern", "allowedMethods", "allowedPathPrefixes"]
+    credential: { type: AgentVaultCredentialType.Passthrough },
+    fields: ["hostPattern", "allowedMethods", "allowedPathPrefixes"],
+    bundleFields: ["customHeaders", "substitutions"],
+    inlineFields: ["customHeaders", "substitutions"]
   },
   {
     type: AgentVaultServiceType.Mcp,
@@ -177,7 +184,10 @@ const STORED_TYPES = [
     hostPattern: "mcp.example.com",
     allowedMethods: null,
     allowedPathPrefixes: null,
-    fields: ["serverUrl", "transport", "hostPattern"]
+    credential: BEARER,
+    fields: ["serverUrl", "transport", "hostPattern"],
+    bundleFields: ["allowedTools", "customHeaders"],
+    inlineFields: ["customHeaders"]
   },
   {
     type: AgentVaultServiceType.Postgres,
@@ -185,7 +195,10 @@ const STORED_TYPES = [
     hostPattern: null,
     allowedMethods: null,
     allowedPathPrefixes: null,
-    fields: ["host", "port", "database", "tls"]
+    credential: BASIC,
+    fields: ["host", "port", "database", "tls"],
+    bundleFields: [],
+    inlineFields: []
   },
   {
     type: AgentVaultServiceType.Mysql,
@@ -193,7 +206,10 @@ const STORED_TYPES = [
     hostPattern: null,
     allowedMethods: null,
     allowedPathPrefixes: null,
-    fields: ["host", "port", "database", "tls"]
+    credential: BASIC,
+    fields: ["host", "port", "database", "tls"],
+    bundleFields: [],
+    inlineFields: []
   },
   {
     type: AgentVaultServiceType.Ssh,
@@ -201,66 +217,175 @@ const STORED_TYPES = [
     hostPattern: null,
     allowedMethods: null,
     allowedPathPrefixes: null,
-    fields: ["host", "port"]
+    credential: SSH_KEY,
+    fields: ["host", "port"],
+    bundleFields: [],
+    inlineFields: []
   }
 ];
 
 const keysOf = (value: unknown) => Object.keys(value as object).sort();
 
+const bundleService = (extra: Record<string, unknown>) => ({
+  id: "00000000-0000-4000-8000-000000000001",
+  accessBundleId: "00000000-0000-4000-8000-000000000002",
+  name: "service",
+  description: null,
+  allowedTools: null,
+  customHeaders: [],
+  substitutions: [],
+  variableReferences: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...extra
+});
+
 describe("service responses", () => {
-  test.each(STORED_TYPES)("a bundle $type service carries only its own fields", ({ fields, ...row }) => {
-    const parsed = AgentVaultServiceSchema.parse({
+  test.each(STORED_TYPES)(
+    "a bundle $type service carries only its own fields",
+    ({ fields, bundleFields, inlineFields: _, credential, ...row }) => {
+      const parsed = AgentVaultServiceSchema.parse(
+        bundleService({
+          ...toServiceTypeFields(row),
+          credential: { ...credential, memberProvidedFields: [] }
+        })
+      );
+      expect(keysOf(parsed)).toEqual(
+        [
+          "id",
+          "accessBundleId",
+          "name",
+          "description",
+          "type",
+          ...fields,
+          ...bundleFields,
+          "credential",
+          "variableReferences",
+          "createdAt",
+          "updatedAt"
+        ].sort()
+      );
+    }
+  );
+
+  test.each(STORED_TYPES)(
+    "a session's own $type service carries only its own fields",
+    ({ fields, bundleFields: _, inlineFields, credential, ...row }) => {
+      const parsed = AgentVaultInlineServiceSchema.parse(
+        toInlineServiceSummary({
+          ...row,
+          id: "00000000-0000-4000-8000-000000000001",
+          sessionId: "session-1",
+          position: 0,
+          name: "service",
+          credentialType: credential.type,
+          credentialConfig: credential,
+          customHeaders: [],
+          substitutions: [],
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+      );
+      expect(keysOf(parsed)).toEqual(
+        ["id", "name", "description", "type", ...fields, ...inlineFields, "credential"].sort()
+      );
+    }
+  );
+
+  test("a database service returns no custom headers or substitutions", () => {
+    const postgresFields = toServiceTypeFields(STORED_TYPES[2]);
+    const parsed = AgentVaultServiceSchema.parse(
+      bundleService({
+        ...postgresFields,
+        credential: { type: AgentVaultCredentialType.Basic, memberProvidedFields: [] },
+        customHeaders: [{ id: "00000000-0000-4000-8000-000000000003", name: "X-Team", prefix: "" }],
+        substitutions: [{ id: "00000000-0000-4000-8000-000000000004", placeholder: "FAKE", surfaces: ["header"] }]
+      })
+    );
+    expect(parsed).not.toHaveProperty("customHeaders");
+    expect(parsed).not.toHaveProperty("substitutions");
+
+    const inline = AgentVaultInlineServiceSchema.parse({
       id: "00000000-0000-4000-8000-000000000001",
-      accessBundleId: "00000000-0000-4000-8000-000000000002",
+      name: "analytics",
+      description: null,
+      ...postgresFields,
+      credential: BASIC,
+      customHeaders: [{ name: "X-Team", prefix: "" }],
+      substitutions: [{ placeholder: "FAKE", surfaces: ["header"] }]
+    });
+    expect(inline).not.toHaveProperty("customHeaders");
+    expect(inline).not.toHaveProperty("substitutions");
+  });
+
+  test("an MCP service returns custom headers but no substitutions", () => {
+    const parsed = AgentVaultServiceSchema.parse(
+      bundleService({
+        ...toServiceTypeFields(STORED_TYPES[1]),
+        credential: { ...BEARER, memberProvidedFields: [] },
+        substitutions: [{ id: "00000000-0000-4000-8000-000000000004", placeholder: "FAKE", surfaces: ["header"] }]
+      })
+    );
+    expect(parsed).toHaveProperty("customHeaders", []);
+    expect(parsed).not.toHaveProperty("substitutions");
+  });
+
+  test.each([
+    [AgentVaultServiceType.Http, { type: AgentVaultCredentialType.OAuth, issuer: "https://auth.example.com" }],
+    [AgentVaultServiceType.Http, { ...SSH_KEY }],
+    [AgentVaultServiceType.Mcp, { type: AgentVaultCredentialType.Passthrough }],
+    [AgentVaultServiceType.Mcp, { ...BASIC }],
+    [AgentVaultServiceType.Postgres, { ...BEARER }],
+    [AgentVaultServiceType.Mysql, { ...SSH_KEY }],
+    [AgentVaultServiceType.Ssh, { type: AgentVaultCredentialType.Passthrough }]
+  ])("a bundle %s service refuses a %o credential", (type, credential) => {
+    const row = STORED_TYPES.find((stored) => stored.type === type)!;
+    const result = AgentVaultServiceSchema.safeParse(
+      bundleService({
+        ...toServiceTypeFields(row),
+        credential: { memberProvidedFields: [], grantedScopes: [], requiredScopes: [], ...credential }
+      })
+    );
+    expect(result.success).toBe(false);
+  });
+
+  test.each([
+    [AgentVaultServiceType.Http, SSH_KEY],
+    [AgentVaultServiceType.Mcp, BASIC],
+    [AgentVaultServiceType.Mcp, { type: AgentVaultCredentialType.Passthrough }],
+    [AgentVaultServiceType.Postgres, BEARER],
+    [AgentVaultServiceType.Ssh, BEARER]
+  ])("a session's own %s service refuses a %o credential", (type, credential) => {
+    const row = STORED_TYPES.find((stored) => stored.type === type)!;
+    const result = AgentVaultInlineServiceSchema.safeParse({
+      id: "00000000-0000-4000-8000-000000000001",
       name: "service",
       description: null,
       ...toServiceTypeFields(row),
-      ...(row.type === AgentVaultServiceType.Mcp ? { allowedTools: null } : {}),
-      credential: { type: AgentVaultCredentialType.Passthrough },
+      credential,
       customHeaders: [],
-      substitutions: [],
-      variableReferences: [],
-      createdAt: new Date(),
-      updatedAt: new Date()
+      substitutions: []
     });
-    expect(keysOf(parsed)).toEqual(
-      [
-        "id",
-        "accessBundleId",
-        "name",
-        "description",
-        "type",
-        ...fields,
-        ...(row.type === AgentVaultServiceType.Mcp ? ["allowedTools"] : []),
-        "credential",
-        "customHeaders",
-        "substitutions",
-        "variableReferences",
-        "createdAt",
-        "updatedAt"
-      ].sort()
-    );
+    expect(result.success).toBe(false);
   });
 
-  test.each(STORED_TYPES)("a session's own $type service carries only its own fields", ({ fields, ...row }) => {
-    const parsed = AgentVaultInlineServiceSchema.parse(
+  test("a session's own service with a credential its type doesn't take is refused before the response", () => {
+    expect(() =>
       toInlineServiceSummary({
-        ...row,
+        ...STORED_TYPES[2],
         id: "00000000-0000-4000-8000-000000000001",
         sessionId: "session-1",
         position: 0,
         name: "service",
-        credentialType: AgentVaultCredentialType.Passthrough,
-        credentialConfig: { type: AgentVaultCredentialType.Passthrough },
+        description: null,
+        credentialType: AgentVaultCredentialType.Bearer,
+        credentialConfig: BEARER,
         customHeaders: [],
         substitutions: [],
         createdAt: new Date(),
         updatedAt: new Date()
       })
-    );
-    expect(keysOf(parsed)).toEqual(
-      ["id", "name", "description", "type", ...fields, "credential", "customHeaders", "substitutions"].sort()
-    );
+    ).toThrow("has a credential its type doesn't support");
   });
 
   test("another type's fields are left off the wire", () => {
@@ -276,7 +401,7 @@ describe("service responses", () => {
       database: null,
       tls: null,
       allowedMethods: null,
-      credential: { type: AgentVaultCredentialType.Passthrough },
+      credential: SSH_KEY,
       customHeaders: [],
       substitutions: []
     });

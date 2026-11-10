@@ -299,6 +299,15 @@ export const assertCredentialTypeSupported = (
   });
 };
 
+export const isCredentialOfType = <
+  TCredential extends { type: AgentVaultCredentialType },
+  TType extends AgentVaultCredentialType
+>(
+  credential: TCredential,
+  types: readonly TType[]
+): credential is Extract<TCredential, { type: TType }> =>
+  (types as readonly AgentVaultCredentialType[]).includes(credential.type);
+
 // `incoming` holds only the config fields the request sent; on an update the rest come from what is stored.
 export const buildServiceConfig = (
   definition: TAgentVaultServiceTypeDefinition,

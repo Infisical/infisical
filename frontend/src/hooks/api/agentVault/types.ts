@@ -184,14 +184,47 @@ export type TAgentVaultServiceConfig =
       port: number;
     };
 
-export type TAgentVaultService = TAgentVaultServiceConfig & {
+type TAgentVaultServiceConfigOf<T extends AgentVaultServiceType> = Extract<
+  TAgentVaultServiceConfig,
+  { type: T }
+>;
+
+type TAgentVaultCredentialSummaryOf<T extends AgentVaultCredentialType> = Extract<
+  TAgentVaultCredentialSummary,
+  { type: T }
+>;
+
+// Each type carries only the credentials it accepts and the transformations it applies: custom headers on HTTP and
+// MCP services, substitutions on HTTP services.
+export type TAgentVaultService = (
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Http> & {
+      credential: TAgentVaultCredentialSummaryOf<
+        | AgentVaultCredentialType.Bearer
+        | AgentVaultCredentialType.Basic
+        | AgentVaultCredentialType.Passthrough
+      >;
+      customHeaders: TAgentVaultCustomHeaderSummary[];
+      substitutions: TAgentVaultSubstitutionSummary[];
+    })
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Mcp> & {
+      credential: TAgentVaultCredentialSummaryOf<
+        AgentVaultCredentialType.Bearer | AgentVaultCredentialType.OAuth
+      >;
+      customHeaders: TAgentVaultCustomHeaderSummary[];
+    })
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql> & {
+      credential: TAgentVaultCredentialSummaryOf<AgentVaultCredentialType.Basic>;
+    })
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Ssh> & {
+      credential: TAgentVaultCredentialSummaryOf<
+        AgentVaultCredentialType.Basic | AgentVaultCredentialType.SshKey
+      >;
+    })
+) & {
   id: string;
   accessBundleId: string;
   name: string;
   description: string | null;
-  credential: TAgentVaultCredentialSummary;
-  customHeaders: TAgentVaultCustomHeaderSummary[];
-  substitutions: TAgentVaultSubstitutionSummary[];
   // Left out for a member, who can't see variables.
   variableReferences?: TAgentVaultVariableReference[];
   // The caller's own values, on the bundle read only. null when the admin sets the whole credential.
@@ -324,22 +357,47 @@ export type TAgentVaultSessionAccessBundle = {
   name: string;
 };
 
+type TAgentVaultInlineCredentialSummary =
+  | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
+  | { type: AgentVaultCredentialType.Basic }
+  | { type: AgentVaultCredentialType.Passthrough }
+  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
+
+type TAgentVaultInlineCredentialSummaryOf<T extends AgentVaultCredentialType> = Extract<
+  TAgentVaultInlineCredentialSummary,
+  { type: T }
+>;
+
+type TAgentVaultInlineCustomHeaderSummary = { name: string; prefix: string };
+
 /** A service an admin sent with the session itself. Its secrets are never returned. */
 export type TAgentVaultSessionInlineService = (
-  | Exclude<TAgentVaultServiceConfig, { type: AgentVaultServiceType.Mcp }>
-  | Omit<Extract<TAgentVaultServiceConfig, { type: AgentVaultServiceType.Mcp }>, "allowedTools">
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Http> & {
+      credential: TAgentVaultInlineCredentialSummaryOf<
+        | AgentVaultCredentialType.Bearer
+        | AgentVaultCredentialType.Basic
+        | AgentVaultCredentialType.Passthrough
+      >;
+      customHeaders: TAgentVaultInlineCustomHeaderSummary[];
+      substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
+    })
+  | (Omit<TAgentVaultServiceConfigOf<AgentVaultServiceType.Mcp>, "allowedTools"> & {
+      credential: TAgentVaultInlineCredentialSummaryOf<AgentVaultCredentialType.Bearer>;
+      customHeaders: TAgentVaultInlineCustomHeaderSummary[];
+    })
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql> & {
+      credential: TAgentVaultInlineCredentialSummaryOf<AgentVaultCredentialType.Basic>;
+    })
+  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Ssh> & {
+      credential: TAgentVaultInlineCredentialSummaryOf<
+        AgentVaultCredentialType.Basic | AgentVaultCredentialType.SshKey
+      >;
+    })
 ) & {
   id: string;
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
-  credential:
-    | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
-    | { type: AgentVaultCredentialType.Basic }
-    | { type: AgentVaultCredentialType.Passthrough }
-    | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
-  customHeaders: { name: string; prefix: string }[];
-  substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
 };
 
 export type TAgentVaultSessionActor =

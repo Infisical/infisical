@@ -90,7 +90,6 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
       lastError: null
     },
     customHeaders: [],
-    substitutions: [],
     createdAt: "2026-10-15T00:00:00.000Z",
     updatedAt: "2026-10-15T00:00:00.000Z"
   }) satisfies TAgentVaultService;

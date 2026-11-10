@@ -4783,6 +4783,8 @@ export const AGENT_VAULT = {
     mcpToolDescription: "The server's description of the tool, or null if it gave none.",
     customHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
+    customHeadersRead:
+      "Additional headers the proxy attaches to every request to this service, on top of the credential, without their values. HTTP and MCP services only.",
     customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
     customHeaderName: "The name of the header, which must not be the credential's own header.",
     customHeaderPrefix:
@@ -4793,6 +4795,8 @@ export const AGENT_VAULT = {
     updateCustomHeaderValue: `The header value. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored for this header.`,
     substitutions:
       "Placeholders the proxy swaps for a real secret before forwarding. Send the full list. A substitution you leave out is deleted. Send a substitution's `id` to change it in place and keep its stored value. Without an `id`, it is matched by its placeholder.",
+    substitutionsRead:
+      "Placeholders the proxy swaps for a real secret before forwarding, without their values. HTTP services only.",
     substitutionId:
       "The ID of the substitution. Send it to change that substitution in place. Omit it to match by placeholder.",
     placeholder:
@@ -5129,8 +5133,10 @@ export const AGENT_VAULT = {
     inlineCustomHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Up to 20.",
     inlineSubstitutions: "Placeholders the proxy swaps for a real secret before forwarding. Up to 20.",
-    inlineCustomHeadersRead: "The headers the proxy attaches besides the credential, without their values.",
-    inlineSubstitutionsRead: "The placeholders the proxy swaps for a real secret, without their values.",
+    inlineCustomHeadersRead:
+      "The headers the proxy attaches besides the credential, without their values. HTTP and MCP services only.",
+    inlineSubstitutionsRead:
+      "The placeholders the proxy swaps for a real secret, without their values. HTTP services only.",
     inlineCustomHeaderValue:
       "The header value, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
     inlineSubstitutionValue:

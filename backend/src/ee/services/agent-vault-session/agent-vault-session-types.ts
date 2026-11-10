@@ -53,20 +53,48 @@ export type TAgentVaultInlineServiceInput = {
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
 };
 
+export type TAgentVaultInlineBearerCredentialSummary = {
+  type: AgentVaultCredentialType.Bearer;
+  headerName: string;
+  headerPrefix: string;
+};
+
+export type TAgentVaultInlineCredentialSummary =
+  | TAgentVaultInlineBearerCredentialSummary
+  | { type: AgentVaultCredentialType.Basic }
+  | { type: AgentVaultCredentialType.Passthrough }
+  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
+
+export type TAgentVaultInlineCustomHeaderSummary = { name: string; prefix: string };
+
+export type TAgentVaultInlineSubstitutionSummary = { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] };
+
 /** An inline service as every read returns it: everything but its secrets. */
-export type TAgentVaultInlineServiceSummary = TAgentVaultServiceTypeFields & {
+export type TAgentVaultInlineServiceSummary = {
   id: string;
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
-  credential:
-    | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
-    | { type: AgentVaultCredentialType.Basic }
-    | { type: AgentVaultCredentialType.Passthrough }
-    | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
-  customHeaders: { name: string; prefix: string }[];
-  substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
-};
+} & (
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
+      credential: Exclude<TAgentVaultInlineCredentialSummary, { type: AgentVaultCredentialType.SshKey }>;
+      customHeaders: TAgentVaultInlineCustomHeaderSummary[];
+      substitutions: TAgentVaultInlineSubstitutionSummary[];
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & {
+      credential: TAgentVaultInlineBearerCredentialSummary;
+      customHeaders: TAgentVaultInlineCustomHeaderSummary[];
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql }> & {
+      credential: { type: AgentVaultCredentialType.Basic };
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Ssh }> & {
+      credential: Extract<
+        TAgentVaultInlineCredentialSummary,
+        { type: AgentVaultCredentialType.Basic | AgentVaultCredentialType.SshKey }
+      >;
+    })
+);
 
 export type TMintSessionDTO = {
   projectId: string;

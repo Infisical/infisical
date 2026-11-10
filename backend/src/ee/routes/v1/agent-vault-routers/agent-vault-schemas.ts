@@ -428,58 +428,79 @@ export const AgentVaultMcpCredentialUpdateSchema = credentialUpdateSchema({ mcp:
 const nativeCredentialUpdateSchema = ({ ssh }: { ssh: boolean }) =>
   credentialUpdateSchema({ mcp: false, native: true, ssh }).describe(AGENT_VAULT.SERVICE.nativeCredential);
 
-export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
-  z
-    .object({
-      type: z.literal(AgentVaultCredentialType.Bearer),
-      headerName: z.string().describe(AGENT_VAULT.SERVICE.headerName),
-      headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix),
-      memberProvidedFields: z
-        .enum([AgentVaultVariableReferenceField.CredentialValue])
-        .array()
-        .describe(AGENT_VAULT.SERVICE.memberProvidedFields)
-    })
-    .describe(JSON.stringify({ title: "Bearer" })),
-  z
-    .object({
-      type: z.literal(AgentVaultCredentialType.Basic),
-      memberProvidedFields: z
-        .enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS)
-        .array()
-        .describe(AGENT_VAULT.SERVICE.memberProvidedFields)
-    })
-    .describe(JSON.stringify({ title: "Basic Auth" })),
-  z
-    .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-    .describe(JSON.stringify({ title: "Pass-through" })),
-  z
-    .object({
-      type: z.literal(AgentVaultCredentialType.SshKey),
-      hasCertificate: z.boolean().describe(AGENT_VAULT.SERVICE.sshHasCertificate)
-    })
-    .describe(JSON.stringify({ title: "SSH Key" })),
-  z
-    .object({
-      type: z.literal(AgentVaultCredentialType.OAuth),
-      memberProvidedFields: z
-        .enum([AgentVaultVariableReferenceField.CredentialValue])
-        .array()
-        .describe(AGENT_VAULT.SERVICE.memberProvidedFields),
-      status: z.nativeEnum(AgentVaultOauthStatus).optional().describe(AGENT_VAULT.SERVICE.oauthSummaryStatus),
-      issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
-      registration: z
-        .nativeEnum(AgentVaultOauthRegistration)
-        .optional()
-        .describe(AGENT_VAULT.SERVICE.oauthRegistrationMode),
-      clientId: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthSummaryClientId),
-      grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
-      requiredScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthRequiredScopes),
-      expiresAt: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthExpiresAt),
-      authorizedAt: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthAuthorizedAt),
-      lastError: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthLastError)
-    })
-    .describe(JSON.stringify({ title: "OAuth" }))
-]);
+const bearerCredentialSummarySchema = z
+  .object({
+    type: z.literal(AgentVaultCredentialType.Bearer),
+    headerName: z.string().describe(AGENT_VAULT.SERVICE.headerName),
+    headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix),
+    memberProvidedFields: z
+      .enum([AgentVaultVariableReferenceField.CredentialValue])
+      .array()
+      .describe(AGENT_VAULT.SERVICE.memberProvidedFields)
+  })
+  .describe(JSON.stringify({ title: "Bearer" }));
+
+const basicCredentialSummarySchema = z
+  .object({
+    type: z.literal(AgentVaultCredentialType.Basic),
+    memberProvidedFields: z
+      .enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS)
+      .array()
+      .describe(AGENT_VAULT.SERVICE.memberProvidedFields)
+  })
+  .describe(JSON.stringify({ title: "Basic Auth" }));
+
+const passthroughCredentialSummarySchema = z
+  .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
+  .describe(JSON.stringify({ title: "Pass-through" }));
+
+const sshKeyCredentialSummarySchema = z
+  .object({
+    type: z.literal(AgentVaultCredentialType.SshKey),
+    hasCertificate: z.boolean().describe(AGENT_VAULT.SERVICE.sshHasCertificate)
+  })
+  .describe(JSON.stringify({ title: "SSH Key" }));
+
+const oauthCredentialSummarySchema = z
+  .object({
+    type: z.literal(AgentVaultCredentialType.OAuth),
+    memberProvidedFields: z
+      .enum([AgentVaultVariableReferenceField.CredentialValue])
+      .array()
+      .describe(AGENT_VAULT.SERVICE.memberProvidedFields),
+    status: z.nativeEnum(AgentVaultOauthStatus).optional().describe(AGENT_VAULT.SERVICE.oauthSummaryStatus),
+    issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
+    registration: z
+      .nativeEnum(AgentVaultOauthRegistration)
+      .optional()
+      .describe(AGENT_VAULT.SERVICE.oauthRegistrationMode),
+    clientId: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthSummaryClientId),
+    grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
+    requiredScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthRequiredScopes),
+    expiresAt: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthExpiresAt),
+    authorizedAt: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthAuthorizedAt),
+    lastError: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthLastError)
+  })
+  .describe(JSON.stringify({ title: "OAuth" }));
+
+// The credentials each type accepts on create and update (allowedCredentialTypes), so every stored row parses.
+const credentialSummarySchemas = {
+  [AgentVaultServiceType.Http]: z.discriminatedUnion("type", [
+    bearerCredentialSummarySchema,
+    basicCredentialSummarySchema,
+    passthroughCredentialSummarySchema
+  ]),
+  [AgentVaultServiceType.Mcp]: z.discriminatedUnion("type", [
+    bearerCredentialSummarySchema,
+    oauthCredentialSummarySchema
+  ]),
+  [AgentVaultServiceType.Postgres]: basicCredentialSummarySchema,
+  [AgentVaultServiceType.Mysql]: basicCredentialSummarySchema,
+  [AgentVaultServiceType.Ssh]: z.discriminatedUnion("type", [
+    basicCredentialSummarySchema,
+    sshKeyCredentialSummarySchema
+  ])
+};
 
 export const AgentVaultAllowedMethodsSchema = z
   .array(z.nativeEnum(AgentVaultHttpMethod))
@@ -986,63 +1007,107 @@ const serviceResponseTypeFields = {
 const inlineServiceResponseBase = {
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.inlineServiceId),
   name: z.string().describe(AGENT_VAULT.SESSION.inlineServiceNameRead),
-  description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
-  credential: z.discriminatedUnion("type", [
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Bearer),
-        headerName: z.string().describe(AGENT_VAULT.SERVICE.headerName),
-        headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix)
-      })
-      .describe(JSON.stringify({ title: "Bearer" })),
-    z.object({ type: z.literal(AgentVaultCredentialType.Basic) }).describe(JSON.stringify({ title: "Basic Auth" })),
-    z
-      .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-      .describe(JSON.stringify({ title: "Pass-through" })),
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.SshKey),
-        hasCertificate: z.boolean().describe(AGENT_VAULT.SERVICE.sshHasCertificate)
-      })
-      .describe(JSON.stringify({ title: "SSH Key" }))
-  ]),
-  customHeaders: z
-    .object({
-      name: z.string().describe(AGENT_VAULT.SERVICE.customHeaderName),
-      prefix: z.string().describe(AGENT_VAULT.SERVICE.customHeaderPrefix)
-    })
-    .array()
-    .describe(AGENT_VAULT.SESSION.inlineCustomHeadersRead),
-  substitutions: z
-    .object({
-      placeholder: z.string().describe(AGENT_VAULT.SERVICE.placeholder),
-      surfaces: z.nativeEnum(AgentVaultSubstitutionSurface).array().describe(AGENT_VAULT.SERVICE.surfaces)
-    })
-    .array()
-    .describe(AGENT_VAULT.SESSION.inlineSubstitutionsRead)
+  description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead)
 };
 
-// One arm per type, from the fields every type shares. Arms are listed rather than mapped so each keeps its own type.
-const serviceResponseUnion = <TBase extends z.ZodRawShape, TMcp extends z.ZodRawShape>(base: TBase, mcpOnly: TMcp) =>
+const inlineBearerCredentialSummarySchema = z
+  .object({
+    type: z.literal(AgentVaultCredentialType.Bearer),
+    headerName: z.string().describe(AGENT_VAULT.SERVICE.headerName),
+    headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix)
+  })
+  .describe(JSON.stringify({ title: "Bearer" }));
+const inlineBasicCredentialSummarySchema = z
+  .object({ type: z.literal(AgentVaultCredentialType.Basic) })
+  .describe(JSON.stringify({ title: "Basic Auth" }));
+
+const inlineCustomHeadersResponseSchema = z
+  .object({
+    name: z.string().describe(AGENT_VAULT.SERVICE.customHeaderName),
+    prefix: z.string().describe(AGENT_VAULT.SERVICE.customHeaderPrefix)
+  })
+  .array()
+  .describe(AGENT_VAULT.SESSION.inlineCustomHeadersRead);
+
+// Inline services take a type's credentials except OAuth, which needs a sign-in from the UI.
+const inlineServiceResponseTypeExtras = {
+  [AgentVaultServiceType.Http]: {
+    credential: z.discriminatedUnion("type", [
+      inlineBearerCredentialSummarySchema,
+      inlineBasicCredentialSummarySchema,
+      passthroughCredentialSummarySchema
+    ]),
+    customHeaders: inlineCustomHeadersResponseSchema,
+    substitutions: z
+      .object({
+        placeholder: z.string().describe(AGENT_VAULT.SERVICE.placeholder),
+        surfaces: z.nativeEnum(AgentVaultSubstitutionSurface).array().describe(AGENT_VAULT.SERVICE.surfaces)
+      })
+      .array()
+      .describe(AGENT_VAULT.SESSION.inlineSubstitutionsRead)
+  },
+  [AgentVaultServiceType.Mcp]: {
+    credential: inlineBearerCredentialSummarySchema,
+    customHeaders: inlineCustomHeadersResponseSchema
+  },
+  [AgentVaultServiceType.Postgres]: { credential: inlineBasicCredentialSummarySchema },
+  [AgentVaultServiceType.Mysql]: { credential: inlineBasicCredentialSummarySchema },
+  [AgentVaultServiceType.Ssh]: {
+    credential: z.discriminatedUnion("type", [inlineBasicCredentialSummarySchema, sshKeyCredentialSummarySchema])
+  }
+};
+
+// One arm per type, from the fields every type shares plus that type's own extras. Arms are listed rather than
+// mapped so each keeps its own type.
+const serviceResponseUnion = <
+  TBase extends z.ZodRawShape,
+  TExtras extends { [K in AgentVaultServiceType]: z.ZodRawShape }
+>(
+  base: TBase,
+  extras: TExtras
+) =>
   z.discriminatedUnion("type", [
     z
-      .object({ ...base, ...serviceResponseTypeFields[AgentVaultServiceType.Http] })
+      .object({
+        ...base,
+        ...serviceResponseTypeFields[AgentVaultServiceType.Http],
+        ...extras[AgentVaultServiceType.Http]
+      })
       .describe(JSON.stringify({ title: "HTTP service" })),
     z
-      .object({ ...base, ...serviceResponseTypeFields[AgentVaultServiceType.Mcp], ...mcpOnly })
+      .object({
+        ...base,
+        ...serviceResponseTypeFields[AgentVaultServiceType.Mcp],
+        ...extras[AgentVaultServiceType.Mcp]
+      })
       .describe(JSON.stringify({ title: "MCP service" })),
     z
-      .object({ ...base, ...serviceResponseTypeFields[AgentVaultServiceType.Postgres] })
+      .object({
+        ...base,
+        ...serviceResponseTypeFields[AgentVaultServiceType.Postgres],
+        ...extras[AgentVaultServiceType.Postgres]
+      })
       .describe(JSON.stringify({ title: nativeServiceTitles[AgentVaultServiceType.Postgres] })),
     z
-      .object({ ...base, ...serviceResponseTypeFields[AgentVaultServiceType.Mysql] })
+      .object({
+        ...base,
+        ...serviceResponseTypeFields[AgentVaultServiceType.Mysql],
+        ...extras[AgentVaultServiceType.Mysql]
+      })
       .describe(JSON.stringify({ title: nativeServiceTitles[AgentVaultServiceType.Mysql] })),
     z
-      .object({ ...base, ...serviceResponseTypeFields[AgentVaultServiceType.Ssh] })
+      .object({
+        ...base,
+        ...serviceResponseTypeFields[AgentVaultServiceType.Ssh],
+        ...extras[AgentVaultServiceType.Ssh]
+      })
       .describe(JSON.stringify({ title: nativeServiceTitles[AgentVaultServiceType.Ssh] }))
   ]);
 
-export const AgentVaultInlineServiceSchema = serviceResponseUnion(inlineServiceResponseBase, {});
+export const AgentVaultInlineServiceSchema = serviceResponseUnion(
+  inlineServiceResponseBase,
+  inlineServiceResponseTypeExtras
+);
 
 // The service sheet's unsaved values, so the tools are listed with the credential a save would store. `serviceId`
 // names the saved service whose stored values fill in what is left out.
@@ -1087,38 +1152,49 @@ const serviceResponseBase = {
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
   description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
-  credential: AgentVaultCredentialSummarySchema,
-  customHeaders: z
-    .object({
-      id: z.string().uuid().describe(AGENT_VAULT.SERVICE.customHeaderId),
-      name: z.string().describe(AGENT_VAULT.SERVICE.customHeaderName),
-      prefix: z.string().describe(AGENT_VAULT.SERVICE.customHeaderPrefix)
-    })
-    .array()
-    .describe(AGENT_VAULT.SERVICE.customHeaders),
-  substitutions: z
-    .object({
-      id: z.string().uuid().describe(AGENT_VAULT.SERVICE.substitutionId),
-      placeholder: z.string().describe(AGENT_VAULT.SERVICE.placeholder),
-      surfaces: z.nativeEnum(AgentVaultSubstitutionSurface).array().describe(AGENT_VAULT.SERVICE.surfaces)
-    })
-    .array()
-    .describe(AGENT_VAULT.SERVICE.substitutions),
   variableReferences: AgentVaultVariableReferenceSchema.array().describe(AGENT_VAULT.SERVICE.variableReferences),
   createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
   updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt)
 };
 
-const serviceResponseMcpOnly = {
-  allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools)
+const customHeadersResponseSchema = z
+  .object({
+    id: z.string().uuid().describe(AGENT_VAULT.SERVICE.customHeaderId),
+    name: z.string().describe(AGENT_VAULT.SERVICE.customHeaderName),
+    prefix: z.string().describe(AGENT_VAULT.SERVICE.customHeaderPrefix)
+  })
+  .array()
+  .describe(AGENT_VAULT.SERVICE.customHeadersRead);
+
+const serviceResponseTypeExtras = {
+  [AgentVaultServiceType.Http]: {
+    credential: credentialSummarySchemas[AgentVaultServiceType.Http],
+    customHeaders: customHeadersResponseSchema,
+    substitutions: z
+      .object({
+        id: z.string().uuid().describe(AGENT_VAULT.SERVICE.substitutionId),
+        placeholder: z.string().describe(AGENT_VAULT.SERVICE.placeholder),
+        surfaces: z.nativeEnum(AgentVaultSubstitutionSurface).array().describe(AGENT_VAULT.SERVICE.surfaces)
+      })
+      .array()
+      .describe(AGENT_VAULT.SERVICE.substitutionsRead)
+  },
+  [AgentVaultServiceType.Mcp]: {
+    credential: credentialSummarySchemas[AgentVaultServiceType.Mcp],
+    customHeaders: customHeadersResponseSchema,
+    allowedTools: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedTools)
+  },
+  [AgentVaultServiceType.Postgres]: { credential: credentialSummarySchemas[AgentVaultServiceType.Postgres] },
+  [AgentVaultServiceType.Mysql]: { credential: credentialSummarySchemas[AgentVaultServiceType.Mysql] },
+  [AgentVaultServiceType.Ssh]: { credential: credentialSummarySchemas[AgentVaultServiceType.Ssh] }
 };
 
 // The sealed value is never in here. This schema is the last thing between the encrypted column and the
 // wire on every service route: the serializer emits `result.data`, so anything absent here is dropped,
 // and anything required here but missing from a projection is a 500 rather than a leak. `extra` adds or
-// replaces fields on every type, as a discriminated union can't be extended afterwards.
+// replaces fields every type shares, as a discriminated union can't be extended afterwards.
 export const agentVaultServiceResponseSchema = <T extends z.ZodRawShape>(extra: T) =>
-  serviceResponseUnion({ ...serviceResponseBase, ...extra }, serviceResponseMcpOnly);
+  serviceResponseUnion({ ...serviceResponseBase, ...extra }, serviceResponseTypeExtras);
 
 export const AgentVaultServiceSchema = agentVaultServiceResponseSchema({});
 

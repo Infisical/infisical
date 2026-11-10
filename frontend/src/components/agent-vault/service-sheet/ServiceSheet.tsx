@@ -316,12 +316,12 @@ const storedVariableKeys = (service?: TAgentVaultService | null) => {
     username: keysWhere(
       (reference) => reference.field === AgentVaultVariableReferenceField.CredentialUsername
     ),
-    customHeaders: byRow(service.customHeaders, (reference) =>
+    customHeaders: byRow("customHeaders" in service ? service.customHeaders : [], (reference) =>
       reference.field === AgentVaultVariableReferenceField.CustomHeader
         ? reference.customHeaderId
         : null
     ),
-    substitutions: byRow(service.substitutions, (reference) =>
+    substitutions: byRow("substitutions" in service ? service.substitutions : [], (reference) =>
       reference.field === AgentVaultVariableReferenceField.Substitution
         ? reference.substitutionId
         : null
