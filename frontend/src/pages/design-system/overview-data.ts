@@ -87,6 +87,15 @@ export const recentChanges: {
   page?: string;
 }[] = [
   {
+    id: "toast-live-regions",
+    title: "Toasts announce reliably",
+    description:
+      "Toast stacks announce every new toast through live regions that exist before the first one, errors assertively.",
+    date: "2026-11-07",
+    commit: "65a7781fb1",
+    page: "toast"
+  },
+  {
     id: "action-feedback-toast",
     title: "Action feedback in toasts",
     description:
@@ -211,14 +220,5 @@ export const recentChanges: {
     date: "2026-11-07",
     commit: "cb490b4bba",
     page: "table"
-  },
-  {
-    id: "menu-item-description",
-    title: "Reasons on checkbox items",
-    description:
-      "Checkbox and radio menu items take a description, so a disabled setting can say why it is unavailable.",
-    date: "2026-11-07",
-    commit: "804076293d",
-    page: "dropdown-menu"
   }
 ];
