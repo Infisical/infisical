@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   AGENT_VAULT_SESSION_LOG_MAX_CHUNK_BYTES,
+  AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS,
   AGENT_VAULT_SESSION_LOG_MIN_CHUNK_BYTES
 } from "./agent-vault-session-log-constants";
 import { encodeHistoryCursor, encodeTailCursor } from "./agent-vault-session-log-cursor-fns";
@@ -63,6 +64,47 @@ describe("the chunk create body", () => {
   test("drops a field the contract does not name, so a caller can't choose the object key", () => {
     const parsed = AgentVaultSessionLogChunkCreateSchema.parse({ ...validChunk, objectKey: "attacker/controlled" });
     expect(parsed).not.toHaveProperty("objectKey");
+  });
+
+  test("accepts a chunk from a CLI that doesn't send decision counts", () => {
+    const parsed = AgentVaultSessionLogChunkCreateSchema.parse({ ...validChunk, recordCount: 7 });
+    expect(parsed).not.toHaveProperty("brokeredCount");
+  });
+
+  test.each([0, AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS])("accepts %i for every decision count", (count) => {
+    const parsed = AgentVaultSessionLogChunkCreateSchema.parse({
+      ...validChunk,
+      brokeredCount: count,
+      passthroughCount: count,
+      blockedCount: count,
+      errorCount: count
+    });
+    expect(parsed).toMatchObject({
+      brokeredCount: count,
+      passthroughCount: count,
+      blockedCount: count,
+      errorCount: count
+    });
+  });
+
+  test("accepts decision counts that don't add up to recordCount, since a miscount must not cost the logs", () => {
+    const parsed = AgentVaultSessionLogChunkCreateSchema.parse({
+      ...validChunk,
+      recordCount: 7,
+      brokeredCount: 900,
+      passthroughCount: 900
+    });
+    expect(parsed).toMatchObject({ recordCount: 7, brokeredCount: 900, passthroughCount: 900 });
+  });
+
+  test.each(
+    ["brokeredCount", "passthroughCount", "blockedCount", "errorCount"].flatMap((field) => [
+      { field, value: -1 },
+      { field, value: AGENT_VAULT_SESSION_LOG_MAX_CHUNK_RECORDS + 1 },
+      { field, value: 1.5 }
+    ])
+  )("rejects $field: $value", ({ field, value }) => {
+    expect(AgentVaultSessionLogChunkCreateSchema.safeParse({ ...validChunk, [field]: value }).success).toBe(false);
   });
 });
 
