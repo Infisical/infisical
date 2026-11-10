@@ -945,8 +945,6 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
 
 ### Provisioning templates (Launch Stack, Update Stack)
 
-Read `docs/adr/0001-*` and `0002-*` before touching `services/app-connection/provisioning-template/`.
-
 - Add an app by registering a provider in that registry. A new template shape is another `kind` in the discriminated union (`cloudformation-update` is the second), never a new response type.
 - Update Stack is a connection-scoped `GET` gated on Edit for that connection. It never calls CloudFormation or AWS, because the role Infisical assumes must not be able to change its own stack.
 - `updateUrl` opens the console's `#/stacks/update` route by stack name with `templateURL` only. Never add `param_*` values to it: the console ignores them on update (unlike `quickcreate`), so the user sets the toggles and `parameterChanges` lists them.

@@ -112,7 +112,7 @@ const UpdateInstructions = ({
         <ParameterRow
           key={name}
           title={AWS_COMPANION_PARAMETER_LABELS[name] ?? name}
-          action="Enter a value"
+          action="Enter a value in AWS"
         />
       ))}
     </ul>
