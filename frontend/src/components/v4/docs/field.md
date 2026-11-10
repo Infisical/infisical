@@ -66,6 +66,7 @@ Why: The person must be able to locate the value and understand what can repair 
 ## Import and exports
 
 - src/components/v4/ui/field.tsx
+- src/components/v4/ui/helpers.module.css
 
 Exports: Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSeparator, FieldSet, FieldTitle. Source TypeScript defines the API.
 
@@ -74,6 +75,7 @@ Exports: Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLab
 - Use label/description/error shorthand around one control for automatic ID, label, described-by and invalid-state association. Compound FieldLabel/FieldDescription/FieldError parts remain available for custom layouts. An error renders one way everywhere: a red alert icon and the message, several messages stacked under one icon. The label stays ink; the control's red border and the message carry the error. The label sits 6px above the control (the field-label space token). A stacked Field caps at the field measure (size-measure-field, 400px); wide lets it fill its column (size-measure-field-wide).
 - label accepts a node, so a label can carry an info tooltip beside its text. Everything inside the label becomes part of the control's accessible name, so give an info trigger a short name and keep long help in description.
 - description accepts a node, such as a search Highlight over the help text. It renders inside a paragraph, so pass phrasing content only. An error replaces it while one is set.
+- A text link inside FieldDescription (an anchor that is not a Button or another slotted part) is a quiet link: the link color with no underline at rest, underlined on hover and keyboard focus, so help text with a Docs link stays calm.
 
 ## Accessibility
 
@@ -143,7 +145,9 @@ export default function Example() {
         <UI.Field>
           <UI.FieldLabel htmlFor="field-project">Project name</UI.FieldLabel>
           <Input id="field-project" defaultValue="payments" />
-          <UI.FieldDescription>Use a name your team recognizes.</UI.FieldDescription>
+          <UI.FieldDescription>
+            Use a name your team recognizes. <a href="https://infisical.com/docs">Naming guide</a>
+          </UI.FieldDescription>
         </UI.Field>
       </UI.FieldGroup>
     </div>

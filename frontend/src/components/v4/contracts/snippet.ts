@@ -4,13 +4,14 @@ export const snippetDefinition = {
   id: "snippet",
   title: "Snippet",
   group: "Code",
-  summary: "Present a selectable one-line command and copy its literal value.",
+  summary: "Present a selectable command or machine value and copy its literal value.",
   sourceFiles: ["src/components/v4/ui/snippet.tsx", "src/components/v4/ui/code.module.css"],
   exports: ["Snippet"],
   referenceNames: ["Snippet"],
   behavior: [
     "The prompt is visual context and is never copied. Size defaults to sm32; explicit md is 36px, with nested copy actions at 24/28px.",
-    "The read-only input supports selection; copy waits for clipboard fulfillment."
+    "The read-only input supports selection; copy waits for clipboard fulfillment.",
+    "maxLines shows the value on several lines in a read-only textarea: line breaks stay, long lines wrap anywhere, the field grows with its content up to that many lines and then scrolls. Where field-sizing is unsupported, the value's line count (capped at maxLines) still sets the starting height, and wrapped lines past it scroll. The copy action and prompt sit at the first line, and copy still copies the whole value, every line included. The value stays Geist Mono, so keep it to machine values (certificates, keys, records, commands); prose goes in Text."
   ],
   accessibility: ["Caller supplies an input label; the copy control is separately named."],
   limitations: ["Do not imply that copying executes the command or conceals sensitive arguments."],
@@ -32,6 +33,12 @@ export const snippetDefinition = {
       title: "Exact command copy",
       module: "./examples/snippet/behavior.tsx",
       states: ["default", "loading", "error", "success"]
+    },
+    {
+      id: "multiline",
+      title: "Multi-line values",
+      module: "./examples/snippet/multiline.tsx",
+      states: ["default", "overflow"]
     }
   ],
   coverage: [
@@ -53,7 +60,7 @@ export const snippetDefinition = {
     },
     {
       axis: "configuration",
-      expected: ["prompt", "no prompt", "copy disabled", "invalid"],
+      expected: ["prompt", "no prompt", "copy disabled", "invalid", "multi-line", "wrapped"],
       shown: [
         {
           value: "prompt",
@@ -74,6 +81,16 @@ export const snippetDefinition = {
           value: "invalid",
           exampleId: "states",
           label: "Unavailable command"
+        },
+        {
+          value: "multi-line",
+          exampleId: "multiline",
+          label: "Line breaks, maxLines 4, scrolls"
+        },
+        {
+          value: "wrapped",
+          exampleId: "multiline",
+          label: "Long value wraps, maxLines 3"
         }
       ]
     },
@@ -101,11 +118,12 @@ export const snippetDefinition = {
   ],
   guidance: {
     use: [
-      "Use sm or md for a selectable one-line safe command. The optional prompt is context, and the optional copy action copies value only."
+      "Use sm or md for a selectable one-line safe command. The optional prompt is context, and the optional copy action copies value only.",
+      "Set maxLines for a machine value a person copies whole but should see on several lines, such as a certificate, a public key or a long DNS record."
     ],
     avoid: [],
     decision:
-      "Choose Snippet for a literal one-line command that can be copied. Use CodeBlock for multiline source and Input for editing.",
+      "Choose Snippet for a literal command or machine value that can be copied, with maxLines when it spans or wraps onto several lines. Use CodeBlock for source with a header, syntax or line numbers and Input for editing.",
     rules: [
       {
         id: "snippet-usage",

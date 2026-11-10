@@ -173,7 +173,7 @@ export const baselineForms = [
     title: "Field",
     group: "Forms",
     summary: "Connect a control to its label, description and validation error.",
-    sourceFiles: ["src/components/v4/ui/field.tsx"],
+    sourceFiles: ["src/components/v4/ui/field.tsx", "src/components/v4/ui/helpers.module.css"],
     exports: [
       "Field",
       "FieldContent",
@@ -190,7 +190,8 @@ export const baselineForms = [
     behavior: [
       "Use label/description/error shorthand around one control for automatic ID, label, described-by and invalid-state association. Compound FieldLabel/FieldDescription/FieldError parts remain available for custom layouts. An error renders one way everywhere: a red alert icon and the message, several messages stacked under one icon. The label stays ink; the control's red border and the message carry the error. The label sits 6px above the control (the field-label space token). A stacked Field caps at the field measure (size-measure-field, 400px); wide lets it fill its column (size-measure-field-wide).",
       "label accepts a node, so a label can carry an info tooltip beside its text. Everything inside the label becomes part of the control's accessible name, so give an info trigger a short name and keep long help in description.",
-      "description accepts a node, such as a search Highlight over the help text. It renders inside a paragraph, so pass phrasing content only. An error replaces it while one is set."
+      "description accepts a node, such as a search Highlight over the help text. It renders inside a paragraph, so pass phrasing content only. An error replaces it while one is set.",
+      "A text link inside FieldDescription (an anchor that is not a Button or another slotted part) is a quiet link: the link color with no underline at rest, underlined on hover and keyboard focus, so help text with a Docs link stays calm."
     ],
     accessibility: [
       "The short form connects the label, help and error to a single control. In a compound layout, match htmlFor to the control's id and point aria-describedby at the help and error. Grouped controls take a group with a legend."
@@ -1133,10 +1134,11 @@ export const baselineForms = [
     group: "Forms",
     summary: "Choose one option from a visible group.",
     sourceFiles: ["src/components/v4/ui/radio-group.tsx"],
-    exports: ["RadioGroup", "RadioGroupItem"],
+    exports: ["RadioGroup", "RadioGroupCard", "RadioGroupItem"],
     referenceNames: ["RadioGroup"],
     behavior: [
-      "RadioGroup uses one string value with value/defaultValue and onValueChange. Each RadioGroupItem contributes its own value and disabled state."
+      "RadioGroup uses one string value with value/defaultValue and onValueChange. Each RadioGroupItem contributes its own value and disabled state.",
+      "RadioGroupCard is a RadioGroup item drawn as a selectable card: the radio mark in its own column, then the title line and an optional description. Optional media (an icon or logo, hidden from assistive technology) sits inline before the title on the title line, sized to the title's line height, and the description runs under both from the start of the media, not indented under the title, so the card's height follows its content. The whole card is the radio and its click target; the title names it and the description describes it. Checked takes the choice selected paint (choice-selected-border and choice-selected-surface), hover and press lay the shared translucent hover and press over it, and disabled dims it. It is a bordered tile with a line-soft edge, not a frame, so a set of cards may sit inside a framed Card or SettingsCard, but never put a Card or other framed container inside one. Lay the cards out with a grid class on RadioGroup."
     ],
     accessibility: [
       "Name the group and each option with explicit labels. Arrow keys move the choice within the group, and each option announces whether it is checked. Associate any group error explicitly."
@@ -1162,6 +1164,12 @@ export const baselineForms = [
         title: "Orientation",
         module: "./examples/radio-group/orientations.tsx",
         states: ["default"]
+      },
+      {
+        id: "cards",
+        title: "Choice cards",
+        module: "./examples/radio-group/cards.tsx",
+        states: ["controlled", "empty", "disabled"]
       }
     ],
     coverage: [
@@ -1217,6 +1225,32 @@ export const baselineForms = [
             label: "Environment access"
           }
         ]
+      },
+      {
+        axis: "RadioGroupCard content",
+        expected: ["media and description", "media only", "title only", "disabled card"],
+        shown: [
+          {
+            value: "media and description",
+            exampleId: "cards",
+            label: "Media and description, one disabled"
+          },
+          {
+            value: "media only",
+            exampleId: "cards",
+            label: "Media only"
+          },
+          {
+            value: "title only",
+            exampleId: "cards",
+            label: "Title only, nothing chosen yet"
+          },
+          {
+            value: "disabled card",
+            exampleId: "cards",
+            label: "Media and description, one disabled"
+          }
+        ]
       }
     ],
     guidance: {
@@ -1225,7 +1259,7 @@ export const baselineForms = [
       ],
       avoid: [],
       decision:
-        "Choose RadioGroup when exactly one visible alternative is required. Use Checkbox for independent choices and ToggleGroup for optional pressed tools.",
+        "Choose RadioGroup when exactly one visible alternative is required, with RadioGroupCard when each alternative needs a description or a logo to tell it apart. Use Checkbox for independent choices and ToggleGroup for optional pressed tools.",
       rules: [
         {
           id: "radio-group-usage",
@@ -1714,10 +1748,14 @@ export const baselineForms = [
     exports: ["Switch"],
     referenceNames: ["Switch"],
     behavior: [
-      "Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is the accent track (sw-on) with an on-accent ink knob (sw-knob-on). Track and knob are square. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio."
+      "Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is the accent track (sw-on) with an on-accent ink knob (sw-knob-on). Track and knob are square. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio.",
+      "label and description take any node, so a description can hold a Code value or a quiet link; label names the switch through aria-labelledby and description describes it.",
+      "layout row puts the switch after the text, with a line-soft divider under each row except the last child of its container, so stacked rows are divided and a lone row in a Card draws no divider above the card's edge.",
+      "disabledReason blocks the switch and says why, like Button: the switch stays focusable, is aria-disabled and dimmed, never toggles from a click, Space or its label, and shows the reason in a tooltip on hover and keyboard focus and as its accessible description."
     ],
     accessibility: [
-      "Label the switch and keep its name stable when its checked state changes. Do not stage it behind Save."
+      "Label the switch and keep its name stable when its checked state changes. Do not stage it behind Save.",
+      "Use disabledReason rather than disabled when a permission or plan blocks the setting, so keyboard users can reach the switch and hear the reason."
     ],
     limitations: [
       "Switch reports boolean changes but does not persist or roll them back; the host must represent pending and failed updates truthfully.",
@@ -1741,6 +1779,12 @@ export const baselineForms = [
         title: "States and layout",
         module: "./examples/switch/states.tsx",
         states: ["default", "invalid", "disabled"]
+      },
+      {
+        id: "rows",
+        title: "Rows in a card",
+        module: "./examples/switch/rows.tsx",
+        states: ["default", "disabled"]
       }
     ],
     coverage: [
@@ -1777,12 +1821,29 @@ export const baselineForms = [
         ]
       },
       {
+        axis: "row count",
+        expected: ["one row", "stacked rows"],
+        shown: [
+          {
+            value: "one row",
+            exampleId: "rows",
+            label: "One row"
+          },
+          {
+            value: "stacked rows",
+            exampleId: "rows",
+            label: "Stacked rows"
+          }
+        ]
+      },
+      {
         axis: "state",
         expected: [
           "unchecked",
           "checked",
           "disabled unchecked",
           "disabled checked",
+          "disabled with reason",
           "invalid",
           "external label",
           "pending",
@@ -1809,6 +1870,11 @@ export const baselineForms = [
             value: "disabled checked",
             exampleId: "states",
             label: "Disabled, on"
+          },
+          {
+            value: "disabled with reason",
+            exampleId: "rows",
+            label: "Enable SCIM"
           },
           {
             value: "controlled saved state",

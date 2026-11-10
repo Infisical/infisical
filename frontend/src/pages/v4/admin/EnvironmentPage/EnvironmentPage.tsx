@@ -19,7 +19,7 @@ import { SecretInput } from "@app/components/v4/ui/secret-input";
 import { SettingsCard } from "@app/components/v4/ui/settings-card";
 import type { TGetEnvOverrides } from "@app/hooks/api/admin/types";
 
-import { toast } from "../../access/toast";
+import { failed, toast } from "../../access/toast";
 import { ListToolbar } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
 
@@ -74,11 +74,16 @@ const OverridesEditor = ({ overrides }: { overrides: TGetEnvOverrides }) => {
         dirty={dirty}
         onDiscard={() => setConfirmDiscard(true)}
         onSave={async () => {
-          await updateServerConfig.mutateAsync({
-            envOverrides: Object.fromEntries(
-              Object.entries(draft).filter(([, value]) => value !== "")
-            )
-          });
+          await updateServerConfig
+            .mutateAsync({
+              envOverrides: Object.fromEntries(
+                Object.entries(draft).filter(([, value]) => value !== "")
+              )
+            })
+            .catch((error: unknown) => {
+              failed("Environment overrides not saved", error);
+              throw error;
+            });
           setSaved(draft);
           toast({
             tone: "ok",

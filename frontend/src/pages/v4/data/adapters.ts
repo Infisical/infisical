@@ -1,10 +1,11 @@
-import { useRouteContext } from "@tanstack/react-router";
+import { useMatches } from "@tanstack/react-router";
 
 import type { V4Mode } from "../mode";
 import type { AccessAdapter } from "./access/contract";
 import type { AdminAdapter } from "./admin/contract";
 import type { AgentVaultSettingsAdapter } from "./agent-vault-settings/contract";
 import type { AgentVaultAdapter } from "./agent-vault/contract";
+import type { AuditLogsAdapter } from "./audit-logs/contract";
 import type { BillingAdapter } from "./billing/contract";
 import type { CertManagerSettingsAdapter } from "./cert-manager-settings/contract";
 import type { CertificatesAdapter } from "./certificates/contract";
@@ -21,6 +22,7 @@ import type { ProjectTagsAdapter } from "./project-tags/contract";
 import type { ProjectsAdapter } from "./projects/contract";
 import type { SecretPoliciesAdapter } from "./secret-policies/contract";
 import type { SecretScanningAdapter } from "./secret-scanning/contract";
+import type { SecretSharingAdapter } from "./secret-sharing/contract";
 import type { SecretsAdapter } from "./secrets/contract";
 import type { SsoAdapter } from "./sso/contract";
 
@@ -31,6 +33,7 @@ export type V4Adapters = {
   integrations: IntegrationsAdapter;
   networking: NetworkingAdapter;
   secretScanning: SecretScanningAdapter;
+  secretSharing: SecretSharingAdapter;
   secrets: SecretsAdapter;
   certificates: CertificatesAdapter;
   certManagerSettings: CertManagerSettingsAdapter;
@@ -43,6 +46,7 @@ export type V4Adapters = {
   pam: PamAdapter;
   secretPolicies: SecretPoliciesAdapter;
   agentVault: AgentVaultAdapter;
+  auditLogs: AuditLogsAdapter;
   admin: AdminAdapter;
   agentVaultSettings: AgentVaultSettingsAdapter;
   billing: BillingAdapter;
@@ -51,12 +55,19 @@ export type V4Adapters = {
 
 type V4RouteContext = { v4Mode?: V4Mode; adapters?: V4Adapters };
 
-// Org pages and the admin console each set v4Mode and adapters on their own layout route.
-export const useV4Mode = (): V4Mode =>
-  useRouteContext({ strict: false, select: (context: V4RouteContext) => context.v4Mode })!;
+// Org pages and the admin console each set v4Mode and adapters in their layout route's beforeLoad.
+// Read them from that layout match, not the nearest one: when the router adds search defaults to
+// the URL on first load, a child match can keep the context it had before beforeLoad finished.
+const useV4LayoutContext = (): V4RouteContext =>
+  useMatches({
+    select: (matches) =>
+      matches.reduce<V4RouteContext>((found, match) => {
+        const context = match.context as V4RouteContext;
+        return context.v4Mode ? context : found;
+      }, {})
+  }) as V4RouteContext;
+
+export const useV4Mode = (): V4Mode => useV4LayoutContext().v4Mode!;
 
 export const useV4Adapter = <K extends keyof V4Adapters>(domain: K): V4Adapters[K] =>
-  useRouteContext({
-    strict: false,
-    select: (context: V4RouteContext) => context.adapters![domain]
-  }) as V4Adapters[K];
+  useV4LayoutContext().adapters![domain];

@@ -1,10 +1,10 @@
 # Snippet
 
-Present a selectable one-line command and copy its literal value.
+Present a selectable command or machine value and copy its literal value.
 
 ## Choose this component
 
-Choose Snippet for a literal one-line command that can be copied. Use CodeBlock for multiline source and Input for editing.
+Choose Snippet for a literal command or machine value that can be copied, with maxLines when it spans or wraps onto several lines. Use CodeBlock for source with a header, syntax or line numbers and Input for editing.
 
 ## Usage rules
 
@@ -68,6 +68,7 @@ Exports: Snippet. Source TypeScript defines the API.
 
 - The prompt is visual context and is never copied. Size defaults to sm32; explicit md is 36px, with nested copy actions at 24/28px.
 - The read-only input supports selection; copy waits for clipboard fulfillment.
+- maxLines shows the value on several lines in a read-only textarea: line breaks stay, long lines wrap anywhere, the field grows with its content up to that many lines and then scrolls. Where field-sizing is unsupported, the value's line count (capped at maxLines) still sets the starting height, and wrapped lines past it scroll. The copy action and prompt sit at the first line, and copy still copies the whole value, every line included. The value stays Geist Mono, so keep it to machine values (certificates, keys, records, commands); prose goes in Text.
 
 ## Accessibility
 
@@ -76,6 +77,7 @@ Exports: Snippet. Source TypeScript defines the API.
 ## Use cases
 
 - Use sm or md for a selectable one-line safe command. The optional prompt is context, and the optional copy action copies value only.
+- Set maxLines for a machine value a person copies whole but should see on several lines, such as a certificate, a public key or a long DNS record.
 
 ## Limits
 
@@ -96,6 +98,8 @@ Source declarations and review criteria only. Generation checks references and c
 - no prompt: example `states`, visible label "No prompt, copy disabled".
 - copy disabled: example `states`, visible label "No prompt, copy disabled".
 - invalid: example `states`, visible label "Unavailable command".
+- multi-line: example `multiline`, visible label "Line breaks, maxLines 4, scrolls".
+- wrapped: example `multiline`, visible label "Long value wraps, maxLines 3".
 
 ### copy lifecycle
 
@@ -199,6 +203,76 @@ export default function Example() {
       </div>
       <figcaption className="text-muted-foreground text-xs">{"Exact command copy"}</figcaption>
     </figure>
+  );
+}
+```
+
+### Multi-line values
+
+Save this example at `src/pages/design-system/examples/snippet/multiline.tsx`; its relative imports are generated for that exact path. States: default, overflow.
+
+Registry items used: @infisical/snippet. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Snippet } from "../../../../components/v4/ui/snippet";
+
+const certificate = [
+  "-----BEGIN CERTIFICATE-----",
+  "MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ",
+  "RTESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJlclRydXN0MSIwIAYD",
+  "VQQDExlCYWx0aW1vcmUgQ3liZXJUcnVzdCBSb290MB4XDTAwMDUxMjE4NDYwMFoX",
+  "DTI1MDUxMjIzNTkwMFowWjELMAkGA1UEBhMCSUUxEjAQBgNVBAoTCUJhbHRpbW9y",
+  "ZTETMBEGA1UECxMKQ3liZXJUcnVzdDEiMCAGA1UEAxMZQmFsdGltb3JlIEN5YmVy",
+  "-----END CERTIFICATE-----"
+].join("\n");
+
+const record =
+  "v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx3N9q2Lr8vT0uJbW6yZcF4mQp1sHkE7aD5gR2nX9oVtY3iCwB8eUjK6lMzPqS0fA4hN1rG7dL2vT5yW9xK3bQ8mE6pJ0cZ1uH4nR7sD2gF5aY8tV3wB6iL9oP0qX2kM4jC7eN1rT5yU8hG3dF6sA9zQ2wE5rT8yU1iO4pL7kJ0hG3fD6sA9zX2cV5bN8mQ1wE4rT7yU0iO3pL6kJ9hG2fD5sA8zX1cV4bN7mQ0wE3rT6yU9iO2pL5kJ8hG1fD4sA7zX0cV3bN6mIDAQAB";
+
+export default function Example() {
+  return (
+    <div className="grid w-full min-w-0 grid-cols-1 items-start gap-x-6 gap-y-8">
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Snippet
+            label="CA certificate"
+            copyLabel="Copy certificate"
+            value={certificate}
+            maxLines={4}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Line breaks, maxLines 4, scrolls"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Snippet
+            label="TXT record value"
+            copyLabel="Copy record value"
+            value={record}
+            maxLines={3}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">
+          {"Long value wraps, maxLines 3"}
+        </figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <Snippet
+            label="Login and run"
+            size="md"
+            prompt="$"
+            value={
+              "infisical login --domain=https://eu.infisical.com\ninfisical run --env=staging -- npm start"
+            }
+            maxLines={4}
+          />
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"md with prompt"}</figcaption>
+      </figure>
+    </div>
   );
 }
 ```

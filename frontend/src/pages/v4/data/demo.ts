@@ -3,6 +3,7 @@ import type { V4Adapters } from "./adapters";
 import { adminDemo } from "./admin/demo";
 import { agentVaultSettingsDemo } from "./agent-vault-settings/demo";
 import { agentVaultDemo } from "./agent-vault/demo";
+import { auditLogsDemo } from "./audit-logs/demo";
 import { billingDemo } from "./billing/demo";
 import { certManagerSettingsDemo } from "./cert-manager-settings/demo";
 import { certificatesDemo } from "./certificates/demo";
@@ -19,6 +20,7 @@ import { projectTagsDemo } from "./project-tags/demo";
 import { projectsDemo } from "./projects/demo";
 import { secretPoliciesDemo } from "./secret-policies/demo";
 import { secretScanningDemo } from "./secret-scanning/demo";
+import { secretSharingDemo } from "./secret-sharing/demo";
 import { secretsDemo } from "./secrets/demo";
 import { ssoDemo } from "./sso/demo";
 
@@ -31,6 +33,7 @@ export const demoAdapters: V4Adapters = {
   integrations: integrationsDemo,
   networking: networkingDemo,
   secretScanning: secretScanningDemo,
+  secretSharing: secretSharingDemo,
   secrets: secretsDemo,
   certificates: certificatesDemo,
   certManagerSettings: certManagerSettingsDemo,
@@ -41,6 +44,7 @@ export const demoAdapters: V4Adapters = {
   projectEnvironments: projectEnvironmentsDemo,
   projectTags: projectTagsDemo,
   pam: pamDemo,
+  auditLogs: auditLogsDemo,
   admin: adminDemo,
   secretPolicies: secretPoliciesDemo,
   billing: billingDemo,

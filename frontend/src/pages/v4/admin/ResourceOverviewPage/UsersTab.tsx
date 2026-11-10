@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { UserCogIcon } from "lucide-react";
 
+import { InstanceUserManagementUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
 import { Badge } from "@app/components/v4/ui/badge";
 import {
@@ -21,6 +22,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { useUpgradeGate } from "../../license";
 import { ConfirmDialog, fullName, Muted, pagination, usePageReset, usePaging } from "./shared";
 
 import styles from "./ResourceOverviewPage.module.css";
@@ -60,10 +62,14 @@ export const UsersTab = () => {
   if (error) throw error;
 
   const isSelf = (user: User) => user.id === session.user.id;
-  const upgradeReason = (user: User) =>
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+  const withLicense = (action: () => void) => () =>
     subscription?.instanceUserManagement
-      ? undefined
-      : `Your current plan does not allow ${user.superAdmin ? "removing" : "setting additional"} server admins. Contact our team to update your instance license.`;
+      ? action()
+      : openUpgradeGate({
+          intent: InstanceUserManagementUpgradeIntent,
+          paywallKey: "admin.user-identities"
+        });
 
   const columns: DataTableColumn<User>[] = [
     {
@@ -93,11 +99,7 @@ export const UsersTab = () => {
       <>
         {!user.superAdmin && (
           <>
-            <DropdownMenuItem
-              disabled={Boolean(upgradeReason(user))}
-              description={upgradeReason(user)}
-              onSelect={() => setGranting(user)}
-            >
+            <DropdownMenuItem onSelect={withLicense(() => setGranting(user))}>
               <Icon icon={UserCogIcon} />
               Make server admin
             </DropdownMenuItem>
@@ -105,12 +107,7 @@ export const UsersTab = () => {
           </>
         )}
         {user.superAdmin && (
-          <DropdownMenuItem
-            variant="destructive"
-            disabled={Boolean(upgradeReason(user))}
-            description={upgradeReason(user)}
-            onSelect={() => setRevoking(user)}
-          >
+          <DropdownMenuItem variant="destructive" onSelect={withLicense(() => setRevoking(user))}>
             <Icon icon={UserCogIcon} />
             Remove server admin
           </DropdownMenuItem>
@@ -272,6 +269,7 @@ export const UsersTab = () => {
           saved("Successfully removed server admin access from user");
         }}
       />
+      {upgradeGate}
     </Stack>
   );
 };

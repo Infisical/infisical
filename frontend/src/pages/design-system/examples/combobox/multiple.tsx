@@ -6,7 +6,7 @@ import { Field } from "@app/components/v4/ui/field";
 import { ExampleStack } from "../../example-presentation";
 
 export default function Example() {
-  const [values, setValues] = useState(["dev", "staging", "audit", "prod"]);
+  const [values, setValues] = useState(["dev", "staging", "audit", "prod", "preview"]);
   return (
     <ExampleStack>
       <Field
@@ -21,7 +21,12 @@ export default function Example() {
             { value: "dev", label: "Dev", meta: "3 projects" },
             { value: "staging", label: "Staging", meta: "2 projects" },
             { value: "prod", label: "Prod", meta: "12 projects" },
-            { value: "audit", label: "Audit", disabled: true }
+            { value: "audit", label: "Audit", disabled: true },
+            {
+              value: "preview",
+              label: "Preview deployments for payments-reconciliation-backend-worker-eu-west",
+              meta: "1 project"
+            }
           ]}
           value={values}
           onChange={setValues}

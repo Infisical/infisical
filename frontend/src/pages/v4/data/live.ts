@@ -3,6 +3,7 @@ import type { V4Adapters } from "./adapters";
 import { adminLive } from "./admin/live";
 import { agentVaultSettingsLive } from "./agent-vault-settings/live";
 import { agentVaultLive } from "./agent-vault/live";
+import { auditLogsLive } from "./audit-logs/live";
 import { billingLive } from "./billing/live";
 import { certManagerSettingsLive } from "./cert-manager-settings/live";
 import { certificatesLive } from "./certificates/live";
@@ -19,6 +20,7 @@ import { projectTagsLive } from "./project-tags/live";
 import { projectsLive } from "./projects/live";
 import { secretPoliciesLive } from "./secret-policies/live";
 import { secretScanningLive } from "./secret-scanning/live";
+import { secretSharingLive } from "./secret-sharing/live";
 import { secretsLive } from "./secrets/live";
 import { ssoLive } from "./sso/live";
 
@@ -31,6 +33,7 @@ export const liveAdapters: V4Adapters = {
   integrations: integrationsLive,
   networking: networkingLive,
   secretScanning: secretScanningLive,
+  secretSharing: secretSharingLive,
   secrets: secretsLive,
   certificates: certificatesLive,
   certManagerSettings: certManagerSettingsLive,
@@ -41,6 +44,7 @@ export const liveAdapters: V4Adapters = {
   projectEnvironments: projectEnvironmentsLive,
   projectTags: projectTagsLive,
   pam: pamLive,
+  auditLogs: auditLogsLive,
   admin: adminLive,
   secretPolicies: secretPoliciesLive,
   billing: billingLive,

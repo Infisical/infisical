@@ -9,7 +9,7 @@ import { SecretInput } from "@app/components/v4/ui/secret-input";
 import { SettingsCard } from "@app/components/v4/ui/settings-card";
 import type { AdminIntegrationsConfig } from "@app/hooks/api/admin/types";
 
-import { toast } from "../../access/toast";
+import { failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 
 const TEAMS_DOCS =
@@ -76,10 +76,15 @@ const SlackSettings = ({ config }: { config: AdminIntegrationsConfig["slack"] })
       dirty={changed(draft, saved)}
       onDiscard={() => setDraft(saved)}
       onSave={async () => {
-        await updateServerConfig.mutateAsync({
-          slackClientId: draft.clientId,
-          slackClientSecret: draft.clientSecret
-        });
+        await updateServerConfig
+          .mutateAsync({
+            slackClientId: draft.clientId,
+            slackClientSecret: draft.clientSecret
+          })
+          .catch((error: unknown) => {
+            failed("Slack settings not saved", error);
+            throw error;
+          });
         setSaved(draft);
         toast({ tone: "ok", title: "Slack settings saved" });
       }}
@@ -127,11 +132,16 @@ const MicrosoftTeamsSettings = ({
       dirty={changed(draft, saved)}
       onDiscard={() => setDraft(saved)}
       onSave={async () => {
-        await updateServerConfig.mutateAsync({
-          microsoftTeamsAppId: draft.appId,
-          microsoftTeamsClientSecret: draft.clientSecret,
-          microsoftTeamsBotId: draft.botId
-        });
+        await updateServerConfig
+          .mutateAsync({
+            microsoftTeamsAppId: draft.appId,
+            microsoftTeamsClientSecret: draft.clientSecret,
+            microsoftTeamsBotId: draft.botId
+          })
+          .catch((error: unknown) => {
+            failed("Microsoft Teams settings not saved", error);
+            throw error;
+          });
         setSaved(draft);
         toast({
           tone: "ok",

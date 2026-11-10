@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { InstanceHsmUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import { Alert } from "@app/components/v4/ui/alert";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Field } from "@app/components/v4/ui/field";
@@ -8,9 +9,10 @@ import { SettingsCard } from "@app/components/v4/ui/settings-card";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { RootKeyEncryptionStrategy } from "@app/hooks/api/admin/types";
 
-import { saved } from "../../access/toast";
+import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
+import { UpgradeGate } from "../../license";
 
 const strategyLabels: Record<RootKeyEncryptionStrategy, string> = {
   [RootKeyEncryptionStrategy.Software]: "Software-based encryption",
@@ -31,6 +33,7 @@ export const StrategyCard = () => {
     RootKeyEncryptionStrategy.Software;
   const [choice, setChoice] = useState<RootKeyEncryptionStrategy>();
   const value = choice ?? current;
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
   return (
     <SettingsCard
@@ -44,17 +47,19 @@ export const StrategyCard = () => {
         )
       }
       loading={isPending || subscriptionPending}
-      locked={
-        subscription && !subscription.hsm
-          ? "Upgrade to an Enterprise plan to change the encryption strategy"
-          : undefined
-      }
       dirty={Boolean(details) && value !== current}
       onDiscard={() => setChoice(undefined)}
       onSave={
         details
           ? async () => {
-              await updateStrategy.mutateAsync(value);
+              if (subscription && !subscription.hsm) {
+                setIsUpgradeOpen(true);
+                return;
+              }
+              await updateStrategy.mutateAsync(value).catch((saveError: unknown) => {
+                failed("Encryption strategy not updated", saveError);
+                throw saveError;
+              });
               setChoice(undefined);
               saved("Encryption strategy updated successfully");
             }
@@ -78,6 +83,12 @@ export const StrategyCard = () => {
           />
         </Field>
       )}
+      <UpgradeGate
+        intent={InstanceHsmUpgradeIntent}
+        paywallKey="admin.encryption-page"
+        isOpen={isUpgradeOpen}
+        onOpenChange={setIsUpgradeOpen}
+      />
     </SettingsCard>
   );
 };

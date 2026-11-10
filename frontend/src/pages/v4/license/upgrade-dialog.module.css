@@ -123,6 +123,12 @@
   font-weight: var(--v4-type-label-font-weight);
 }
 
+.featureBadge {
+  display: inline-flex;
+  margin-left: var(--v4-space-8);
+  vertical-align: middle;
+}
+
 .featureDescription {
   color: var(--v4-muted);
   font-family: var(--v4-type-small-font-family);

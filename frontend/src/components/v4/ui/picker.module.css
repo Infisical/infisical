@@ -100,9 +100,14 @@
   background: transparent;
   color: var(--v4-muted);
 }
+.chip.mono {
+  font-family: var(--v4-font-mono, monospace);
+}
 .chip > span:first-child {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .chip > [data-v4-button] {
   flex-shrink: 0;
@@ -114,6 +119,12 @@
   gap: var(--v4-space-control-slot-gap);
   padding-block: var(--v4-space-control-slot-inset);
   padding-inline: var(--v4-space-control-slot-inset) 0;
+}
+.multiCombobox > [data-slot="tags-input-input"] {
+  flex: 1 1 120px;
+  min-height: var(--v4-field-nested);
+  padding-inline: calc(var(--v4-field-inline) - var(--v4-space-control-slot-inset))
+    var(--v4-field-inline);
 }
 .multiCombobox > .chip {
   box-sizing: border-box;

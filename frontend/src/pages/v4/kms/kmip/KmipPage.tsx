@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { PencilIcon } from "lucide-react";
 
+import { KmipUpgradeIntent } from "@app/components/license/UpgradeGate/capability-upgrade-intents";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +46,7 @@ import { useOrgId, useProjectPermission } from "../../access/permissions";
 import { failed, saved } from "../../access/toast";
 import { AccessRestricted, RESTRICTED } from "../../access/ui";
 import { useV4Adapter } from "../../data/adapters";
+import { UpgradeGate } from "../../license";
 import { KmipCertificateDialog } from "./certificate-dialog";
 import { KmipCertificateSheet } from "./certificate-sheet";
 import { KmipClientSheet, kmipPermissionLabels } from "./client-sheet";
@@ -52,13 +54,12 @@ import { KMIP_CLIENT_DOCS } from "./shared";
 
 import css from "./kmip.module.css";
 
-const NO_PLAN = "KMIP is an Enterprise feature. Upgrade your plan to add KMIP clients.";
-
 type Overlay =
   | { kind: "client"; client?: TKmipClient }
   | { kind: "certificate"; client: TKmipClient }
   | { kind: "issued"; certificate: KmipClientCertificate }
-  | { kind: "delete"; client: TKmipClient };
+  | { kind: "delete"; client: TKmipClient }
+  | { kind: "upgrade" };
 
 export const KmipPage = () => {
   const { projectId } = useParams({
@@ -105,9 +106,6 @@ export const KmipPage = () => {
   const canEdit = can(ProjectPermissionKmipActions.UpdateClients);
   const canDelete = can(ProjectPermissionKmipActions.DeleteClients);
   const canIssue = can(ProjectPermissionKmipActions.GenerateClientCertificates);
-  let createBlock: string | undefined;
-  if (!canCreate) createBlock = RESTRICTED;
-  else if (hasPlan === false) createBlock = NO_PLAN;
 
   const columns: DataTableColumn<TKmipClient>[] = [
     {
@@ -180,8 +178,10 @@ export const KmipPage = () => {
               <Button
                 variant="accent"
                 icon="plus"
-                disabledReason={createBlock}
-                onClick={() => setOverlay({ kind: "client" })}
+                disabledReason={canCreate ? undefined : RESTRICTED}
+                onClick={() =>
+                  setOverlay(hasPlan === false ? { kind: "upgrade" } : { kind: "client" })
+                }
               >
                 Add KMIP client
               </Button>
@@ -269,6 +269,12 @@ export const KmipPage = () => {
           <AccessRestricted requirement="read KMIP clients" />
         )}
       </Stack>
+      <UpgradeGate
+        intent={KmipUpgradeIntent}
+        paywallKey="kms.kmip-client"
+        isOpen={overlay?.kind === "upgrade"}
+        onOpenChange={(open) => !open && setOverlay(undefined)}
+      />
       {overlay?.kind === "client" && (
         <KmipClientSheet
           projectId={projectId}

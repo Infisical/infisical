@@ -1,5 +1,4 @@
 import { useState } from "react";
-import axios from "axios";
 import { z } from "zod";
 
 import { Button } from "@app/components/v4/ui/button";
@@ -17,7 +16,7 @@ import { downloadFile } from "@app/helpers/download";
 import { allowedEmailDomainsSchema } from "@app/helpers/email";
 import type { TServerConfig, TUpdateServerConfigDTO } from "@app/hooks/api/admin/types";
 
-import { saved, toast } from "../../access/toast";
+import { failed, saved, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 
 enum SignUpMode {
@@ -32,14 +31,10 @@ const storageHostnamesSchema = z.string().array().max(50, "Add at most 50 hostna
 const useSave = () => {
   const update = useV4Adapter("admin").useUpdateServerConfig();
   return async (dto: TUpdateServerConfigDTO) => {
-    try {
-      await update.mutateAsync(dto);
-    } catch (error) {
-      throw new Error(
-        (axios.isAxiosError<{ message?: string }>(error) && error.response?.data?.message) ||
-          "The change was not saved. Try again."
-      );
-    }
+    await update.mutateAsync(dto).catch((error: unknown) => {
+      failed("Settings not saved", error);
+      throw error;
+    });
   };
 };
 
@@ -57,9 +52,9 @@ const SignUpCard = ({ config }: { config: TServerConfig }) => {
     <SettingsCard
       title="Allow user signups"
       dirty={draft.mode !== initial.mode || draft.domain !== initial.domain}
+      saveDisabledReason={domainError ? "Fix the allowed email domains first" : undefined}
       onDiscard={() => setDraft(initial)}
       onSave={async () => {
-        if (domainError) throw new Error("Fix the highlighted field, then save again.");
         await save({
           allowSignUp: draft.mode !== SignUpMode.Disabled,
           allowedSignUpDomain: draft.mode === SignUpMode.Anyone ? (parsed.data ?? null) : null
@@ -209,8 +204,8 @@ const StorageHostnamesCard = ({ config }: { config: TServerConfig }) => {
         setDraft(initial);
         setHostnameError(undefined);
       }}
+      saveDisabledReason={limitError}
       onSave={async () => {
-        if (limitError) throw new Error(limitError);
         await save({ allowedStorageHostnames: draft });
         toast({
           tone: "ok",

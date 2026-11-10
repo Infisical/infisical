@@ -17,7 +17,7 @@ import {
   type Organization,
   SsoMfaTrust
 } from "@app/hooks/api/organization/types";
-import { type Project, ProjectVersion } from "@app/hooks/api/projects/types";
+import { type Project, ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import type { TOrgRole } from "@app/hooks/api/roles/types";
 import { TemporaryPermissionMode, type TIdentity } from "@app/hooks/api/shared/types";
 import type { TOrgUserAccess, TWorkspaceUser, OrgUser } from "@app/hooks/api/users/types";
@@ -27,6 +27,7 @@ import { createFixtureStore } from "../fixture-store";
 import type { AccessAdapter } from "./contract";
 import {
   type AccessState,
+  DEMO_PAM_PROJECT_ID,
   DEMO_PROJECT_TAGS,
   DEMO_SELF_USER_ID,
   DEMO_VAULT_CONNECTIONS,
@@ -577,8 +578,14 @@ const project = (state: AccessState, projectId: string): Project | undefined => 
   };
 };
 
-const projectRolesFor = (state: AccessState, projectId: string) =>
-  state.projectRoles.map((role) => ({ ...role, projectId }));
+const PRODUCT_ROLE_PROJECTS = new Set<ProjectType>([ProjectType.PAM, ProjectType.AgentVault]);
+
+const projectRolesFor = (state: AccessState, projectId: string) => {
+  const productRoles = PRODUCT_ROLE_PROJECTS.has(projectOf(state, projectId)?.type as ProjectType);
+  return state.projectRoles
+    .filter((role) => !productRoles || role.slug === "admin" || role.slug === "member")
+    .map((role) => ({ ...role, projectId }));
+};
 
 const addUserPerson = (
   state: AccessState,
@@ -634,6 +641,7 @@ export const accessDemo: AccessAdapter = {
     )
   ),
   useProject: demoQuery("project", (state, projectId: string) => project(state, projectId)),
+  usePamProjectId: demoQuery("pam-project-id", () => DEMO_PAM_PROJECT_ID),
 
   useOrgUsers: demoQuery("org-users", (state) => orgUserAccess(state)),
   useOrgMembership: demoQuery("org-membership", (state, _orgId: string, membershipId: string) =>
