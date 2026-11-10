@@ -13,6 +13,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
@@ -23,8 +24,9 @@ import { TCreateSubOrgDTO, TDeleteSubOrgDTO, TJoinSubOrgDTO, TListSubOrgDTO, TUp
 type TSubOrgServiceFactoryDep = {
   orgDAL: Pick<
     TOrgDALFactory,
-    "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById" | "deleteById"
+    "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById"
   >;
+  orgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
@@ -38,6 +40,7 @@ export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
 
 export const subOrgServiceFactory = ({
   orgDAL,
+  orgDeletionService,
   permissionService,
   licenseService,
   membershipDAL,
@@ -330,7 +333,7 @@ export const subOrgServiceFactory = ({
       OrgPermissionSubjects.SubOrganization
     );
 
-    await orgDAL.deleteById(subOrgId);
+    await orgDeletionService.deleteOrganization(subOrgId);
 
     return { organization: subOrg };
   };

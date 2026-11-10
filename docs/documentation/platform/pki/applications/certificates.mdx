@@ -90,6 +90,16 @@ You can also attach one backed by a different authority, including a self-signed
 
 Revocation behaves differently. It only takes effect through the issuing authority, because that authority publishes the revocation list clients check. Infisical therefore refuses to revoke an imported certificate whose profile is backed by a different authority. Revoke those certificates with their original issuer instead.
 
+### Keeping your private key on your own servers
+
+If you generated the certificate's private key yourself, you don't have to give it to Infisical for renewals to keep the same key pair. Paste the certificate signing request (CSR) you generated from that key in **Certificate Signing Request PEM** after you pick the profile. Automatic renewals send that CSR to the profile's authority, so the renewed certificate carries the public key your servers already use. When you renew manually, choose **Reuse the existing key pair** to do the same.
+
+- The field appears when you import PEM files, the profile is backed by a certificate authority, and you haven't pasted a private key
+- Profiles backed by AWS Certificate Manager don't accept a CSR, because AWS Certificate Manager can't issue from one
+- Infisical refuses a CSR that wasn't generated from the certificate's private key, that names a domain or address the certificate doesn't, or that the profile's certificate policy wouldn't accept at renewal
+- Over the API, send the CSR as `csr` to the [Import certificate](/api-reference/endpoints/certificates/import-certificate) endpoint
+- If you imported a certificate without its CSR, [renew it](/documentation/platform/pki/applications/certificate-renewal) once with **Use a CSR**, and later renewals reuse that CSR
+
 ### What each external CA needs
 
 A profile backed by an external certificate authority needs the identifier the certificate already has at that provider, so Infisical can act on it there.
@@ -126,7 +136,7 @@ You'll find the order id on the certificate details page. It matters most over t
 | **Server-driven** | Infisical automatically renews before expiration and pushes to [syncs](/documentation/platform/pki/applications/certificate-syncs/overview) |
 | **Manual** | You renew on demand from the certificate, and can change its properties as part of the renewal |
 
-Server-driven renewal requires [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api) with Infisical-managed keys. Enable it on the [enrollment method](/documentation/platform/pki/applications/enrollment-methods/api) or toggle it per-certificate.
+Server-driven renewal requires [API enrollment](/documentation/platform/pki/applications/enrollment-methods/api), and Infisical has to hold either the certificate's private key or a [CSR generated from it](#keeping-your-private-key-on-your-own-servers). Enable it on the [enrollment method](/documentation/platform/pki/applications/enrollment-methods/api) or toggle it per-certificate.
 
 Both automatic types reissue the certificate exactly as it is. To change the subject, the names it covers, its validity, or how its key pair is handled, [renew it manually](/documentation/platform/pki/applications/certificate-renewal).
 

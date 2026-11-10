@@ -442,7 +442,7 @@ const EntitlementTileContent = ({ dim }: { dim: BillingEntitlementDim }) => {
           / {allowance === null ? "Unlimited" : allowance.toLocaleString()}
         </span>
       </span>
-      <UsageBar dim={dim} className="h-[3px]" />
+      {allowance !== null && <UsageBar dim={dim} className="h-[3px]" />}
       {isNearLimit(dim) && <span className="text-xs text-warning">Approaching limit</span>}
     </>
   );

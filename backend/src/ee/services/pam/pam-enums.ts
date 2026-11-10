@@ -1,6 +1,7 @@
 export enum PamAccountType {
   SSH = "ssh",
   Postgres = "postgres",
+  CockroachDB = "cockroachdb",
   MySQL = "mysql",
   MsSQL = "mssql",
   OracleDB = "oracledb",
