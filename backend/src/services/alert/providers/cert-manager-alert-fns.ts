@@ -209,15 +209,6 @@ const certificateSeverity = (kind: CertificateAlertKind, targets: TAlertCertific
   return "info";
 };
 
-// The project-scoped route makes the alert's project the active instance before opening the
-// certificate, so the link also works in orgs with more than one Certificate Manager project.
-export const buildCertificateUrl = (alert: Pick<TAlertContext, "orgId" | "projectId">, certificateId: string) => {
-  const orgUrl = `${getConfig().SITE_URL}/organizations/${alert.orgId}`;
-  return alert.projectId
-    ? `${orgUrl}/projects/cert-manager/${alert.projectId}/certificates/${certificateId}`
-    : `${orgUrl}/cert-manager/certificates/${certificateId}`;
-};
-
 const inApplication = (applicationName?: string | null) =>
   applicationName ? ` in application '${applicationName}'` : "";
 
@@ -260,7 +251,10 @@ export const buildCertificateAlertPayload = ({
       resourceType: alert.resourceType,
       ...(alert.resourceId ? { resourceId: alert.resourceId } : {}),
       ...(alertBefore ? { condition: alertBefore } : {}),
-      viewUrl: targets.length === 1 ? buildCertificateUrl(alert, targets[0].id) : viewUrl
+      viewUrl:
+        targets.length === 1
+          ? `${getConfig().SITE_URL}/organizations/${alert.orgId}/cert-manager/certificates/${targets[0].id}`
+          : viewUrl
     },
     eventKey: alert.eventType,
     eventLabel: CERTIFICATE_ALERT_KIND_LABELS[kind],

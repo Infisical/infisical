@@ -356,7 +356,7 @@ describe("cert manager alert provider", () => {
     expect(payload.webhookSource).toBe("/alerts/alert-1");
     expect(payload.eventLabel).toBe("Issuance");
     expect(payload.alert.viewUrl).toBe(
-      "https://app.infisical.com/organizations/org-1/projects/cert-manager/proj-1/certificates/cert-1"
+      "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-1"
     );
   });
 
