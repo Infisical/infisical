@@ -81,8 +81,11 @@ const useOwnsToaster = (id: string) => {
 type Announcement = { key: string; text: string };
 const announcementKey = (item: ToastT) =>
   `${item.id}:${item.type ?? "default"}:${spoken(item.title)}`;
-const spoken = (value: unknown) =>
-  typeof value === "string" || typeof value === "number" ? String(value) : "";
+const spoken = (value: unknown): string => {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (!React.isValidElement<{ children?: React.ReactNode }>(value)) return "";
+  return React.Children.toArray(value.props.children).map(spoken).filter(Boolean).join(" ");
+};
 const announce = (fresh: ToastT[]): Announcement | null =>
   fresh.length
     ? {

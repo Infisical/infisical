@@ -131,7 +131,7 @@ export function Highlight({
   const ranges = needles
     .flatMap((needle) => {
       const found: [number, number][] = [];
-      for (let at = lower.indexOf(needle); at >= 0; at = lower.indexOf(needle, at + needle.length))
+      for (let at = lower.indexOf(needle); at >= 0; at = lower.indexOf(needle, at + 1))
         found.push([at, at + needle.length]);
       return found;
     })
