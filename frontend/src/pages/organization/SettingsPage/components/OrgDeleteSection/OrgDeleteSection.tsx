@@ -14,7 +14,7 @@ import {
 import { useOrganization, useOrgPermission } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { OrgMembershipRole } from "@app/helpers/roles";
-import { useDeleteOrgById } from "@app/hooks/api";
+import { useDeleteOrgById, useGetBillingOverview } from "@app/hooks/api";
 import { clearSession } from "@app/hooks/api/users/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -31,7 +31,11 @@ export const OrgDeleteSection = () => {
 
   const isAdmin = hasOrgRole(OrgMembershipRole.Admin);
   // Only cloud root orgs have their own subscription.
-  const cancelsSubscription = isInfisicalCloud() && !isSubOrganization;
+  const overview = useGetBillingOverview(currentOrg?.id ?? "", {
+    enabled: isAdmin && !isSubOrganization
+  });
+  const cancelsSubscription =
+    !isSubOrganization && (overview.data ? overview.data.isCloud : isInfisicalCloud());
 
   const handleDeleteOrgSubmit = async () => {
     if (!currentOrg?.id) return;
