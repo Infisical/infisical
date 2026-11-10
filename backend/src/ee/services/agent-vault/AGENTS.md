@@ -156,11 +156,35 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
 - **Sessions are never deleted while the project exists**, so the Sessions page is a full history and a session's
   row keeps the key its logs need. Deleting the project deletes its sessions (`ON DELETE CASCADE`).
-- Anyone with a session token can download its skills from Infisical with only the token (`GET /session/skills`).
+- Anyone with a session token can read its skills and its services list with only the token, from Infisical
+  (`GET /session/skills`, `GET /session/services`), or through any proxy at the same paths on the proxy's Infisical
+  (see [The CLI](#the-cli)).
 - `POST /session/revoke` revokes the session its `Authorization: Bearer agv_...` token names, so an agent holding
   its token can end its own session. Like `/session/skills`, `inject-identity` skips it and it takes no other
   credential. An unknown token is a 401; an already revoked or expired session is a 200, so it is idempotent. It
   writes through `revokeIfActive`, skips the owner-reach check, and is audited with the session owner as actor.
+- **The agent reads the services list word for word.** `GET /session/services`
+  (`agent-vault-session-services-fns.ts`) builds it from the rows resolve reads, without decrypting anything: the
+  session's expiry, and each service's name, description, hosts, rules and placeholders (quoted, like names), never a
+  credential or a value. The session's label is left out: someone's short summary of the session could steer an agent
+  away from the prompt it was given. Under service-hosts the notes name the proxy's exception hosts (`allowedHosts`, up
+  to 25), so an agent knows it can still reach a package registry. A service's description is written for that, so it also refuses invisible characters
+  (`AgentVaultServiceDescriptionSchema`). A service is `needs-personal-values` exactly when resolve flags it
+  `personalValuesMissing`: `toSetPersonalFields` counts a member's OAuth sign-in only while resolve would send it
+  (`isMemberOauthConnectionUsable`, which resolve calls too), so `run` never configures an MCP server whose member has
+  to connect again. `credential.memberProvided` (resolve's `memberProvided`) says part of the credential is a personal
+  value: the session owner's, or for a session on a user's behalf, that user's (`personalValuesOwner`). `howToUse`, the
+  notes and the built-in skill send a rejected credential to that person, not to an admin, who can't change another
+  member's values. A service whose members sign in with OAuth (`memberSignsIn`) says the person has to connect their
+  account, which covers a sign-in that expired. Its wording (`howToUse`, the notes) was measured with agents together with the
+  built-in skill, so change the two together and measure again. A forwarding proxy names itself
+  (`X-Agent-Vault-Proxy-Id`, `X-Agent-Vault-Proxy-Version`); a proxy in the session's project adds its traffic policy,
+  and anything else (no id, a malformed one, another project's) only leaves the policy out. Not audited, like resolve.
+- **A session token the replica doesn't have yet is looked up again on the primary** (`$findSessionByToken`, used by
+  resolve, skills and services), so a session minted a moment ago isn't refused while the replica catches up. A proxy
+  remembers a refusal for 5 seconds, so a refused first request would also refuse the agent's first requests. The rows
+  minted with the session are just as new, so a session found that way (`onPrimary`) also reads its bundle links and
+  inline services on the primary; otherwise it would resolve with no services at all.
 
 ## Sessions on behalf of users
 
@@ -623,8 +647,8 @@ an installed copy.
   audit event (data-access class). So does `GET /skills/:skillId`, which returns the latest version's files with the
   skill (for that version); the list routes return no files and write none.
 - **`GET /session/skills`** returns the latest files of every skill on the session's reachable bundles (the same
-  intersection as the services), sorted by name, read from the primary. The proxy is not involved: the CLI calls it
-  with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
+  intersection as the services), sorted by name, read from the primary. The CLI calls it through the proxy at the
+  proxy's Infisical host, or directly behind an older proxy, with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
   parses the header itself. Any refusal is a 401, an unknown token included. It shares the owner checks of resolve
   and credential refresh (`$authorizeSessionOwner`), with the org taken from the session's project instead of a
   proxy. A call that returns at least one skill writes one `agent-vault-skills-delivered` audit event
@@ -632,6 +656,17 @@ an installed copy.
   actor (a user named as they are now, or from the session's snapshot if they are gone) and the session's access
   bundle (sessions carry one today), plus one anonymous `Agent Vault Skills Delivered` PostHog event with the
   count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
+- **`GET /session/skills` also returns the built-in `infisical-agent-vault` skill** (`isBuiltin: true`, left out with
+  `includeBuiltin=false`), so an orchestrator that installs skills without `agent-vault run` gets it too. Its file
+  is `agent-vault-skill/builtin-skill/SKILL.md`, read beside its loader at runtime (a dedicated `tsdown` copy rule
+  ships it to `dist`), with a fixed id and version 1. It is not audited or counted: it holds no project data, and
+  every session start would record it. Infisical holds the only copy; the CLI and the proxy keep none. The name is
+  reserved: create and update refuse it (`assertSkillNameNotReserved`), and a library skill created under it before
+  the reservation is replaced by the built-in in the response.
+- **`GET /skills/builtin` serves the built-in skill outside a session** (`getBuiltinSkill`): skill `Read` without the
+  bundle reachability filter, since every agent gets it whatever its bundle, not audited, and no `version` in the
+  response. The dashboard doesn't show the built-in skill; the docs point readers to this endpoint and to the copy
+  `agent-vault run` installs.
 - Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
   (`getAgentVaultReachability`): they see only skills in a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
@@ -799,7 +834,9 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   saved, so a bucket the operator adds later doesn't turn logs back on. Health and the CORS probe only run while
   external storage is on and on the plan, since nothing else is recorded or shown.
 - **Usage is counted on the way out, not from the cap counter.** Each upload link sends the aggregated PostHog event
-  `Agent Vault Session Log Chunk Accepted` (`bytes`, `storageType`, and `records`, the proxy's own unchecked count), and
+  `Agent Vault Session Log Chunk Accepted` (`bytes`, `storageType`, and `records`, the proxy's own unchecked count,
+  with its split into `brokered`, `passthrough`, `blocked` and `error` only when the split adds up to `records`;
+  `getChunkDecisionProperties`), and
   the layer counts links on `infisical.object_storage.upload.*` for operators. The cap counter floors at 16 KiB, mixes
   storage types and stops at the cap, so it isn't a usage number.
 - **The settings body is `{ enabled: false }` or `{ enabled: true, storage }`.** Turning on always names the
@@ -812,6 +849,86 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 
 ## The CLI
 
+- **The proxy answers its own Infisical's session endpoints** for the session a request arrives on, through whichever
+  door the agent already uses (CONNECT, plain HTTP, SOCKS5). On the host and port of its `--domain`, over http or https whatever `--domain`'s scheme, it forwards
+  two paths to Infisical with the session's own token as the Bearer token, whatever the client sent:
+  `<api>/v1/agent-vault/session/services` and `<api>/v1/agent-vault/session/skills`. Every other request to that host
+  goes through like any request, so the session's token reaches nothing else in Infisical. For a well-formed token, the
+  CONNECT to that host opens before the session check (`infisicalHostDefersGate`) and each request inside checks the
+  session itself, so a refused session reads as JSON with its hint over TLS rather than a CONNECT failure curl can't
+  show. SOCKS5 checks the session at login, before it knows the target, so it can't defer. At most 8 such requests run
+  at once and the rest queue inside a 25s budget. Infisical's answer passes through unchanged; the proxy's own refusals
+  (`busy`, `infisical_unreachable`, `method_not_allowed`, the session refusals) are JSON with a code and a hint, and
+  their hints name the services URL. The proxy's port has no session endpoints, only `/_agent-vault/ca`.
+- **The proxy names its Infisical only to a session it accepts**, in `X-Agent-Vault-Api-Url` on the CONNECT answer,
+  its own refusals and the session endpoints' answers. A CONNECT to the deferred Infisical host checks the session
+  first and logs a refusal like any other door: a refused one still gets its tunnel, marked
+  `X-Agent-Vault-Decision: blocked` (or `error` when the session couldn't be checked) with the refusal's code in
+  `X-Agent-Vault-Error` instead of the URL. `run` reads that as `agentvault.ProxyRefusalError`, not as a proxy too old
+  to name its Infisical: it warns with the proxy's reason and starts the agent without skills, MCP servers or the
+  variable rather than asking Infisical directly, since the proxy refuses everything the session sends. Only
+  `session_invalid` on a session `run` just minted is asked again (1, 2 and 3 seconds), to outlast the proxy's
+  5-second memory of a refusal from a replica that hadn't seen it. Every refusal the proxy writes carries
+  `X-Agent-Vault-Error`. Refusals of the session itself (`session_invalid`, `session_unresolvable`,
+  `proxy_revoked`) carry no URL, and the proxy deletes the header from every upstream answer. The published URL never
+  carries `--domain`'s credentials, query or fragment. `agent-vault run` asks with a bare CONNECT once the session is minted (`agentvault.AskProxyAPIURL`, inside
+  the same interrupt scope that revokes a minted session, with 20s for the proxy's own session lookup; no answer in
+  time is not "too old").
+  - The CONNECT answer crosses the network in the clear, so it is only a claim. `run` asks the session endpoints over
+    TLS with the CA it just verified, at the claimed host, port and path even when `--domain` is http (the proxy
+    answers them whatever the agent-side scheme), and uses the claim only if the answer from inside TLS names the same
+    URL and, whatever its status, carries the endpoint's decision or a refusal the proxy wrote (`blocked`, `error`),
+    never `passthrough` or `brokered`, which a host's own answer gets. A proxy refusal with no URL (a session refused
+    since the CONNECT) neither confirms nor contradicts the claim. Otherwise the agent gets no variable, the skills come
+    from Infisical directly, and `run` warns that something may be changing the proxy's answers. With `--no-skills`, a
+    `HEAD` of the services list confirms the claim (logged as Listed Services).
+  - Only a confirmed URL becomes `INFISICAL_AGENT_VAULT_URL`, minus its `/api`, since people hold and pass `--domain` the
+    base URL (an inherited value never passes through). A proxy
+    that names no Infisical is too old: the CLI asks Infisical directly, and if that fails too, the warning says the
+    proxy is too old. Code that starts agents without `run` sets the variable itself, to the URL it passed the proxy in `--domain`.
+  - Infisical's skills audit event records the proxy's IP, not the agent host's. The CLI reads the proxy's own `busy`,
+    `infisical_unreachable`, `proxy_revoked` and `session_unresolvable` answers as the proxy's
+    (`agentvault.IsInfisicalForwardRefusal`), and its
+    `session_invalid` like Infisical's 401 (`agentvault.IsSessionRefusal`). The session endpoints pass Infisical's
+  `Retry-After` on, which `run`'s retries honor.
+- **Every forwarded or refused response carries `X-Agent-Vault-Decision`** (and `X-Agent-Vault-Service` when a
+  service matched), set after the upstream's headers so an upstream can't forge them. The proxy's own errors are
+  JSON with an `error` code and a `hint`; `message` keeps the text the proxy always sent.
+- **The built-in `infisical-agent-vault` skill** comes with the other skills unless `--no-agent-vault-skill` (sent as
+  `includeBuiltin=false`) or `--no-skills`. It decides whether it applies by running
+  `curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"` on its own: a URL error from
+  curl means the variable isn't set, so the agent isn't behind Agent Vault. `--noproxy ""` keeps the request on the
+  proxy when the agent's `NO_PROXY` covers Infisical's host (`run` always adds `localhost` and `127.0.0.1`, and keeps
+  the operator's own entries); without it the request reaches Infisical directly without the session's token. The
+  skill reads only `session_invalid` as a dead session, and has the agent pass on any other error with its hint.
+  Claude Code 2.1.72 blanks `$VAR` in any piped shell
+  command, which made 4 of 40 runs in the first eval decide they weren't behind Agent Vault, so the skill says to run
+  the command alone, with no pipe. Agents follow its wording closely: a gate line ending "Tell the user." made them ask
+  before acting on unrelated tasks, and one pointing at `SSL_CERT_FILE` sent them to print their environment, proxy
+  URL and session token included. Rerun the eval after any change to it.
+- **`agent-vault run` gives Claude Code the session's MCP servers** when the agent's command is `claude`, unless
+  `--no-mcp-servers`: Claude Code loads MCP servers only at start, so an agent can't use one it finds mid-session. `run`
+  gets the services list through the confirmed tunnel (from Infisical directly behind an old proxy) and turns each
+  ready `mcp` service into a server at its `url` (`type: sse` for the `sse` transport) with a placeholder in
+  `credential.header`, so Claude Code never starts an OAuth sign-in; the proxy replaces it. It leaves out, with a warning, a server whose
+  URL, header or name contains `$` (Claude Code fills in `${VAR}` from the agent's environment, the proxy URL with the
+  session token included) and one whose host the agent's `NO_PROXY` covers (Claude Code would reach it without the
+  credential; `httpproxy`'s matcher, which like Claude Code never proxies localhost), and says a server waiting for
+  personal values needs them set up. Warnings and the line naming the servers show a name only through `quoted`/`listOf`.
+  Its line naming the servers respects `--silent`, and a client that can't be built reports `INFISICAL_CUSTOM_HEADERS`
+  without its value. The configuration goes in a 0600 temp file, removed when Claude Code exits, as
+  `--mcp-config=<path>` right after `claude`: never the JSON on the command line, because on Windows npm's `claude.cmd`
+  runs through cmd.exe, which reads `|`, `&`, `^` and `%NAME%` in an admin's URL or header name as part of a command.
+  When `claude` is a `.cmd` or `.bat`, a temp path with any of those leaves the servers out with a warning. The `=` form
+  matters: the flag is variadic, so a separate value would also take a prompt passed as the first argument, and Claude
+  Code merges it with any `--mcp-config` the user passes. In the eval, S6 agents
+  called `mcp__linear__list_issues` directly instead of curling JSON-RPC (3 turns instead of 6). Code that starts agents
+  without `run` builds the same configuration from the list (docs: "Give the agent its MCP servers").
+- **Session-endpoint requests go in the session log**, with the proxy's Infisical as the host and no service: the
+  services list with decision `discovery` (**Listed Services**) and the skills with `skills` (**Fetched Skills**). Each
+  forwarded endpoint gets its own decision, so a new one on the allowlist needs a value, a label, and a docs row. The
+  frontend offers Add Service only for blocked and passthrough rows, so never for these, and not for a blocked request to the session paths on Infisical's own host either (`isInfisicalSessionEndpointRequest`), such as a POST refused as the wrong method; an older frontend shows a raw
+  value with its fallback badge.
 - Trust is stateless: `agent-vault run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional
   pin checked before anything is written. Re-enrolling a proxy replaces its CA, so pins, mounted copies,
   keychain entries and any agent already running through it break until updated or restarted.

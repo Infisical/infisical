@@ -90,6 +90,7 @@ const inline = (
 ): TAgentVaultSessionInlineService => ({
   id: uuid("c1", index),
   name,
+  description: null,
   type: AgentVaultServiceType.Http,
   serverUrl: null,
   transport: null,

@@ -135,6 +135,7 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   type: AgentVaultServiceType;
   name: string;
+  description?: string | null;
   hostPattern?: string;
   serverUrl?: string;
   transport?: AgentVaultMcpTransport;
@@ -152,6 +153,7 @@ export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   // Must match the stored type, which never changes.
   type: AgentVaultServiceType;
   name?: string;
+  description?: string | null;
   hostPattern?: string;
   // Null only as an HTTP service's read-back value.
   serverUrl?: string | null;

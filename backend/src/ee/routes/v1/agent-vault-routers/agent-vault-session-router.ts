@@ -335,6 +335,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               services: session.services.map((service) => ({
                 serviceId: service.id,
                 name: service.name,
+                description: service.description,
                 serviceType: service.type,
                 serverUrl: service.serverUrl ?? undefined,
                 hostPattern: service.hostPattern,

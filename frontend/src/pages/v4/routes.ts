@@ -26,6 +26,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
   route("/organizations/none", "v4/auth/NoOrgPage/route.tsx"),
   route("/password-setup", "v4/auth/PasswordSetupPage/route.tsx"),
   route("/mfa-session/$mfaSessionId", "v4/auth/MfaSessionPage/route.tsx"),
+  route("/personal-settings", "v4/user/PersonalSettingsPage/route.tsx"),
   route("/organizations/$orgId", "v4/organization/route.tsx", [
     route("/projects", [
       index("v4/organization/ProjectsPage/route.tsx"),
@@ -44,6 +45,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       ),
       route("/kms/$projectId/groups/$groupId", "v4/project/GroupDetailsByIDPage/kms/route.tsx"),
       route("/kms/$projectId/roles/$roleSlug", "v4/project/RoleDetailsBySlugPage/kms/route.tsx"),
+      route("/kms/$projectId/settings", "v4/kms/SettingsPage/route.tsx"),
       route("/secret-management/$projectId/overview", "v4/secret-manager/OverviewPage/route.tsx"),
       route(
         "/secret-management/$projectId/secrets/$envSlug",
@@ -73,6 +75,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "/secret-management/$projectId/roles/$roleSlug",
         "v4/project/RoleDetailsBySlugPage/route.tsx"
       ),
+      route("/secret-management/$projectId/settings", "v4/secret-manager/SettingsPage/route.tsx"),
       route("/agent-vault/$projectId/", "v4/redirects/AgentVaultIndexRedirect/route.tsx"),
       route("/agent-vault/$projectId/sessions", "v4/agent-vault/AgentVaultSessionsPage/route.tsx"),
       route(
@@ -95,6 +98,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "/agent-vault/$projectId/roles/$roleSlug",
         "v4/project/RoleDetailsBySlugPage/agent-vault/route.tsx"
       ),
+      route("/agent-vault/$projectId/settings", "v4/agent-vault/AgentVaultSettingsPage/route.tsx"),
       route("/$type/", "v4/organization/ProjectsPage/ProjectTypePage/route.tsx"),
       route("/$", "v4/organization/NotPortedPage/projects/route.tsx")
     ]),
@@ -103,6 +107,9 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/oauth-applications", "v4/organization/OauthApplicationsPage/route.tsx"),
     route("/audit-logs", "v4/organization/AuditLogsPage/route.tsx"),
     route("/integrations", "v4/organization/IntegrationsPage/route.tsx"),
+    route("/networking/", "v4/organization/NetworkingPage/route.tsx"),
+    route("/networking/gateways/$gatewayId", "v4/organization/GatewayDetailsByIDPage/route.tsx"),
+    route("/networking/relays/$relayId", "v4/organization/RelayDetailsByIDPage/route.tsx"),
     route("/access-management", "v4/organization/AccessManagementPage/route.tsx"),
     route("/members/$membershipId", "v4/organization/UserDetailsByIDPage/route.tsx"),
     route("/identities/$identityId", "v4/organization/IdentityDetailsByIDPage/route.tsx"),
@@ -120,6 +127,7 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       "/cert-manager/certificates/$certificateId",
       "v4/cert-manager/CertificateDetailsByIDPage/route.tsx"
     ),
+    route("/cert-manager/settings", "v4/cert-manager/SettingsPage/route.tsx"),
     route("/pam/accounts/", "v4/pam/PamAccountsPage/route.tsx"),
     route("/pam/access", "v4/redirects/PamAccessRedirect/route.tsx"),
     route("/cert-manager/access-management", "v4/project/AccessControlPage/cert-manager/route.tsx"),
