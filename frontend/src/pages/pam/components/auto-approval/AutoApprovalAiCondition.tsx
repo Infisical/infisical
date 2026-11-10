@@ -88,7 +88,9 @@ export const AutoApprovalAiCondition = ({ condition, ai, isError, onChange }: Pr
           )}
           placeholder="Connections the AI can read from..."
           emptyMessage="No connections the AI can read from."
-          creation={creation}
+          creation={
+            contextIds.length < AUTO_APPROVAL_LIMITS.aiContextConnections ? creation : undefined
+          }
         />
         <p className="px-1.5 text-xs text-muted">
           The AI can only read from these connections, for example to look up a Jira ticket.
