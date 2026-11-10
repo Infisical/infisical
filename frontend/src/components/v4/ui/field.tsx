@@ -117,11 +117,15 @@ function Field({
     description?: string;
     error?: string;
     optional?: boolean;
-    /** Help beside the label, outside its accessible name: a string becomes a FieldHelp tooltip, a node (FieldHelp with its own label, GlobPatternHelp) renders as given. */
-    help?: React.ReactNode;
-    group?: boolean;
     wide?: boolean;
-  } & { ref?: React.Ref<React.ComponentRef<"div">> }) {
+  } & (
+    | {
+        /** Help beside the label, outside its accessible name: a string becomes a FieldHelp tooltip, a node (FieldHelp with its own label, GlobPatternHelp) renders as given. A group field takes none, because its legend names the group. */
+        help?: React.ReactNode;
+        group?: false;
+      }
+    | { help?: never; group: true }
+  ) & { ref?: React.Ref<React.ComponentRef<"div">> }) {
   const generated = React.useId();
   const child = React.isValidElement<{ id?: string }>(children) ? children : null;
   const controlId = child?.props.id ?? id ?? generated;

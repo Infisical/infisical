@@ -48,6 +48,7 @@ export function ColorPicker({
   ...props
 }: ColorPickerProps) {
   const [open, setOpen] = React.useState(false);
+  const locked = Boolean(disabled || readOnly);
   const preset = presets?.find((entry) => entry.value.toLowerCase() === value.toLowerCase());
   const swatch = (
     <span
@@ -71,14 +72,14 @@ export function ColorPicker({
       onChange={(event) => onChange(event.target.value)}
       trailing={
         presets?.length ? (
-          <Popover open={open} onOpenChange={setOpen}>
+          <Popover open={open && !locked} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-sm"
                 aria-label={preset ? `Preset colors, ${preset.name} selected` : "Preset colors"}
-                disabled={disabled || readOnly}
+                disabled={locked}
               >
                 {swatch}
               </Button>
@@ -89,7 +90,10 @@ export function ColorPicker({
                 data-slot="color-picker-palette"
                 className={styles.palette}
                 value={preset?.value ?? ""}
-                onValueChange={onChange}
+                disabled={locked}
+                onValueChange={(next) => {
+                  if (!locked) onChange(next);
+                }}
               >
                 {presets.map((entry) => (
                   <RadioGroupPrimitive.Item

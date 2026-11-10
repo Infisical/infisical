@@ -128,7 +128,13 @@ export function SecretPathInput({
             }}
             onKeyDown={(event) => {
               onKeyDown?.(event);
-              if (event.defaultPrevented || !open) return;
+              if (
+                event.defaultPrevented ||
+                !open ||
+                event.nativeEvent.isComposing ||
+                event.keyCode === 229
+              )
+                return;
               const count = suggestions.length;
               if (event.key === "ArrowDown") {
                 event.preventDefault();
