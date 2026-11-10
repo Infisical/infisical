@@ -1594,7 +1594,7 @@ export const secretFolderServiceFactory = ({
     );
 
     const executeBulkDelete = async (tx: Knex) => {
-      const deletedFolders = [];
+      const targets = [];
 
       for (const [environment, envFolders] of Object.entries(foldersByEnv)) {
         const env = await projectEnvDAL.findOne({ projectId, slug: environment }, tx);
@@ -1613,8 +1613,6 @@ export const secretFolderServiceFactory = ({
               message: `Folder with path '${secretPath}' in environment with slug '${environment}' not found`
             });
           }
-
-          await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, permission, tx });
 
           let folderToDelete = await folderDAL
             .findOne(
@@ -1648,61 +1646,76 @@ export const secretFolderServiceFactory = ({
             });
           }
 
-          const [doc] = await folderDAL.delete(
-            {
-              envId: env.id,
-              id: folderToDelete.id,
-              parentId: parentFolder.id,
-              isReserved: false
-            },
-            tx
-          );
-
-          const folderVersions = await folderVersionDAL.findLatestFolderVersions([doc.id], tx);
-
-          if (commitChanges) {
-            commitChanges.push({
-              type: CommitType.DELETE,
-              folderVersionId: folderVersions[doc.id].id,
-              folderId: doc.id
-            });
-          } else {
-            await folderCommitService.createCommit(
-              {
-                actor: {
-                  type: actor,
-                  metadata: {
-                    id: actorId
-                  }
-                },
-                message: "Folder deleted (batch)",
-                folderId: parentFolder.id,
-                changes: [
-                  {
-                    type: CommitType.DELETE,
-                    folderVersionId: folderVersions[doc.id].id,
-                    folderId: doc.id
-                  }
-                ]
-              },
-              tx
-            );
-          }
-
-          await FolderModifiedEventV1.emit(
-            eventEmitter,
-            {
-              folderId: doc.id,
-              projectId,
-              environment,
-              secretPath: path.posix.join(parentFolder.path, doc.name),
-              modificationType: EventModificationType.Deleted
-            },
-            tx
-          );
-
-          deletedFolders.push(doc);
+          targets.push({ environment, env, parentFolder, idOrName, folderToDelete });
         }
+      }
+
+      // lock every folder the batch deletes, with its subtree, in one id-ordered statement, so concurrent batch deletes
+      // queue behind each other instead of deadlocking on the per-folder subtree locks in $checkFolderPolicy
+      const subtrees = await folderDAL.findByEnvsDeep(
+        { parentIds: targets.map(({ folderToDelete }) => folderToDelete.id) },
+        tx
+      );
+      await folderDAL.lockFoldersForUpdate([...new Set(subtrees.map((folder) => folder.id))], tx);
+
+      const deletedFolders = [];
+      for (const { environment, env, parentFolder, idOrName, folderToDelete } of targets) {
+        await $checkFolderPolicy({ projectId, env, parentId: parentFolder.id, idOrName, actor, permission, tx });
+
+        const [doc] = await folderDAL.delete(
+          {
+            envId: env.id,
+            id: folderToDelete.id,
+            parentId: parentFolder.id,
+            isReserved: false
+          },
+          tx
+        );
+
+        const folderVersions = await folderVersionDAL.findLatestFolderVersions([doc.id], tx);
+
+        if (commitChanges) {
+          commitChanges.push({
+            type: CommitType.DELETE,
+            folderVersionId: folderVersions[doc.id].id,
+            folderId: doc.id
+          });
+        } else {
+          await folderCommitService.createCommit(
+            {
+              actor: {
+                type: actor,
+                metadata: {
+                  id: actorId
+                }
+              },
+              message: "Folder deleted (batch)",
+              folderId: parentFolder.id,
+              changes: [
+                {
+                  type: CommitType.DELETE,
+                  folderVersionId: folderVersions[doc.id].id,
+                  folderId: doc.id
+                }
+              ]
+            },
+            tx
+          );
+        }
+
+        await FolderModifiedEventV1.emit(
+          eventEmitter,
+          {
+            folderId: doc.id,
+            projectId,
+            environment,
+            secretPath: path.posix.join(parentFolder.path, doc.name),
+            modificationType: EventModificationType.Deleted
+          },
+          tx
+        );
+
+        deletedFolders.push(doc);
       }
 
       return deletedFolders;
