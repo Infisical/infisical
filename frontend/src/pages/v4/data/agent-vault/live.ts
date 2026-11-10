@@ -1,7 +1,25 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { agentVaultKeys, type TAgentVaultSessionList } from "@app/hooks/api/agentVault/queries";
+import { useOrganization } from "@app/context";
+import {
+  useAddAgentVaultDelegationSubjects,
+  useAddAgentVaultMembers,
+  useDeleteAgentVaultDelegation,
+  useRemoveAgentVaultDelegationSubjects,
+  useSetAgentVaultDelegation,
+  useRevokeAgentVaultMembers,
+  useUpdateAgentVaultMemberRoles
+} from "@app/hooks/api/agentVault/mutations";
+import {
+  agentVaultKeys,
+  type TAgentVaultSessionList,
+  useGetAgentVaultDelegation,
+  useListAgentVaultMembers,
+  useListAvailableAgentVaultDelegationSubjects,
+  useListAvailableAgentVaultMembers
+} from "@app/hooks/api/agentVault/queries";
+import { useDeleteProjectIdentity, useUpdateProjectIdentity } from "@app/hooks/api/projectIdentity";
 import { useGetUserProjectPermissions } from "@app/hooks/api/roles/queries";
 
 import type { AgentVaultAdapter, TAgentVaultAccessBundleList } from "./contract";
@@ -44,5 +62,32 @@ export const agentVaultLive: AgentVaultAdapter = {
         );
         return data;
       }
-    })
+    }),
+  useMembers: useListAgentVaultMembers,
+  useAvailableMembers: useListAvailableAgentVaultMembers,
+  useAddMembers: useAddAgentVaultMembers,
+  useUpdateMemberRoles: useUpdateAgentVaultMemberRoles,
+  useRevokeMembers: useRevokeAgentVaultMembers,
+  useDeleteManagedIdentity: (projectId) => {
+    const { currentOrg } = useOrganization();
+    const queryClient = useQueryClient();
+    const updateIdentity = useUpdateProjectIdentity();
+    const deleteIdentity = useDeleteProjectIdentity();
+    return {
+      isPending: updateIdentity.isPending || deleteIdentity.isPending,
+      mutateAsync: async ({ identityId }) => {
+        await updateIdentity.mutateAsync({ identityId, projectId, hasDeleteProtection: false });
+        await deleteIdentity.mutateAsync({ identityId, projectId });
+        queryClient.invalidateQueries({
+          queryKey: agentVaultKeys.members(currentOrg.id, projectId)
+        });
+      }
+    };
+  },
+  useDelegation: useGetAgentVaultDelegation,
+  useAvailableDelegationSubjects: useListAvailableAgentVaultDelegationSubjects,
+  useSetDelegation: useSetAgentVaultDelegation,
+  useDeleteDelegation: useDeleteAgentVaultDelegation,
+  useAddDelegationSubjects: useAddAgentVaultDelegationSubjects,
+  useRemoveDelegationSubjects: useRemoveAgentVaultDelegationSubjects
 };
