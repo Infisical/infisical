@@ -71,8 +71,7 @@ func (o *Org) routes() *http.ServeMux {
 	})
 
 	// The instance retries this through the outbox until it gets a parseable body, so
-	// without it every deleted tenant keeps retrying all run. Tests check the call log,
-	// not an event, since the event stream only carries credentials the test minted.
+	// without it every deleted tenant keeps retrying all run.
 	mux.HandleFunc("DELETE /v1/organizations/{orgId}", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, map[string]any{"licensesClosed": 1, "canceledSubscriptionIds": []string{}, "commitmentForfeited": false})
 	})
