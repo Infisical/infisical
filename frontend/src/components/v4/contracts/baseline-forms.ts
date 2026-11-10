@@ -180,6 +180,7 @@ export const baselineForms = [
       "FieldDescription",
       "FieldError",
       "FieldGroup",
+      "FieldHelp",
       "FieldLabel",
       "FieldLegend",
       "FieldSeparator",
@@ -189,7 +190,7 @@ export const baselineForms = [
     referenceNames: ["Field"],
     behavior: [
       "Use label/description/error shorthand around one control for automatic ID, label, described-by and invalid-state association. Compound FieldLabel/FieldDescription/FieldError parts remain available for custom layouts. An error renders one way everywhere: a red alert icon and the message, several messages stacked under one icon. The label stays ink; the control's red border and the message carry the error. The label sits 6px above the control (the field-label space token). A stacked Field caps at the field measure (size-measure-field, 400px); wide lets it fill its column (size-measure-field-wide).",
-      "label accepts a node, so a label can carry an info tooltip beside its text. Everything inside the label becomes part of the control's accessible name, so give an info trigger a short name and keep long help in description.",
+      "help puts an info button beside the label, outside the label element, so it never joins the control's accessible name. A string becomes FieldHelp, an icon-xs ghost Button named More information whose Tooltip holds the text; a node renders as given, such as FieldHelp with its own label or GlobPatternHelp from the secret path input for fields that take glob patterns. The button keeps the label row at the label's line height, so a field with help lines up with its neighbours. In a compound layout, put FieldHelp after FieldLabel in an Inline with gap 4. Keep help short: it is a pass-through tooltip, and anything a person must read to fill the field belongs in description.",
       "A text link inside FieldDescription (an anchor that is not a Button or another slotted part) is a quiet link: the link color with no underline at rest, underlined on hover and keyboard focus, so help text with a Docs link stays calm."
     ],
     accessibility: [
@@ -216,6 +217,12 @@ export const baselineForms = [
         title: "Grouped fields",
         module: "./examples/field/grouping.tsx",
         states: ["default", "invalid"]
+      },
+      {
+        id: "help",
+        title: "Label help",
+        module: "./examples/field/help.tsx",
+        states: ["default"]
       }
     ],
     coverage: [
@@ -270,9 +277,15 @@ export const baselineForms = [
           "separator",
           "multiple errors",
           "legend",
-          "label legend"
+          "label legend",
+          "label help"
         ],
         shown: [
+          {
+            value: "label help",
+            exampleId: "help",
+            label: "Secret path"
+          },
           {
             value: "automatic association",
             exampleId: "default",

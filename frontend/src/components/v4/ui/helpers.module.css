@@ -235,6 +235,21 @@
   gap: var(--v4-space-field-label);
   min-width: 0;
 }
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--v4-space-4);
+  min-width: 0;
+}
+.globHelp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--v4-space-4);
+}
+.fieldHelp {
+  margin-block: calc((var(--v4-type-field-label-line-height) - var(--v4-size-control-xs)) / 2);
+  color: var(--v4-muted);
+}
 .fieldDescription {
   font-family: var(--v4-type-small-font-family);
   font-size: var(--v4-type-small-font-size);
