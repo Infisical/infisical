@@ -29,7 +29,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
   route("/organizations/$orgId", "v4/organization/route.tsx", [
     route("/projects", [
       index("v4/organization/ProjectsPage/route.tsx"),
+      route("/kms/kmip-servers/", "v4/kms/KmipServersPage/route.tsx"),
+      route("/kms/kmip-servers/$kmipServerId", "v4/kms/KmipServerDetailsByIDPage/route.tsx"),
       route("/kms/$projectId/overview", "v4/kms/OverviewPage/route.tsx"),
+      route("/kms/$projectId/kmip", "v4/kms/KmipPage/route.tsx"),
       route("/kms/$projectId/access-management", "v4/project/AccessControlPage/kms/route.tsx"),
       route(
         "/kms/$projectId/members/$membershipId",
