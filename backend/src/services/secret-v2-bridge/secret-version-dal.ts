@@ -4,6 +4,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import {
   AccessScope,
+  SecretType,
   SecretVersionsV2Schema,
   TableName,
   TMemberships,
@@ -16,6 +17,17 @@ import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFin
 import { logger } from "@app/lib/logger";
 
 export type TSecretVersionV2DALFactory = ReturnType<typeof secretVersionV2BridgeDALFactory>;
+
+// For queries that left join secret versions: keeps rows without a secret version (folder rows) and shared
+// versions. A version with a userId belongs to one user even when an older rollback stored it with the
+// default "shared" type.
+export const filterToSharedSecretVersions = (qb: Knex.QueryBuilder) => {
+  void qb.whereNull(`${TableName.SecretVersionV2}.id`).orWhere((sharedQb) => {
+    void sharedQb
+      .where(`${TableName.SecretVersionV2}.type`, SecretType.Shared)
+      .whereNull(`${TableName.SecretVersionV2}.userId`);
+  });
+};
 
 export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
   const secretVersionV2Orm = ormify(db, TableName.SecretVersionV2);
@@ -146,15 +158,18 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     }
   };
 
-  // This will fetch all latest secret versions from a folder
-  const findLatestVersionByFolderId = async (folderId: string, tx?: Knex) => {
+  const findLatestSharedVersionsByFolderId = async (folderId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretVersionV2)
         .where(`${TableName.SecretVersionV2}.folderId`, folderId)
+        .where(`${TableName.SecretVersionV2}.type`, SecretType.Shared)
+        .whereNull(`${TableName.SecretVersionV2}.userId`)
         .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretVersionV2}.secretId`)
         .join<TSecretVersionsV2, TSecretVersionsV2 & { secretId: string; max: number }>(
           (tx || db.replicaNode())(TableName.SecretVersionV2)
             .where(`${TableName.SecretVersionV2}.folderId`, folderId)
+            .where(`${TableName.SecretVersionV2}.type`, SecretType.Shared)
+            .whereNull(`${TableName.SecretVersionV2}.userId`)
             .groupBy("secretId")
             .max("version")
             .select("secretId")
@@ -169,7 +184,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.SecretVersionV2));
       return docs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindLatestVersionByFolderId" });
+      throw new DatabaseError({ error, name: "FindLatestSharedVersionsByFolderId" });
     }
   };
 
@@ -630,7 +645,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
     pruneOrphanedVersions,
     findLatestVersionMany,
     bulkUpdate,
-    findLatestVersionByFolderId,
+    findLatestSharedVersionsByFolderId,
     findVersionsBySecretIdWithActors,
     findBySecretId,
     findByIdsWithLatestVersion,

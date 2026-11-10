@@ -238,11 +238,6 @@ const BulkTagDialogContent = ({
           type: "warning",
           text: `Tag update partially completed. The following environments could not be processed: ${failedEnvs.join(", ")}.`
         });
-      } else {
-        createNotification({
-          type: "error",
-          text: "Failed to update tags on selected secrets"
-        });
       }
     } finally {
       setIsSubmitting(false);

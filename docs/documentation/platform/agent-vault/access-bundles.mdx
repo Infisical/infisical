@@ -12,7 +12,7 @@ You can reuse access bundles across as many sessions as you like. This makes the
 - A **marketing** bundle that grants access to Twilio and Google Docs
 
 <Frame>
-  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page listing four access bundles with their services and member counts" />
+  <img src="/images/platform/agent-vault/access-bundles-list.png" alt="The Access Bundles page of the Engineering Agents project, listing the code-review, on-call, and release-notes access bundles with their service icons and member counts" />
 </Frame>
 
 ## Create an access bundle
@@ -24,10 +24,15 @@ To create a new access bundle:
     In your Agent Vault project, go to **Access Bundles** and select **Create Access Bundle**.
   </Step>
   <Step>
-    Give the bundle a name that says what job it's for, like **code-review** or **marketing**.
+    Give the bundle a name that says what job it's for, like **code-review** or **marketing**, and optionally a **Description**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with deploy-checks as the name and a description" />
+    </Frame>
+
   </Step>
   <Step>
-    Select **Create**. The access bundle will appear in the list.
+    Select **Create Access Bundle**. The access bundle appears in the list.
   </Step>
 </Steps>
 
@@ -46,20 +51,25 @@ To allow a user, group, or machine identity to create sessions for a given acces
     Make sure the user, group, or machine identity is a member of the Agent Vault project. If not, [add them under Access Control](/documentation/platform/agent-vault/access-control#adding-members).
   </Step>
   <Step>
-    Open the access bundle from **Access Bundles** and select **Options** > **Manage Access**. Then, select **Grant Access**.
+    Open the access bundle from **Access Bundles** and select **Options** > **Manage Access**.
   </Step>
   <Step>
-    Select the user, group, or machine identity you want to grant access to. Then, select **Grant Access**.
+    Under **No Access**, find the user, group, or machine identity, and select **Grant Access** next to it. The change saves right away.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-manage-access.png" alt="The Manage Access sheet for code-review, listing four members with Has Access and, under No Access, the other members with a Grant Access button each" />
+    </Frame>
+
   </Step>
 </Steps>
 
 ### Revoke access
 
-To revoke access from a user, group, or machine identity, open the bundle and select **Options** > **Manage Access**. Find them with the search box, open their actions menu, and select **Revoke Access**. If any of their agents are running, those agents lose the bundle's credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+To revoke access from a user, group, or machine identity, open the bundle and select **Options** > **Manage Access**. Find them with the search box, select **Has Access** next to them, and select **Revoke Access**. If any of their agents are running, those agents lose the bundle's credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
 ## Set up your personal values
 
-Some services ask you for part of their credential, such as your own API key (see [member-provided values](/documentation/platform/agent-vault/http-apis#member-provided-values)). Until you set up your personal values for one of these services, your sessions can't use it, and the service shows **Requires Setup**. This applies to admins too.
+Some services ask you for part of their credential, such as your own API key (see [member-provided values](/documentation/platform/agent-vault/http-apis#member-provided-values)), or ask you to connect your own account to an [MCP server](/documentation/platform/agent-vault/mcp-servers#leave-the-credential-to-each-member). Until you set up your personal values for one of these services, your sessions can't use it, and the service shows **Requires Setup**. This applies to admins too.
 
 To set up your personal values:
 
@@ -69,18 +79,34 @@ To set up your personal values:
   </Step>
   <Step>
     Select **Requires Setup** next to the service, or open the service's actions menu and select **Set Up My Personal Values**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/access-bundle-requires-setup.png" alt="The on-call access bundle, with a banner saying two services require your personal values, and a Requires Setup badge on the notion MCP service and the slack service" />
+    </Frame>
   </Step>
   <Step>
     Enter each value. To use one of your [personal variables](/documentation/platform/agent-vault/variables#personal-variables), type `{{` or select the arrow at the end of the field, then pick a variable from the list.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/personal-values.png" alt="The Set Up Personal Values for slack dialog, with a partly typed reference in the Slack token field and the SLACK_USER_TOKEN personal variable in the list" />
+    </Frame>
+
+    For an MCP service that uses OAuth, select **Connect Account** instead, then sign in to the provider in the pop-up window and approve access. When you approve, Infisical saves the connection, closes the dialog, and the service shows **Configured**.
+
+    <Frame>
+      <img src="/images/platform/agent-vault/personal-values-oauth.png" alt="The Set Up Personal Values for notion dialog, showing that your mcp.notion.com account isn't connected yet, with a Connect Account button" />
+    </Frame>
   </Step>
   <Step>
-    Select **Save**. The service shows **Configured**.
+    If you entered values, select **Save**. The service shows **Configured**.
   </Step>
 </Steps>
+
+If the provider stops accepting your login, the service shows **Requires Setup** again. If an agent needs scopes that your connection doesn't grant, the service shows **Missing Scopes**. In either case, select **Requires Setup** or **Missing Scopes** next to the service, then select **Reconnect**. If the message under your connection says the provider refused the service's OAuth app, reconnecting won't help. Ask a project [admin](/documentation/platform/agent-vault/access-control) to update the service.
 
 Infisical never shows your personal values to anyone else, admins included.
 
 - To change your personal values, open the service's actions menu, select **Update My Personal Values**, and enter the values you want to change
-- To delete your personal values, select **Remove** in the same dialog, then select **Remove Personal Values**
+- To delete your personal values, select **Remove** in the same dialog, then select **Remove Personal Values** (**Disconnect Account** for an OAuth service)
 
-A machine identity sets up its personal values with [the set personal values endpoint](/api-reference/endpoints/agent-vault-services/set-personal-values), and keeps its own personal variables with [the create variable endpoint](/api-reference/endpoints/agent-vault-variables/create).
+A machine identity sets up its personal values with [the set personal values endpoint](/api-reference/endpoints/agent-vault-services/set-personal-values), and keeps its own personal variables with [the create variable endpoint](/api-reference/endpoints/agent-vault-variables/create). A machine identity can't connect an OAuth account. For an MCP service where each member connects their own account, have the machine identity create the session [on behalf of a user](/documentation/platform/agent-vault/sessions-on-behalf-of-users) who has connected theirs.

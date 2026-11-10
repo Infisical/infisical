@@ -861,46 +861,4 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       });
     }
   });
-
-  server.route({
-    method: "POST",
-    url: "/:organizationId/billing/v2/subscription/cancel",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({ organizationId: z.string().trim() }),
-      response: {
-        200: BillingV2MutationResultSchema
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      return server.services.licenseV2.cancelSubscription({
-        orgId: req.params.organizationId,
-        actor: buildActor(req.permission)
-      });
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/:organizationId/billing/v2/subscription/resume",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      params: z.object({ organizationId: z.string().trim() }),
-      response: {
-        200: BillingV2MutationResultSchema
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      return server.services.licenseV2.resumeSubscription({
-        orgId: req.params.organizationId,
-        actor: buildActor(req.permission)
-      });
-    }
-  });
 };

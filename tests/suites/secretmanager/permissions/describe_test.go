@@ -45,7 +45,7 @@ func TestRole_DescribeOnly(t *testing.T) {
 
 		// Action
 		res, err := describer.API.ListProjectSecretsDetailsWithResponse(t.Context(),
-			&api.ListProjectSecretsDetailsParams{ProjectId: proj.ID, Environment: "dev"})
+			api.ListProjectSecretsDetailsJSONRequestBody{ProjectId: proj.ID, Environment: "dev"})
 
 		// Assert
 		require.NoError(t, err)

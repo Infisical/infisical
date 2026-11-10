@@ -335,6 +335,16 @@ export const checkoutResultSchema = z
   })
   .passthrough();
 
+// Safe to retry, a repeat just closes 0 licenses.
+export const orgDeletedResultSchema = z
+  .object({
+    licensesClosed: z.number().int(),
+    canceledSubscriptionIds: z.array(z.string()),
+    commitmentForfeited: z.boolean()
+  })
+  .passthrough();
+export type TOrgDeletedResult = z.infer<typeof orgDeletedResultSchema>;
+
 // Proration preview for an add/remove/commitment change. prorationAmount is signed: positive is
 // charged now (an add/increase), negative is a credit toward the next invoice (a removal). prorationDate
 // is the instant the server priced at; echo it back into the apply so it reproduces the exact charge.
@@ -634,6 +644,6 @@ export type TLicenseClientBackend = {
   confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
   // The org's trial history, used to tell which products have already used their one-time trial.
   fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
-  cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
-  resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
+  // Cancels the sub right away and closes the org's licenses.
+  deleteOrganization: (orgId: string) => Promise<TOrgDeletedResult>;
 };

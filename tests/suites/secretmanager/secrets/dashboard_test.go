@@ -24,7 +24,7 @@ func TestSecret_DashboardList(t *testing.T) {
 		newTaggedSecret(t, proj, "OTHER_KEY", plain, billing)
 
 		// Action
-		keys, total := listDashboardKeys(t, tn.Admin, proj, new("billing"), new("plain"))
+		keys, total := listDashboardKeys(t, tn.Admin, proj, new("billing"), "plain")
 
 		// Assert
 		require.ElementsMatch(t, []string{"BILLING_KEY", "OTHER_KEY"}, keys)

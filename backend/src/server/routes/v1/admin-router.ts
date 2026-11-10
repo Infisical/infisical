@@ -381,7 +381,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organization = await server.services.superAdmin.deleteOrganization(req.params.organizationId);
+      const organization = await server.services.orgDeletion.deleteOrganization(req.params.organizationId);
 
       return {
         organization

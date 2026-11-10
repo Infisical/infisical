@@ -510,9 +510,11 @@ import { orgMembershipDALFactory } from "@app/services/org-membership/org-member
 import { orgProductStatsDALFactory } from "@app/services/org-product-stats/org-product-stats-dal";
 import { orgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
+import { licenseOrgDeletedConsumerFactory } from "@app/services/org/license-org-deleted-consumer";
 import { orgAccessReconcileConsumerFactory } from "@app/services/org/org-access-reconcile-consumer";
 import { orgAccessSweepQueueFactory } from "@app/services/org/org-access-sweep-queue";
 import { orgDALFactory } from "@app/services/org/org-dal";
+import { orgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { pkiAlertChannelDALFactory } from "@app/services/pki-alert-v2/pki-alert-channel-dal";
 import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-history-dal";
@@ -1786,14 +1788,24 @@ export const registerRoutes = async (
 
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
 
+  const orgDeletionService = orgDeletionServiceFactory({
+    orgDAL,
+    projectDAL,
+    secretDAL,
+    folderDAL,
+    projectBotService,
+    reminderService,
+    honeyTokenCleanupService,
+    eventEmitter: eventOutboxService
+  });
+
   const orgService = orgServiceFactory({
     auditLogSettingsService,
     userAliasDAL,
     identityMetadataDAL,
-    secretDAL,
     secretV2BridgeDAL,
-    folderDAL,
     licenseService,
+    orgDeletionService,
     samlConfigDAL,
     permissionService,
     orgDAL,
@@ -1808,8 +1820,6 @@ export const registerRoutes = async (
     oidcConfigDAL,
     ldapConfigDAL,
     loginService,
-    projectBotService,
-    reminderService,
     membershipRoleDAL,
     membershipUserDAL,
     membershipDAL,
@@ -1821,8 +1831,7 @@ export const registerRoutes = async (
     usageMeteringService,
     pamSessionDAL,
     gatewayV2Service: deferredGatewayV2Service,
-    eventEmitter: eventOutboxService,
-    honeyTokenCleanupService
+    eventEmitter: eventOutboxService
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1830,6 +1839,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     orgDAL,
+    orgDeletionService,
     projectDAL,
     permissionService,
     certificatePolicyDAL,
@@ -2142,6 +2152,7 @@ export const registerRoutes = async (
     kmsService,
     agentVaultServiceDAL,
     agentVaultAccessBundleDAL,
+    agentVaultPersonalValueDAL,
     permissionService,
     membershipDAL
   });
@@ -2159,6 +2170,7 @@ export const registerRoutes = async (
     agentVaultPersonalValueReferenceDAL,
     agentVaultVariableDAL,
     agentVaultServiceDAL,
+    agentVaultOauthService,
     permissionService,
     membershipDAL,
     kmsService
@@ -3305,6 +3317,7 @@ export const registerRoutes = async (
       usageMeteringService
     })
   );
+  eventOutboxRegistry.register(licenseOrgDeletedConsumerFactory({ envConfig, licenseClient }));
   const orgAccessSweepQueue = orgAccessSweepQueueFactory({
     cronJob,
     orgDAL,
@@ -3968,6 +3981,7 @@ export const registerRoutes = async (
   const certificateAuthorityQueue = certificateAuthorityQueueFactory({
     certificateAuthorityCrlDAL,
     certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
     certificateAuthoritySecretDAL,
     certificateDAL,
     projectDAL,
@@ -5005,6 +5019,7 @@ export const registerRoutes = async (
     groupProject: groupProjectService,
     permission: permissionService,
     org: orgService,
+    orgDeletion: orgDeletionService,
     subOrganization: subOrgService,
     oidc: oidcService,
     authToken: tokenService,

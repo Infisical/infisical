@@ -67,8 +67,13 @@ const setup = (
   variables: { id: string; encryptedValue: Buffer }[] = [],
   {
     inlineRows = [],
-    isOwnerAdmin = true
-  }: { inlineRows?: TAgentVaultSessionInlineServices[]; isOwnerAdmin?: boolean } = {}
+    isOwnerAdmin = true,
+    personalRows = []
+  }: {
+    inlineRows?: TAgentVaultSessionInlineServices[];
+    isOwnerAdmin?: boolean;
+    personalRows?: { serviceId: string; field: string; encryptedValue: Buffer; oauthConfig: unknown }[];
+  } = {}
 ) => {
   const refreshServiceToken = vi.fn(refresh);
   const reportMissingScopes = vi.fn(async () => {});
@@ -84,7 +89,7 @@ const setup = (
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
     agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
     agentVaultVariableDAL: { findValuesForResolve: async () => variables },
-    agentVaultPersonalValueDAL: { findForResolve: async () => [] },
+    agentVaultPersonalValueDAL: { findForResolve: async () => personalRows },
     agentVaultSessionDAL: {
       findByTokenHash: async () =>
         ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt: null, expiresAt: null }) as never
@@ -571,5 +576,88 @@ describe("resolve with inline services", () => {
     const sealed = setup(noRefresh, [passthroughBundleRow], [], { inlineRows: [inlineRow()] });
     await resolve(sealed.service);
     expect(sealed.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("resolve for a service whose members sign in", () => {
+  const resolve = (service: ReturnType<typeof setup>["service"]) =>
+    service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
+
+  // Its sealed half is the admin-entered client's secret, which must never go out as a token.
+  const memberRow = serviceRow({
+    credentialConfig: {
+      type: "oauth",
+      serverUrl: SERVER_URL,
+      issuer: "https://mcp.linear.app",
+      registration: "manual"
+    },
+    encryptedCredential: Buffer.from(JSON.stringify({ clientSecret: "client-secret" })),
+    memberProvidedFields: ["credential-value"]
+  });
+  const connection = (oauthConfig: Record<string, unknown>) => ({
+    serviceId: SERVICE_ID,
+    field: "credential-value",
+    encryptedValue: Buffer.from(JSON.stringify({ accessToken: "member-access" })),
+    oauthConfig: { serverUrl: SERVER_URL, ...oauthConfig }
+  });
+
+  test("sends the session owner's own token, marked as member provided", async () => {
+    const { service, refreshServiceToken } = setup(async () => refreshed, [memberRow], [], {
+      personalRows: [connection({ status: AgentVaultOauthStatus.Connected, expiresAt: null })]
+    });
+    const { services } = await resolve(service);
+    expect(services[0]).toMatchObject({
+      personalValuesMissing: false,
+      memberProvided: true,
+      credential: { type: "bearer", value: "member-access", source: "oauth" }
+    });
+    expect(refreshServiceToken).not.toHaveBeenCalled();
+  });
+
+  test("refreshes the owner's token when it is about to expire, never the service's", async () => {
+    const { service, refreshServiceToken } = setup(async () => refreshed, [memberRow], [], {
+      personalRows: [
+        connection({ status: AgentVaultOauthStatus.Connected, expiresAt: new Date(Date.now() + 10_000).toISOString() })
+      ]
+    });
+    const { services } = await resolve(service);
+    expect(refreshServiceToken.mock.calls[0][0].owner).toEqual({ userId: "user-1" });
+    expect(services[0]).toMatchObject({ credential: { value: "refreshed-access" } });
+  });
+
+  test("an owner who hasn't connected, or whose login died, gets the refusal and no credential", async () => {
+    const notConnected = setup(async () => refreshed, [memberRow]);
+    const dead = setup(async () => refreshed, [memberRow], [], {
+      personalRows: [connection({ status: AgentVaultOauthStatus.NeedsReauthorization, expiresAt: null })]
+    });
+    for (const { service } of [notConnected, dead]) {
+      // eslint-disable-next-line no-await-in-loop
+      const { services } = await resolve(service);
+      expect(services[0]).toMatchObject({
+        personalValuesMissing: true,
+        memberProvided: true,
+        credential: { type: "passthrough" }
+      });
+    }
+  });
+
+  test("a token authorized for another server is refused, not sent to this one", async () => {
+    const { service } = setup(async () => refreshed, [memberRow], [], {
+      personalRows: [
+        connection({
+          serverUrl: "https://old.example.com/mcp",
+          status: AgentVaultOauthStatus.Connected,
+          expiresAt: null
+        })
+      ]
+    });
+    const { services } = await resolve(service);
+    expect(services[0]).toMatchObject({ personalValuesMissing: true, credential: { type: "passthrough" } });
+  });
+
+  test("a refresh after a rejection names the session's owner", async () => {
+    const { service, refreshServiceToken } = setup(async () => refreshed, [memberRow]);
+    await service.refreshCredential({ ...refreshArgs, hostPattern: "mcp.linear.app" });
+    expect(refreshServiceToken.mock.calls[0][0].owner).toEqual({ userId: "user-1" });
   });
 });

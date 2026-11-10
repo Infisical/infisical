@@ -41,6 +41,7 @@ export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = (
   [
     { name: "ssh", type: PamAccountType.SSH },
     { name: "postgres", type: PamAccountType.Postgres },
+    { name: "cockroachdb", type: PamAccountType.CockroachDB },
     { name: "mysql", type: PamAccountType.MySQL },
     { name: "mssql", type: PamAccountType.MsSQL },
     { name: "oracledb", type: PamAccountType.OracleDB },

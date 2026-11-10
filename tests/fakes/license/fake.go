@@ -70,13 +70,9 @@ func (o *Org) routes() *http.ServeMux {
 		writeJSON(w, payload)
 	})
 
-	// Deleting an organization cancels its subscription, and the delete fails if
-	// that call does. Every tenant registers its own removal on t.Cleanup, so
-	// without this each test leaks its organization into the shared database for
-	// the life of the run. The outcome is parsed rather than ignored, so an empty
-	// body is not enough.
-	mux.HandleFunc("POST /v1/organizations/{orgId}/subscription/cancel", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, map[string]any{"outcome": "subscription_canceled"})
+	// Without this, every deleted tenant keeps retrying through the outbox all run.
+	mux.HandleFunc("DELETE /v1/organizations/{orgId}", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{"licensesClosed": 1, "canceledSubscriptionIds": []string{}, "commitmentForfeited": false})
 	})
 
 	// The usage reporter authenticates against the same server. Nothing asserts on
@@ -86,6 +82,29 @@ func (o *Org) routes() *http.ServeMux {
 			writeJSON(w, map[string]any{})
 		})
 	}
+
+	// Every membership, identity and certificate change queues a usage report per
+	// metered dimension. A refused one is retried ten times, each recounting the meter,
+	// which made usage reporting one of the busiest things the instance did in a run.
+	mux.HandleFunc("POST /v1/organizations/{orgId}/usage-snapshots", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, map[string]any{})
+	})
+	mux.HandleFunc("POST /v1/organizations/{orgId}/usage-events", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Events []struct {
+				EventID string `json:"event_id"`
+			} `json:"events"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		results := make([]map[string]string, len(body.Events))
+		for i, e := range body.Events {
+			results[i] = map[string]string{"event_id": e.EventID, "status": "accepted"}
+		}
+		writeJSON(w, map[string]any{"results": results})
+	})
 	return mux
 }
 

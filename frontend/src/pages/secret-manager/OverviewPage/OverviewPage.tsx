@@ -296,6 +296,7 @@ import { CreateSecretForm } from "./components/CreateSecretForm";
 import { EditDynamicSecretForm } from "./components/EditDynamicSecretForm";
 import { SecretsActivationNudge } from "./components/InviteMembersNudge/SecretsActivationNudge";
 import { ImportSecretsSheet } from "./components/SecretDropzone";
+import type { EnvironmentSecretAction } from "./components/SecretTableRow/SecretEditTableRow";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { MoveSecretsModal } from "./components/SelectionPanel/components";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
@@ -557,6 +558,7 @@ const OverviewPageContent = () => {
   // truthy value inherited from Object.prototype and render a row as expanded/revealed before
   // the user asked for it. Set/Map have no such inherited entries.
   const [expandedSecretRows, setExpandedSecretRows] = useState<Set<string>>(() => new Set());
+  const [expandedResourceRows, setExpandedResourceRows] = useState<Set<string>>(() => new Set());
   // Maps a revealed secret key to the identity of the secrets that were revealed, so the reveal
   // is dropped when the underlying secrets are swapped out. See secretRowIdentities below.
   const [visibleSecretRows, setVisibleSecretRows] = useState<Map<string, string>>(() => new Map());
@@ -567,6 +569,7 @@ const OverviewPageContent = () => {
   const resetSecretRowStates = useCallback(() => {
     revealGenerationRef.current += 1;
     setExpandedSecretRows(new Set());
+    setExpandedResourceRows(new Set());
     setVisibleSecretRows(new Map());
   }, []);
 
@@ -1260,8 +1263,12 @@ const OverviewPageContent = () => {
   );
 
   const queryClient = useQueryClient();
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
+  const { mutateAsync: createSecretV3 } = useCreateSecretV3({
+    options: { meta: { skipErrorToast: true } }
+  });
+  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
+    options: { meta: { skipErrorToast: true } }
+  });
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: deleteFolder } = useDeleteFolder();
@@ -1284,7 +1291,9 @@ const OverviewPageContent = () => {
   const batchStoreApi = useBatchStoreApi();
   const { addPendingChange, loadPendingChanges, setExistingKeys, removePendingChange } =
     useBatchModeActions();
-  const { mutateAsync: createCommit } = useCreateCommit();
+  const { mutateAsync: createCommit } = useCreateCommit({
+    options: { meta: { skipErrorToast: true } }
+  });
 
   const telemetryScope = useMemo<OverviewScopeProperties>(() => {
     let environmentMode: OverviewScopeProperties["environmentMode"] = "none";
@@ -1481,6 +1490,11 @@ const OverviewPageContent = () => {
     isSingleEnvView && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
 
   const [recentQuickAddKeys, setRecentQuickAddKeys] = useState<string[]>([]);
+  const [quickAddAnnotation, setQuickAddAnnotation] = useState<{
+    key: string;
+    action: EnvironmentSecretAction;
+  } | null>(null);
+  const clearQuickAddAnnotation = useCallback(() => setQuickAddAnnotation(null), []);
   const pendingSecretRowKeys = useRef(new Map<string, string>());
   const hadPendingBatchChangesRef = useRef(hasPendingBatchChanges);
   const isRecentQuickAddClearPendingRef = useRef(false);
@@ -2635,20 +2649,57 @@ const OverviewPageContent = () => {
     [mergedSecKeys, pendingChanges.secrets]
   );
 
-  const areAllSecretRowsExpanded =
-    mergedSecKeys.length > 0 && mergedSecKeys.every((key) => expandedSecretRows.has(key));
-
-  const toggleExpandAllSecretRows = () => {
-    overviewTelemetry.interaction({
-      action: areAllSecretRowsExpanded ? "collapse-all" : "expand-all",
-      source: "header",
-      resourceType: "secret"
+  const setResourceRowExpanded = useCallback((rowKey: string, isExpanded: boolean) => {
+    setExpandedResourceRows((prev) => {
+      if (prev.has(rowKey) === isExpanded) return prev;
+      const next = new Set(prev);
+      if (isExpanded) next.add(rowKey);
+      else next.delete(rowKey);
+      return next;
     });
-    if (areAllSecretRowsExpanded) {
+  }, []);
+
+  const expandableResourceRowKeys = useMemo(
+    () =>
+      isSingleEnvView
+        ? []
+        : [
+            ...secretImportNames.map(({ importEnvSlug, importPath }) =>
+              overviewRowKey("import", importEnvSlug, importPath)
+            ),
+            ...dynamicSecretNames.map((name) => overviewRowKey("dynamic-secret", name)),
+            ...secretRotationNames.map((name) => overviewRowKey("secret-rotation", name)),
+            ...honeyTokenNames.map((name) => overviewRowKey("honey-token", name)),
+            ...proxiedServiceNames.map((name) => overviewRowKey("proxied-service", name))
+          ],
+    [
+      isSingleEnvView,
+      secretImportNames,
+      dynamicSecretNames,
+      secretRotationNames,
+      honeyTokenNames,
+      proxiedServiceNames
+    ]
+  );
+
+  const hasExpandableRows = mergedSecKeys.length > 0 || expandableResourceRowKeys.length > 0;
+  const areAllRowsExpanded =
+    hasExpandableRows &&
+    mergedSecKeys.every((key) => expandedSecretRows.has(key)) &&
+    expandableResourceRowKeys.every((key) => expandedResourceRows.has(key));
+
+  const toggleExpandAllRows = () => {
+    overviewTelemetry.interaction({
+      action: areAllRowsExpanded ? "collapse-all" : "expand-all",
+      source: "header"
+    });
+    if (areAllRowsExpanded) {
       setExpandedSecretRows(new Set());
+      setExpandedResourceRows(new Set());
       return;
     }
     setExpandedSecretRows((prev) => new Set([...prev, ...mergedSecKeys]));
+    setExpandedResourceRows((prev) => new Set([...prev, ...expandableResourceRowKeys]));
     if (isRevealAll) revealSecretRows(mergedSecKeys);
   };
 
@@ -2839,7 +2890,10 @@ const OverviewPageContent = () => {
   const savePendingChanges = useCallback(
     async (changes: PendingChanges, message: string, source: "bulk" | "row") => {
       if (!singleVisibleEnv) return [];
-      if (isSavingPendingRef.current) throw new Error("A save is already in progress");
+      if (isSavingPendingRef.current)
+        throw new Error(
+          "Another save is still in progress. Wait for it to finish, then save again."
+        );
       isSavingPendingRef.current = true;
       setIsSavingPending(true);
       const environment = singleVisibleEnv.slug;
@@ -3709,6 +3763,8 @@ const OverviewPageContent = () => {
 
   const renderSecretRow = (key: string, rowKey: string) => (
     <SecretTableRow
+      initialAction={quickAddAnnotation?.key === key ? quickAddAnnotation.action : undefined}
+      onInitialActionHandled={clearQuickAddAnnotation}
       isSelected={!hasPendingBatchChanges && Boolean(selectedEntries.secret[key])}
       onToggleSecretSelect={(_, isShiftKey) => {
         if (!hasPendingBatchChanges) toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
@@ -4121,10 +4177,10 @@ const OverviewPageContent = () => {
                   variant="ghost"
                   size="xs"
                   className="mr-1.5 shrink-0"
-                  disabled={!mergedSecKeys.length}
-                  onClick={toggleExpandAllSecretRows}
+                  disabled={!hasExpandableRows}
+                  onClick={toggleExpandAllRows}
                 >
-                  {areAllSecretRowsExpanded ? (
+                  {areAllRowsExpanded ? (
                     <>
                       <ChevronsDownUpIcon />
                       Close All
@@ -4469,7 +4525,7 @@ const OverviewPageContent = () => {
                         <TableHead className="min-w-[368px] text-sm font-medium text-muted">
                           <div className="flex w-full items-center justify-between gap-2">
                             Value
-                            <div className="flex items-center gap-2">
+                            <div className="-mr-1.5 flex items-center gap-2">
                               <Badge variant="ghost" asChild>
                                 <button
                                   type="button"
@@ -4606,6 +4662,21 @@ const OverviewPageContent = () => {
                           page === 1 &&
                           !isTableEmpty && (
                             <QuickAddSecretRow
+                              onAnnotate={
+                                isSingleEnvView
+                                  ? (key, action) => {
+                                      if (
+                                        !key
+                                          .toLowerCase()
+                                          .includes(searchFilter.trim().toLowerCase())
+                                      )
+                                        setSearchFilter("");
+                                      if (isFilteredByResources && !filter.secret)
+                                        setFilter((state) => ({ ...state, secret: true }));
+                                      setQuickAddAnnotation({ key, action });
+                                    }
+                                  : undefined
+                              }
                               autoQueueOnBlur={isSingleEnvView}
                               activityId={getTableRowActivityId("quick-add", secretPath)}
                               environments={visibleEnvs.map((env) => env.slug)}
@@ -4675,6 +4746,12 @@ const OverviewPageContent = () => {
                           sortableImportItems.map((imp, idx) => (
                             <SecretImportTableRow
                               key={overviewRowKey("import", imp.id)}
+                              isExpanded={expandedResourceRows.has(
+                                overviewRowKey("import", imp.id)
+                              )}
+                              onExpandedChange={(isExpanded) =>
+                                setResourceRowExpanded(overviewRowKey("import", imp.id), isExpanded)
+                              }
                               index={idx}
                               secretImport={imp}
                               importEnvSlug={imp.importEnv.slug}
@@ -4699,6 +4776,15 @@ const OverviewPageContent = () => {
                             ({ importEnvSlug, importEnvName, importPath }, index) => (
                               <SecretImportTableRow
                                 key={overviewRowKey("import", importEnvSlug, importPath)}
+                                isExpanded={expandedResourceRows.has(
+                                  overviewRowKey("import", importEnvSlug, importPath)
+                                )}
+                                onExpandedChange={(isExpanded) =>
+                                  setResourceRowExpanded(
+                                    overviewRowKey("import", importEnvSlug, importPath),
+                                    isExpanded
+                                  )
+                                }
                                 index={index}
                                 importEnvSlug={importEnvSlug}
                                 importEnvName={importEnvName}
@@ -4773,6 +4859,15 @@ const OverviewPageContent = () => {
                             environments={visibleEnvs}
                             secretPath={secretPath}
                             key={overviewRowKey("dynamic-secret", dynamicSecretName)}
+                            isExpanded={expandedResourceRows.has(
+                              overviewRowKey("dynamic-secret", dynamicSecretName)
+                            )}
+                            onExpandedChange={(isExpanded) =>
+                              setResourceRowExpanded(
+                                overviewRowKey("dynamic-secret", dynamicSecretName),
+                                isExpanded
+                              )
+                            }
                             onEdit={(dynamicSecret) =>
                               handlePopUpOpen("editDynamicSecret", dynamicSecret)
                             }
@@ -4801,6 +4896,15 @@ const OverviewPageContent = () => {
                             getSecretRotationByName={getSecretRotationByName}
                             getSecretRotationStatusesByName={getSecretRotationStatusesByName}
                             key={overviewRowKey("secret-rotation", secretRotationName)}
+                            isExpanded={expandedResourceRows.has(
+                              overviewRowKey("secret-rotation", secretRotationName)
+                            )}
+                            onExpandedChange={(isExpanded) =>
+                              setResourceRowExpanded(
+                                overviewRowKey("secret-rotation", secretRotationName),
+                                isExpanded
+                              )
+                            }
                             isSelected={Boolean(selectedEntries.secretRotation[secretRotationName])}
                             onToggleRotationSelect={(_, isShiftKey) =>
                               toggleSelectedEntry(
@@ -4852,6 +4956,15 @@ const OverviewPageContent = () => {
                             environments={visibleEnvs}
                             getHoneyTokenByName={getHoneyTokenByName}
                             key={overviewRowKey("honey-token", honeyTokenName)}
+                            isExpanded={expandedResourceRows.has(
+                              overviewRowKey("honey-token", honeyTokenName)
+                            )}
+                            onExpandedChange={(isExpanded) =>
+                              setResourceRowExpanded(
+                                overviewRowKey("honey-token", honeyTokenName),
+                                isExpanded
+                              )
+                            }
                             onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
                             onRevoke={(honeyToken) =>
                               handlePopUpOpen("revokeHoneyToken", honeyToken)
@@ -4864,6 +4977,15 @@ const OverviewPageContent = () => {
                         {proxiedServiceNames.map((proxiedServiceName) => (
                           <ProxiedServiceTableRow
                             key={overviewRowKey("proxied-service", proxiedServiceName)}
+                            isExpanded={expandedResourceRows.has(
+                              overviewRowKey("proxied-service", proxiedServiceName)
+                            )}
+                            onExpandedChange={(isExpanded) =>
+                              setResourceRowExpanded(
+                                overviewRowKey("proxied-service", proxiedServiceName),
+                                isExpanded
+                              )
+                            }
                             proxiedServiceName={proxiedServiceName}
                             environments={visibleEnvs}
                             isProxiedServiceInEnv={isProxiedServicePresentInEnv}

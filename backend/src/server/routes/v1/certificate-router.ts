@@ -22,6 +22,7 @@ import {
   certificateAttributesSchema,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
+  csrSchema,
   CUSTOM_EXTENSIONS_WITH_CSR_ERROR_MESSAGE,
   resolvedCustomExtensionSchema,
   subjectAttributeSchema
@@ -52,8 +53,6 @@ type CertificateServiceResponse = TCertificateIssuanceResponse | Omit<TCertifica
 // their format here (wildcards like *.example.com are valid); only bound the length, which
 // subjectAttributeSchema does against the varchar(255) columns they are persisted in.
 const subjectAttributeField = subjectAttributeSchema;
-
-const csrSchema = z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters");
 
 const extractCertificateData = (
   data: CertificateServiceResponse
@@ -989,7 +988,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       body: z
         .object({
           profileId: z.string().uuid(),
-          csr: z.string().trim().min(1, "CSR cannot be empty").max(4096, "CSR cannot exceed 4096 characters"),
+          csr: csrSchema,
           ttl: z
             .string()
             .trim()
@@ -1507,6 +1506,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             profileName: z.string().nullable().optional(),
             applicationName: z.string().nullable().optional(),
             hasPrivateKey: z.boolean().describe(CERTIFICATES.GET.hasPrivateKey),
+            canRenewFromCsr: z.boolean().describe(CERTIFICATES.GET.canRenewFromCsr),
             latestRenewalCertificateId: z
               .string()
               .uuid()
@@ -1774,6 +1774,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
         privateKeyPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.privateKeyPem),
         chainPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.chainPem),
+        csr: csrSchema.optional().describe(CERTIFICATES.IMPORT.csr),
 
         friendlyName: z.string().trim().max(255).optional().describe(CERTIFICATES.IMPORT.friendlyName),
         pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId),
@@ -1816,7 +1817,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             certificateProfileId: cert.profileId ?? undefined,
             profileName: profileName ?? undefined,
             caId: cert.caId ?? undefined,
-            caName: caName ?? undefined
+            caName: caName ?? undefined,
+            hasCsr: Boolean(req.body.csr)
           }
         }
       });
