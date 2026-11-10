@@ -395,11 +395,6 @@ export type TConfirmBillingV2TrialPaymentDTO = {
   returnPath?: string;
 };
 
-export type TBillingV2SubscriptionLifecycleDTO = {
-  orgId: string;
-  actor: OrgServiceActor;
-};
-
 // The metered dimensions the usage breakdown can explain. Values are License Server dimension keys and
 // must match the License domain's meters (Meter in domains/platform/license/ce/model/meter.ts).
 export const BillingV2BreakdownDimension = {

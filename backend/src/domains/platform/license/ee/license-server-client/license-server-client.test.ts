@@ -58,6 +58,6 @@ describe("LicenseServerClient.getEntitlements", () => {
 
     // Assert
     expect(result).toBeNull();
-    expect(() => client.cancelSubscription(ORG_ID)).toThrow("license client backend is not configured");
+    expect(() => client.deleteOrganization(ORG_ID)).toThrow("license client backend is not configured");
   });
 });

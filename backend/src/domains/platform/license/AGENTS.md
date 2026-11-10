@@ -16,7 +16,7 @@ may edit into a paid one.
 | --- | --- |
 | `ce/model/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`: classes only, with no feature data. `Plan` exposes its props as read-only fields (`withProps`) |
 | `ce/data-access/` | `PlanCache` and `UsageReportCache`, both in the key store, with their key names; they implement `TPlanCache` and `TUsageReportCache` |
-| `ce/service/` | The mechanism: `LicenseService` (plans, refresh, seats, usage counts, cancellation, and the usage workers), `UsageQueue` (putting usage on the queues), and `dependencies.ts`: what the service needs from its data access, organizations-projects, the products (`TUsageCounter`) and EE |
+| `ce/service/` | The mechanism: `LicenseService` (plans, refresh, seats, usage counts, closing deleted orgs, and the usage workers), `UsageQueue` (putting usage on the queues), and `dependencies.ts`: what the service needs from its data access, organizations-projects, the products (`TUsageCounter`) and EE |
 | `ce/service/license-server-types/` | The License Server's request and response shapes, which `LicenseModule.billing` and the dependency types expose |
 | `ee/service/` | The policy behind `TLicenseProvider`: default features and license key parsing (`license-fns.ts`), the license resolver, entitlement projection and its feature mapping |
 | `ee/license-server-client/` | `LicenseServerClient`, the only client (entitlements, billing, usage posts), its HTTP backends and token provider |
@@ -41,8 +41,9 @@ may edit into a paid one.
   `domains.ts`.
 - **Seat sync runs after the commit.** `syncSeats` calls the License Server and never throws. Code that runs
   inside a caller's transaction (org create, project create) leaves the call to that caller, after its commit.
-- **Cancellation runs before the org is deleted.** Any 4xx means there is nothing to cancel; anything
-  else is thrown so the delete stops.
+- **Closing a deleted org runs after the delete, from the outbox.** `closeDeletedOrg` is called only by the
+  `license-org-deleted` consumer (`services/org/license-org-deleted-consumer.ts`) for a deleted root org on
+  cloud, and throws every failure so the outbox retries; the License Server's delete is safe to repeat.
 - **License knows no product.** It takes everything from outside through its constructor: `organizations`
   (root org ids, workspace counts and seat counts, from organizations-projects) and `usageCounters` (one
   `TUsageCounter` per `Meter`, from the domain that owns the data). `domains.ts` builds those domains first.

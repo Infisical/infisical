@@ -356,57 +356,31 @@ describe("LicenseService.syncSeats", () => {
   });
 });
 
-describe("LicenseService.cancelSubscription", () => {
-  test("should cancel on cloud and drop the cached plan", async () => {
+describe("LicenseService.closeDeletedOrg", () => {
+  test("should close the org on the License Server and drop the cached plan", async () => {
     // Setup
     const { licenseService, licenseServer } = await buildLicense();
     await licenseService.getPlan(ROOT.id);
 
     // Action
-    await licenseService.cancelSubscription(ROOT.id);
+    const result = await licenseService.closeDeletedOrg(ROOT.id);
 
     // Assert
-    expect(licenseServer.cancellations).toEqual([ROOT.id]);
+    expect(licenseServer.deletedOrgs).toEqual([ROOT.id]);
+    expect(result.licensesClosed).toBe(1);
     await licenseService.getPlan(ROOT.id);
     expect(licenseServer.fetches).toHaveLength(2);
   });
 
-  test("should do nothing on self-hosted", async () => {
-    // Setup
-    const licenseServer = new FakeLicenseServer();
-    licenseServer.instance = { ...licenseServer.instance, instanceType: InstanceType.EnterpriseOnPrem };
-    const { licenseService } = await buildLicense({ licenseServer });
-
-    // Action
-    await licenseService.cancelSubscription(ROOT.id);
-
-    // Assert
-    expect(licenseServer.cancellations).toEqual([]);
-  });
-
-  test("should treat a 4xx as nothing to cancel", async () => {
-    // Setup
-    const { BadRequestError } = await import("@app/lib/errors");
-    const licenseServer = new FakeLicenseServer();
-    licenseServer.cancelFailure = new BadRequestError({ message: "no subscription" });
-    const { licenseService } = await buildLicense({ licenseServer });
-
-    // Action
-    const result = licenseService.cancelSubscription(ROOT.id);
-
-    // Assert
-    await expect(result).resolves.toBeUndefined();
-  });
-
-  test("should throw any other failure and keep the cached plan", async () => {
+  test("should throw a failure and keep the cached plan", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
     const { licenseService } = await buildLicense({ licenseServer });
     await licenseService.getPlan(ROOT.id);
-    licenseServer.cancelFailure = new InternalServerError({ message: "License Server failed" });
+    licenseServer.deleteFailure = new InternalServerError({ message: "License Server failed" });
 
     // Action
-    const result = licenseService.cancelSubscription(ROOT.id);
+    const result = licenseService.closeDeletedOrg(ROOT.id);
 
     // Assert
     await expect(result).rejects.toThrow("License Server failed");

@@ -3,7 +3,7 @@ import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { handleClickhouseSession } from "./clickhouse/pam-clickhouse-session-handler";
 import { handleMysqlSession } from "./mysql/pam-mysql-session-handler";
 import { TSessionContext, TSessionHandlerResult } from "./pam-web-access-types";
-import { handlePostgresSession } from "./postgres/pam-postgres-session-handler";
+import { handleCockroachdbSession, handlePostgresSession } from "./postgres/pam-postgres-session-handler";
 import { handleRdpSession } from "./rdp/pam-rdp-session-handler";
 import { handleRedisSession } from "./redis/pam-redis-session-handler";
 import { handleSnowflakeSession } from "./snowflake/pam-snowflake-session-handler";
@@ -23,6 +23,10 @@ export const SESSION_HANDLERS: Partial<Record<PamAccountType, TSessionHandlerEnt
   [PamAccountType.Postgres]: {
     gatewayAccountType: PamAccountType.Postgres,
     handler: handlePostgresSession
+  },
+  [PamAccountType.CockroachDB]: {
+    gatewayAccountType: PamAccountType.Postgres,
+    handler: handleCockroachdbSession
   },
   [PamAccountType.MySQL]: {
     gatewayAccountType: PamAccountType.MySQL,

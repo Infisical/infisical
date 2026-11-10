@@ -54,7 +54,7 @@ export class FakeLicenseService implements TLicenseService {
 
   syncSeats = async () => undefined;
 
-  cancelSubscription = async () => undefined;
+  closeDeletedOrg = async () => ({ licensesClosed: 0, canceledSubscriptionIds: [], commitmentForfeited: false });
 
   emit = () => undefined;
 

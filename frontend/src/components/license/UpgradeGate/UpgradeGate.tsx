@@ -32,16 +32,16 @@ import {
 } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
-  BillingV2Cadence,
-  BillingV2CatalogProduct,
-  BillingV2Plan,
-  useGetBillingV2Catalog,
-  useGetBillingV2Overview,
-  useStartBillingV2Trial
+  BillingCadence,
+  BillingCatalogProduct,
+  BillingCatalogPlan,
+  useGetBillingCatalog,
+  useGetBillingOverview,
+  useStartBillingTrial
 } from "@app/hooks/api";
 import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subscriptions/queries";
 import { analytics, AnalyticsEvent } from "@app/lib/analytics";
-import { ProductIcon } from "@app/pages/organization/BillingV2Page/components/shared";
+import { ProductIcon } from "@app/pages/organization/BillingPage/components/shared";
 
 import { getSelfHostedLicenseState, SELF_HOSTED_LICENSE_COPY } from "../self-hosted-license";
 import {
@@ -73,7 +73,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   initialTier?: string;
-  initialCadence?: BillingV2Cadence;
+  initialCadence?: BillingCadence;
 };
 
 type CapabilityProps = Omit<Props, "intent" | "initialTier" | "initialCadence"> & {
@@ -90,7 +90,7 @@ const formatProductName = (productKey: string) =>
     .join(" ");
 
 type ProductUpgradeHeaderProps = {
-  product?: BillingV2CatalogProduct;
+  product?: BillingCatalogProduct;
   productName: string;
   description: string;
 };
@@ -118,8 +118,8 @@ const ProductUpgradeGate = ({
   initialCadence = "annual"
 }: Props) => {
   const [selectedTier, setSelectedTier] = useState(initialTier);
-  const [cadence, setCadence] = useState<BillingV2Cadence>(initialCadence);
-  const [startedTrial, setStartedTrial] = useState<BillingV2Plan | null>(null);
+  const [cadence, setCadence] = useState<BillingCadence>(initialCadence);
+  const [startedTrial, setStartedTrial] = useState<BillingCatalogPlan | null>(null);
   const refreshedReturn = useRef<string>(undefined);
   const hasTrackedView = useRef(false);
   const queryClient = useQueryClient();
@@ -140,12 +140,12 @@ const ProductUpgradeGate = ({
   const returnSearch = new URLSearchParams(window.location.search);
   const returnedFromBilling =
     returnSearch.get("card") === "setup_success" || returnSearch.get("checkout") === "success";
-  const overview = useGetBillingV2Overview(billingOrgId, {
+  const overview = useGetBillingOverview(billingOrgId, {
     enabled: canLoadBilling,
     ...(returnedFromBilling ? { staleTime: 0 } : {})
   });
-  const catalog = useGetBillingV2Catalog(billingOrgId, { enabled: canLoadBilling });
-  const startTrial = useStartBillingV2Trial();
+  const catalog = useGetBillingCatalog(billingOrgId, { enabled: canLoadBilling });
+  const startTrial = useStartBillingTrial();
   const product = catalog.data?.find((candidate) => candidate.id === intent.productKey);
   const productName = product?.name ?? formatProductName(intent.productKey);
   const checkingBillingReturn =

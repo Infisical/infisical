@@ -3323,6 +3323,7 @@ interface ImportCert {
     profileName?: string;
     caId?: string;
     caName?: string;
+    hasCsr?: boolean;
   };
 }
 

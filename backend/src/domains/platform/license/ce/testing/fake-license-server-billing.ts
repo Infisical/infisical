@@ -36,8 +36,4 @@ export class FakeLicenseServerBilling implements TLicenseServerBilling {
   cancelTrial: TLicenseServerBilling["cancelTrial"] = notConfigured;
 
   confirmTrialPayment: TLicenseServerBilling["confirmTrialPayment"] = notConfigured;
-
-  cancelSubscription: TLicenseServerBilling["cancelSubscription"] = notConfigured;
-
-  resumeSubscription: TLicenseServerBilling["resumeSubscription"] = notConfigured;
 }

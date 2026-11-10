@@ -48,9 +48,9 @@ export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
   // Reports the License Server receives but whose reply never reaches the instance.
   loseNextReplies = 0;
 
-  cancellations: string[] = [];
+  deletedOrgs: string[] = [];
 
-  cancelFailure: Error | null = null;
+  deleteFailure: Error | null = null;
 
   billing = new FakeLicenseServerBilling();
 
@@ -100,8 +100,9 @@ export class FakeLicenseServer implements TLicenseProvider, TLicenseServer {
     return events.map((e) => ({ event_id: e.event_id, status: "accepted" as const }));
   };
 
-  cancelSubscription = async (orgId: string) => {
-    if (this.cancelFailure) throw this.cancelFailure;
-    this.cancellations.push(orgId);
+  deleteOrganization = async (orgId: string) => {
+    if (this.deleteFailure) throw this.deleteFailure;
+    this.deletedOrgs.push(orgId);
+    return { licensesClosed: 1, canceledSubscriptionIds: [], commitmentForfeited: false };
   };
 }

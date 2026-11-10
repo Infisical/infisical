@@ -73,9 +73,6 @@ type State struct {
 	// duplicates of an event id.
 	UsageEvents []UsageEvent `json:"usageEvents"`
 
-	// Cancellations counts subscription cancellations.
-	Cancellations int `json:"cancellations"`
-
 	// Logins counts license key exchanges.
 	Logins int `json:"logins"`
 }
@@ -116,11 +113,6 @@ type UsageEventReceived struct{ UsageEvent }
 
 func (UsageEventReceived) EventName() string { return "license.usage-event-received" }
 
-// SubscriptionCanceled is published when the instance cancels a subscription.
-type SubscriptionCanceled struct{}
-
-func (SubscriptionCanceled) EventName() string { return "license.subscription-canceled" }
-
 // Org is one organization's, or one self-hosted license's, License Server state.
 type Org struct {
 	mu     sync.Mutex
@@ -153,17 +145,9 @@ func (o *Org) routes() *http.ServeMux {
 	mux.HandleFunc("GET /v1/organizations/{orgId}/entitlements", entitlements)
 	mux.HandleFunc("GET /v1/entitlements", entitlements)
 
-	// Deleting an organization cancels its subscription, and the delete fails if
-	// that call does. Every tenant registers its own removal on t.Cleanup, so
-	// without this each test leaks its organization into the shared database for
-	// the life of the run. The outcome is parsed rather than ignored, so an empty
-	// body is not enough.
-	mux.HandleFunc("POST /v1/organizations/{orgId}/subscription/cancel", func(w http.ResponseWriter, _ *http.Request) {
-		o.mu.Lock()
-		o.state.Cancellations++
-		o.mu.Unlock()
-		o.events.Publish(SubscriptionCanceled{})
-		writeJSON(w, http.StatusOK, map[string]any{"outcome": "subscription_canceled"})
+	// Without this, every deleted tenant keeps retrying through the outbox all run.
+	mux.HandleFunc("DELETE /v1/organizations/{orgId}", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"licensesClosed": 1, "canceledSubscriptionIds": []string{}, "commitmentForfeited": false})
 	})
 
 	mux.HandleFunc("POST /v1/organizations/{orgId}/usage-snapshots", func(w http.ResponseWriter, r *http.Request) {

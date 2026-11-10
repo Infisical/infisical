@@ -2,7 +2,7 @@ import { InstanceEntitlements } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
 import { Plan } from "../model/plan";
 import { SeatUsage } from "../model/seat-usage";
-import { TEntitlementOrg } from "./license-server-types/license-server-types";
+import { TEntitlementOrg, TOrgDeletedResult } from "./license-server-types/license-server-types";
 import { TUsageEvent, TUsageEventResult, TUsageSnapshot } from "./license-server-types/usage-reports";
 
 // What LicenseService needs from outside it. Data access, other domains and the EE edition implement these;
@@ -76,6 +76,6 @@ export type TLicenseServer = {
   canReportUsage(): boolean;
   reportSnapshots(orgId: string, snapshots: TUsageSnapshot[]): Promise<void>;
   reportEvents(orgId: string, events: TUsageEvent[]): Promise<TUsageEventResult[]>;
-  // Cloud: cancels a root org's subscription. A 4xx answer is a BadRequestError.
-  cancelSubscription(orgId: string): Promise<unknown>;
+  // Cloud: cancels a deleted root org's subscription right away and closes its licenses. Safe to repeat.
+  deleteOrganization(orgId: string): Promise<TOrgDeletedResult>;
 };

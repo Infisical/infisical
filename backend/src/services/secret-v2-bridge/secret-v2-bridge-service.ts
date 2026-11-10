@@ -3843,49 +3843,51 @@ export const secretV2BridgeServiceFactory = ({
       projectId,
       secretVersions: secretVersionNumbers
     });
-    return secretVersions.map((el) => {
-      const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.ReadValue,
-        {
-          environment: environment.slug,
-          secretPath,
-          secretName: el.key,
-          ...(el.tags?.length && {
-            secretTags: el.tags.map((tag) => tag.slug)
-          })
-        }
-      );
-
-      return {
-        ...reshapeBridgeSecret(
-          projectId,
-          environment.slug,
-          secretPath,
+    return secretVersions
+      .filter((el) => !el.userId || el.userId === actorId)
+      .map((el) => {
+        const secretValueHidden = !hasSecretReadValueOrDescribePermission(
+          permission,
+          ProjectPermissionSecretActions.ReadValue,
           {
-            ...el,
-            secretMetadata: (Array.isArray(el.metadata)
-              ? (el.metadata as { key: string; value?: string; encryptedValue: string }[])
-              : []
-            ).map((meta) => ({
-              isEncrypted: Boolean(meta.encryptedValue),
-              key: meta.key,
-              value: meta.encryptedValue
-                ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue, "base64") }).toString()
-                : meta.value || ""
-            })),
-            value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
-            comment: el.encryptedComment
-              ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
-              : ""
-          },
-          secretValueHidden
-        ),
-        isRedacted: el.isRedacted,
-        redactedAt: el.redactedAt || null,
-        redactedByUserId: el.redactedByUserId || null
-      };
-    });
+            environment: environment.slug,
+            secretPath,
+            secretName: el.key,
+            ...(el.tags?.length && {
+              secretTags: el.tags.map((tag) => tag.slug)
+            })
+          }
+        );
+
+        return {
+          ...reshapeBridgeSecret(
+            projectId,
+            environment.slug,
+            secretPath,
+            {
+              ...el,
+              secretMetadata: (Array.isArray(el.metadata)
+                ? (el.metadata as { key: string; value?: string; encryptedValue: string }[])
+                : []
+              ).map((meta) => ({
+                isEncrypted: Boolean(meta.encryptedValue),
+                key: meta.key,
+                value: meta.encryptedValue
+                  ? secretManagerDecryptor({ cipherTextBlob: Buffer.from(meta.encryptedValue, "base64") }).toString()
+                  : meta.value || ""
+              })),
+              value: el.encryptedValue ? secretManagerDecryptor({ cipherTextBlob: el.encryptedValue }).toString() : "",
+              comment: el.encryptedComment
+                ? secretManagerDecryptor({ cipherTextBlob: el.encryptedComment }).toString()
+                : ""
+            },
+            secretValueHidden
+          ),
+          isRedacted: el.isRedacted,
+          redactedAt: el.redactedAt || null,
+          redactedByUserId: el.redactedByUserId || null
+        };
+      });
   };
 
   const findSecretIdsByFolderIdAndKeys = async ({ folderId, keys }: { folderId: string; keys: string[] }) => {

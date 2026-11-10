@@ -263,12 +263,8 @@ export class LicenseServerClient implements TLicenseServer, TLicenseServerBillin
     return this.configured().confirmTrialPayment(orgId, payload);
   }
 
-  cancelSubscription(orgId: string) {
-    return this.configured().cancelSubscription(orgId);
-  }
-
-  resumeSubscription(orgId: string) {
-    return this.configured().resumeSubscription(orgId);
+  deleteOrganization(orgId: string) {
+    return this.configured().deleteOrganization(orgId);
   }
 
   async reportSnapshots(orgId: string, snapshots: TUsageSnapshot[]): Promise<void> {

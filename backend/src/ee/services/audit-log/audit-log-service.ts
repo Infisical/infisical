@@ -136,6 +136,13 @@ export const auditLogServiceFactory = ({
       );
     }
 
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.auditLogs) {
+      throw new BadRequestError({
+        message: "Failed to list audit logs due to plan restriction. Upgrade your plan to view audit logs."
+      });
+    }
+
     if (filter.auditLogActorId && filter.actorType && !ACTOR_TYPE_TO_METADATA_ID_KEY[filter.actorType]) {
       throw new BadRequestError({
         message: `Actor type '${filter.actorType}' does not support filtering by actor ID`

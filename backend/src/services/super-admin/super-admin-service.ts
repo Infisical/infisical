@@ -1050,11 +1050,6 @@ export const superAdminServiceFactory = ({
     return organization;
   };
 
-  const deleteOrganization = async (organizationId: string) => {
-    const organization = await orgDAL.deleteById(organizationId);
-    return organization;
-  };
-
   const deleteOrganizationMembership = async (
     organizationId: string,
     membershipId: string,
@@ -1402,7 +1397,6 @@ export const superAdminServiceFactory = ({
     invalidateCache,
     checkIfInvalidatingCache,
     getOrganizations,
-    deleteOrganization,
     deleteOrganizationMembership,
     initializeAdminIntegrationConfigSync,
     initializeEnvConfigSync,

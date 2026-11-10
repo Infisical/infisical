@@ -1,4 +1,4 @@
-import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 
 import { InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
@@ -8,7 +8,11 @@ import { SeatUsage } from "../model/seat-usage";
 import { CounterRegistry } from "./counter-registry";
 import { TLicenseOrganizations, TLicenseProvider, TLicenseServer, TPlanCache, TUsageReportCache } from "./dependencies";
 import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
-import { SELF_HOSTED_LICENSE_ORG_ID, TEntitlementOrg } from "./license-server-types/license-server-types";
+import {
+  SELF_HOSTED_LICENSE_ORG_ID,
+  TEntitlementOrg,
+  TOrgDeletedResult
+} from "./license-server-types/license-server-types";
 import { TUsageEvent, UsageReportError } from "./license-server-types/usage-reports";
 import { TMeteringEventInput, TMeteringEventPayload, UsageQueue } from "./usage-queue";
 
@@ -34,8 +38,9 @@ export type TLicenseService = {
   invalidatePlan(orgId: string): Promise<void>;
   isServingFallbackPlan(orgId: string): Promise<boolean>;
   getLastKnownPlan(orgId: string): Promise<{ plan: Plan; fetchedAt: number } | null>;
-  // Cloud: cancels the org's subscription before the org is deleted.
-  cancelSubscription(orgId: string): Promise<void>;
+  // Cloud: after a root org is deleted, cancels its subscription and closes its licenses. Safe to repeat;
+  // any failure is thrown so the caller can retry.
+  closeDeletedOrg(orgId: string): Promise<TOrgDeletedResult>;
   // Seats in use for the org's plan: the root org's tree on cloud, the whole instance self-hosted. To enforce
   // a limit while adding a member, read this before the transaction and check it with seatUsage.assertAvailable.
   getSeatUsage(orgId: string): Promise<SeatUsage>;
@@ -149,18 +154,10 @@ export class LicenseService implements TLicenseService {
     return this.deps.planCache.lastKnown(await this.deps.organizations.resolveRootOrgId(orgId));
   }
 
-  // Cloud only. An org with no subscription answers 4xx (a BadRequestError), which counts as cancelled; any
-  // other failure is thrown so the caller can stop before deleting the org.
-  async cancelSubscription(orgId: string): Promise<void> {
-    if (!this.deps.instance.isCloud()) return;
-
-    try {
-      await this.deps.licenseServer.cancelSubscription(orgId);
-    } catch (error) {
-      if (!(error instanceof BadRequestError)) throw error;
-      logger.info(`cancelOrgSubscription: no subscription to cancel [orgId=${orgId}]`);
-    }
+  async closeDeletedOrg(orgId: string): Promise<TOrgDeletedResult> {
+    const result = await this.deps.licenseServer.deleteOrganization(orgId);
     await this.deps.planCache.invalidate(orgId);
+    return result;
   }
 
   async getSeatUsage(orgId: string): Promise<SeatUsage> {

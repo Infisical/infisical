@@ -46,16 +46,20 @@ Not every option applies to every certificate. The renewal wizard greys out the 
 | Issuer | Reuse the key pair | Use a CSR |
 |--------|--------------------|-----------|
 | **Private CA** | Yes | Yes |
-| **External CA** | No, these CAs only accept a freshly generated key | Yes |
+| **External CA** | Only when Infisical holds a CSR for the certificate and not its private key | Yes |
 | **Self-signed** | Yes | No, see below |
 
 A self-signed certificate is signed by the private key that matches its own public key. A signing request carries only a public key, so there would be nothing to sign the renewal with. Reuse works because the existing key pair is available to sign with.
+
+AWS Certificate Manager can't issue from a CSR, so its certificates renew only with a new key pair.
 
 <Note>
   Certificates issued through Active Directory Certificate Services or Azure AD CS take their validity, key usages, extended key usages and basic constraints from the CA's own certificate template. The renewal wizard hides those fields for such certificates, because anything set here would be discarded by the CA. You can still change the subject and the alternative names.
 </Note>
 
-Reuse is available for certificates issued with an Infisical-managed key pair. A certificate you issued from your own signing request can reuse its public key too: the renewal is made from that original request, so the key stays on your side.
+On a private CA, Reuse works for any certificate whose private key Infisical holds. It also works without the key when Infisical holds a CSR generated from it, either the one the certificate was issued from or one you supplied at [import](/documentation/platform/pki/applications/certificates#keeping-your-private-key-on-your-own-servers). An external CA can reuse a key pair only this way.
+
+If Infisical holds a CSR but not the private key, a Reuse renewal works like **Use a CSR**. The CSR sets the subject and names, as [Renewing from a signing request](#renewing-from-a-signing-request) describes.
 
 ## What you can change
 
@@ -81,7 +85,7 @@ A [DigiCert reissue](#reissuing-a-digicert-certificate) that removes or changes 
 
 ### Renewing from a signing request
 
-When you supply a CSR, that request is the source of truth for the subject and the key, so there are no separate fields for them. The validity, the basic constraints and the custom extensions are set alongside it, and custom extensions keep their current values unless you change them.
+When you supply a CSR, that request is the source of truth for the subject and the key, so there are no separate fields for them. The validity, the basic constraints and the custom extensions are set alongside it, and custom extensions keep their current values unless you change them. The same applies when **Reuse the existing key pair** renews from a CSR Infisical holds.
 
 Sending a property the CSR already carries is rejected rather than quietly ignored, so a renewal never silently discards something you asked for.
 
@@ -149,6 +153,8 @@ Automatic renewal always places a new order. To reissue on the existing order, r
 
     `renewalKeySource` accepts `new`, `reuse`, or `csr`. Supply `csr` alongside `renewalKeySource: "csr"`. To clear an attribute, send it as `null`.
 
+    If Infisical holds a CSR for the certificate but not its private key, a `reuse` renewal accepts only `ttl`, `basicConstraints`, and `customExtensions` in `attributes`, because the CSR sets everything else.
+
     To reissue a DigiCert certificate on its current order, send `"externalConfiguration": { "reissue": true }` and leave out `ttl`.
 
     A request with no body renews the certificate as it is with a new key pair, so existing automation keeps working unchanged.
@@ -190,7 +196,7 @@ Deploy the renewed certificate before the previous one expires. Renewing doesn't
     The renewal is validated against the policy as it is now, so a certificate that no longer satisfies the policy is rejected with a message naming the field at fault. Adjust the values during the renewal so they fit the current policy.
   </Accordion>
   <Accordion title="Can I renew a certificate that Infisical did not generate the key for?">
-    Yes. Choose a new key pair, or supply a CSR generated from the existing key. A certificate issued from a signing request can also reuse its public key, in which case the renewal is made from that original request.
+    Yes. Choose a new key pair, or supply a CSR generated from the existing key. Infisical keeps the CSR a certificate was issued from, and any CSR supplied at import. If it holds one, **Reuse the existing key pair** renews from that CSR and keeps the key.
   </Accordion>
   <Accordion title="Where can I see why a renewal failed?">
     If a manual renewal fails, Infisical shows the reason when you submit it and records a [`certificate-issuance-failed` audit log event](/documentation/platform/audit-logs#certificate-issuance-failures) that links to the certificate being renewed. If an automatic renewal fails, Infisical records an `automated-renew-certificate-failed` event instead, unless the renewal had already been sent to an external CA, in which case the failure is recorded as `certificate-issuance-failed`.

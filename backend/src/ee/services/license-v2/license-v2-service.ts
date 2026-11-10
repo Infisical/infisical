@@ -40,7 +40,6 @@ import {
   BillingV2Trial,
   BillingV2UsageBreakdown,
   TAddBillingV2PaymentMethodDTO,
-  TBillingV2SubscriptionLifecycleDTO,
   TBuyBillingV2ProductDTO,
   TCancelBillingV2TrialDTO,
   TChangeBillingV2CommitmentDTO,
@@ -1545,20 +1544,6 @@ export const licenseV2ServiceFactory = ({
     return { subscriptionId: result.subscriptionId };
   };
 
-  const cancelSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
-    await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.cancelSubscription(orgId);
-    await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
-    return { subscriptionId: result.subscriptionId };
-  };
-
-  const resumeSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
-    await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.resumeSubscription(orgId);
-    await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
-    return { subscriptionId: result.subscriptionId };
-  };
-
   return {
     getOverview,
     getUsageBreakdown,
@@ -1574,8 +1559,6 @@ export const licenseV2ServiceFactory = ({
     changeCommitments,
     startTrial,
     cancelTrial,
-    confirmTrialPayment,
-    cancelSubscription,
-    resumeSubscription
+    confirmTrialPayment
   };
 };
