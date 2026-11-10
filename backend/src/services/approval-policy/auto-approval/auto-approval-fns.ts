@@ -121,7 +121,7 @@ const isAutoApprovalEvidence = (value: unknown): value is TAutoApprovalEvidence 
   (value as { version?: unknown }).version === 1 &&
   Array.isArray((value as { rules?: unknown }).rules);
 
-export const AUTO_APPROVAL_AI_HIDDEN_REASON = "The AI didn't approve this request, so it went to the approvers";
+export const AUTO_APPROVAL_AI_HIDDEN_REASON = "The AI didn't approve this request";
 
 const getVisibleReason = (condition: { subject: string; passed: boolean; reason: string | null }, hideAi: boolean) =>
   hideAi && isAiCondition(condition) && !condition.passed ? AUTO_APPROVAL_AI_HIDDEN_REASON : condition.reason;
