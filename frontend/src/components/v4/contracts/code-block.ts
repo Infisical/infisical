@@ -21,6 +21,7 @@ export const codeBlockDefinition = {
   accessibility: [
     "Copy success follows clipboard fulfillment; failures remain visible.",
     "The block is a section named by its label, and the code region takes the same label.",
+    "label also takes a node, such as a name with a status Badge beside it; the block is then named by that header content, and the code region keeps its language name.",
     "Content uses a focusable scroll region."
   ],
   limitations: [

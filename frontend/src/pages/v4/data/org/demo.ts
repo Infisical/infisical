@@ -286,15 +286,18 @@ export const orgDemo: OrgAdapter = {
   }),
   useOrganization: () => ({ data: organization.use(), isPending: false, error: null }),
   useProductStats: () => ({ data: productStats(), isPending: false, error: null }),
-  useUpdateOrganization: fixtureMutation(({ name, slug, defaultMembershipRoleSlug }) => {
-    organization.update((current) => ({
-      ...current,
-      name: name ?? current.name,
-      slug: slug ?? current.slug,
-      defaultMembershipRole: defaultMembershipRoleSlug ?? current.defaultMembershipRole
-    }));
-    return {};
-  }),
+  useUpdateOrganization: fixtureMutation(
+    ({ orgId, name, slug, defaultMembershipRoleSlug, ...rest }) => {
+      organization.update((current) => ({
+        ...current,
+        ...Object.fromEntries(Object.entries(rest).filter(([, value]) => value !== undefined)),
+        name: name ?? current.name,
+        slug: slug ?? current.slug,
+        defaultMembershipRole: defaultMembershipRoleSlug ?? current.defaultMembershipRole
+      }));
+      return {};
+    }
+  ),
   useRoles: () => ({ data: roles, isPending: false, error: null }),
   useIncidentContacts: () => ({ data: contacts.use(), isPending: false, error: null }),
   useAddIncidentContact: fixtureMutation(({ email }) => {

@@ -31,6 +31,7 @@ import {
   RENEWAL_UNAVAILABLE_NO_PROFILE
 } from "@app/pages/cert-manager/CertificatesPage/components/CertificatesTable.utils";
 
+import { failed } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { useV4Session } from "../../data/session/contract";
 import { orgHref } from "../../links";
@@ -200,7 +201,12 @@ export const RevokeCertificateDialog = ({
           <AlertDialogAction asChild>
             <Button
               variant="destructive"
-              onClick={() => cert && revoke.mutateAsync({ id: cert.id, revocationReason: reason })}
+              onClick={() =>
+                cert &&
+                revoke
+                  .mutateAsync({ id: cert.id, revocationReason: reason })
+                  .catch((error) => failed("Failed to revoke certificate", error))
+              }
             >
               Revoke certificate
             </Button>
@@ -245,7 +251,12 @@ export const DeleteCertificateDialog = ({
             variant="destructive"
             onClick={async () => {
               if (!cert) return;
-              await remove.mutateAsync({ id: cert.id });
+              try {
+                await remove.mutateAsync({ id: cert.id });
+              } catch (error) {
+                failed("Failed to delete certificate", error);
+                return;
+              }
               onDeleted?.();
             }}
           >

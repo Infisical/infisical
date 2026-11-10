@@ -36,6 +36,7 @@ import {
 } from "@app/hooks/api/secrets/queries";
 import { useCreateSharedSecret } from "@app/hooks/api/secretSharing/mutations";
 
+import { withMutationMeta } from "../contract";
 import type { SecretsFlowsAdapter } from "./contract-flows";
 import { secretsAccessLive } from "./live-access";
 import { secretsCommitsLive } from "./live-commits";
@@ -62,11 +63,11 @@ export const secretsFlowsLive: SecretsFlowsAdapter = {
   useDeleteReminder,
   useProjectFolders: useListProjectEnvironmentsFolders,
   useSecretsAt: useGetProjectSecrets,
-  useCreateSecretBatch,
-  useUpdateSecretBatch,
-  useMoveSecrets,
+  useCreateSecretBatch: withMutationMeta(useCreateSecretBatch),
+  useUpdateSecretBatch: withMutationMeta(useUpdateSecretBatch),
+  useMoveSecrets: withMutationMeta(useMoveSecrets),
   useMoveFolder,
-  useCreateCommit,
+  useCreateCommit: withMutationMeta(useCreateCommit),
   useDeleteEnvironment: useDeleteWsEnvironment,
   useCreateSecretImport,
   useDeleteSecretImport,

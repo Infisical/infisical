@@ -31,6 +31,7 @@ import {
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import { useProjectPermission } from "../../../access/permissions";
+import { errorMessage } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import type { EnvironmentOption } from "./overview-cells";
 
@@ -96,10 +97,7 @@ function AddEnvironmentDialog({
               close(false);
             } catch (error) {
               setErrors({
-                form:
-                  error instanceof Error && error.message
-                    ? error.message
-                    : "Could not create the environment."
+                form: errorMessage(error) || "Could not create the environment."
               });
             }
           }}

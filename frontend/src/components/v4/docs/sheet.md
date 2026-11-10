@@ -81,12 +81,13 @@ Why: Repeated panels obscure which object and draft the person is editing.
 - src/components/v4/lib/overlay-pending.ts
 - src/components/v4/lib/overlay-sections.tsx
 
-Exports: Sheet, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetSubheader, SheetTitle, SheetTrigger. Source TypeScript defines the API.
+Exports: Sheet, SheetBody, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetSections, SheetSubheader, SheetTitle, SheetTrigger. Source TypeScript defines the API.
 
 ## Behavior
 
 - SheetBody owns the shared body inset. When SheetHeader, SheetSubheader, SheetBody or SheetFooter is a direct child (or inside a fragment), Content pins the header, and any SheetSubheader under it, above a full-bleed line rule, pins SheetFooter below a full-bleed line rule, and scrolls only the body between them; header and footer share the overlay inset. The rules are structure and always show, at every size and while pending, so the scroll region fades only at an edge without a rule. SheetSubheader runs the full width, without the space reserved for the close button, and the rule sits below it: use it for an artifact or legend the content needs, such as a path preview, a step meter or a filter row. A sheet without SheetFooter has no bottom rule. Content without these slots, such as a Sidebar, renders unchanged. Each slot forwards a div ref and native props.
 - A <form> may wrap the slots when it is SheetContent's only child, so a submit Button in SheetFooter submits it with no form id. Content lays the form's slots out exactly as direct children (the form draws no box, display: contents): the same pinned header and footer, the same scroll region with its focus clearance and the same rules, with no layout shift. Only a plain <form> element is looked through; a component that renders one is treated as free-form content.
+- SheetSections pins through wrappers: when a view component renders the sheet's content, or a header or footer sits inside its own component, pass the header and footer as SheetSections props and the body as children. The header lands above the same rule, the footer below the same rule, and only the children scroll, whatever components the header and footer are. Render SheetSections as SheetContent's direct child or as the view's root, so it fills the sheet. For a pinned subheader, pass SheetHeader and SheetSubheader together as header.
 - Sheet composes Radix Dialog with side-specific Content and scoped portals. open/onOpenChange controls visibility; Close is an explicit dismiss action.
 - SheetContent size sets the maximum width of a left or right sheet from a token: sm (size-sheet-sm, 384px, the default) for details and short forms, md (size-sheet-md, 512px) for create forms such as Create secret, and lg (size-sheet-lg, 672px) for form sheets with credentials, field pairs or a step bar, such as New connection and an auth method. The sheet is never wider than the viewport. Top and bottom sheets span the viewport and ignore size.
 - pending on SheetContent (v3 isPending) blocks Escape, outside clicks and focus moves, and disables the corner close and SheetClose while a save is in flight; the content is aria-busy. Clicks on a toast never dismiss the sheet. Route onOpenChange(false) through useDiscardChangesGuard so a dirty form asks with DiscardChangesAlertDialog first.
@@ -572,6 +573,61 @@ export default function Example() {
       </div>
       <figcaption className="text-muted-foreground text-xs">{`Saved name: ${saved}`}</figcaption>
     </figure>
+  );
+}
+```
+
+### Header and footer inside a view component
+
+Save this example at `src/pages/design-system/examples/sheet/wrapped-sections.tsx`; its relative imports are generated for that exact path. States: overflow.
+
+Registry items used: @infisical/button, @infisical/sheet. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { Button } from "../../../../components/v4/ui/button";
+import * as UI from "../../../../components/v4/ui/sheet";
+
+const PlanHeader = ({ plan }: { plan: string }) => (
+  <UI.SheetHeader>
+    <UI.SheetTitle>Upgrade to {plan}</UI.SheetTitle>
+    <UI.SheetDescription>
+      You pay the difference for the rest of this billing period.
+    </UI.SheetDescription>
+  </UI.SheetHeader>
+);
+
+const PlanFooter = () => (
+  <UI.SheetFooter>
+    <UI.SheetClose asChild>
+      <Button variant="primary">Upgrade</Button>
+    </UI.SheetClose>
+  </UI.SheetFooter>
+);
+
+const UpgradeView = ({ plan }: { plan: string }) => (
+  <UI.SheetSections header={<PlanHeader plan={plan} />} footer={<PlanFooter />}>
+    <UI.SheetBody>
+      <ul>
+        {Array.from({ length: 60 }, (_, index) => (
+          <li key={index}>
+            {plan} feature {index + 1}
+          </li>
+        ))}
+      </ul>
+    </UI.SheetBody>
+  </UI.SheetSections>
+);
+
+export default function Example() {
+  return (
+    <UI.Sheet>
+      <UI.SheetTrigger asChild>
+        <Button variant="outline">Upgrade plan</Button>
+      </UI.SheetTrigger>
+      <UI.SheetContent>
+        <UpgradeView plan="Pro" />
+      </UI.SheetContent>
+    </UI.Sheet>
   );
 }
 ```
