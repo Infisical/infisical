@@ -43,6 +43,12 @@ export const ALERT_RESOURCE_EVENT_TYPES: Record<AlertResourceType, AlertEventTyp
 // Resource types whose provider accepts plain email addresses as email channel recipients
 export const ALERT_RESOURCE_TYPES_WITH_EMAIL_ADDRESSES: string[] = [AlertResourceType.PamFolder];
 
+// Only secrets have a project-wide audience, so other resource types don't offer project recipients
+export const ALERT_RESOURCE_TYPES_WITH_PROJECT_RECIPIENTS: string[] = [
+  AlertResourceType.SecretReminder,
+  AlertResourceType.SecretRotation
+];
+
 export enum AlertChannelType {
   Email = "email",
   Slack = "slack",
