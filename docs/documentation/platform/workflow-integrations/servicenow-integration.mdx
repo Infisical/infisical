@@ -53,10 +53,22 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
 
     | Role | Assign it to |
     | --- | --- |
-    | `x_infis_approvals.admin` | The people who manage the integration. The role grants full access to every request, including delete, and the **Admin Console**. |
+    | `x_infis_approvals.admin` | The people who manage the integration. The role grants full access to every request, including delete, the **Admin Console**, and **Allowed Callback Hosts**. It's an elevated role, so admins have to elevate to it before they can use it. |
     | `x_infis_approvals.approver` | Every approver in a flow you build. Members of the **Infisical Approvers** group, which you set up in [Step 3](#step-3-set-up-the-approval-flow), get the role from the group. |
     | `x_infis_approvals.viewer` | People who only need to read requests and their audit trail. |
     | `x_infis_approvals.secret-manager-integration` | Only the integration user that Infisical signs in as, which you create in [Step 2](#step-2-connect-infisical-to-servicenow). |
+
+  </Step>
+  <Step>
+    Elevate to the `x_infis_approvals.admin` role, which you need to change the application's settings. Select your user avatar in the top-right corner, then select **Elevate role**.
+
+    ![Elevate Role in the User Menu](/images/platform/workflow-integrations/servicenow-integration/elevate-role-menu.png)
+
+  </Step>
+  <Step>
+    Select `x_infis_approvals.admin`, then select **Update**. The elevation ends when you log out.
+
+    ![Elevate to the Admin Role](/images/platform/workflow-integrations/servicenow-integration/elevate-role-admin.png)
 
   </Step>
   <Step>
@@ -403,7 +415,8 @@ If your flow fills in **Approved By** or **Decision Notes** on the record, Infis
   <Accordion title="Callback Failed with a connection error" id="resend-to-infisical">
     The ServiceNow instance can't reach the **Callback URL** on the record. Fix
     the instance's outbound firewall rules, then select **Resend to Infisical**
-    on the request in the **Admin Console**. If the URL itself is wrong, cancel the current request, correct
+    on the request in the **Admin Console** (elevate to `x_infis_approvals.admin`
+    first). If the URL itself is wrong, cancel the current request, correct
     `SITE_URL` and create the request again.
   </Accordion>
   <Accordion title="Callback Failed with an invalid decision">
