@@ -87,6 +87,7 @@ const plan = (overrides: Partial<SubscriptionPlan>) =>
     enforceMfa: true,
     ipAllowlisting: false,
     subOrganization: false,
+    secretScanning: true,
     status: "active",
     productPlans: [
       {
@@ -441,7 +442,7 @@ export const billingDemo: BillingAdapter = {
     const subscription =
       scenario === "self-hosted"
         ? plan({ slug: SubscriptionPlanTypes.Enterprise, subOrganization: true })
-        : plan(scenario === "empty" ? { productPlans: [] } : {});
+        : plan(scenario === "empty" ? { productPlans: [], secretScanning: false } : {});
     return query(subscription, scenario === "error" ? "default" : scenario);
   },
   useRefreshSubscription: () => refreshDemoSubscription,

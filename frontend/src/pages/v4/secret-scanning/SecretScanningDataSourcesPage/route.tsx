@@ -10,7 +10,10 @@ const SecretScanningDataSourcesPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute("/v4/organizations/$orgId/secret-scanning/data-sources/")({
-  staticData: { readiness: "partial", missing: ["Connect data source", "Data source details"] },
+  staticData: {
+    readiness: "partial",
+    missing: ["Data source details", "Create app connections inline"]
+  },
   component: SecretScanningDataSourcesPage,
   validateSearch: zodValidator(SecretScanningDataSourcesPageQueryParamsSchema),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
 
+import { SecretScanningUpgradeIntent } from "@app/components/license/UpgradeGate/upgrade-intents";
 import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
 import {
   AlertDialog,
@@ -40,6 +41,10 @@ import { Meta, StatusText } from "@app/components/v4/ui/text";
 import { Textarea } from "@app/components/v4/ui/textarea";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 import {
+  ProjectPermissionSecretScanningDataSourceActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
@@ -49,9 +54,12 @@ import {
 } from "@app/hooks/api/secretScanningV2/enums";
 import type { TSecretScanningDataSourceWithDetails } from "@app/hooks/api/secretScanningV2/types";
 
+import { useProjectPermission } from "../../access/permissions";
 import { errorMessage, failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
+import { UpgradeGate } from "../../license";
 import { v4Path } from "../../links";
+import { AddDataSourceSheet } from "./add-data-source";
 
 const route = v4Path("/organizations/$orgId/secret-scanning/data-sources/");
 
@@ -278,6 +286,16 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
   const [pageSize, setPageSize] = useState(20);
   const [editing, setEditing] = useState<TSecretScanningDataSourceWithDetails>();
   const [deleting, setDeleting] = useState<TSecretScanningDataSourceWithDetails>();
+  const [adding, setAdding] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const { data: subscription } = useV4Adapter("billing").useSubscription(orgId);
+  const { permission, isPending: permissionPending } = useProjectPermission(projectId);
+  const canCreate =
+    permissionPending ||
+    permission.can(
+      ProjectPermissionSecretScanningDataSourceActions.Create,
+      ProjectPermissionSub.SecretScanningDataSources
+    );
 
   const typeFilter = (filters.find((filter) => filter.field === "type")?.values ??
     []) as SecretScanningDataSource[];
@@ -394,11 +412,22 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
           }
           actions={
-            <Tooltip content="Connecting a data source is not available here yet.">
-              <Button variant="accent" icon="plus" aria-disabled>
-                Add data source
-              </Button>
-            </Tooltip>
+            <Button
+              variant="accent"
+              icon="plus"
+              disabledReason={
+                canCreate ? undefined : "You don't have permission to add data sources"
+              }
+              onClick={() => {
+                if (!subscription?.secretScanning) {
+                  setUpgrading(true);
+                  return;
+                }
+                setAdding(true);
+              }}
+            >
+              Add data source
+            </Button>
           }
         />
         <FilterBar
@@ -507,6 +536,18 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
               />
             ) : undefined
           }
+        />
+        <AddDataSourceSheet
+          orgId={orgId}
+          projectId={projectId}
+          open={adding}
+          onOpenChange={setAdding}
+        />
+        <UpgradeGate
+          intent={SecretScanningUpgradeIntent}
+          paywallKey="secret-scanning.secret-scanning-data-sources"
+          isOpen={upgrading}
+          onOpenChange={setUpgrading}
         />
         <EditDataSourceSheet
           dataSource={editing}

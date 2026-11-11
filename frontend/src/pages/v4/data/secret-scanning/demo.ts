@@ -1,3 +1,5 @@
+import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/helpers/secretScanningV2";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   SecretScanningDataSource,
@@ -8,6 +10,7 @@ import {
 } from "@app/hooks/api/secretScanningV2/enums";
 import type {
   TSecretScanningDataSource,
+  TSecretScanningDataSourceOption,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
   TSecretScanningResource
@@ -361,6 +364,43 @@ const sortKey: Record<SecretScanningFindingOrderBy, (entry: TSecretScanningFindi
   [SecretScanningFindingOrderBy.Status]: (entry) => entry.status
 };
 
+const connections: Partial<Record<AppConnection, { id: string; name: string }[]>> = {
+  [AppConnection.GitHubRadar]: [
+    { id: uuid("c5", 1), name: "acme-github-app" },
+    { id: uuid("c5", 2), name: "acme-labs-github-app" }
+  ],
+  [AppConnection.Bitbucket]: [{ id: uuid("c5", 3), name: "acme-bitbucket" }],
+  [AppConnection.GitLab]: [{ id: uuid("c5", 4), name: "acme-gitlab" }]
+};
+
+const workspaces = ["acme", "acme-legacy", "acme-mobile"];
+
+const groups = [
+  { id: "4821", name: "acme-platform", fullName: "acme-platform", fullPath: "acme-platform" },
+  { id: "4822", name: "payments", fullName: "acme / payments", fullPath: "acme/payments" },
+  { id: "4823", name: "mobile", fullName: "acme / mobile", fullPath: "acme/mobile" }
+];
+
+const configStore = createFixtureStore({
+  projectId,
+  content: [
+    "[extend]",
+    "useDefault = true",
+    "",
+    "[[allowlists]]",
+    'description = "Test fixtures"',
+    'paths = ["""(.*?)(test|spec)/fixtures/"""]',
+    "",
+    "[[rules]]",
+    'id = "acme-internal-token"',
+    'description = "Acme internal service token"',
+    "regex = '''acme_[a-z0-9]{32}'''",
+    'keywords = ["acme_"]'
+  ].join("\n") as string | null
+});
+
+let created = 0;
+
 export const secretScanningDemo: SecretScanningAdapter = {
   useProjectId: () => ({ data: projectId, isPending: false, error: null }),
   useInstanceState: () => ({
@@ -411,6 +451,75 @@ export const secretScanningDemo: SecretScanningAdapter = {
       error: null
     };
   },
+  useDataSourceOptions: () => ({
+    data: [
+      { name: "GitHub", type: SecretScanningDataSource.GitHub, connection: AppConnection.GitHub },
+      {
+        name: "Bitbucket",
+        type: SecretScanningDataSource.Bitbucket,
+        connection: AppConnection.Bitbucket
+      },
+      { name: "GitLab", type: SecretScanningDataSource.GitLab, connection: AppConnection.GitLab }
+    ] as TSecretScanningDataSourceOption[],
+    isPending: false,
+    error: null
+  }),
+  useAvailableConnections: (app) => ({
+    data: (connections[app] ?? []).map((entry) => ({ ...entry, projectId })),
+    isPending: false,
+    error: null
+  }),
+  useBitbucketWorkspaces: (connectionId, search) => ({
+    data: connectionId
+      ? workspaces
+          .filter((slug) => !search || slug.includes(search.toLowerCase()))
+          .map((slug) => ({ slug }))
+      : [],
+    isPending: false,
+    error: null
+  }),
+  useGitLabGroups: (connectionId, search) => ({
+    data: connectionId
+      ? groups.filter((group) => !search || group.fullPath.includes(search.toLowerCase()))
+      : [],
+    isPending: false,
+    error: null
+  }),
+  useCreateDataSource: fixtureMutation(({ connectionId, ...dto }) => {
+    created += 1;
+    const connection = Object.values(connections)
+      .flat()
+      .find((entry) => entry?.id === connectionId);
+    const now = new Date().toISOString();
+    const entry = {
+      ...dto,
+      id: uuid("d6", created),
+      description: dto.description ?? null,
+      connectionId: connectionId ?? null,
+      connection: connection
+        ? {
+            ...connection,
+            app: SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dto.type]
+          }
+        : null,
+      createdAt: now,
+      updatedAt: now,
+      isAutoScanEnabled: dto.isScanNewCommitsEnabled,
+      isDisconnected: false,
+      lastScannedAt: null,
+      lastScanStatus: dto.isHistoricalScanEnabled ? SecretScanningScanStatus.Queued : null,
+      lastScanStatusMessage: null,
+      unresolvedFindings: null,
+      resourceCount: 0
+    } as TSecretScanningDataSourceWithDetails;
+    dataSourceStore.update((entries) => [...entries, entry]);
+    return entry;
+  }),
+  useConfig: () => ({ data: configStore.use(), isPending: false, error: null }),
+  useUpdateConfig: fixtureMutation((config) => {
+    configStore.update(() => config);
+    return config;
+  }),
   useUpdateDataSource: fixtureMutation(({ dataSourceId, type, projectId: _, ...changes }) => {
     dataSourceStore.update((entries) =>
       entries.map((entry) =>
