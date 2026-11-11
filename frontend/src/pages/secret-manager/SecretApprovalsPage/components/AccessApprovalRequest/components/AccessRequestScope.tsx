@@ -22,10 +22,13 @@ export const AccessRequestScope = ({
   const { currentProject } = useProject();
   const [isExpanded, setIsExpanded] = useState(false);
   const isGlob = isGlobPath(secretPath);
-  const { data: environmentFolders } = useListProjectEnvironmentsFolders(currentProject.id, {
-    environment,
-    enabled: isGlob
-  });
+  const { data: environmentFolders, isError } = useListProjectEnvironmentsFolders(
+    currentProject.id,
+    {
+      environment,
+      enabled: isGlob
+    }
+  );
 
   const matchingFolders = useMemo(() => {
     if (!isGlob) return [];
@@ -56,6 +59,11 @@ export const AccessRequestScope = ({
             </div>
           ))}
         </div>
+      )}
+      {isError && (
+        <p className="border-t border-border px-3 py-2 text-xs text-muted">
+          Couldn&apos;t load the folders this path matches.
+        </p>
       )}
       {hiddenCount > 0 && (
         <div className="border-t border-border p-1">

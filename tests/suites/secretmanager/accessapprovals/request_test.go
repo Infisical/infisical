@@ -54,7 +54,7 @@ func TestAccessApprovalRequest_Create(t *testing.T) {
 
 		// Assert
 		require.Equal(t, http.StatusNotFound, res.status)
-		require.Equal(t, "No policy in environment with slug 'dev' and with secret path '/other' was found.", res.message(t))
+		require.Equal(t, "Access requests aren't enabled for secret path '/other' in environment 'Development'. Ask a project admin to add an access policy that covers this path.", res.message(t))
 		require.Empty(t, listRequests(t, g.proj))
 	})
 
