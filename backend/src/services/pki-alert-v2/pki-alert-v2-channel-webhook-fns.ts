@@ -6,7 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { delay } from "@app/lib/delay";
 import { logger } from "@app/lib/logger";
 import { RETRYABLE_NETWORK_ERRORS } from "@app/lib/retry/network-errors";
-import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
+import { safeRequest } from "@app/lib/validator";
 
 import { PKI_ALERT_RETRY_CONFIG } from "./pki-alert-v2-constants";
 import {
@@ -217,8 +217,6 @@ export const sendWebhookNotification = async (
   eventType: PkiWebhookEventType,
   channelId: string
 ): Promise<TChannelResult> => {
-  await blockLocalAndPrivateIpAddresses(config.url);
-
   const appCfg = getConfig();
   const payload = buildWebhookPayload({
     alert: alertData,
