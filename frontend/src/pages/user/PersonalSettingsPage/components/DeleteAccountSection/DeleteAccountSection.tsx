@@ -19,8 +19,7 @@ import {
   CardTitle,
   ConfirmationAlertDialog
 } from "@app/components/v3";
-import { isInfisicalCloud } from "@app/helpers/platform";
-import { useDeleteMe, useGetBillingOverview, useGetMyDeletionEligibility } from "@app/hooks/api";
+import { useDeleteMe, useGetMyDeletionEligibility } from "@app/hooks/api";
 import { TUserDeletionEligibility } from "@app/hooks/api/users/types";
 
 const DELETE_CONFIRMATION = "delete my account";
@@ -68,10 +67,6 @@ export const DeleteAccountSection = () => {
   const lastMemberOrgs = eligibility?.lastMemberOrganizations ?? [];
   const deletesOrgs = lastMemberOrgs.length > 0;
   const isBlocked = eligibility ? !eligibility.canDelete : false;
-
-  // isCloud is the same for every org, so any one works.
-  const overview = useGetBillingOverview(lastMemberOrgs[0]?.id ?? "", { enabled: deletesOrgs });
-  const cancelsSubscriptions = overview.data ? overview.data.isCloud : isInfisicalCloud();
 
   const handleOpen = async () => {
     const { isSuccess } = await refetchEligibility();
@@ -140,9 +135,9 @@ export const DeleteAccountSection = () => {
             <div className="flex flex-col gap-2">
               <p>
                 You are the last member of these organizations, so deleting your account also
-                permanently deletes them and all of their data.
-                {cancelsSubscriptions &&
-                  " Their subscriptions are canceled immediately, and any remaining prepaid commitment is forfeited without a refund."}
+                permanently deletes them and all of their data. Any subscriptions they have are
+                canceled immediately, and any remaining prepaid commitment is forfeited without a
+                refund.
               </p>
               <OrgList orgs={lastMemberOrgs} />
               <p>This cannot be undone.</p>
