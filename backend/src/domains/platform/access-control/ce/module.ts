@@ -8,6 +8,7 @@ import { TGrantActor, TGrantScope } from "./data-access/grant-data-access";
 import { PermissionCache } from "./data-access/permission-cache";
 import { ActorGrants } from "./model/actor-grants";
 import { Membership } from "./model/membership";
+import { Privilege } from "./model/privilege";
 import { GrantService, TCachedPermissionInput } from "./service/grant-service";
 
 export * from "./model/actor-grants";
@@ -43,6 +44,8 @@ export type TAccessControlDomain = {
   version: (input: { name: string }) => Promise<number>;
   findMembershipsByIds: (input: { ids: string[]; readFrom?: ReadFrom }) => Promise<Membership[]>;
   // The actor's memberships on resources of one type in a project, directly or through its groups, active or not.
+  // The actor's own folder grants in a project (privileges on one secret folder), active or not.
+  findFolderGrants: (input: { actor: TGrantActor; projectId: string; readFrom?: ReadFrom }) => Promise<Privilege[]>;
   findResourceMembershipsForActor: (input: {
     actor: TGrantActor;
     projectId: string;
@@ -92,6 +95,7 @@ export class AccessControlModule {
       invalidate: ({ name }) => grants.invalidate(name),
       version: ({ name }) => grants.version(name),
       findMembershipsByIds: ({ ids, readFrom }) => dataAccess.memberships.findByIds(ids, { readFrom }),
+      findFolderGrants: ({ readFrom, ...input }) => dataAccess.privileges.findFolderGrants(input, { readFrom }),
       findResourceMembershipsForActor: ({ readFrom, ...input }) =>
         dataAccess.memberships.findResourceMembershipsForActor(input, { readFrom })
     };

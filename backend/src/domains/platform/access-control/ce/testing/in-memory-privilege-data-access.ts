@@ -1,4 +1,5 @@
 import { TAdditionalPrivileges, TAdditionalPrivilegesInsert } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 import { TPrivilegeDataAccess } from "../data-access/privilege-data-access";
 import { Privilege } from "../model/privilege";
@@ -24,6 +25,24 @@ export class InMemoryPrivilegeDataAccess implements TPrivilegeDataAccess {
     const created = Privilege.restore(row);
     this.state.tables.privileges.set(row.id, row);
     return created;
+  }
+
+  async findFolderGrants({
+    actor,
+    projectId
+  }: {
+    actor: { type: ActorType.USER | ActorType.IDENTITY; id: string };
+    projectId: string;
+  }): Promise<Privilege[]> {
+    return [...this.state.tables.privileges.values()]
+      .filter(
+        (row) =>
+          row.projectId === projectId &&
+          row.folderId &&
+          (actor.type === ActorType.USER ? row.actorUserId : row.actorIdentityId) === actor.id
+      )
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((row) => Privilege.restore(row));
   }
 
   async deleteByIds(ids: string[]): Promise<Privilege[]> {

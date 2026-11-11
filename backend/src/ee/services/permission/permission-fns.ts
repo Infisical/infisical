@@ -1,8 +1,8 @@
 /* eslint-disable no-nested-ternary */
-import { createMongoAbility, ForbiddenError, MongoAbility, PureAbility, RawRuleOf, subject } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, PureAbility, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { SecretFolderRole, TOrganizations } from "@app/db/schemas";
+import { TOrganizations } from "@app/db/schemas";
 import {
   escapeHandlebarsMissingDict,
   handlebarsClient,
@@ -22,17 +22,12 @@ import {
   ProjectPermissionV2Schema,
   SecretSubjectFields
 } from "@app/domains/platform/projects/ce/module";
-import {
-  FOLDER_SCOPED_DENY_RULES,
-  SECRET_FOLDER_ROLE_PERMISSIONS
-} from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorAuthMethod, ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import {
   BadRequestError,
   ForbiddenRequestError,
-  NotFoundError,
   PermissionBoundaryError,
   UnauthorizedError
 } from "@app/lib/errors";
@@ -40,7 +35,7 @@ import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privile
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
 import { TPermissionDALFactory } from "./permission-dal";
-import { TCachedFolderScopedPrivileges, TProjectFolderScopedPrivilege } from "./permission-service-types";
+import { TCachedFolderScopedPrivileges } from "./permission-service-types";
 
 export function throwIfMissingSecretReadValueOrDescribePermission(
   permission: MongoAbility<ProjectPermissionSet> | PureAbility,
@@ -536,70 +531,12 @@ export const fetchProjectFolderScopedPrivileges = async (
   return privilegesByActorId;
 };
 
-export const filterOverriddenFolderScopedDenyRules = (
-  rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]
-): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
-  const toArray = <T>(value: T | T[]): T[] => (Array.isArray(value) ? value : [value]);
-
-  const allowedPairs = new Set<string>();
-  rules
-    .filter((rule) => !rule.inverted)
-    .forEach((rule) => {
-      toArray(rule.subject as string | string[]).forEach((sub) => {
-        toArray(rule.action).forEach((action) => allowedPairs.add(`${sub}:${action}`));
-      });
-    });
-
-  return rules.flatMap((rule) => {
-    if (!rule.inverted) return [rule];
-    return toArray(rule.subject as string | string[]).flatMap((sub) => {
-      const deniedActions = toArray(rule.action).filter((action) => !allowedPairs.has(`${sub}:${action}`));
-      if (!deniedActions.length) return [];
-      return [{ ...rule, subject: sub, action: deniedActions } as RawRuleOf<MongoAbility<ProjectPermissionSet>>];
-    });
-  });
-};
-
-const FOLDER_SCOPED_DENY_RULES_BY_ROLE = Object.fromEntries(
-  Object.values(SecretFolderRole).map((role) => [
-    role,
-    filterOverriddenFolderScopedDenyRules([
-      ...FOLDER_SCOPED_DENY_RULES,
-      ...SECRET_FOLDER_ROLE_PERMISSIONS[role]
-    ]).filter((rule) => rule.inverted)
-  ])
-) as Record<SecretFolderRole, RawRuleOf<MongoAbility<ProjectPermissionSet>>[]>;
-
-export const buildFolderScopedPrivilegeRules = (
-  privileges: TProjectFolderScopedPrivilege[]
-): RawRuleOf<MongoAbility<ProjectPermissionSet>>[] => {
-  const scopedGrants = privileges.map((privilege) => {
-    // make sure the role is valid
-    if (!Object.values(SecretFolderRole).includes(privilege.role as SecretFolderRole)) {
-      throw new NotFoundError({
-        name: "FolderRoleInvalid",
-        message: `Folder access role '${privilege.role}' on grant with ID '${privilege.id}' not found`
-      });
-    }
-    return {
-      role: privilege.role as SecretFolderRole,
-      conditions: { environment: privilege.environmentSlug, secretPath: privilege.secretPath }
-    };
-  });
-
-  const withConditions = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[], conditions: object) =>
-    rules.map((rule) => ({ ...rule, conditions }) as RawRuleOf<MongoAbility<ProjectPermissionSet>>);
-
-  return [
-    ...scopedGrants.flatMap(({ role, conditions }) =>
-      withConditions(FOLDER_SCOPED_DENY_RULES_BY_ROLE[role], conditions)
-    ),
-    ...scopedGrants.flatMap(({ role, conditions }) => withConditions(SECRET_FOLDER_ROLE_PERMISSIONS[role], conditions))
-  ];
-};
-
 export { interpolatePermissionRules, interpolateStoredIdentityRules, isActiveRole };
 export { expandLegacyForbidActions } from "@app/domains/platform/projects/ce/module";
+export {
+  buildFolderScopedPrivilegeRules,
+  filterOverriddenFolderScopedDenyRules
+} from "@app/domains/secrets-manager/secrets/ce/module";
 
 export {
   assertRoleSetBoundary,

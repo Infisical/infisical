@@ -57,6 +57,8 @@ export type TProjectsDomain = {
   // The project, the actor's grants and its resolved role rules, for a product to compose its own layers on and pass
   // to ProjectPermission.build.
   getProjectRules: (input: TGetProjectPermissionInput) => Promise<TProjectRules>;
+  // The project facts a permission check needs, for a principal with no grants of its own (a service token).
+  findProject: (input: { projectId: string }) => Promise<Project | undefined>;
   // What the actor may do on a resource inside a project (a PAM folder or account, a certificate application, a
   // signer), from its memberships on the resource, with the product's roles and project-admin fallback.
   getProjectResourcePermission: <TSet extends AbilityTuple>(
@@ -106,6 +108,7 @@ export class ProjectsModule {
         actors.getProjectIdentityOwnershipBreakdown(projectType, orgId),
       getProjectPermission: (input) => permissions.getProjectPermission(input),
       getProjectRules: (input) => permissions.getProjectRules(input),
+      findProject: ({ projectId }) => projects.findById(projectId),
       getProjectResourcePermission: (input) => resourceAccess.getProjectResourcePermission(input)
     };
 

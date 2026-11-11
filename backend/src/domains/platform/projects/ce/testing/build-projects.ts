@@ -20,7 +20,10 @@ export const buildProjectsForTests = ({
   organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   projects: { id: string; orgId: string; type: ProjectType; name?: string }[];
 }): {
-  service: Pick<TProjectsDomain, "getProjectPermission" | "getProjectRules" | "getProjectResourcePermission">;
+  service: Pick<
+    TProjectsDomain,
+    "getProjectPermission" | "getProjectRules" | "getProjectResourcePermission" | "findProject"
+  >;
   productAccessRegistry: ProductAccessRegistry;
 } => {
   const byId = new Map(
@@ -45,7 +48,8 @@ export const buildProjectsForTests = ({
     service: {
       getProjectPermission: (input) => permissions.getProjectPermission(input),
       getProjectRules: (input) => permissions.getProjectRules(input),
-      getProjectResourcePermission: (input) => resources.getProjectResourcePermission(input)
+      getProjectResourcePermission: (input) => resources.getProjectResourcePermission(input),
+      findProject: async ({ projectId }) => byId.get(projectId)
     },
     productAccessRegistry: registry
   };

@@ -177,7 +177,7 @@ export const createDomains = (deps: TDomainDeps) => {
     productAccessRegistry: projects.productAccessRegistry,
     licenseRegistry: license.registry
   };
-  const secrets = new SecretsModule(productDeps);
+  const secrets = new SecretsModule({ db, keyStore: deps.keyStore, ...productDeps });
   const pam = new PamModule(productDeps);
   const agentVault = new AgentVaultModule(productDeps);
   const kms = new KmsModule({ productAccessRegistry: projects.productAccessRegistry });

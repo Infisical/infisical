@@ -39,6 +39,8 @@ export type TProjectRules = {
   // The actor's roles resolved for this project type, cannot rules last.
   roleRules: TProjectRule[];
   principal: TPrincipal;
+  // Whose grants these are: the principal, or the actor it assumed inside this project.
+  actor: TGrantActor;
   identity: TProjectIdentityContext;
 };
 
@@ -90,13 +92,14 @@ export class ProjectPermissionService {
       grants,
       roleRules: this.resolveRoles({ project, grants }),
       principal,
+      actor: grantActor,
       identity: ProjectPermissionService.identityContext({ principal, grantActor, grants })
     };
   }
 
   async getProjectPermission(input: TGetProjectPermissionInput): Promise<ProjectPermission> {
-    const { roleRules, ...rest } = await this.getProjectRules(input);
-    return ProjectPermission.build({ ...rest, rules: roleRules });
+    const { roleRules, project, grants, principal, identity } = await this.getProjectRules(input);
+    return ProjectPermission.build({ project, grants, principal, identity, rules: roleRules });
   }
 
   // The project and the actor's grants in it, cached across requests and revalidated against the grants'
