@@ -14,6 +14,7 @@ import { coverDefinition } from "./contracts/cover";
 import { dataGridDefinition } from "./contracts/data-grid";
 import { detailDefinition } from "./contracts/detail";
 import { documentationLinkBadgeDefinition } from "./contracts/documentation-link-badge";
+import { durationInputDefinition } from "./contracts/duration-input";
 import { errorStateDefinition } from "./contracts/error-state";
 import { fieldMappingDefinition } from "./contracts/field-mapping";
 import { fileTreeDefinition } from "./contracts/file-tree";
@@ -58,6 +59,7 @@ export const componentCatalog: readonly ComponentDefinition[] = [
   dataGridDefinition,
   detailDefinition,
   documentationLinkBadgeDefinition,
+  durationInputDefinition,
   errorStateDefinition,
   fieldMappingDefinition,
   fileTreeDefinition,
