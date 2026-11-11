@@ -1,10 +1,5 @@
 import { z } from "zod";
 
-import {
-  MAX_CLIENT_ID_LENGTH,
-  MAX_CLIENT_SECRET_LENGTH
-} from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-client-fns";
-import { OAUTH_VSCHAR_PATTERN } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-token-fns";
 import { AgentVaultOauthRegistration } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-types";
 import { AgentVaultOauthAuthorizationStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { AGENT_VAULT } from "@app/lib/api-docs";
@@ -14,7 +9,11 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 import { actorContext } from "./agent-vault-router-fns";
-import { AgentVaultServerUrlSchema } from "./agent-vault-schemas";
+import {
+  AgentVaultOauthClientIdSchema,
+  AgentVaultOauthClientSecretSchema,
+  AgentVaultServerUrlSchema
+} from "./agent-vault-schemas";
 
 const AuthorizationViewSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId),
@@ -22,14 +21,6 @@ const AuthorizationViewSchema = z.object({
   error: z.string().nullable().describe(AGENT_VAULT.OAUTH.error),
   scopes: z.string().array().describe(AGENT_VAULT.OAUTH.scopes)
 });
-
-const printable = (max: number) =>
-  z.string().max(max).regex(OAUTH_VSCHAR_PATTERN, "Use printable ASCII characters without line breaks or accents");
-
-// Sent to the provider as typed, unlike the credential fields that take `{{KEY}}`, so a reference would only come
-// back as an invalid_client nobody can explain.
-const noVariableReference = (value: string) => !value.includes("{{");
-const VARIABLES_NOT_SUPPORTED_MESSAGE = "Variables aren't supported here. Paste the value.";
 
 // JWT only: an authorization ends in a browser redirect, so only a signed-in user can start or finish one.
 export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) => {
@@ -47,22 +38,13 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.OAUTH.accessBundleId),
         serverUrl: AgentVaultServerUrlSchema.describe(AGENT_VAULT.OAUTH.serverUrl),
         serviceId: z.string().uuid().optional().describe(AGENT_VAULT.OAUTH.serviceId),
-        clientId: z
-          .string()
-          .trim()
-          .min(1)
-          .pipe(printable(MAX_CLIENT_ID_LENGTH))
-          .refine(noVariableReference, VARIABLES_NOT_SUPPORTED_MESSAGE)
+        clientId: AgentVaultOauthClientIdSchema.optional().describe(AGENT_VAULT.OAUTH.clientId),
+        clientSecret: AgentVaultOauthClientSecretSchema.optional().describe(AGENT_VAULT.OAUTH.clientSecret),
+        registration: z
+          .literal(AgentVaultOauthRegistration.Dynamic)
           .optional()
-          .describe(AGENT_VAULT.OAUTH.clientId),
-        clientSecret: z
-          .string()
-          .min(1)
-          .pipe(printable(MAX_CLIENT_SECRET_LENGTH))
-          .refine(noVariableReference, VARIABLES_NOT_SUPPORTED_MESSAGE)
-          .optional()
-          .describe(AGENT_VAULT.OAUTH.clientSecret),
-        registration: z.literal(AgentVaultOauthRegistration.Dynamic).optional().describe(AGENT_VAULT.OAUTH.registration)
+          .describe(AGENT_VAULT.OAUTH.registration),
+        personal: z.boolean().optional().describe(AGENT_VAULT.OAUTH.personal)
       }),
       response: {
         200: z.object({

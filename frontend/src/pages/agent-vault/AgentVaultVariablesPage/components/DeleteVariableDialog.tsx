@@ -60,7 +60,7 @@ export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
           <ul className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-md border border-border bg-container/50 p-3">
             {usedByServices.map((service) => (
               <li key={service.id} className="flex items-center gap-2">
-                <ServiceIcon hostPattern={service.hostPattern} />
+                <ServiceIcon hostPattern={service.hostPattern} serviceType={service.type} />
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-sm">{service.name}</span>
                   <Link

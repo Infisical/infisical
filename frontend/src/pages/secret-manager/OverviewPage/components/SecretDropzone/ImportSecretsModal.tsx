@@ -65,6 +65,7 @@ import {
   useUpdateSecretBatch
 } from "@app/hooks/api";
 import { fetchProjectFolders } from "@app/hooks/api/secretFolders/queries";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { useCreateWsTag, useGetWsTags } from "@app/hooks/api/tags/queries";
 import { ApiErrorTypes, SecretType } from "@app/hooks/api/types";
@@ -859,6 +860,7 @@ const ImportSecretsContent = ({
       const approvalEnvs: string[] = [];
       const approvalEnvSlugs: string[] = [];
       const failedEnvs: string[] = [];
+      const rejectedEnvErrors: unknown[] = [];
       const partialEnvs: string[] = [];
       const partialEnvSlugs: string[] = [];
 
@@ -885,6 +887,7 @@ const ImportSecretsContent = ({
         } else if (result.status === "rejected") {
           failureCount += 1;
           failedEnvs.push(selectedEnvs[idx].name);
+          rejectedEnvErrors.push(result.reason);
         }
       });
 
@@ -930,7 +933,10 @@ const ImportSecretsContent = ({
         });
       }
 
-      if (failedEnvs.length) {
+      // A flat import's batch failures were already toasted by the global handler, so it shows only
+      // what failed before any write, such as reading the existing secrets
+      if (!nestedImport) showSecretWriteErrors(rejectedEnvErrors.map((error) => ({ error })));
+      else if (failedEnvs.length) {
         createNotification({
           type: "error",
           text: `Failed to upload secrets into ${failedEnvs.join(", ")}`
@@ -950,18 +956,12 @@ const ImportSecretsContent = ({
         folderResponseCountBucket: overviewCountBucket(folderResponseCount),
         folderFailureCountBucket: overviewCountBucket(folderFailureCount)
       });
-      const closedCurrentInvocation = onClose();
       const completedEnvSlugs = [...successEnvSlugs, ...approvalEnvSlugs, ...partialEnvSlugs];
-      if (completedEnvSlugs.length && closedCurrentInvocation) {
-        onComplete?.(completedEnvSlugs);
-      }
+      if (!completedEnvSlugs.length) return;
+      if (onClose()) onComplete?.(completedEnvSlugs);
     } catch (err) {
       attempt.flow({ ...flow, phase: "failed" });
-      console.error(err);
-      createNotification({
-        type: "error",
-        text: "Failed to upload secrets"
-      });
+      showSecretWriteErrors([{ error: err }]);
     } finally {
       isImportRunningRef.current = false;
       setNestedProgress(null);

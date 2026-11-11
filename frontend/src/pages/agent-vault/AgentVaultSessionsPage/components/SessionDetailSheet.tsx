@@ -4,6 +4,7 @@ import { BanIcon, BotIcon, PackageIcon, PencilIcon, UserIcon } from "lucide-reac
 import { twMerge } from "tailwind-merge";
 
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
+import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Button,
@@ -187,7 +188,8 @@ export const SessionDetailSheet = ({
                               <TooltipTrigger asChild>
                                 <span className="flex min-w-0 items-center gap-2">
                                   <ServiceIcon
-                                    hostPattern={service.hostPattern}
+                                    hostPattern={hostPatternOf(service)}
+                                    serviceType={service.type}
                                     className="size-5"
                                   />
                                   <span className="truncate">{service.name}</span>

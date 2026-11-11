@@ -33,6 +33,8 @@ type Props = {
   onClose?: () => void;
   isBatchMode?: boolean;
   onTagsChange?: (tags: { id: string; slug: string }[]) => void;
+  onBatchSave?: () => void;
+  isBatchSavePending?: boolean;
   dragHandleProps?: HTMLAttributes<HTMLDivElement>;
 };
 
@@ -44,6 +46,8 @@ export const SecretTagForm = ({
   onClose,
   isBatchMode,
   onTagsChange,
+  onBatchSave,
+  isBatchSavePending,
   dragHandleProps
 }: Props) => {
   const { projectId } = useProject();
@@ -156,7 +160,7 @@ export const SecretTagForm = ({
                   ? "Tag must be slug-friendly"
                   : "No tags match search"
               }
-              isDisabled={!canEditSecret}
+              isDisabled={!canEditSecret || isBatchSavePending}
               isLoading={isTagsLoading}
               placeholder="Select or create tags..."
               options={projectTags?.map((tag) => ({ label: tag.slug, value: tag.id }))}
@@ -176,10 +180,25 @@ export const SecretTagForm = ({
             You do not have permission to edit tags on this secret.
           </p>
         )}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
           <Button variant="ghost" size="xs" type="button" onClick={onClose}>
             Close
           </Button>
+          {onBatchSave && canEditSecret && (
+            <Button
+              variant="project"
+              size="xs"
+              type="button"
+              isDisabled={isBatchSavePending}
+              isPending={isBatchSavePending}
+              onClick={() => {
+                onTagsChange?.(watchedTags.map((t) => ({ id: t.value, slug: t.label })));
+                onBatchSave();
+              }}
+            >
+              Save Tags
+            </Button>
+          )}
         </div>
       </div>
     );

@@ -31,7 +31,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import {
+  actorContext,
+  resolveRequestedProjectId,
+  serviceTransformationNamesOf,
+  serviceTypeReportFieldsOf
+} from "./agent-vault-router-fns";
 import {
   AgentVaultInlineServiceSchema,
   AgentVaultInlineServicesInputSchema,
@@ -332,22 +337,31 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             accessBundleName: session.accessBundle?.name ?? null,
             expiresAt: session.expiresAt?.toISOString() ?? null,
             ...(session.services.length > 0 && {
-              services: session.services.map((service) => ({
-                serviceId: service.id,
-                name: service.name,
-                serviceType: service.type,
-                serverUrl: service.serverUrl ?? undefined,
-                hostPattern: service.hostPattern,
-                credentialType: service.credential.type,
-                headerName:
-                  service.credential.type === AgentVaultCredentialType.Bearer
-                    ? service.credential.headerName
-                    : undefined,
-                allowedMethods: service.allowedMethods,
-                allowedPathPrefixes: service.allowedPathPrefixes,
-                customHeaderNames: service.customHeaders.map((header) => header.name),
-                substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder)
-              }))
+              services: session.services.map((service) => {
+                const fields = serviceTypeReportFieldsOf(service);
+                return {
+                  serviceId: service.id,
+                  name: service.name,
+                  description: service.description,
+                  serviceType: service.type,
+                  serverUrl: fields.serverUrl,
+                  hostPattern: fields.hostPattern,
+                  host: fields.host,
+                  port: fields.port,
+                  database: fields.database,
+                  tlsEnabled: fields.tlsEnabled,
+                  tlsVerify: fields.tlsVerify,
+                  hasTlsCa: fields.hasTlsCa,
+                  credentialType: service.credential.type,
+                  headerName:
+                    service.credential.type === AgentVaultCredentialType.Bearer
+                      ? service.credential.headerName
+                      : undefined,
+                  allowedMethods: fields.allowedMethods ?? null,
+                  allowedPathPrefixes: fields.allowedPathPrefixes ?? null,
+                  ...serviceTransformationNamesOf(service)
+                };
+              })
             }),
             ...(onBehalfOf && {
               onBehalfOfUserId: onBehalfOf.userId,

@@ -156,11 +156,35 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
 - **Sessions are never deleted while the project exists**, so the Sessions page is a full history and a session's
   row keeps the key its logs need. Deleting the project deletes its sessions (`ON DELETE CASCADE`).
-- Anyone with a session token can download its skills from Infisical with only the token (`GET /session/skills`).
+- Anyone with a session token can read its skills and its services list with only the token, from Infisical
+  (`GET /session/skills`, `GET /session/services`), or through any proxy at the same paths on the proxy's Infisical
+  (see [The CLI](#the-cli)).
 - `POST /session/revoke` revokes the session its `Authorization: Bearer agv_...` token names, so an agent holding
   its token can end its own session. Like `/session/skills`, `inject-identity` skips it and it takes no other
   credential. An unknown token is a 401; an already revoked or expired session is a 200, so it is idempotent. It
   writes through `revokeIfActive`, skips the owner-reach check, and is audited with the session owner as actor.
+- **The agent reads the services list word for word.** `GET /session/services`
+  (`agent-vault-session-services-fns.ts`) builds it from the rows resolve reads, without decrypting anything: the
+  session's expiry, and each service's name, description, hosts, rules and placeholders (quoted, like names), never a
+  credential or a value. The session's label is left out: someone's short summary of the session could steer an agent
+  away from the prompt it was given. Under service-hosts the notes name the proxy's exception hosts (`allowedHosts`, up
+  to 25), so an agent knows it can still reach a package registry. A service's description is written for that, so it also refuses invisible characters
+  (`AgentVaultServiceDescriptionSchema`). A service is `needs-personal-values` exactly when resolve flags it
+  `personalValuesMissing`: `toSetPersonalFields` counts a member's OAuth sign-in only while resolve would send it
+  (`isMemberOauthConnectionUsable`, which resolve calls too), so `run` never configures an MCP server whose member has
+  to connect again. `credential.memberProvided` (resolve's `memberProvided`) says part of the credential is a personal
+  value: the session owner's, or for a session on a user's behalf, that user's (`personalValuesOwner`). `howToUse`, the
+  notes and the built-in skill send a rejected credential to that person, not to an admin, who can't change another
+  member's values. A service whose members sign in with OAuth (`memberSignsIn`) says the person has to connect their
+  account, which covers a sign-in that expired. Its wording (`howToUse`, the notes) was measured with agents together with the
+  built-in skill, so change the two together and measure again. A forwarding proxy names itself
+  (`X-Agent-Vault-Proxy-Id`, `X-Agent-Vault-Proxy-Version`); a proxy in the session's project adds its traffic policy,
+  and anything else (no id, a malformed one, another project's) only leaves the policy out. Not audited, like resolve.
+- **A session token the replica doesn't have yet is looked up again on the primary** (`$findSessionByToken`, used by
+  resolve, skills and services), so a session minted a moment ago isn't refused while the replica catches up. A proxy
+  remembers a refusal for 5 seconds, so a refused first request would also refuse the agent's first requests. The rows
+  minted with the session are just as new, so a session found that way (`onPrimary`) also reads its bundle links and
+  inline services on the primary; otherwise it would resolve with no services at all.
 
 ## Sessions on behalf of users
 
@@ -283,6 +307,44 @@ alone: nothing edits them, no bundle or other session reads them, and only resol
 - **A NULL `encryptedSecrets` means nothing to send only for a pass-through service with no custom headers or
   substitutions.** On any other service it means the session ended, and resolve leaves the service out.
 
+## Database and SSH services
+
+`postgres`, `mysql` and `ssh` are service types like `http` and `mcp`, in the same registry
+(`AGENT_VAULT_SERVICE_TYPES`), tables and grants. The agent reaches one with `infisical agent-vault connect <name>`,
+which opens a local port and tunnels each connection to the proxy as `CONNECT <name>.svc.agent-vault:1` over TLS.
+The proxy then runs PAM's protocol handler, which logs in as the service's account.
+
+- **`hostPattern` is NULL for these types, and the DB enforces it both ways** (`("type" IN ('http','mcp')) =
+  ("hostPattern" IS NOT NULL)`). The server lives in `config` (`host`, `port`, `database`, `tls`). A copy of the host
+  in `hostPattern` would let HTTP matching, which has no type filter, attach the database or SSH password as a Basic
+  header to any web request to that host, on new and old proxies alike. With no pattern an old proxy, which reads an
+  unknown type as `http`, matches nothing. Host-overlap checks skip NULL patterns (`findHostPatternConflicts`), so a
+  database never conflicts with an HTTP service on the same host. Every reader of `hostPattern` handles NULL.
+- **The name is how the agent connects**, so it is at most 63 characters (one DNS label) and an inline one must be
+  given (the router requires it). `host` takes a host name (letters, digits, `-` and `_`, which Docker Compose names
+  use) or an IP. `host` and `database` refuse `{{`: variables aren't expanded there yet. Postgres pins `database` (PAM's handler overwrites the client's); MySQL only starts in it, and the account's
+  grants decide which other databases the agent can `USE`.
+- **Resolve sends `native: { host, port, database, tls }`**, built by `toResolvedNativeTarget`, never the raw config,
+  so fields of other types stay off the wire. HTTP and MCP services send `native: null`. The proxy prefers an inline
+  service over a bundle one with the same name (`accessBundleName === null`), so a bundle edit made after a session
+  started can't redirect `connect db` to another database.
+- **Credentials.** `basic` for all three, and it must have a username (set, or left to members). `ssh-key` (username,
+  private key, optional certificate) for `ssh` only, enforced by a CHECK too. Its parts span lines, so it takes no
+  member-provided field and no `{{variable}}` yet: personal values and variables refuse line breaks. A partial update
+  keeps the parts it leaves out, and `certificate: null` removes the certificate; when none is stored it changes nothing,
+  so it neither rewrites the secret nor audits a replaced credential. Keys are not checked on save, as in PAM; the proxy
+  refuses an unusable one when a connection is requested.
+- **TLS to the database** is `{ enabled, verify, ca }`, defaulting to enabled and verified, merged one level deep on
+  update. A `ca` is parsed on save. It applies only to the proxy's leg to the database. An update can't send
+  `database: null` or `tls: null` for these two types (null is only an SSH service's read-back). The create event
+  records `hasTlsCa`, and an update records `tlsCaChanged` (`set`, `removed` or `replaced`) only when the stored CA
+  changed, compared ignoring whitespace.
+- **`GET /api/v1/agent-vault/session/proxy-ca-fingerprints`** (session-token auth, like `/session/skills`) returns
+  the `rootCaFingerprint` of every proxy in the session's project, so `connect` can pin the proxy's CA without
+  trusting the proxy for it. It never returns the fingerprint of a stored certificate that differs from it: that is a
+  CA no proxy serves. It skips proxies whose `heartbeat` is NULL: revoke and rotate clear it and there is no revoked
+  flag, so a revoked proxy's CA stops being trusted (a rotated one returns at its first heartbeat).
+
 ## Proxies
 
 - There is no enrollment. Create and rotate return a proxy token (the non-expiring access JWT) and every proxy
@@ -377,8 +439,11 @@ outside it is logged unparsed and still checked against the list.
   create there is no service yet and the body carries a credential. It sends what a save of the same body would store
   (omitted values fall back to the saved service, variables expanded as resolve does), reads a pending OAuth
   authorization without claiming it, and refreshes a stored OAuth token through the usual refresh. The client is
-  hand-rolled on `safeRequest`, not the MCP SDK, which would bypass the SSRF guard. It is not audited, and a
-  member-provided bearer token can't load tools (the admin types names instead).
+  hand-rolled on `safeRequest`, not the MCP SDK, which would bypass the SSRF guard. It is not audited. A service
+  whose members each provide the credential has none to load with, so the sheet sends the admin's own instead, as a
+  credential the admin sets in full that only the list call sees: a typed token (`memberProvidedFields: []`), or a
+  sign-in. A saved member-provided OAuth service signs the admin in as a member (`personal: true`, the stored client),
+  so the read accepts an authorization of either intent; nothing claims it, and it expires unused.
 
 ## Transformations
 
@@ -436,6 +501,9 @@ one: a host pattern, method or path decides what a service can reach, so it stay
   and returns a 409 if the type changed, or, for a partial basic update, the sealed secret did. Otherwise the
   half left out is written back stale, and its rows describe text that is no longer sealed. That first read is
   on the primary (`findByIdInAccessBundle`): a replica still behind the previous save would 409 the next one.
+  An `ssh-key` update that writes no secret (a port edit, or `certificate: null` with none stored) writes the
+  locked row's `credentialConfig`, so `hasCertificate` keeps matching a secret a concurrent save sealed. A
+  `certificate: null` that meets a certificate or key changed since the first read is a 409.
 - The `variableId` key is `DEFERRABLE INITIALLY DEFERRED`. A project delete cascades to its bundles' services and
   to its variables in one statement, and an immediate check can fire before the service cascade has removed the
   rows, depending on which constraint was created first. The refusal that matters is the one under the variable
@@ -467,7 +535,8 @@ one: a host pattern, method or path decides what a service can reach, so it stay
 
 ## Member-provided values
 
-An admin can leave a credential field to each member: the bearer token, or either half of a basic credential
+An admin can leave a credential field to each member: the bearer token, either half of a basic credential, or an MCP
+service's OAuth sign-in
 (`memberProvidedFields` on the service, named like variable references: `credential-value` is a token or a password,
 `credential-username` a username). Custom header and substitution values can't be member-provided yet. The personal
 value tables already carry the reference tables' target columns, but adding them still needs the service's check
@@ -540,6 +609,45 @@ personal values can reference.
   The sidebar asks for `requiresSetup=true&granted=true` and reads the count, so an admin isn't nagged in the nav
   about bundles they reach only by role, while the page's banner and badges still show them.
 
+### An OAuth sign-in left to members
+
+An MCP service's OAuth sign-in can be member provided (`memberProvidedFields: ["credential-value"]`), like a bearer
+token. Each member's connection is their personal value for `credential-value`: the sealed
+`{ accessToken, refreshToken, clientSecret }` in `encryptedValue` and the rest of a `TAgentVaultOauthConfig` in the
+nullable `oauthConfig` column, which only these rows fill. Reads return the connection's status as `oauth` on that
+field's entry in `personalValues.fields` (null on every typed value), not beside the fields, so whether the field is
+set and how its connection is doing come from the same row.
+
+- **The service row keeps no tokens.** Its `credentialConfig` is a `TAgentVaultOauthMemberConfig` (server URL, issuer,
+  `registration`, and an admin-entered `clientId`), and `encryptedCredential` is `{ clientSecret }` for an admin-entered
+  client with a secret, NULL otherwise. Anything that reads an OAuth service's sealed credential as tokens checks
+  `isMemberProvidedOauth` first: resolve, refresh, scope reports, tool loading and the admin's reauthorization all do.
+- **The save runs discovery and keeps no client** (`prepareMemberOauth`): a server with no OAuth, or with no
+  registration and no admin-entered client, fails the save. A guessed `/register` is probed by registering a client
+  that is then left unused, so a save can create clients at the provider. Each member's sign-in registers its own
+  client, as an admin's reauthorization does, or uses the admin-entered one.
+- **A member signs in through the same authorization routes with `personal: true`**, which needs only bundle Read and
+  a service that leaves sign-in to members. The record carries `personal`, and a claim refuses the wrong intent both
+  ways, so a member's sign-in never becomes the service's credential and an admin's never a personal value. The claim
+  goes through its own hidden route, `POST .../personal-values/oauth-connection` with `{ authorizationId }` (the
+  public PATCH takes typed values only), which re-checks under the service lock that the
+  server, config and client secret are the ones the first read saw, and 409s otherwise.
+- **Whatever the tokens are bound to clears every connection in the update's transaction**: the server URL, the
+  issuer, the client (id, registration mode, or a new secret), the credential type, or switching back to shared. The
+  update's audit event records `personalValuesCleared`. An admin-entered client's stored secret is never kept across an
+  issuer change: the save is refused until the secret is sent again. A save without a credential that would move a
+  member-provided service off the server its members' sign-in is bound to (a concurrent save changed it) 409s. Revoke, removal and demotion clear them like any personal value.
+- **Refresh and scope reports run on a token holder** (`serviceTokenHolder` or `personalTokenHolder`), so a member's
+  token gets the same compare-and-swap and jsonb merge as a service's (`agent-vault-oauth-token-dal-fns.ts`). The
+  personal lock is keyed by service and owner, not row id, because a reconnect replaces the row; a refresh racing a
+  reconnect loses its swap. The proxy's `credential-refresh` and `missing-scopes` carry the session, so the owner is
+  `personalValuesOwner(session)`, the user an on-behalf-of session acts for.
+- **Resolve reads the owner's values once**, before the refresh phase, so a member's lazy refresh shares the 4 second
+  budget with the services' own. A connection that needs reauthorization reads as not set up (`isConfigured` false,
+  `personalValuesMissing` in resolve), so the sidebar count and the OBO bundle list include it.
+- **Resolve marks every service with `memberProvided`**, which current CLIs use to tell the agent a rejected credential
+  is the member's to fix. Older proxies ignore it.
+
 ## Skills
 
 A skill is an Agent Skills folder (`SKILL.md` plus files) kept per project and added to bundles. When an agent
@@ -580,8 +688,8 @@ an installed copy.
   audit event (data-access class). So does `GET /skills/:skillId`, which returns the latest version's files with the
   skill (for that version); the list routes return no files and write none.
 - **`GET /session/skills`** returns the latest files of every skill on the session's reachable bundles (the same
-  intersection as the services), sorted by name, read from the primary. The proxy is not involved: the CLI calls it
-  with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
+  intersection as the services), sorted by name, read from the primary. The CLI calls it through the proxy at the
+  proxy's Infisical host, or directly behind an older proxy, with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
   parses the header itself. Any refusal is a 401, an unknown token included. It shares the owner checks of resolve
   and credential refresh (`$authorizeSessionOwner`), with the org taken from the session's project instead of a
   proxy. A call that returns at least one skill writes one `agent-vault-skills-delivered` audit event
@@ -589,6 +697,17 @@ an installed copy.
   actor (a user named as they are now, or from the session's snapshot if they are gone) and the session's access
   bundle (sessions carry one today), plus one anonymous `Agent Vault Skills Delivered` PostHog event with the
   count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
+- **`GET /session/skills` also returns the built-in `infisical-agent-vault` skill** (`isBuiltin: true`, left out with
+  `includeBuiltin=false`), so an orchestrator that installs skills without `agent-vault run` gets it too. Its file
+  is `agent-vault-skill/builtin-skill/SKILL.md`, read beside its loader at runtime (a dedicated `tsdown` copy rule
+  ships it to `dist`), with a fixed id and version 1. It is not audited or counted: it holds no project data, and
+  every session start would record it. Infisical holds the only copy; the CLI and the proxy keep none. The name is
+  reserved: create and update refuse it (`assertSkillNameNotReserved`), and a library skill created under it before
+  the reservation is replaced by the built-in in the response.
+- **`GET /skills/builtin` serves the built-in skill outside a session** (`getBuiltinSkill`): skill `Read` without the
+  bundle reachability filter, since every agent gets it whatever its bundle, not audited, and no `version` in the
+  response. The dashboard doesn't show the built-in skill; the docs point readers to this endpoint and to the copy
+  `agent-vault run` installs.
 - Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
   (`getAgentVaultReachability`): they see only skills in a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
@@ -615,7 +734,8 @@ an installed copy.
 `agent-vault-oauth/`. MCP services only. Infisical is the OAuth client and does discovery, registration, the
 code exchange and refresh; the proxy only ever receives the access token.
 
-- **The tokens live on the service row**, like every other credential: the non-secret half (endpoints, client,
+- **The tokens live on the service row**, like every other credential, unless the sign-in is left to members (see
+  [An OAuth sign-in left to members](#an-oauth-sign-in-left-to-members)): the non-secret half (endpoints, client,
   scopes, status, expiry, token hash) in `credentialConfig`, `{ accessToken, refreshToken, clientSecret }` sealed
   in `encryptedCredential`. Each service has its own client, used only with the issuer it was registered at.
   Reauthorizing registers a fresh client, since the server may have dropped the old one and the sign-in would then
@@ -647,11 +767,13 @@ code exchange and refresh; the proxy only ever receives the access token.
   stored value back with its remaining TTL, so it can be retried; nothing runs after commit.
 - **Resolve sends an OAuth token in the bearer shape** with `source: "oauth"`, so a proxy that predates OAuth
   injects it unchanged. The header is always `Authorization: Bearer` (the MCP authorization spec), so an OAuth
-  credential stores no header name or prefix and its input is only `authorizationId`. Resolve refreshes a token that expires before the next poll; the proxy calls
+  credential stores no header name or prefix and its input is `authorizationId`, or, when members sign in, `memberProvidedFields` with an optional admin-entered `clientId`, `clientSecret` or `registration: "dynamic"`. Resolve refreshes a token that expires before the next poll; the proxy calls
   `credential-refresh` after an upstream 401. A failing provider never fails resolve for other services: it costs
   that service a stale token and a `lastError`. A refresh error that means the login is dead (`invalid_grant`, a
-  dropped client, providers' own revoked or expired refresh token codes: `DEAD_LOGIN_ERROR_CODES`) moves the service
-  to needs reauthorization, so it isn't retried every poll. Any token type but a proof-of-possession one (DPoP, MAC,
+  dropped client, providers' own revoked or expired refresh token codes: `isDeadLoginError`) moves the service
+  to needs reauthorization, so it isn't retried every poll. `isClientRefusedError` picks out the refusals of the client
+  itself (`invalid_client`, `unauthorized_client` and providers' names for them): for a member's connection through the admin's own OAuth app, the
+  message says reconnecting won't help and a project admin has to update the app. Any token type but a proof-of-possession one (DPoP, MAC,
   PoP) is sent as a bearer token, since servers may name their own (Slack's is `user`).
 - **Both proxy calls answer well inside the proxy's 15 second timeout.** Resolve waits 4 seconds in total for its
   refreshes and sends the stored token for any still running, which finish in the background. Token requests (the
@@ -664,7 +786,9 @@ code exchange and refresh; the proxy only ever receives the access token.
 - **Non-conforming servers are supported through fallbacks**, each recorded in `compatibility`. A fallback may
   relax what a server must advertise, never a check that stops mix-up or token theft: the issuer must match (a
   trailing slash aside), the protected resource must be the server's own origin, and `iss` is checked whenever it
-  arrives.
+  arrives. Parameters added to every request for a known provider are not fallbacks and are not recorded:
+  `buildAuthorizeUrl` sends Google (`accounts.google.com`) `access_type=offline` and `prompt=consent`, since Google
+  ignores `offline_access` and issues a refresh token only for those.
 - **Every scope is an RFC 6749 scope-token** (`isOauthScopeToken`): the proxy's reports are refused otherwise, and
   scopes from metadata, challenges and token responses that aren't are dropped. A space would split the `scope`
   parameter and a NUL fails the jsonb write. A granted `scope` splits on spaces only, since a comma is legal inside a
@@ -687,9 +811,12 @@ code exchange and refresh; the proxy only ever receives the access token.
 
 ## Session logs
 
-Metadata only (method, host, path, status, decision). Bodies, headers and the query string are never stored;
-for an MCP service the proxy reads only the JSON-RPC method and tool name of each call from the body. The agent is
-hostile input: nothing it sends may erase or hide its own records, so the proxy logs every request it drops.
+HTTP and MCP records are metadata only (method, host, path, status, decision). Bodies, headers and the query string
+are never stored; for an MCP service the proxy reads only the JSON-RPC method and tool name of each call from the
+body. Database and SSH records are not metadata only: they hold the SQL statements, the SSH commands, piped input (up
+to 8 KiB) and output (up to 64 KiB), and any of these can carry a secret, such as a password typed into a statement.
+Treat session logs as sensitive data when widening who can read them or adding an export. The agent is hostile
+input: nothing it sends may erase or hide its own records, so the proxy logs every request it drops.
 
 - **Bytes go proxy to the bucket to the browser, and S3 is the index.** Infisical stores nothing per chunk and never
   seals or opens one. The bucket is default storage (the instance's, `OBJECT_STORAGE_S3_*`) or external storage (the
@@ -751,7 +878,9 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   saved, so a bucket the operator adds later doesn't turn logs back on. Health and the CORS probe only run while
   external storage is on and on the plan, since nothing else is recorded or shown.
 - **Usage is counted on the way out, not from the cap counter.** Each upload link sends the aggregated PostHog event
-  `Agent Vault Session Log Chunk Accepted` (`bytes`, `storageType`, and `records`, the proxy's own unchecked count), and
+  `Agent Vault Session Log Chunk Accepted` (`bytes`, `storageType`, and `records`, the proxy's own unchecked count,
+  with its split into `brokered`, `passthrough`, `blocked` and `error` only when the split adds up to `records`;
+  `getChunkDecisionProperties`), and
   the layer counts links on `infisical.object_storage.upload.*` for operators. The cap counter floors at 16 KiB, mixes
   storage types and stops at the cap, so it isn't a usage number.
 - **The settings body is `{ enabled: false }` or `{ enabled: true, storage }`.** Turning on always names the
@@ -764,6 +893,86 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 
 ## The CLI
 
+- **The proxy answers its own Infisical's session endpoints** for the session a request arrives on, through whichever
+  door the agent already uses (CONNECT, plain HTTP, SOCKS5). On the host and port of its `--domain`, over http or https whatever `--domain`'s scheme, it forwards
+  two paths to Infisical with the session's own token as the Bearer token, whatever the client sent:
+  `<api>/v1/agent-vault/session/services` and `<api>/v1/agent-vault/session/skills`. Every other request to that host
+  goes through like any request, so the session's token reaches nothing else in Infisical. For a well-formed token, the
+  CONNECT to that host opens before the session check (`infisicalHostDefersGate`) and each request inside checks the
+  session itself, so a refused session reads as JSON with its hint over TLS rather than a CONNECT failure curl can't
+  show. SOCKS5 checks the session at login, before it knows the target, so it can't defer. At most 8 such requests run
+  at once and the rest queue inside a 25s budget. Infisical's answer passes through unchanged; the proxy's own refusals
+  (`busy`, `infisical_unreachable`, `method_not_allowed`, the session refusals) are JSON with a code and a hint, and
+  their hints name the services URL. The proxy's port has no session endpoints, only `/_agent-vault/ca`.
+- **The proxy names its Infisical only to a session it accepts**, in `X-Agent-Vault-Api-Url` on the CONNECT answer,
+  its own refusals and the session endpoints' answers. A CONNECT to the deferred Infisical host checks the session
+  first and logs a refusal like any other door: a refused one still gets its tunnel, marked
+  `X-Agent-Vault-Decision: blocked` (or `error` when the session couldn't be checked) with the refusal's code in
+  `X-Agent-Vault-Error` instead of the URL. `run` reads that as `agentvault.ProxyRefusalError`, not as a proxy too old
+  to name its Infisical: it warns with the proxy's reason and starts the agent without skills, MCP servers or the
+  variable rather than asking Infisical directly, since the proxy refuses everything the session sends. Only
+  `session_invalid` on a session `run` just minted is asked again (1, 2 and 3 seconds), to outlast the proxy's
+  5-second memory of a refusal from a replica that hadn't seen it. Every refusal the proxy writes carries
+  `X-Agent-Vault-Error`. Refusals of the session itself (`session_invalid`, `session_unresolvable`,
+  `proxy_revoked`) carry no URL, and the proxy deletes the header from every upstream answer. The published URL never
+  carries `--domain`'s credentials, query or fragment. `agent-vault run` asks with a bare CONNECT once the session is minted (`agentvault.AskProxyAPIURL`, inside
+  the same interrupt scope that revokes a minted session, with 20s for the proxy's own session lookup; no answer in
+  time is not "too old").
+  - The CONNECT answer crosses the network in the clear, so it is only a claim. `run` asks the session endpoints over
+    TLS with the CA it just verified, at the claimed host, port and path even when `--domain` is http (the proxy
+    answers them whatever the agent-side scheme), and uses the claim only if the answer from inside TLS names the same
+    URL and, whatever its status, carries the endpoint's decision or a refusal the proxy wrote (`blocked`, `error`),
+    never `passthrough` or `brokered`, which a host's own answer gets. A proxy refusal with no URL (a session refused
+    since the CONNECT) neither confirms nor contradicts the claim. Otherwise the agent gets no variable, the skills come
+    from Infisical directly, and `run` warns that something may be changing the proxy's answers. With `--no-skills`, a
+    `HEAD` of the services list confirms the claim (logged as Listed Services).
+  - Only a confirmed URL becomes `INFISICAL_AGENT_VAULT_URL`, minus its `/api`, since people hold and pass `--domain` the
+    base URL (an inherited value never passes through). A proxy
+    that names no Infisical is too old: the CLI asks Infisical directly, and if that fails too, the warning says the
+    proxy is too old. Code that starts agents without `run` sets the variable itself, to the URL it passed the proxy in `--domain`.
+  - Infisical's skills audit event records the proxy's IP, not the agent host's. The CLI reads the proxy's own `busy`,
+    `infisical_unreachable`, `proxy_revoked` and `session_unresolvable` answers as the proxy's
+    (`agentvault.IsInfisicalForwardRefusal`), and its
+    `session_invalid` like Infisical's 401 (`agentvault.IsSessionRefusal`). The session endpoints pass Infisical's
+  `Retry-After` on, which `run`'s retries honor.
+- **Every forwarded or refused response carries `X-Agent-Vault-Decision`** (and `X-Agent-Vault-Service` when a
+  service matched), set after the upstream's headers so an upstream can't forge them. The proxy's own errors are
+  JSON with an `error` code and a `hint`; `message` keeps the text the proxy always sent.
+- **The built-in `infisical-agent-vault` skill** comes with the other skills unless `--no-agent-vault-skill` (sent as
+  `includeBuiltin=false`) or `--no-skills`. It decides whether it applies by running
+  `curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"` on its own: a URL error from
+  curl means the variable isn't set, so the agent isn't behind Agent Vault. `--noproxy ""` keeps the request on the
+  proxy when the agent's `NO_PROXY` covers Infisical's host (`run` always adds `localhost` and `127.0.0.1`, and keeps
+  the operator's own entries); without it the request reaches Infisical directly without the session's token. The
+  skill reads only `session_invalid` as a dead session, and has the agent pass on any other error with its hint.
+  Claude Code 2.1.72 blanks `$VAR` in any piped shell
+  command, which made 4 of 40 runs in the first eval decide they weren't behind Agent Vault, so the skill says to run
+  the command alone, with no pipe. Agents follow its wording closely: a gate line ending "Tell the user." made them ask
+  before acting on unrelated tasks, and one pointing at `SSL_CERT_FILE` sent them to print their environment, proxy
+  URL and session token included. Rerun the eval after any change to it.
+- **`agent-vault run` gives Claude Code the session's MCP servers** when the agent's command is `claude`, unless
+  `--no-mcp-servers`: Claude Code loads MCP servers only at start, so an agent can't use one it finds mid-session. `run`
+  gets the services list through the confirmed tunnel (from Infisical directly behind an old proxy) and turns each
+  ready `mcp` service into a server at its `url` (`type: sse` for the `sse` transport) with a placeholder in
+  `credential.header`, so Claude Code never starts an OAuth sign-in; the proxy replaces it. It leaves out, with a warning, a server whose
+  URL, header or name contains `$` (Claude Code fills in `${VAR}` from the agent's environment, the proxy URL with the
+  session token included) and one whose host the agent's `NO_PROXY` covers (Claude Code would reach it without the
+  credential; `httpproxy`'s matcher, which like Claude Code never proxies localhost), and says a server waiting for
+  personal values needs them set up. Warnings and the line naming the servers show a name only through `quoted`/`listOf`.
+  Its line naming the servers respects `--silent`, and a client that can't be built reports `INFISICAL_CUSTOM_HEADERS`
+  without its value. The configuration goes in a 0600 temp file, removed when Claude Code exits, as
+  `--mcp-config=<path>` right after `claude`: never the JSON on the command line, because on Windows npm's `claude.cmd`
+  runs through cmd.exe, which reads `|`, `&`, `^` and `%NAME%` in an admin's URL or header name as part of a command.
+  When `claude` is a `.cmd` or `.bat`, a temp path with any of those leaves the servers out with a warning. The `=` form
+  matters: the flag is variadic, so a separate value would also take a prompt passed as the first argument, and Claude
+  Code merges it with any `--mcp-config` the user passes. In the eval, S6 agents
+  called `mcp__linear__list_issues` directly instead of curling JSON-RPC (3 turns instead of 6). Code that starts agents
+  without `run` builds the same configuration from the list (docs: "Give the agent its MCP servers").
+- **Session-endpoint requests go in the session log**, with the proxy's Infisical as the host and no service: the
+  services list with decision `discovery` (**Listed Services**) and the skills with `skills` (**Fetched Skills**). Each
+  forwarded endpoint gets its own decision, so a new one on the allowlist needs a value, a label, and a docs row. The
+  frontend offers Add Service only for blocked and passthrough rows, so never for these, and not for a blocked request to the session paths on Infisical's own host either (`isInfisicalSessionEndpointRequest`), such as a POST refused as the wrong method; an older frontend shows a raw
+  value with its fallback badge.
 - Trust is stateless: `agent-vault run` fetches the CA from the proxy on every run; `--ca-fingerprint` is an optional
   pin checked before anything is written. Re-enrolling a proxy replaces its CA, so pins, mounted copies,
   keychain entries and any agent already running through it break until updated or restarted.

@@ -186,6 +186,7 @@ export const agentVaultVariableServiceFactory = ({
       .map((service): TAgentVaultVariableUsedByService => ({
         id: service.serviceId,
         name: service.serviceName,
+        type: service.serviceType,
         hostPattern: service.hostPattern,
         accessBundleId: service.accessBundleId,
         accessBundleName: service.accessBundleName

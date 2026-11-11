@@ -17,7 +17,6 @@ import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-ty
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
@@ -80,19 +79,15 @@ import { TMembershipDALFactory } from "../membership/membership-dal";
 import { resolveMembershipRoleSlugs, roleNeedsPrivilegeBoundary } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
-import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TRoleDALFactory } from "../role/role-dal";
-import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
-import { TSecretDALFactory } from "../secret/secret-dal";
-import { fnDeleteProjectSecretReminders } from "../secret/secret-fns";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
 import { TOrgDALFactory } from "./org-dal";
+import { TOrgDeletionServiceFactory } from "./org-deletion-service";
 import { deleteOrgMembershipsFn } from "./org-fns";
 import {
   TDeleteOrgMembershipDTO,
@@ -113,10 +108,9 @@ import {
 
 type TOrgServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
-  secretDAL: Pick<TSecretDALFactory, "find">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "invalidateSecretCacheByProjectId">;
-  folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
   orgDAL: TOrgDALFactory;
+  orgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization">;
   roleDAL: TRoleDALFactory;
   userDAL: TUserDALFactory;
   groupDAL: TGroupDALFactory;
@@ -140,13 +134,8 @@ type TOrgServiceFactoryDep = {
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<
-    TLicenseServiceFactory,
-    "getPlan" | "updateSubscriptionOrgMemberCount" | "cancelOrgSubscription"
-  >;
-  projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
-  reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -156,7 +145,6 @@ type TOrgServiceFactoryDep = {
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
-  honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeOrgHoneyTokens">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -164,9 +152,8 @@ export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
 export const orgServiceFactory = ({
   userAliasDAL,
   orgDAL,
-  secretDAL,
+  orgDeletionService,
   secretV2BridgeDAL,
-  folderDAL,
   userDAL,
   groupDAL,
   roleDAL,
@@ -182,9 +169,7 @@ export const orgServiceFactory = ({
   oidcConfigDAL,
   ldapConfigDAL,
   identityMetadataDAL,
-  projectBotService,
   loginService,
-  reminderService,
   membershipRoleDAL,
   membershipUserDAL,
   membershipDAL,
@@ -196,8 +181,7 @@ export const orgServiceFactory = ({
   pamSessionDAL,
   gatewayV2Service,
   auditLogSettingsService,
-  eventEmitter,
-  honeyTokenCleanupService
+  eventEmitter
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -915,30 +899,8 @@ export const orgServiceFactory = ({
     const decodedToken = crypto.jwt().verify(authToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
 
-    const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
-    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
-    // if root org null = this is a root org then cancel the subscription.
-    if (!org.rootOrgId) {
-      await licenseService.cancelOrgSubscription(orgId);
-    }
-
-    // Outside the transaction: the cleanup runs its own queries per project, and inside it each
-    // concurrent delete would hold one pooled connection while waiting on a second.
-    const projects = await projectDAL.find({ orgId });
-    for await (const project of projects) {
-      await fnDeleteProjectSecretReminders(project.id, {
-        secretDAL,
-        reminderService,
-        projectBotService,
-        folderDAL
-      });
-    }
-    await honeyTokenCleanupService.revokeOrgHoneyTokens(orgId);
-
-    const response = await orgDAL.transaction(async (tx) => {
-      const deletedOrg = await orgDAL.deleteById(orgId, tx);
-
-      // Generate new tokens without the organization ID present
+    return orgDeletionService.deleteOrganization(orgId, async (organization, tx) => {
+      // Fresh tokens so the session stops pointing at the deleted org
       const user = await userDAL.findById(userId, tx);
       const { access: accessToken, refresh: refreshToken } = await loginService.generateUserTokens(
         {
@@ -954,16 +916,8 @@ export const orgServiceFactory = ({
         tx
       );
 
-      return {
-        organization: deletedOrg,
-        tokens: {
-          accessToken,
-          refreshToken
-        }
-      };
+      return { organization, tokens: { accessToken, refreshToken } };
     });
-
-    return response;
   };
   /*
    * Org membership management

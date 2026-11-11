@@ -19,7 +19,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { shake } from "@app/lib/fn";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -40,11 +40,18 @@ import {
   OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE,
   TAgentVaultOauthServiceFactory
 } from "../agent-vault-oauth/agent-vault-oauth-service";
-import { hashAccessToken } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import {
+  hashAccessToken,
+  isMemberProvidedOauth,
+  memberOauthSetupOf,
+  oauthConnectionStatusOf
+} from "../agent-vault-oauth/agent-vault-oauth-token-fns";
 import {
   AGENT_VAULT_OAUTH_HEADER_NAME,
   AGENT_VAULT_OAUTH_HEADER_PREFIX,
-  TAgentVaultOauthConfig
+  AgentVaultOauthRegistration,
+  TAgentVaultOauthConfig,
+  TAgentVaultOauthMemberConfig
 } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import {
@@ -64,7 +71,6 @@ import { TAgentVaultCredentialConfig } from "../agent-vault/agent-vault-credenti
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
-  AgentVaultHttpMethod,
   AgentVaultMemberType,
   AgentVaultOauthStatus,
   AgentVaultResourceRole,
@@ -73,6 +79,11 @@ import {
   AgentVaultVariableReferenceField,
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
+import {
+  describeNativeTlsCaChange,
+  isNativeServiceType,
+  toNativeTlsConfigInput
+} from "../agent-vault/agent-vault-native-config-schemas";
 import { ownerOrNullOf } from "../agent-vault/agent-vault-owner-fns";
 import {
   getAgentVaultGrantedReachability,
@@ -86,13 +97,17 @@ import {
   dropReadBackServiceFields,
   getAgentVaultServiceType,
   getServiceServerUrl,
+  isCredentialOfType,
   resolveServiceHostPattern,
-  TAgentVaultServiceConfig
+  TAgentVaultServiceConfig,
+  toServiceTypeFields
 } from "../agent-vault/agent-vault-service-type-fns";
 import {
+  AGENT_VAULT_SSH_KEY_VARIABLE_MESSAGE,
   expandStoredVariableReferences,
   findStoredVariableIds,
   findVariableKeys,
+  hasVariableReference,
   toStoredVariableReferences,
   toVariableReference
 } from "../agent-vault/agent-vault-variable-fns";
@@ -108,6 +123,7 @@ import {
   TAgentVaultCredentialSummary,
   TAgentVaultCredentialUpdate,
   TAgentVaultCustomHeaderUpdate,
+  TAgentVaultServiceSummary,
   TAgentVaultVariableReferenceSummary,
   TCreateAccessBundleDTO,
   TCreateServiceDTO,
@@ -122,11 +138,16 @@ import {
   TUpdateServiceDTO
 } from "./agent-vault-access-bundle-types";
 import {
+  assertNativeBasicHasUsername,
   isStoredSecretReplaced,
+  memberFieldsOf,
+  memberOauthChangeOf,
   mergeCredential,
   needsStoredSecretFor,
   nextMemberFieldsOf,
+  personalValuesToClearOf,
   splitCredential,
+  storedHasCertificate,
   TCredentialWrite
 } from "./agent-vault-credential-write-fns";
 import { listMcpServerTools, McpListError } from "./agent-vault-mcp-tool-list-fns";
@@ -171,11 +192,18 @@ type TAgentVaultAccessBundleServiceFactoryDep = {
   userDAL: TOnBehalfOfDeps["userDAL"];
   agentVaultOauthService: Pick<
     TAgentVaultOauthServiceFactory,
-    "claimAuthorization" | "buildCredentialFromAuthorization" | "readAuthorizationAccessToken" | "refreshServiceToken"
+    | "claimAuthorization"
+    | "buildCredentialFromAuthorization"
+    | "readAuthorizationAccessToken"
+    | "refreshServiceToken"
+    | "prepareMemberOauth"
   >;
 } & TAgentVaultActorNameDALs;
 
 export type TAgentVaultAccessBundleServiceFactory = ReturnType<typeof agentVaultAccessBundleServiceFactory>;
+
+export const OAUTH_NEEDS_AUTHORIZATION_OR_MEMBERS_MESSAGE =
+  "An OAuth credential needs a completed authorization, or memberProvidedFields ['credential-value'] to leave the sign-in to each member.";
 
 // The old shape capped the array at 100 entries; the cap moves here now that the body is three lists.
 export const AGENT_VAULT_MAX_GRANTEES = 100;
@@ -379,18 +407,25 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const config = service.credentialConfig as Record<string, string>;
     const memberProvidedFields = service.memberProvidedFields ?? [];
     switch (service.credentialType as AgentVaultCredentialType) {
-      // Nothing secret and nothing that identifies the token: no client, no token hash.
+      // Nothing secret and nothing that identifies the token. The member-provided summary includes the client ID, so the
+      // UI can show which admin-entered client is kept.
       case AgentVaultCredentialType.OAuth: {
-        const oauth = service.credentialConfig as TAgentVaultOauthConfig;
+        if (isMemberProvidedOauth(service)) {
+          const memberOauth = service.credentialConfig as TAgentVaultOauthMemberConfig;
+          return {
+            type: AgentVaultCredentialType.OAuth,
+            memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue],
+            issuer: memberOauth.issuer,
+            grantedScopes: [],
+            requiredScopes: [],
+            registration: memberOauth.registration,
+            clientId: memberOauth.clientId
+          };
+        }
         return {
           type: AgentVaultCredentialType.OAuth,
-          status: oauth.status,
-          issuer: oauth.issuer,
-          grantedScopes: oauth.grantedScopes ?? [],
-          requiredScopes: oauth.requiredScopes ?? [],
-          expiresAt: oauth.expiresAt ?? null,
-          authorizedAt: oauth.authorizedAt ?? null,
-          lastError: oauth.lastError ?? null
+          memberProvidedFields: [],
+          ...oauthConnectionStatusOf(service.credentialConfig as TAgentVaultOauthConfig)
         };
       }
       case AgentVaultCredentialType.Bearer:
@@ -404,6 +439,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         return {
           type: AgentVaultCredentialType.Basic,
           memberProvidedFields: memberProvidedFields as TAgentVaultBasicMemberField[]
+        };
+      case AgentVaultCredentialType.SshKey:
+        return {
+          type: AgentVaultCredentialType.SshKey,
+          hasCertificate: Boolean((service.credentialConfig as { hasCertificate?: boolean }).hasCertificate)
         };
       default:
         return { type: AgentVaultCredentialType.Passthrough };
@@ -435,6 +475,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
+  // A type's create and update refuse the fields it can't use, so it never stores another kind of reference. This
+  // only narrows the list to the kinds the type's response lists.
+  const isReferenceOfField =
+    <TField extends AgentVaultVariableReferenceField>(fields: readonly TField[]) =>
+    (
+      reference: TAgentVaultVariableReferenceSummary
+    ): reference is Extract<TAgentVaultVariableReferenceSummary, { field: TField }> =>
+      (fields as readonly AgentVaultVariableReferenceField[]).includes(reference.field);
+  const isCredentialReference = isReferenceOfField([
+    AgentVaultVariableReferenceField.CredentialValue,
+    AgentVaultVariableReferenceField.CredentialUsername
+  ]);
+
   // Built by hand rather than spread, so the sealed columns stay off the wire even if the response schema is
   // later loosened.
   const projectService = (
@@ -442,32 +495,80 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     customHeaders: TAgentVaultServiceCustomHeaders[],
     substitutions: TAgentVaultServiceSubstitutions[],
     variableReferences: TAgentVaultVariableReferenceWithKey[]
-  ) => {
-    const config = (service.config ?? {}) as TAgentVaultServiceConfig;
-    return {
+  ): TAgentVaultServiceSummary => {
+    const base = {
       id: service.id,
       accessBundleId: service.accessBundleId,
       name: service.name,
-      type: service.type as AgentVaultServiceType,
-      // Flat, like the create and update bodies, so a client can send back what it read (all but the credential, whose
-      // secret is never returned). Null for an http service.
-      serverUrl: config.serverUrl ?? null,
-      transport: config.transport ?? null,
-      hostPattern: service.hostPattern,
-      allowedMethods: (service.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
-      allowedPathPrefixes: service.allowedPathPrefixes ?? null,
-      allowedTools: service.allowedTools ?? null,
-      credential: summarizeCredential(service),
-      customHeaders: customHeaders.map((header) => ({ id: header.id, name: header.name, prefix: header.prefix })),
-      substitutions: substitutions.map((substitution) => ({
-        id: substitution.id,
-        placeholder: substitution.placeholder,
-        surfaces: substitution.surfaces as AgentVaultSubstitutionSurface[]
-      })),
-      variableReferences: variableReferences.map(summarizeVariableReference),
+      description: service.description ?? null,
       createdAt: service.createdAt,
       updatedAt: service.updatedAt
     };
+    const references = variableReferences.map(summarizeVariableReference);
+    const credential = summarizeCredential(service);
+    const customHeaderSummaries = customHeaders.map((header) => ({
+      id: header.id,
+      name: header.name,
+      prefix: header.prefix
+    }));
+    // Every create and update checks the credential against the type, so this means a row written some other way.
+    const unsupportedCredential = () =>
+      new InternalServerError({
+        message: `The service '${service.name}' has a credential its type doesn't support. Set its credential again.`
+      });
+    // Only the fields of the service's own type. A client that sends back what it read still gets through an
+    // update, which drops the read-only fields it echoes.
+    const typeFields = toServiceTypeFields(service);
+    switch (typeFields.type) {
+      case AgentVaultServiceType.Http:
+        if (
+          !isCredentialOfType(credential, [
+            AgentVaultCredentialType.Bearer,
+            AgentVaultCredentialType.Basic,
+            AgentVaultCredentialType.Passthrough
+          ])
+        ) {
+          throw unsupportedCredential();
+        }
+        return {
+          ...base,
+          ...typeFields,
+          variableReferences: references,
+          credential,
+          customHeaders: customHeaderSummaries,
+          substitutions: substitutions.map((substitution) => ({
+            id: substitution.id,
+            placeholder: substitution.placeholder,
+            surfaces: substitution.surfaces as AgentVaultSubstitutionSurface[]
+          }))
+        };
+      case AgentVaultServiceType.Mcp:
+        if (!isCredentialOfType(credential, [AgentVaultCredentialType.Bearer, AgentVaultCredentialType.OAuth])) {
+          throw unsupportedCredential();
+        }
+        return {
+          ...base,
+          ...typeFields,
+          variableReferences: references.filter(
+            isReferenceOfField([
+              AgentVaultVariableReferenceField.CredentialValue,
+              AgentVaultVariableReferenceField.CredentialUsername,
+              AgentVaultVariableReferenceField.CustomHeader
+            ])
+          ),
+          allowedTools: service.allowedTools ?? null,
+          credential,
+          customHeaders: customHeaderSummaries
+        };
+      case AgentVaultServiceType.Ssh:
+        if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey])) {
+          throw unsupportedCredential();
+        }
+        return { ...base, ...typeFields, variableReferences: references.filter(isCredentialReference), credential };
+      default:
+        if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic])) throw unsupportedCredential();
+        return { ...base, ...typeFields, variableReferences: references.filter(isCredentialReference), credential };
+    }
   };
 
   const loadTransformations = async (
@@ -501,6 +602,16 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           ...(credential.username === undefined ? [] : [{ label: "The username", text: credential.username }]),
           ...(credential.password === undefined ? [] : [{ label: "The password", text: credential.password }])
         ];
+      // A key spans lines, which a variable's value can't, so none of the three parts takes a reference yet.
+      case AgentVaultCredentialType.SshKey:
+        if (
+          [credential.username, credential.privateKey, credential.certificate].some(
+            (text) => text && hasVariableReference(text)
+          )
+        ) {
+          throw new BadRequestError({ message: AGENT_VAULT_SSH_KEY_VARIABLE_MESSAGE });
+        }
+        return [];
       default:
         return [];
     }
@@ -576,19 +687,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     storedSecret: TCredentialWrite["secret"],
     variableIds: ReadonlySet<string>
   ) =>
-    Object.entries(storedSecret ?? {}).flatMap(([part, text]) =>
-      referenceRowsOf(
-        serviceId,
-        {
-          field:
-            part === "username"
-              ? AgentVaultVariableReferenceField.CredentialUsername
-              : AgentVaultVariableReferenceField.CredentialValue
-        },
-        text,
-        variableIds
-      )
-    );
+    Object.entries(storedSecret ?? {})
+      // An SSH key's parts never store a reference.
+      .filter(([part]) => part === "username" || part === "password" || part === "value")
+      .flatMap(([part, text]) =>
+        referenceRowsOf(
+          serviceId,
+          {
+            field:
+              part === "username"
+                ? AgentVaultVariableReferenceField.CredentialUsername
+                : AgentVaultVariableReferenceField.CredentialValue
+          },
+          text,
+          variableIds
+        )
+      );
 
   // The reference is stored by id, so a variable deleted after the key lookup is caught when the save locks the
   // rows it references (insertReferenceRows). The deferred foreign key is only the backstop.
@@ -620,7 +734,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
   // An authorization only comes from a browser sign-in in the UI, so a machine identity could never hold one.
   const assertOauthConnectedByUser = (ctx: TGetAccessBundleDTO["ctx"], credential?: TAgentVaultCredentialUpdate) => {
-    if (credential?.type === AgentVaultCredentialType.OAuth && ctx.actor !== ActorType.USER) {
+    if (
+      credential?.type === AgentVaultCredentialType.OAuth &&
+      credential.authorizationId &&
+      ctx.actor !== ActorType.USER
+    ) {
       throw new BadRequestError({ message: "OAuth services can only be connected by a user in the Infisical UI." });
     }
   };
@@ -946,7 +1064,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       excludeServiceId
     }: {
       accessBundleId: string;
-      hostPattern: string;
+      hostPattern: string | null;
       excludeServiceId?: string;
     },
     // Without a tx this reads the replica outside any lock, so two creates for the same host both pass.
@@ -966,9 +1084,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     accessBundleId,
     type,
     name,
+    description,
     hostPattern: requestedHostPattern,
     serverUrl,
     transport,
+    host,
+    port,
+    database,
+    tls,
     allowedMethods,
     allowedPathPrefixes,
     allowedTools,
@@ -993,10 +1116,21 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       customHeaders,
       substitutions,
       serverUrl,
-      transport
+      transport,
+      host,
+      port,
+      database,
+      tls
     });
     assertCredentialTypeSupported(serviceType, credential.type);
-    const serviceConfig = buildServiceConfig(serviceType, { serverUrl, transport });
+    const serviceConfig = buildServiceConfig(serviceType, {
+      serverUrl,
+      transport,
+      host,
+      port,
+      database,
+      tls: toNativeTlsConfigInput(tls)
+    });
     const hostPattern = resolveServiceHostPattern(serviceType, serviceConfig, requestedHostPattern);
 
     const existing = await agentVaultServiceDAL.findOne({ accessBundleId: bundle.id, name });
@@ -1021,9 +1155,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       credential.type === AgentVaultCredentialType.OAuth
         ? null
         : splitCredential(storeCredentialReferences(credential, store));
+    if (split && isNativeServiceType(serviceType.type)) assertNativeBasicHasUsername(split);
     assertCustomHeadersDoNotShadowCredential(split ? split.config : { type: credential.type }, customHeaders);
     const secret = split?.secret ?? null;
-    const memberProvidedFields = split?.memberProvidedFields ?? null;
 
     const { encryptor } = await getProjectCipher(rest.projectId);
     const seal = (value: string) => encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
@@ -1043,8 +1177,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       encryptedValue: seal(storedSubstitutionValues[position])
     }));
 
+    const memberOauth =
+      credential.type === AgentVaultCredentialType.OAuth && memberFieldsOf(credential)
+        ? await agentVaultOauthService.prepareMemberOauth({
+            serverUrl: serviceConfig.serverUrl!,
+            clientId: credential.clientId,
+            clientSecret: credential.clientSecret
+          })
+        : null;
+    if (credential.type === AgentVaultCredentialType.OAuth && !memberOauth && !credential.authorizationId) {
+      throw new BadRequestError({ message: OAUTH_NEEDS_AUTHORIZATION_OR_MEMBERS_MESSAGE });
+    }
     const oauth =
-      credential.type === AgentVaultCredentialType.OAuth
+      credential.type === AgentVaultCredentialType.OAuth && credential.authorizationId
         ? await claimOauthCredential({
             projectId: rest.projectId,
             ctx: rest.ctx,
@@ -1053,10 +1198,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             authorizationId: credential.authorizationId
           })
         : null;
-    const credentialConfig: TAgentVaultCredentialConfig = oauth ? oauth.config : split!.config;
+    const credentialConfig: TAgentVaultCredentialConfig = oauth?.config ?? memberOauth?.config ?? split!.config;
+    const memberProvidedFields = memberOauth
+      ? [AgentVaultVariableReferenceField.CredentialValue]
+      : (split?.memberProvidedFields ?? null);
     let encryptedCredential: Buffer | null = null;
     if (oauth) encryptedCredential = oauth.encryptedCredential;
-    else if (secret) encryptedCredential = encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob;
+    else if (memberOauth?.clientSecret) {
+      encryptedCredential = encryptor({
+        plainText: Buffer.from(JSON.stringify({ clientSecret: memberOauth.clientSecret }))
+      }).cipherTextBlob;
+    } else if (secret)
+      encryptedCredential = encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob;
 
     // The pre-check above is only a fast failure. The authoritative one runs under the bundle row lock,
     // the same lock addMembers takes, because no database constraint can express host-pattern overlap.
@@ -1074,6 +1227,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           {
             accessBundleId: bundle.id,
             name,
+            description: description ?? null,
             type: serviceType.type,
             config: serviceConfig,
             hostPattern,
@@ -1164,11 +1318,16 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     serviceId,
     type,
     name,
+    description,
     credential,
-    customHeaders,
+    customHeaders: sentCustomHeaders,
     hostPattern: sentHostPattern,
     serverUrl: sentServerUrl,
     transport: sentTransport,
+    host: sentHost,
+    port: sentPort,
+    database: sentDatabase,
+    tls: sentTls,
     allowedMethods: sentAllowedMethods,
     allowedPathPrefixes: sentAllowedPathPrefixes,
     allowedTools: sentAllowedTools,
@@ -1188,7 +1347,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const serviceType = getAgentVaultServiceType(service.type);
     if (type !== service.type) {
       throw new BadRequestError({
-        message: `The service '${service.name}' is an ${serviceType.label} service, so send 'type': '${service.type}'. A service's type can't be changed; create a new service of the other type instead.`
+        message: `The service '${service.name}' is ${serviceType.article.toLowerCase()} ${serviceType.label} service, so send 'type': '${service.type}'. A service's type can't be changed; create a new service of the other type instead.`
       });
     }
     const sentFields = dropReadBackServiceFields(
@@ -1197,27 +1356,31 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         hostPattern: sentHostPattern,
         serverUrl: sentServerUrl,
         transport: sentTransport,
+        host: sentHost,
+        port: sentPort,
+        database: sentDatabase,
+        tls: sentTls,
         allowedMethods: sentAllowedMethods,
         allowedPathPrefixes: sentAllowedPathPrefixes,
         allowedTools: sentAllowedTools,
+        customHeaders: sentCustomHeaders,
         substitutions: sentSubstitutions
       },
-      service.hostPattern
+      service.hostPattern ?? null
     );
     // The schema's check sees the read-back fields too, so a request holding only those reaches here with nothing to
     // change.
-    if ([name, credential, customHeaders, ...Object.values(sentFields)].every((value) => value === undefined)) {
+    if ([name, description, credential, ...Object.values(sentFields)].every((value) => value === undefined)) {
       throw new BadRequestError({ message: "Provide at least one field besides 'type' to update" });
     }
-    const {
-      hostPattern: requestedHostPattern,
-      allowedMethods,
-      allowedPathPrefixes,
-      allowedTools,
-      substitutions
-    } = sentFields;
+    const requestedHostPattern = sentFields.hostPattern ?? undefined;
+    const { allowedMethods, allowedPathPrefixes, allowedTools, customHeaders, substitutions } = sentFields;
     const serverUrl = sentFields.serverUrl ?? undefined;
     const transport = sentFields.transport ?? undefined;
+    const host = sentFields.host ?? undefined;
+    const port = sentFields.port ?? undefined;
+    const database = sentFields.database ?? undefined;
+    const tls = toNativeTlsConfigInput(sentFields.tls ?? undefined);
     assertServiceFieldsSupported(serviceType, {
       hostPattern: requestedHostPattern,
       allowedMethods,
@@ -1226,13 +1389,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       customHeaders,
       substitutions,
       serverUrl,
-      transport
+      transport,
+      host,
+      port,
+      database,
+      tls
     });
     if (credential) assertCredentialTypeSupported(serviceType, credential.type);
 
     // The fields of the type's config this request sent. Ones left out keep their stored value, so the config
     // is merged here for the fast checks and again under the lock against the row read there.
-    const configUpdate = shake({ serverUrl, transport }, (value) => value === undefined);
+    const configUpdate = shake({ serverUrl, transport, host, port, database, tls }, (value) => value === undefined);
     const hasConfigUpdate = Object.keys(configUpdate).length > 0;
     const deriveHostPattern = (config: TAgentVaultServiceConfig) =>
       resolveServiceHostPattern(serviceType, config, requestedHostPattern);
@@ -1240,16 +1407,28 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const hostPattern =
       serviceConfig && serviceType.deriveHostPattern ? deriveHostPattern(serviceConfig) : requestedHostPattern;
 
+    const storedMemberOauth = isMemberProvidedOauth(service)
+      ? (service.credentialConfig as TAgentVaultOauthMemberConfig)
+      : undefined;
     const storedOauth =
-      service.credentialType === AgentVaultCredentialType.OAuth
+      service.credentialType === AgentVaultCredentialType.OAuth && !storedMemberOauth
         ? (service.credentialConfig as TAgentVaultOauthConfig)
         : undefined;
     const oauthAuthorizationId =
       credential?.type === AgentVaultCredentialType.OAuth ? credential.authorizationId : undefined;
     const storedServerUrl = getServiceServerUrl(service.config);
+    const serverUrlChanged = serverUrl !== undefined && serverUrl !== storedServerUrl;
+    // Whether each member signs in once this update is applied. Their tokens are bound to the server and client, so
+    // the service keeps no tokens of its own that a server change would need reauthorized.
+    const endsMemberOauth = credential
+      ? credential.type === AgentVaultCredentialType.OAuth && Boolean(nextMemberFieldsOf(credential, service)?.length)
+      : Boolean(storedMemberOauth);
     const staysOauth = credential ? credential.type === AgentVaultCredentialType.OAuth : Boolean(storedOauth);
-    if (serverUrl !== undefined && serverUrl !== storedServerUrl && staysOauth && !oauthAuthorizationId) {
+    if (serverUrlChanged && staysOauth && !endsMemberOauth && !oauthAuthorizationId) {
       throw new BadRequestError({ message: OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE });
+    }
+    if (credential?.type === AgentVaultCredentialType.OAuth && !endsMemberOauth && !oauthAuthorizationId) {
+      throw new BadRequestError({ message: OAUTH_NEEDS_AUTHORIZATION_OR_MEMBERS_MESSAGE });
     }
 
     if (name && name !== service.name) {
@@ -1320,6 +1499,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         const { encryptor } = storedSecretCipher ?? (await getProjectCipher(rest.projectId));
         encryptedCredential = encryptor({ plainText: Buffer.from(JSON.stringify(secret)) }).cipherTextBlob;
       }
+      if (isNativeServiceType(serviceType.type)) assertNativeBasicHasUsername({ config, secret, memberProvidedFields });
       writtenSecret = secret;
       credentialReplaced = isStoredSecretReplaced(credential, service, secret);
 
@@ -1330,6 +1510,62 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         ...(encryptedCredential === undefined ? {} : { encryptedCredential })
       };
       effectiveCredentialConfig = config;
+    }
+
+    let memberOauth: Awaited<ReturnType<typeof agentVaultOauthService.prepareMemberOauth>> | null = null;
+    let oauthMembersRebound = false;
+    if (endsMemberOauth && (credential?.type === AgentVaultCredentialType.OAuth || serverUrlChanged)) {
+      const oauthCredential = credential?.type === AgentVaultCredentialType.OAuth ? credential : undefined;
+      memberOauth = await agentVaultOauthService.prepareMemberOauth({
+        serverUrl: getServiceServerUrl(serviceConfig ?? service.config)!,
+        clientId:
+          oauthCredential?.registration === AgentVaultOauthRegistration.Dynamic
+            ? null
+            : (oauthCredential?.clientId ?? storedMemberOauth?.clientId ?? null),
+        clientSecret: oauthCredential?.clientSecret
+      });
+      const { sameClient, membersRebound } = memberOauthChangeOf({
+        next: memberOauth.config,
+        stored: storedMemberOauth,
+        clientSecretSent: oauthCredential?.clientSecret !== undefined
+      });
+      // A client is registered at one issuer, so its stored secret is never sent to another.
+      if (
+        storedMemberOauth &&
+        !sameClient &&
+        !memberOauth.clientSecret &&
+        memberOauth.config.registration === AgentVaultOauthRegistration.Manual &&
+        memberOauth.config.clientId === storedMemberOauth.clientId &&
+        service.encryptedCredential
+      ) {
+        throw new BadRequestError({
+          message:
+            "The server now signs in through a different OAuth issuer, so the stored client secret won't be sent to it. Enter the client secret again, or the client ID and secret of an OAuth app registered with the new issuer."
+        });
+      }
+      oauthMembersRebound = membersRebound;
+
+      // The admin-entered client's secret is kept unless one was sent or the client changed. Anything else the row
+      // sealed (a shared sign-in's tokens, a bearer token) goes.
+      let encryptedCredential: Buffer | null | undefined = null;
+      if (memberOauth.clientSecret) {
+        const { encryptor } = await getProjectCipher(rest.projectId);
+        encryptedCredential = encryptor({
+          plainText: Buffer.from(JSON.stringify({ clientSecret: memberOauth.clientSecret }))
+        }).cipherTextBlob;
+      } else if (sameClient && memberOauth.config.registration === AgentVaultOauthRegistration.Manual) {
+        encryptedCredential = undefined;
+      }
+      credentialUpdate = {
+        credentialType: AgentVaultCredentialType.OAuth,
+        credentialConfig: memberOauth.config,
+        memberProvidedFields: [AgentVaultVariableReferenceField.CredentialValue],
+        ...(encryptedCredential === undefined ? {} : { encryptedCredential })
+      };
+      effectiveCredentialConfig = memberOauth.config;
+      if (!storedMemberOauth) writtenSecret = null;
+      credentialReplaced =
+        encryptedCredential !== undefined && (Boolean(service.encryptedCredential) || encryptedCredential !== null);
     }
 
     const cipherForTransformations =
@@ -1399,7 +1635,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // reauthorized it, and writing over it from the first read would undo it. Pure, so it can't touch the database.
     const reconcileWithLockedRow = (locked: TAgentVaultServices) => {
       const lockedOauth =
-        locked.credentialType === AgentVaultCredentialType.OAuth
+        locked.credentialType === AgentVaultCredentialType.OAuth && !isMemberProvidedOauth(locked)
           ? (locked.credentialConfig as TAgentVaultOauthConfig)
           : undefined;
       let lockedServiceConfig = serviceConfig;
@@ -1411,7 +1647,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         lockedServiceConfig = buildServiceConfig(serviceType, configUpdate, locked.config);
         if (serviceType.deriveHostPattern) lockedHostPattern = deriveHostPattern(lockedServiceConfig);
         // An edit that keeps the tokens must still point at the server they were authorized for.
-        if (lockedOauth && !oauth && (!credential || credential.type === AgentVaultCredentialType.OAuth)) {
+        if (
+          lockedOauth &&
+          !oauth &&
+          !memberOauth &&
+          (!credential || credential.type === AgentVaultCredentialType.OAuth)
+        ) {
           checkOauthServerUnderLock({
             requestedServerUrl: serverUrl,
             readServerUrl: storedServerUrl,
@@ -1420,6 +1661,34 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           });
         }
       }
+
+      // A save that leaves the members' sign-in alone must not move the service off the server it is bound to.
+      if (
+        lockedServiceConfig &&
+        !memberOauth &&
+        !oauth &&
+        !credential &&
+        isMemberProvidedOauth(locked) &&
+        getServiceServerUrl(lockedServiceConfig) !== (locked.credentialConfig as TAgentVaultOauthMemberConfig).serverUrl
+      ) {
+        throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
+      }
+
+      // The members' sign-in was checked against the first read's server and client, and decides whose connections
+      // go, so a save that changed either since must not be written over.
+      if (
+        memberOauth &&
+        storedMemberOauth &&
+        (!isMemberProvidedOauth(locked) || memberOauthSetupOf(locked) !== memberOauthSetupOf(service))
+      ) {
+        throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
+      }
+      // A service switched to member sign-in has no stored member config to compare, but its sign-in was still
+      // prepared for the first read's server.
+      if (memberOauth && memberOauth.config.serverUrl !== getServiceServerUrl(lockedServiceConfig ?? locked.config)) {
+        throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
+      }
+      if (memberOauth) lockedCredentialConfig = effectiveCredentialConfig;
 
       if (credential) {
         // The credential was merged against the first read, whose type decided how the request reads. Writing
@@ -1434,6 +1703,19 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
         }
         lockedCredentialConfig = effectiveCredentialConfig;
+        // An SSH key save that writes no secret took its config from the first read, whose `hasCertificate` may no
+        // longer describe the secret a concurrent save sealed. A removal of a certificate this request never saw
+        // can't be applied to it.
+        if (credential.type === AgentVaultCredentialType.SshKey && writtenSecret === undefined) {
+          const sshKeyChanged =
+            storedHasCertificate(locked) !== storedHasCertificate(service) ||
+            !locked.encryptedCredential?.equals(service.encryptedCredential!);
+          if (credential.certificate === null && sshKeyChanged) {
+            throw new ConflictError({ message: CREDENTIAL_CHANGED_DURING_SAVE_MESSAGE });
+          }
+          lockedCredentialConfig = locked.credentialConfig as TAgentVaultCredentialConfig;
+          lockedCredentialUpdate = { ...credentialUpdate, credentialConfig: lockedCredentialConfig };
+        }
         if (oauth && credential.type === AgentVaultCredentialType.OAuth) {
           // The claim checked the server URL of the first read; these tokens must never reach another host.
           const requiredScopes = checkOauthClaimUnderLock({
@@ -1477,6 +1759,9 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         );
         if (!locked) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
         const reconciled = reconcileWithLockedRow(locked);
+        const tlsCaChanged = reconciled.serviceConfig
+          ? describeNativeTlsCaChange(locked.config, reconciled.serviceConfig)
+          : undefined;
 
         // Only when the pattern actually changes, against the siblings read under the lock.
         if (reconciled.hostPattern && reconciled.hostPattern !== locked.hostPattern) {
@@ -1497,6 +1782,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
         const hasColumnUpdate =
           name !== undefined ||
+          description !== undefined ||
           reconciled.hostPattern !== undefined ||
           reconciled.serviceConfig !== undefined ||
           allowedMethods !== undefined ||
@@ -1511,6 +1797,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
                 name,
                 hostPattern: reconciled.hostPattern,
                 ...(reconciled.serviceConfig === undefined ? {} : { config: reconciled.serviceConfig }),
+                ...(description === undefined ? {} : { description }),
                 // `null` clears the restriction, `undefined` leaves the column alone.
                 ...(allowedMethods === undefined ? {} : { allowedMethods }),
                 ...(allowedPathPrefixes === undefined ? {} : { allowedPathPrefixes }),
@@ -1524,15 +1811,22 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         // A saved value goes only when it no longer applies: a new credential type drops every one, and a field the
         // admin takes back drops that field's. A field members still provide keeps what they saved. The update above
         // wrote the service row, which is what a personal values save waits on.
-        if (memberFieldsChanged) {
-          if (credentialTypeChanged || !nextMemberFields?.length) {
-            await agentVaultPersonalValueDAL.delete({ serviceId: service.id }, tx);
-          } else {
-            await agentVaultPersonalValueDAL.deleteForServiceExceptFields(
-              { serviceId: service.id, keepFields: nextMemberFields },
-              tx
-            );
-          }
+        let personalValuesCleared = false;
+        const toClear = personalValuesToClearOf({
+          credentialTypeChanged,
+          memberFieldsChanged,
+          nextMemberFields,
+          oauthMembersRebound
+        });
+        if (toClear === "all") {
+          const deleted = await agentVaultPersonalValueDAL.delete({ serviceId: service.id }, tx);
+          personalValuesCleared = deleted.length > 0;
+        } else if (toClear === "fields-taken-back") {
+          const deletedCount = await agentVaultPersonalValueDAL.deleteForServiceExceptFields(
+            { serviceId: service.id, keepFields: nextMemberFields! },
+            tx
+          );
+          personalValuesCleared = deletedCount > 0;
         }
 
         // Outside the lock, two concurrent PATCHes both pass the ownership check and the loser's writes no-op.
@@ -1648,7 +1942,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         await insertReferenceRows(rest.projectId, referenceRows, tx);
         const variableReferences = await agentVaultServiceVariableReferenceDAL.findByServiceIds([service.id], tx);
 
-        return { updatedService, updatedCustomHeaders, updatedSubstitutions, variableReferences };
+        return {
+          updatedService,
+          updatedCustomHeaders,
+          updatedSubstitutions,
+          variableReferences,
+          personalValuesCleared,
+          tlsCaChanged
+        };
       });
 
     let result;
@@ -1686,12 +1987,20 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         hostPattern: requestedHostPattern,
         serverUrl,
         transport,
+        host,
+        port,
+        database,
+        tlsEnabled: tls?.enabled,
+        tlsVerify: tls?.verify,
+        tlsCaChanged: result.tlsCaChanged,
         allowedMethods,
         allowedPathPrefixes,
         allowedTools,
+        customHeaders,
         substitutions
       },
-      credentialReplaced
+      credentialReplaced,
+      personalValuesCleared: result.personalValuesCleared
     };
   };
 
@@ -1746,8 +2055,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     let refreshSavedToken: ((rejectedTokenHash: string) => Promise<string>) | undefined;
     const credentialType = credential?.type ?? (service?.credentialType as AgentVaultCredentialType | undefined);
     if (credentialType === AgentVaultCredentialType.OAuth) {
+      const memberSignIn =
+        credential?.type === AgentVaultCredentialType.OAuth
+          ? Boolean(memberFieldsOf(credential)) ||
+            (!credential.authorizationId && Boolean(service && isMemberProvidedOauth(service)))
+          : Boolean(service && isMemberProvidedOauth(service));
+      if (memberSignIn) {
+        throw new BadRequestError({
+          message: "Each member signs in to this service, so Infisical has no connection to load its tools with."
+        });
+      }
       let accessToken: string;
-      if (credential?.type === AgentVaultCredentialType.OAuth) {
+      if (credential?.type === AgentVaultCredentialType.OAuth && credential.authorizationId) {
         accessToken = await agentVaultOauthService.readAuthorizationAccessToken({
           authorizationId: credential.authorizationId,
           projectId: rest.projectId,
@@ -1757,7 +2076,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           serverUrl
         });
       } else {
-        const storedServerUrl = getServiceServerUrl(service!.config);
+        if (service?.credentialType !== AgentVaultCredentialType.OAuth) {
+          throw new BadRequestError({ message: "Authorize the service, then load the tools." });
+        }
+        const storedServerUrl = getServiceServerUrl(service.config);
         // The stored tokens only ever go to the server they were authorized for.
         if (serverUrl !== storedServerUrl)
           throw new BadRequestError({ message: OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE });
@@ -1768,7 +2090,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             projectId: rest.projectId,
             expiresWithinSeconds: 60,
             rejectedTokenHash,
-            destination: { hostPattern: savedService.hostPattern, serverUrl: storedServerUrl }
+            destination: { hostPattern: savedService.hostPattern ?? null, serverUrl: storedServerUrl }
           });
           if (refreshed.status === AgentVaultOauthStatus.NeedsReauthorization) {
             throw new BadRequestError({

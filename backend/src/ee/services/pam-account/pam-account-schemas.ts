@@ -108,19 +108,21 @@ export const ORACLE_MAX_PASSWORD_LENGTH = 30;
 
 export const ORACLE_MIN_GATEWAY_VERSION = "v0.43.133";
 
+const postgresConnectionDetails = z.object({
+  host: z.string().trim().min(1).max(255),
+  port: z.coerce.number(),
+  database: z.string().trim().min(1).max(255),
+  sslEnabled: z.boolean(),
+  sslRejectUnauthorized: z.boolean(),
+  sslCertificate: optionalTrimmedString
+});
+
 export const ACCOUNT_TYPE_CONFIGS = {
   [PamAccountType.Postgres]: {
     name: "PostgreSQL",
     icon: "Postgres.png",
     connectionStringSchemes: ["postgres", "postgresql"],
-    connectionDetails: z.object({
-      host: z.string().trim().min(1).max(255),
-      port: z.coerce.number(),
-      database: z.string().trim().min(1).max(255),
-      sslEnabled: z.boolean(),
-      sslRejectUnauthorized: z.boolean(),
-      sslCertificate: optionalTrimmedString
-    }),
+    connectionDetails: postgresConnectionDetails,
     credentials: withLegacyAuthMethod(
       PamAccountType.Postgres,
       z.discriminatedUnion("authMethod", [
@@ -196,6 +198,41 @@ export const ACCOUNT_TYPE_CONFIGS = {
         showWhen: { field: "sslEnabled", equals: true },
         tooltip:
           "The CA certificate used to verify the server. Amazon RDS and Aurora publish one per region, e.g. https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem"
+      },
+      password: { widget: PamFieldWidget.Password, secret: true }
+    }
+  },
+
+  [PamAccountType.CockroachDB]: {
+    name: "CockroachDB",
+    icon: "CockroachDB.png",
+    connectionStringSchemes: ["postgres", "postgresql"],
+    connectionDetails: postgresConnectionDetails.extend({
+      port: z.coerce.number().int().min(1).max(65535),
+      sslCertificate: boundedOptionalString(10_240)
+    }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(63),
+      password: z
+        .string()
+        .trim()
+        .max(256)
+        .transform((v) => v || undefined)
+        .optional()
+    }),
+    sanitizedCredentials: z.object({ username: z.string() }),
+    ui: {
+      port: { defaultValue: 26257 },
+      sslEnabled: { label: "SSL Enabled", defaultValue: true },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        defaultValue: true,
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
       },
       password: { widget: PamFieldWidget.Password, secret: true }
     }
@@ -1018,6 +1055,7 @@ export type TWindowsAdConnectionDetails = z.infer<
 
 export const SQL_ROTATABLE_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
+  PamAccountType.CockroachDB,
   PamAccountType.MySQL,
   PamAccountType.MsSQL,
   PamAccountType.OracleDB
@@ -1080,6 +1118,7 @@ export const extractGatewayTarget = async (
   switch (accountType) {
     case PamAccountType.SSH:
     case PamAccountType.Postgres:
+    case PamAccountType.CockroachDB:
     case PamAccountType.MySQL:
     case PamAccountType.MsSQL:
     case PamAccountType.OracleDB:
@@ -1165,9 +1204,14 @@ export const resolveSelectedHost = (
   return requestedHost || hosts[0];
 };
 
-// The account type the gateway sees. Windows AD is brokered through the Windows RDP protocol
+// The account type the gateway sees: Windows AD rides its RDP protocol, CockroachDB its Postgres protocol
+const GATEWAY_ACCOUNT_TYPE_ALIASES: Partial<Record<PamAccountType, PamAccountType>> = {
+  [PamAccountType.WindowsAd]: PamAccountType.Windows,
+  [PamAccountType.CockroachDB]: PamAccountType.Postgres
+};
+
 export const resolveGatewayAccountType = (accountType: PamAccountType): PamAccountType =>
-  accountType === PamAccountType.WindowsAd ? PamAccountType.Windows : accountType;
+  GATEWAY_ACCOUNT_TYPE_ALIASES[accountType] ?? accountType;
 
 export const gatewaySupportsAccountType = (
   accountType: PamAccountType,

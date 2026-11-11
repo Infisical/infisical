@@ -15,7 +15,6 @@ import { Actor, EventType, TAuditLogServiceFactory } from "@app/ee/services/audi
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TProjectEventsService } from "@app/ee/services/project-events/project-events-service";
 import { ProjectEvents, TProjectEventPayload } from "@app/ee/services/project-events/project-events-types";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
@@ -117,7 +116,6 @@ type TSecretQueueFactoryDep = {
   secretV2BridgeDAL: TSecretV2BridgeDALFactory;
   secretVersionV2BridgeDAL: Pick<TSecretVersionV2DALFactory, "batchInsert" | "insertMany" | "findLatestVersionMany">;
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany" | "batchInsert">;
-  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "deleteByProjectId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
@@ -183,7 +181,6 @@ export const secretQueueFactory = ({
   kmsService,
   secretVersionTagV2BridgeDAL,
 
-  secretApprovalRequestDAL,
   keyStore,
   auditLogService,
   orgService,
@@ -1553,11 +1550,6 @@ export const secretQueueFactory = ({
         tx
       );
 
-      /*
-       * approvals: we will delete all approvals this is because some secret versions may not be added yet
-       * Thus doesn't make sense for rest to be there
-       * */
-      await secretApprovalRequestDAL.deleteByProjectId(projectId, tx);
       await projectDAL.updateById(projectId, { upgradeStatus: null, version: ProjectVersion.V3 }, tx);
     });
   });

@@ -54,6 +54,7 @@ import { TKmsLegacyEncryptionKeyDALFactory } from "./kms-legacy-encryption-key-d
 import { TKmsRootConfigDALFactory } from "./kms-root-config-dal";
 import {
   KmsDataKey,
+  KmsCiphertextUndecryptableError,
   KmsKeyUsage,
   KmsType,
   RootKeyEncryptionStrategy,
@@ -550,6 +551,16 @@ export const kmsServiceFactory = ({
       return null;
     };
 
+    // The last resort once no key version authenticated the blob. Its failure is the ciphertext's fault, not a fault
+    // reading stored key material, so it gets its own error type for callers that decrypt their caller's input.
+    const $decryptWithCurrentMaterial = (cipherTextBlob: Buffer) => {
+      try {
+        return dataCipher.decrypt(cipherTextBlob, kmsKey);
+      } catch (error) {
+        throw new KmsCiphertextUndecryptableError(error);
+      }
+    };
+
     return async ({ cipherTextBlob: versionedCipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
       const suffix =
         versionedCipherTextBlob.length >= KMS_VERSION_BLOB_LENGTH
@@ -567,14 +578,14 @@ export const kmsServiceFactory = ({
         const decrypted = await $tryDecryptWithAnyMaterial(cipherTextBlob, embeddedVersion);
         if (decrypted) return decrypted;
 
-        return dataCipher.decrypt(cipherTextBlob, kmsKey);
+        return $decryptWithCurrentMaterial(cipherTextBlob);
       }
 
       // legacy v01 (or anything not validated as v02): strip the 3-byte suffix and try all available material
       const cipherTextBlob = versionedCipherTextBlob.subarray(0, -KMS_VERSION_BLOB_LENGTH);
       const decrypted = await $tryDecryptWithAnyMaterial(cipherTextBlob, currentKeyVersion);
       if (decrypted) return decrypted;
-      return dataCipher.decrypt(cipherTextBlob, kmsKey);
+      return $decryptWithCurrentMaterial(cipherTextBlob);
     };
   };
 

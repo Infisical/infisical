@@ -9,3 +9,9 @@ export type TSetPersonalValuesDTO = TPersonalValuesByServiceDTO & {
   // a password as a token.
   credentialType?: AgentVaultCredentialType;
 };
+
+// For a service that leaves its OAuth sign-in to members: the member's completed authorization.
+export type TConnectPersonalOauthDTO = TPersonalValuesByServiceDTO & {
+  authorizationId: string;
+  credentialType?: AgentVaultCredentialType;
+};

@@ -6,6 +6,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 
+import { AgentVaultServiceType } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner, whereOwner } from "../agent-vault/agent-vault-owner-fns";
 
 export type TAgentVaultVariableDALFactory = ReturnType<typeof agentVaultVariableDALFactory>;
@@ -38,7 +39,8 @@ export type TAgentVaultServiceUsingVariable = {
   variableId: string;
   serviceId: string;
   serviceName: string;
-  hostPattern: string;
+  serviceType: AgentVaultServiceType;
+  hostPattern: string | null;
   accessBundleId: string;
   accessBundleName: string;
 };
@@ -258,6 +260,7 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
           db.ref("variableId").withSchema("refs"),
           db.ref("id").withSchema(TableName.AgentVaultService).as("serviceId"),
           db.ref("name").withSchema(TableName.AgentVaultService).as("serviceName"),
+          db.ref("type").withSchema(TableName.AgentVaultService).as("serviceType"),
           db.ref("hostPattern").withSchema(TableName.AgentVaultService),
           db.ref("id").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleId"),
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName")

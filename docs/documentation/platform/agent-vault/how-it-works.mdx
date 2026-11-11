@@ -1,10 +1,10 @@
 ---
 title: "How Agent Vault works"
 sidebarTitle: "How it works"
-description: "The pieces of an Agent Vault setup and how a session gives an agent access to APIs and MCP servers."
+description: "The pieces of an Agent Vault setup and how a session gives an agent access to APIs, MCP servers, databases, and SSH servers."
 ---
 
-Agent Vault lets an AI agent call APIs and MCP servers without having access to the real credentials. Instead, the agent sends its requests through an Agent Vault proxy, which attaches the credentials on the way out.
+Agent Vault lets an AI agent call APIs and MCP servers, and reach databases and SSH servers, without having access to the real credentials. Instead, the agent connects through an Agent Vault proxy, which attaches the credentials to the agent's requests or logs in with them.
 
 ## Architecture
 
@@ -192,18 +192,18 @@ Here's how the four primitives connect:
 
 A service represents one external system that an agent can reach, such as GitHub's REST API or Linear's MCP server. Each service holds:
 
-- **Target**: Where the system is, such as the host `api.github.com` or the server URL `https://mcp.linear.app/mcp`
-- **Credential**: The real token, username and password, or OAuth authorization that the proxy attaches to the agent's requests, if the service uses one
+- **Target**: Where the system is, such as the host `api.github.com`, the server URL `https://mcp.linear.app/mcp`, or a database's host and port
+- **Credential**: The real token, username and password, SSH key, or OAuth authorization that the proxy attaches to the agent's requests or logs in with, if the service uses one
 - **Rules** (HTTP APIs): The HTTP methods and paths the service allows
-- **Custom headers**: Extra headers the proxy adds to each request
+- **Custom headers** (HTTP APIs and MCP servers): Extra headers the proxy adds to each request
 - **Substitutions** (HTTP APIs): Placeholders the proxy replaces with real values
 
-Agent Vault supports two types of service: [HTTP APIs](/documentation/platform/agent-vault/http-apis) and [MCP servers](/documentation/platform/agent-vault/mcp-servers).
+Agent Vault supports three kinds of service: [HTTP APIs](/documentation/platform/agent-vault/http-apis), [MCP servers](/documentation/platform/agent-vault/mcp-servers), and [databases and SSH servers](/documentation/platform/agent-vault/databases-and-ssh).
 
 You don't give services to an agent directly. You add services to an access bundle, and a session gives the agent access to the services in its access bundle.
 
 <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
-  Anything an AI agent talks to during a session, such as an API or an MCP server.
+  Anything an AI agent talks to during a session, such as an API, an MCP server, a database, or an SSH server.
 </Card>
 
 ### Access bundles

@@ -5,6 +5,7 @@ export type RootSyncOptions = {
   initialSyncBehavior: SecretSyncInitialSyncBehavior;
   disableSecretDeletion?: boolean;
   keySchema?: string;
+  /** @deprecated Read `includeAllSubFolders` on the sync itself. The API mirrors it here for older clients. */
   includeAllSubFolders?: boolean;
 };
 
@@ -18,6 +19,7 @@ export type TRootSecretSync = {
   createdAt: string;
   updatedAt: string;
   isAutoSyncEnabled: boolean;
+  includeAllSubFolders: boolean;
   projectId: string;
   syncStatus: SecretSyncStatus | null;
   lastSyncJobId: string | null;

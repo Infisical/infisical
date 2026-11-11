@@ -111,7 +111,7 @@ const SecretSyncMoveWarningItem = ({
     <span className="font-medium text-foreground">{sync.name}</span>
     {` (${SECRET_SYNC_MAP[sync.destination].name}) syncs `}
     <code>{sync.folder?.path ?? "/"}</code>
-    {sync.syncOptions.includeAllSubFolders ? " and all its subfolders." : "."}
+    {sync.includeAllSubFolders ? " and all its subfolders." : "."}
     {!sync.isAutoSyncEnabled && " Auto-sync is off, so it sends them on its next manual sync."}{" "}
     <Link
       to={ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path}

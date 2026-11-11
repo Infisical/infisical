@@ -17,11 +17,7 @@ import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/serv
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
-import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
-import { TAccessApprovalPolicyDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-dal";
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
-import { TSecretApprovalPolicyApproverDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
-import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
@@ -67,10 +63,6 @@ type TProjectMembershipServiceFactoryDep = {
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
-  secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
-  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
   secretReminderRecipientsDAL: Pick<TSecretReminderRecipientsDALFactory, "delete">;
@@ -97,10 +89,6 @@ export const projectMembershipServiceFactory = ({
   secretReminderRecipientsDAL,
   notificationService,
   additionalPrivilegeDAL,
-  accessApprovalPolicyApproverDAL,
-  accessApprovalPolicyDAL,
-  secretApprovalPolicyApproverDAL,
-  secretApprovalPolicyDAL,
   approvalPolicyDAL,
   approvalRequestDAL,
   membershipUserDAL,
@@ -117,24 +105,6 @@ export const projectMembershipServiceFactory = ({
     projectId: string,
     actionLabel = "Cannot remove user from project"
   ) => {
-    const accessApprovers = await accessApprovalPolicyApproverDAL.find({
-      $in: { approverUserId: userIds }
-    });
-    if (accessApprovers.length > 0) {
-      const policyIds = [...new Set(accessApprovers.map((a) => a.policyId))];
-      const policies = await accessApprovalPolicyDAL.find({
-        $in: { [`${TableName.AccessApprovalPolicy}.id` as "id"]: policyIds },
-        projectId,
-        deletedAt: null
-      });
-      if (policies.length > 0) {
-        const policyNames = policies.map((p) => p.name).join(", ");
-        throw new BadRequestError({
-          message: `${actionLabel}: user is an approver in access approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
-        });
-      }
-    }
-
     const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
       projectId,
       type: ApprovalPolicyType.SecretAccess,
@@ -145,24 +115,6 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({
         message: `${actionLabel}: user is an approver in access approval ${secretAccessPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
       });
-    }
-
-    const secretApprovers = await secretApprovalPolicyApproverDAL.find({
-      $in: { approverUserId: userIds }
-    });
-    if (secretApprovers.length > 0) {
-      const policyIds = [...new Set(secretApprovers.map((a) => a.policyId))];
-      const policies = await secretApprovalPolicyDAL.find({
-        $in: { [`${TableName.SecretApprovalPolicy}.id` as "id"]: policyIds },
-        projectId,
-        deletedAt: null
-      });
-      if (policies.length > 0) {
-        const policyNames = policies.map((p) => p.name).join(", ");
-        throw new BadRequestError({
-          message: `${actionLabel}: user is an approver in secret approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
-        });
-      }
     }
 
     const secretChangePolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({

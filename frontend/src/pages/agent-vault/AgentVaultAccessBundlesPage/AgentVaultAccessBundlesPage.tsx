@@ -321,7 +321,10 @@ export const AgentVaultAccessBundlesPage = () => {
                       </RowLink>
                     </TableCell>
                     <TableCell>
-                      <ServiceIconStack hostPatterns={bundle.hostPatterns} />
+                      <ServiceIconStack
+                        hostPatterns={bundle.hostPatterns}
+                        nativeServices={bundle.nativeServices}
+                      />
                     </TableCell>
                     <TableCell>
                       {isAdmin ? (

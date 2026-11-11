@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
-import { TSecretChangeRequestData } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-types";
+import { TSecretChangeRequestData } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
 import { TEventInput } from "@app/services/event-outbox/event-outbox-types";

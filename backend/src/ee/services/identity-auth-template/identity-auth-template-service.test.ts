@@ -27,6 +27,14 @@ vi.mock("node:dns/promises", () => ({
   }
 }));
 
+const { getServerCfgMock } = vi.hoisted(() => ({ getServerCfgMock: vi.fn() }));
+
+vi.mock("@app/services/super-admin/super-admin-service", () => ({
+  getServerCfg: getServerCfgMock
+}));
+
+beforeEach(() => getServerCfgMock.mockResolvedValue({ adminIdentityIds: [] }));
+
 const ORG_ID = "org-id";
 const TEMPLATE_ID = "template-id";
 const GATEWAY_V2_ID = "gateway-v2-id";
@@ -552,6 +560,34 @@ describe("identityAuthTemplateServiceFactory linked identity authorization", () 
 
     expect(identityAuthTemplateDAL.updateById).toHaveBeenCalledTimes(1);
     expect(identityLdapAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("refuses a field patch when a linked identity is a server admin and the editor is not", async () => {
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: ["identity-id"] });
+    const { service, identityAuthTemplateDAL, identityLdapAuthDAL } = createLdapService();
+
+    await expect(patchTemplate(service, { searchBase: "dc=other" })).rejects.toThrow(
+      "Auth template 'auth-template' is linked to server admin identity 'identity'. Ask a server admin to update it, or unlink the identity from the template first."
+    );
+    expect(identityAuthTemplateDAL.updateById).not.toHaveBeenCalled();
+    expect(identityLdapAuthDAL.updateByTemplateId).not.toHaveBeenCalled();
+  });
+
+  it("propagates to a linked server admin identity when the editor is a server admin", async () => {
+    getServerCfgMock.mockResolvedValue({ adminIdentityIds: ["identity-id"] });
+    const { service, identityLdapAuthDAL } = createLdapService();
+
+    await service.updateTemplate({
+      templateId: TEMPLATE_ID,
+      templateFields: { searchBase: "dc=other" },
+      actorId: "actor-id",
+      actor: "user",
+      actorAuthMethod: undefined,
+      actorOrgId: ORG_ID,
+      isActorSuperAdmin: true
+    } as unknown as Parameters<typeof service.updateTemplate>[0]);
+
+    expect(identityLdapAuthDAL.updateByTemplateId).toHaveBeenCalledTimes(1);
   });
 
   it("records the editor, not the platform, on the per-identity audit entries", async () => {

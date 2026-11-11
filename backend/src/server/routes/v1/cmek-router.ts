@@ -18,7 +18,7 @@ import { KmsKeyUsage } from "@app/services/kms/kms-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const keyNameSchema = slugSchema({ min: 1, max: 32, field: "Name" });
-const keyDescriptionSchema = z.string().trim().max(500).optional();
+const keyDescriptionSchema = z.string().trim().max(255).optional();
 
 const AllowedKmsKeyAlgorithms = [
   ...Object.values(SymmetricKeyAlgorithm),
@@ -213,12 +213,14 @@ export const registerCmekRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         keyId: z.string().uuid().describe(KMS.UPDATE_KEY.keyId)
       }),
-      body: z.object({
-        name: keyNameSchema.optional().describe(KMS.UPDATE_KEY.name),
-        isDisabled: z.boolean().optional().describe(KMS.UPDATE_KEY.isDisabled),
-        description: keyDescriptionSchema.describe(KMS.UPDATE_KEY.description),
-        hasDeleteProtection: z.boolean().optional().describe(KMS.UPDATE_KEY.hasDeleteProtection)
-      }),
+      body: z
+        .object({
+          name: keyNameSchema.optional().describe(KMS.UPDATE_KEY.name),
+          isDisabled: z.boolean().optional().describe(KMS.UPDATE_KEY.isDisabled),
+          description: keyDescriptionSchema.describe(KMS.UPDATE_KEY.description),
+          hasDeleteProtection: z.boolean().optional().describe(KMS.UPDATE_KEY.hasDeleteProtection)
+        })
+        .refine((body) => Object.values(body).some((value) => value !== undefined), "At least one field is required"),
       response: {
         200: z.object({
           key: CmekSchema
