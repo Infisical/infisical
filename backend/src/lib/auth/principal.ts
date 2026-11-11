@@ -5,6 +5,8 @@ export type TAssumedPrincipal = {
   projectId: string;
   actorType: ActorType.USER | ActorType.IDENTITY;
   actorId: string;
+  // Its username (or identity name), for `{{identity.username}}` conditions.
+  actorName?: string;
 };
 
 export type TUserPrincipal = {

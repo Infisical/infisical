@@ -165,6 +165,7 @@ export const createDomains = (deps: TDomainDeps) => {
   const organizations = new OrganizationsModule({ db, accessControlDomain: accessControl.service });
   const projects = new ProjectsModule({
     db,
+    accessControlDomain: accessControl.service,
     organizationsDomain: organizations.service,
     licenseRegistry: license.registry
   });

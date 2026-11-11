@@ -6,7 +6,7 @@ import {
   TPermissionRule
 } from "@app/domains/platform/access-control/ce/module";
 
-import { OrgPermissionSet } from "../service/permission/org-permission";
+import { OrgPermissionSet } from "./permission/org-permission";
 
 // What an actor may do in an org, with the memberships it was built from.
 export class OrgPermission extends Permission<OrgPermissionSet> {

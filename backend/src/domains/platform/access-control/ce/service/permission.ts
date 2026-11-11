@@ -1,7 +1,7 @@
 import { AbilityTuple, ForbiddenError, MongoAbility, RawRuleOf, subject as caslSubject } from "@casl/ability";
 import { PackRule, packRules } from "@casl/ability/extra";
 
-import { createAbility } from "../service/ability-builder";
+import { createAbility } from "./ability-builder";
 
 export type TPermissionRule<TSet extends AbilityTuple> = RawRuleOf<MongoAbility<TSet>>;
 

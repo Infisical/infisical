@@ -21,7 +21,12 @@ describe("CertManagerModule usage counters", () => {
       db,
       accessControlDomain: buildAccessControlForTests({ db }).service
     }).service;
-    const projectsDomain = new ProjectsModule({ db, organizationsDomain, licenseRegistry }).service;
+    const projectsDomain = new ProjectsModule({
+      db,
+      accessControlDomain: buildAccessControlForTests({ db }).service,
+      organizationsDomain,
+      licenseRegistry
+    }).service;
     return {
       module: new CertManagerModule({ db, organizationsDomain, projectsDomain, licenseRegistry }),
       licenseRegistry

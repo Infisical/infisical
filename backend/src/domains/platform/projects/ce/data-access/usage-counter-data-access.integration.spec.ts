@@ -19,6 +19,7 @@ describe("ProjectsModule usage counters", () => {
     return {
       module: new ProjectsModule({
         db: DataAccessDb.fromClient(h.db),
+        accessControlDomain: buildAccessControlForTests({ db: DataAccessDb.fromClient(h.db) }).service,
         organizationsDomain: new OrganizationsModule({
           db: DataAccessDb.fromClient(h.db),
           accessControlDomain: buildAccessControlForTests({ db: DataAccessDb.fromClient(h.db) }).service

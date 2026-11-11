@@ -1,5 +1,7 @@
 import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
 
+import { ProjectMembershipRole } from "@app/db/schemas";
+
 import {
   ProjectPermissionActions,
   ProjectPermissionAppConnectionActions,
@@ -769,3 +771,11 @@ export const projectAdminPermissions = buildAdminPermissionRules();
 export const projectMemberPermissions = buildMemberPermissionRules();
 export const projectViewerPermission = buildViewerPermissionRules();
 export const projectNoAccessPermissions = buildNoAccessProjectPermission();
+
+// The roles a project type gets when its product registers none. A product that only adds a role spreads these in.
+export const genericProjectRoles = {
+  [ProjectMembershipRole.Admin]: projectAdminPermissions,
+  [ProjectMembershipRole.Member]: projectMemberPermissions,
+  [ProjectMembershipRole.Viewer]: projectViewerPermission,
+  [ProjectMembershipRole.NoAccess]: projectNoAccessPermissions
+};

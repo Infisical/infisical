@@ -9,7 +9,7 @@ import { buildAccessControlForTests } from "@app/domains/platform/access-control
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import type { TUserPrincipal } from "@app/lib/auth/principal";
 
-import { OrgPermission } from "../model/organization-permission";
+import { OrgPermission } from "./org-access";
 import { OrgPermissionService } from "./org-permission-service";
 import { OrgPermissionMemberActions, OrgPermissionSubjects } from "./permission/org-permission";
 

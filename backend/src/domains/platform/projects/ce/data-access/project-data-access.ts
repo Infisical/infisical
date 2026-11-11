@@ -2,6 +2,8 @@ import { ProjectType, TableName } from "@app/db/schemas";
 import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
+import { Project } from "../model/project";
+
 // Project types that do not take a workspace slot on a plan.
 const UNCOUNTED_WORKSPACE_TYPES = [
   ProjectType.CertificateManager,
@@ -35,6 +37,29 @@ export class ProjectDataAccess {
       return Number(row?.count ?? 0);
     } catch (error) {
       throw new DatabaseError({ error, name: "Count workspaces" });
+    }
+  }
+
+  async findById(projectId: string, options?: TReadOptions): Promise<Project | undefined> {
+    try {
+      const row = await this.db
+        .reader(options)(TableName.Project)
+        .where({ id: projectId })
+        .first("id", "name", "slug", "orgId", "type", "enforceEncryptedSecretManagerSecretMetadata");
+      return row ? Project.restore(row) : undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project" });
+    }
+  }
+
+  // When the project is scheduled for deletion, or "" when it is not: folded into cached permissions, so a
+  // soft-deleted project stops serving them.
+  async findDeletionState(projectId: string): Promise<string> {
+    try {
+      const row = await this.db.reader()(TableName.Project).where({ id: projectId }).first("deleteAfter");
+      return row?.deleteAfter ? new Date(row.deleteAfter).toISOString() : "";
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project deletion state" });
     }
   }
 }

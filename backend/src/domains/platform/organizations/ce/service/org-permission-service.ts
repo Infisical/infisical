@@ -12,7 +12,7 @@ import {
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
-import { OrgPermission } from "../model/organization-permission";
+import { OrgPermission } from "./org-access";
 import { orgOauthAllowlist } from "./org-oauth-scopes";
 import {
   orgAdminPermissions,

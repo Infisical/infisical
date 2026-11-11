@@ -75,7 +75,12 @@ const countAgentVaultSeats = (orgId: string) => {
     db,
     accessControlDomain: buildAccessControlForTests({ db }).service
   }).service;
-  const projectsDomain = new ProjectsModule({ db, organizationsDomain, licenseRegistry }).service;
+  const projectsDomain = new ProjectsModule({
+    db,
+    accessControlDomain: buildAccessControlForTests({ db }).service,
+    organizationsDomain,
+    licenseRegistry
+  }).service;
   // eslint-disable-next-line no-new
   new AgentVaultModule({ projectsDomain, licenseRegistry });
   return licenseRegistry.counter(Meter.AgentVaultIdentities.key).count(orgId);

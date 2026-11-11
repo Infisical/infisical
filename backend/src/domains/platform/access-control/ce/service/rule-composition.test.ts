@@ -1,4 +1,4 @@
-import { Permission, TPermissionRule } from "../model/permission";
+import { Permission, TPermissionRule } from "./permission";
 import { closestWins, mergeRoles, overrideAt, scopedGrants, withFallback } from "./rule-composition";
 
 type TSet = ["read" | "edit", "secrets"];

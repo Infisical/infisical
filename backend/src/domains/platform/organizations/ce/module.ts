@@ -4,10 +4,10 @@ import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { TAccessControlDomain } from "@app/domains/platform/access-control/ce/module";
 
 import { OrganizationDataAccess } from "./data-access/organization-data-access";
-import { OrgPermission } from "./model/organization-permission";
+import { OrgPermission } from "./service/org-access";
 import { OrgPermissionService, TGetOrgPermissionInput } from "./service/org-permission-service";
 
-export { OrgPermission } from "./model/organization-permission";
+export { OrgPermission } from "./service/org-access";
 export type { TGetOrgPermissionInput } from "./service/org-permission-service";
 export * from "./service/permission/org-permission";
 

@@ -1,9 +1,5 @@
 import { narrowRules, TCaslRuleLike } from "@app/domains/platform/access-control/ce/module";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/projects/ce/module";
+import { PROJECT_OAUTH_SCOPE_RULES } from "@app/domains/platform/projects/ce/module";
 import { OauthScope } from "@app/lib/auth/oauth-scopes";
 
 // Coarse, named OAuth delegation scopes. A delegated OAuth access token can never do more than the
@@ -34,19 +30,7 @@ type TOauthScopeDefinition = {
 export const OAUTH_SCOPE_DEFINITIONS: Record<OauthScope, TOauthScopeDefinition> = {
   [OauthScope.SecretsRead]: {
     description: "Read secrets, folders, and imports",
-    rules: [
-      {
-        level: "project",
-        subject: ProjectPermissionSub.Secrets,
-        actions: [
-          ProjectPermissionSecretActions.DescribeAndReadValue,
-          ProjectPermissionSecretActions.DescribeSecret,
-          ProjectPermissionSecretActions.ReadValue
-        ]
-      },
-      { level: "project", subject: ProjectPermissionSub.SecretFolders, actions: [ProjectPermissionActions.Read] },
-      { level: "project", subject: ProjectPermissionSub.SecretImports, actions: [ProjectPermissionActions.Read] }
-    ]
+    rules: PROJECT_OAUTH_SCOPE_RULES[OauthScope.SecretsRead].map((rule) => ({ level: "project" as const, ...rule }))
   }
 };
 
