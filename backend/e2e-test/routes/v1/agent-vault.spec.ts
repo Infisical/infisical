@@ -75,15 +75,12 @@ const countAgentVaultSeats = (orgId: string) => {
     db,
     accessControlDomain: buildAccessControlForTests({ db }).service
   }).service;
-  const projects = new ProjectsModule({
-    db,
-    accessControlDomain: buildAccessControlForTests({ db }).service,
-    organizationsDomain,
-    licenseRegistry
-  });
+  const accessControlDomain = buildAccessControlForTests({ db }).service;
+  const projects = new ProjectsModule({ db, accessControlDomain, organizationsDomain, licenseRegistry });
   // eslint-disable-next-line no-new
   new AgentVaultModule({
     projectsDomain: projects.service,
+    accessControlDomain,
     productAccessRegistry: projects.productAccessRegistry,
     licenseRegistry
   });

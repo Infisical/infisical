@@ -173,6 +173,7 @@ export const createDomains = (deps: TDomainDeps) => {
   });
   const productDeps = {
     projectsDomain: projects.service,
+    accessControlDomain: accessControl.service,
     productAccessRegistry: projects.productAccessRegistry,
     licenseRegistry: license.registry
   };

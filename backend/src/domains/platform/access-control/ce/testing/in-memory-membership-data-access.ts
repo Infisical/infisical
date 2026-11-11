@@ -1,4 +1,5 @@
-import { TMemberships } from "@app/db/schemas";
+import { RESOURCE_SCOPE, TMemberships } from "@app/db/schemas";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseError } from "@app/lib/errors";
 
 import { TMembershipDataAccess, TNewMembership } from "../data-access/membership-data-access";
@@ -34,6 +35,30 @@ export class InMemoryMembershipDataAccess implements TMembershipDataAccess {
       const row = this.state.tables.memberships.get(id);
       return row ? [this.restore(row)] : [];
     });
+  }
+
+  async findResourceMembershipsForActor({
+    actor,
+    projectId,
+    resourceType
+  }: {
+    actor: { type: ActorType.USER | ActorType.IDENTITY; id: string };
+    projectId: string;
+    resourceType: string;
+  }): Promise<Membership[]> {
+    const groupIds = new Set(
+      this.state.groupIdsOf(actor.type === ActorType.USER ? { userId: actor.id } : { identityId: actor.id })
+    );
+    return [...this.state.tables.memberships.values()]
+      .filter(
+        (row) =>
+          row.scope === RESOURCE_SCOPE &&
+          row.scopeProjectId === projectId &&
+          row.scopeResourceType === resourceType &&
+          ((actor.type === ActorType.USER ? row.actorUserId : row.actorIdentityId) === actor.id ||
+            (row.actorGroupId && groupIds.has(row.actorGroupId)))
+      )
+      .map((row) => this.restore(row));
   }
 
   async create({ roles, ...membership }: TNewMembership): Promise<Membership> {

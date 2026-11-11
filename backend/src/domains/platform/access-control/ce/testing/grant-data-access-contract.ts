@@ -311,6 +311,65 @@ export const describeGrantDataAccessContract = (name: string, harness: () => TGr
       expect(grants.hasActiveRole(ProjectMembershipRole.Admin)).toBe(false);
     });
 
+    test("should find an actor's memberships on one resource type, direct and through groups, active or not", async () => {
+      // Setup
+      const { h, deps, orgId, projectId, userId } = await setup();
+      const otherProjectId = await h.newProject(orgId);
+      const group = await write(deps, (dataAccess) =>
+        dataAccess.groups.create({ orgId, name: "g", slug: `g-${projectId}` })
+      );
+      await write(deps, (dataAccess) => dataAccess.groups.addMembers(group.id, [{ userId }]));
+      const bundle = { scope: RESOURCE_SCOPE, scopeOrgId: orgId, scopeResourceType: "agent-vault-access-bundle" };
+      await write(deps, (dataAccess) =>
+        dataAccess.memberships.create({
+          ...bundle,
+          scopeProjectId: projectId,
+          scopeResourceId: "b1",
+          actorUserId: userId,
+          roles: [{ role: "consumer" }]
+        })
+      );
+      await write(deps, (dataAccess) =>
+        dataAccess.memberships.create({
+          ...bundle,
+          scopeProjectId: projectId,
+          scopeResourceId: "b2",
+          actorGroupId: group.id,
+          isActive: false,
+          roles: [{ role: "consumer" }]
+        })
+      );
+      await write(deps, (dataAccess) =>
+        dataAccess.memberships.create({
+          ...bundle,
+          scopeProjectId: otherProjectId,
+          scopeResourceId: "b3",
+          actorUserId: userId,
+          roles: [{ role: "consumer" }]
+        })
+      );
+      await write(deps, (dataAccess) =>
+        dataAccess.memberships.create({
+          ...bundle,
+          scopeProjectId: projectId,
+          scopeResourceType: "pam-folder",
+          scopeResourceId: "f1",
+          actorUserId: userId,
+          roles: [{ role: "admin" }]
+        })
+      );
+
+      // Action
+      const memberships = await deps.dataAccess.memberships.findResourceMembershipsForActor({
+        actor: { type: ActorType.USER, id: userId },
+        projectId,
+        resourceType: "agent-vault-access-bundle"
+      });
+
+      // Assert
+      expect(memberships.map((membership) => membership.resourceId).sort()).toEqual(["b1", "b2"]);
+    });
+
     test("should keep the same fingerprint when nothing changed", async () => {
       // Setup
       const { deps, orgId, projectId, userId } = await setup();

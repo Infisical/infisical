@@ -42,6 +42,13 @@ export type TAccessControlDomain = {
   invalidate: (input: { name: string }) => Promise<void>;
   version: (input: { name: string }) => Promise<number>;
   findMembershipsByIds: (input: { ids: string[]; readFrom?: ReadFrom }) => Promise<Membership[]>;
+  // The actor's memberships on resources of one type in a project, directly or through its groups, active or not.
+  findResourceMembershipsForActor: (input: {
+    actor: TGrantActor;
+    projectId: string;
+    resourceType: string;
+    readFrom?: ReadFrom;
+  }) => Promise<Membership[]>;
 };
 
 export type TAccessControlDataAccessDeps = {
@@ -84,7 +91,9 @@ export class AccessControlModule {
       withCache: (input) => grants.withCache(input),
       invalidate: ({ name }) => grants.invalidate(name),
       version: ({ name }) => grants.version(name),
-      findMembershipsByIds: ({ ids, readFrom }) => dataAccess.memberships.findByIds(ids, { readFrom })
+      findMembershipsByIds: ({ ids, readFrom }) => dataAccess.memberships.findByIds(ids, { readFrom }),
+      findResourceMembershipsForActor: ({ readFrom, ...input }) =>
+        dataAccess.memberships.findResourceMembershipsForActor(input, { readFrom })
     };
   }
 }
