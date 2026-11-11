@@ -30,6 +30,7 @@ import {
 import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/const/secrets";
 import { dashboardKeys, fetchSecretValue } from "@app/hooks/api/dashboard/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { showSecretWriteErrors } from "@app/hooks/api/secrets/errors";
 import { fetchSecretReferences, secretKeys } from "@app/hooks/api/secrets/queries";
 
 import {
@@ -549,6 +550,8 @@ export const CommitForm: React.FC<CommitFormProps> = ({
       });
       setIsModalOpen(false);
       setCommitMessage("");
+    } catch (error) {
+      showSecretWriteErrors([{ error }]);
     } finally {
       setIsSubmitting(false);
     }

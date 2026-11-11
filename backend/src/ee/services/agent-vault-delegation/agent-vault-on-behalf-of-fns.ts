@@ -92,7 +92,7 @@ export const resolveOnBehalfOfUser = async (
   } catch (error) {
     if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") {
       throw new BadRequestError({
-        message: `'${identifier}' doesn't have access to Agent Vault, so no session can be started on their behalf. An Agent Vault admin can add them under Access Control.`
+        message: `'${identifier}' doesn't have access to this Agent Vault project, so no session can be started on their behalf. An Agent Vault admin can add them under Access Control.`
       });
     }
     throw error;

@@ -318,6 +318,7 @@ export const secretSyncQueueFactory = ({
         sourcePath: folder.path,
         sourceFolderId: folderId,
         syncOptions: secretSync.syncOptions as TSecretSync["syncOptions"],
+        includeAllSubFolders: secretSync.includeAllSubFolders,
         includeImports
       },
       {
@@ -581,10 +582,12 @@ export const secretSyncQueueFactory = ({
         kmsService,
         gatewayV2Service,
         gatewayPoolService,
-        oidcIssuerService
+        oidcIssuerService,
+        keyStore
       });
 
       syncResult = result ?? undefined;
+      syncMessage = syncResult?.message ?? null;
 
       isSynced = true;
     } catch (err) {
@@ -1130,9 +1133,7 @@ export const secretSyncQueueFactory = ({
     // not is never triggered by a change it was never configured to cover.
     // The move and copy warnings in frontend/src/helpers/secretSyncCoverage.ts mirror this rule.
     const secretSyncs = candidateSyncs.filter(
-      (sync) =>
-        (folder && sync.folderId === folder.id) ||
-        Boolean((sync.syncOptions as TSecretSync["syncOptions"])?.includeAllSubFolders)
+      (sync) => (folder && sync.folderId === folder.id) || sync.includeAllSubFolders
     );
 
     await secretSyncDAL.update(

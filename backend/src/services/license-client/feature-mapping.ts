@@ -285,6 +285,10 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: "pkiExternalIntermediateCa"
   },
   {
+    v2Key: "pki_cross_signed_ca",
+    v1Field: "pkiCrossSignedCa"
+  },
+  {
     v2Key: "pki_discovery",
     v1Field: "pkiDiscovery"
   },

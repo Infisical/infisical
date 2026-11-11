@@ -68,7 +68,7 @@ func TestSecret_ListTagPermissions(t *testing.T) {
 		reader := proj.NewUser(t, fixture.WithRoles("restricted-tag-reader"))
 
 		// Action
-		keys, _ := listDashboardKeys(t, reader, proj, new("plain"), nil)
+		keys, _ := listDashboardKeys(t, reader, proj, new("plain"))
 
 		// Assert
 		require.ElementsMatch(t, []string{"PLAIN_KEY"}, keys)

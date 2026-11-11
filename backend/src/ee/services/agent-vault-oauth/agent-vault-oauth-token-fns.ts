@@ -5,15 +5,22 @@ import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger, sanitizeUrlForLog } from "@app/lib/logger";
+import { clientSecretBasicCredentials, formUrlEncode } from "@app/lib/oauth";
 import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
 import { computePkceChallenge } from "@app/services/oauth-client/oauth-client-fns";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
-import { AgentVaultCredentialType, AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultOauthStatus,
+  AgentVaultVariableReferenceField
+} from "../agent-vault/agent-vault-enums";
+import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import {
   describeServer,
   MAX_OAUTH_SCOPES,
   OFFLINE_ACCESS_SCOPE,
+  privateNetworkHint,
   splitScopes,
   stripTrailingSlash
 } from "./agent-vault-oauth-discovery-fns";
@@ -28,6 +35,8 @@ import {
 } from "./agent-vault-oauth-types";
 
 const base64Url = (buffer: Buffer) => buffer.toString("base64url");
+
+const GOOGLE_AUTHORIZATION_HOST = "accounts.google.com";
 
 export const hashAccessToken = (accessToken: string) => crypto.createHash("sha256").update(accessToken).digest("hex");
 
@@ -75,6 +84,12 @@ export const buildAuthorizeUrl = ({
   if (scopes.length) url.searchParams.set("scope", scopes.join(" "));
   // OIDC Core section 11: a server must ignore offline_access without it, and issue no refresh token.
   if (scopes.includes(OFFLINE_ACCESS_SCOPE)) url.searchParams.set("prompt", "consent");
+  // Google ignores offline_access and issues a refresh token only for access_type=offline, and only on a consent
+  // screen, so without both a Google connection dies when its first access token expires.
+  if (url.hostname === GOOGLE_AUTHORIZATION_HOST) {
+    url.searchParams.set("access_type", "offline");
+    url.searchParams.set("prompt", "consent");
+  }
   return url.toString();
 };
 
@@ -132,7 +147,8 @@ const parseTokenBody = (contentType: string, body: string): Record<string, unkno
 
 // RFC 6749 appendix A: client IDs, client secrets and tokens are all VSCHAR. The access token is injected into a
 // header by the proxy, so a line break or NUL in it must never get that far; the client ID is stored in jsonb and
-// sent in the authorize URL, and the secret is form-encoded into the token request, which throws on a lone surrogate.
+// sent in the authorize URL, and the secret is form-encoded into the token request, which would silently replace a
+// lone surrogate and send a different secret.
 export const OAUTH_VSCHAR_PATTERN = new RE2(/^[\x20-\x7e]+$/);
 
 const MAX_TOKEN_LENGTH = 16_384;
@@ -212,14 +228,6 @@ const PROVIDER_WHITESPACE_RE = new RE2(/[\s\p{Z}\ufeff\x00-\x1f\x7f]+/gu);
 const PROVIDER_FORMATTING_RE = new RE2(/[\p{Cc}\p{Cf}\p{Co}]/gu);
 const REPEATED_SPACES_RE = new RE2(/ {2,}/g);
 const PROVIDER_URL_RE = new RE2(/https?:\/\/[^\s\v\p{Z}\ufeff<>"']+/giu);
-const FORM_URL_ESCAPED_RE = new RE2(/[-_.!~*'()]|%20/g);
-
-// The encoding oauth4webapi applies to the client ID and secret in a client_secret_basic header, which escapes
-// more characters than URLSearchParams does.
-export const formUrlEncode = (value: string) =>
-  encodeURIComponent(value).replace(FORM_URL_ESCAPED_RE, (match) =>
-    match === "%20" ? "+" : `%${match.charCodeAt(0).toString(16).toUpperCase()}`
-  );
 
 // Anything a provider sends that can end up in a message, a log line, `lastError` or an authorization's `error`
 // goes through here: line breaks and tabs become spaces, other control and formatting characters (NUL, lone
@@ -232,14 +240,13 @@ export const normalizeProviderText = (
 ) => {
   if (typeof text !== "string" || !text) return "";
   // Providers can echo request credentials in their descriptions. Redact literal and form-encoded values before
-  // truncating, so a partial secret is never left at the cut. The request body is encoded by URLSearchParams and
-  // the Basic header by `formUrlEncode`, so both forms are redacted.
+  // truncating, so a partial secret is never left at the cut.
   let redacted = text;
   sensitiveValues
     .filter((value): value is string => Boolean(value))
     .forEach((value) => {
-      const encodings = [new URLSearchParams({ value }).toString().slice("value=".length), formUrlEncode(value)];
-      const secrets = new Set([value, ...encodings.flatMap((encoded) => [encoded, encoded.replaceAll("+", "%20")])]);
+      const encoded = formUrlEncode(value);
+      const secrets = new Set([value, encoded, encoded.replaceAll("+", "%20")]);
       secrets.forEach((secret) => {
         redacted = redacted.split(secret).join("[redacted]");
       });
@@ -299,7 +306,11 @@ export const requestToken = async ({
   const client = { client_id: clientId };
   let clientAuthentication = oauth.None();
   if (clientSecret && tokenEndpointAuthMethod === AgentVaultOauthClientAuthMethod.ClientSecretBasic) {
-    clientAuthentication = oauth.ClientSecretBasic(clientSecret);
+    // Not oauth.ClientSecretBasic: it also escapes `-` and `.`, so Google, which compares the credentials without
+    // decoding them, can't find any client ID.
+    clientAuthentication = (_as, _client, _body, headers) => {
+      headers.set("authorization", `Basic ${clientSecretBasicCredentials(clientId, clientSecret)}`);
+    };
   }
   if (clientSecret && tokenEndpointAuthMethod === AgentVaultOauthClientAuthMethod.ClientSecretPost) {
     clientAuthentication = oauth.ClientSecretPost(clientSecret);
@@ -310,9 +321,7 @@ export const requestToken = async ({
     params.code,
     params.code_verifier,
     params.refresh_token,
-    ...(clientSecret
-      ? [Buffer.from(`${formUrlEncode(clientId)}:${formUrlEncode(clientSecret)}`).toString("base64")]
-      : [])
+    ...(clientSecret ? [clientSecretBasicCredentials(clientId, clientSecret)] : [])
   ];
 
   const send = async (withResource: boolean): Promise<TTokenRequestResult> => {
@@ -352,7 +361,7 @@ export const requestToken = async ({
         ok: false,
         errorCode: null,
         message: isPrivateAddress
-          ? `Infisical can't reach the login server '${host}' because it's on a private network. Use a bearer token for this service instead.`
+          ? `Infisical can't reach the login server '${host}' because it's on a private network. Use a bearer token for this service instead.${privateNetworkHint()}`
           : `Couldn't reach the login server '${host}'.`,
         resourceDropped: !withResource
       };
@@ -402,21 +411,26 @@ export const requestToken = async ({
 // Refresh errors that mean the login is gone for good, so retrying on every poll only repeats the refusal. The
 // client codes mean the server dropped the registered client (the MCP SDK starts over on invalid_client too) or no
 // longer accepts its secret; the rest are providers' own names for a dead refresh token.
-const DEAD_LOGIN_ERROR_CODES = new Set([
-  "invalid_grant",
+const CLIENT_REFUSED_ERROR_CODES = new Set([
   "invalid_client",
   "unauthorized_client",
   "incorrect_client_credentials", // GitHub's invalid_client, sent with a 200
-  "bad_refresh_token", // GitHub
-  "invalid_refresh_token", // Slack
-  "token_revoked", // Slack
-  "token_expired", // Slack
   "bad_client_secret", // Slack's invalid_client
   "invalid_client_id" // Slack's invalid_client
 ]);
+const DEAD_TOKEN_ERROR_CODES = new Set([
+  "invalid_grant",
+  "bad_refresh_token", // GitHub
+  "invalid_refresh_token", // Slack
+  "token_revoked", // Slack
+  "token_expired" // Slack
+]);
+
+export const isClientRefusedError = (errorCode: string | null) =>
+  errorCode !== null && CLIENT_REFUSED_ERROR_CODES.has(errorCode);
 
 export const isDeadLoginError = (errorCode: string | null) =>
-  errorCode !== null && DEAD_LOGIN_ERROR_CODES.has(errorCode);
+  errorCode !== null && (DEAD_TOKEN_ERROR_CODES.has(errorCode) || CLIENT_REFUSED_ERROR_CODES.has(errorCode));
 
 export const exchangeAuthorizationCode = (
   args: Omit<Parameters<typeof requestToken>[0], "params"> & { code: string; codeVerifier: string; redirectUri: string }
@@ -460,6 +474,57 @@ export const toResolvedOauthCredential = (
   expiresAt: config.expiresAt ?? null
 });
 
+// Each member signs in for themselves, so the service row holds no tokens, only what their sign-ins share.
+export const isMemberProvidedOauth = (service: { credentialType: string; memberProvidedFields?: string[] | null }) =>
+  service.credentialType === AgentVaultCredentialType.OAuth &&
+  Boolean(service.memberProvidedFields?.includes(AgentVaultVariableReferenceField.CredentialValue));
+
+// Whether resolve sends a member's sign-in: one bound to the service's current server whose login hasn't died. The
+// service row and the connection can come from replicas at different points, so the server is checked here too.
+// `status` overrides the stored one when resolve has just refreshed the token.
+export const isMemberOauthConnectionUsable = (
+  service: { config?: unknown },
+  oauthConfig: unknown,
+  status?: AgentVaultOauthStatus
+) => {
+  const config = oauthConfig as TAgentVaultOauthConfig | null | undefined;
+  return Boolean(
+    config &&
+    config.serverUrl === getServiceServerUrl(service.config) &&
+    (status ?? config.status) !== AgentVaultOauthStatus.NeedsReauthorization
+  );
+};
+
+// A connection's status as an API response shows it, without anything that identifies the client or the token.
+export const oauthConnectionStatusOf = (config: TAgentVaultOauthConfig) => ({
+  status: config.status,
+  issuer: config.issuer,
+  grantedScopes: config.grantedScopes ?? [],
+  requiredScopes: config.requiredScopes ?? [],
+  expiresAt: config.expiresAt ?? null,
+  authorizedAt: config.authorizedAt ?? null,
+  lastError: config.lastError ?? null
+});
+
+// What a member's sign-in is bound to on the service: its server URL (not the rest of its config, such as the
+// transport), issuer, client and sealed client secret. Sealing is randomized, so any secret an admin sends changes it,
+// even the same one.
+export const memberOauthSetupOf = (service: {
+  config?: unknown;
+  credentialConfig?: unknown;
+  encryptedCredential?: Buffer | null;
+}) =>
+  crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify([
+        getServiceServerUrl(service.config) ?? null,
+        service.credentialConfig ?? null,
+        service.encryptedCredential?.toString("base64") ?? null
+      ])
+    )
+    .digest("hex");
+
 // Never throws: `parseExpiresIn` bounds what a provider sends, and anything that still isn't a date is no expiry.
 export const expiresAtFrom = (expiresIn: number | undefined, now: Date) => {
   if (expiresIn === undefined) return null;
@@ -499,7 +564,7 @@ export const decideRefresh = ({
     if (!hasRefreshToken) {
       return {
         action: "needs-reauthorization",
-        reason: "The MCP server rejected the access token and issued no refresh token. Reauthorize this service."
+        reason: "The MCP server rejected the access token and issued no refresh token."
       };
     }
     return { action: "refresh" };
@@ -513,7 +578,7 @@ export const decideRefresh = ({
     return expiresAtMs <= now.getTime()
       ? {
           action: "needs-reauthorization",
-          reason: "The access token expired and the MCP server issued no refresh token. Reauthorize this service."
+          reason: "The access token expired and the MCP server issued no refresh token."
         }
       : { action: "return-current" };
   }

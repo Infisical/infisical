@@ -9,7 +9,11 @@ import {
   ResourceType,
   TableName
 } from "@app/db/schemas";
-import { AgentVaultMemberType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import {
+  AGENT_VAULT_ACTOR_COLUMN,
+  AgentVaultMemberType,
+  TAgentVaultActorColumn
+} from "@app/ee/services/agent-vault/agent-vault-enums";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 
@@ -39,12 +43,6 @@ export type TAgentVaultProductMember = TAgentVaultProductActor & {
   role: string;
   isActive: boolean;
   addedAt: Date;
-};
-
-const ACTOR_COLUMN: Record<AgentVaultMemberType, "actorUserId" | "actorIdentityId" | "actorGroupId"> = {
-  [AgentVaultMemberType.User]: "actorUserId",
-  [AgentVaultMemberType.MachineIdentity]: "actorIdentityId",
-  [AgentVaultMemberType.Group]: "actorGroupId"
 };
 
 type TActorRow = {
@@ -120,7 +118,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
     try {
       const conn = tx || db.replicaNode();
 
-      const alreadyGranted = (column: (typeof ACTOR_COLUMN)[AgentVaultMemberType]) =>
+      const alreadyGranted = (column: TAgentVaultActorColumn) =>
         conn(TableName.Membership)
           .where(`${TableName.Membership}.scope`, RESOURCE_SCOPE)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
@@ -141,7 +139,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
 
         void query.where((qb) => {
           actorTypes.forEach((type) => {
-            const column = ACTOR_COLUMN[type];
+            const column = AGENT_VAULT_ACTOR_COLUMN[type];
             void qb.orWhere((typeQb) => {
               void typeQb.whereNotNull(`${TableName.Membership}.${column}`);
               // Inside the block, where the column is known non-null: a bare whereNotIn would read
@@ -268,7 +266,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
     try {
       const conn = tx || db.replicaNode();
 
-      const alreadyMembers = (column: (typeof ACTOR_COLUMN)[AgentVaultMemberType]) =>
+      const alreadyMembers = (column: TAgentVaultActorColumn) =>
         conn(TableName.Membership)
           .where(`${TableName.Membership}.scope`, AccessScope.Project)
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
@@ -345,7 +343,7 @@ export const agentVaultMemberDALFactory = (db: TDbClient) => {
         void query.where((qb) => {
           actorTypes.forEach((type) => {
             void qb.orWhere((typeQb) => {
-              const column = ACTOR_COLUMN[type];
+              const column = AGENT_VAULT_ACTOR_COLUMN[type];
               void typeQb
                 .whereNotNull(`${TableName.Membership}.${column}`)
                 .whereNotIn(`${TableName.Membership}.${column}`, alreadyMembers(column));

@@ -1,11 +1,11 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
+import { createSecretChangePolicy } from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { ApprovalStatus, RequestState } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import {
   ApprovalPolicyType,
   ApprovalRequestApprovalDecision,
@@ -56,12 +56,10 @@ const getSecret = (secretPath: string, key: string) =>
     headers: authHeaders()
   });
 
-const createPolicy = (url: string, secretPath: string, name: string) =>
-  testServer.inject({
-    method: "POST",
-    url,
-    headers: authHeaders(),
-    body: { workspaceId: projectId, projectId, environment: envSlug, secretPath, approvers, approvals: 1, name }
+const createPolicy = (secretPath: string, name: string) =>
+  createSecretChangePolicy({
+    body: { projectId, environment: envSlug, secretPath, approvers, approvals: 1, name },
+    authToken: jwtAuthToken
   });
 
 const getRequest = (id: string) =>
@@ -125,9 +123,7 @@ describe("Secret change request lifecycle on a policy on the global approval sys
 
   beforeAll(async () => {
     ({ folderId, secretPath, baseSecretId, baseVersion } = await setupFolderWithBaseSecret(FOLDER));
-    const policyRes = await createPolicy("/api/v2/secret-approvals", secretPath, "lifecycle-global-policy");
-    expect(policyRes.statusCode).toBe(200);
-    policyId = policyRes.json().approval.id as string;
+    policyId = (await createPolicy(secretPath, "lifecycle-global-policy")).id;
   });
 
   afterAll(async () => {
@@ -157,7 +153,6 @@ describe("Secret change request lifecycle on a policy on the global approval sys
       requesterEmail: seedData1.email,
       currentStep: 1
     });
-    expect(await db(TableName.SecretApprovalRequest).where({ id: approval.id }).first()).toBeUndefined();
 
     const change = await db(TableName.SecretChangeRequests).where({ approvalRequestId: approval.id }).first();
     expect(change).toMatchObject({ slug: approval.slug, folderId, hasMerged: false });
@@ -381,151 +376,5 @@ describe("Secret change request lifecycle on a policy on the global approval sys
       await db(TableName.SecretChangeRequests).where({ approvalRequestId: staleUpdateRequestId }).first()
     ).toMatchObject({ hasMerged: true, conflicts: [{ op: SecretOperations.Update, secretId: staleCommit.id }] });
     expect((await getSecret(secretPath, BASE_KEY)).statusCode).toBe(404);
-  });
-});
-
-describe("Secret approval request lifecycle on a policy on the legacy approval system", () => {
-  const FOLDER = "sar-lifecycle-legacy";
-  let folderId: string;
-  let secretPath: string;
-  let baseSecretId: string;
-  let baseVersion: { id: string; version: number };
-  let policyId: string;
-  const requestIds: string[] = [];
-
-  beforeAll(async () => {
-    ({ folderId, secretPath, baseSecretId, baseVersion } = await setupFolderWithBaseSecret(FOLDER));
-    policyId = (
-      await seedLegacySecretApprovalPolicy(getDb(), {
-        projectId,
-        environment: envSlug,
-        secretPath,
-        name: "lifecycle-legacy-policy",
-        approverUserId: seedData1.id
-      })
-    ).id;
-  });
-
-  afterAll(async () => {
-    const db = getDb();
-    await db(TableName.SecretApprovalRequest).whereIn("id", requestIds).del();
-    await db(TableName.SecretApprovalPolicy).where({ id: policyId }).del();
-    await teardownFolder(folderId);
-  });
-
-  const expectOpenRequest = async (approval: { id: string; slug: string }, commit: Record<string, unknown>) => {
-    const db = getDb();
-    requestIds.push(approval.id);
-
-    expect(approval).toMatchObject({
-      policyId,
-      status: RequestState.Open,
-      hasMerged: false,
-      folderId,
-      committerUserId: seedData1.id
-    });
-
-    expect(await db(TableName.SecretApprovalRequest).where({ id: approval.id }).first()).toMatchObject({
-      policyId,
-      status: RequestState.Open,
-      hasMerged: false,
-      folderId,
-      slug: approval.slug,
-      committerUserId: seedData1.id
-    });
-    expect(await db(TableName.ApprovalRequests).where({ id: approval.id }).first()).toBeUndefined();
-
-    const commits = await db(TableName.SecretApprovalRequestSecretV2).where({ requestId: approval.id });
-    expect(commits).toHaveLength(1);
-    expect(commits[0]).toMatchObject({ secretChangeId: null, ...commit });
-    return commits[0];
-  };
-
-  test("creating a secret opens a request with a create commit", async () => {
-    const res = await createSecret(secretPath, NEW_KEY, "value");
-    expect(res.statusCode).toBe(200);
-
-    const commit = await expectOpenRequest(res.json().approval, {
-      op: SecretOperations.Create,
-      key: NEW_KEY,
-      version: 1,
-      secretId: null,
-      secretVersion: null
-    });
-    expect(commit.encryptedValue).not.toBeNull();
-    expect((await getSecret(secretPath, NEW_KEY)).statusCode).toBe(404);
-  });
-
-  test("updating a secret opens a request with an update commit pointing at the live secret", async () => {
-    const res = await updateSecret(secretPath, BASE_KEY, "changed");
-    expect(res.statusCode).toBe(200);
-
-    await expectOpenRequest(res.json().approval, {
-      op: SecretOperations.Update,
-      key: BASE_KEY,
-      secretId: baseSecretId,
-      secretVersion: baseVersion.id,
-      version: baseVersion.version
-    });
-    expect((await getSecret(secretPath, BASE_KEY)).json().secret.secretValue).toBe("base");
-  });
-
-  test("deleting a secret opens a request with a delete commit and leaves the secret in place", async () => {
-    const res = await deleteSecret(secretPath, BASE_KEY);
-    expect(res.statusCode).toBe(200);
-
-    await expectOpenRequest(res.json().approval, {
-      op: SecretOperations.Delete,
-      key: BASE_KEY,
-      secretId: baseSecretId,
-      secretVersion: baseVersion.id
-    });
-    expect((await getSecret(secretPath, BASE_KEY)).statusCode).toBe(200);
-  });
-
-  test("each request can be approved and stays open until it is merged", async () => {
-    expect(requestIds).toHaveLength(3);
-
-    for await (const requestId of requestIds) {
-      const reviewRes = await reviewRequest(requestId, ApprovalStatus.APPROVED);
-      expect(reviewRes.statusCode).toBe(200);
-      expect(reviewRes.json().review).toMatchObject({
-        requestId,
-        reviewerUserId: seedData1.id,
-        status: ApprovalStatus.APPROVED
-      });
-
-      expect(await getDb()(TableName.SecretApprovalRequestReviewer).where({ requestId })).toMatchObject([
-        { reviewerUserId: seedData1.id, status: ApprovalStatus.APPROVED }
-      ]);
-      expect(await getDb()(TableName.SecretApprovalRequest).where({ id: requestId }).first()).toMatchObject({
-        status: RequestState.Open,
-        hasMerged: false
-      });
-
-      const detailsRes = await getRequest(requestId);
-      expect(detailsRes.statusCode).toBe(200);
-      expect(detailsRes.json().approval.reviewers).toMatchObject([
-        { userId: seedData1.id, status: ApprovalStatus.APPROVED }
-      ]);
-    }
-  });
-
-  test("merging the approved create request closes it and creates the secret", async () => {
-    const [createRequestId] = requestIds;
-
-    const mergeRes = await mergeRequest(createRequestId);
-    expect(mergeRes.statusCode).toBe(200);
-    expect(mergeRes.json().approval).toMatchObject({ hasMerged: true, status: RequestState.Closed });
-
-    expect(await getDb()(TableName.SecretApprovalRequest).where({ id: createRequestId }).first()).toMatchObject({
-      status: RequestState.Closed,
-      hasMerged: true,
-      statusChangedByUserId: seedData1.id
-    });
-
-    const secretRes = await getSecret(secretPath, NEW_KEY);
-    expect(secretRes.statusCode).toBe(200);
-    expect(secretRes.json().secret.secretValue).toBe("value");
   });
 });

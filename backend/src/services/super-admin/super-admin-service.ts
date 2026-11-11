@@ -103,7 +103,7 @@ type TSuperAdminServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "delete">;
-  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "deleteByUserIdsInGroupsOwnedByOrgs">;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   eventEmitter: TEventEmitter;
@@ -1064,11 +1064,6 @@ export const superAdminServiceFactory = ({
     return organization;
   };
 
-  const deleteOrganization = async (organizationId: string) => {
-    const organization = await orgDAL.deleteById(organizationId);
-    return organization;
-  };
-
   const deleteOrganizationMembership = async (
     organizationId: string,
     membershipId: string,
@@ -1416,7 +1411,6 @@ export const superAdminServiceFactory = ({
     invalidateCache,
     checkIfInvalidatingCache,
     getOrganizations,
-    deleteOrganization,
     deleteOrganizationMembership,
     initializeAdminIntegrationConfigSync,
     initializeEnvConfigSync,

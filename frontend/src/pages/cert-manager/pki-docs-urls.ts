@@ -74,6 +74,7 @@ export const PkiDocsUrls = {
     internal: `${PKI_DOCS_BASE_URL}/ca/private-ca`,
     external: `${PKI_DOCS_BASE_URL}/ca/external-ca`,
     renewal: `${PKI_DOCS_BASE_URL}/ca/ca-renewal`,
+    crossSignedCertificates: `${PKI_DOCS_BASE_URL}/ca/cross-signed-certificates`,
     crlDistribution: `${PKI_DOCS_BASE_URL}/ca/crl-distribution`,
     // External CA types
     acmeCa: `${PKI_DOCS_BASE_URL}/ca/acme-ca`,

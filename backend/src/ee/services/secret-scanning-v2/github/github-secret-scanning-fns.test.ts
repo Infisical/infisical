@@ -56,7 +56,7 @@ vi.mock("@app/lib/logger", () => ({
 
 const SECRET_VALUE = "ghp_secretvalue1234567890";
 
-const makeFinding = (index: number): TFindingsPayload[number] => ({
+const makeFinding = (index: number): Omit<TFindingsPayload[number], "secretValue"> => ({
   rule: "github-pat",
   severity: SecretScanningFindingSeverity.High,
   fingerprint: `abc123:config|${index}.ts:github-pat:${index + 1}:4`,

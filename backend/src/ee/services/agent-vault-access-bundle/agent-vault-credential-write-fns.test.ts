@@ -1,11 +1,20 @@
 import { TAgentVaultServices } from "@app/db/schemas";
 
-import { AgentVaultCredentialType } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultOauthRegistration,
+  TAgentVaultOauthMemberConfig
+} from "../agent-vault-oauth/agent-vault-oauth-types";
+import { AgentVaultCredentialType, TAgentVaultMemberProvidedField } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultCredentialUpdate } from "./agent-vault-access-bundle-types";
 import {
+  assertNativeBasicHasUsername,
   isStoredSecretReplaced,
+  memberFieldsOf,
+  memberOauthChangeOf,
   mergeCredential,
   needsStoredSecretFor,
+  nextMemberFieldsOf,
+  personalValuesToClearOf,
   splitCredential
 } from "./agent-vault-credential-write-fns";
 
@@ -256,5 +265,196 @@ describe("needsStoredSecretFor", () => {
     expect(needsStoredSecretFor(credential(update), storedService(stored as Parameters<typeof storedService>[0]))).toBe(
       needed
     );
+  });
+});
+
+describe("an SSH key credential", () => {
+  const SSH_KEY = AgentVaultCredentialType.SshKey;
+  const KEY = "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----";
+  const storedSshKey = (hasCertificate: boolean) =>
+    ({
+      ...(storedService({ type: SSH_KEY }) as object),
+      credentialConfig: { type: SSH_KEY, hasCertificate }
+    }) as unknown as TAgentVaultServices;
+
+  test("seals the username, key and certificate, and records only whether a certificate is stored", () => {
+    const written = splitCredential(
+      credential({ type: SSH_KEY, username: "agent", privateKey: KEY, certificate: "c" })
+    );
+    expect(written.secret).toEqual({ username: "agent", privateKey: KEY, certificate: "c" });
+    expect(written.config).toEqual({ type: SSH_KEY, hasCertificate: true });
+    expect(written.memberProvidedFields).toBeNull();
+  });
+
+  test.each([
+    ["no username", { type: SSH_KEY, privateKey: KEY }, "needs the username"],
+    ["no key", { type: SSH_KEY, username: "agent" }, "needs a private key"],
+    [
+      "a field left to members",
+      { type: SSH_KEY, username: "agent", privateKey: KEY, memberProvidedFields: [VALUE] },
+      "can't be left to members"
+    ]
+  ])("is refused with %s", (_, input, message) => {
+    expect(() => splitCredential(credential(input))).toThrow(message);
+  });
+
+  test("an update that sends only the username keeps the stored key and certificate", () => {
+    const stored = storedSshKey(true);
+    const update = credential({ type: SSH_KEY, username: "other" });
+    expect(needsStoredSecretFor(update, stored)).toBe(true);
+    const written = mergeCredential(update, stored, { username: "agent", privateKey: KEY, certificate: "c" });
+    expect(written.secret).toEqual({ username: "other", privateKey: KEY, certificate: "c" });
+  });
+
+  test("an update can remove the certificate", () => {
+    const written = mergeCredential(credential({ type: SSH_KEY, certificate: null }), storedSshKey(true), {
+      username: "agent",
+      privateKey: KEY,
+      certificate: "c"
+    });
+    expect(written.secret).toEqual({ username: "agent", privateKey: KEY });
+    expect(written.config).toEqual({ type: SSH_KEY, hasCertificate: false });
+  });
+
+  test("removing a certificate that isn't stored leaves the sealed secret alone", () => {
+    const stored = storedSshKey(false);
+    const update = credential({ type: SSH_KEY, certificate: null });
+    expect(needsStoredSecretFor(update, stored)).toBe(false);
+    const written = mergeCredential(update, stored, null);
+    expect(written.secret).toBeUndefined();
+    expect(isStoredSecretReplaced(update, stored, written.secret)).toBe(false);
+  });
+
+  test("removing a stored certificate replaces the sealed secret", () => {
+    const stored = storedSshKey(true);
+    const update = credential({ type: SSH_KEY, certificate: null });
+    expect(needsStoredSecretFor(update, stored)).toBe(true);
+    const written = mergeCredential(update, stored, { username: "agent", privateKey: KEY, certificate: "c" });
+    expect(written.secret).toEqual({ username: "agent", privateKey: KEY });
+    expect(isStoredSecretReplaced(update, stored, written.secret)).toBe(true);
+  });
+
+  test.each(["", "   "])("an update sending the certificate %j keeps the stored one", (certificate) => {
+    const stored = storedSshKey(true);
+    const update = credential({ type: SSH_KEY, username: "other", certificate });
+    const written = mergeCredential(update, stored, { username: "agent", privateKey: KEY, certificate: "c" });
+    expect(written.secret).toEqual({ username: "other", privateKey: KEY, certificate: "c" });
+    expect(written.config).toEqual({ type: SSH_KEY, hasCertificate: true });
+  });
+
+  test("an update sending an empty certificate with none stored leaves the sealed secret alone", () => {
+    const stored = storedSshKey(false);
+    const update = credential({ type: SSH_KEY, certificate: "" });
+    expect(needsStoredSecretFor(update, stored)).toBe(false);
+    const written = mergeCredential(update, stored, null);
+    expect(written.secret).toBeUndefined();
+    expect(isStoredSecretReplaced(update, stored, written.secret)).toBe(false);
+  });
+
+  test("an update with no part of it leaves the sealed secret alone", () => {
+    const written = mergeCredential(credential({ type: SSH_KEY }), storedSshKey(false), null);
+    expect(written.secret).toBeUndefined();
+  });
+
+  test("changing to an SSH key needs a key, since the stored secret belongs to the old type", () => {
+    expect(() =>
+      mergeCredential(credential({ type: SSH_KEY, username: "agent" }), storedService({ type: BASIC }), null)
+    ).toThrow("Provide a private key when changing the credential type to SSH key");
+  });
+
+  test("sending a new key replaces the stored secret", () => {
+    const stored = storedSshKey(false);
+    const update = credential({ type: SSH_KEY, privateKey: KEY });
+    expect(isStoredSecretReplaced(update, stored, { username: "agent", privateKey: KEY })).toBe(true);
+  });
+});
+
+describe("a database or SSH service's basic credential", () => {
+  test("needs a username, set by the admin or left to members", () => {
+    expect(() => assertNativeBasicHasUsername(splitCredential(credential({ type: BASIC, password: "p" })))).toThrow(
+      "needs a username to log in as"
+    );
+    expect(() =>
+      assertNativeBasicHasUsername(splitCredential(credential({ type: BASIC, username: "agent", password: "p" })))
+    ).not.toThrow();
+    expect(() =>
+      assertNativeBasicHasUsername(
+        splitCredential(credential({ type: BASIC, password: "p", memberProvidedFields: [USERNAME] }))
+      )
+    ).not.toThrow();
+  });
+});
+
+describe("an OAuth sign-in left to members", () => {
+  const OAUTH = AgentVaultCredentialType.OAuth;
+
+  test("is the token field, credential-value", () => {
+    expect(memberFieldsOf(credential({ type: OAUTH, memberProvidedFields: [VALUE] }))).toEqual([VALUE]);
+    expect(memberFieldsOf(credential({ type: OAUTH, authorizationId: "a" }))).toBeNull();
+  });
+
+  test("an update that leaves the list out keeps it, unless it brings the admin's own authorization", () => {
+    const stored = storedService({ type: OAUTH, memberProvidedFields: [VALUE], sealed: false });
+    expect(nextMemberFieldsOf(credential({ type: OAUTH, clientSecret: "s" }), stored)).toEqual([VALUE]);
+    expect(nextMemberFieldsOf(credential({ type: OAUTH, authorizationId: "a" }), stored)).toBeNull();
+    expect(
+      nextMemberFieldsOf(credential({ type: OAUTH, memberProvidedFields: [VALUE] }), storedService({ type: OAUTH }))
+    ).toEqual([VALUE]);
+  });
+});
+
+describe("which admin saves end every member's OAuth connection", () => {
+  const stored: TAgentVaultOauthMemberConfig = {
+    type: AgentVaultCredentialType.OAuth,
+    serverUrl: "https://mcp.example.com/mcp",
+    issuer: "https://auth.example.com",
+    registration: AgentVaultOauthRegistration.Manual,
+    clientId: "app"
+  };
+
+  test.each([
+    ["nothing changed", {}, false, { sameClient: true, membersRebound: false }],
+    ["a new client secret, even for the same client", {}, true, { sameClient: true, membersRebound: true }],
+    [
+      "a new server URL",
+      { serverUrl: "https://mcp.example.com/v2" },
+      false,
+      { sameClient: true, membersRebound: true }
+    ],
+    ["a new issuer", { issuer: "https://other.example.com" }, false, { sameClient: false, membersRebound: true }],
+    ["a new client ID", { clientId: "other" }, false, { sameClient: false, membersRebound: true }],
+    [
+      "a switch to registration at each sign-in",
+      { registration: AgentVaultOauthRegistration.Dynamic, clientId: null },
+      false,
+      { sameClient: false, membersRebound: true }
+    ]
+  ])("%s", (_, change, clientSecretSent, expected) => {
+    expect(memberOauthChangeOf({ next: { ...stored, ...change }, stored, clientSecretSent })).toEqual(expected);
+  });
+
+  test("turning member sign-in on, with nothing stored, rebinds", () => {
+    expect(memberOauthChangeOf({ next: stored, stored: undefined, clientSecretSent: false }).membersRebound).toBe(true);
+  });
+});
+
+describe("which personal values an admin save deletes", () => {
+  const fields = (...f: string[]) => f as TAgentVaultMemberProvidedField[];
+  const base = {
+    credentialTypeChanged: false,
+    memberFieldsChanged: false,
+    nextMemberFields: fields(VALUE),
+    oauthMembersRebound: false
+  };
+
+  test.each([
+    ["nothing about members changed", {}, "none"],
+    ["the credential type changed", { credentialTypeChanged: true, memberFieldsChanged: true }, "all"],
+    ["the credential type changed with the same member fields", { credentialTypeChanged: true }, "all"],
+    ["every member field was taken back", { memberFieldsChanged: true, nextMemberFields: null }, "all"],
+    ["the member OAuth sign-in was rebound", { oauthMembersRebound: true }, "all"],
+    ["one field was taken back", { memberFieldsChanged: true, nextMemberFields: fields(VALUE) }, "fields-taken-back"]
+  ])("%s", (_, change, expected) => {
+    expect(personalValuesToClearOf({ ...base, ...change })).toBe(expected);
   });
 });

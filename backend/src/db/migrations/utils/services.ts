@@ -89,7 +89,8 @@ export const getMigrationEncryptionServices = async ({
     identityDAL,
     additionalPrivilegeDAL,
     groupDAL,
-    secretFolderDAL
+    secretFolderDAL,
+    orgDAL
   });
 
   const licenseService = licenseServiceFactory({

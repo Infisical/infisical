@@ -60,6 +60,7 @@ export type TCertificate = {
   renewedByCertificateId?: string;
   renewalError?: string;
   hasPrivateKey?: boolean;
+  canRenewFromCsr?: boolean;
   keyAlgorithm?: string | null;
   signatureAlgorithm?: string | null;
   subject?: TCertificateSubject;
@@ -114,7 +115,7 @@ export type TImportPkcs12EntriesResult = {
 };
 
 export type TCertificateExternalMetadata =
-  | { type: CaType.DIGICERT; orderId: number }
+  | { type: CaType.DIGICERT; orderId: number; certificateId?: number }
   | { type: CaType.GODADDY; certificateId: string }
   | { type: CaType.AWS_ACM_PUBLIC_CA; arn: string; region: string; validationMethod: string };
 
@@ -122,6 +123,7 @@ export type TImportCertificateDTO = {
   certificatePem: string;
   privateKeyPem?: string;
   chainPem?: string;
+  csr?: string;
 
   pkiCollectionId?: string;
   friendlyName?: string;
@@ -171,6 +173,9 @@ export type TRenewCertificateDTO = {
   renewalKeySource?: CertificateRenewalKeySource;
   csr?: string;
   attributes?: TRenewCertificateAttributes;
+  externalConfiguration?: {
+    reissue?: boolean;
+  };
 };
 
 export type TRenewCertificateResponse = {

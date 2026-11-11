@@ -7,6 +7,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
+import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
@@ -33,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
@@ -116,16 +117,20 @@ type Props = {
 };
 
 export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) => {
+  const { projectId } = useProject();
   const { currentOrg } = useOrganization();
   const [bundleSearch, setBundleSearch] = useState("");
   const [debouncedBundleSearch] = useDebounce(bundleSearch);
-  const { data: accessBundles, isFetching: isSearchingBundles } = useListAgentVaultAccessBundles({
-    search: debouncedBundleSearch.trim() || undefined,
-    orderBy: "name",
-    orderDirection: "asc",
-    limit: 50
-  });
-  const createSession = useCreateAgentVaultSession();
+  const { data: accessBundles, isFetching: isSearchingBundles } = useListAgentVaultAccessBundles(
+    projectId,
+    {
+      search: debouncedBundleSearch.trim() || undefined,
+      orderBy: "name",
+      orderDirection: "asc",
+      limit: 50
+    }
+  );
+  const createSession = useCreateAgentVaultSession(projectId);
 
   const {
     control,
@@ -137,7 +142,10 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   const selectedBundle = watch("accessBundle");
   const ttlPreset = watch("ttlPreset");
 
-  const { data: selectedBundleDetails } = useGetAgentVaultAccessBundle(selectedBundle?.id ?? "");
+  const { data: selectedBundleDetails } = useGetAgentVaultAccessBundle(
+    projectId,
+    selectedBundle?.id ?? ""
+  );
   const needsSetup =
     selectedBundle && selectedBundleDetails?.id === selectedBundle.id
       ? selectedBundleDetails.services.filter(
@@ -160,7 +168,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
 
     try {
       const session = await createSession.mutateAsync({
-        accessBundles: [accessBundle.name],
+        accessBundle: accessBundle.name,
         ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset,
         label: label || undefined
       });
@@ -329,7 +337,10 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
                 <ul className="mt-2 w-full divide-y divide-warning/15 rounded-md border border-warning/20">
                   {shownNeedsSetup.map((service) => (
                     <li key={service.id} className="flex items-center gap-2 px-2.5 py-1.5">
-                      <ServiceIcon hostPattern={service.hostPattern} />
+                      <ServiceIcon
+                        hostPattern={hostPatternOf(service)}
+                        serviceType={service.type}
+                      />
                       <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                         {service.name}
                       </span>
@@ -345,8 +356,12 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
                   {hiddenNeedsSetupCount > 0 && (
                     <li className="px-2.5 py-1.5 text-xs">
                       <Link
-                        to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                        params={{ orgId: currentOrg.id, accessBundleId: selectedBundle.id }}
+                        to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId,
+                          accessBundleId: selectedBundle.id
+                        }}
                         className="underline underline-offset-2 hover:text-foreground"
                       >
                         {hiddenNeedsSetupCount} more in {selectedBundle.name}

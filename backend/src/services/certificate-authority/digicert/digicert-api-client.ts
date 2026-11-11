@@ -13,7 +13,8 @@ import {
   TOrderStatusChangesResponse,
   TOrganizationValidationsResponse,
   TPlaceOrderRequest,
-  TPlaceOrderResponse
+  TPlaceOrderResponse,
+  TReissueOrderRequest
 } from "./digicert-certificate-authority-types";
 
 export type TDigiCertApiClient = ReturnType<typeof createDigiCertApiClient>;
@@ -57,7 +58,10 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       return data;
     }, `order placement for product ${productSlug}`);
 
-  const reissueOrder = async <TResp = TPlaceOrderResponse>(orderId: number, body: Record<string, unknown>) =>
+  const reissueOrder = async <TResp = TPlaceOrderResponse>(
+    orderId: number,
+    body: TReissueOrderRequest | Record<string, unknown>
+  ) =>
     wrap(async () => {
       const { data } = await request.post<TResp>(`${baseURL}/order/certificate/${orderId}/reissue`, body, {
         headers,
@@ -129,6 +133,21 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       return { requestStatus: typeof data === "object" ? data?.status : undefined };
     }, `order revocation for ${orderId}`);
 
+  const cancelOrderReissue = async (orderId: number, note: string) =>
+    wrap(async () => {
+      await request.put(`${baseURL}/order/certificate/${orderId}/status`, { status: "canceled", note }, { headers });
+    }, `reissue cancellation for order ${orderId}`);
+
+  const revokeCertificate = async (certificateId: number, comments: string) =>
+    wrap(async () => {
+      const { data } = await request.put<{ status?: DigiCertRevocationRequestStatus } | "">(
+        `${baseURL}/certificate/${certificateId}/revoke`,
+        { comments, skip_approval: true },
+        { headers, timeout: ORDER_REQUEST_TIMEOUT_MS }
+      );
+      return { requestStatus: typeof data === "object" ? data?.status : undefined };
+    }, `certificate revocation for ${certificateId}`);
+
   const listOrderStatusChanges = async ({ seconds }: { seconds: number }) =>
     wrap(async () => {
       const params = new URLSearchParams({ seconds: String(seconds) });
@@ -148,6 +167,8 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
     downloadCertificatePem,
     getOrdersByAlternativeId,
     revokeOrder,
+    revokeCertificate,
+    cancelOrderReissue,
     listOrderStatusChanges
   };
 };

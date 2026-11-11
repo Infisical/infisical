@@ -4,7 +4,7 @@ import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx
 
 <Steps>
   <Step>
-    In Agent Vault, go to **Proxies** and select **Create Proxy**.
+    In the Agent Vault project that holds your access bundle, go to **Proxies** and select **Create Proxy**. An agent can only use a proxy in the same project as its session.
   </Step>
   <Step>
     Enter a **Name**, such as `sandboxes`.
@@ -16,6 +16,6 @@ import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx
 
 ### Create a machine identity for your code
 
-Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only your access bundle, because an Agent Vault admin can create sessions for every access bundle.
+Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only your access bundle, because an admin of the Agent Vault project can create sessions with every access bundle in the project.
 
 <MachineIdentitySetup />

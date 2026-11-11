@@ -23,7 +23,7 @@ const seedGroup = async (db: Knex, dto: { slug: string; addToProject: boolean })
         actorGroupId: group.id,
         scope: AccessScope.Project,
         scopeOrgId: seedData1.organization.id,
-        scopeProjectId: seedData1.project.id,
+        scopeProjectId: seedData1.projectV3.id,
         isActive: true
       })
       .returning("*");
@@ -87,7 +87,7 @@ const seedGroupOnlyUser = async (db: Knex, dto: { groupId: string; orgMembership
 };
 
 const cleanupGroupOnlyUser = async (db: Knex, userId: string) => {
-  await db(TableName.SecretApprovalPolicyApprover).where({ approverUserId: userId }).del();
+  await db(TableName.ApprovalPolicyStepApprovers).where({ userId }).del();
   await db(TableName.UserGroupMembership).where({ userId }).del();
   const memberships = await db(TableName.Membership).where({ actorUserId: userId }).select("id");
   if (memberships.length) {
@@ -110,7 +110,7 @@ const createPolicyWithUserApprover = async (userId: string, secretPath: string) 
       authorization: `Bearer ${jwtAuthToken}`
     },
     body: {
-      workspaceId: seedData1.project.id,
+      workspaceId: seedData1.projectV3.id,
       environment: seedData1.environment.slug,
       name: `test-policy${secretPath.replaceAll("/", "-")}`,
       secretPath,
@@ -137,7 +137,7 @@ describe("Secret approval policy router", async () => {
       expect(res.statusCode).toBe(200);
       policyId = res.json().approval.id;
     } finally {
-      if (policyId) await db(TableName.SecretApprovalPolicy).where({ id: policyId }).del();
+      if (policyId) await db(TableName.ApprovalPolicies).where({ id: policyId }).del();
       await cleanupGroupOnlyUser(db, user.id);
       await cleanupGroup(db, group.id);
     }

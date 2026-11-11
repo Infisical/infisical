@@ -1,10 +1,10 @@
 ---
 title: "How Agent Vault works"
 sidebarTitle: "How it works"
-description: "The pieces of an Agent Vault setup and how a session gives an agent access to APIs and MCP servers."
+description: "The pieces of an Agent Vault setup and how a session gives an agent access to APIs, MCP servers, databases, and SSH servers."
 ---
 
-Agent Vault lets an AI agent call APIs and MCP servers without having access to the real credentials. Instead, the agent sends its requests through an Agent Vault proxy, which attaches the credentials on the way out.
+Agent Vault lets an AI agent call APIs and MCP servers, and reach databases and SSH servers, without having access to the real credentials. Instead, the agent connects through an Agent Vault proxy, which attaches the credentials to the agent's requests or logs in with them.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ Agent Vault lets an AI agent call APIs and MCP servers without having access to 
 To find the architecture that best fits what you're building, [plan your setup](/documentation/platform/agent-vault/plan-your-setup).
 </Tip>
 
-Every Agent Vault setup has an orchestrator that creates a session and starts the agent. Then, the agent sends every request through the proxy:
+Every Agent Vault setup has an [orchestrator](#orchestrators) that creates a session and starts the agent. Then, the agent sends every request through the proxy:
 
 ```mermaid
 flowchart LR
@@ -35,13 +35,13 @@ flowchart LR
 | Orchestrator | Creates a session and starts the agent with the session token | Your Infisical login, or a [machine identity](/documentation/platform/identities/machine-identities) that can create sessions |
 | Agent | Does the task, in an environment such as a container, a virtual machine (VM), a Kubernetes pod, or a managed sandbox | The session token |
 | Proxy | Fetches the real credentials from Infisical and attaches them to the agent's requests, from its own container or machine | The proxy token |
-| Infisical | Stores your services and access bundles | The real credentials |
+| Infisical | Stores your services and access bundles in an [Agent Vault project](/documentation/platform/agent-vault/projects) | The real credentials |
 
 ### Orchestrators
 
 An orchestrator is the program (or person) that creates a session and starts an agent with the session token. Agent Vault works with any orchestrator, such as:
 
-- **Your own service:** a backend service [uses the Infisical API to create a session](/documentation/platform/agent-vault/sessions-api) and starts an agent for each task. It can call the API directly or through the [Python SDK](/sdks/languages/python#agent_vault-sessions). For example: an internal coding agent that picks up tickets, or a product feature that starts an agent when a customer asks for something
+- **Your own service:** a backend service [uses the Infisical API to create a session](/documentation/platform/agent-vault/sessions-api) and starts an agent for each task. It can call the API directly or through the [Python SDK](/sdks/languages/python#agent_vault-sessions) or [Node.js SDK](/sdks/languages/node#agentvault-sessions). For example: a Slack bot that starts an agent in a new sandbox for each message, an internal coding agent that picks up tickets, or a product feature that starts an agent when a customer asks for something
 - **A scheduled job:** a cron job or CI pipeline [uses the Infisical CLI to create a session](/documentation/platform/agent-vault/sessions-cli) and starts the agent. For example: an agent that labels new issues every hour
 - **You:** a person who [creates a session in the Infisical dashboard](/documentation/platform/agent-vault/sessions#create-a-session) and starts an agent with the session token. For example: a coding agent on a dev box, or an assistant on a home server
 
@@ -192,18 +192,18 @@ Here's how the four primitives connect:
 
 A service represents one external system that an agent can reach, such as GitHub's REST API or Linear's MCP server. Each service holds:
 
-- **Target**: Where the system is, such as the host `api.github.com` or the server URL `https://mcp.linear.app/mcp`
-- **Credential**: The real token, username and password, or OAuth authorization that the proxy attaches to the agent's requests, if the service uses one
+- **Target**: Where the system is, such as the host `api.github.com`, the server URL `https://mcp.linear.app/mcp`, or a database's host and port
+- **Credential**: The real token, username and password, SSH key, or OAuth authorization that the proxy attaches to the agent's requests or logs in with, if the service uses one
 - **Rules** (HTTP APIs): The HTTP methods and paths the service allows
-- **Custom headers**: Extra headers the proxy adds to each request
+- **Custom headers** (HTTP APIs and MCP servers): Extra headers the proxy adds to each request
 - **Substitutions** (HTTP APIs): Placeholders the proxy replaces with real values
 
-Agent Vault supports two types of service: [HTTP APIs](/documentation/platform/agent-vault/http-apis) and [MCP servers](/documentation/platform/agent-vault/mcp-servers).
+Agent Vault supports three kinds of service: [HTTP APIs](/documentation/platform/agent-vault/http-apis), [MCP servers](/documentation/platform/agent-vault/mcp-servers), and [databases and SSH servers](/documentation/platform/agent-vault/databases-and-ssh).
 
 You don't give services to an agent directly. You add services to an access bundle, and a session gives the agent access to the services in its access bundle.
 
 <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services">
-  Anything an AI agent talks to during a session, such as an API or an MCP server.
+  Anything an AI agent talks to during a session, such as an API, an MCP server, a database, or an SSH server.
 </Card>
 
 ### Access bundles
@@ -273,6 +273,8 @@ Agent Vault uses the `HTTPS_PROXY` environment variable, which `curl`, `git`, `g
 `infisical agent-vault run` sets `HTTPS_PROXY` for the agent, trusts the proxy's certificate authority, and passes the session token as the proxy credential.
 
 The same applies to MCP servers. Your agent's MCP configuration keeps each server's real URL and has no token, and the proxy authenticates the agent's requests to the server.
+
+Some sandbox providers, such as [E2B](/documentation/platform/agent-vault/guides/e2b), can send a sandbox's HTTP and HTTPS traffic to the proxy over SOCKS5 instead, so the agent doesn't need `HTTPS_PROXY`.
 
 <Note>
   Node.js's built-in `fetch` (undici-backed) doesn't read `HTTPS_PROXY` by default. If your agent uses it directly, run Node with `--use-env-proxy` or set `NODE_USE_ENV_PROXY=1` (Node 24 or later). Third-party clients like `axios`, `node-fetch`, and `got` read the environment variable without extra flags.

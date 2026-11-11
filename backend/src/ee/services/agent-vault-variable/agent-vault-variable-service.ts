@@ -186,6 +186,7 @@ export const agentVaultVariableServiceFactory = ({
       .map((service): TAgentVaultVariableUsedByService => ({
         id: service.serviceId,
         name: service.serviceName,
+        type: service.serviceType,
         hostPattern: service.hostPattern,
         accessBundleId: service.accessBundleId,
         accessBundleName: service.accessBundleName
@@ -275,7 +276,7 @@ export const agentVaultVariableServiceFactory = ({
           throw new BadRequestError({
             message: owner
               ? `You can keep at most ${cap} personal variables. Delete an unused one first.`
-              : `Agent Vault can hold at most ${cap} global variables. Delete an unused one first.`
+              : `This project can hold at most ${cap} global variables. Delete an unused one first.`
           });
         }
 

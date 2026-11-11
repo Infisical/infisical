@@ -330,6 +330,7 @@ export type TSignerRequest = {
   maxSignings?: number | null;
   usedSignings?: number;
   grantStatus?: string | null;
+  accessStatus?: SignerRequestStatus;
   createdAt: string;
   updatedAt: string;
 };

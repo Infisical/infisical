@@ -1300,6 +1300,7 @@ export type THoneyTokenCreatedEvent = {
   properties: {
     honeyTokenId: string;
     type: string;
+    managedBy: string;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -1337,6 +1338,7 @@ export type THoneyTokenTriggeredEvent = {
   event: PostHogEventTypes.HoneyTokenTriggered;
   properties: {
     type: string;
+    managedBy: string;
   };
 };
 
@@ -2458,6 +2460,7 @@ export type TAgentVaultServiceCreatedEvent = {
     hostPatternCount: number;
     allowedMethodCount: number;
     allowedPathPrefixCount: number;
+    allowedToolCount: number;
     customHeaderCount: number;
     substitutionCount: number;
     variableReferenceCount: number;
@@ -2474,6 +2477,7 @@ export type TAgentVaultServiceUpdatedEvent = {
     hostPatternCount: number;
     allowedMethodCount: number;
     allowedPathPrefixCount: number;
+    allowedToolCount: number;
     customHeaderCount: number;
     substitutionCount: number;
     variableReferenceCount: number;
@@ -2563,7 +2567,9 @@ export type TAgentVaultSessionCreatedEvent = {
   event: PostHogEventTypes.AgentVaultSessionCreated;
   properties: TAgentVaultEventBase & {
     sessionId: string;
-    accessBundleId: string;
+    // Null for a session started with inline services only.
+    accessBundleId: string | null;
+    inlineServiceCount: number;
     ttlSeconds: number | null;
     isOnBehalfOfUser: boolean;
   };
@@ -2617,7 +2623,8 @@ export type TAgentVaultProxyTokenRotatedEvent = {
 };
 
 // Sent per upload link a proxy is given, and aggregated (POSTHOG_AGGREGATED_EVENTS), so bytes and records sum per org.
-// records is the proxy's own count, unchecked, and missing from CLIs that don't send it.
+// records is the proxy's own count, unchecked, and missing from CLIs that don't send it. The per-decision counts
+// (brokered, passthrough, blocked, error) are sent only when they add up to records, so ratios divide by their sum.
 export type TAgentVaultSessionLogChunkAcceptedEvent = {
   event: PostHogEventTypes.AgentVaultSessionLogChunkAccepted;
   properties: {
@@ -2625,6 +2632,10 @@ export type TAgentVaultSessionLogChunkAcceptedEvent = {
     storageType: ObjectStorageType;
     bytes: number;
     records?: number;
+    brokered?: number;
+    passthrough?: number;
+    blocked?: number;
+    error?: number;
   };
 };
 

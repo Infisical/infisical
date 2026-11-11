@@ -20,7 +20,11 @@ import {
 } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
-import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
+import {
+  caIssuesFromCsr,
+  caSupportsCapability,
+  CERTIFICATE_AUTHORITIES_TYPE_MAP
+} from "@app/services/certificate-authority/certificate-authority-maps";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
   TProfileCustomExtension,
@@ -68,7 +72,8 @@ import {
 } from "../certificate-common/certificate-issuance-utils";
 import {
   assertCanEditCertificate,
-  assertCanEditCertificateResult
+  assertCanEditCertificateResult,
+  assertCanRevokeCertificate
 } from "../certificate-common/certificate-permission-fns";
 import { TCertificateQuotaDeps } from "../certificate-common/certificate-quota-fns";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
@@ -80,6 +85,7 @@ import {
   validateCertificateRequestLicense,
   validatePqcLicense
 } from "../certificate-common/certificate-utils";
+import { CertificateReissueMap } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import {
@@ -112,6 +118,7 @@ import {
   certificateSpanToTtl,
   importKeyPairFromPem,
   isCertificateContentEdit,
+  keepCertificateFactsInCsrRenewal,
   resolveRenewalAlgorithms,
   resolveRenewalAltNames,
   resolveRenewalCustomExtensions,
@@ -143,8 +150,9 @@ type TCertificateRenewalServiceFactoryDep = {
     | "create"
     | "getRequestEnrollmentTypeByCertId"
     | "getOriginatingRequestByCertId"
+    | "canRenewFromCsr"
   >;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
@@ -408,7 +416,6 @@ export const certificateRenewalServiceFactory = ({
     originalCert,
     certificateRequest,
     certificateSecret,
-    originalCsr,
     ttl,
     notBefore,
     notAfter,
@@ -430,7 +437,6 @@ export const certificateRenewalServiceFactory = ({
     originalCert: TCertificates;
     certificateRequest: TCertificateRequest;
     certificateSecret: { encryptedPrivateKey: Buffer } | undefined;
-    originalCsr: string | null;
     ttl: string;
     notBefore: Date;
     notAfter: Date;
@@ -460,13 +466,10 @@ export const certificateRenewalServiceFactory = ({
         certificateRequest
       });
     } else {
-      if (originalCert.altNames && requestedAltNames.length === 0) {
-        throw new BadRequestError({
-          message:
-            "Every subject alternative name cannot be removed while reusing this certificate's key pair, because Infisical does not hold its private key and can only renew from the original signing request. Supply a CSR with the names you want, or renew with a new key pair."
-        });
-      }
-      renewalCsr = originalCsr as string;
+      throw new BadRequestError({
+        message:
+          "This certificate's key pair cannot be reused because Infisical holds neither its private key nor a signing request generated from it. Renew with a new key pair, or supply a CSR generated from the existing key."
+      });
     }
 
     const subjectOverride = buildRenewalDistinguishedName(certificateRequest);
@@ -588,6 +591,18 @@ export const certificateRenewalServiceFactory = ({
     });
   };
 
+  // The CSR a keyless certificate renews on its existing key pair from: the one its originating request
+  // carried, or the one supplied when it was imported (imports have no request row).
+  const $findStoredCsr = async (certificateId: string, originatingRequestCsr?: string | null) => {
+    const requestCsr =
+      originatingRequestCsr === undefined
+        ? (await certificateDAL.getOriginatingRequestByCertId(certificateId)).csr
+        : originatingRequestCsr;
+    if (requestCsr) return requestCsr;
+    const certificateBody = await certificateBodyDAL.findOne({ certId: certificateId });
+    return certificateBody?.importedCsr ?? null;
+  };
+
   const $loadRenewalSubject = async (
     { certificateId, keySource }: { certificateId: string; keySource: CertificateRenewalKeySource },
     tx: Knex
@@ -621,18 +636,11 @@ export const certificateRenewalServiceFactory = ({
     }
 
     const certificateSecret = await certificateSecretDAL.findOne({ certId: originalCert.id }, tx);
-    const originalCsr =
-      !certificateSecret && keySource === CertificateRenewalKeySource.Reuse ? originatingRequest.csr : null;
 
-    if (
-      !originalCert.deletedAt &&
-      keySource === CertificateRenewalKeySource.Reuse &&
-      !certificateSecret &&
-      !originalCsr
-    ) {
+    if (!originalCert.deletedAt && keySource === CertificateRenewalKeySource.Reuse && !certificateSecret) {
       throw new BadRequestError({
         message:
-          "This certificate's key pair cannot be reused because Infisical holds neither its private key nor the signing request it was issued from. Renew with a new key pair, or for a CA-issued certificate supply a CSR generated from the existing key."
+          "This certificate's key pair cannot be reused because Infisical holds neither its private key nor a signing request generated from it. Renew with a new key pair, or for a CA-issued certificate supply a CSR generated from the existing key."
       });
     }
 
@@ -640,7 +648,6 @@ export const certificateRenewalServiceFactory = ({
       originalCert,
       profile,
       certificateSecret,
-      originalCsr,
       originalSignatureAlgorithm,
       originalKeyAlgorithm,
       originatingRequest
@@ -752,7 +759,8 @@ export const certificateRenewalServiceFactory = ({
     keySource,
     originalSignatureAlgorithm,
     originalKeyAlgorithm,
-    profileCustomExtensions
+    profileCustomExtensions,
+    maxTtlDays
   }: {
     originalCert: TCertificates;
     policy: Parameters<TCertificatePolicyServiceFactory["validateRequestAgainstPolicy"]>[0];
@@ -763,6 +771,7 @@ export const certificateRenewalServiceFactory = ({
     originalSignatureAlgorithm?: CertSignatureAlgorithm;
     originalKeyAlgorithm?: CertKeyAlgorithm;
     profileCustomExtensions?: TProfileCustomExtension[] | null;
+    maxTtlDays?: number;
   }) => {
     const originalTtl = certificateSpanToTtl(originalCert.notBefore, originalCert.notAfter);
 
@@ -788,7 +797,7 @@ export const certificateRenewalServiceFactory = ({
 
     const mergedRequest = csrRenewalRequest
       ? {
-          ...csrRenewalRequest,
+          ...keepCertificateFactsInCsrRenewal(csrRenewalRequest, originalRequest),
           customExtensions:
             attributes?.customExtensions ?? csrRenewalRequest.customExtensions ?? carriedCustomExtensions
         }
@@ -804,7 +813,8 @@ export const certificateRenewalServiceFactory = ({
       });
     }
 
-    const ttl = mergedRequest.validity?.ttl || originalTtl;
+    const requestedTtl = mergedRequest.validity?.ttl || originalTtl;
+    const ttl = maxTtlDays && ms(requestedTtl) > ms(`${maxTtlDays}d`) ? `${maxTtlDays}d` : requestedTtl;
     const certificateRequest = { ...mergedRequest, validity: { ttl } };
 
     const validationResult = certificatePolicyService.validateRequestAgainstPolicy(policy, certificateRequest, {
@@ -851,9 +861,16 @@ export const certificateRenewalServiceFactory = ({
       return;
     }
 
+    if (keySource === CertificateRenewalKeySource.Csr && caType && !caIssuesFromCsr(caType)) {
+      throw new BadRequestError({
+        message: `${CERTIFICATE_AUTHORITIES_TYPE_MAP[caType]} can't issue a certificate from a signing request, so this certificate can't renew from a CSR or reuse its key pair without the private key. Renew with a new key pair.`
+      });
+    }
+
     if (keySource === CertificateRenewalKeySource.Reuse && caType !== CaType.INTERNAL) {
       throw new BadRequestError({
-        message: `Certificates issued by a ${caType?.toUpperCase() ?? "external"} certificate authority cannot reuse their existing key pair on renewal. Renew with a new key pair, or supply a CSR generated from the existing key.`
+        message:
+          "This certificate authority can reuse a key pair only from a signing request, not from a private key Infisical holds. Renew with a new key pair, or export the private key and use a CSR generated from it."
       });
     }
   };
@@ -1088,20 +1105,41 @@ export const certificateRenewalServiceFactory = ({
     internal = false,
     removeRootsFromChain,
     renewalKeySource: requestedKeySource,
-    csr,
-    attributes
+    csr: requestedCsr,
+    attributes,
+    externalConfiguration
   }: Omit<TRenewCertificateDTO, "certificateRequestId"> & {
     internal?: boolean;
   }): Promise<TCertificateIssuanceResponse> => {
     const actorCtx: TRenewalActor = { actor, actorId, actorAuthMethod, actorOrgId };
-    const keySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr });
+    const callerKeySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr: requestedCsr });
+    let keySource = callerKeySource;
+    let csr = requestedCsr;
+
+    // Without the private key, reusing the key pair means renewing from the CSR Infisical holds for it, so
+    // it runs as a CSR renewal: the CSR is the source of truth for the subject and names on every CA type.
+    let isStoredCsr = false;
+    if (
+      keySource === CertificateRenewalKeySource.Reuse &&
+      !(await certificateSecretDAL.findOne({ certId: certificateId }))
+    ) {
+      const storedCsr = await $findStoredCsr(certificateId);
+      if (storedCsr) {
+        keySource = CertificateRenewalKeySource.Csr;
+        csr = storedCsr;
+        isStoredCsr = true;
+      }
+    }
+
     let csrRenewalRequest: TCertificateRequest | null = null;
     if (keySource === CertificateRenewalKeySource.Csr && csr) {
-      assertCsrRenewalAttributes(attributes);
+      assertCsrRenewalAttributes(attributes, { isStoredCsr });
       csrRenewalRequest = buildCsrRenewalCertificateRequest({ csr, attributes });
     }
 
-    const isEditingCertificate = isCertificateContentEdit({ keySource, attributes });
+    // Decided from what the caller asked for: resubmitting the stored CSR is how Infisical carries out a
+    // Reuse, not an edit, so it must not demand certificate Edit from a role that may only renew.
+    const isEditingCertificate = isCertificateContentEdit({ keySource: callerKeySource, attributes });
     let changedAttributes: TRenewalAuditChange[] = [];
 
     // Read once for both licence checks. They run before the transaction because getPlan can reach
@@ -1120,7 +1158,6 @@ export const certificateRenewalServiceFactory = ({
           originalCert,
           profile,
           certificateSecret,
-          originalCsr,
           originalSignatureAlgorithm,
           originalKeyAlgorithm,
           originatingRequest
@@ -1143,6 +1180,25 @@ export const certificateRenewalServiceFactory = ({
           tx
         );
 
+        if (externalConfiguration?.reissue) {
+          if (!(caType && caSupportsCapability(caType, CaCapability.REISSUE_CERTIFICATES))) {
+            const reissuingCaNames = Object.values(CaType)
+              .filter((type) => caSupportsCapability(type, CaCapability.REISSUE_CERTIFICATES))
+              .map((type) => CERTIFICATE_AUTHORITIES_TYPE_MAP[type]);
+            throw new BadRequestError({
+              message: `Reissue is only available for certificates issued by these CAs: ${reissuingCaNames.join(", ")}.`
+            });
+          }
+          if (attributes?.ttl) {
+            throw new BadRequestError({ message: "Remove the TTL. It can't be set on a reissue." });
+          }
+          if (!CertificateReissueMap[caType]?.orderSchema.safeParse(originalCert.externalMetadata).success) {
+            throw new BadRequestError({
+              message: "This certificate has no order with its CA to reissue. Place a new order instead."
+            });
+          }
+        }
+
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
           originalCert,
           policy,
@@ -1152,10 +1208,35 @@ export const certificateRenewalServiceFactory = ({
           keySource,
           originalSignatureAlgorithm,
           originalKeyAlgorithm,
-          profileCustomExtensions: profile?.defaults?.customExtensions
+          profileCustomExtensions: profile?.defaults?.customExtensions,
+          maxTtlDays:
+            externalConfiguration?.reissue && caType ? CertificateReissueMap[caType]?.maxValidityDays : undefined
         });
 
         changedAttributes = buildRenewalAuditChanges(replayedRequest, { ...certificateRequest, validity: { ttl } });
+
+        if (externalConfiguration?.reissue && !internal) {
+          const requestedNames = new Set(
+            [
+              certificateRequest.commonName,
+              ...(certificateRequest.subjectAlternativeNames ?? []).map((san) => san.value)
+            ]
+              .filter(Boolean)
+              .map((name) => (name as string).trim().toLowerCase())
+          );
+          const isRemovingName = [originalCert.commonName, ...(originalCert.altNames?.split(",") ?? [])]
+            .filter(Boolean)
+            .some((name) => !requestedNames.has((name as string).trim().toLowerCase()));
+          if (isRemovingName) {
+            await assertCanRevokeCertificate({
+              certificate: originalCert,
+              ...actorCtx,
+              permissionService,
+              resourceMetadataDAL,
+              tx
+            });
+          }
+        }
 
         if (renewalAuth?.projectPermission) {
           assertCanEditCertificateResult({
@@ -1215,7 +1296,6 @@ export const certificateRenewalServiceFactory = ({
             originalCert,
             certificateRequest,
             certificateSecret,
-            originalCsr,
             ttl,
             notBefore,
             notAfter,
@@ -1477,6 +1557,7 @@ export const certificateRenewalServiceFactory = ({
         state: renewalRequest.state,
         locality: renewalRequest.locality,
         isRenewal: true,
+        ...(externalConfiguration && { externalConfiguration }),
         originalCertificateId: certificateId,
         certificateRequestId: certificateRequest.id,
         basicConstraints: renewalBasicConstraints,
@@ -1582,8 +1663,9 @@ export const certificateRenewalServiceFactory = ({
     });
 
     const originatingRequest = await certificateDAL.getOriginatingRequestByCertId(certificate.id);
+    const storedCsr = await $findStoredCsr(certificate.id, originatingRequest.csr);
 
-    return buildRenewalPreview(originatingRequest, certificate);
+    return buildRenewalPreview({ ...originatingRequest, csr: storedCsr }, certificate);
   };
 
   const updateRenewalConfig = async ({
@@ -1610,10 +1692,10 @@ export const certificateRenewalServiceFactory = ({
     }
 
     const certificateSecret = await certificateSecretDAL.findOne({ certId: certificate.id });
-    if (!certificateSecret) {
+    if (!certificateSecret && !(await certificateDAL.canRenewFromCsr(certificate.id))) {
       throw new ForbiddenRequestError({
         message:
-          "Certificate is not eligible for auto-renewal: certificates issued from CSR (external private key) cannot be auto-renewed"
+          "Certificate is not eligible for auto-renewal: Infisical holds neither its private key nor a signing request its certificate authority can renew it from. Renew it with a new key pair, or once with a CSR generated from its existing key, then turn on auto-renewal."
       });
     }
 
