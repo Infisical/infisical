@@ -1,9 +1,9 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import { AgentVaultVariableScope } from "../agent-vault/agent-vault-enums";
 import { TFindAgentVaultVariablesDTO } from "./agent-vault-variable-dal";
 
-export type TAgentVaultVariableScoped = { projectId: string; ctx: TGenericPermission };
+export type TAgentVaultVariableScoped = { projectId: string; ctx: TActorContext };
 
 export type TListVariablesDTO = TAgentVaultVariableScoped &
   Omit<TFindAgentVaultVariablesDTO, "projectId" | "owners" | "limit" | "accessBundleIds"> & {

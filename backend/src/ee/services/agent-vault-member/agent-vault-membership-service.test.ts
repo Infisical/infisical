@@ -26,10 +26,8 @@ const INSERTED_AT = new Date("2026-01-01T00:00:00Z");
 const addIds = { userIds: [], groupIds: [], machineIdentityIds: [IDENTITY_ID], emails: [] };
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: ACTOR_ID,
-  actorOrgId: ORG_ID,
-  actorAuthMethod: undefined
+  principal: { type: ActorType.USER, id: ACTOR_ID },
+  org: { id: ORG_ID }
 } as unknown as Parameters<ReturnType<typeof agentVaultMembershipServiceFactory>["addProductMembers"]>[0]["ctx"];
 
 const buildTx = (adminCount: number) => {
@@ -62,7 +60,7 @@ const buildService = ({
 } = {}) => {
   const txs: ReturnType<typeof buildTx>[] = [];
   const deps = {
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
+    projectsDomain: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
     identityDAL: {
       // Honours a projectId filter, because the ownership check pushes it into the query rather than
       // comparing in JS: a mock that ignored it would report every identity as Agent Vault's own.

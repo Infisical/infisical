@@ -1,19 +1,16 @@
 import crypto from "node:crypto";
 
-import { ForbiddenError } from "@casl/ability";
-
+import { TAgentVaultDomain } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, TKeyStoreFactory, TKeyStoreLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
@@ -109,8 +106,7 @@ type TAgentVaultOauthServiceFactoryDep = {
     TAgentVaultPersonalValueDALFactory,
     "findOauthForOwner" | "compareAndSwapOauth" | "addRequiredScopes"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  agentVaultDomain: Pick<TAgentVaultDomain, "getAccessBundlePermission">;
   http?: TOauthHttpClient;
 };
 
@@ -248,8 +244,7 @@ export const agentVaultOauthServiceFactory = ({
   agentVaultServiceDAL,
   agentVaultAccessBundleDAL,
   agentVaultPersonalValueDAL,
-  permissionService,
-  membershipDAL,
+  agentVaultDomain,
   http = agentVaultOauthHttpClient
 }: TAgentVaultOauthServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
@@ -300,8 +295,8 @@ export const agentVaultOauthServiceFactory = ({
     if (
       !stored ||
       stored.record.projectId !== projectId ||
-      ctx.actor !== ActorType.USER ||
-      stored.record.actorUserId !== ctx.actorId
+      ctx.principal.type !== ActorType.USER ||
+      stored.record.actorUserId !== ctx.principal.id
     ) {
       throw new NotFoundError({
         message: `Authorization with ID '${authorizationId}' not found. It may have expired or was already used. Authorize the service again.`
@@ -324,23 +319,20 @@ export const agentVaultOauthServiceFactory = ({
     registration: requestedRegistration,
     personal
   }: TCreateAuthorizationDTO) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+    const { permission, accessBundleIds } = await getAgentVaultReachability({ agentVaultDomain }, { projectId, ctx });
     // A member's own sign-in needs only the reach to use the service; connecting the service itself is an admin's job.
-    ForbiddenError.from(permission).throwUnlessCan(
-      personal
+    permission.assert({
+      action: personal
         ? ProjectPermissionAgentVaultAccessBundleActions.Read
         : ProjectPermissionAgentVaultAccessBundleActions.Edit,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
+      subject: ProjectPermissionSub.AgentVaultAccessBundles
+    });
 
     const bundle = await agentVaultAccessBundleDAL.findByIdInProject({ id: accessBundleId, projectId });
     if (!bundle || (accessBundleIds && !accessBundleIds.includes(accessBundleId.toLowerCase()))) {
       throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
     }
-    if (ctx.actor !== ActorType.USER) {
+    if (ctx.principal.type !== ActorType.USER) {
       throw new BadRequestError({
         message: "Only a user can authorize an OAuth connection, since it needs a browser."
       });
@@ -398,7 +390,7 @@ export const agentVaultOauthServiceFactory = ({
         // The member's previous sign-in, for its scopes and, if registration fails, its client.
         const previous = await agentVaultPersonalValueDAL.findOauthForOwner({
           serviceId: service.id,
-          owner: { userId: ctx.actorId }
+          owner: { userId: ctx.principal.id }
         });
         if (previous) {
           const secret = await open<TAgentVaultOauthSecret>(projectId, previous.encryptedValue);
@@ -527,7 +519,7 @@ export const agentVaultOauthServiceFactory = ({
       accessBundleId: bundle.id,
       serviceId: serviceId ?? null,
       ...(personal ? { personal: true, memberSetup } : {}),
-      actorUserId: ctx.actorId,
+      actorUserId: ctx.principal.id,
       serverUrl,
       state,
       redirectUri: callbackUri,

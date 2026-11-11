@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorType } from "@app/lib/auth/actor-types";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
@@ -11,6 +12,8 @@ import {
 } from "./agent-vault-session-fns";
 
 const live = { expiresAt: null, revokedAt: null };
+
+const ownerCtx = (type: ActorType, id: string) => ({ principal: { type, id } }) as Pick<TActorContext, "principal">;
 
 describe("agent vault session status", () => {
   test("a session whose owner was deleted reads as revoked", () => {
@@ -41,16 +44,16 @@ describe("agent vault session ownership", () => {
   const onBehalfOf = { userId: null, identityId: "identity-1", onBehalfOfUserId: "user-1" };
 
   test("only the identity holds a session it started on a user's behalf, not the user", () => {
-    expect(isSessionOwnedBy({ actor: ActorType.IDENTITY, actorId: "identity-1" }, onBehalfOf)).toBe(true);
-    expect(isSessionOwnedBy({ actor: ActorType.USER, actorId: "user-1" }, onBehalfOf)).toBe(false);
+    expect(isSessionOwnedBy(ownerCtx(ActorType.IDENTITY, "identity-1"), onBehalfOf)).toBe(true);
+    expect(isSessionOwnedBy(ownerCtx(ActorType.USER, "user-1"), onBehalfOf)).toBe(false);
   });
 
   // Ids of users and identities are both UUIDs, so the actor type has to be matched as well as the id.
   test("an id is matched only against the column for its actor type", () => {
     const own = { userId: "user-1", identityId: null };
-    expect(isSessionOwnedBy({ actor: ActorType.USER, actorId: "user-1" }, own)).toBe(true);
-    expect(isSessionOwnedBy({ actor: ActorType.IDENTITY, actorId: "user-1" }, own)).toBe(false);
-    expect(isSessionOwnedBy({ actor: ActorType.USER, actorId: "identity-1" }, onBehalfOf)).toBe(false);
+    expect(isSessionOwnedBy(ownerCtx(ActorType.USER, "user-1"), own)).toBe(true);
+    expect(isSessionOwnedBy(ownerCtx(ActorType.IDENTITY, "user-1"), own)).toBe(false);
+    expect(isSessionOwnedBy(ownerCtx(ActorType.USER, "identity-1"), onBehalfOf)).toBe(false);
   });
 });
 

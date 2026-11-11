@@ -1,16 +1,14 @@
-import { Knex } from "knex";
-
-import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { TAgentVaultDomain } from "@app/domains/agent-vault/agent-vault/ce/module";
+import type { TActorContext, TActorContexts } from "@app/domains/lib/actor-context";
+import { ProjectPermission, TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { TGenericPermission } from "@app/lib/types";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-
-type TProjectPermissionResult = Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>;
+import type { TUserPrincipal } from "@app/lib/auth/principal";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 export type TAgentVaultPermission = {
-  permission: TProjectPermissionResult["permission"];
+  permission: ProjectPermission;
   isAdmin: boolean;
 };
 
@@ -23,38 +21,8 @@ export type TAgentVaultGrantActor = {
   id: string;
 };
 
-type TPermissionDep = Pick<TPermissionServiceFactory, "getProjectPermission">;
-type TMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
-type TProjectMemberships = TProjectPermissionResult["memberships"];
-
-// A group's grants count only while the group confers a live Agent Vault role.
-export const liveGroupIdsFrom = (memberships: TProjectMemberships): string[] =>
-  memberships.filter((m) => m.actorGroupId && m.roles.some((role) => isActiveRole(role))).map((m) => m.actorGroupId!);
-
-export const findReachableAccessBundleIds = async (
-  membershipDAL: TMembershipDep,
-  { projectId, actor, groupIds }: { projectId: string; actor: TAgentVaultGrantActor; groupIds: string[] },
-  tx?: Knex
-): Promise<string[]> => {
-  const rows = await membershipDAL.findResourceMembershipsForActor(
-    {
-      projectId,
-      resourceType: ResourceType.AgentVaultAccessBundle,
-      actorType: actor.type,
-      actorId: actor.id
-    },
-    tx
-  );
-
-  const liveGroups = new Set(groupIds);
-  const reachable = rows.filter((row) => {
-    if (!row.isActive) return false;
-    if (row.actorGroupId) return liveGroups.has(row.actorGroupId);
-    return true;
-  });
-
-  return [...new Set(reachable.map((row) => row.scopeResourceId!))];
-};
+type TProjectsDep = Pick<TProjectsDomain, "getProjectPermission">;
+type TAgentVaultDep = Pick<TAgentVaultDomain, "getAccessBundlePermission">;
 
 // null reaches every bundle, so intersecting with it returns the other side unchanged.
 export const intersectAccessBundleIds = (a: string[] | null, b: string[] | null): string[] | null => {
@@ -64,53 +32,67 @@ export const intersectAccessBundleIds = (a: string[] | null, b: string[] | null)
   return a.filter((id) => inB.has(id));
 };
 
-const $loadAgentVaultPermission = async (
-  { permissionService }: { permissionService: TPermissionDep },
-  { projectId, ctx }: { projectId: string; ctx: TGenericPermission }
-) => {
-  const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
-    actor: ctx.actor,
-    actorId: ctx.actorId,
-    projectId,
-    actorAuthMethod: ctx.actorAuthMethod,
-    actorOrgId: ctx.actorOrgId,
-    actionProjectType: ActionProjectType.AgentVault
-  });
-  return { permission, isAdmin: hasRole(ProjectMembershipRole.Admin), memberships };
+export const agentVaultUserPrincipal = (
+  user: { id: string; username: string; email?: string | null; superAdmin?: boolean | null } | undefined,
+  userId: string
+): TUserPrincipal => ({
+  type: ActorType.USER,
+  id: userId,
+  username: user?.username ?? "",
+  email: user?.email ?? null,
+  authMethod: null,
+  isSuperAdmin: Boolean(user?.superAdmin)
+});
+
+// The context for checking another actor's Agent Vault access (a session's owner, the user an identity acts for, a
+// member a delegation covers). It carries none of the caller's OAuth scopes or assumed privilege, and no auth method,
+// since the session row stores none.
+export const agentVaultActorContext = async (
+  {
+    actorContexts,
+    userDAL,
+    identityDAL
+  }: {
+    actorContexts: Pick<TActorContexts, "forPrincipal">;
+    userDAL: Pick<TUserDALFactory, "findById">;
+    identityDAL: Pick<TIdentityDALFactory, "findById">;
+  },
+  { actor, orgId }: { actor: TAgentVaultGrantActor; orgId: string }
+): Promise<TActorContext> => {
+  if (actor.type === ActorType.USER) {
+    const user = await userDAL.findById(actor.id);
+    return actorContexts.forPrincipal(agentVaultUserPrincipal(user, actor.id), orgId);
+  }
+  const identity = await identityDAL.findById(actor.id);
+  return actorContexts.forPrincipal(
+    { type: ActorType.IDENTITY, id: actor.id, name: identity?.name ?? "", isInstanceAdmin: false },
+    orgId
+  );
 };
 
 export const getAgentVaultPermission = async (
-  deps: { permissionService: TPermissionDep },
-  args: { projectId: string; ctx: TGenericPermission }
+  { projectsDomain }: { projectsDomain: TProjectsDep },
+  { projectId, ctx }: { projectId: string; ctx: TActorContext }
 ): Promise<TAgentVaultPermission> => {
-  const { permission, isAdmin } = await $loadAgentVaultPermission(deps, args);
-  return { permission, isAdmin };
+  const permission = await projectsDomain.getProjectPermission({
+    actor: ctx,
+    projectId,
+    type: ProjectType.AgentVault
+  });
+  return { permission, isAdmin: permission.hasRole({ slug: ProjectMembershipRole.Admin }) };
 };
 
 // A service-layer filter rather than a CASL condition: conditions interpolate only identity.id,
 // username and metadata.
 export const getAgentVaultReachability = async (
-  { permissionService, membershipDAL }: { permissionService: TPermissionDep; membershipDAL: TMembershipDep },
-  { projectId, ctx }: { projectId: string; ctx: TGenericPermission },
-  tx?: Knex
+  { agentVaultDomain }: { agentVaultDomain: TAgentVaultDep },
+  { projectId, ctx }: { projectId: string; ctx: TActorContext }
 ): Promise<TAgentVaultReachability> => {
-  const { permission, isAdmin, memberships } = await $loadAgentVaultPermission(
-    { permissionService },
-    { projectId, ctx }
-  );
-  if (isAdmin) return { isAdmin, accessBundleIds: null, permission };
-
-  if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
-    return { isAdmin: false, accessBundleIds: [], permission };
-  }
-
-  const accessBundleIds = await findReachableAccessBundleIds(
-    membershipDAL,
-    { projectId, actor: { type: ctx.actor, id: ctx.actorId }, groupIds: liveGroupIdsFrom(memberships) },
-    tx
-  );
-
-  return { isAdmin: false, accessBundleIds, permission };
+  const { project, isAdmin, reachableAccessBundleIds } = await agentVaultDomain.getAccessBundlePermission({
+    actor: ctx,
+    projectId
+  });
+  return { permission: project, isAdmin, accessBundleIds: reachableAccessBundleIds };
 };
 
 /**
@@ -118,22 +100,10 @@ export const getAgentVaultReachability = async (
  * same; for an admin, who reaches every bundle, the granted ones are what "mine" means.
  */
 export const getAgentVaultGrantedReachability = async (
-  { permissionService, membershipDAL }: { permissionService: TPermissionDep; membershipDAL: TMembershipDep },
-  { projectId, ctx }: { projectId: string; ctx: TGenericPermission }
+  { agentVaultDomain }: { agentVaultDomain: TAgentVaultDep },
+  { projectId, ctx }: { projectId: string; ctx: TActorContext }
 ): Promise<TAgentVaultReachability & { grantedAccessBundleIds: string[] }> => {
-  const { permission, isAdmin, memberships } = await $loadAgentVaultPermission(
-    { permissionService },
-    { projectId, ctx }
-  );
-  if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
-    return { isAdmin, accessBundleIds: isAdmin ? null : [], grantedAccessBundleIds: [], permission };
-  }
-
-  const grantedAccessBundleIds = await findReachableAccessBundleIds(membershipDAL, {
-    projectId,
-    actor: { type: ctx.actor, id: ctx.actorId },
-    groupIds: liveGroupIdsFrom(memberships)
-  });
-
-  return { isAdmin, accessBundleIds: isAdmin ? null : grantedAccessBundleIds, grantedAccessBundleIds, permission };
+  const { project, isAdmin, reachableAccessBundleIds, grantedAccessBundleIds } =
+    await agentVaultDomain.getAccessBundlePermission({ actor: ctx, projectId });
+  return { permission: project, isAdmin, accessBundleIds: reachableAccessBundleIds, grantedAccessBundleIds };
 };

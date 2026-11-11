@@ -5,7 +5,7 @@ import * as x509 from "@peculiar/x509";
 import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
-import { startStandaloneKmsCore } from "@app/domains/domains";
+import { createDomains, startStandaloneKmsCore } from "@app/domains/domains";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { buildAccessControlForTests } from "@app/domains/platform/access-control/ce/testing/build-access-control";
 import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
@@ -35,22 +35,14 @@ import {
 } from "@app/ee/services/agent-vault-session/agent-vault-session-inline-service-dal";
 import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
-import { groupDALFactory } from "@app/ee/services/group/group-dal";
-import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
-import { legacyPermissionEngineFactory } from "@app/ee/services/permission/permission-service";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { initLogger, logger } from "@app/lib/logger";
-import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
-import { roleDALFactory } from "@app/services/role/role-dal";
-import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
 
@@ -116,19 +108,23 @@ const deleteOrgIdentity = async (identityId: string) => {
   await testDb("identities").where({ id: identityId }).delete();
 };
 
-const buildPermissionService = () =>
-  legacyPermissionEngineFactory({
-    permissionDAL: permissionDALFactory(testDb),
-    serviceTokenDAL: serviceTokenDALFactory(testDb),
-    projectDAL: projectDALFactory(testDb),
+// The domains the proxy checks a session's owner with, over the test database.
+const buildProxyDomains = () => {
+  const domains = createDomains({
+    db: testDb,
     keyStore: testKeyStore,
-    roleDAL: roleDALFactory(testDb),
-    userDAL: userDALFactory(testDb),
-    identityDAL: identityDALFactory(testDb),
-    additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
-    groupDAL: groupDALFactory(testDb),
-    secretFolderDAL: secretFolderDALFactory(testDb)
-  });
+    queueService: { queue: () => undefined, start: () => undefined },
+    cronJob: { register: () => undefined },
+    eventEmitter: { emit: () => undefined },
+    envConfig: getConfig()
+  } as unknown as Parameters<typeof createDomains>[0]);
+  return {
+    projectsDomain: domains.projects.service,
+    agentVaultDomain: domains.agentVault.service,
+    actorContexts: domains.actorContexts,
+    identityDAL: identityDALFactory(testDb)
+  };
+};
 
 const grantRows = (
   accessBundleId: string,
@@ -7024,11 +7020,10 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionInlineServiceDAL: agentVaultSessionInlineServiceDALFactory(testDb),
         agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
-        membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
-        permissionService: buildPermissionService(),
+        ...buildProxyDomains(),
         kmsCoreDomain: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
@@ -7163,11 +7158,10 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionInlineServiceDAL: agentVaultSessionInlineServiceDALFactory(testDb),
         agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
-        membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
-        permissionService: buildPermissionService(),
+        ...buildProxyDomains(),
         kmsCoreDomain: {
           createCipherPairWithDataKey: () =>
             Promise.resolve({ decryptor: () => Buffer.from(JSON.stringify({ value: "unsealed" })) })
@@ -7338,11 +7332,10 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionInlineServiceDAL: agentVaultSessionInlineServiceDALFactory(testDb),
         agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
-        membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         projectDAL: projectDALFactory(testDb),
         userDAL: userDALFactory(testDb),
-        permissionService: buildPermissionService(),
+        ...buildProxyDomains(),
         kmsCoreDomain: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
@@ -9327,11 +9320,10 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultSessionInlineServiceDAL: agentVaultSessionInlineServiceDALFactory(testDb),
           agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
-          membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           projectDAL: projectDALFactory(testDb),
           userDAL: userDALFactory(testDb),
-          permissionService: buildPermissionService(),
+          ...buildProxyDomains(),
           kmsCoreDomain: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
@@ -9433,11 +9425,10 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultSessionInlineServiceDAL: agentVaultSessionInlineServiceDALFactory(testDb),
           agentVaultDelegationDAL: agentVaultDelegationDALFactory(testDb),
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
-          membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           projectDAL: projectDALFactory(testDb),
           userDAL: userDALFactory(testDb),
-          permissionService: buildPermissionService(),
+          ...buildProxyDomains(),
           kmsCoreDomain: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,

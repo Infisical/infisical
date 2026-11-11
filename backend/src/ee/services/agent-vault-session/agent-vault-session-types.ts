@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import {
   AgentVaultCredentialType,
@@ -67,7 +67,7 @@ export type TAgentVaultInlineServiceSummary = {
 
 export type TMintSessionDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   // Leave it out for a session with services of its own only.
   accessBundle?: string;
   // Inline services, which the API calls the session's services.
@@ -82,7 +82,7 @@ export type TMintSessionDTO = {
 
 export type TListSessionsDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   scope: AgentVaultSessionScope;
   statuses?: AgentVaultSessionStatus[];
   limit: number;
@@ -92,7 +92,7 @@ export type TListSessionsDTO = {
 
 export type TRevokeSessionDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   sessionId: string;
 };
 

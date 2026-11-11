@@ -112,12 +112,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             if (agentVaultProjectIds.has(projectId)) {
               const { members } = await server.services.agentVaultMembership.addProductMembers({
                 projectId,
-                ctx: {
-                  actorId: req.permission.id,
-                  actor: req.permission.type,
-                  actorOrgId: req.permission.orgId,
-                  actorAuthMethod: req.permission.authMethod
-                },
+                ctx: req.permission,
                 userIds: [],
                 groupIds: [],
                 machineIdentityIds: [],

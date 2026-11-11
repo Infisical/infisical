@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import {
   AgentVaultCredentialType,
@@ -6,7 +6,7 @@ import {
   AgentVaultTrafficPolicy
 } from "../agent-vault/agent-vault-enums";
 
-export type TAgentVaultProxyScoped = { projectId: string; ctx: TGenericPermission };
+export type TAgentVaultProxyScoped = { projectId: string; ctx: TActorContext };
 
 export type TAgentVaultProxyConfig = {
   // The name proxies understand; the admin API calls bundle-hosts service-hosts.

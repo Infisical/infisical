@@ -1,20 +1,20 @@
-import { ForbiddenError } from "@casl/ability";
-
 import {
-  ActionProjectType,
   OrgMembershipStatus,
   ProjectMembershipRole,
+  ProjectType,
   TAgentVaultProxies,
   TAgentVaultSessions
 } from "@app/db/schemas";
+import { TAgentVaultDomain } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { TActorContexts } from "@app/domains/lib/actor-context";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionAgentVaultSessionActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import {
@@ -26,7 +26,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -66,11 +66,7 @@ import {
   toTrafficPolicyView
 } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
-import {
-  findReachableAccessBundleIds,
-  intersectAccessBundleIds,
-  liveGroupIdsFrom
-} from "../agent-vault/agent-vault-permission";
+import { agentVaultActorContext, intersectAccessBundleIds } from "../agent-vault/agent-vault-permission";
 import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import {
@@ -131,11 +127,13 @@ type TAgentVaultProxyServiceFactoryDep = {
   >;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "identityCoversUser">;
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  agentVaultDomain: Pick<TAgentVaultDomain, "getAccessBundlePermission">;
+  actorContexts: Pick<TActorContexts, "forPrincipal">;
   kmsCoreDomain: TKmsCoreDomain;
   licenseDomain: TLicenseDomain;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "revokeAccess">;
@@ -190,11 +188,13 @@ export const agentVaultProxyServiceFactory = ({
   agentVaultSessionInlineServiceDAL,
   agentVaultDelegationDAL,
   agentVaultSessionLogConfigDAL,
-  membershipDAL,
   orgDAL,
   projectDAL,
   userDAL,
-  permissionService,
+  identityDAL,
+  projectsDomain,
+  agentVaultDomain,
+  actorContexts,
   kmsCoreDomain,
   licenseDomain,
   resourceAuthMethodService,
@@ -239,16 +239,13 @@ export const agentVaultProxyServiceFactory = ({
     { projectId, ctx }: TAgentVaultProxyScoped,
     action: ProjectPermissionAgentVaultProxyActions
   ) => {
-    const { permission, hasRole } = await permissionService.getProjectPermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
+    const permission = await projectsDomain.getProjectPermission({
+      actor: ctx,
       projectId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId,
-      actionProjectType: ActionProjectType.AgentVault
+      type: ProjectType.AgentVault
     });
-    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.AgentVaultProxies);
-    return { isAdmin: hasRole(ProjectMembershipRole.Admin) };
+    permission.assert({ action, subject: ProjectPermissionSub.AgentVaultProxies });
+    return { isAdmin: permission.hasRole({ slug: ProjectMembershipRole.Admin }) };
   };
 
   const $findProxyOr404 = async ({ projectId, proxyId }: { projectId: string; proxyId: string }) => {
@@ -359,12 +356,12 @@ export const agentVaultProxyServiceFactory = ({
   };
 
   const $resourceActor = (ctx: TCreateProxyDTO["ctx"]) => ({
-    type: ctx.actor,
-    id: ctx.actorId,
-    orgId: ctx.actorOrgId,
-    rootOrgId: ctx.actorOrgId,
-    parentOrgId: ctx.actorOrgId,
-    authMethod: ctx.actorAuthMethod
+    type: ctx.principal.type,
+    id: ctx.principal.id,
+    orgId: ctx.org.id,
+    rootOrgId: ctx.org.id,
+    parentOrgId: ctx.org.id,
+    authMethod: ctx.principal.type === ActorType.USER ? ctx.principal.authMethod : null
   });
 
   const $signProxyToken = (proxyId: string, orgId: string, tokenVersion: number) =>
@@ -820,22 +817,25 @@ export const agentVaultProxyServiceFactory = ({
     });
     if (!orgMembership?.isActive) throw refused();
 
-    let isAdmin: boolean;
-    let liveGroupIds: string[];
+    let reach: string[] | null;
     try {
-      const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
-        actor: ActorType.USER,
-        actorId: userId,
-        projectId,
-        actorAuthMethod: null,
-        actorOrgId: orgId,
-        actionProjectType: ActionProjectType.AgentVault
+      const userCtx = await agentVaultActorContext(
+        { actorContexts, userDAL, identityDAL },
+        { actor: { type: ActorType.USER, id: userId }, orgId }
+      );
+      const { project, reachableAccessBundleIds } = await agentVaultDomain.getAccessBundlePermission({
+        actor: userCtx,
+        projectId
       });
-      if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
+      if (
+        !project.can({
+          action: ProjectPermissionAgentVaultSessionActions.Read,
+          subject: ProjectPermissionSub.AgentVaultSessions
+        })
+      ) {
         throw refused();
       }
-      isAdmin = hasRole(ProjectMembershipRole.Admin);
-      liveGroupIds = liveGroupIdsFrom(memberships);
+      reach = reachableAccessBundleIds;
     } catch (error) {
       if (error instanceof ForbiddenRequestError && error.name === "ProjectMembershipNotFound") throw refused();
       throw error;
@@ -845,12 +845,7 @@ export const agentVaultProxyServiceFactory = ({
       throw refused();
     }
 
-    if (isAdmin) return null;
-    return findReachableAccessBundleIds(membershipDAL, {
-      projectId,
-      actor: { type: ActorType.USER, id: userId },
-      groupIds: liveGroupIds
-    });
+    return reach;
   };
 
   // Shared by the proxy's session routes and the CLI's skills fetch, so none of them can reach a bundle resolve
@@ -901,21 +896,23 @@ export const agentVaultProxyServiceFactory = ({
     // leaves its row behind when it lapses. actorAuthMethod is passed as null *explicitly* — validateOrgSSO
     // throws on `undefined` but passes on `null`, and the session row stores no auth method.
     let isAdmin: boolean;
-    let liveGroupIds: string[];
+    let actorReach: string[] | null;
     try {
-      const { permission, hasRole, memberships } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorId: actor.id,
-        projectId: session.projectId,
-        actorAuthMethod: null,
-        actorOrgId: orgId,
-        actionProjectType: ActionProjectType.AgentVault
+      const actorCtx = await agentVaultActorContext({ actorContexts, userDAL, identityDAL }, { actor, orgId });
+      const { project, reachableAccessBundleIds, ...access } = await agentVaultDomain.getAccessBundlePermission({
+        actor: actorCtx,
+        projectId: session.projectId
       });
-      if (!permission.can(ProjectPermissionAgentVaultSessionActions.Read, ProjectPermissionSub.AgentVaultSessions)) {
+      if (
+        !project.can({
+          action: ProjectPermissionAgentVaultSessionActions.Read,
+          subject: ProjectPermissionSub.AgentVaultSessions
+        })
+      ) {
         throw new UnauthorizedError({ message: "The role this session's actor held has expired" });
       }
-      isAdmin = hasRole(ProjectMembershipRole.Admin);
-      liveGroupIds = liveGroupIdsFrom(memberships);
+      isAdmin = access.isAdmin;
+      actorReach = reachableAccessBundleIds;
     } catch (error) {
       // A 403 reads to the proxy as "Infisical is unreachable", which would keep a removed member's agent
       // running through its grace window.
@@ -925,13 +922,6 @@ export const agentVaultProxyServiceFactory = ({
       throw error;
     }
 
-    const actorReach = isAdmin
-      ? null
-      : await findReachableAccessBundleIds(membershipDAL, {
-          projectId: session.projectId,
-          actor,
-          groupIds: liveGroupIds
-        });
     return {
       accessBundleIds: onBehalfOf ? intersectAccessBundleIds(actorReach, onBehalfOf.reach) : actorReach,
       isOwnerAdmin: isAdmin

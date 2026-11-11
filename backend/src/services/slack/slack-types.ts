@@ -1,31 +1,28 @@
 import { TSlackIntegrations } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
 
 export type TGetSlackInstallUrlDTO = {
   slug: string;
   description?: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TGetReinstallUrlDTO = {
   id: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
-export type TGetSlackIntegrationByOrgDTO = Omit<TOrgPermission, "orgId">;
+export type TGetSlackIntegrationByOrgDTO = TActorInput;
 
-export type TGetSlackIntegrationByIdDTO = { id: string } & Omit<TOrgPermission, "orgId">;
+export type TGetSlackIntegrationByIdDTO = { id: string } & TActorInput;
 
-export type TGetSlackIntegrationChannelsDTO = { id: string } & Omit<TOrgPermission, "orgId">;
+export type TGetSlackIntegrationChannelsDTO = { id: string } & TActorInput;
 
-export type TUpdateSlackIntegrationDTO = { id: string; slug?: string; description?: string } & Omit<
-  TOrgPermission,
-  "orgId"
->;
+export type TUpdateSlackIntegrationDTO = { id: string; slug?: string; description?: string } & TActorInput;
 
 export type TDeleteSlackIntegrationDTO = {
   id: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TCompleteSlackIntegrationDTO = {
   orgId: string;

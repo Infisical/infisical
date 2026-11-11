@@ -1,16 +1,17 @@
 import { TIntegrations } from "@app/db/schemas";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TGetIntegrationAuthDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TOauthExchangeDTO = {
   integration: string;
   code: string;
   url?: string;
   installationId?: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TSaveIntegrationAccessTokenDTO = {
   integration: string;
@@ -20,117 +21,120 @@ export type TSaveIntegrationAccessTokenDTO = {
   namespace?: string;
   refreshToken?: string;
   awsAssumeIamRoleArn?: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateIntegrationAuthDTO = Omit<TSaveIntegrationAccessTokenDTO, "projectId" | "integration"> & {
   integrationAuthId: string;
   integration?: string;
 };
 
-export type TDeleteIntegrationAuthsDTO = TProjectPermission & {
-  integration: string;
-  projectId: string;
-};
+export type TDeleteIntegrationAuthsDTO = { projectId: string } & TActorInput & {
+    integration: string;
+    projectId: string;
+  };
 
 export type TIntegrationAuthAppsDTO = {
   id: string;
   teamId?: string;
   azureDevOpsOrgName?: string;
   workspaceSlug?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthTeamsDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthVercelBranchesDTO = {
   id: string;
   appId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthChecklyGroupsDTO = {
   id: string;
   accountId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthGithubOrgsDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthGithubEnvsDTO = {
   id: string;
   repoName: string;
   repoOwner: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthQoveryOrgsDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthQoveryProjectDTO = {
   id: string;
   orgId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthAwsKmsKeyDTO = {
   id: string;
   region: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthQoveryEnvironmentsDTO = {
   id: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TIntegrationAuthQoveryScopesDTO = {
   id: string;
   environmentId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthHerokuPipelinesDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthRailwayEnvDTO = {
   id: string;
   appId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthRailwayServicesDTO = {
   id: string;
   appId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthBitbucketWorkspaceDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthBitbucketEnvironmentsDTO = {
   workspaceSlug: string;
   repoSlug: string;
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthNorthflankSecretGroupDTO = {
   id: string;
   appId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteIntegrationAuthByIdDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDuplicateGithubIntegrationAuthDTO = {
   id: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetIntegrationAuthTeamCityBuildConfigDTO = {
   id: string;
   appId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthCircleCIOrganizationDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TVercelBranches = {
   ref: string;
@@ -213,14 +217,14 @@ export type TIntegrationsWithEnvironment = TIntegrations & {
 
 export type TIntegrationAuthOctopusDeploySpacesDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIntegrationAuthOctopusDeployProjectScopeValuesDTO = {
   id: string;
   spaceId: string;
   resourceId: string;
   scope: OctopusDeployScope;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export enum OctopusDeployScope {
   Project = "project"
@@ -288,4 +292,4 @@ export type TOctopusDeployVariableSet = {
 export type GetVercelCustomEnvironmentsDTO = {
   teamId: string;
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

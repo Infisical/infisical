@@ -1,17 +1,15 @@
-import { ForbiddenError } from "@casl/ability";
-
+import { TAgentVaultDomain } from "@app/domains/agent-vault/agent-vault/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
-import { TGenericPermission } from "@app/lib/types";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
@@ -37,8 +35,8 @@ import {
 type TAgentVaultVariableServiceFactoryDep = {
   agentVaultVariableDAL: TAgentVaultVariableDALFactory;
   agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "delete">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  agentVaultDomain: Pick<TAgentVaultDomain, "getAccessBundlePermission">;
   kmsCoreDomain: TKmsCoreDomain;
 };
 
@@ -54,8 +52,8 @@ const isOwnedBy = (variable: TAgentVaultVariable, owner: TAgentVaultOwner) =>
 export const agentVaultVariableServiceFactory = ({
   agentVaultVariableDAL,
   agentVaultPersonalValueDAL,
-  membershipDAL,
-  permissionService,
+  projectsDomain,
+  agentVaultDomain,
   kmsCoreDomain
 }: TAgentVaultVariableServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
@@ -70,18 +68,18 @@ export const agentVaultVariableServiceFactory = ({
     { projectId, ctx }: TAgentVaultVariableScoped,
     scope: AgentVaultVariableScope
   ): Promise<TAgentVaultVariableOwnerScope> => {
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission } = await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
     if (scope === AgentVaultVariableScope.Global) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultAccessBundleActions.Edit,
-        ProjectPermissionSub.AgentVaultAccessBundles
-      );
+      permission.assert({
+        action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+        subject: ProjectPermissionSub.AgentVaultAccessBundles
+      });
       return { projectId, owner: null };
     }
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Read,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
+    permission.assert({
+      action: ProjectPermissionAgentVaultAccessBundleActions.Read,
+      subject: ProjectPermissionSub.AgentVaultAccessBundles
+    });
     return { projectId, owner: ownerOf(ctx) };
   };
 
@@ -91,24 +89,27 @@ export const agentVaultVariableServiceFactory = ({
   ): Promise<(TAgentVaultOwner | null)[]> => {
     if (scope) return [(await resolveScope({ projectId, ctx }, scope)).owner];
 
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Read,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
+    const { permission } = await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
+    permission.assert({
+      action: ProjectPermissionAgentVaultAccessBundleActions.Read,
+      subject: ProjectPermissionSub.AgentVaultAccessBundles
+    });
     const owners: (TAgentVaultOwner | null)[] = [];
     if (
-      permission.can(ProjectPermissionAgentVaultAccessBundleActions.Edit, ProjectPermissionSub.AgentVaultAccessBundles)
+      permission.can({
+        action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+        subject: ProjectPermissionSub.AgentVaultAccessBundles
+      })
     ) {
       owners.push(null);
     }
     const owner = ownerOrNullOf(ctx);
     if (owner) owners.push(owner);
     if (!owners.length) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultAccessBundleActions.Edit,
-        ProjectPermissionSub.AgentVaultAccessBundles
-      );
+      permission.assert({
+        action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+        subject: ProjectPermissionSub.AgentVaultAccessBundles
+      });
     }
     return owners;
   };
@@ -119,23 +120,23 @@ export const agentVaultVariableServiceFactory = ({
   // someone else's personal variable is there.
   const findAccessibleVariable = async ({ variableId, projectId, ctx }: TVariableByIdDTO) => {
     const variable = await agentVaultVariableDAL.findByIdInProject({ id: variableId, projectId });
-    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission } = await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
 
     if (!variable) throw notFound(variableId);
     if (isPersonal(variable)) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionAgentVaultAccessBundleActions.Read,
-        ProjectPermissionSub.AgentVaultAccessBundles
-      );
+      permission.assert({
+        action: ProjectPermissionAgentVaultAccessBundleActions.Read,
+        subject: ProjectPermissionSub.AgentVaultAccessBundles
+      });
       const owner = ownerOf(ctx);
       if (!isOwnedBy(variable, owner)) throw notFound(variableId);
       return { variable, scope: { projectId, owner } };
     }
     if (
-      permission.cannot(
-        ProjectPermissionAgentVaultAccessBundleActions.Edit,
-        ProjectPermissionSub.AgentVaultAccessBundles
-      )
+      permission.cannot({
+        action: ProjectPermissionAgentVaultAccessBundleActions.Edit,
+        subject: ProjectPermissionSub.AgentVaultAccessBundles
+      })
     ) {
       throw notFound(variableId);
     }
@@ -150,19 +151,16 @@ export const agentVaultVariableServiceFactory = ({
     owner
   }: {
     projectId: string;
-    ctx: TGenericPermission;
+    ctx: TActorContext;
     owner: TAgentVaultOwner | null;
   }) => {
     if (!owner) return null;
-    const { accessBundleIds } = await getAgentVaultReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
+    const { accessBundleIds } = await getAgentVaultReachability({ agentVaultDomain }, { projectId, ctx });
     return accessBundleIds;
   };
 
   const splitByReach = async (
-    args: { projectId: string; ctx: TGenericPermission; owner: TAgentVaultOwner | null },
+    args: { projectId: string; ctx: TActorContext; owner: TAgentVaultOwner | null },
     services: TAgentVaultServiceUsingVariable[]
   ) => {
     if (!services.length) return { reachable: services, unreachable: [] };
@@ -343,7 +341,7 @@ export const agentVaultVariableServiceFactory = ({
   const deleteVariable = async ({ variableId, ...rest }: TVariableByIdDTO) => {
     const { scope } = await findAccessibleVariable({ variableId, ...rest });
     const { accessBundleIds } = scope.owner
-      ? await getAgentVaultReachability({ permissionService, membershipDAL }, rest)
+      ? await getAgentVaultReachability({ agentVaultDomain }, rest)
       : { accessBundleIds: null };
     const reach = accessBundleIds ? new Set(accessBundleIds) : null;
 

@@ -1,10 +1,11 @@
-import { ForbiddenError } from "@casl/ability";
 import { WebhookEventMap } from "@octokit/webhooks-types";
 import { ProbotOctokit } from "probot";
 
-import { OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -25,7 +26,7 @@ import {
 } from "./secret-scanning-types";
 
 type TSecretScanningServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   secretScanningDAL: TSecretScanningDALFactory;
   gitAppInstallSessionDAL: TGitAppInstallSessionDALFactory;
   gitAppOrgDAL: TGitAppDALFactory;
@@ -38,56 +39,29 @@ export const secretScanningServiceFactory = ({
   secretScanningDAL,
   gitAppOrgDAL,
   gitAppInstallSessionDAL,
-  permissionService,
+  organizationsDomain,
   secretScanningQueue
 }: TSecretScanningServiceFactoryDep) => {
-  const createInstallationSession = async ({
-    actor,
-    orgId,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TInstallAppSessionDTO) => {
+  const createInstallationSession = async ({ actor, orgId }: TInstallAppSessionDTO) => {
     const appCfg = getConfig();
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.SecretScanning });
 
     const sessionId = crypto.randomBytes(16).toString("hex");
-    await gitAppInstallSessionDAL.upsert({ orgId, sessionId, userId: actorId });
+    await gitAppInstallSessionDAL.upsert({ orgId, sessionId, userId: actor.principal.id });
     return { sessionId, gitAppSlug: appCfg.SECRET_SCANNING_GIT_APP_SLUG };
   };
 
-  const linkInstallationToOrg = async ({
-    sessionId,
-    actorId,
-    installationId,
-    actor,
-    actorAuthMethod,
-    actorOrgId
-  }: TLinkInstallSessionDTO) => {
+  const linkInstallationToOrg = async ({ sessionId, installationId, actor }: TLinkInstallSessionDTO) => {
     const session = await gitAppInstallSessionDAL.findOne({ sessionId });
     if (!session) throw new NotFoundError({ message: "Session was not found" });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: session.orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.SecretScanning);
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId: session.orgId });
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.SecretScanning });
     const installatedApp = await gitAppOrgDAL.transaction(async (tx) => {
       await gitAppInstallSessionDAL.deleteById(session.id, tx);
-      return gitAppOrgDAL.upsert({ orgId: session.orgId, installationId, userId: actorId }, tx);
+      return gitAppOrgDAL.upsert({ orgId: session.orgId, installationId, userId: actor.principal.id }, tx);
     });
 
     const appCfg = getConfig();
@@ -103,7 +77,7 @@ export const secretScanningServiceFactory = ({
       data: { repositories }
     } = await octokit.apps.listReposAccessibleToInstallation();
 
-    if (canUseSecretScanning(actorOrgId)) {
+    if (canUseSecretScanning(actor.org.id)) {
       await Promise.all(
         repositories.map(({ id, full_name }) =>
           // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-return,@typescript-eslint/no-unsafe-member-access
@@ -119,79 +93,37 @@ export const secretScanningServiceFactory = ({
     return { installatedApp };
   };
 
-  const getOrgInstallationStatus = async ({
-    actorId,
-    orgId,
-    actor,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetOrgInstallStatusDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
+  const getOrgInstallationStatus = async ({ orgId, actor }: TGetOrgInstallStatusDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.SecretScanning });
 
     const appInstallation = await gitAppOrgDAL.findOne({ orgId });
     return Boolean(appInstallation);
   };
 
-  const getRisksByOrg = async ({ actor, orgId, actorId, actorAuthMethod, actorOrgId, filter }: TGetOrgRisksDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
+  const getRisksByOrg = async ({ actor, orgId, filter }: TGetOrgRisksDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.SecretScanning });
 
     const results = await secretScanningDAL.findByOrgId(orgId, filter);
 
     return results;
   };
 
-  const getAllRisksByOrg = async ({ actor, orgId, actorId, actorAuthMethod, actorOrgId }: TGetAllOrgRisksDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.SecretScanning);
+  const getAllRisksByOrg = async ({ actor, orgId }: TGetAllOrgRisksDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.SecretScanning });
 
     const risks = await secretScanningDAL.find({ orgId }, { sort: [["createdAt", "desc"]] });
     return risks;
   };
 
-  const updateRiskStatus = async ({
-    actorId,
-    orgId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    riskId,
-    status
-  }: TUpdateRiskStatusDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.SecretScanning);
+  const updateRiskStatus = async ({ orgId, actor, riskId, status }: TUpdateRiskStatusDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.SecretScanning });
 
     const existingRisk = await secretScanningDAL.findById(riskId);
-    if (!existingRisk || existingRisk.orgId !== actorOrgId) {
+    if (!existingRisk || existingRisk.orgId !== actor.org.id) {
       throw new BadRequestError({ message: "Risk not found or access denied" });
     }
 

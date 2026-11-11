@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import {
@@ -125,7 +125,7 @@ export type TAgentVaultOauthAuthorizationView = {
 
 export type TCreateAuthorizationDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   accessBundleId: string;
   serverUrl: string;
   serviceId?: string;
@@ -137,7 +137,7 @@ export type TCreateAuthorizationDTO = {
 
 export type TCompleteAuthorizationDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   authorizationId: string;
   state: string;
   code?: string;
@@ -148,7 +148,7 @@ export type TCompleteAuthorizationDTO = {
 
 export type TGetAuthorizationDTO = {
   projectId: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   authorizationId: string;
 };
 
@@ -158,7 +158,7 @@ export type TClaimAuthorizationDTO = {
   accessBundleId: string;
   // The service the PATCH is for, or undefined on create.
   serviceId?: string;
-  ctx: TGenericPermission;
+  ctx: TActorContext;
   serverUrl: string;
   personal?: boolean;
 };

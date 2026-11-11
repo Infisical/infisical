@@ -1,18 +1,16 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { TAgentVaultPersonalValueReferencesInsert } from "@app/db/schemas";
+import { TAgentVaultDomain } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { TAgentVaultProjectScoped } from "../agent-vault-access-bundle/agent-vault-access-bundle-types";
 import { TAgentVaultServiceDALFactory } from "../agent-vault-access-bundle/agent-vault-service-dal";
@@ -63,8 +61,7 @@ type TAgentVaultPersonalValueServiceFactoryDep = {
     TAgentVaultOauthServiceFactory,
     "claimAuthorization" | "buildCredentialFromAuthorization"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  agentVaultDomain: Pick<TAgentVaultDomain, "getAccessBundlePermission">;
   kmsCoreDomain: TKmsCoreDomain;
 };
 
@@ -95,22 +92,18 @@ export const agentVaultPersonalValueServiceFactory = ({
   agentVaultVariableDAL,
   agentVaultServiceDAL,
   agentVaultOauthService,
-  permissionService,
-  membershipDAL,
+  agentVaultDomain,
   kmsCoreDomain
 }: TAgentVaultPersonalValueServiceFactoryDep) => {
   const getProjectCipher = (projectId: string) =>
     kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
 
   const resolveCaller = async ({ projectId, ctx }: TAgentVaultProjectScoped) => {
-    const reachability = await getAgentVaultGrantedReachability(
-      { permissionService, membershipDAL },
-      { projectId, ctx }
-    );
-    ForbiddenError.from(reachability.permission).throwUnlessCan(
-      ProjectPermissionAgentVaultAccessBundleActions.Read,
-      ProjectPermissionSub.AgentVaultAccessBundles
-    );
+    const reachability = await getAgentVaultGrantedReachability({ agentVaultDomain }, { projectId, ctx });
+    reachability.permission.assert({
+      action: ProjectPermissionAgentVaultAccessBundleActions.Read,
+      subject: ProjectPermissionSub.AgentVaultAccessBundles
+    });
     return { ...reachability, owner: ownerOf(ctx) };
   };
 
@@ -249,7 +242,7 @@ export const agentVaultPersonalValueServiceFactory = ({
         message: `The service '${service.name}' doesn't leave its OAuth sign-in to members, so there is no account of your own to connect.`
       });
     }
-    if (dto.ctx.actor !== ActorType.USER) {
+    if (dto.ctx.principal.type !== ActorType.USER) {
       throw new BadRequestError({
         message:
           "Only a user can connect an OAuth account, because it needs a browser sign-in. To use this service from a machine identity, start the session on behalf of a user who has connected their account."

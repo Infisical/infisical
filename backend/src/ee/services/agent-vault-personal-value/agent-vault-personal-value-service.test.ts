@@ -1,6 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { ConflictError, NotFoundError } from "@app/lib/errors";
 
@@ -19,7 +20,7 @@ vi.mock("../agent-vault/agent-vault-permission", () => ({
     isAdmin: false,
     accessBundleIds: ["22222222-2222-4222-8222-222222222222"],
     grantedAccessBundleIds: ["22222222-2222-4222-8222-222222222222"],
-    permission: createMongoAbility([{ action: "read", subject: "agent-vault-access-bundles" }])
+    permission: Permission.fromRules({ rules: [{ action: "read", subject: "agent-vault-access-bundles" }] })
   }))
 }));
 
@@ -95,8 +96,7 @@ const setup = ({
         encryptedCredential: Buffer.from("sealed-tokens")
       }))
     } as never,
-    permissionService: {} as never,
-    membershipDAL: {} as never,
+    agentVaultDomain: {} as never,
     kmsCoreDomain: {} as never
   });
 
@@ -107,11 +107,9 @@ const setup = ({
       serviceId: SERVICE_ID,
       authorizationId: "authorization",
       ctx: {
-        actor: ActorType.USER,
-        actorId: USER_ID,
-        actorAuthMethod: null,
-        actorOrgId: "org"
-      }
+        principal: { type: ActorType.USER, id: USER_ID, authMethod: null },
+        org: { id: "org" }
+      } as unknown as TActorContext
     });
 
   return { connect, create, restore, claimAuthorization };
@@ -216,8 +214,7 @@ describe("findStatusesForOwner", () => {
       agentVaultVariableDAL: {} as never,
       agentVaultServiceDAL: {} as never,
       agentVaultOauthService: {} as never,
-      permissionService: {} as never,
-      membershipDAL: {} as never,
+      agentVaultDomain: {} as never,
       kmsCoreDomain: {} as never
     }).findStatusesForOwner({
       projectId: PROJECT_ID,

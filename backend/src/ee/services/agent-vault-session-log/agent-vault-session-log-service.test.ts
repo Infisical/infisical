@@ -1,8 +1,8 @@
 import { S3ServiceException } from "@aws-sdk/client-s3";
-import { createMongoAbility } from "@casl/ability";
 import { v7 as uuidv7 } from "uuid";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { TPlanProps as TLicensePlan } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { testFeatures } from "@app/domains/platform/license/ce/testing/test-features";
@@ -181,11 +181,12 @@ const build = (overrides: TOverrides = {}) => {
     } as never,
     appConnectionDAL: { findById: vi.fn(async () => ({ name: "prod-logs" })) } as never,
     appConnectionService: { validateAppConnectionUsageById: validateConnection } as never,
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([{ action: "read", subject: "agent-vault-sessions" }]),
-        hasRole: () => overrides.isAdmin ?? true
-      }))
+    projectsDomain: {
+      getProjectPermission: vi.fn(async () =>
+        Object.assign(Permission.fromRules({ rules: [{ action: "read", subject: "agent-vault-sessions" }] }), {
+          hasRole: () => overrides.isAdmin ?? true
+        })
+      )
     } as never,
     kmsCoreDomain: {} as never,
     licenseDomain,
@@ -201,7 +202,7 @@ const record = (
   chunk: TCreateChunkUploadUrlDTO["chunk"] = validChunk()
 ) => service.createChunkUploadUrl({ proxyId: PROXY_ID, sessionId: SESSION_ID, chunk });
 
-const ctx = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null } as never;
+const ctx = { principal: { type: "user", id: "user-1" }, org: { id: "org-1" } } as never;
 const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
 const scope = { projectId: PROJECT_ID, ctx, sessionId: SESSION_ID };
 

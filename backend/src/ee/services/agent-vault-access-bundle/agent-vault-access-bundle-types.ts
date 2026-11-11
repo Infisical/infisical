@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 import { AgentVaultOauthRegistration } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
@@ -82,7 +82,7 @@ export type TAgentVaultVariableReferenceSummary = { variableId: string; key: str
   | { field: AgentVaultVariableReferenceField.Substitution; substitutionId: string }
 );
 
-export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermission };
+export type TAgentVaultProjectScoped = { projectId: string; ctx: TActorContext };
 
 export type TListAccessBundlesDTO = TAgentVaultProjectScoped & {
   requiresSetup?: boolean;
