@@ -9,10 +9,11 @@ import {
   recordEventOutboxLagMetric,
   recordEventOutboxRejectedMetric
 } from "@app/lib/telemetry/metrics";
+// By this specifier, not a relative path, so the e2e suite can swap in a registry with its recorder consumer.
+import { eventOutboxRegistryFactory, TEventOutboxRegistry } from "@app/services/event-outbox/event-outbox-registry";
 
 import { eventSource } from "./event-definition";
 import { eventOutboxDALFactory, TClaimedOutboxRow, TEventOutboxDALFactory, TOutboxInsertRow } from "./event-outbox-dal";
-import { eventOutboxRegistryFactory, TEventOutboxRegistry } from "./event-outbox-registry";
 import {
   computeBackoffMs,
   DELIVERED_RETENTION_MS,
