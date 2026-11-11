@@ -1,9 +1,31 @@
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TProjectPermission } from "@app/lib/types";
+import { TQueueServiceFactory } from "@app/queue";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
-  DelegatedApprovalPolicyType,
-  DelegatedApprovalRequestStatus
-} from "@app/services/delegated-approval/delegated-approval-enums";
-import { TDelegatedApprovalProviderDetails } from "@app/services/delegated-approval/delegated-approval-types";
+  TApprovalRequestApprovalsDALFactory,
+  TApprovalRequestDALFactory,
+  TApprovalRequestGrantsDALFactory,
+  TApprovalRequestStepEligibleApproversDALFactory,
+  TApprovalRequestStepsDALFactory
+} from "@app/services/approval-policy/approval-request-dal";
+import { TSecretAccessApprovalGlobalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
+import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
+import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
+import { TSmtpService } from "@app/services/smtp/smtp-service";
+import { TUserDALFactory } from "@app/services/user/user-dal";
+
+import { TSecretAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
+import { TSecretAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 
 export enum ApprovalStatus {
   PENDING = "pending",
@@ -48,253 +70,56 @@ export type TCancelAccessRequestDTO = {
   requestId: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TUpdateAccessApprovalRequestDTO = {
-  requestId: string;
-  temporaryRange: string;
-  editNote: string;
-} & Omit<TProjectPermission, "projectId">;
-
 export type TListApprovalRequestsDTO = {
   projectSlug: string;
   authorUserId?: string;
   envSlug?: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export interface TAccessApprovalRequestServiceFactory {
-  createAccessApprovalRequest: (arg: TCreateAccessApprovalRequestDTO) => Promise<{
-    request: {
-      status: string;
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      policyId: string;
-      isTemporary: boolean;
-      requestedByUserId: string;
-      privilegeId?: string | null | undefined;
-      requestedBy?: string | null | undefined;
-      temporaryRange?: string | null | undefined;
-      permissions?: unknown;
-      note?: string | null | undefined;
-      privilegeDeletedAt?: Date | null | undefined;
-      expiresAt?: Date | null | undefined;
-    };
-    projectId: string;
-  }>;
-  updateAccessApprovalRequest: (arg: TUpdateAccessApprovalRequestDTO) => Promise<{
-    request: {
-      status: string;
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      policyId: string;
-      isTemporary: boolean;
-      requestedByUserId: string;
-      privilegeId?: string | null | undefined;
-      requestedBy?: string | null | undefined;
-      temporaryRange?: string | null | undefined;
-      permissions?: unknown;
-      note?: string | null | undefined;
-      privilegeDeletedAt?: Date | null | undefined;
-      expiresAt?: Date | null | undefined;
-    };
-    projectId: string;
-  }>;
-  listApprovalRequests: (arg: TListApprovalRequestsDTO) => Promise<{
-    requests: {
-      policy: {
-        approvers: (
-          | {
-              userId: string | null | undefined;
-              sequence: number | null | undefined;
-              approvalsRequired: number | null | undefined;
-              email: string | null | undefined;
-              username: string;
-              isOrgMembershipActive: boolean;
-            }
-          | {
-              userId: string;
-              sequence: number | null | undefined;
-              approvalsRequired: number | null | undefined;
-              email: string | null | undefined;
-              username: string;
-              isOrgMembershipActive: boolean;
-            }
-        )[];
-        bypassers: string[];
-        id: string | null;
-        name: string;
-        approvals: number;
-        secretPath: string | null | undefined;
-        enforcementLevel: string;
-        allowedSelfApprovals: boolean;
-        envId: string;
-        deletedAt: Date | null | undefined;
-        maxTimePeriod?: string | null;
-        requestExpirationTime?: string | null;
-        delegatedApproval?: { type: DelegatedApprovalPolicyType } | null;
-      };
-      delegatedApproval?: {
-        status: DelegatedApprovalRequestStatus;
-        statusReason: string | null;
-        provider: TDelegatedApprovalProviderDetails | null;
-      } | null;
-      projectId: string;
-      environment: string;
-      environmentName: string;
-      requestedByUser: {
-        userId: string;
-        email: string | null | undefined;
-        firstName: string | null | undefined;
-        lastName: string | null | undefined;
-        username: string;
-      };
-      approvedByUser: {
-        userId: string;
-        email: string | null | undefined;
-        firstName: string | null | undefined;
-        lastName: string | null | undefined;
-        username: string;
-      } | null;
-      revokedByUser: {
-        userId: string;
-        email: string | null | undefined;
-        firstName: string | null | undefined;
-        lastName: string | null | undefined;
-        username: string;
-      } | null;
-      privilege: {
-        membershipId: string;
-        userId: string;
-        projectId: string;
-        isTemporary: boolean;
-        temporaryMode: string | null | undefined;
-        temporaryRange: string | null | undefined;
-        temporaryAccessStartTime: Date | null | undefined;
-        temporaryAccessEndTime: Date | null | undefined;
-        permissions: unknown;
-      } | null;
-      isApproved: boolean;
-      status: string;
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      policyId: string | null;
-      isTemporary: boolean;
-      requestedByUserId: string;
-      privilegeId?: string | null | undefined;
-      requestedBy?: string | null | undefined;
-      temporaryRange?: string | null | undefined;
-      permissions?: unknown;
-      note?: string | null | undefined;
-      privilegeDeletedAt?: Date | null | undefined;
-      expiresAt?: Date | null | undefined;
-      reviewers: {
-        userId: string;
-        status: string;
-        isOrgMembershipActive: boolean;
-      }[];
-      approvers: (
-        | {
-            userId: string | null | undefined;
-            sequence: number | null | undefined;
-            approvalsRequired: number | null | undefined;
-            email: string | null | undefined;
-            username: string;
-            isOrgMembershipActive: boolean;
-          }
-        | {
-            userId: string;
-            sequence: number | null | undefined;
-            approvalsRequired: number | null | undefined;
-            email: string | null | undefined;
-            username: string;
-            isOrgMembershipActive: boolean;
-          }
-      )[];
-      bypassers: string[];
-    }[];
-  }>;
-  reviewAccessRequest: (arg: TReviewAccessRequestDTO) => Promise<{
-    id: string;
-    requestId: string;
-    reviewerUserId: string;
-    status: string;
-    createdAt: Date;
-    updatedAt: Date;
-    projectId: string;
-    policyId: string;
-    isBypass: boolean;
-  }>;
-  getCount: (arg: TGetAccessRequestCountDTO) => Promise<{
-    count: {
-      pendingCount: number;
-      finalizedCount: number;
-    };
-  }>;
-  retryDelegatedApprovalDispatch: (arg: TRetryDelegatedApprovalDispatchDTO) => Promise<{
-    request: {
-      status: string;
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      policyId: string;
-      isTemporary: boolean;
-      requestedByUserId: string;
-      privilegeId?: string | null | undefined;
-      temporaryRange?: string | null | undefined;
-      permissions?: unknown;
-      note?: string | null | undefined;
-      expiresAt?: Date | null | undefined;
-    };
-    projectId: string;
-    delegatedApprovalType: DelegatedApprovalPolicyType;
-    policyName: string;
-    requesterName: string;
-    requesterEmail: string;
-    environment: string;
-    secretPath: string;
-  }>;
-  cancelAccessRequest: (arg: TCancelAccessRequestDTO) => Promise<{
-    request: {
-      status: string;
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      policyId: string;
-      isTemporary: boolean;
-      requestedByUserId: string;
-      privilegeId?: string | null | undefined;
-      temporaryRange?: string | null | undefined;
-      permissions?: unknown;
-      note?: string | null | undefined;
-      expiresAt?: Date | null | undefined;
-    };
-    projectId: string;
-    policyName: string;
-    requesterName: string;
-    requesterEmail: string;
-    environment: string;
-    secretPath: string;
-  }>;
-  revokeAccessRequest: (arg: TRevokeAccessRequestDTO) => Promise<{
-    request: {
-      status: string;
-      id: string;
-      createdAt: Date;
-      updatedAt: Date;
-      policyId: string;
-      isTemporary: boolean;
-      requestedByUserId: string;
-      privilegeId?: string | null | undefined;
-      requestedBy?: string | null | undefined;
-      temporaryRange?: string | null | undefined;
-      permissions?: unknown;
-      note?: string | null | undefined;
-      privilegeDeletedAt?: Date | null | undefined;
-      expiresAt?: Date | null | undefined;
-      revokedAt?: Date | null | undefined;
-      revokedByUserId?: string | null | undefined;
-    };
-    projectId: string;
-  }>;
-}
+export type TNotifyDelegatedDecisionDTO = {
+  requestId: string;
+};
+
+export type TSecretAccessApprovalRequestServiceFactoryDep = {
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectBySlug" | "checkProjectUpgradeStatus">;
+  projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  userDAL: Pick<TUserDALFactory, "find" | "findById">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findGroupMembershipsByUserIdInOrg">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "create" | "transaction" | "findByIdForUpdate" | "updateById">;
+  approvalRequestStepsDAL: Pick<TApprovalRequestStepsDALFactory, "create" | "find" | "updateById">;
+  approvalRequestStepEligibleApproversDAL: Pick<TApprovalRequestStepEligibleApproversDALFactory, "create" | "find">;
+  approvalRequestApprovalsDAL: Pick<TApprovalRequestApprovalsDALFactory, "create" | "find">;
+  approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "updateById" | "findByIdForUpdate">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  secretAccessApprovalPolicyDAL: Pick<TSecretAccessApprovalPolicyDALFactory, "findSecretAccessPolicies">;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByIdForShare" | "findStepsByPolicyId">;
+  secretAccessApprovalRequestDAL: Pick<
+    TSecretAccessApprovalRequestDALFactory,
+    | "findSecretAccessRequestById"
+    | "findSecretAccessRequests"
+    | "findPendingRequests"
+    | "findGrantsByRequestIds"
+    | "findPrivilegesByGrantIds"
+    | "findApprovalsByRequestIds"
+    | "findGroupMembers"
+    | "findUsersByIds"
+    | "findOrgMembershipActivity"
+  >;
+  delegatedApprovalService: Pick<
+    TDelegatedApprovalServiceFactory,
+    "getPolicyByPolicyId" | "createRequest" | "getRequestByRequestId" | "getRequestsByRequestIds" | "retryDispatch"
+  >;
+  smtpService: Pick<TSmtpService, "sendMail">;
+  notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
+  microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
+  projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
+  queueService: Pick<TQueueServiceFactory, "queue">;
+  secretAccessApprovalGlobalResource: Pick<
+    TSecretAccessApprovalGlobalResource,
+    "canAccess" | "validateConstraints" | "postApprovalTxRoutine" | "isBreakGlassEligible" | "matchPolicy"
+  >;
+};

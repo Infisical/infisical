@@ -1,10 +1,11 @@
 import { z } from "zod";
 
 import { TAgentVaultSessionInlineServices } from "@app/db/schemas";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 
 import { assertCustomHeadersDoNotShadowCredential } from "../agent-vault-access-bundle/agent-vault-transformation-fns";
 import { TResolvedService } from "../agent-vault-proxy/agent-vault-proxy-types";
+import { TSessionServiceCredential, TSessionServiceFacts } from "../agent-vault-proxy/agent-vault-session-services-fns";
 import { findHostPatternConflicts, TConflictCandidate } from "../agent-vault/agent-vault-conflict-fns";
 import { AgentVaultBearerConfigSchema } from "../agent-vault/agent-vault-credential-schemas";
 import {
@@ -13,25 +14,46 @@ import {
   AgentVaultServiceType
 } from "../agent-vault/agent-vault-enums";
 import {
+  isNativeServiceType,
+  toNativeTlsConfigInput,
+  toResolvedNativeTarget
+} from "../agent-vault/agent-vault-native-config-schemas";
+import {
   assertCredentialTypeSupported,
   assertServiceFieldsSupported,
   buildServiceConfig,
+  describeServiceType,
   getAgentVaultServiceType,
+  getServiceServerUrl,
+  getServiceTransport,
+  isCredentialOfType,
   resolveServiceHostPattern,
-  TAgentVaultServiceConfig
+  TAgentVaultServiceConfig,
+  toServiceTypeFields
 } from "../agent-vault/agent-vault-service-type-fns";
-import { TAgentVaultInlineServiceInput, TAgentVaultInlineServiceSummary } from "./agent-vault-session-types";
+import {
+  TAgentVaultInlineCredentialSummary,
+  TAgentVaultInlineCustomHeaderSummary,
+  TAgentVaultInlineServiceInput,
+  TAgentVaultInlineServiceSummary,
+  TAgentVaultInlineSubstitutionSummary
+} from "./agent-vault-session-types";
 
 export const AGENT_VAULT_MAX_SESSION_INLINE_SERVICES = 20;
 
-type TInlineCredentialConfig = TAgentVaultInlineServiceSummary["credential"];
-type TInlineCustomHeader = TAgentVaultInlineServiceSummary["customHeaders"][number];
-type TInlineSubstitution = TAgentVaultInlineServiceSummary["substitutions"][number];
+type TInlineCredentialConfig = TAgentVaultInlineCredentialSummary;
+type TInlineCustomHeader = TAgentVaultInlineCustomHeaderSummary;
+type TInlineSubstitution = TAgentVaultInlineSubstitutionSummary;
 
 // Values are kept in the order of the names and placeholders stored beside them.
 const InlineServiceSecretsSchema = z.object({
   credential: z
-    .union([z.object({ value: z.string() }), z.object({ username: z.string(), password: z.string() })])
+    .union([
+      z.object({ value: z.string() }),
+      z.object({ username: z.string(), password: z.string() }),
+      // Strict, so a basic secret is never read as an SSH key or the other way round.
+      z.object({ username: z.string(), privateKey: z.string(), certificate: z.string().optional() }).strict()
+    ])
     .nullable(),
   customHeaders: z.string().array(),
   substitutions: z.string().array()
@@ -42,9 +64,10 @@ export type TInlineServiceSecrets = z.infer<typeof InlineServiceSecretsSchema>;
 export type TPreparedInlineService = {
   position: number;
   name: string | null;
+  description: string | null;
   type: AgentVaultServiceType;
   config: TAgentVaultServiceConfig;
-  hostPattern: string;
+  hostPattern: string | null;
   allowedMethods: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes: string[] | null;
   credentialConfig: TInlineCredentialConfig;
@@ -56,8 +79,14 @@ export type TPreparedInlineService = {
 
 // What an inline service is called wherever a name is shown: its own, or its first host when it was sent without one,
 // lowercased and without the default port, since hosts match regardless of case and every screen shows a host that way.
-export const inlineServiceDisplayName = ({ name, hostPattern }: { name?: string | null; hostPattern: string }) =>
-  name || hostPattern.split(",")[0].trim().toLowerCase().replace(/:443$/, "");
+// A database or SSH service always has a name, since it is reached by it.
+export const inlineServiceDisplayName = ({
+  name,
+  hostPattern
+}: {
+  name?: string | null;
+  hostPattern?: string | null;
+}) => name || (hostPattern ?? "").split(",")[0].trim().toLowerCase().replace(/:443$/, "");
 
 const toInlineCredential = (
   credential: Exclude<TAgentVaultInlineServiceInput["credential"], { type: AgentVaultCredentialType.OAuth }>
@@ -81,8 +110,21 @@ const toInlineCredential = (
         config: { type: AgentVaultCredentialType.Basic },
         secret: { username: credential.username ?? "", password: credential.password ?? "" }
       };
-    default:
+    case AgentVaultCredentialType.SshKey:
+      return {
+        config: { type: AgentVaultCredentialType.SshKey, hasCertificate: Boolean(credential.certificate) },
+        secret: {
+          username: credential.username,
+          privateKey: credential.privateKey,
+          ...(credential.certificate ? { certificate: credential.certificate } : {})
+        }
+      };
+    case AgentVaultCredentialType.Passthrough:
       return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null };
+    default: {
+      const unknown: never = credential;
+      throw new BadRequestError({ message: `Unknown credential type '${(unknown as { type: string }).type}'` });
+    }
   }
 };
 
@@ -96,6 +138,10 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     substitutions: input.substitutions,
     serverUrl: input.serverUrl,
     transport: input.transport,
+    host: input.host,
+    port: input.port,
+    database: input.database,
+    tls: input.tls,
     allowedTools: input.allowedTools
   });
   if (input.allowedTools?.length) {
@@ -124,10 +170,26 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     definition.allowedCredentialTypes.filter((type) => type !== AgentVaultCredentialType.OAuth)
   );
 
-  const config = buildServiceConfig(definition, { serverUrl: input.serverUrl, transport: input.transport });
+  const config = buildServiceConfig(definition, {
+    serverUrl: input.serverUrl,
+    transport: input.transport,
+    host: input.host,
+    port: input.port,
+    database: input.database,
+    tls: toNativeTlsConfigInput(input.tls)
+  });
   const hostPattern = resolveServiceHostPattern(definition, config, input.hostPattern);
 
   const { config: credentialConfig, secret } = toInlineCredential(credential);
+  if (
+    isNativeServiceType(definition.type) &&
+    credentialConfig.type === AgentVaultCredentialType.Basic &&
+    !(secret && "username" in secret && secret.username)
+  ) {
+    throw new BadRequestError({
+      message: `${describeServiceType(definition)} needs a username to log in as. Set one in the credential.`
+    });
+  }
   const customHeaders = input.customHeaders ?? [];
   const substitutions = input.substitutions ?? [];
   assertCustomHeadersDoNotShadowCredential(credentialConfig, customHeaders);
@@ -135,6 +197,7 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
   return {
     position,
     name: input.name ?? null,
+    description: input.description ?? null,
     type: definition.type,
     config,
     hostPattern,
@@ -213,7 +276,8 @@ export const prepareInlineServices = (inputs: TAgentVaultInlineServiceInput[]): 
 /**
  * A mint that also names an access bundle can't send a service covering a pattern one of the bundle's services covers,
  * or one called the same as a bundle's service. Only checked at mint: the bundle can change afterwards, and resolve puts
- * the bundle's services first, so a pattern a later bundle edit shares with an inline service goes to the bundle's.
+ * the bundle's services first, so a pattern a later bundle edit shares with an inline service goes to the bundle's. A
+ * database or SSH service is found by name instead, and there the proxy prefers the inline one.
  */
 export const assertNoAccessBundleConflicts = (
   prepared: TPreparedInlineService[],
@@ -240,29 +304,59 @@ export const assertNoAccessBundleConflicts = (
 
 export type TAgentVaultSessionInlineServiceSummaryRow = Omit<TAgentVaultSessionInlineServices, "encryptedSecrets">;
 
-const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCredentialConfig =>
-  config.type === AgentVaultCredentialType.Bearer
-    ? { type: config.type, headerName: config.headerName, headerPrefix: config.headerPrefix }
-    : { type: config.type };
+const toInlineCredentialSummary = (config: TInlineCredentialConfig): TInlineCredentialConfig => {
+  switch (config.type) {
+    case AgentVaultCredentialType.Bearer:
+      return { type: config.type, headerName: config.headerName, headerPrefix: config.headerPrefix };
+    case AgentVaultCredentialType.SshKey:
+      return { type: config.type, hasCertificate: Boolean(config.hasCertificate) };
+    default:
+      return { type: config.type };
+  }
+};
 
 // Built by hand rather than spread, so the sealed column stays off the wire even if a response schema is loosened.
 export const toInlineServiceSummary = (
   row: TAgentVaultSessionInlineServiceSummaryRow
 ): TAgentVaultInlineServiceSummary => {
-  const config = (row.config ?? {}) as TAgentVaultServiceConfig;
-  return {
-    id: row.id,
-    name: inlineServiceDisplayName(row),
-    type: row.type as AgentVaultServiceType,
-    serverUrl: config.serverUrl ?? null,
-    transport: config.transport ?? null,
-    hostPattern: row.hostPattern,
-    allowedMethods: (row.allowedMethods ?? null) as AgentVaultHttpMethod[] | null,
-    allowedPathPrefixes: row.allowedPathPrefixes ?? null,
-    credential: toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig),
-    customHeaders: row.customHeaders as TInlineCustomHeader[],
-    substitutions: row.substitutions as TInlineSubstitution[]
-  };
+  const base = { id: row.id, name: inlineServiceDisplayName(row), description: row.description ?? null };
+  const credential = toInlineCredentialSummary(row.credentialConfig as TInlineCredentialConfig);
+  // Every mint checks the credential against the type, so this means a row written some other way.
+  const unsupportedCredential = () =>
+    new InternalServerError({
+      message: `The session's service '${base.name}' has a credential its type doesn't support. Mint a new session.`
+    });
+  const typeFields = toServiceTypeFields(row);
+  switch (typeFields.type) {
+    case AgentVaultServiceType.Http:
+      if (
+        !isCredentialOfType(credential, [
+          AgentVaultCredentialType.Bearer,
+          AgentVaultCredentialType.Basic,
+          AgentVaultCredentialType.Passthrough
+        ])
+      ) {
+        throw unsupportedCredential();
+      }
+      return {
+        ...base,
+        ...typeFields,
+        credential,
+        customHeaders: row.customHeaders as TInlineCustomHeader[],
+        substitutions: row.substitutions as TInlineSubstitution[]
+      };
+    case AgentVaultServiceType.Mcp:
+      if (!isCredentialOfType(credential, [AgentVaultCredentialType.Bearer])) throw unsupportedCredential();
+      return { ...base, ...typeFields, credential, customHeaders: row.customHeaders as TInlineCustomHeader[] };
+    case AgentVaultServiceType.Ssh:
+      if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey])) {
+        throw unsupportedCredential();
+      }
+      return { ...base, ...typeFields, credential };
+    default:
+      if (!isCredentialOfType(credential, [AgentVaultCredentialType.Basic])) throw unsupportedCredential();
+      return { ...base, ...typeFields, credential };
+  }
 };
 
 export const parseInlineServiceSecrets = (decrypted: unknown) => InlineServiceSecretsSchema.parse(decrypted);
@@ -272,6 +366,47 @@ export const parseInlineServiceSecrets = (decrypted: unknown) => InlineServiceSe
  * were deleted, or what is stored doesn't line up with the names beside it. Its values were sent as they are, so
  * nothing in them is expanded.
  */
+/**
+ * An inline service as the list an agent reads describes it, built without decrypting anything. Left out when resolve
+ * would leave it out: a service whose credential, custom headers or substitutions have no stored secrets to send.
+ */
+export const toInlineServiceFacts = (row: TAgentVaultSessionInlineServices): TSessionServiceFacts | null => {
+  const credentialConfig = row.credentialConfig as TInlineCredentialConfig;
+  const customHeaders = row.customHeaders as TInlineCustomHeader[];
+  const substitutions = row.substitutions as TInlineSubstitution[];
+  const needsSecrets =
+    credentialConfig.type !== AgentVaultCredentialType.Passthrough ||
+    customHeaders.length > 0 ||
+    substitutions.length > 0;
+  if (needsSecrets && !row.encryptedSecrets) return null;
+
+  let credential: TSessionServiceCredential = { type: "none" };
+  if (credentialConfig.type === AgentVaultCredentialType.Bearer) {
+    credential = { type: "bearer", headerName: credentialConfig.headerName ?? null };
+  } else if (credentialConfig.type === AgentVaultCredentialType.Basic) {
+    credential = { type: "basic" };
+  }
+
+  return {
+    name: inlineServiceDisplayName(row),
+    description: row.description ?? null,
+    type: row.type as AgentVaultServiceType,
+    hostPattern: row.hostPattern ?? null,
+    serverUrl: getServiceServerUrl(row.config),
+    transport: getServiceTransport(row.config),
+    allowedMethods: row.allowedMethods ?? null,
+    allowedPathPrefixes: row.allowedPathPrefixes ?? null,
+    // An inline MCP server can't be limited to some of its tools, so the proxy filters none.
+    allowedTools: null,
+    credential,
+    customHeaderNames: customHeaders.map((header) => header.name),
+    substitutions: substitutions.map(({ placeholder, surfaces }) => ({ placeholder, surfaces })),
+    personalValuesMissing: false,
+    memberProvided: false,
+    memberSignsIn: false
+  };
+};
+
 export const toResolvedInlineService = (
   row: TAgentVaultSessionInlineServices,
   secrets: TInlineServiceSecrets | null
@@ -297,12 +432,23 @@ export const toResolvedInlineService = (
   } else if (
     credentialConfig.type === AgentVaultCredentialType.Basic &&
     secrets?.credential &&
-    "username" in secrets.credential
+    "password" in secrets.credential
   ) {
     credential = {
       type: AgentVaultCredentialType.Basic,
       username: secrets.credential.username,
       password: secrets.credential.password
+    };
+  } else if (
+    credentialConfig.type === AgentVaultCredentialType.SshKey &&
+    secrets?.credential &&
+    "privateKey" in secrets.credential
+  ) {
+    credential = {
+      type: AgentVaultCredentialType.SshKey,
+      username: secrets.credential.username,
+      privateKey: secrets.credential.privateKey,
+      ...(secrets.credential.certificate ? { certificate: secrets.credential.certificate } : {})
     };
   } else {
     return null;
@@ -320,7 +466,8 @@ export const toResolvedInlineService = (
     name: inlineServiceDisplayName(row),
     accessBundleName: null,
     type: row.type as AgentVaultServiceType,
-    hostPattern: row.hostPattern,
+    hostPattern: row.hostPattern ?? null,
+    native: toResolvedNativeTarget(row.type, row.config),
     allowedMethods: row.allowedMethods ?? null,
     allowedPathPrefixes: row.allowedPathPrefixes ?? null,
     // An inline MCP server can't be limited to some of its tools, so the proxy filters none.

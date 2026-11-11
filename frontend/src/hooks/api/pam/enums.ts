@@ -1,6 +1,7 @@
 export enum PamAccountType {
   SSH = "ssh",
   Postgres = "postgres",
+  CockroachDB = "cockroachdb",
   MySQL = "mysql",
   MsSQL = "mssql",
   OracleDB = "oracledb",
@@ -31,6 +32,7 @@ export enum PamDiscoverySchedule {
 
 export const ROTATABLE_PAM_ACCOUNT_TYPES = [
   PamAccountType.Postgres,
+  PamAccountType.CockroachDB,
   PamAccountType.MySQL,
   PamAccountType.MsSQL,
   PamAccountType.OracleDB,

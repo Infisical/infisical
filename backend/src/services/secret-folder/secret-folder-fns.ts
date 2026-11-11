@@ -15,8 +15,8 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
-import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 
@@ -252,7 +252,7 @@ export const checkFolderMoveBlock = async (
 };
 
 type TCheckFolderMovePolicyBlockDeps = {
-  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicyByPaths">;
+  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicyByPaths">;
 };
 
 // checks whether any folder in the subtree (re-rooted at `rootFolderPath` in `environment`) is governed by a
@@ -271,14 +271,14 @@ export const checkFolderMovePolicyBlock = async (
     environment: string;
     rootFolderPath: string;
   },
-  { secretApprovalPolicyService }: TCheckFolderMovePolicyBlockDeps,
+  { secretChangePolicyService }: TCheckFolderMovePolicyBlockDeps,
   tx?: Knex
 ): Promise<TFolderMoveBlock | null> => {
   const toAbsPath = buildToAbsPath(rootFolderPath);
 
   const subtreeAbsPaths = subtree.map((f) => toAbsPath(f.path));
 
-  const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
+  const policyByPath = await secretChangePolicyService.getSecretApprovalPolicyByPaths(
     projectId,
     environment,
     subtreeAbsPaths,
@@ -423,8 +423,8 @@ export const findPolicyProtectedFolder = async (
     actor: ActorType;
   },
   {
-    secretApprovalPolicyService
-  }: { secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicyByPaths"> },
+    secretChangePolicyService
+  }: { secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicyByPaths"> },
   tx: Knex
 ): Promise<TPolicyProtectedFolder | null> => {
   const candidates = folders.filter(
@@ -432,7 +432,7 @@ export const findPolicyProtectedFolder = async (
   );
   if (!candidates.length) return null;
 
-  const policyByPath = await secretApprovalPolicyService.getSecretApprovalPolicyByPaths(
+  const policyByPath = await secretChangePolicyService.getSecretApprovalPolicyByPaths(
     projectId,
     environment,
     candidates.map((folder) => folder.path),

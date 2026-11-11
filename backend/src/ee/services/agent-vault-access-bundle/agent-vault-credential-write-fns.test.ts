@@ -7,6 +7,7 @@ import {
 import { AgentVaultCredentialType, TAgentVaultMemberProvidedField } from "../agent-vault/agent-vault-enums";
 import { TAgentVaultCredentialUpdate } from "./agent-vault-access-bundle-types";
 import {
+  assertNativeBasicHasUsername,
   isStoredSecretReplaced,
   memberFieldsOf,
   memberOauthChangeOf,
@@ -264,6 +265,123 @@ describe("needsStoredSecretFor", () => {
     expect(needsStoredSecretFor(credential(update), storedService(stored as Parameters<typeof storedService>[0]))).toBe(
       needed
     );
+  });
+});
+
+describe("an SSH key credential", () => {
+  const SSH_KEY = AgentVaultCredentialType.SshKey;
+  const KEY = "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----";
+  const storedSshKey = (hasCertificate: boolean) =>
+    ({
+      ...(storedService({ type: SSH_KEY }) as object),
+      credentialConfig: { type: SSH_KEY, hasCertificate }
+    }) as unknown as TAgentVaultServices;
+
+  test("seals the username, key and certificate, and records only whether a certificate is stored", () => {
+    const written = splitCredential(
+      credential({ type: SSH_KEY, username: "agent", privateKey: KEY, certificate: "c" })
+    );
+    expect(written.secret).toEqual({ username: "agent", privateKey: KEY, certificate: "c" });
+    expect(written.config).toEqual({ type: SSH_KEY, hasCertificate: true });
+    expect(written.memberProvidedFields).toBeNull();
+  });
+
+  test.each([
+    ["no username", { type: SSH_KEY, privateKey: KEY }, "needs the username"],
+    ["no key", { type: SSH_KEY, username: "agent" }, "needs a private key"],
+    [
+      "a field left to members",
+      { type: SSH_KEY, username: "agent", privateKey: KEY, memberProvidedFields: [VALUE] },
+      "can't be left to members"
+    ]
+  ])("is refused with %s", (_, input, message) => {
+    expect(() => splitCredential(credential(input))).toThrow(message);
+  });
+
+  test("an update that sends only the username keeps the stored key and certificate", () => {
+    const stored = storedSshKey(true);
+    const update = credential({ type: SSH_KEY, username: "other" });
+    expect(needsStoredSecretFor(update, stored)).toBe(true);
+    const written = mergeCredential(update, stored, { username: "agent", privateKey: KEY, certificate: "c" });
+    expect(written.secret).toEqual({ username: "other", privateKey: KEY, certificate: "c" });
+  });
+
+  test("an update can remove the certificate", () => {
+    const written = mergeCredential(credential({ type: SSH_KEY, certificate: null }), storedSshKey(true), {
+      username: "agent",
+      privateKey: KEY,
+      certificate: "c"
+    });
+    expect(written.secret).toEqual({ username: "agent", privateKey: KEY });
+    expect(written.config).toEqual({ type: SSH_KEY, hasCertificate: false });
+  });
+
+  test("removing a certificate that isn't stored leaves the sealed secret alone", () => {
+    const stored = storedSshKey(false);
+    const update = credential({ type: SSH_KEY, certificate: null });
+    expect(needsStoredSecretFor(update, stored)).toBe(false);
+    const written = mergeCredential(update, stored, null);
+    expect(written.secret).toBeUndefined();
+    expect(isStoredSecretReplaced(update, stored, written.secret)).toBe(false);
+  });
+
+  test("removing a stored certificate replaces the sealed secret", () => {
+    const stored = storedSshKey(true);
+    const update = credential({ type: SSH_KEY, certificate: null });
+    expect(needsStoredSecretFor(update, stored)).toBe(true);
+    const written = mergeCredential(update, stored, { username: "agent", privateKey: KEY, certificate: "c" });
+    expect(written.secret).toEqual({ username: "agent", privateKey: KEY });
+    expect(isStoredSecretReplaced(update, stored, written.secret)).toBe(true);
+  });
+
+  test.each(["", "   "])("an update sending the certificate %j keeps the stored one", (certificate) => {
+    const stored = storedSshKey(true);
+    const update = credential({ type: SSH_KEY, username: "other", certificate });
+    const written = mergeCredential(update, stored, { username: "agent", privateKey: KEY, certificate: "c" });
+    expect(written.secret).toEqual({ username: "other", privateKey: KEY, certificate: "c" });
+    expect(written.config).toEqual({ type: SSH_KEY, hasCertificate: true });
+  });
+
+  test("an update sending an empty certificate with none stored leaves the sealed secret alone", () => {
+    const stored = storedSshKey(false);
+    const update = credential({ type: SSH_KEY, certificate: "" });
+    expect(needsStoredSecretFor(update, stored)).toBe(false);
+    const written = mergeCredential(update, stored, null);
+    expect(written.secret).toBeUndefined();
+    expect(isStoredSecretReplaced(update, stored, written.secret)).toBe(false);
+  });
+
+  test("an update with no part of it leaves the sealed secret alone", () => {
+    const written = mergeCredential(credential({ type: SSH_KEY }), storedSshKey(false), null);
+    expect(written.secret).toBeUndefined();
+  });
+
+  test("changing to an SSH key needs a key, since the stored secret belongs to the old type", () => {
+    expect(() =>
+      mergeCredential(credential({ type: SSH_KEY, username: "agent" }), storedService({ type: BASIC }), null)
+    ).toThrow("Provide a private key when changing the credential type to SSH key");
+  });
+
+  test("sending a new key replaces the stored secret", () => {
+    const stored = storedSshKey(false);
+    const update = credential({ type: SSH_KEY, privateKey: KEY });
+    expect(isStoredSecretReplaced(update, stored, { username: "agent", privateKey: KEY })).toBe(true);
+  });
+});
+
+describe("a database or SSH service's basic credential", () => {
+  test("needs a username, set by the admin or left to members", () => {
+    expect(() => assertNativeBasicHasUsername(splitCredential(credential({ type: BASIC, password: "p" })))).toThrow(
+      "needs a username to log in as"
+    );
+    expect(() =>
+      assertNativeBasicHasUsername(splitCredential(credential({ type: BASIC, username: "agent", password: "p" })))
+    ).not.toThrow();
+    expect(() =>
+      assertNativeBasicHasUsername(
+        splitCredential(credential({ type: BASIC, password: "p", memberProvidedFields: [USERNAME] }))
+      )
+    ).not.toThrow();
   });
 });
 

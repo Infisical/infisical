@@ -20,7 +20,7 @@ import {
 } from "@app/hooks/api/agentVault/types";
 
 import { OAuthStatusBadge } from "./service-sheet/OAuthAuthorizeCard";
-import { hostOf } from "./service-sheet/serviceSchema";
+import { hostOf, serverUrlOf } from "./service-sheet/serviceSchema";
 import { useOAuthAuthorize } from "./service-sheet/useOAuthAuthorize";
 
 type Props = {
@@ -41,7 +41,7 @@ export const PersonalOAuthConnection = ({
   onAuthorized,
   onWaitingChange
 }: Props) => {
-  const serverUrl = service.serverUrl ?? "";
+  const serverUrl = serverUrlOf(service) ?? "";
   const host = hostOf(serverUrl);
   const { state, authorize, cancel } = useOAuthAuthorize({
     // A refused save is reported by the request's error toast.

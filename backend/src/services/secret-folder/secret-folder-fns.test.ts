@@ -9,7 +9,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError } from "@app/lib/errors";
 
@@ -471,8 +471,8 @@ describe("findPolicyProtectedFolder", () => {
     const getSecretApprovalPolicyByPaths = vi.fn().mockResolvedValue(new Map(policies));
     return {
       deps: {
-        secretApprovalPolicyService: { getSecretApprovalPolicyByPaths } as unknown as Pick<
-          TSecretApprovalPolicyServiceFactory,
+        secretChangePolicyService: { getSecretApprovalPolicyByPaths } as unknown as Pick<
+          TSecretChangePolicyServiceFactory,
           "getSecretApprovalPolicyByPaths"
         >
       },

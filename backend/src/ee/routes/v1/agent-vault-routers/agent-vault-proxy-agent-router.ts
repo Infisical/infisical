@@ -5,6 +5,7 @@ import {
   MAX_OAUTH_SCOPE_LENGTH,
   OAUTH_SCOPE_TOKEN_PATTERN
 } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-discovery-fns";
+import { getChunkDecisionProperties } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import {
   AgentVaultSessionLogChunkCreateResponseSchema,
   AgentVaultSessionLogChunkCreateSchema
@@ -134,7 +135,15 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
       response: { 200: z.object({ config: ProxyConfigSchema }) }
     },
     onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
-    handler: async (req) => server.services.agentVaultProxy.heartbeat({ proxyId: req.permission.id })
+    handler: async (req) => {
+      if (req.auth.authMode !== AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN) {
+        throw new UnauthorizedError({ message: "A proxy token is required" });
+      }
+      return server.services.agentVaultProxy.heartbeat({
+        proxyId: req.permission.id,
+        tokenVersion: req.auth.token.tokenVersion
+      });
+    }
   });
 
   server.route({
@@ -164,7 +173,17 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               name: z.string(),
               accessBundleName: z.string().nullable(),
               type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
-              hostPattern: z.string(),
+              // Null for a database or SSH service, so neither a new nor an old proxy matches HTTP traffic to it.
+              hostPattern: z.string().nullable(),
+              // Where a database or SSH service's server is. Null for HTTP and MCP services.
+              native: z
+                .object({
+                  host: z.string(),
+                  port: z.number(),
+                  database: z.string().nullable(),
+                  tls: z.object({ enabled: z.boolean(), verify: z.boolean(), ca: z.string().nullable() }).nullable()
+                })
+                .nullable(),
               allowedMethods: z.string().array().nullable(),
               allowedPathPrefixes: z.string().array().nullable(),
               allowedTools: z.string().array().nullable(),
@@ -179,7 +198,15 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                   .describe(JSON.stringify({ title: "Basic Auth" })),
                 z
                   .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-                  .describe(JSON.stringify({ title: "Pass-through" }))
+                  .describe(JSON.stringify({ title: "Pass-through" })),
+                z
+                  .object({
+                    type: z.literal(AgentVaultCredentialType.SshKey),
+                    username: z.string(),
+                    privateKey: z.string(),
+                    certificate: z.string().optional()
+                  })
+                  .describe(JSON.stringify({ title: "SSH Key" }))
               ]),
               customHeaders: z.object({ name: z.string(), prefix: z.string(), value: z.string() }).array(),
               substitutions: z
@@ -323,7 +350,8 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
             orgId,
             storageType,
             bytes: req.body.ciphertextBytes,
-            ...(req.body.recordCount !== undefined && { records: req.body.recordCount })
+            ...(req.body.recordCount !== undefined && { records: req.body.recordCount }),
+            ...getChunkDecisionProperties(req.body)
           }
         })
         .catch(() => {});

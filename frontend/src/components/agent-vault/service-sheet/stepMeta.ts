@@ -1,3 +1,4 @@
+import { AgentVaultServiceType, TAgentVaultNativeServiceType } from "@app/hooks/api/agentVault";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { ServiceStep } from "./serviceSchema";
@@ -95,3 +96,59 @@ export const MCP_SERVICE_STEPS: StepMeta[] = [
   },
   REVIEW_STEP
 ];
+
+const NATIVE_STEP_COPY: Record<
+  TAgentVaultNativeServiceType,
+  { details: string; detailsRight: string; credential: string; credentialRight: string }
+> = {
+  [AgentVaultServiceType.Postgres]: {
+    details: "What this service is called and the PostgreSQL database it connects to.",
+    detailsRight:
+      "The agent connects to this service by its name, and the proxy opens the connection to the database. The agent only ever reaches the database named here.",
+    credential: "The database user the proxy logs in as.",
+    credentialRight:
+      "The proxy logs in to the database for the agent, so the agent never holds the password. What the agent can read or change is up to that user's privileges."
+  },
+  [AgentVaultServiceType.Mysql]: {
+    details: "What this service is called and the MySQL server it connects to.",
+    detailsRight:
+      "The agent connects to this service by its name, and the proxy opens the connection to the server. The account's grants decide which databases the agent can use.",
+    credential: "The MySQL account the proxy logs in as.",
+    credentialRight:
+      "The proxy logs in to the server for the agent, so the agent never holds the password. What the agent can read or change is up to that account's grants."
+  },
+  [AgentVaultServiceType.Ssh]: {
+    details: "What this service is called and the server it connects to.",
+    detailsRight:
+      "The agent connects to this service by its name, and the proxy opens the SSH connection to the server.",
+    credential: "The user the proxy logs in as, with a password or an SSH key.",
+    credentialRight:
+      "The proxy logs in to the server for the agent, so the agent never holds the password or the key. What the agent can run is up to that user's permissions on the server."
+  }
+};
+
+export const nativeServiceSteps = (serviceType: TAgentVaultNativeServiceType): StepMeta[] => {
+  const copy = NATIVE_STEP_COPY[serviceType];
+  return [
+    TEMPLATE_STEP,
+    {
+      step: ServiceStep.Details,
+      name: "Details",
+      shortDescription: "Name and server",
+      title: "Details",
+      subtitle: copy.details,
+      rightLabel: "DETAILS",
+      rightDescription: copy.detailsRight
+    },
+    {
+      step: ServiceStep.Credential,
+      name: "Credential",
+      shortDescription: "How to log in",
+      title: "Credential",
+      subtitle: copy.credential,
+      rightLabel: "CREDENTIAL",
+      rightDescription: copy.credentialRight
+    },
+    REVIEW_STEP
+  ];
+};

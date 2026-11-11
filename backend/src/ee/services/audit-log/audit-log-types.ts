@@ -85,7 +85,7 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
-import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import { ApprovalStatus } from "../secret-change-request/secret-change-request-types";
 import type { AuditLogEventClass } from "./audit-log-event-classes";
 
 export type TListProjectAuditLogDTO = {
@@ -3323,6 +3323,7 @@ interface ImportCert {
     profileName?: string;
     caId?: string;
     caName?: string;
+    hasCsr?: boolean;
   };
 }
 
@@ -6673,11 +6674,21 @@ interface AgentVaultServiceCreateEvent {
     accessBundleName: string;
     serviceId: string;
     name: string;
+    description?: string | null;
     serviceType: string;
     // MCP services only.
     serverUrl?: string;
     transport?: string;
-    hostPattern: string;
+    // Database and SSH services only. A host pattern is never set on those, so they report these instead.
+    host?: string;
+    port?: number;
+    database?: string;
+    tlsEnabled?: boolean;
+    tlsVerify?: boolean;
+    // Whether the proxy checks the server's certificate against a CA stored on the service rather than the system's.
+    hasTlsCa?: boolean;
+    // Absent for a database or SSH service.
+    hostPattern?: string;
     credentialType: string;
     // OAuth credentials only.
     oauthIssuer?: string;
@@ -6703,10 +6714,20 @@ interface AgentVaultServiceUpdateEvent {
     accessBundleName: string;
     serviceId: string;
     name?: string;
+    // Null when the update removed it.
+    description?: string | null;
     // The service's type, which never changes, so present on every update.
     serviceType: string;
     serverUrl?: string;
     transport?: string;
+    // Database and SSH services only. A host pattern is never set on those, so they report these instead.
+    host?: string;
+    port?: number;
+    database?: string;
+    tlsEnabled?: boolean;
+    tlsVerify?: boolean;
+    // Present only when the update changed the stored CA the proxy checks the server's certificate against.
+    tlsCaChanged?: "set" | "removed" | "replaced";
     hostPattern?: string;
     credentialType?: string;
     // Present when the update connected or reauthorized an OAuth credential.
@@ -7003,9 +7024,18 @@ interface AgentVaultSessionMintEvent {
       serviceId: string;
       // The name it was sent with, or its first host when it was sent without one.
       name: string;
+      description?: string | null;
       serviceType: string;
       serverUrl?: string;
-      hostPattern: string;
+      // Absent for a database or SSH service, which reports host, port and database instead.
+      hostPattern?: string;
+      host?: string;
+      port?: number;
+      database?: string;
+      tlsEnabled?: boolean;
+      tlsVerify?: boolean;
+      // Whether the proxy checks the server's certificate against a CA sent with the service rather than the system's.
+      hasTlsCa?: boolean;
       credentialType: string;
       headerName?: string;
       allowedMethods: string[] | null;

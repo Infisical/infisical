@@ -52,7 +52,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
 import {
-  useCreateSecretV3,
+  useCreateSecretBatch,
   useCreateWsTag,
   useGetOrCreateFolder,
   useGetWsTags
@@ -273,7 +273,7 @@ export const CreateSecretForm = ({
     remove: removeSecret
   } = useFieldArray({ control, name: "secrets" });
 
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3({
+  const { mutateAsync: createSecretBatch } = useCreateSecretBatch({
     options: { meta: { skipErrorToast: true } }
   });
   const { mutateAsync: createCommit } = useCreateCommit({
@@ -479,31 +479,30 @@ export const CreateSecretForm = ({
       return;
     }
 
-    const requests = selectedEnv.flatMap((env) =>
-      secrets.map((secret, secretIndex) => ({ env, secret, secretIndex }))
-    );
-    const promises = requests.map(async ({ env, secret }) => {
-      const environment = env.slug;
+    const batchSecrets = secrets.map((secret) => {
       const filteredMetadata = secret.metadata
         ?.filter((metadata) => metadata.key && metadata.value)
         .map(({ key, value, isEncrypted }) => ({ key, value, isEncrypted }));
       return {
-        ...(await createSecretV3({
-          environment,
-          projectId,
-          secretPath,
-          secretKey: secret.key,
-          secretValue: secret.value || "",
-          secretComment: secret.comment || "",
-          skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
-          type: SecretType.Shared,
-          tagIds: secret.tags?.map((tag) => tag.value),
-          secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined
-        })),
-        environment,
-        secret
+        secretKey: secret.key,
+        secretValue: secret.value || "",
+        secretComment: secret.comment || "",
+        skipMultilineEncoding: secret.skipMultilineEncoding || undefined,
+        type: SecretType.Shared,
+        tagIds: secret.tags?.map((tag) => tag.value),
+        secretMetadata: filteredMetadata?.length ? filteredMetadata : undefined
       };
     });
+    // One batch per environment, so an approval policy opens one request per environment
+    const promises = selectedEnv.map(async (env) => ({
+      ...(await createSecretBatch({
+        environment: env.slug,
+        projectId,
+        secretPath,
+        secrets: batchSecrets
+      })),
+      environment: env.slug
+    }));
 
     const results = await Promise.allSettled(promises);
     const allRequestsSucceeded = didAllSecretCreationsSucceed(results);
@@ -530,13 +529,10 @@ export const CreateSecretForm = ({
           .filter(Boolean) as string[]
       )
     ];
-    const responseCount = results.filter(
-      (result) => result.status === "fulfilled" && !("approval" in result.value)
-    ).length;
-    const approvalCount = results.filter(
-      (result) => result.status === "fulfilled" && "approval" in result.value
-    ).length;
-    const failureCount = results.filter((result) => result.status === "rejected").length;
+    const responseCount = updatedEnvs.length * secrets.length;
+    const approvalCount = forApprovalEnvs.length * secrets.length;
+    const failureCount =
+      results.filter((result) => result.status === "rejected").length * secrets.length;
     attempt.flow({
       ...flow,
       phase: overviewResponsePhase(responseCount, approvalCount, failureCount),
@@ -555,17 +551,13 @@ export const CreateSecretForm = ({
     }
 
     if (updatedEnvs.length) {
-      const createdSecrets = results.flatMap((result) =>
-        result.status === "fulfilled" && !("approval" in result.value)
-          ? [
-              {
-                environment: result.value.environment,
-                key: result.value.secret.key,
-                value: result.value.secret.value,
-                tags: result.value.secret.tags?.map((tag) => tag.label)
-              }
-            ]
-          : []
+      const createdSecrets = updatedEnvs.flatMap((environment) =>
+        secrets.map((secret) => ({
+          environment,
+          key: secret.key,
+          value: secret.value,
+          tags: secret.tags?.map((tag) => tag.label)
+        }))
       );
       notifySecretsCreated(
         new Set(createdSecrets.map(({ key }) => key)).size,
@@ -577,28 +569,22 @@ export const CreateSecretForm = ({
       onSecretCreated?.();
     }
 
-    const failedRequests = requests.flatMap((request, index) => {
+    const failedRequests = selectedEnv.flatMap((env, index) => {
       const result = results[index];
-      return result.status === "rejected" ? [{ ...request, error: result.reason as unknown }] : [];
+      return result.status === "rejected" ? [{ env, error: result.reason as unknown }] : [];
     });
     if (failedRequests.length && formOwner.current.invocation === invocation) {
       const failedEnvSlugs = new Set(failedRequests.map(({ env }) => env.slug));
-      const failedSecretIndexes = [
-        ...new Set(failedRequests.map(({ secretIndex }) => secretIndex))
-      ].sort((a, b) => a - b);
+      // A batch fails as a whole, so keep every secret and only the failed environments
       setValue(
         "environments",
         selectedEnv.filter((env) => failedEnvSlugs.has(env.slug))
       );
-      removeSecret(
-        secrets.flatMap((_, secretIndex) =>
-          failedSecretIndexes.includes(secretIndex) ? [] : [secretIndex]
-        )
-      );
       showSecretWriteErrors(
-        failedRequests.map(({ env, secretIndex, error }) => ({
+        failedRequests.map(({ env, error }) => ({
           error,
-          field: `secrets.${failedSecretIndexes.indexOf(secretIndex)}.key` as const,
+          // A batch error is not tied to one key, so only a lone secret shows it inline
+          field: secrets.length === 1 ? ("secrets.0.key" as const) : undefined,
           environmentName: selectedEnv.length > 1 ? env.name : undefined
         })),
         (field, message) => setError(field, { type: "server", message })

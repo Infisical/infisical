@@ -9,7 +9,6 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
   const baseSyncOptionsSchema = z.object({
     initialSyncBehavior: z.nativeEnum(SecretSyncInitialSyncBehavior),
     disableSecretDeletion: z.boolean().optional().default(false),
-    includeAllSubFolders: z.boolean().optional(),
     keySchema: z
       .string()
       .optional()
@@ -54,6 +53,7 @@ export const BaseSecretSyncSchema = <T extends AnyZodObject | undefined = undefi
       .refine((val) => val !== null, { message: "Connection Required" }),
     environment: z.object({ slug: z.string(), id: z.string(), name: z.string() }),
     secretPath: z.string().min(1, "Secret path required"),
+    includeAllSubFolders: z.boolean().optional(),
     syncOptions: syncOptionsSchema,
     isAutoSyncEnabled: z.boolean()
   });
