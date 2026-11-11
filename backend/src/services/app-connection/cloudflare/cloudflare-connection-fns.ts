@@ -247,26 +247,84 @@ export const listCloudflareR2Buckets = async (appConnection: TCloudflareConnecti
 export const validateCloudflareConnectionCredentials = async (config: TCloudflareConnectionConfig) => {
   const { apiToken, accountId } = config.credentials;
 
+  // Cloudflare separates token verification into:
+  // 1. Account-owned tokens: GET /client/v4/accounts/{accountId}/tokens/verify
+  // 2. User-owned tokens: GET /client/v4/user/tokens/verify
+  // Older setups or tokens with broad account access may also access GET /client/v4/accounts/{accountId}
+  let lastError: unknown;
+
+  // 1. Try account-owned token verification
+  try {
+    const { data } = await safeRequest.get<{
+      result?: { status?: string };
+      success?: boolean;
+    }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}/tokens/verify`, {
+      headers: getCloudflareAuthHeaders(apiToken)
+    });
+
+    if (data?.result?.status) {
+      if (data.result.status !== "active") {
+        throw new BadRequestError({
+          message: `Unable to validate connection: Cloudflare API token is ${data.result.status}.`
+        });
+      }
+      return config.credentials;
+    }
+
+    if (data?.success) {
+      return config.credentials;
+    }
+  } catch (error: unknown) {
+    if (error instanceof BadRequestError) throw error;
+    lastError = error;
+  }
+
+  // 2. Try user-owned token verification
+  try {
+    const { data } = await safeRequest.get<{
+      result?: { status?: string };
+      success?: boolean;
+    }>(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/user/tokens/verify`, {
+      headers: getCloudflareAuthHeaders(apiToken)
+    });
+
+    if (data?.result?.status) {
+      if (data.result.status !== "active") {
+        throw new BadRequestError({
+          message: `Unable to validate connection: Cloudflare API token is ${data.result.status}.`
+        });
+      }
+      return config.credentials;
+    }
+
+    if (data?.success) {
+      return config.credentials;
+    }
+  } catch (error: unknown) {
+    if (error instanceof BadRequestError) throw error;
+    lastError = error;
+  }
+
+  // 3. Fall back to account details endpoint
   try {
     const resp = await safeRequest.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}`, {
       headers: getCloudflareAuthHeaders(apiToken)
     });
 
-    if (resp.data === null) {
-      throw new BadRequestError({
-        message: "Unable to validate connection: Invalid API token provided."
-      });
+    if (resp.data !== null) {
+      return config.credentials;
     }
   } catch (error: unknown) {
-    if (error instanceof AxiosError) {
-      throw new BadRequestError({
-        message: `Failed to validate credentials: ${getCloudflareErrorMessage(error)}`
-      });
-    }
+    lastError = error;
+  }
+
+  if (lastError instanceof AxiosError) {
     throw new BadRequestError({
-      message: "Unable to validate connection: verify credentials"
+      message: `Failed to validate credentials: ${getCloudflareErrorMessage(lastError)}`
     });
   }
 
-  return config.credentials;
+  throw new BadRequestError({
+    message: "Unable to validate connection: verify credentials"
+  });
 };
