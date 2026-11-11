@@ -13,6 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { AgentVaultOauthStatus } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultPersonalOauthConnection,
@@ -43,6 +44,7 @@ export const PersonalOAuthConnection = ({
 }: Props) => {
   const serverUrl = serverUrlOf(service) ?? "";
   const host = hostOf(serverUrl);
+  const { projectId } = useProject();
   const { state, authorize, cancel } = useOAuthAuthorize({
     // A refused save is reported by the request's error toast.
     onAuthorized: (authorization) => onAuthorized(authorization.id).catch(() => undefined)
@@ -55,7 +57,7 @@ export const PersonalOAuthConnection = ({
 
   const connect = () => {
     authorize({
-      accessBundleId: service.accessBundleId,
+      projectId,
       serverUrl,
       serviceId: service.id,
       personal: true

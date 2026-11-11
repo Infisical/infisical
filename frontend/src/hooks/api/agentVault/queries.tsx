@@ -32,6 +32,8 @@ import {
   TAgentVaultAccessBundleDetails,
   TAgentVaultAccessBundleListItem,
   TAgentVaultBundleSkill,
+  TAgentVaultProjectService,
+  TListAgentVaultServicesDTO,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultDelegationDetail,
   TAgentVaultMember,
@@ -137,6 +139,12 @@ export const agentVaultKeys = {
     scope: AgentVaultVariableScope,
     keys: string[]
   ) => [...agentVaultKeys.variables(orgId, projectId), "key-status", scope, keys] as const,
+  services: (orgId: string, projectId: string) =>
+    [...agentVaultKeys.all(orgId, projectId), "services"] as const,
+  serviceList: (orgId: string, projectId: string, params: TListAgentVaultServicesDTO) =>
+    [...agentVaultKeys.services(orgId, projectId), "list", params] as const,
+  service: (orgId: string, projectId: string, serviceId: string) =>
+    [...agentVaultKeys.services(orgId, projectId), "detail", serviceId] as const,
   skills: (orgId: string, projectId: string) =>
     [...agentVaultKeys.all(orgId, projectId), "skills"] as const,
   skillLists: (orgId: string, projectId: string) =>
@@ -860,6 +868,42 @@ export const useAgentVaultVariableKeyStatus = (
       ) as ReadonlySet<string>
     };
   }, [data, keySignature]);
+};
+
+export const useListAgentVaultServices = (
+  projectId: string,
+  params: TListAgentVaultServicesDTO = {},
+  { enabled = true }: { enabled?: boolean } = {}
+) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.serviceList(currentOrg.id, projectId, params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        services: TAgentVaultProjectService[];
+        totalCount: number;
+      }>("/api/v1/agent-vault/services", { params: { ...params, projectId } });
+      return data;
+    },
+    placeholderData: keepPreviousInProject(projectId),
+    enabled
+  });
+};
+
+export const useGetAgentVaultService = (projectId: string, serviceId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.service(currentOrg.id, projectId, serviceId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ service: TAgentVaultProjectService }>(
+        `/api/v1/agent-vault/services/${serviceId}`
+      );
+      return data.service;
+    },
+    enabled: Boolean(serviceId)
+  });
 };
 
 export const useListAgentVaultSkills = (

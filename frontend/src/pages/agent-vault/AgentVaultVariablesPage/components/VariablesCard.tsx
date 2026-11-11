@@ -68,7 +68,7 @@ import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 import { DeleteVariableDialog } from "./DeleteVariableDialog";
-import { UsedByBundleBadges } from "./UsedByBundleBadges";
+import { UsedByServiceBadges } from "./UsedByServiceBadges";
 
 enum SortColumn {
   Key = "key",
@@ -467,7 +467,7 @@ export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props)
                       </div>
                     </TableCell>
                     <TableCell>
-                      <UsedByBundleBadges usedByServices={variable.usedByServices} />
+                      <UsedByServiceBadges usedByServices={variable.usedByServices} />
                     </TableCell>
                     <TableCell variant="action">
                       <DropdownMenu>

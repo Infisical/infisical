@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   ChevronDownIcon,
@@ -9,7 +10,8 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
-  TriangleAlertIcon
+  TriangleAlertIcon,
+  UnlinkIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -46,6 +48,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  OverflowBadgeList,
   Table,
   TableBody,
   TableCell,
@@ -56,16 +59,16 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
-  useDeleteAgentVaultService
+  useDeleteAgentVaultService,
+  useRemoveAgentVaultAccessBundleService
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
-
-import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
+import { TAgentVaultBundleRef, TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 enum SortColumn {
   Name = "name",
@@ -93,12 +96,16 @@ const SORT_COMPARATORS: Record<
   [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 };
 
+type TListedService = TAgentVaultService & { accessBundles?: TAgentVaultBundleRef[] };
+
 type Props = {
-  accessBundleId: string;
-  services: TAgentVaultService[];
+  // Set on a bundle's page: the services listed are that bundle's, and the row action takes one out of it rather
+  // than deleting it from the project.
+  accessBundleId?: string;
+  services: TListedService[];
   canManage: boolean;
   onAdd: () => void;
-  onEdit: (service: TAgentVaultService) => void;
+  onEdit: (service: TListedService) => void;
   onSetUp: (service: TAgentVaultService) => void;
 };
 
@@ -193,9 +200,12 @@ export const ServicesCard = ({
   onSetUp
 }: Props) => {
   const { projectId } = useProject();
+  const { currentOrg } = useOrganization();
   const [search, setSearch] = useState("");
-  const [serviceToDelete, setServiceToDelete] = useState<TAgentVaultService | null>(null);
+  const [serviceToDelete, setServiceToDelete] = useState<TListedService | null>(null);
   const deleteService = useDeleteAgentVaultService(projectId);
+  const removeService = useRemoveAgentVaultAccessBundleService(projectId);
+  const isBundle = Boolean(accessBundleId);
 
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
@@ -235,16 +245,26 @@ export const ServicesCard = ({
       sortColumn !== column && "opacity-30"
     );
 
+  let emptyDescription = "Try a different search term.";
+  if (services.length === 0) {
+    emptyDescription = isBundle
+      ? "Add services to give this bundle access to external hosts."
+      : "Add a service for each API, MCP server, database or SSH server agents need.";
+  }
+
   const handleDelete = async () => {
     try {
       if (!serviceToDelete) return;
 
-      await deleteService.mutateAsync({
-        accessBundleId,
-        serviceId: serviceToDelete.id
-      });
+      if (accessBundleId) {
+        await removeService.mutateAsync({ accessBundleId, serviceId: serviceToDelete.id });
+      } else {
+        await deleteService.mutateAsync({ serviceId: serviceToDelete.id });
+      }
       createNotification({
-        text: `Service "${serviceToDelete.name}" deleted`,
+        text: accessBundleId
+          ? `Service "${serviceToDelete.name}" removed from this bundle`
+          : `Service "${serviceToDelete.name}" deleted`,
         type: "success"
       });
       setServiceToDelete(null);
@@ -261,8 +281,9 @@ export const ServicesCard = ({
           <DocumentationLinkBadge href={AgentVaultDocsUrls.services} />
         </CardTitle>
         <CardDescription>
-          A service defines one API, MCP server, database or SSH server the agent can reach, and the
-          credential the proxy uses for it.
+          {isBundle
+            ? "The services agents can reach with this bundle. Each one is defined once in the project and can be in any number of bundles."
+            : "A service defines one API, MCP server, database or SSH server the agent can reach, and the credential the proxy uses for it. Add it to access bundles to give agents access."}
         </CardDescription>
         {canManage && (
           <CardAction>
@@ -297,11 +318,7 @@ export const ServicesCard = ({
               <EmptyTitle>
                 {services.length === 0 ? "No services yet" : "No services match your search"}
               </EmptyTitle>
-              <EmptyDescription>
-                {services.length === 0
-                  ? "Add services to give this bundle access to external hosts."
-                  : "Try a different search term."}
-              </EmptyDescription>
+              <EmptyDescription>{emptyDescription}</EmptyDescription>
             </EmptyHeader>
             {canManage && services.length === 0 && (
               <Button variant="av" onClick={onAdd}>
@@ -338,6 +355,7 @@ export const ServicesCard = ({
                 Target
                 <ChevronDownIcon className={sortIconClassName(SortColumn.Target)} />
               </TableHead>
+              {!isBundle && <TableHead>Access Bundles</TableHead>}
               <TableHead
                 sortDirection={sortColumn === SortColumn.Created ? sortDirection : "none"}
                 onSortChange={(direction) => handleSort(SortColumn.Created, direction)}
@@ -379,6 +397,25 @@ export const ServicesCard = ({
                 <TableCell>
                   <TargetCell service={service} />
                 </TableCell>
+                {!isBundle && (
+                  <TableCell>
+                    {service.accessBundles?.length ? (
+                      <OverflowBadgeList
+                        items={service.accessBundles}
+                        getKey={(bundle) => bundle.id}
+                        getLabel={(bundle) => bundle.name}
+                        getLinkProps={(bundle) =>
+                          linkOptions({
+                            to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
+                            params: { orgId: currentOrg.id, projectId, accessBundleId: bundle.id }
+                          })
+                        }
+                      />
+                    ) : (
+                      <span className="text-sm text-muted">&mdash;</span>
+                    )}
+                  </TableCell>
+                )}
                 <TableCell>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -428,8 +465,8 @@ export const ServicesCard = ({
                               variant="danger"
                               onClick={() => setServiceToDelete(service)}
                             >
-                              <TrashIcon />
-                              Delete
+                              {isBundle ? <UnlinkIcon /> : <TrashIcon />}
+                              {isBundle ? "Remove from Bundle" : "Delete"}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -448,10 +485,18 @@ export const ServicesCard = ({
         onOpenChange={(isOpen) => {
           if (!isOpen) setServiceToDelete(null);
         }}
-        title={`Delete "${serviceToDelete?.name}"`}
-        description="Agents lose this credential at the next proxy poll. This cannot be undone."
+        title={
+          isBundle
+            ? `Remove "${serviceToDelete?.name}" from this bundle`
+            : `Delete "${serviceToDelete?.name}"`
+        }
+        description={
+          isBundle
+            ? "Sessions on this bundle lose the service at the next proxy poll. It stays in the project, and members who can't reach it through another bundle lose their personal values for it."
+            : "It leaves every access bundle it's in, agents lose the credential at the next proxy poll, and members' personal values for it are deleted. This cannot be undone."
+        }
         confirmKey={serviceToDelete?.name ?? ""}
-        isPending={deleteService.isPending}
+        isPending={deleteService.isPending || removeService.isPending}
         onConfirm={handleDelete}
       />
     </Card>

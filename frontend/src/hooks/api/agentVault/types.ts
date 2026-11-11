@@ -222,15 +222,21 @@ export type TAgentVaultService = (
     })
 ) & {
   id: string;
-  accessBundleId: string;
   name: string;
   description: string | null;
   // Left out for a member, who can't see variables.
   variableReferences?: TAgentVaultVariableReference[];
-  // The caller's own values, on the bundle read only. null when the admin sets the whole credential.
+  // The caller's own values, on reads only. null when the admin sets the whole credential.
   personalValues?: TAgentVaultPersonalValues | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type TAgentVaultBundleRef = { id: string; name: string };
+
+// A service read from the project, with the access bundles it is in. A member gets only the ones they reach.
+export type TAgentVaultProjectService = TAgentVaultService & {
+  accessBundles: TAgentVaultBundleRef[];
 };
 
 export type TAgentVaultActor =
@@ -525,9 +531,11 @@ export type TUpdateAgentVaultAccessBundleDTO = {
   description?: string | null;
 };
 
-export type TCreateAgentVaultServiceDTO =
+export type TCreateAgentVaultServiceDTO = {
+  // Access bundles to add the new service to in the same request.
+  accessBundleIds?: string[];
+} & (
   | {
-      accessBundleId: string;
       type: AgentVaultServiceType.Http;
       name: string;
       description?: string;
@@ -539,7 +547,6 @@ export type TCreateAgentVaultServiceDTO =
       substitutions?: TAgentVaultSubstitutionInput[];
     }
   | {
-      accessBundleId: string;
       type: AgentVaultServiceType.Mcp;
       name: string;
       description?: string;
@@ -552,7 +559,6 @@ export type TCreateAgentVaultServiceDTO =
       customHeaders?: TAgentVaultCustomHeaderInput[];
     }
   | {
-      accessBundleId: string;
       type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql;
       name: string;
       description?: string;
@@ -563,17 +569,16 @@ export type TCreateAgentVaultServiceDTO =
       credential: TAgentVaultBasicCredentialInput;
     }
   | {
-      accessBundleId: string;
       type: AgentVaultServiceType.Ssh;
       name: string;
       description?: string;
       host: string;
       port?: number;
       credential: TAgentVaultBasicCredentialInput | TAgentVaultSshKeyCredentialInput;
-    };
+    }
+);
 
 export type TUpdateAgentVaultServiceDTO = {
-  accessBundleId: string;
   serviceId: string;
   // Must match the service's type, which never changes.
   type: AgentVaultServiceType;
@@ -596,7 +601,7 @@ export type TUpdateAgentVaultServiceDTO = {
 
 /** Credential and header values left out fall back to what the saved service stores, as on update. */
 export type TListAgentVaultMcpToolsDTO = {
-  accessBundleId: string;
+  projectId: string;
   serviceId?: string;
   serverUrl: string;
   transport: AgentVaultMcpTransport;
@@ -617,7 +622,7 @@ export type TAgentVaultOauthAuthorization = {
 };
 
 export type TCreateAgentVaultOauthAuthorizationDTO = {
-  accessBundleId: string;
+  projectId: string;
   serverUrl: string;
   serviceId?: string;
   clientId?: string;
@@ -838,8 +843,8 @@ export type TAgentVaultVariableUsedByService = {
   type?: AgentVaultServiceType;
   // null for a database or SSH service.
   hostPattern: string | null;
-  accessBundleId: string;
-  accessBundleName: string;
+  // Every bundle the service is in. Empty for one no bundle holds, and a member sees only the ones they reach.
+  accessBundles?: TAgentVaultBundleRef[];
 };
 
 export type TAgentVaultVariable = {
@@ -891,7 +896,6 @@ export type TAgentVaultPersonalValues = {
 };
 
 export type TSetAgentVaultPersonalValuesDTO = {
-  accessBundleId: string;
   serviceId: string;
   /** The type the dialog shows. If an admin changed it since, the save fails with a 409 instead of mislabeling a value. */
   credentialType: AgentVaultCredentialType;
@@ -900,13 +904,12 @@ export type TSetAgentVaultPersonalValuesDTO = {
 
 /** A completed sign-in, which connects the caller's account and replaces any connection they had. */
 export type TConnectAgentVaultPersonalOauthDTO = {
-  accessBundleId: string;
   serviceId: string;
   credentialType: AgentVaultCredentialType;
   authorizationId: string;
 };
 
-export type TDeleteAgentVaultPersonalValuesDTO = { accessBundleId: string; serviceId: string };
+export type TDeleteAgentVaultPersonalValuesDTO = { serviceId: string };
 
 export type TAgentVaultSkillFileMode = "0644" | "0755";
 
@@ -934,6 +937,12 @@ export type TAgentVaultSkill = TAgentVaultSkillSummary & {
 export type TAgentVaultSkillDetail = TAgentVaultSkill & {
   /** The files of the latest version. */
   files: TAgentVaultSkillFile[];
+};
+
+export type TListAgentVaultServicesDTO = {
+  search?: string;
+  limit?: number;
+  offset?: number;
 };
 
 export type TListAgentVaultSkillsDTO = {
