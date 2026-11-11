@@ -28,6 +28,25 @@ export const toOrgServiceActor = (actor: TActorContext): OrgServiceActor => ({
   parentOrgId: actor.org.parentOrgId
 });
 
+// ACME, EST and SCEP clients enroll through a profile and hold no project permissions, so they are checked against
+// that profile instead of through the permission functions.
+export type TCertificateEnrollmentActor = {
+  type: ActorType.ACME_ACCOUNT | ActorType.EST_ACCOUNT | ActorType.SCEP_ACCOUNT;
+  // The ACME account, or the profile for EST and SCEP.
+  id: string;
+  orgId: string;
+};
+
+export type TCertificateIssuanceCaller =
+  | { actor: TActorContext; enrollment?: undefined }
+  | { actor?: undefined; enrollment: TCertificateEnrollmentActor };
+
+// The flat actor that issuance records (requester, telemetry, metadata org) are written with.
+export const flatActorOfCaller = (caller: TCertificateIssuanceCaller) =>
+  caller.actor
+    ? { actor: caller.actor.principal.type, actorId: caller.actor.principal.id, actorOrgId: caller.actor.org.id }
+    : { actor: caller.enrollment.type, actorId: caller.enrollment.id, actorOrgId: caller.enrollment.orgId };
+
 type TCertificateSubjectFields = {
   id: string;
   projectId: string;

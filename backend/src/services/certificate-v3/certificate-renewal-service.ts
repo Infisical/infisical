@@ -11,7 +11,7 @@ import {
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -72,7 +72,8 @@ import {
 import {
   assertCanEditCertificate,
   assertCanEditCertificateResult,
-  assertCanRevokeCertificate
+  assertCanRevokeCertificate,
+  TCertificateIssuanceCaller
 } from "../certificate-common/certificate-permission-fns";
 import { TCertificateQuotaDeps } from "../certificate-common/certificate-quota-fns";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
@@ -201,21 +202,19 @@ class RenewalBlockedError extends BadRequestError {
 type TRenewalActor = {
   actor: ActorType;
   actorId: string;
-  actorAuthMethod: ActorAuthMethod;
   actorOrgId: string;
 };
 
 const toRenewalActor = (actor: TActorContext): TRenewalActor => ({
   actor: actor.principal.type,
   actorId: actor.principal.id,
-  actorAuthMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
   actorOrgId: actor.org.id
 });
 
 export type TResolveApplicationIdForProfile = (
   profile: { id: string; projectId: string; slug: string },
   explicitApplicationId: string | undefined,
-  actorCtx: { actor: ActorType; actorId: string; actorAuthMethod: ActorAuthMethod; actorOrgId: string },
+  caller: TCertificateIssuanceCaller,
   enrollmentType: EnrollmentType
 ) => Promise<string | undefined>;
 
@@ -432,7 +431,6 @@ export const certificateRenewalServiceFactory = ({
     effectiveSignatureAlgorithm,
     actor,
     actorId,
-    actorAuthMethod,
     actorOrgId,
     removeRootsFromChain,
     resolvedCustomExtensions
@@ -454,7 +452,6 @@ export const certificateRenewalServiceFactory = ({
     effectiveSignatureAlgorithm: CertSignatureAlgorithm;
     actor: ActorType;
     actorId: string;
-    actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
     removeRootsFromChain?: boolean;
     resolvedCustomExtensions?: TResolvedCustomExtension[];
@@ -493,10 +490,6 @@ export const certificateRenewalServiceFactory = ({
 
     const pendingRequest = await certificateRequestService.createCertificateRequest({
       internal: true,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: originalCert.projectId,
       caId: ca.id,
       profileId: originalCert.profileId ?? undefined,
@@ -667,13 +660,11 @@ export const certificateRenewalServiceFactory = ({
       originalCert,
       profile,
       actor,
-      actorCtx,
       isEditingCertificate
     }: {
       originalCert: TCertificates;
       profile: { id: string; projectId: string; slug: string };
       actor: TActorContext;
-      actorCtx: TRenewalActor;
       isEditingCertificate: boolean;
     },
     tx: Knex
@@ -690,7 +681,7 @@ export const certificateRenewalServiceFactory = ({
       : { certMetadata: [] as { key: string; value: string }[], projectPermission: undefined };
 
     if (originalCert.applicationId) {
-      await $resolveApplicationIdForProfile(profile, originalCert.applicationId, actorCtx, EnrollmentType.API);
+      await $resolveApplicationIdForProfile(profile, originalCert.applicationId, { actor }, EnrollmentType.API);
       return { certMetadata, projectPermission };
     }
 
@@ -965,7 +956,6 @@ export const certificateRenewalServiceFactory = ({
       const createdRequest = await certificateRequestService.createCertificateRequest({
         internal: true,
         customExtensions: resolvedCustomExtensions,
-        ...actorCtx,
         projectId: originalCert.projectId,
         tx,
         caId: ca?.id || originalCert.caId || undefined,
@@ -1063,7 +1053,6 @@ export const certificateRenewalServiceFactory = ({
   }): Promise<TCertificateIssuanceResponse> => {
     const pendingRequest = await certificateRequestService.createCertificateRequest({
       internal: true,
-      ...actorCtx,
       projectId: originalCert.projectId,
       caId: ca.id,
       profileId: originalCert.profileId ?? undefined,
@@ -1258,7 +1247,7 @@ export const certificateRenewalServiceFactory = ({
   }: TRenewCertificateInput): Promise<TCertificateIssuanceResponse> => {
     const actorCtx: TRenewalActor = actor
       ? toRenewalActor(actor)
-      : { actor: ActorType.PLATFORM, actorId: "", actorAuthMethod: null, actorOrgId: "" };
+      : { actor: ActorType.PLATFORM, actorId: "", actorOrgId: "" };
     const keySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr });
     let csrRenewalRequest: TCertificateRequest | null = null;
     if (keySource === CertificateRenewalKeySource.Csr && csr) {
@@ -1294,7 +1283,7 @@ export const certificateRenewalServiceFactory = ({
         const renewalAuth =
           internal || !actor
             ? undefined
-            : await $authorizeRenewal({ originalCert, profile, actor, actorCtx, isEditingCertificate }, tx);
+            : await $authorizeRenewal({ originalCert, profile, actor, isEditingCertificate }, tx);
 
         assertCertificateNotDeleted(originalCert);
 
@@ -1573,7 +1562,6 @@ export const certificateRenewalServiceFactory = ({
       const certificateRequest = await certificateRequestService.createCertificateRequest({
         internal: true,
         customExtensions: resolvedCustomExtensions,
-        ...actorCtx,
         projectId: originalCert.projectId,
         profileId: profile?.id,
         applicationId: originalCert.applicationId ?? undefined,

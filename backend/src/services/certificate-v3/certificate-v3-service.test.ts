@@ -16,11 +16,9 @@ import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -185,30 +183,6 @@ describe("CertificateV3Service", () => {
       return result;
     }) as any);
 
-  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission"> = {
-    getProjectPermission: vi.fn().mockResolvedValue({
-      permission: {
-        throwUnlessCan: vi.fn(),
-        can: vi.fn().mockReturnValue(true),
-        cannot: vi.fn().mockReturnValue(false),
-        relevantRuleFor: vi.fn(),
-        rules: []
-      }
-    }),
-    getResourcePermission: vi.fn().mockResolvedValue({
-      permission: {
-        throwUnlessCan: vi.fn(),
-        can: vi.fn().mockReturnValue(true),
-        cannot: vi.fn().mockReturnValue(false),
-        relevantRuleFor: vi.fn(),
-        rules: []
-      },
-      memberships: [],
-      hasRole: vi.fn().mockReturnValue(false),
-      isImplicitAdmin: false
-    })
-  };
-
   const mockUsageCounterDAL = {
     resolveRootOrgId: vi.fn(async (id: string) => id),
     countActiveCertificateQuota: vi.fn(async () => ({ total: 0, wildcard: 0 })),
@@ -252,13 +226,6 @@ describe("CertificateV3Service", () => {
   const mockApprovalPolicyService = {
     createRequestFromPolicy: vi.fn(),
     matchPolicy: vi.fn()
-  };
-
-  const mockActor = {
-    actor: ActorType.USER,
-    actorId: "user-123",
-    actorAuthMethod: AuthMethod.EMAIL,
-    actorOrgId: "org-123"
   };
 
   const mockActorContext = {
@@ -333,18 +300,6 @@ describe("CertificateV3Service", () => {
     mockProjectsDomain.getProjectPermission.mockResolvedValue(allowAll);
     mockUsageCounterDAL.getApplicationPermission.mockResolvedValue(allowAll);
 
-    // Ensure the permission service mock is properly set up
-    (mockPermissionService.getProjectPermission as any).mockResolvedValue({
-      permission: {
-        throwUnlessCan: vi.fn(),
-        can: vi.fn().mockReturnValue(true),
-        cannot: vi.fn().mockReturnValue(false),
-        relevantRuleFor: vi.fn(),
-        rules: [],
-        detectSubjectType: vi.fn()
-      }
-    });
-
     vi.mocked(extractCertificateRequestFromCSR).mockReturnValue({
       commonName: "test.example.com",
       keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
@@ -370,7 +325,6 @@ describe("CertificateV3Service", () => {
           async ({ csrSignatureAlgorithm }: { csrSignatureAlgorithm?: string }) => csrSignatureAlgorithm
         )
       },
-      permissionService: mockPermissionService,
       projectsDomain: mockProjectsDomain as never,
       certificateSyncDAL: {
         findPkiSyncIdsByCertificateId: vi.fn().mockResolvedValue([]),
@@ -611,7 +565,7 @@ describe("CertificateV3Service", () => {
       const result = await service.issueCertificateFromProfile({
         profileId,
         certificateRequest: mockCertificateRequest,
-        ...mockActor
+        ...mockActorContext
       });
 
       expect(result).toHaveProperty("certificate");
@@ -736,9 +690,7 @@ describe("CertificateV3Service", () => {
       // Return a real ability so the read-private-key check is evaluated against the certificate subject
       // rather than a mocked boolean.
       const grantPermission = (rules: any) => {
-        (mockPermissionService.getProjectPermission as any).mockResolvedValue({
-          permission: createMongoAbility<ProjectPermissionSet>(rules)
-        });
+        mockProjectsDomain.getProjectPermission.mockResolvedValue(Permission.fromRules({ rules }));
       };
 
       beforeEach(() => {
@@ -768,7 +720,7 @@ describe("CertificateV3Service", () => {
         const result = await service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         });
 
         expect(result.privateKey).toBeDefined();
@@ -787,7 +739,7 @@ describe("CertificateV3Service", () => {
         const result = await service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         });
 
         expect(result.privateKey).toBeUndefined();
@@ -806,7 +758,7 @@ describe("CertificateV3Service", () => {
         const result = await service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         });
 
         expect(result.privateKey).toBeDefined();
@@ -825,7 +777,7 @@ describe("CertificateV3Service", () => {
         const result = await service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         });
 
         expect(result.privateKey).toBeDefined();
@@ -844,7 +796,7 @@ describe("CertificateV3Service", () => {
         const result = await service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         });
 
         expect(result.privateKey).toBeUndefined();
@@ -906,9 +858,7 @@ describe("CertificateV3Service", () => {
       };
 
       const grantPermission = (rules: any) => {
-        (mockPermissionService.getProjectPermission as any).mockResolvedValue({
-          permission: createMongoAbility<ProjectPermissionSet>(rules)
-        });
+        mockProjectsDomain.getProjectPermission.mockResolvedValue(Permission.fromRules({ rules }));
       };
 
       beforeEach(() => {
@@ -935,7 +885,7 @@ describe("CertificateV3Service", () => {
         const result = await service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         });
 
         expect(result.privateKey).toBeDefined();
@@ -954,7 +904,7 @@ describe("CertificateV3Service", () => {
         const result = await service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         });
 
         expect(result.privateKey).toBeUndefined();
@@ -973,7 +923,7 @@ describe("CertificateV3Service", () => {
         const result = await service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         });
 
         expect(result.privateKey).toBeDefined();
@@ -1190,7 +1140,7 @@ describe("CertificateV3Service", () => {
       await service.issueCertificateFromProfile({
         profileId,
         certificateRequest: camelCaseRequest,
-        ...mockActor
+        ...mockActorContext
       });
 
       // Verify that the policy validation service was called with mapped snake_case values
@@ -1238,7 +1188,7 @@ describe("CertificateV3Service", () => {
         service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(ForbiddenRequestError);
 
@@ -1246,7 +1196,7 @@ describe("CertificateV3Service", () => {
         service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("Profile is not configured for api enrollment");
     });
@@ -1259,7 +1209,7 @@ describe("CertificateV3Service", () => {
         service.issueCertificateFromProfile({
           profileId,
           certificateRequest: mockCertificateRequest,
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(NotFoundError);
     });
@@ -1439,7 +1389,7 @@ describe("CertificateV3Service", () => {
         csr: mockCSR,
         validity: mockValidity,
         enrollmentType: EnrollmentType.API,
-        ...mockActor
+        ...mockActorContext
       });
 
       expect(result).toHaveProperty("certificate");
@@ -1485,7 +1435,7 @@ describe("CertificateV3Service", () => {
           csr: mockCSR,
           validity: mockValidity,
           enrollmentType: EnrollmentType.API,
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(ForbiddenRequestError);
 
@@ -1495,9 +1445,89 @@ describe("CertificateV3Service", () => {
           csr: mockCSR,
           validity: mockValidity,
           enrollmentType: EnrollmentType.API,
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("Profile is not configured for api enrollment");
+    });
+
+    // Enrollment clients hold no project permissions: they are checked against the profile and never reach
+    // the permission functions.
+    describe("enrollment callers", () => {
+      const enrollmentProfile = (enrollmentType: EnrollmentType) =>
+        ({
+          id: "profile-123",
+          projectId: "project-123",
+          enrollmentType,
+          caId: null,
+          slug: "enrollment-profile",
+          estConfigId: "est-config-123",
+          acmeConfigId: "acme-config-123",
+          scepConfigId: "scep-config-123"
+        }) as any;
+
+      const expectNoPermissionCheck = () => {
+        expect(mockProjectsDomain.getProjectPermission).not.toHaveBeenCalled();
+        expect(mockUsageCounterDAL.getApplicationPermission).not.toHaveBeenCalled();
+      };
+
+      it.each([
+        [ActorType.EST_ACCOUNT, EnrollmentType.EST],
+        [ActorType.SCEP_ACCOUNT, EnrollmentType.SCEP]
+      ] as const)("accepts a %s client of the profile without a permission check", async (type, enrollmentType) => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(enrollmentProfile(enrollmentType));
+
+        await expect(
+          service.signCertificateFromProfile({
+            profileId: "profile-123",
+            csr: mockCSR,
+            validity: mockValidity,
+            enrollmentType,
+            enrollment: { type, id: "profile-123", orgId: "org-123" }
+          })
+        ).rejects.toThrow("Self-signed certificates are not supported for CSR signing");
+
+        expect(mockAcmeAccountDAL.findById).not.toHaveBeenCalled();
+        expectNoPermissionCheck();
+      });
+
+      it("accepts an ACME account of the profile without a permission check", async () => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(
+          enrollmentProfile(EnrollmentType.ACME)
+        );
+        vi.mocked(mockAcmeAccountDAL.findById).mockResolvedValue({ id: "account-1", profileId: "profile-123" } as any);
+
+        await expect(
+          service.signCertificateFromProfile({
+            profileId: "profile-123",
+            csr: mockCSR,
+            validity: mockValidity,
+            enrollmentType: EnrollmentType.ACME,
+            enrollment: { type: ActorType.ACME_ACCOUNT, id: "account-1", orgId: "org-123" }
+          })
+        ).rejects.toThrow("Self-signed certificates are not supported for CSR signing");
+
+        expect(mockAcmeAccountDAL.findById).toHaveBeenCalledWith("account-1");
+        expectNoPermissionCheck();
+      });
+
+      it("refuses an ACME account of another profile", async () => {
+        vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(
+          enrollmentProfile(EnrollmentType.ACME)
+        );
+        vi.mocked(mockAcmeAccountDAL.findById).mockResolvedValue({ id: "account-1", profileId: "other" } as any);
+
+        await expect(
+          service.signCertificateFromProfile({
+            profileId: "profile-123",
+            csr: mockCSR,
+            validity: mockValidity,
+            enrollmentType: EnrollmentType.ACME,
+            enrollment: { type: ActorType.ACME_ACCOUNT, id: "account-1", orgId: "org-123" }
+          })
+        ).rejects.toThrow("ACME account is not associated with this profile");
+
+        expectNoPermissionCheck();
+      });
     });
   });
 
@@ -1518,13 +1548,6 @@ describe("CertificateV3Service", () => {
       };
 
       licenseDomain.defaultPlan = { ...licenseDomain.defaultPlan, maxCertificates: 5, maxWildcardCertificates: null };
-      vi.mocked(mockPermissionService.getProjectPermission).mockResolvedValue({
-        permission: {
-          throwUnlessCan: vi.fn(),
-          can: vi.fn().mockReturnValue(true),
-          cannot: vi.fn().mockReturnValue(false)
-        }
-      } as any);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(profileWithDefaultSans as any);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue({
         id: "ca-123",
@@ -1547,7 +1570,7 @@ describe("CertificateV3Service", () => {
           csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIIC...",
           validity: { ttl: "30d" },
           enrollmentType: EnrollmentType.API,
-          ...mockActor
+          ...mockActorContext
         })
         .catch(() => undefined);
 
@@ -1596,7 +1619,7 @@ describe("CertificateV3Service", () => {
         service.orderCertificate({
           profileId,
           certificateOrder: mockCertificateOrder,
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(ForbiddenRequestError);
 
@@ -1604,7 +1627,7 @@ describe("CertificateV3Service", () => {
         service.orderCertificate({
           profileId,
           certificateOrder: mockCertificateOrder,
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("Profile is not configured for api enrollment");
     });
@@ -1651,9 +1674,9 @@ describe("CertificateV3Service", () => {
       it("rejects CA issuance for an external CA other than AWS Private CA", async () => {
         setupCa(CaType.DIGICERT);
 
-        await expect(service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActor })).rejects.toThrow(
-          "CA certificate issuance is not supported for this external certificate authority"
-        );
+        await expect(
+          service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActorContext })
+        ).rejects.toThrow("CA certificate issuance is not supported for this external certificate authority");
       });
 
       it("persists the CSR subject on the request row when an approval policy applies", async () => {
@@ -1671,7 +1694,7 @@ describe("CertificateV3Service", () => {
         setupCa(CaType.AWS_PCA);
         vi.mocked(mockApprovalPolicyDAL.findByProjectId).mockResolvedValue([]);
 
-        await service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActor });
+        await service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActorContext });
 
         expect(mockCertificateIssuanceQueue.queueCertificateIssuance).toHaveBeenCalledWith(
           expect.objectContaining({ basicConstraints: { isCA: true, pathLength: 1 } })
@@ -1694,7 +1717,7 @@ describe("CertificateV3Service", () => {
           conditions: { conditions: [{ profileNames: [mockProfile.slug] }] }
         } as any);
 
-        await service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActor });
+        await service.orderCertificate({ profileId, certificateOrder: caOrder, ...mockActorContext });
 
         expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
         // The value matters, the storage form does not.
@@ -1722,7 +1745,7 @@ describe("CertificateV3Service", () => {
           service.orderCertificate({
             profileId,
             certificateOrder: { ...mockCertificateOrder, basicConstraints: { isCA: true } },
-            ...mockActor
+            ...mockActorContext
           })
         ).rejects.toThrow("path length between 0 and 3 is required");
       });
@@ -1926,7 +1949,7 @@ describe("CertificateV3Service", () => {
             ...mockCertificateRequest,
             signatureAlgorithm: "RSA-SHA256"
           },
-          ...mockActor
+          ...mockActorContext
         })
       ).resolves.toBeDefined();
     });
@@ -2101,7 +2124,7 @@ describe("CertificateV3Service", () => {
             ...mockCertificateRequest,
             signatureAlgorithm: "ECDSA-SHA256"
           },
-          ...mockActor
+          ...mockActorContext
         })
       ).resolves.toBeDefined();
     });
@@ -2276,7 +2299,7 @@ describe("CertificateV3Service", () => {
             ...mockCertificateRequest,
             signatureAlgorithm: "RSA-SHA256"
           },
-          ...mockActor
+          ...mockActorContext
         })
       ).resolves.toBeDefined();
     });
@@ -2451,7 +2474,7 @@ describe("CertificateV3Service", () => {
             ...mockCertificateRequest,
             signatureAlgorithm: "ECDSA-SHA384"
           },
-          ...mockActor
+          ...mockActorContext
         })
       ).resolves.toBeDefined();
     });
@@ -3645,10 +3668,7 @@ describe("CertificateV3Service", () => {
     const issueDto = {
       profileId: "profile-123",
       certificateRequest: { commonName: "fail.example.com", validity: { ttl: "30d" } },
-      actor: ActorType.USER,
-      actorId: "user-123",
-      actorAuthMethod: AuthMethod.EMAIL,
-      actorOrgId: "org-123"
+      ...mockActorContext
     };
 
     beforeEach(() => {
@@ -3717,7 +3737,11 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockRejectedValue(new NotFoundError({ message: "x" }));
 
       await expect(
-        service.issueCertificateFromProfile({ ...issueDto, actorOrgId: "other-org", auditLogInfo })
+        service.issueCertificateFromProfile({
+          ...issueDto,
+          actor: { ...mockActorContext.actor, org: { ...mockActorContext.actor.org, id: "other-org" } },
+          auditLogInfo
+        })
       ).rejects.toThrow("x");
 
       expect(mockAuditLogService.createCollapsedAuditLog).not.toHaveBeenCalled();
@@ -3742,10 +3766,7 @@ describe("CertificateV3Service", () => {
           enrollmentType: EnrollmentType.EST,
           issuanceOperation: CertificateIssuanceOperation.RENEW,
           originalCertificateId: "cert-old",
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           auditLogInfo
         } as never)
       ).rejects.toThrow("x");
@@ -3770,10 +3791,7 @@ describe("CertificateV3Service", () => {
         service.orderCertificate({
           profileId: "profile-123",
           certificateOrder: { commonName: "order.example.com", altNames: [], validity: { ttl: "30d" } },
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           auditLogInfo
         } as never)
       ).rejects.toThrow("x");

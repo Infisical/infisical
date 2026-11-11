@@ -1036,10 +1036,7 @@ export const pkiAcmeServiceFactory = ({
       const internalPolicy = await certificatePolicyDAL.findById(profile.certificatePolicyId);
 
       const result = await certificateV3Service.signCertificateFromProfile({
-        actor: ActorType.ACME_ACCOUNT,
-        actorId: accountId,
-        actorAuthMethod: null,
-        actorOrgId,
+        enrollment: { type: ActorType.ACME_ACCOUNT, id: accountId, orgId: actorOrgId },
         profileId,
         csr,
         notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
@@ -1120,10 +1117,7 @@ export const pkiAcmeServiceFactory = ({
     });
 
     const certRequest = await certificateRequestService.createCertificateRequest({
-      actor: ActorType.ACME_ACCOUNT,
-      actorId: accountId,
-      actorAuthMethod: null,
-      actorOrgId,
+      enrollment: { type: ActorType.ACME_ACCOUNT, id: accountId, orgId: actorOrgId },
       projectId: profile.projectId,
       caId: ca.id,
       profileId: profile.id,

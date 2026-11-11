@@ -1,8 +1,7 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
+import { ProjectType, TCertificates } from "@app/db/schemas";
 import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
@@ -13,14 +12,13 @@ import {
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -94,7 +92,9 @@ import {
 } from "../certificate-common/certificate-issuance-utils";
 import {
   assertCanEditCertificate,
-  assertCanEditCertificateResult
+  assertCanEditCertificateResult,
+  flatActorOfCaller,
+  TCertificateIssuanceCaller
 } from "../certificate-common/certificate-permission-fns";
 import { reportCertificateIssued } from "../certificate-common/certificate-telemetry-fns";
 import {
@@ -166,7 +166,6 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "resolveCsrSignatureAlgorithm">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
@@ -213,27 +212,21 @@ export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3Servic
 
 const validateProfileAndPermissions = async ({
   profileId,
-  actor,
-  actorId,
-  actorAuthMethod,
-  actorOrgId,
+  caller,
   certificateProfileDAL,
   acmeAccountDAL,
-  permissionService,
+  projectsDomain,
+  certManagerDomain,
   requiredEnrollmentType,
-  isInternal = false,
   applicationId
 }: {
   profileId: string;
-  actor?: ActorType;
-  actorId?: string;
-  actorAuthMethod?: ActorAuthMethod;
-  actorOrgId?: string;
+  caller: TCertificateIssuanceCaller;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  certManagerDomain: Pick<TCertManagerDomain, "getApplicationPermission">;
   requiredEnrollmentType: EnrollmentType;
-  isInternal?: boolean;
   applicationId?: string;
 }) => {
   const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -247,19 +240,17 @@ const validateProfileAndPermissions = async ({
     });
   }
 
-  if (isInternal) {
-    return profile;
-  }
+  if (caller.enrollment) {
+    // The EST and SCEP services have already matched the client to the profile.
+    if (caller.enrollment.type === ActorType.EST_ACCOUNT || caller.enrollment.type === ActorType.SCEP_ACCOUNT) {
+      return profile;
+    }
 
-  if (!actor || !actorId || !actorOrgId) {
-    throw new BadRequestError({ message: "Actor is required" });
-  }
+    if (requiredEnrollmentType !== EnrollmentType.ACME) {
+      throw new BadRequestError({ message: "Invalid actor provided" });
+    }
 
-  if (
-    (actor === ActorType.ACME_ACCOUNT && requiredEnrollmentType === EnrollmentType.ACME) ||
-    (actor === ActorType.EST_ACCOUNT && requiredEnrollmentType === EnrollmentType.EST)
-  ) {
-    const account = await acmeAccountDAL.findById(actorId);
+    const account = await acmeAccountDAL.findById(caller.enrollment.id);
     if (!account) {
       throw new NotFoundError({ message: "ACME account not found" });
     }
@@ -271,56 +262,39 @@ const validateProfileAndPermissions = async ({
     return profile;
   }
 
-  if (actor === ActorType.SCEP_ACCOUNT && requiredEnrollmentType === EnrollmentType.SCEP) {
-    if (actorId !== profile.id) {
-      throw new ForbiddenRequestError({
-        message: "SCEP profile mismatch"
-      });
-    }
-    return profile;
-  }
-
-  if (applicationId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
-    const { permission } = await permissionService.getResourcePermission({
-      actor,
-      actorId,
+  if (applicationId) {
+    const permission = await certManagerDomain.getApplicationPermission({
+      actor: caller.actor,
       projectId: profile.projectId,
-      resourceType: ResourceType.CertificateApplication,
-      resourceId: applicationId,
-      actorAuthMethod: actorAuthMethod || null,
-      actorOrgId
+      applicationId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.IssueCert,
-      ProjectPermissionSub.CertificateProfiles
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateProfileActions.IssueCert,
+      subject: ProjectPermissionSub.CertificateProfiles
+    });
     return profile;
   }
 
-  const { permission } = await permissionService.getProjectPermission({
-    actor,
-    actorId,
+  const permission = await projectsDomain.getProjectPermission({
+    actor: caller.actor,
     projectId: profile.projectId,
-    actorAuthMethod: actorAuthMethod || null,
-    actorOrgId,
-    actionProjectType: ActionProjectType.CertificateManager
+    type: ProjectType.CertificateManager
   });
 
-  ForbiddenError.from(permission).throwUnlessCan(
-    ProjectPermissionCertificateProfileActions.IssueCert,
-    subject(ProjectPermissionSub.CertificateProfiles, {
-      slug: profile.slug
-    })
-  );
+  permission.assert({
+    action: ProjectPermissionCertificateProfileActions.IssueCert,
+    subject: ProjectPermissionSub.CertificateProfiles,
+    fields: { slug: profile.slug }
+  });
 
   return profile;
 };
 
-// Builds the certificate permission subject from a persisted certificate record so the private-key
+// Builds the certificate permission fields from a persisted certificate record so the private-key
 // read permission is evaluated against the same fields the certificate read paths use. Includes every
 // field the certificate permission conditions support, so attribute-scoped grants match consistently.
-const buildCertificateReadPrivateKeySubject = (
+const buildCertificateReadPrivateKeyFields = (
   certRecord: {
     commonName?: string | null;
     altNames?: string | null;
@@ -329,15 +303,14 @@ const buildCertificateReadPrivateKeySubject = (
     status?: string | null;
   },
   metadata?: { key: string; value: string }[]
-) =>
-  subject(ProjectPermissionSub.Certificates, {
-    commonName: certRecord.commonName ?? undefined,
-    altNames: certRecord.altNames ? certRecord.altNames.split(",").map((san) => san.trim()) : undefined,
-    serialNumber: certRecord.serialNumber ?? undefined,
-    friendlyName: certRecord.friendlyName ?? undefined,
-    status: certRecord.status ?? undefined,
-    metadata
-  });
+) => ({
+  commonName: certRecord.commonName ?? undefined,
+  altNames: certRecord.altNames ? certRecord.altNames.split(",").map((san) => san.trim()) : undefined,
+  serialNumber: certRecord.serialNumber ?? undefined,
+  friendlyName: certRecord.friendlyName ?? undefined,
+  status: certRecord.status ?? undefined,
+  metadata
+});
 
 export const certificateV3ServiceFactory = ({
   certificateDAL,
@@ -349,7 +322,6 @@ export const certificateV3ServiceFactory = ({
   certificatePolicyService,
   internalCaService,
   caKeySourceService,
-  permissionService,
   projectsDomain,
   certificateSyncDAL,
   pkiSyncDAL,
@@ -438,12 +410,7 @@ export const certificateV3ServiceFactory = ({
       scepConfigId?: string | null;
     },
     explicit: string | undefined,
-    actorContext?: {
-      actor?: ActorType;
-      actorId?: string;
-      actorAuthMethod?: ActorAuthMethod;
-      actorOrgId?: string;
-    },
+    caller?: TCertificateIssuanceCaller,
     requiredEnrollmentType?: EnrollmentType
   ): Promise<string | undefined> => {
     const junctions = await pkiApplicationProfileDAL.findAllByProfileId(profile.id);
@@ -481,28 +448,16 @@ export const certificateV3ServiceFactory = ({
         }
       }
 
-      if (
-        actorContext?.actor &&
-        actorContext.actor !== ActorType.ACME_ACCOUNT &&
-        actorContext.actor !== ActorType.ACME_PROFILE &&
-        actorContext.actor !== ActorType.EST_ACCOUNT &&
-        actorContext.actor !== ActorType.SCEP_ACCOUNT &&
-        actorContext.actorId &&
-        actorContext.actorOrgId
-      ) {
-        const { permission } = await permissionService.getResourcePermission({
-          actor: actorContext.actor,
-          actorId: actorContext.actorId,
+      if (caller?.actor) {
+        const permission = await certManagerDomain.getApplicationPermission({
+          actor: caller.actor,
           projectId: profile.projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: explicit,
-          actorAuthMethod: actorContext.actorAuthMethod ?? null,
-          actorOrgId: actorContext.actorOrgId
+          applicationId: explicit
         });
-        ForbiddenError.from(permission).throwUnlessCan(
-          ResourcePermissionCertificateActions.Create,
-          ResourcePermissionSub.Certificates
-        );
+        permission.assert({
+          action: ResourcePermissionCertificateActions.Create,
+          subject: ResourcePermissionSub.Certificates
+        });
       }
 
       return explicit;
@@ -622,31 +577,27 @@ export const certificateV3ServiceFactory = ({
     profileId,
     certificateRequest,
     metadata,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
+    actor: actorContext,
     removeRootsFromChain,
     applicationId: explicitApplicationId
   }: TIssueCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
+    const caller = { actor: actorContext };
+    const { actor, actorId, actorOrgId } = flatActorOfCaller(caller);
     const profile = await validateProfileAndPermissions({
       profileId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
+      caller,
       certificateProfileDAL,
       acmeAccountDAL,
-      permissionService,
+      projectsDomain,
+      certManagerDomain,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
       applicationId: explicitApplicationId
     });
 
     const applicationId = await $resolveApplicationIdForProfile(
       profile,
       explicitApplicationId,
-      { actor, actorId, actorAuthMethod, actorOrgId },
+      caller,
       EnrollmentType.API
     );
     const applicationName = await $resolveApplicationName(applicationId);
@@ -938,10 +889,6 @@ export const certificateV3ServiceFactory = ({
 
         const certRequestResult = await certificateRequestService.createCertificateRequest({
           internal: true,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId,
           projectId: profile.projectId,
           tx,
           profileId: profile.id,
@@ -1023,35 +970,29 @@ export const certificateV3ServiceFactory = ({
         certificateRequest.commonName ||
         "Self-signed Certificate";
 
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
+      const permission = await projectsDomain.getProjectPermission({
+        actor: actorContext,
         projectId: profile.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
       let canReadPrivateKey: boolean;
       if (applicationId) {
-        const { permission: resourcePermission } = await permissionService.getResourcePermission({
-          actor,
-          actorId,
+        const resourcePermission = await certManagerDomain.getApplicationPermission({
+          actor: actorContext,
           projectId: profile.projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: applicationId,
-          actorAuthMethod,
-          actorOrgId
+          applicationId
         });
-        canReadPrivateKey = resourcePermission.can(
-          ResourcePermissionCertificateActions.ReadPrivateKey,
-          ResourcePermissionSub.Certificates
-        );
+        canReadPrivateKey = resourcePermission.can({
+          action: ResourcePermissionCertificateActions.ReadPrivateKey,
+          subject: ResourcePermissionSub.Certificates
+        });
       } else {
-        canReadPrivateKey = permission.can(
-          ProjectPermissionCertificateActions.ReadPrivateKey,
-          buildCertificateReadPrivateKeySubject(certificateData, metadata)
-        );
+        canReadPrivateKey = permission.can({
+          action: ProjectPermissionCertificateActions.ReadPrivateKey,
+          subject: ProjectPermissionSub.Certificates,
+          fields: buildCertificateReadPrivateKeyFields(certificateData, metadata)
+        });
       }
 
       const privateKeyForResponse = canReadPrivateKey ? selfSignedResult.privateKey.toString("utf8") : undefined;
@@ -1163,10 +1104,6 @@ export const certificateV3ServiceFactory = ({
 
       const certRequestResult = await certificateRequestService.createCertificateRequest({
         internal: true,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
         projectId: profile.projectId,
         tx,
         caId: ca.id,
@@ -1265,35 +1202,29 @@ export const certificateV3ServiceFactory = ({
     }
 
     // Check if user has permission to read private key
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
+    const permission = await projectsDomain.getProjectPermission({
+      actor: actorContext,
       projectId: profile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     let canReadPrivateKey: boolean;
     if (applicationId) {
-      const { permission: resourcePermission } = await permissionService.getResourcePermission({
-        actor,
-        actorId,
+      const resourcePermission = await certManagerDomain.getApplicationPermission({
+        actor: actorContext,
         projectId: profile.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId
       });
-      canReadPrivateKey = resourcePermission.can(
-        ResourcePermissionCertificateActions.ReadPrivateKey,
-        ResourcePermissionSub.Certificates
-      );
+      canReadPrivateKey = resourcePermission.can({
+        action: ResourcePermissionCertificateActions.ReadPrivateKey,
+        subject: ResourcePermissionSub.Certificates
+      });
     } else {
-      canReadPrivateKey = permission.can(
-        ProjectPermissionCertificateActions.ReadPrivateKey,
-        buildCertificateReadPrivateKeySubject(cert, metadata)
-      );
+      canReadPrivateKey = permission.can({
+        action: ProjectPermissionCertificateActions.ReadPrivateKey,
+        subject: ProjectPermissionSub.Certificates,
+        fields: buildCertificateReadPrivateKeyFields(cert, metadata)
+      });
     }
 
     const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
@@ -1343,42 +1274,34 @@ export const certificateV3ServiceFactory = ({
     };
   };
 
-  const $signCertificateFromProfile = async ({
-    profileId,
-    csr,
-    validity,
-    notBefore,
-    notAfter,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    enrollmentType,
-    metadata,
-    removeRootsFromChain,
-    basicConstraints,
-    applicationId: explicitApplicationId,
-    acmeOrderId
-  }: TSignCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
+  const $signCertificateFromProfile = async (
+    dto: TSignCertificateFromProfileDTO
+  ): Promise<TCertificateIssuanceResponse> => {
+    const {
+      profileId,
+      csr,
+      validity,
+      notBefore,
+      notAfter,
+      enrollmentType,
+      metadata,
+      removeRootsFromChain,
+      basicConstraints,
+      applicationId: explicitApplicationId,
+      acmeOrderId
+    } = dto;
+    const { actor, actorId, actorOrgId } = flatActorOfCaller(dto);
     const profile = await validateProfileAndPermissions({
       profileId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
+      caller: dto,
       certificateProfileDAL,
       acmeAccountDAL,
-      permissionService,
+      projectsDomain,
+      certManagerDomain,
       requiredEnrollmentType: enrollmentType,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
       applicationId: explicitApplicationId
     });
-    const applicationId = await $resolveApplicationIdForProfile(
-      profile,
-      explicitApplicationId,
-      { actor, actorId, actorAuthMethod, actorOrgId },
-      enrollmentType
-    );
+    const applicationId = await $resolveApplicationIdForProfile(profile, explicitApplicationId, dto, enrollmentType);
     const applicationName = await $resolveApplicationName(applicationId);
 
     if (!profile.caId) {
@@ -1655,10 +1578,6 @@ export const certificateV3ServiceFactory = ({
     // nothing references.
     const pendingRequest = await certificateRequestService.createCertificateRequest({
       internal: true,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: profile.projectId,
       caId: ca.id,
       profileId: profile.id,
@@ -1849,29 +1768,25 @@ export const certificateV3ServiceFactory = ({
     profileId,
     certificateOrder,
     metadata,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
+    actor: actorContext,
     applicationId: explicitApplicationId
   }: TOrderCertificateFromProfileDTO): Promise<TCertificateIssuanceResponse> => {
+    const caller = { actor: actorContext };
+    const { actor, actorId, actorOrgId } = flatActorOfCaller(caller);
     const profile = await validateProfileAndPermissions({
       profileId,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
+      caller,
       certificateProfileDAL,
       acmeAccountDAL,
-      permissionService,
+      projectsDomain,
+      certManagerDomain,
       requiredEnrollmentType: EnrollmentType.API,
-      isInternal: actor === ActorType.EST_ACCOUNT || actor === ActorType.SCEP_ACCOUNT,
       applicationId: explicitApplicationId
     });
     const applicationId = await $resolveApplicationIdForProfile(
       profile,
       explicitApplicationId,
-      { actor, actorId, actorAuthMethod, actorOrgId },
+      caller,
       EnrollmentType.API
     );
     const applicationName = await $resolveApplicationName(applicationId);
@@ -2213,10 +2128,6 @@ export const certificateV3ServiceFactory = ({
 
       const certRequest = await certificateRequestService.createCertificateRequest({
         internal: true,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
         projectId: profile.projectId,
         caId: ca.id,
         profileId: profile.id,
@@ -2390,7 +2301,7 @@ export const certificateV3ServiceFactory = ({
     } catch (error) {
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
-        actorOrgId: dto.actorOrgId,
+        actorOrgId: flatActorOfCaller(dto).actorOrgId,
         profileId: dto.profileId,
         error,
         metadata: {
@@ -2410,7 +2321,7 @@ export const certificateV3ServiceFactory = ({
     } catch (error) {
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
-        actorOrgId: dto.actorOrgId,
+        actorOrgId: flatActorOfCaller(dto).actorOrgId,
         profileId: dto.profileId,
         error,
         metadata: {
@@ -2431,7 +2342,7 @@ export const certificateV3ServiceFactory = ({
     } catch (error) {
       await $recordIssuanceFailure({
         auditLogInfo: dto.auditLogInfo,
-        actorOrgId: dto.actorOrgId,
+        actorOrgId: flatActorOfCaller(dto).actorOrgId,
         profileId: dto.profileId,
         error,
         metadata: {

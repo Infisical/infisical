@@ -6,7 +6,7 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ActionProjectType, ProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
@@ -16,7 +16,6 @@ import {
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { NotFoundError } from "@app/lib/errors";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -56,10 +55,6 @@ describe("CertificateRequestService", () => {
     getCertPrivateKey: vi.fn() as any
   };
 
-  const mockPermissionService: Pick<TPermissionServiceFactory, "getProjectPermission"> = {
-    getProjectPermission: vi.fn() as any
-  };
-
   const mockProjectsDomain = { getProjectPermission: vi.fn() };
   const mockCertManagerDomain = { getApplicationPermission: vi.fn() };
 
@@ -90,7 +85,6 @@ describe("CertificateRequestService", () => {
       certificateDAL: mockCertificateDAL,
       pkiApplicationDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never,
       certificateService: mockCertificateService,
-      permissionService: mockPermissionService,
       projectsDomain: mockProjectsDomain as never,
       certManagerDomain: mockCertManagerDomain as never,
       resourceMetadataDAL: { find: vi.fn().mockResolvedValue([]), insertMany: vi.fn() },
@@ -110,10 +104,7 @@ describe("CertificateRequestService", () => {
 
   describe("createCertificateRequest", () => {
     const mockCreateData = {
-      actor: ActorType.USER,
-      actorId: "550e8400-e29b-41d4-a716-446655440001",
-      actorAuthMethod: AuthMethod.EMAIL,
-      actorOrgId: "550e8400-e29b-41d4-a716-446655440002",
+      actor: ACTOR,
       projectId: "550e8400-e29b-41d4-a716-446655440003",
       profileId: "550e8400-e29b-41d4-a716-446655440004",
       commonName: "test.example.com",
@@ -137,18 +128,15 @@ describe("CertificateRequestService", () => {
         commonName: "test.example.com"
       };
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockProjectsDomain.getProjectPermission as any).mockResolvedValue(asPermission(mockPermission));
       (mockCertificateRequestDAL.create as any).mockResolvedValue(mockCreatedRequest);
 
       const result = await service.createCertificateRequest(mockCreateData);
 
-      expect(mockPermissionService.getProjectPermission).toHaveBeenCalledWith({
-        actor: ActorType.USER,
-        actorId: "550e8400-e29b-41d4-a716-446655440001",
+      expect(mockProjectsDomain.getProjectPermission).toHaveBeenCalledWith({
+        actor: ACTOR,
         projectId: "550e8400-e29b-41d4-a716-446655440003",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "550e8400-e29b-41d4-a716-446655440002",
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
       expect(mockCertificateRequestDAL.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -165,13 +153,23 @@ describe("CertificateRequestService", () => {
     });
 
     it("should throw ForbiddenError when user lacks permission", async () => {
-      const mockPermission = {
-        permission: ForbiddenError.from(createMongoAbility([]))
-      };
+      (mockProjectsDomain.getProjectPermission as any).mockResolvedValue(Permission.none());
 
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      await expect(service.createCertificateRequest(mockCreateData)).rejects.toThrow(ForbiddenError);
+    });
 
-      await expect(service.createCertificateRequest(mockCreateData)).rejects.toThrow();
+    it("leaves enrollment and internal callers to the service that authorized them", async () => {
+      (mockCertificateRequestDAL.create as any).mockResolvedValue({ id: "550e8400-e29b-41d4-a716-446655440005" });
+      const { actor: _actor, ...requestData } = mockCreateData;
+
+      await service.createCertificateRequest({
+        ...requestData,
+        enrollment: { type: ActorType.SCEP_ACCOUNT, id: requestData.profileId, orgId: "org-1" }
+      });
+      await service.createCertificateRequest({ ...requestData, internal: true });
+
+      expect(mockProjectsDomain.getProjectPermission).not.toHaveBeenCalled();
+      expect(mockCertificateRequestDAL.create).toHaveBeenCalledTimes(2);
     });
   });
 

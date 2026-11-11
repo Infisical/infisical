@@ -882,10 +882,7 @@ export const pkiScepServiceFactory = ({
     // Internal CAs use direct signing
     if (caType === CaType.INTERNAL) {
       const result = await certificateV3Service.signCertificateFromProfile({
-        actor: ActorType.SCEP_ACCOUNT,
-        actorId: profile.id,
-        actorAuthMethod: null,
-        actorOrgId: project.orgId,
+        enrollment: { type: ActorType.SCEP_ACCOUNT, id: profile.id, orgId: project.orgId },
         profileId: profile.id,
         csr: csrPem,
         validity: { ttl },
@@ -964,10 +961,7 @@ export const pkiScepServiceFactory = ({
     });
 
     const newCertRequest = await certificateRequestService.createCertificateRequest({
-      actor: ActorType.SCEP_ACCOUNT,
-      actorId: profile.id,
-      actorAuthMethod: null,
-      actorOrgId: project.orgId,
+      enrollment: { type: ActorType.SCEP_ACCOUNT, id: profile.id, orgId: project.orgId },
       projectId: profile.projectId,
       caId: profile.caId!,
       profileId: profile.id,
