@@ -28,10 +28,10 @@ vi.mock("jwks-rsa", () => ({
 }));
 
 const safeGet = vi.fn<(url: string) => Promise<{ data: { jwks_uri?: string; issuer?: string } }>>();
-const buildSsrfSafeJwksFetcher = vi.fn<(url: string) => Promise<undefined>>();
+const buildSsrfSafeJwksFetcher = vi.fn<(url: string, options?: { timeoutMs?: number }) => Promise<undefined>>();
 vi.mock("@app/lib/validator/safe-request", () => ({
   safeRequest: { get: (url: string) => safeGet(url) },
-  buildSsrfSafeJwksFetcher: (url: string) => buildSsrfSafeJwksFetcher(url)
+  buildSsrfSafeJwksFetcher: (url: string, options?: { timeoutMs?: number }) => buildSsrfSafeJwksFetcher(url, options)
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -472,7 +472,7 @@ describe("verifySubjectToken", () => {
 
     await verify(signSubjectToken(), oidcConfig);
 
-    expect(buildSsrfSafeJwksFetcher).toHaveBeenCalledWith(oidcConfig.jwksUri);
+    expect(buildSsrfSafeJwksFetcher).toHaveBeenCalledWith(oidcConfig.jwksUri, { timeoutMs: 10_000 });
   });
 
   test("rejects a JWKS URI that resolves to a private address", async () => {

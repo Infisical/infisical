@@ -7,6 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import {
   connectTimeAnswer,
   installConnectTimeDns,
+  interceptInternalConnects,
   INTERNAL_IP,
   PUBLIC_IP,
   REBIND_HOST,
@@ -181,10 +182,16 @@ describe("OIDC SSO requests under DNS rebinding", () => {
 
   it("control: Issuer.discover sends a host the parsers disagree on to the IP the legacy parser reads", async () => {
     connectTimeAnswer.address = PUBLIC_IP;
+    const connects = interceptInternalConnects();
+
+    try {
+      await expect(Issuer.discover(parserDifferentialUrl())).rejects.toThrow("blocked by test");
+    } finally {
+      connects.restore();
+    }
 
     // The legacy parser also moves the port into the path, so the request dials the internal IP on port 80
-    await expect(Issuer.discover(parserDifferentialUrl())).rejects.toThrow(`connect ECONNREFUSED ${INTERNAL_IP}:80`);
-
+    expect(connects.attempts).toEqual([{ host: INTERNAL_IP, port: 80 }]);
     expect(targets.hits.public).toBe(0);
   });
 

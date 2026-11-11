@@ -50,6 +50,40 @@ export const installConnectTimeDns = () => {
   };
 };
 
+// Records connection attempts to the internal address and fails them before any packet is sent, so a test can
+// tell where a client tried to connect without depending on what listens on that port (a URL can lose its port
+// and fall back to 80, which a test cannot listen on).
+export const interceptInternalConnects = () => {
+  const attempts: Array<{ host: string; port: number }> = [];
+  const originalConnect = Reflect.get(net.Socket.prototype, "connect") as (
+    this: net.Socket,
+    ...connectArgs: unknown[]
+  ) => net.Socket;
+
+  net.Socket.prototype.connect = function connect(this: net.Socket, ...args: unknown[]) {
+    // net.createConnection, which http uses, passes its arguments as one normalized array
+    const [first, second] = Array.isArray(args[0]) ? (args[0] as unknown[]) : args;
+    const target =
+      typeof first === "object" && first !== null
+        ? (first as { host?: string; port?: number })
+        : { port: Number(first), host: typeof second === "string" ? second : undefined };
+
+    if (target.host !== INTERNAL_IP) {
+      return originalConnect.apply(this, args);
+    }
+    attempts.push({ host: target.host, port: Number(target.port) });
+    process.nextTick(() => this.destroy(new Error(`connection to ${INTERNAL_IP}:${target.port} blocked by test`)));
+    return this;
+  } as typeof net.Socket.prototype.connect;
+
+  return {
+    attempts,
+    restore: () => {
+      net.Socket.prototype.connect = originalConnect as typeof net.Socket.prototype.connect;
+    }
+  };
+};
+
 export type TTargetPair = {
   port: number;
   hits: { public: number; internal: number };

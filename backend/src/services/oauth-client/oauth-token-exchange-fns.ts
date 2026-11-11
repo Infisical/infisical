@@ -90,7 +90,7 @@ const jwksClientCache = createTtlCache<JwksClient>({
 
 const getJwksClient = (jwksUri: string) =>
   jwksClientCache.getOrCreate(jwksUri, async () => {
-    const fetcher = await buildSsrfSafeJwksFetcher(jwksUri);
+    const fetcher = await buildSsrfSafeJwksFetcher(jwksUri, { timeoutMs: 10_000 });
 
     return new JwksClient({
       jwksUri,
@@ -99,8 +99,7 @@ const getJwksClient = (jwksUri: string) =>
       cacheMaxEntries: 5,
       cacheMaxAge: JWKS_CLIENT_TTL_MS,
       rateLimit: true,
-      jwksRequestsPerMinute: 30,
-      timeout: 10_000
+      jwksRequestsPerMinute: 30
     });
   });
 

@@ -7,6 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import {
   connectTimeAnswer,
   installConnectTimeDns,
+  interceptInternalConnects,
   INTERNAL_IP,
   REBIND_HOST,
   startTargetPair,
@@ -31,8 +32,13 @@ vi.mock("@app/lib/ip/ipRange", async (importOriginal) => {
   return { ...actual, isPrivateIp: (ip: string) => ip !== "127.0.0.1" && actual.isPrivateIp(ip) };
 });
 
+// Direct egress, so an HTTP_PROXY in the environment cannot route these requests away from the local servers
 vi.mock("@app/lib/config/env", () => ({
-  getConfig: () => ({ isDevelopmentMode: false, ALLOW_INTERNAL_IP_CONNECTIONS: false })
+  getConfig: () => ({
+    isDevelopmentMode: false,
+    ALLOW_INTERNAL_IP_CONNECTIONS: false,
+    SAFE_REQUEST_FORCE_DIRECT_EGRESS: true
+  })
 }));
 
 vi.mock("@app/ee/services/dynamic-secret/dynamic-secret-fns", () => ({
@@ -78,9 +84,16 @@ describe("JWKS fetch from a URL the parsers read differently", () => {
 
   it("control: jwks-rsa with an agent pinned to the checked host dials the IP the legacy parser reads", async () => {
     const client = new JwksClient({ jwksUri: jwksUri(), requestAgent: await buildSsrfSafeAgent(jwksUri()) });
+    const connects = interceptInternalConnects();
+
+    try {
+      await expect(client.getSigningKeys()).rejects.toThrow("blocked by test");
+    } finally {
+      connects.restore();
+    }
 
     // The legacy parser also moves the port into the path, so the request dials the internal IP on port 80
-    await expect(client.getSigningKeys()).rejects.toThrow(`connect ECONNREFUSED ${INTERNAL_IP}:80`);
+    expect(connects.attempts).toEqual([{ host: INTERNAL_IP, port: 80 }]);
     expect(targets.hits.public).toBe(0);
   });
 
