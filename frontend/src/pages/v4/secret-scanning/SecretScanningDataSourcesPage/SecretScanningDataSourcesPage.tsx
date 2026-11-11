@@ -52,6 +52,7 @@ import type { TSecretScanningDataSourceWithDetails } from "@app/hooks/api/secret
 import { errorMessage, failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
+import { DataSourceStatus } from "../components/data-source-status";
 
 const route = v4Path("/organizations/$orgId/secret-scanning/data-sources/");
 
@@ -112,33 +113,6 @@ const LastScan = ({ dataSource }: { dataSource: TSecretScanningDataSourceWithDet
     <Meta mono={false}>
       {formatDistanceToNowStrict(new Date(lastScannedAt), { addSuffix: true })}
     </Meta>
-  );
-};
-
-const DataSourceStatus = ({ dataSource }: { dataSource: TSecretScanningDataSourceWithDetails }) => {
-  const resource = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
-  if (dataSource.isDisconnected)
-    return (
-      <Tooltip content="The external data source has been removed and can no longer be scanned. Delete this data source and reconnect it.">
-        <StatusText tone="bad" icon="alert" tabIndex={0}>
-          Disconnected
-        </StatusText>
-      </Tooltip>
-    );
-  if (!dataSource.isScanNewCommitsEnabled)
-    return (
-      <Tooltip
-        content={`Auto-scan is disabled. Scans are not triggered when a ${resource.verb} occurs to ${resource.pluralNoun} in this data source.`}
-      >
-        <StatusText icon="clock" tabIndex={0}>
-          Paused
-        </StatusText>
-      </Tooltip>
-    );
-  return (
-    <StatusText tone="ok" icon="check-c">
-      Active
-    </StatusText>
   );
 };
 
@@ -330,8 +304,8 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
       render: (row) => (
         <Stack gap={0} style={{ minWidth: 0 }}>
           <RowLink
-            to={v4Path("/organizations/$orgId/$")}
-            params={{ orgId, _splat: `secret-scanning/data-sources/${row.type}/${row.id}` }}
+            to={v4Path("/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId")}
+            params={{ orgId, type: row.type, dataSourceId: row.id }}
           >
             {row.name}
           </RowLink>
