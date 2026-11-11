@@ -262,7 +262,7 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: var(--v4-size-control-border) solid var(--v4-line-soft);
+  background: var(--v4-tint);
   color: var(--v4-muted);
 }
 .badges {
