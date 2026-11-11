@@ -442,13 +442,13 @@ export const orgDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorUserId`);
 
-      // Anyone else who can sign in to the org keeps it, directly or through a group, and so does anyone in
-      // one of its sub-orgs, since deleting the org cascades to them. Invited and deactivated memberships
-      // cannot sign in, and ghost users are legacy service accounts, so none of them could manage the org
-      // (or its billing) once this user is gone.
+      // Anyone else who can sign in keeps the org, directly or via a group, sub-orgs included since deleting
+      // the root cascades to them. Invited/deactivated members can't sign in and ghost users are legacy
+      // service accounts, so they don't count.
       if (lastMember) {
-        const signInMembershipsOfOrgTree = (qb: Knex.QueryBuilder, alias: string) => {
-          void qb
+        const signInMembershipsOfOrgTree = (qb: Knex.QueryBuilder, alias: string) =>
+          qb
+            .select(db.raw("1"))
             .from(`${TableName.Membership} as ${alias}`)
             .join(`${TableName.Organization} as ${alias}Org`, `${alias}Org.id`, `${alias}.scopeOrgId`)
             .where((orgQb) => {
@@ -461,19 +461,16 @@ export const orgDALFactory = (db: TDbClient) => {
             .where((statusQb) => {
               void statusQb.whereNull(`${alias}.status`).orWhereNot(`${alias}.status`, OrgMembershipStatus.Invited);
             });
-        };
 
         void query
           .whereNotExists((qb) => {
-            signInMembershipsOfOrgTree(qb.select(db.raw("1")), "direct");
-            void qb
+            void signInMembershipsOfOrgTree(qb, "direct")
               .join(`${TableName.Users} as directUser`, "directUser.id", "direct.actorUserId")
               .whereNot("direct.actorUserId", userId)
               .where("directUser.isGhost", false);
           })
           .whereNotExists((qb) => {
-            signInMembershipsOfOrgTree(qb.select(db.raw("1")), "viaGroup");
-            void qb
+            void signInMembershipsOfOrgTree(qb, "viaGroup")
               .join(`${TableName.UserGroupMembership} as groupMember`, "groupMember.groupId", "viaGroup.actorGroupId")
               .join(`${TableName.Users} as groupUser`, "groupUser.id", "groupMember.userId")
               .whereNot("groupMember.userId", userId)
@@ -518,7 +515,7 @@ export const orgDALFactory = (db: TDbClient) => {
         userJoinedAt: Date;
       })[];
 
-      // A membership with several roles comes back once per role.
+      // One row per role, so dedupe.
       return lastMember ? unique(org, (row) => row.id) : org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org by user id" });

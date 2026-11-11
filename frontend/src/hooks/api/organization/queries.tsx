@@ -79,7 +79,7 @@ export const useGetLastMemberOrganizations = ({ enabled = true }: { enabled?: bo
       });
       return organizations;
     },
-    // The account deletion dialog must show the current list, never a cached one.
+    // Default is 60s, but the delete dialog needs the live list.
     staleTime: 0,
     enabled
   });

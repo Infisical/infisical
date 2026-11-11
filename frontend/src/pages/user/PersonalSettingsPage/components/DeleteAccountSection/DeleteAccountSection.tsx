@@ -30,7 +30,7 @@ export const DeleteAccountSection = () => {
 
   const deletesOrgs = lastMemberOrgs.length > 0;
 
-  // isCloud describes the instance, so any of the orgs can answer it.
+  // isCloud is instance-wide, so any org works.
   const overview = useGetBillingOverview(lastMemberOrgs[0]?.id ?? "", { enabled: deletesOrgs });
   const cancelsSubscriptions = overview.data ? overview.data.isCloud : isInfisicalCloud();
 
@@ -48,8 +48,7 @@ export const DeleteAccountSection = () => {
       setIsOpen(false);
       navigate({ to: "/login" });
     } catch {
-      // The request error toast carries the reason. The server refuses when the orgs it would delete
-      // differ from the ones shown here, so show the current list.
+      // The global toast shows the error. Refetch in case the server refused because the list changed.
       await refetchLastMemberOrgs();
     }
   };

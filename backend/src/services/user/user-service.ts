@@ -753,32 +753,36 @@ export const userServiceFactory = ({
       }
     }
 
-    // An org left with no one who can sign in keeps billing with no way to cancel it.
+    // An org nobody can sign in to keeps billing with no way to cancel it.
     const lastMemberOrgs = (await orgDAL.findAllOrgsByUserId(userId, { lastMember: true })).filter(
       (org) => org.userStatus !== OrgMembershipStatus.Invited
     );
 
-    // Only orgs the caller reviewed may go: if the list moved since they saw it, they review it again.
+    // Only delete orgs the caller actually saw. If the list changed, make them look again.
     const confirmedOrgIds = new Set(lastMemberOrganizationIds ?? []);
     const matchesConfirmed =
       lastMemberOrgs.length === confirmedOrgIds.size && lastMemberOrgs.every((org) => confirmedOrgIds.has(org.id));
     if (!matchesConfirmed) {
       const orgNames = lastMemberOrgs.map((org) => `'${org.name}'`).join(", ");
-      const orgNoun = lastMemberOrgs.length === 1 ? "the organization" : "the organizations";
+      const isSingleOrg = lastMemberOrgs.length === 1;
+      const orgNoun = isSingleOrg ? "the organization" : "the organizations";
       if (!lastMemberOrganizationIds) {
         throw new BadRequestError({
-          message: `You are the last member of ${orgNoun} ${orgNames}. Invite another member, or delete ${lastMemberOrgs.length === 1 ? "it" : "them"} along with your account.`
+          message: `You are the last member of ${orgNoun} ${orgNames}. Invite another member, or delete ${isSingleOrg ? "it" : "them"} along with your account.`
+        });
+      }
+      if (!lastMemberOrgs.length) {
+        throw new BadRequestError({
+          message:
+            "You are no longer the last member of any organization. Review your account deletion and try again; nothing was deleted."
         });
       }
       throw new BadRequestError({
-        message: lastMemberOrgs.length
-          ? `The organizations you are the last member of have changed. You are now the last member of ${orgNoun} ${orgNames}. Review them and try again; nothing was deleted.`
-          : "You are no longer the last member of any organization. Review your account deletion and try again; nothing was deleted."
+        message: `The organizations you are the last member of have changed. You are now the last member of ${orgNoun} ${orgNames}. Review them and try again; nothing was deleted.`
       });
     }
 
-    // Before the user, one org per transaction: if one fails the account survives, so a retry
-    // finds whatever is left instead of leaving an org nobody can sign in to.
+    // Orgs go first, one tx each. If one fails the account stays, so a retry picks up what's left.
     for await (const org of lastMemberOrgs) {
       await orgDeletionService.deleteOrganization(org.id);
     }
