@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import * as UI from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
@@ -7,9 +7,12 @@ import { ExampleCell, ExampleGrid } from "../../example-presentation";
 
 export default function Example() {
   const [open, setOpen] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
   return (
     <ExampleGrid width="compact">
-      <ExampleCell label="danger">
+      <ExampleCell label={deleting ? "danger, deleting" : "danger"}>
         <UI.AlertDialog
           open={open === "danger"}
           onOpenChange={(next) => setOpen(next ? "danger" : null)}
@@ -26,7 +29,19 @@ export default function Example() {
             </UI.AlertDialogHeader>
             <UI.AlertDialogFooter>
               <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
-              <UI.AlertDialogAction variant="destructive">Delete project</UI.AlertDialogAction>
+              <UI.AlertDialogAction
+                variant="destructive"
+                loading={deleting}
+                onClick={() => {
+                  setDeleting(true);
+                  timer.current = window.setTimeout(() => {
+                    setDeleting(false);
+                    setOpen(null);
+                  }, 1500);
+                }}
+              >
+                Delete project
+              </UI.AlertDialogAction>
             </UI.AlertDialogFooter>
           </UI.AlertDialogContent>
         </UI.AlertDialog>

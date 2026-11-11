@@ -11,6 +11,7 @@ export const baselineContent = [
     referenceNames: ["Accordion"],
     behavior: [
       "Radix single mode uses a string value; multiple mode uses an array. onValueChange reports item values, and collapsible allows the open single item to close.",
+      "AccordionContent animates its height open and closed, then sizes to its content while open, so content that grows after opening (a revealed list, a loaded result) is never clipped.",
       "Hover underlines only the trigger's text: AccordionTrigger wraps each string or number child in a text span and underlines that span, so a Badge, count or icon beside the title never takes the underline. Pass the title as text, not wrapped in an element, to keep the hover cue."
     ],
     accessibility: [
@@ -37,6 +38,12 @@ export const baselineContent = [
         title: "Controlled open section",
         module: "./examples/accordion/controlled.tsx",
         states: ["default", "controlled"]
+      },
+      {
+        id: "growing",
+        title: "Content that grows",
+        module: "./examples/accordion/growing.tsx",
+        states: ["default", "overflow"]
       },
       {
         id: "badges",

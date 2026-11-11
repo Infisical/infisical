@@ -4,8 +4,10 @@ import * as React from "react";
 import { useMemo } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
+import { Button } from "@app/components/v4/ui/button";
 import { Label } from "@app/components/v4/ui/label";
 import { Separator } from "@app/components/v4/ui/separator";
+import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useDescendantFlags } from "../lib/descendant-flags";
 import { FieldControlContext } from "../lib/field-context";
@@ -102,6 +104,7 @@ function Field({
   description,
   error,
   optional = false,
+  help,
   group = false,
   wide = false,
   children,
@@ -114,9 +117,15 @@ function Field({
     description?: React.ReactNode;
     error?: string;
     optional?: boolean;
-    group?: boolean;
     wide?: boolean;
-  } & { ref?: React.Ref<React.ComponentRef<"div">> }) {
+  } & (
+    | {
+        /** Help beside the label, outside its accessible name: a string becomes a FieldHelp tooltip, a node (FieldHelp with its own label, GlobPatternHelp) renders as given. A group field takes none, because its legend names the group. */
+        help?: React.ReactNode;
+        group?: false;
+      }
+    | { help?: never; group: true }
+  ) & { ref?: React.Ref<React.ComponentRef<"div">> }) {
   const generated = React.useId();
   const child = React.isValidElement<{ id?: string }>(children) ? children : null;
   const controlId = child?.props.id ?? id ?? generated;
@@ -170,10 +179,13 @@ function Field({
           ) : (
             <>
               <div className={helperStyles.fieldLabels}>
-                <FieldLabel id={labelId} htmlFor={controlId}>
-                  {label}
-                  {optional && " (optional)"}
-                </FieldLabel>
+                <div className={helperStyles.fieldLabelRow}>
+                  <FieldLabel id={labelId} htmlFor={controlId}>
+                    {label}
+                    {optional && " (optional)"}
+                  </FieldLabel>
+                  {typeof help === "string" ? <FieldHelp>{help}</FieldHelp> : help}
+                </div>
               </div>
               <div className={helperStyles.fieldControl}>
                 {control}
@@ -218,6 +230,31 @@ function FieldLabel({ className, ref, ...props }: React.ComponentProps<typeof La
   );
 }
 FieldLabel.displayName = "FieldLabel";
+
+function FieldHelp({
+  label = "More information",
+  children
+}: {
+  /** The info button's accessible name; keep it short and say what the help is about. */
+  label?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Tooltip content={children}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        aria-label={label}
+        data-slot="field-help"
+        className={helperStyles.fieldHelp}
+      >
+        <Icon name="info" />
+      </Button>
+    </Tooltip>
+  );
+}
+FieldHelp.displayName = "FieldHelp";
 
 function FieldTitle({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
@@ -337,6 +374,7 @@ export {
   FieldDescription,
   FieldError,
   FieldGroup,
+  FieldHelp,
   FieldLabel,
   FieldLegend,
   FieldSeparator,

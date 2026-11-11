@@ -131,6 +131,15 @@ export default function Example() {
       </figure>
       <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
         <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+          <div className="flex items-center gap-3">
+            <ProviderIcon icon="Slack.svg" alt="Slack logo" size="xl" />
+            <ProviderIcon icon="Microsoft Teams.svg" alt="Microsoft Teams logo" size="xl" />
+          </div>
+        </div>
+        <figcaption className="text-muted-foreground text-xs">{"Workflow integrations"}</figcaption>
+      </figure>
+      <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+        <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
           <ProviderIcon icon="Retired Provider.png" alt="Retired Provider logo" size="xl" />
         </div>
         <figcaption className="text-muted-foreground text-xs">

@@ -70,7 +70,8 @@ const offsetIn = (element: HTMLElement, list: HTMLElement) => {
  * flyout or submenu is open (aria-haspopup with aria-expanded="true" or data-state="open"; a
  * wrapping Tooltip overwrites data-state, so aria-expanded is the reliable signal) pins the hover
  * thumb until it closes, even after the pointer leaves for the popover. The selection thumb
- * rests on the current row and shows only while the hover thumb is hidden. Render it as the list's
+ * rests on the current row and shows only while the hover thumb is hidden. Arrow keys in a field
+ * outside the list that names it with aria-controls move the hover thumb too. Render it as the list's
  * last child; it measures its parent.
  */
 export function ListHighlight() {
@@ -153,12 +154,17 @@ export function ListHighlight() {
       if (!list.contains(document.activeElement)) keyboard = false;
       schedule();
     };
+    const controls = (target: EventTarget | null) =>
+      Boolean(list.id) &&
+      target instanceof Element &&
+      target.getAttribute("aria-controls") === list.id;
     const key = (event: KeyboardEvent) => {
       if (!KEYS.includes(event.key)) return;
       if (
         !list.contains(document.activeElement) &&
         !list.contains(event.target as Node) &&
-        !list.closest(":focus-within")
+        !list.closest(":focus-within") &&
+        !controls(event.target)
       )
         return;
       keyboard = true;

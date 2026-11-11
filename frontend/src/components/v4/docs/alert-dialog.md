@@ -51,7 +51,7 @@ Exports: AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 - Controlled open/onOpenChange or defaultOpen owns visibility. Action and Cancel are Radix close controls; an async operation must explicitly control closing while it runs.
 - AlertDialog renders at most one lead tile. tone danger shows a 40px bad-bg tile with the trash icon; icon swaps the glyph and AlertDialogMedia replaces the tile entirely, tinted by tone. With tone neutral or no tone there is no automatic tile; an icon or AlertDialogMedia there gets the neutral tint tile. The destructive action is the solid danger Button: bad-fill with white on-bad text in both themes, the neutral disabled control when disabled.
-- confirmText adds a mono field, labeled Type <name> to confirm and focused on open, above the footer; the action stays disabled until the field matches exactly.
+- confirmText adds a mono field, labeled Type <name> to confirm and focused on open, above the footer; the action stays disabled until the field matches exactly. Enter in the field does nothing until it matches; once it matches, Enter clicks the first AlertDialogAction, the same as a click, so a loading action takes over from there and a pending dialog ignores Enter.
 - One pad (space-16) on all four sides. Header, body and footer stack with the content gap and no margins. The footer has no band or rule: the actions sit right-aligned on the panel. A failure shows as a bad Alert in the body above the footer.
 - When AlertDialogHeader or AlertDialogFooter is a direct child, the lead tile, header and body share one scroll region with the edge fade, and the footer stays pinned below it; the footer's own pad is the space above the actions.
 - pending on AlertDialogContent blocks Escape and disables AlertDialogCancel while an action runs; the content is aria-busy.
@@ -300,18 +300,21 @@ export default function Example() {
 
 ### Type to confirm and tone
 
-Save this example at `src/pages/design-system/examples/alert-dialog/confirm.tsx`; its relative imports are generated for that exact path. States: default, disabled.
+Save this example at `src/pages/design-system/examples/alert-dialog/confirm.tsx`; its relative imports are generated for that exact path. States: default, disabled, loading, keyboard.
 
 Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import * as UI from "../../../../components/v4/ui/alert-dialog";
 import { Button } from "../../../../components/v4/ui/button";
 
 export default function Example() {
   const [open, setOpen] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
   return (
     <div className="grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start justify-items-center gap-x-6 gap-y-8">
       <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
@@ -333,12 +336,26 @@ export default function Example() {
               </UI.AlertDialogHeader>
               <UI.AlertDialogFooter>
                 <UI.AlertDialogCancel>Cancel</UI.AlertDialogCancel>
-                <UI.AlertDialogAction variant="destructive">Delete project</UI.AlertDialogAction>
+                <UI.AlertDialogAction
+                  variant="destructive"
+                  loading={deleting}
+                  onClick={() => {
+                    setDeleting(true);
+                    timer.current = window.setTimeout(() => {
+                      setDeleting(false);
+                      setOpen(null);
+                    }, 1500);
+                  }}
+                >
+                  Delete project
+                </UI.AlertDialogAction>
               </UI.AlertDialogFooter>
             </UI.AlertDialogContent>
           </UI.AlertDialog>
         </div>
-        <figcaption className="text-muted-foreground text-xs">{"danger"}</figcaption>
+        <figcaption className="text-muted-foreground text-xs">
+          {deleting ? "danger, deleting" : "danger"}
+        </figcaption>
       </figure>
       <figure className="m-0 flex w-full min-w-0 flex-col items-center gap-3 text-center">
         <div className="flex min-h-8 w-full min-w-0 flex-col items-center gap-3">

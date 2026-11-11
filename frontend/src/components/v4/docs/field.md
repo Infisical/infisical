@@ -68,13 +68,14 @@ Why: The person must be able to locate the value and understand what can repair 
 - src/components/v4/ui/field.tsx
 - src/components/v4/ui/helpers.module.css
 
-Exports: Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSeparator, FieldSet, FieldTitle. Source TypeScript defines the API.
+Exports: Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldHelp, FieldLabel, FieldLegend, FieldSeparator, FieldSet, FieldTitle. Source TypeScript defines the API.
 
 ## Behavior
 
 - Use label/description/error shorthand around one control for automatic ID, label, described-by and invalid-state association. Compound FieldLabel/FieldDescription/FieldError parts remain available for custom layouts. An error renders one way everywhere: a red alert icon and the message, several messages stacked under one icon. The label stays ink; the control's red border and the message carry the error. The label sits 6px above the control (the field-label space token). A stacked Field caps at the field measure (size-measure-field, 400px); wide lets it fill its column (size-measure-field-wide).
 - label accepts a node, so a label can carry an info tooltip beside its text. Everything inside the label becomes part of the control's accessible name, so give an info trigger a short name and keep long help in description.
 - description accepts a node, such as a search Highlight over the help text. It renders inside a paragraph, so pass phrasing content only. An error replaces it while one is set.
+- help puts an info button beside the label, outside the label element, so it never joins the control's accessible name. A string becomes FieldHelp, an icon-xs ghost Button named More information whose Tooltip holds the text; a node renders as given, such as FieldHelp with its own label or GlobPatternHelp from the secret path input for fields that take glob patterns. The button keeps the label row at the label's line height, so a field with help lines up with its neighbours. In a compound layout, put FieldHelp after FieldLabel in an Inline with gap 4. Keep help short: it is a pass-through tooltip, and anything a person must read to fill the field belongs in description.
 - A text link inside FieldDescription (an anchor that is not a Button or another slotted part) is a quiet link: the link color with no underline at rest, underlined on hover and keyboard focus, so help text with a Docs link stays calm.
 
 ## Accessibility
@@ -111,6 +112,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 ### composition
 
+- label help: example `help`, visible label "Secret path".
 - automatic association: example `default`, visible label "Connection name".
 - explicit association: example `default`, visible label "Project name".
 - optional: example `grouping`, visible label "Description (optional)".
@@ -291,6 +293,46 @@ export default function Example() {
             <Input defaultValue="" />
           </UI.Field>
         ))}
+      </UI.FieldGroup>
+    </div>
+  );
+}
+```
+
+### Label help
+
+Save this example at `src/pages/design-system/examples/field/help.tsx`; its relative imports are generated for that exact path. States: default.
+
+Registry items used: @infisical/field, @infisical/input, @infisical/layout, @infisical/secret-path-input. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import * as UI from "../../../../components/v4/ui/field";
+import { Input } from "../../../../components/v4/ui/input";
+import { Inline } from "../../../../components/v4/ui/layout";
+import { GlobPatternHelp, SecretPathInput } from "../../../../components/v4/ui/secret-path-input";
+
+export default function Example() {
+  return (
+    <div className="flex w-full min-w-0 flex-col items-start gap-6">
+      <UI.FieldGroup>
+        <UI.Field
+          label="Lease TTL"
+          help="How long a generated credential stays valid before it is revoked."
+        >
+          <Input mono defaultValue="1h" />
+        </UI.Field>
+        <UI.Field label="Secret path" help={<GlobPatternHelp />}>
+          <SecretPathInput defaultValue="/app/**" />
+        </UI.Field>
+        <UI.Field>
+          <Inline gap={4} wrap={false}>
+            <UI.FieldLabel htmlFor="field-help-role">Role slug</UI.FieldLabel>
+            <UI.FieldHelp label="About role slugs">
+              Lowercase letters, numbers and hyphens.
+            </UI.FieldHelp>
+          </Inline>
+          <Input id="field-help-role" mono defaultValue="read-only" />
+        </UI.Field>
       </UI.FieldGroup>
     </div>
   );

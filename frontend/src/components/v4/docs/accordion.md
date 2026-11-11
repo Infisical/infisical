@@ -48,6 +48,7 @@ Exports: Accordion, AccordionContent, AccordionItem, AccordionTrigger. Source Ty
 ## Behavior
 
 - Radix single mode uses a string value; multiple mode uses an array. onValueChange reports item values, and collapsible allows the open single item to close.
+- AccordionContent animates its height open and closed, then sizes to its content while open, so content that grows after opening (a revealed list, a loaded result) is never clipped.
 - Hover underlines only the trigger's text: AccordionTrigger wraps each string or number child in a text span and underlines that span, so a Badge, count or icon beside the title never takes the underline. Pass the title as text, not wrapped in an element, to keep the hover cue.
 
 ## Accessibility
@@ -212,6 +213,63 @@ export default function Example() {
         {open ? `Open section: ${open}` : "All sections closed"}
       </p>
     </div>
+  );
+}
+```
+
+### Content that grows
+
+Save this example at `src/pages/design-system/examples/accordion/growing.tsx`; its relative imports are generated for that exact path. States: default, overflow.
+
+Registry items used: @infisical/accordion, @infisical/button, @infisical/layout. Additional packages: none. Install every listed item before compiling this example.
+
+```tsx
+import { useState } from "react";
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from "../../../../components/v4/ui/accordion";
+import { Button } from "../../../../components/v4/ui/button";
+import { Stack } from "../../../../components/v4/ui/layout";
+
+const versions = [
+  "Version 6, edited by maya@acme.test",
+  "Version 5, edited by ci-deployer",
+  "Version 4, edited by maya@acme.test",
+  "Version 3, edited by jordan.lee@acme.test",
+  "Version 2, edited by ci-deployer",
+  "Version 1, created by jordan.lee@acme.test"
+];
+
+export default function Example() {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? versions : versions.slice(0, 2);
+  return (
+    <figure className="m-0 flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-h-8 w-full min-w-0 flex-col items-stretch gap-3">
+        <Accordion type="single" collapsible defaultValue="history">
+          <AccordionItem value="history">
+            <AccordionTrigger>Version history</AccordionTrigger>
+            <AccordionContent>
+              <Stack gap={8} align="start">
+                {shown.map((version) => (
+                  <span key={version}>{version}</span>
+                ))}
+                <Button variant="link" onClick={() => setExpanded((current) => !current)}>
+                  {expanded ? "Show fewer" : `Show all ${versions.length} versions`}
+                </Button>
+              </Stack>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
+      <figcaption className="text-muted-foreground text-xs">
+        {expanded ? "All six versions, grown after opening" : "Two of six versions"}
+      </figcaption>
+    </figure>
   );
 }
 ```
