@@ -400,7 +400,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Orgs (sub-orgs included) where the user holds the only admin membership that countActiveAdmins counts.
+  // Same admin rules as countActiveAdmins so both guards agree.
   const findOrgsWhereUserIsLastAdmin = async (userId: string, tx?: Knex) => {
     try {
       const activeAdminMemberships = (qb: Knex.QueryBuilder, alias: string) =>
@@ -412,7 +412,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
           .where(`${alias}Role.isTemporary`, false)
           .where(`${alias}.scope`, AccessScope.Organization);
 
-      // Primary only: this backs the last-admin guard, so replica lag cannot be tolerated.
+      // Primary on purpose, replica lag would let the guard miss a change.
       const orgs = await activeAdminMemberships((tx || db)(`${TableName.Membership} as own`), "own")
         .join(TableName.Organization, `${TableName.Organization}.id`, "own.scopeOrgId")
         .where("own.actorUserId", userId)

@@ -69,7 +69,7 @@ export const DeleteAccountSection = () => {
   const deletesOrgs = lastMemberOrgs.length > 0;
   const isBlocked = eligibility ? !eligibility.canDelete : false;
 
-  // isCloud is instance-wide, so any org works.
+  // isCloud is the same for every org, so any one works.
   const overview = useGetBillingOverview(lastMemberOrgs[0]?.id ?? "", { enabled: deletesOrgs });
   const cancelsSubscriptions = overview.data ? overview.data.isCloud : isInfisicalCloud();
 
@@ -92,7 +92,7 @@ export const DeleteAccountSection = () => {
       setIsOpen(false);
       navigate({ to: "/login" });
     } catch {
-      // The global toast shows the error. Refetch in case the server refused because the state changed.
+      // Global toast already shows the error. Refetch in case the server said no because things changed.
       await refetchEligibility();
     }
   };

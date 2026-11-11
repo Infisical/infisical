@@ -17,6 +17,8 @@ import {
 } from "../mfa-step-up-fns";
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
+const DeletionEligibilityOrgSchema = z.object({ id: z.string(), name: z.string() });
+
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -569,14 +571,12 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
           deletionEligibility: z.object({
             canDelete: z.boolean().describe(USERS.GET_DELETION_ELIGIBILITY.canDelete),
             isOnlyServerAdmin: z.boolean().describe(USERS.GET_DELETION_ELIGIBILITY.isOnlyServerAdmin),
-            lastMemberOrganizations: z
-              .object({ id: z.string(), name: z.string() })
-              .array()
-              .describe(USERS.GET_DELETION_ELIGIBILITY.lastMemberOrganizations),
-            lastAdminOrganizations: z
-              .object({ id: z.string(), name: z.string() })
-              .array()
-              .describe(USERS.GET_DELETION_ELIGIBILITY.lastAdminOrganizations)
+            lastMemberOrganizations: DeletionEligibilityOrgSchema.array().describe(
+              USERS.GET_DELETION_ELIGIBILITY.lastMemberOrganizations
+            ),
+            lastAdminOrganizations: DeletionEligibilityOrgSchema.array().describe(
+              USERS.GET_DELETION_ELIGIBILITY.lastAdminOrganizations
+            )
           })
         })
       }

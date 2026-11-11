@@ -436,15 +436,14 @@ export const orgDALFactory = (db: TDbClient) => {
     (TOrganizations & { orgAuthMethod: string; userRole: string; userStatus: string; userJoinedAt: Date })[]
   > => {
     try {
-      const query = db
-        .replicaNode()(TableName.Membership)
+      // Primary for lastMember since it picks orgs to delete, and lag could hide someone who just joined.
+      const query = (lastMember ? db : db.replicaNode())(TableName.Membership)
         .where(`${TableName.Membership}.actorUserId`, userId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorUserId`);
 
-      // Anyone else who can sign in keeps the org, directly or via a group, sub-orgs included since deleting
-      // the root cascades to them. Invited/deactivated members can't sign in and ghost users are legacy
-      // service accounts, so they don't count.
+      // Anyone else who can sign in (direct or via a group, sub-orgs too since they go with the root) keeps
+      // the org. Invited/deactivated folks can't sign in and ghost users are old service accounts, so skip them.
       if (lastMember) {
         const signInMembershipsOfOrgTree = (qb: Knex.QueryBuilder, alias: string) =>
           qb
@@ -515,7 +514,7 @@ export const orgDALFactory = (db: TDbClient) => {
         userJoinedAt: Date;
       })[];
 
-      // One row per role, so dedupe.
+      // Joins give one row per role.
       return lastMember ? unique(org, (row) => row.id) : org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org by user id" });

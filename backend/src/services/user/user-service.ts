@@ -758,13 +758,12 @@ export const userServiceFactory = ({
       isOnlyServerAdmin = superAdmins.length === 1 && superAdmins[0].id === userId;
     }
 
-    // An org nobody can sign in to keeps billing with no way to cancel it, so it is deleted with the account.
+    // If nobody's left to sign in, nobody can cancel billing, so these orgs go with the account.
     const lastMemberOrgs = (await orgDAL.findAllOrgsByUserId(userId, { lastMember: true })).filter(
       (org) => org.userStatus !== OrgMembershipStatus.Invited
     );
 
-    // An org that keeps members but loses its only admin has nobody left to manage it. Orgs deleted
-    // with the account don't count, sub-orgs included since deleting the root cascades to them.
+    // Skip orgs that get deleted with the account, plus their sub-orgs since those cascade.
     const deletedOrgIds = new Set(lastMemberOrgs.map((org) => org.id));
     const lastAdminOrgs = (await membershipUserDAL.findOrgsWhereUserIsLastAdmin(userId)).filter(
       (org) => !deletedOrgIds.has(org.id) && !(org.rootOrgId && deletedOrgIds.has(org.rootOrgId))
@@ -802,7 +801,7 @@ export const userServiceFactory = ({
       });
     }
 
-    // Only delete orgs the caller actually saw. If the list changed, make them look again.
+    // Only delete what the user actually saw. If the list changed, make them look again.
     const confirmedOrgIds = new Set(lastMemberOrganizationIds ?? []);
     const matchesConfirmed =
       lastMemberOrgs.length === confirmedOrgIds.size && lastMemberOrgs.every((org) => confirmedOrgIds.has(org.id));
@@ -824,7 +823,7 @@ export const userServiceFactory = ({
       });
     }
 
-    // Orgs go first, one tx each. If one fails the account stays, so a retry picks up what's left.
+    // Orgs first, one tx each. If one fails the account sticks around so a retry can finish the job.
     for await (const org of lastMemberOrgs) {
       await orgDeletionService.deleteOrganization(org.id);
     }
@@ -838,9 +837,8 @@ export const userServiceFactory = ({
     let sendPamCancellations = () => {};
 
     const user = await userDAL.transaction(async (tx) => {
-      // The check above can't hold locks across the org deletions, so repeat it under the same per-org lock
-      // every admin demotion and removal takes, or a concurrent one could leave an org with no admin.
-      // Sorted so two transactions locking overlapping orgs can't deadlock each other.
+      // Can't hold locks across the org deletes, so redo the check under the per-org lock admin demotions and
+      // removals take too. Sorted so overlapping txs can't deadlock.
       const memberOrgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId))].sort();
       for await (const orgId of memberOrgIds) {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("org", orgId)]);

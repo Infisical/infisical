@@ -476,6 +476,7 @@ const buildDeleteUserService = (
   };
   const userDAL = {
     findById: vi.fn().mockResolvedValue({ ...user, superAdmin: false }),
+    find: vi.fn().mockResolvedValue([]),
     transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(tx)),
     deleteById: vi.fn(async () => {
       calls.push("deleteUser");
@@ -557,7 +558,7 @@ describe("deleteUser last member organizations", () => {
       { id: "org-1", name: "Acme", userStatus: "accepted" }
     ]);
     userDAL.findById.mockResolvedValue({ ...user, superAdmin: true });
-    Object.assign(userDAL, { find: vi.fn().mockResolvedValue([{ id: USER_ID }]) });
+    userDAL.find.mockResolvedValue([{ id: USER_ID }]);
 
     await expect(service.deleteUser(USER_ID, { lastMemberOrganizationIds: ["org-1"] })).rejects.toThrow(
       /only server admin/
