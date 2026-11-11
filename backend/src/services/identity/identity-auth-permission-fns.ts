@@ -1,14 +1,21 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { MongoAbility } from "@casl/ability";
 
-import { AccessScope, ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { AccessScope } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { TAccessControlDomain } from "@app/domains/platform/access-control/ce/module";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
-import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
-import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 const PROJECT_ACTION_BY_ORG_ACTION = {
   [OrgPermissionIdentityActions.EditAuth]: ProjectPermissionIdentityActions.EditAuth,
@@ -18,24 +25,21 @@ const PROJECT_ACTION_BY_ORG_ACTION = {
   [OrgPermissionIdentityActions.DeleteToken]: ProjectPermissionIdentityActions.DeleteToken
 } as const;
 
-type TIdentityAuthPermissionDeps = {
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
-  >;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+export type TIdentityAuthPermissionDeps = {
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission" | "getGrantPermissions">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission" | "getGrantPermissions">;
+  secretsDomain: Pick<TSecretsDomain, "getFolderGrantPermissions">;
+  accessControlDomain: Pick<TAccessControlDomain, "fetchGrants">;
 };
 
 type TAssertIdentityAuthAccessAllowedDTO = {
   identityId: string;
+  identityName: string;
   orgId: string;
   projectId?: string | null;
   action: keyof typeof PROJECT_ACTION_BY_ORG_ACTION;
   baseMessage: string;
-  actor: ActorType;
-  actorId: string;
-  actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string;
+  actor: TActorContext;
 };
 
 // repointing an identity's auth or minting it a credential lets you log in as it, and listing its
@@ -43,77 +47,54 @@ type TAssertIdentityAuthAccessAllowedDTO = {
 // out-rank every grant the target holds. the action check lives here because the legacy boundary alone
 // passes for any target you cover, no-access identities included
 export const assertIdentityAuthAccessAllowed = async (
-  { permissionService, orgDAL }: TIdentityAuthPermissionDeps,
-  {
-    identityId,
-    orgId,
-    projectId,
-    action,
-    baseMessage,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TAssertIdentityAuthAccessAllowedDTO
+  { organizationsDomain, projectsDomain, secretsDomain, accessControlDomain }: TIdentityAuthPermissionDeps,
+  { identityId, identityName, orgId, projectId, action, baseMessage, actor }: TAssertIdentityAuthAccessAllowedDTO
 ) => {
-  const { shouldUseNewPrivilegeSystem } = await requestMemoize(requestMemoKeys.orgFindById(orgId), () =>
-    orgDAL.findById(orgId)
-  );
+  const { shouldUseNewPrivilegeSystem } = actor.org;
+  const target = { type: ActorType.IDENTITY, id: identityId } as const;
 
   if (projectId) {
-    const { permission } = await permissionService.getProjectPermission({
-      actionProjectType: ActionProjectType.Any,
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      PROJECT_ACTION_BY_ORG_ACTION[action],
-      subject(ProjectPermissionSub.Identity, { identityId })
-    );
+    permission.assert({
+      action: PROJECT_ACTION_BY_ORG_ACTION[action],
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId }
+    });
     if (shouldUseNewPrivilegeSystem) return;
+
+    const [roleGrants, grants] = await Promise.all([
+      projectsDomain.getGrantPermissions({ actor: { ...target, name: identityName }, orgId, projectId }),
+      accessControlDomain.fetchGrants({ actor: target, scope: { scope: AccessScope.Project, orgId, projectId } })
+    ]);
+    const folderGrants = await secretsDomain.getFolderGrantPermissions({ target, projectId, grants });
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: PROJECT_ACTION_BY_ORG_ACTION[action],
       opSubject: ProjectPermissionSub.Identity,
-      actorPermission: permission,
-      targetPermissions: await permissionService.getActorGrantAbilities({
-        scopeData: { scope: AccessScope.Project, orgId, projectId },
-        actorId: identityId,
-        actorType: ActorType.IDENTITY
-      }),
+      actorPermission: permission.toAbility() as MongoAbility,
+      targetPermissions: [...roleGrants, ...folderGrants].map((grant) => ({
+        permission: grant.toAbility() as MongoAbility
+      })),
       baseMessage,
       subjectFields: { identityId }
     });
     return;
   }
 
-  const { permission } = await permissionService.getOrgPermission({
-    scope: OrganizationActionScope.Any,
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  });
+  const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
 
-  ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Identity);
+  permission.assert({ action, subject: OrgPermissionSubjects.Identity });
   if (shouldUseNewPrivilegeSystem) return;
 
+  const roleGrants = await organizationsDomain.getGrantPermissions({ actor: { ...target, name: identityName }, orgId });
   assertRoleSetBoundary({
     shouldUseNewPrivilegeSystem,
     opActions: action,
     opSubject: OrgPermissionSubjects.Identity,
-    actorPermission: permission,
-    targetPermissions: await permissionService.getActorGrantAbilities({
-      scopeData: { scope: AccessScope.Organization, orgId },
-      actorId: identityId,
-      actorType: ActorType.IDENTITY
-    }),
+    actorPermission: permission.toAbility() as MongoAbility,
+    targetPermissions: roleGrants.map((grant) => ({ permission: grant.toAbility() as MongoAbility })),
     baseMessage
   });
 };

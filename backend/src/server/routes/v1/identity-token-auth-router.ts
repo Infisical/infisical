@@ -77,10 +77,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const identityTokenAuth = await server.services.identityTokenAuth.attachTokenAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -179,10 +176,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const identityTokenAuth = await server.services.identityTokenAuth.updateTokenAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -253,10 +247,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const identityTokenAuth = await server.services.identityTokenAuth.getTokenAuth({
         identityId: req.params.identityId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -302,10 +293,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const identityTokenAuth = await server.services.identityTokenAuth.revokeIdentityTokenAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
@@ -377,10 +365,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { identityTokenAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityTokenAuth.createTokenAuthToken({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           identityId: req.params.identityId,
           isActorSuperAdmin: isSuperAdmin(req.auth),
           ...req.body
@@ -454,10 +439,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { tokens, identityMembershipOrg } = await server.services.identityTokenAuth.getTokenAuthTokens({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth),
         ...req.query
@@ -509,10 +491,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { token, identityMembershipOrg } = await server.services.identityTokenAuth.getTokenAuthTokenById({
         tokenId: req.params.tokenId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -561,10 +540,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { token, identityMembershipOrg } = await server.services.identityTokenAuth.getTokenAuthTokenById({
         tokenId: req.params.tokenId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -615,10 +591,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { token, identityMembershipOrg } = await server.services.identityTokenAuth.updateTokenAuthToken({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         tokenId: req.params.tokenId,
         isActorSuperAdmin: isSuperAdmin(req.auth),
         ...req.body
@@ -669,10 +642,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { revokedToken } = await server.services.identityTokenAuth.revokeTokenAuthToken({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         tokenId: req.params.tokenId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

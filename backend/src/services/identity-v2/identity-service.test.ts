@@ -1,8 +1,8 @@
-import { createMongoAbility } from "@casl/ability";
 import knex, { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-core-domain";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 
@@ -31,7 +31,10 @@ const TX = { sentinel: "tx" } as unknown as Knex;
 
 const buildDto = (): TDeleteIdentityV2DTO =>
   ({
-    permission: { type: "user", id: "actor-1", authMethod: null, orgId: ORG_ID },
+    actor: {
+      principal: { type: "user", id: "actor-1" },
+      org: { id: ORG_ID, shouldUseNewPrivilegeSystem: true }
+    },
     scopeData: { scope: AccessScope.Organization, orgId: ORG_ID },
     selector: { identityId: IDENTITY_ID }
   }) as unknown as TDeleteIdentityV2DTO;
@@ -55,14 +58,16 @@ const createService = ({
     instanceConfigCoreDomain,
     identityDAL: identityDAL as never,
     identityMembershipV2DAL: {} as never,
-    permissionService: {
+    organizationsDomain: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
+        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] })),
+      getOrgPermissionByRoles: vi.fn().mockResolvedValue([])
+    } as never,
+    projectsDomain: {
       getProjectPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getOrgPermissionByRoles: vi.fn().mockResolvedValue([]),
+        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] })),
       getProjectPermissionByRoles: vi.fn().mockResolvedValue([])
     } as never,
     licenseDomain,
@@ -83,7 +88,6 @@ const createService = ({
       findOrgProjectIds: vi.fn(),
       findById: vi.fn().mockResolvedValue(projectType ? { id: PROJECT_ID, type: projectType } : undefined)
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: true }) } as never,
     roleDAL: { find: vi.fn() } as never,
     alertService: { deleteAlertsForDeletedResource } as never
   });

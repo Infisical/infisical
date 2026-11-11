@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export const AllowedFieldsSchema = z.object({
   key: z.string().trim(),
@@ -31,7 +31,7 @@ export type TAttachLdapAuthDTO = {
   lockoutThreshold: number;
   lockoutDurationSeconds: number;
   lockoutCounterResetSeconds: number;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateLdapAuthDTO = {
   identityId: string;
@@ -52,11 +52,11 @@ export type TUpdateLdapAuthDTO = {
   lockoutDurationSeconds?: number;
   lockoutCounterResetSeconds?: number;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetLdapAuthDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TLoginLdapAuthDTO = {
   identityId: string;
@@ -66,11 +66,11 @@ export type TLoginLdapAuthDTO = {
 export type TRevokeLdapAuthDTO = {
   identityId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TClearLdapAuthLockoutsDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCheckLdapAuthLockoutDTO = {
   identityId: string;

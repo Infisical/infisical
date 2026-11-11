@@ -1,5 +1,5 @@
 import { TIdentities, TIdentityAccessTokens, TIdentityTlsCertAuths } from "@app/db/schemas";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TLoginTlsCertAuthDTO = {
   identityId: string;
@@ -19,7 +19,7 @@ export type TAttachTlsCertAuthDTO = {
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateTlsCertAuthDTO = {
   identityId: string;
@@ -33,16 +33,16 @@ export type TUpdateTlsCertAuthDTO = {
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetTlsCertAuthDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRevokeTlsCertAuthDTO = {
   identityId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TIdentityTlsCertAuthServiceFactory = {
   login: (dto: TLoginTlsCertAuthDTO) => Promise<{

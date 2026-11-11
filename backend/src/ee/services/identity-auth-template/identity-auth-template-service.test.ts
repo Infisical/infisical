@@ -1,6 +1,8 @@
-import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
+import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-core-domain";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
@@ -9,6 +11,7 @@ import {
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ConflictError } from "@app/lib/errors";
 import { IdentityKubernetesAuthTokenReviewMode } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
@@ -37,6 +40,10 @@ beforeEach(() => {
 });
 
 const ORG_ID = "org-id";
+const ACTOR = {
+  principal: { type: ActorType.USER, id: "actor-id" },
+  org: { id: ORG_ID, shouldUseNewPrivilegeSystem: true }
+} as unknown as TActorContext;
 const TEMPLATE_ID = "template-id";
 const GATEWAY_V2_ID = "gateway-v2-id";
 const PRIVATE_HOST = "https://10.0.0.1";
@@ -110,7 +117,7 @@ const createService = ({
   const gatewayPoolDAL = { findById: vi.fn().mockResolvedValue(null) };
   const auditLogCreate = vi.fn();
   const identityLdapAuthDAL = { updateByTemplateId: vi.fn().mockResolvedValue([{ identityId: "identity-id" }]) };
-  const getProjectPermission = vi.fn().mockResolvedValue({ permission: createMongoAbility(projectRules) });
+  const getProjectPermission = vi.fn().mockResolvedValue(Permission.fromRules({ rules: projectRules }));
 
   const service = identityAuthTemplateServiceFactory({
     instanceConfigCoreDomain,
@@ -120,12 +127,14 @@ const createService = ({
     identityOidcAuthDAL,
     gatewayV2DAL,
     gatewayPoolDAL,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ requireGatewayPools: false, shouldUseNewPrivilegeSystem: true }) },
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(orgRules) }),
-      getProjectPermission,
-      getActorGrantAbilities: vi.fn().mockResolvedValue([])
+    orgDAL: { findById: vi.fn().mockResolvedValue({ requireGatewayPools: false }) },
+    organizationsDomain: {
+      getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: orgRules })),
+      getGrantPermissions: vi.fn().mockResolvedValue([])
     },
+    projectsDomain: { getProjectPermission, getGrantPermissions: vi.fn().mockResolvedValue([]) },
+    secretsDomain: { getFolderGrantPermissions: vi.fn().mockResolvedValue([]) },
+    accessControlDomain: { fetchGrants: vi.fn() },
     kmsCoreDomain: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({
         encryptor: ({ plainText }: { plainText: Buffer }) => ({ cipherTextBlob: plainText }),
@@ -156,10 +165,7 @@ const patchTemplate = (service: ReturnType<typeof createService>["service"], tem
   service.updateTemplate({
     templateId: TEMPLATE_ID,
     templateFields,
-    actorId: "actor-id",
-    actor: "user",
-    actorAuthMethod: undefined,
-    actorOrgId: ORG_ID
+    actor: ACTOR
   } as unknown as Parameters<typeof service.updateTemplate>[0]);
 
 describe("identityAuthTemplateServiceFactory kubernetes host validation", () => {
@@ -391,10 +397,7 @@ describe("identityAuthTemplateServiceFactory oidc templates", () => {
 
     await service.deleteTemplate({
       templateId: TEMPLATE_ID,
-      actorId: "actor-id",
-      actor: "user",
-      actorAuthMethod: undefined,
-      actorOrgId: ORG_ID
+      actor: ACTOR
     } as unknown as Parameters<typeof service.deleteTemplate>[0]);
 
     expect(identityOidcAuthDAL.updateByTemplateId).toHaveBeenCalledWith(
@@ -556,10 +559,7 @@ describe("identityAuthTemplateServiceFactory linked identity authorization", () 
     await service.updateTemplate({
       templateId: TEMPLATE_ID,
       name: "renamed",
-      actorId: "actor-id",
-      actor: "user",
-      actorAuthMethod: undefined,
-      actorOrgId: ORG_ID
+      actor: ACTOR
     } as unknown as Parameters<typeof service.updateTemplate>[0]);
 
     expect(identityAuthTemplateDAL.updateById).toHaveBeenCalledTimes(1);
@@ -584,10 +584,7 @@ describe("identityAuthTemplateServiceFactory linked identity authorization", () 
     await service.updateTemplate({
       templateId: TEMPLATE_ID,
       templateFields: { searchBase: "dc=other" },
-      actorId: "actor-id",
-      actor: "user",
-      actorAuthMethod: undefined,
-      actorOrgId: ORG_ID,
+      actor: ACTOR,
       isActorSuperAdmin: true
     } as unknown as Parameters<typeof service.updateTemplate>[0]);
 
@@ -605,10 +602,7 @@ describe("identityAuthTemplateServiceFactory linked identity authorization", () 
     await service.updateTemplate({
       templateId: TEMPLATE_ID,
       templateFields: { searchBase: "dc=other" },
-      actorId: "actor-id",
-      actor: "user",
-      actorAuthMethod: undefined,
-      actorOrgId: ORG_ID,
+      actor: ACTOR,
       auditLogInfo
     } as unknown as Parameters<typeof service.updateTemplate>[0]);
 
@@ -669,10 +663,7 @@ describe("identityAuthTemplateServiceFactory ldap url validation", () => {
         name: "ldap-template",
         authMethod: IdentityAuthTemplateMethod.LDAP,
         templateFields: { ...LDAP_BLOB_FIELDS, url: "ldap://10.0.0.1" },
-        actorId: "actor-id",
-        actor: "user",
-        actorAuthMethod: undefined,
-        actorOrgId: ORG_ID
+        actor: ACTOR
       } as unknown as Parameters<typeof service.createTemplate>[0])
     ).rejects.toThrow("Local IPs not allowed as URL");
     expect(identityAuthTemplateDAL.create).not.toHaveBeenCalled();
@@ -774,10 +765,7 @@ describe("identityAuthTemplateServiceFactory propagation serialization", () => {
     await service.updateTemplate({
       templateId: TEMPLATE_ID,
       name: "renamed",
-      actorId: "actor-id",
-      actor: "user",
-      actorAuthMethod: undefined,
-      actorOrgId: ORG_ID
+      actor: ACTOR
     } as unknown as Parameters<typeof service.updateTemplate>[0]);
 
     expect(identityAuthTemplateDAL.findByIdForUpdate).not.toHaveBeenCalled();
@@ -798,10 +786,7 @@ describe("identityAuthTemplateServiceFactory propagation serialization", () => {
 
     await service.deleteTemplate({
       templateId: TEMPLATE_ID,
-      actorId: "actor-id",
-      actor: "user",
-      actorAuthMethod: undefined,
-      actorOrgId: ORG_ID
+      actor: ACTOR
     } as unknown as Parameters<typeof service.deleteTemplate>[0]);
 
     expect(order).toEqual(["lock", "unlink"]);

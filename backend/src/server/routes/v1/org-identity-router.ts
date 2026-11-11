@@ -57,7 +57,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.createIdentity({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -119,7 +119,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.updateIdentity({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -180,7 +180,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.deleteIdentity({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -233,7 +233,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { identity } = await server.services.identityV2.getIdentityById({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -277,7 +277,7 @@ export const registerOrgIdentityRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const { docs: identities, count: totalCount } = await server.services.identityV2.listIdentities({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId

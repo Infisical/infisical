@@ -196,10 +196,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityOciAuth = await server.services.identityOciAuth.attachOciAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -295,10 +292,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityOciAuth = await server.services.identityOciAuth.updateOciAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         allowedUsernames: req.body.allowedUsernames || null,
@@ -370,10 +364,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     handler: async (req) => {
       const identityOciAuth = await server.services.identityOciAuth.getOciAuth({
         identityId: req.params.identityId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -418,10 +409,7 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const identityOciAuth = await server.services.identityOciAuth.revokeIdentityOciAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

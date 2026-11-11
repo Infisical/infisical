@@ -1,6 +1,6 @@
 import { AccessScope, AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
-import { OrderByDirection, OrgServiceActor, TOrgPermission } from "@app/lib/types";
+import { OrderByDirection, TActorInput } from "@app/lib/types";
 
 export interface TIdentityV2Factory {
   onCreateIdentityGuard: (arg: TCreateIdentityV2DTO) => Promise<void>;
@@ -27,7 +27,6 @@ export type TCreateIdentityV2RoleDTO =
     };
 
 export type TCreateIdentityV2DTO = {
-  permission: OrgServiceActor;
   scopeData: AccessScopeData;
   data: {
     name: string;
@@ -35,10 +34,9 @@ export type TCreateIdentityV2DTO = {
     metadata?: { key: string; value: string }[];
     roles?: TCreateIdentityV2RoleDTO[];
   };
-};
+} & TActorInput;
 
 export type TUpdateIdentityV2DTO = {
-  permission: OrgServiceActor;
   scopeData: AccessScopeData;
   selector: {
     identityId: string;
@@ -49,27 +47,24 @@ export type TUpdateIdentityV2DTO = {
     metadata?: { key: string; value: string }[];
   }>;
   isActorSuperAdmin?: boolean;
-};
+} & TActorInput;
 
 export type TDeleteIdentityV2DTO = {
-  permission: OrgServiceActor;
   scopeData: AccessScopeData;
   selector: {
     identityId: string;
   };
   isActorSuperAdmin?: boolean;
-};
+} & TActorInput;
 
 export type TGetIdentityByIdV2DTO = {
-  permission: OrgServiceActor;
   scopeData: AccessScopeData;
   selector: {
     identityId: string;
   };
-};
+} & TActorInput;
 
 export type TListIdentityV2DTO = {
-  permission: OrgServiceActor;
   scopeData: AccessScopeData;
   data: Partial<{
     limit: number;
@@ -78,7 +73,7 @@ export type TListIdentityV2DTO = {
     orderDirection: OrderByDirection;
     search: string;
   }>;
-};
+} & TActorInput;
 
 // The v2 search endpoint joins Membership and can sort by lastLoginTime; the legacy
 // v1 search / v2 identity-memberships endpoints bind orderBy straight into an
@@ -134,7 +129,7 @@ export type TSearchIdentitiesV2DTO = {
     name: Omit<TSearchResourceOperator, "number">;
     role: Omit<TSearchResourceOperator, "number">;
   }>;
-} & TOrgPermission;
+} & TActorInput;
 
 export type TCountIdentitiesV2DAL = {
   orgId: string;
@@ -152,4 +147,4 @@ export type TCountIdentitiesV2DTO = {
     name: Omit<TSearchResourceOperator, "number">;
     role: Omit<TSearchResourceOperator, "number">;
   }>;
-} & TOrgPermission;
+} & TActorInput;
