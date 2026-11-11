@@ -336,6 +336,7 @@ export const ResourcesTab = ({ dataSource }: { dataSource: TSecretScanningDataSo
           params={{ orgId, type: dataSource.type, dataSourceId: dataSource.id }}
           search={{ resourceId: row.id }}
           title={row.name}
+          chevron={false}
         >
           <code>{row.name}</code>
         </RowLink>

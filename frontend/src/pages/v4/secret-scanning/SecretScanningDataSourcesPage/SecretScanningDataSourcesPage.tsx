@@ -306,6 +306,7 @@ const DataSources = ({ orgId, projectId }: { orgId: string; projectId: string })
           <RowLink
             to={v4Path("/organizations/$orgId/secret-scanning/data-sources/$type/$dataSourceId")}
             params={{ orgId, type: row.type, dataSourceId: row.id }}
+            chevron={false}
           >
             {row.name}
           </RowLink>
