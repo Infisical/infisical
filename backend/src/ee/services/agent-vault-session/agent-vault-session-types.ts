@@ -26,6 +26,7 @@ export type TAgentVaultInlineServiceInput = {
   transport?: AgentVaultMcpTransport;
   host?: string;
   port?: number;
+  nativePort?: number;
   database?: string;
   tls?: { enabled?: boolean; verify?: boolean; ca?: string | null };
   allowedMethods?: AgentVaultHttpMethod[] | null;
@@ -85,7 +86,17 @@ export type TAgentVaultInlineServiceSummary = {
       credential: TAgentVaultInlineBearerCredentialSummary;
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
     })
-  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql }> & {
+  | (Extract<
+      TAgentVaultServiceTypeFields,
+      {
+        type:
+          | AgentVaultServiceType.Postgres
+          | AgentVaultServiceType.Mysql
+          | AgentVaultServiceType.Redis
+          | AgentVaultServiceType.Cockroachdb
+          | AgentVaultServiceType.Clickhouse;
+      }
+    > & {
       credential: { type: AgentVaultCredentialType.Basic };
     })
   | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Ssh }> & {

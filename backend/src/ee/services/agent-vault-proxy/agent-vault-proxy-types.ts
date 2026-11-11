@@ -104,6 +104,8 @@ export type TReportMissingScopesDTO = TRefreshCredentialDTO & {
 export type TResolvedNativeTarget = {
   host: string;
   port: number;
+  // A ClickHouse service's native TCP port; `port` is its HTTP one. Null for every other type.
+  nativePort: number | null;
   database: string | null;
   tls: { enabled: boolean; verify: boolean; ca: string | null } | null;
 };

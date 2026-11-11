@@ -489,6 +489,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             transport: update.transport,
             host: update.host,
             port: update.port,
+            nativePort: update.nativePort,
             database: update.database,
             tlsEnabled: update.tlsEnabled,
             tlsVerify: update.tlsVerify,

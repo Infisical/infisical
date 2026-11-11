@@ -1090,6 +1090,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     transport,
     host,
     port,
+    nativePort,
     database,
     tls,
     allowedMethods,
@@ -1119,6 +1120,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       transport,
       host,
       port,
+      nativePort,
       database,
       tls
     });
@@ -1128,6 +1130,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       transport,
       host,
       port,
+      nativePort,
       database,
       tls: toNativeTlsConfigInput(tls)
     });
@@ -1326,6 +1329,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     transport: sentTransport,
     host: sentHost,
     port: sentPort,
+    nativePort: sentNativePort,
     database: sentDatabase,
     tls: sentTls,
     allowedMethods: sentAllowedMethods,
@@ -1358,6 +1362,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         transport: sentTransport,
         host: sentHost,
         port: sentPort,
+        nativePort: sentNativePort,
         database: sentDatabase,
         tls: sentTls,
         allowedMethods: sentAllowedMethods,
@@ -1379,6 +1384,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const transport = sentFields.transport ?? undefined;
     const host = sentFields.host ?? undefined;
     const port = sentFields.port ?? undefined;
+    // Kept as null, which removes a stored native port.
+    const { nativePort } = sentFields;
     const database = sentFields.database ?? undefined;
     const tls = toNativeTlsConfigInput(sentFields.tls ?? undefined);
     assertServiceFieldsSupported(serviceType, {
@@ -1392,6 +1399,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       transport,
       host,
       port,
+      nativePort,
       database,
       tls
     });
@@ -1399,7 +1407,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     // The fields of the type's config this request sent. Ones left out keep their stored value, so the config
     // is merged here for the fast checks and again under the lock against the row read there.
-    const configUpdate = shake({ serverUrl, transport, host, port, database, tls }, (value) => value === undefined);
+    const configUpdate = shake(
+      { serverUrl, transport, host, port, nativePort, database, tls },
+      (value) => value === undefined
+    );
     const hasConfigUpdate = Object.keys(configUpdate).length > 0;
     const deriveHostPattern = (config: TAgentVaultServiceConfig) =>
       resolveServiceHostPattern(serviceType, config, requestedHostPattern);
@@ -1989,6 +2000,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         transport,
         host,
         port,
+        nativePort,
         database,
         tlsEnabled: tls?.enabled,
         tlsVerify: tls?.verify,

@@ -348,6 +348,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
                   hostPattern: fields.hostPattern,
                   host: fields.host,
                   port: fields.port,
+                  nativePort: fields.nativePort,
                   database: fields.database,
                   tlsEnabled: fields.tlsEnabled,
                   tlsVerify: fields.tlsVerify,

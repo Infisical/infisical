@@ -441,7 +441,13 @@ describe("database and SSH services sent with a session", () => {
       username: "agent",
       privateKey: KEY
     });
-    expect(resolved?.native).toEqual({ host: "bastion.internal", port: 22, database: null, tls: null });
+    expect(resolved?.native).toEqual({
+      host: "bastion.internal",
+      port: 22,
+      nativePort: null,
+      database: null,
+      tls: null
+    });
     const summary = toInlineServiceSummary(row);
     expect(summary).toMatchObject({ type: AgentVaultServiceType.Ssh, host: "bastion.internal", port: 22 });
     expect(summary).not.toHaveProperty("hostPattern");
@@ -463,5 +469,51 @@ describe("database and SSH services sent with a session", () => {
         substitutions: []
       })
     ).toBeNull();
+  });
+
+  test("a Redis service keeps TLS and takes no database", () => {
+    const redis = (username: string, password?: string): TAgentVaultInlineServiceInput => ({
+      type: AgentVaultServiceType.Redis,
+      name: "cache",
+      host: "cache.internal",
+      credential: { type: AgentVaultCredentialType.Basic, username, password }
+    });
+    expect(() => prepareInlineServices([redis("reader")])).not.toThrow();
+    expect(prepareInlineServices([redis("default")])[0].config).toEqual({
+      host: "cache.internal",
+      port: 6379,
+      tls: { enabled: true, verify: true }
+    });
+  });
+
+  test("a ClickHouse service's native port goes out to the proxy and back in reads", () => {
+    const [prepared] = prepareInlineServices([
+      postgres({
+        type: AgentVaultServiceType.Clickhouse,
+        name: "ch",
+        host: "ch.internal",
+        port: 8123,
+        nativePort: 9000
+      })
+    ]);
+    const row = storedRow({
+      name: "ch",
+      type: AgentVaultServiceType.Clickhouse,
+      config: prepared.config,
+      hostPattern: null,
+      credentialType: AgentVaultCredentialType.Basic,
+      credentialConfig: prepared.credentialConfig
+    });
+    expect(toResolvedInlineService(row, prepared.secrets)?.native).toMatchObject({
+      host: "ch.internal",
+      port: 8123,
+      nativePort: 9000,
+      database: "app"
+    });
+    expect(toInlineServiceSummary(row)).toMatchObject({
+      type: AgentVaultServiceType.Clickhouse,
+      port: 8123,
+      nativePort: 9000
+    });
   });
 });

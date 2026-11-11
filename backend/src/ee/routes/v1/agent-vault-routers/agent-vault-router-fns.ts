@@ -62,6 +62,7 @@ type TServiceTypeReportFields = {
   transport?: AgentVaultMcpTransport;
   host?: string;
   port?: number;
+  nativePort?: number;
   database?: string;
   tlsEnabled?: boolean;
   tlsVerify?: boolean;
@@ -83,6 +84,21 @@ export const serviceTypeReportFieldsOf = (
       return pick(service, ["serverUrl", "transport", "hostPattern", "allowedTools"]);
     case AgentVaultServiceType.Ssh:
       return pick(service, ["host", "port"]);
+    case AgentVaultServiceType.Redis:
+      return {
+        ...pick(service, ["host", "port"]),
+        tlsEnabled: service.tls.enabled,
+        tlsVerify: service.tls.verify,
+        hasTlsCa: Boolean(service.tls.ca)
+      };
+    case AgentVaultServiceType.Clickhouse:
+      return {
+        ...pick(service, ["host", "port", "database"]),
+        nativePort: service.nativePort ?? undefined,
+        tlsEnabled: service.tls.enabled,
+        tlsVerify: service.tls.verify,
+        hasTlsCa: Boolean(service.tls.ca)
+      };
     default:
       return {
         ...pick(service, ["host", "port", "database"]),

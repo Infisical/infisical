@@ -309,26 +309,36 @@ alone: nothing edits them, no bundle or other session reads them, and only resol
 
 ## Database and SSH services
 
-`postgres`, `mysql` and `ssh` are service types like `http` and `mcp`, in the same registry
-(`AGENT_VAULT_SERVICE_TYPES`), tables and grants. The agent reaches one with `infisical agent-vault connect <name>`,
+`postgres`, `mysql`, `cockroachdb`, `clickhouse`, `redis` and `ssh` are service types like `http` and `mcp`, in the
+same registry (`AGENT_VAULT_SERVICE_TYPES`), tables and grants. The agent reaches one with `infisical agent-vault connect <name>`,
 which opens a local port and tunnels each connection to the proxy as `CONNECT <name>.svc.agent-vault:1` over TLS.
 The proxy then runs PAM's protocol handler, which logs in as the service's account.
 
+- **Three config shapes.** `postgres`, `mysql`, `cockroachdb` and `clickhouse` take `database` and `tls`; `redis`
+  takes `tls` but no `database`; `ssh` takes neither. The router schemas (`nativeHasDatabase`, `nativeHasTls`),
+  `toServiceTypeFields` and `serviceTypeReportFieldsOf` each branch on this, and `toServiceTypeFields`'s default arm
+  is the SSH shape, so a new type needs its own arm there.
 - **`hostPattern` is NULL for these types, and the DB enforces it both ways** (`("type" IN ('http','mcp')) =
-  ("hostPattern" IS NOT NULL)`). The server lives in `config` (`host`, `port`, `database`, `tls`). A copy of the host
+  ("hostPattern" IS NOT NULL)`). The server lives in `config` (`host`, `port`, `database`, `tls`, and ClickHouse's `nativePort`). A copy of the host
   in `hostPattern` would let HTTP matching, which has no type filter, attach the database or SSH password as a Basic
   header to any web request to that host, on new and old proxies alike. With no pattern an old proxy, which reads an
   unknown type as `http`, matches nothing. Host-overlap checks skip NULL patterns (`findHostPatternConflicts`), so a
   database never conflicts with an HTTP service on the same host. Every reader of `hostPattern` handles NULL.
 - **The name is how the agent connects**, so it is at most 63 characters (one DNS label) and an inline one must be
   given (the router requires it). `host` takes a host name (letters, digits, `-` and `_`, which Docker Compose names
-  use) or an IP. `host` and `database` refuse `{{`: variables aren't expanded there yet. Postgres pins `database` (PAM's handler overwrites the client's); MySQL only starts in it, and the account's
-  grants decide which other databases the agent can `USE`.
-- **Resolve sends `native: { host, port, database, tls }`**, built by `toResolvedNativeTarget`, never the raw config,
-  so fields of other types stay off the wire. HTTP and MCP services send `native: null`. The proxy prefers an inline
+  use) or an IP. `host` and `database` refuse `{{`: variables aren't expanded there yet. Postgres pins `database` (PAM's handler overwrites the client's); MySQL, CockroachDB and ClickHouse only start in it,
+  and the account's grants decide which other databases the agent can use.
+- **ClickHouse has two ports.** `port` is the HTTP interface (required, default 8123) and `nativePort` the optional
+  native TCP one clickhouse-client needs; the proxy serves both on one local port. They must differ
+  (`checkConfig` on the registry entry, since a refined schema loses the `shape` the field checks read). An update
+  sends `nativePort: null` to remove it, which `buildServiceConfig` drops before parsing.
+- **Resolve sends `native: { host, port, nativePort, database, tls }`**, built by `toResolvedNativeTarget`, with
+  `nativePort` null for every type but ClickHouse, never the raw config, so fields of other types stay off the wire. HTTP and MCP services send `native: null`. The proxy prefers an inline
   service over a bundle one with the same name (`accessBundleName === null`), so a bundle edit made after a session
   started can't redirect `connect db` to another database.
-- **Credentials.** `basic` for all three, and it must have a username (set, or left to members). `ssh-key` (username,
+- **Credentials.** `basic` for every type, and it must have a username (set, or left to members). PAM's Redis
+  handler sends AUTH only with a password, so a Redis user other than `default` with none connects as `default`;
+  that is left to the admin (a Redis that requires a password answers NOAUTH). `ssh-key` (username,
   private key, optional certificate) for `ssh` only, enforced by a CHECK too. Its parts span lines, so it takes no
   member-provided field and no `{{variable}}` yet: personal values and variables refuse line breaks. A partial update
   keeps the parts it leaves out, and `certificate: null` removes the certificate; when none is stored it changes nothing,
@@ -336,7 +346,7 @@ The proxy then runs PAM's protocol handler, which logs in as the service's accou
   refuses an unusable one when a connection is requested.
 - **TLS to the database** is `{ enabled, verify, ca }`, defaulting to enabled and verified, merged one level deep on
   update. A `ca` is parsed on save. It applies only to the proxy's leg to the database. An update can't send
-  `database: null` or `tls: null` for these two types (null is only an SSH service's read-back). The create event
+  `database: null` or `tls: null` to a type that has the field (null is only the read-back of a type without it). The create event
   records `hasTlsCa`, and an update records `tlsCaChanged` (`set`, `removed` or `replaced`) only when the stored CA
   changed, compared ignoring whitespace.
 - **`GET /api/v1/agent-vault/session/proxy-ca-fingerprints`** (session-token auth, like `/session/skills`) returns

@@ -247,6 +247,21 @@ describe("describing one service", () => {
     ).toMatch(/^SSH server, not reachable over HTTP\. Run infisical agent-vault connect bastion /);
   });
 
+  test.each([
+    [AgentVaultServiceType.Redis, "Redis database, not reachable over HTTP"],
+    [AgentVaultServiceType.Cockroachdb, "CockroachDB database, not reachable over HTTP"],
+    [
+      AgentVaultServiceType.Clickhouse,
+      "ClickHouse database, reached only through a local port, its HTTP interface included"
+    ]
+  ])("a %s service is described as a %s, reached with connect", (type, kind) => {
+    const described = describeSessionService(
+      facts({ name: "store", type, hostPattern: null, credential: { type: "basic" } })
+    );
+    expect(described).toMatchObject({ type, hosts: [], url: null, credential: { type: "login" } });
+    expect(described.howToUse).toMatch(new RegExp(`^${kind}\\. Run infisical agent-vault connect store `));
+  });
+
   test("a database login that is partly the session owner's own says they fix a failed login", () => {
     const described = describeSessionService(
       facts({ name: "orders-db", type: AgentVaultServiceType.Mysql, hostPattern: null, memberProvided: true })

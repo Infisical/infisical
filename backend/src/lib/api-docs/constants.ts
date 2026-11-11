@@ -4688,7 +4688,7 @@ export const AGENT_VAULT = {
     nativeServices:
       "The access bundle's database and SSH services, by name. They cover no host pattern, so `hostPatterns` leaves them out.",
     nativeServiceName: "The name of the service.",
-    nativeServiceType: "The type of the service: `postgres`, `mysql`, or `ssh`.",
+    nativeServiceType: "The type of the service: `postgres`, `mysql`, `cockroachdb`, `clickhouse`, `redis` or `ssh`.",
     requiresSetup:
       "true lists only the access bundles you can reach that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
     granted:
@@ -4709,9 +4709,9 @@ export const AGENT_VAULT = {
     updateDescription:
       "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it. Send null or an empty string to remove it.",
     descriptionRead: "What the service is for, or null if it has no description. Agents in a session can read it.",
-    type: "The service type: `http` for an HTTP API, `mcp` for a remote MCP server, or `postgres`, `mysql` or `ssh` for a database or SSH server the agent reaches with `infisical agent-vault connect`. Can't be changed after the service is created.",
+    type: "The service type: `http` for an HTTP API, `mcp` for a remote MCP server, or `postgres`, `mysql`, `cockroachdb`, `clickhouse`, `redis` or `ssh` for a database or SSH server the agent reaches with `infisical agent-vault connect`. Can't be changed after the service is created.",
     updateType:
-      "The service's type, `http`, `mcp`, `postgres`, `mysql` or `ssh`. Must match the type the service was created with.",
+      "The service's type, `http`, `mcp`, `postgres`, `mysql`, `cockroachdb`, `clickhouse`, `redis` or `ssh`. Must match the type the service was created with.",
     nativeName:
       "The name of the service. The agent connects to it by this name with `infisical agent-vault connect`, so it can be at most 63 characters.",
     host: "The server's host name or IP address, as the Agent Vault proxy reaches it. No scheme, port or path.",
@@ -4719,10 +4719,20 @@ export const AGENT_VAULT = {
     postgresPort: "The PostgreSQL server's port. Defaults to 5432.",
     mysqlPort: "The MySQL server's port. Defaults to 3306.",
     sshPort: "The SSH server's port. Defaults to 22.",
+    redisPort: "The Redis server's port. Defaults to 6379.",
+    cockroachdbPort: "The CockroachDB server's SQL port. Defaults to 26257.",
+    clickhousePort:
+      "The ClickHouse server's HTTP port, which curl, JDBC and most drivers use. Required: usually 8443 with TLS, or 8123 without.",
+    clickhouseNativePort:
+      "The ClickHouse server's native TCP port, which clickhouse-client needs. Usually 9000, or 9440 with TLS. Must differ from `port`. Omit it to serve only HTTP.",
+    updateClickhouseNativePort:
+      "The ClickHouse server's native TCP port, which clickhouse-client needs. Must differ from `port`. Send null to remove it, so the service serves only HTTP.",
+    clickhousePortRead: "The ClickHouse server's HTTP port.",
+    clickhouseNativePortRead: "The ClickHouse server's native TCP port, or null when the service serves only HTTP.",
     portRead: "The server's port.",
     postgresDatabase: "The database the proxy logs in to. The agent can only use this database.",
-    mysqlDatabase:
-      "The database the proxy logs in to. It is the agent's default database, and the account's grants decide which others the agent can switch to.",
+    defaultDatabase:
+      "The database the proxy logs in to. It is the agent's default database, and the account's grants decide which others the agent can use.",
     databaseRead: "The database the proxy logs in to.",
     tls: "How the proxy connects to the database. `enabled` (default true) uses TLS, `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's.",
     updateTls:
@@ -4737,6 +4747,8 @@ export const AGENT_VAULT = {
     tlsCaRead:
       "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Null when none is stored.",
     databaseCredential: "The account the proxy logs in to the database as, a username and password.",
+    redisCredential:
+      "The account the proxy logs in to Redis as, a username and password. Leave the username as `default` unless your Redis has named users. A named user needs its password, or the proxy connects as `default`.",
     sshCredential: "The account the proxy logs in to the SSH server as, a username with a password or an SSH key.",
     nativeUsername: `The user the proxy logs in as. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
     nativePassword: `The password the proxy logs in with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
@@ -4943,8 +4955,9 @@ export const AGENT_VAULT = {
       "The services that use this variable, across every access bundle, ordered by access bundle name and then service name. For a personal variable, the services whose personal values, as you set them, use it. A variable in use can't be deleted.",
     usedByServiceId: "The ID of a service that uses this variable.",
     usedByServiceName: "The name of the service.",
-    usedByServiceType: "The service's type: `http`, `mcp`, `postgres`, `mysql` or `ssh`.",
-    usedByServiceHostPattern: "The host pattern of the service. Null for a `postgres`, `mysql` or `ssh` service.",
+    usedByServiceType:
+      "The service's type: `http`, `mcp`, `postgres`, `mysql`, `cockroachdb`, `clickhouse`, `redis` or `ssh`.",
+    usedByServiceHostPattern: "The host pattern of the service. Null for a database or SSH service.",
     usedByServiceAccessBundleId: "The ID of the access bundle the service belongs to.",
     usedByServiceAccessBundleName: "The name of the access bundle the service belongs to.",
     createdAt: "When the variable was added.",
@@ -5240,7 +5253,7 @@ export const AGENT_VAULT = {
     serviceName: "The service's name.",
     serviceDescription: "What the service is for, as an admin wrote it, or null if it has no description.",
     serviceType:
-      "http for an HTTP API, mcp for a remote MCP server, or postgres, mysql or ssh for a database or SSH server the agent reaches with `infisical agent-vault connect`.",
+      "http for an HTTP API, mcp for a remote MCP server, or postgres, mysql, cockroachdb, clickhouse, redis or ssh for a database or SSH server the agent reaches with `infisical agent-vault connect`.",
     transport: "The MCP server's transport, streamable-http or sse. Only set for an MCP service.",
     credentialType:
       "The kind of credential the proxy adds: bearer, oauth, basic, login (the account the proxy logs in to a database or SSH server as), or none.",

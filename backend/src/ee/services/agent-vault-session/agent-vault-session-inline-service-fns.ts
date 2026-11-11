@@ -140,6 +140,7 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     transport: input.transport,
     host: input.host,
     port: input.port,
+    nativePort: input.nativePort,
     database: input.database,
     tls: input.tls,
     allowedTools: input.allowedTools
@@ -175,6 +176,7 @@ const prepareInlineService = (input: TAgentVaultInlineServiceInput, position: nu
     transport: input.transport,
     host: input.host,
     port: input.port,
+    nativePort: input.nativePort,
     database: input.database,
     tls: toNativeTlsConfigInput(input.tls)
   });

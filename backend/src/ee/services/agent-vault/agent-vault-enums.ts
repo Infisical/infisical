@@ -23,7 +23,10 @@ export enum AgentVaultServiceType {
   Mcp = "mcp",
   Postgres = "postgres",
   Mysql = "mysql",
-  Ssh = "ssh"
+  Ssh = "ssh",
+  Redis = "redis",
+  Cockroachdb = "cockroachdb",
+  Clickhouse = "clickhouse"
 }
 
 export enum AgentVaultMcpTransport {

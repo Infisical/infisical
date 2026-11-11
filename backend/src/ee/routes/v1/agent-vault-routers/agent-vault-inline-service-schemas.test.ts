@@ -119,6 +119,28 @@ describe("database and SSH services in the inline request schema", () => {
     expect(issuesOf([postgres({ name: undefined })]).map((issue) => issue.path)).toEqual([[0, "name"]]);
   });
 
+  test("a Redis service takes TLS and no database, and a ClickHouse one a native port", () => {
+    expect(
+      issuesOf([
+        {
+          type: "redis",
+          name: "cache",
+          host: "cache.internal",
+          tls: { enabled: false },
+          credential: { type: "basic", username: "default" }
+        },
+        postgres({ type: "cockroachdb", name: "crdb" }),
+        postgres({ type: "clickhouse", name: "ch", port: 8123, nativePort: 9000 })
+      ])
+    ).toEqual([]);
+    expect(
+      issuesOf([postgres({ type: "clickhouse", name: "ch", port: 8123, database: undefined })]).map(
+        (issue) => issue.path
+      )
+    ).toEqual([[0, "database"]]);
+    expect(issuesOf([postgres({ type: "clickhouse", name: "ch" })]).map((issue) => issue.path)).toEqual([[0, "port"]]);
+  });
+
   test("refuse a variable reference in an SSH key", () => {
     const issues = issuesOf([
       {

@@ -9,7 +9,10 @@ import { AgentVaultServiceType } from "./agent-vault-enums";
 export const AGENT_VAULT_NATIVE_SERVICE_TYPES = [
   AgentVaultServiceType.Postgres,
   AgentVaultServiceType.Mysql,
-  AgentVaultServiceType.Ssh
+  AgentVaultServiceType.Ssh,
+  AgentVaultServiceType.Redis,
+  AgentVaultServiceType.Cockroachdb,
+  AgentVaultServiceType.Clickhouse
 ] as const;
 
 export type TAgentVaultNativeServiceType = (typeof AGENT_VAULT_NATIVE_SERVICE_TYPES)[number];
@@ -23,11 +26,14 @@ export const AGENT_VAULT_MAX_NATIVE_SERVICE_NAME_LENGTH = 63;
 export const AGENT_VAULT_NATIVE_DEFAULT_PORTS: Record<TAgentVaultNativeServiceType, number> = {
   [AgentVaultServiceType.Postgres]: 5432,
   [AgentVaultServiceType.Mysql]: 3306,
-  [AgentVaultServiceType.Ssh]: 22
+  [AgentVaultServiceType.Ssh]: 22,
+  [AgentVaultServiceType.Redis]: 6379,
+  [AgentVaultServiceType.Cockroachdb]: 26257,
+  [AgentVaultServiceType.Clickhouse]: 8123
 };
 
 export const AGENT_VAULT_NATIVE_MAX_HOST_LENGTH = 253;
-// Postgres caps a database name at 63 bytes and MySQL at 64 characters.
+// Postgres and CockroachDB cap a database name at 63 bytes and MySQL at 64 characters.
 export const AGENT_VAULT_NATIVE_MAX_DATABASE_LENGTH = 64;
 export const AGENT_VAULT_NATIVE_MAX_CA_LENGTH = 16384;
 
@@ -37,6 +43,8 @@ export const AGENT_VAULT_NATIVE_MESSAGES = {
   hostVariable: "Variables aren't supported in the host yet. Enter the host itself.",
   portWhole: "The port must be a whole number.",
   portRange: "The port must be between 1 and 65535.",
+  nativePortSameAsPort: "The native port must differ from the HTTP port, since each port serves one protocol.",
+  clickhousePortRequired: "Set the ClickHouse HTTP port: usually 8443 with TLS, or 8123 without.",
   databaseRequired: "Enter the database to connect to.",
   databaseTooLong: `The database name can be at most ${AGENT_VAULT_NATIVE_MAX_DATABASE_LENGTH} characters.`,
   databaseControlChars: "The database name can't contain control characters.",
@@ -82,13 +90,14 @@ const nativeHostSchema = z
     if (!HOSTNAME_RE.test(host)) fail(`"${host}" isn't a valid host name or IP address.`);
   });
 
-const nativePortSchema = (fallback: number) =>
+const requiredNativePortSchema = (params?: z.RawCreateParams) =>
   z.coerce
-    .number()
+    .number(params)
     .int(AGENT_VAULT_NATIVE_MESSAGES.portWhole)
     .min(1, AGENT_VAULT_NATIVE_MESSAGES.portRange)
-    .max(65535, AGENT_VAULT_NATIVE_MESSAGES.portRange)
-    .default(fallback);
+    .max(65535, AGENT_VAULT_NATIVE_MESSAGES.portRange);
+
+const nativePortSchema = (fallback: number) => requiredNativePortSchema().default(fallback);
 
 const nativeDatabaseSchema = z
   .string()
@@ -150,11 +159,43 @@ export const AgentVaultSshServiceConfigSchema = z.object({
   port: nativePortSchema(AGENT_VAULT_NATIVE_DEFAULT_PORTS[AgentVaultServiceType.Ssh])
 });
 
+export const AgentVaultRedisServiceConfigSchema = z.object({
+  host: nativeHostSchema,
+  port: nativePortSchema(AGENT_VAULT_NATIVE_DEFAULT_PORTS[AgentVaultServiceType.Redis]),
+  tls: nativeTlsSchema
+});
+
+export const AgentVaultCockroachdbServiceConfigSchema = z.object({
+  host: nativeHostSchema,
+  port: nativePortSchema(AGENT_VAULT_NATIVE_DEFAULT_PORTS[AgentVaultServiceType.Cockroachdb]),
+  database: nativeDatabaseSchema,
+  tls: nativeTlsSchema
+});
+
+// `port` is the HTTP interface and `nativePort` the native TCP one, which clickhouse-client needs. A service without
+// `nativePort` serves only HTTP.
+export const AgentVaultClickhouseServiceConfigSchema = z.object({
+  host: nativeHostSchema,
+  // No default: TLS is on by default, and ClickHouse serves it on another port than plain HTTP, so any default
+  // would be wrong for one of them.
+  // Coercion turns a missing port into NaN, an invalid type rather than a missing one.
+  port: requiredNativePortSchema({ invalid_type_error: AGENT_VAULT_NATIVE_MESSAGES.clickhousePortRequired }),
+  nativePort: z.coerce
+    .number()
+    .int(AGENT_VAULT_NATIVE_MESSAGES.portWhole)
+    .min(1, AGENT_VAULT_NATIVE_MESSAGES.portRange)
+    .max(65535, AGENT_VAULT_NATIVE_MESSAGES.portRange)
+    .optional(),
+  database: nativeDatabaseSchema,
+  tls: nativeTlsSchema
+});
+
 export type TAgentVaultNativeTls = z.infer<typeof nativeTlsSchema>;
 
 export type TAgentVaultNativeServiceConfig = {
   host: string;
   port: number;
+  nativePort?: number;
   database?: string;
   tls?: TAgentVaultNativeTls;
 };
@@ -188,10 +229,11 @@ export const describeNativeTlsCaChange = (
 // Only what the proxy needs to reach the server: config may also hold fields of other types, which stay off the wire.
 export const toResolvedNativeTarget = (type: string, config: unknown): TResolvedNativeTarget | null => {
   if (!isNativeServiceType(type)) return null;
-  const { host, port, database, tls } = (config ?? {}) as TAgentVaultNativeServiceConfig;
+  const { host, port, nativePort, database, tls } = (config ?? {}) as TAgentVaultNativeServiceConfig;
   return {
     host,
     port,
+    nativePort: type === AgentVaultServiceType.Clickhouse ? (nativePort ?? null) : null,
     database: database ?? null,
     tls: tls ? { enabled: tls.enabled, verify: tls.verify, ca: tls.ca ?? null } : null
   };
