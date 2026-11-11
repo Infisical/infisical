@@ -139,7 +139,6 @@ const RequestsTable = ({
           header: "Signer",
           primary: true,
           grow: true,
-          mono: true,
           text: (request) => signingDataOf(request)?.signerName ?? "",
           render: (request) => link(request, signingDataOf(request)?.signerName ?? "Unknown signer")
         },
@@ -152,7 +151,6 @@ const RequestsTable = ({
           header: "Common name",
           primary: true,
           grow: true,
-          mono: true,
           text: (request) => certDataOf(request)?.certificateRequest?.commonName ?? "",
           render: (request) =>
             link(request, certDataOf(request)?.certificateRequest?.commonName || "No common name")
@@ -161,7 +159,6 @@ const RequestsTable = ({
           id: "profile",
           header: "Profile",
           width: 152,
-          mono: true,
           render: (request) => certDataOf(request)?.profileName ?? "None"
         },
         {

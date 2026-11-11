@@ -98,14 +98,12 @@ export const RequestsTab = ({ orgId, projectId }: { orgId: string; projectId: st
       id: "profile",
       header: "Profile",
       width: 152,
-      mono: true,
       render: (request) => certDataOf(request)?.profileName ?? "None"
     },
     {
       id: "commonName",
       header: "Common name",
       width: 224,
-      mono: true,
       render: (request) => certDataOf(request)?.certificateRequest?.commonName || "None"
     },
     {

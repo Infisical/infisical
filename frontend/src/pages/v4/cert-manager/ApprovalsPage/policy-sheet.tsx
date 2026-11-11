@@ -183,14 +183,7 @@ export const PolicySheet = ({
       draft.bypassForMachineIdentities ? "Enabled" : "Disabled",
       { span: "half" }
     ],
-    [
-      "Certificate profiles",
-      draft.profileNames.length ? (
-        <code key="profiles">{draft.profileNames.join(", ")}</code>
-      ) : (
-        "Not set"
-      )
-    ],
+    ["Certificate profiles", draft.profileNames.length ? draft.profileNames.join(", ") : "Not set"],
     ...draft.steps.map((entry, index): DataListItem => [
       entry.name ? `Step ${index + 1}: ${entry.name}` : `Step ${index + 1}`,
       [

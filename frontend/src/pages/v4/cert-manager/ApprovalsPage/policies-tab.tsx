@@ -92,7 +92,7 @@ export const PoliciesTab = ({ projectId }: { projectId: string }) => {
         return (
           <Inline gap={4} align="center" wrap={false}>
             {names.slice(0, 3).map((name) => (
-              <Badge key={name} size="sm" tone="outline" mono>
+              <Badge key={name} size="sm" tone="outline">
                 {name}
               </Badge>
             ))}

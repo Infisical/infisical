@@ -12,7 +12,7 @@ import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Pagination } from "@app/components/v4/ui/pagination";
 import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
 import { RowLink } from "@app/components/v4/ui/row-link";
-import { Meta, StatusText } from "@app/components/v4/ui/text";
+import { StatusText } from "@app/components/v4/ui/text";
 import { TooltipProvider } from "@app/components/v4/ui/tooltip";
 import {
   getUserTablePreference,
@@ -80,18 +80,22 @@ export const PamApprovalRequestsPage = () => {
       grow: true,
       text: (request) => request.requesterName,
       render: (request) => (
-        <Stack gap={2}>
-          <RowLink to={route} params={{ orgId }} search={{ requestId: request.id }} chevron={false}>
-            {request.requesterName}
-          </RowLink>
-          <Meta mono={false}>{requesterSubtitle(request)}</Meta>
-        </Stack>
+        <RowLink to={route} params={{ orgId }} search={{ requestId: request.id }} chevron={false}>
+          {request.requesterName}
+        </RowLink>
       )
+    },
+    {
+      id: "email",
+      header: "Email",
+      grow: true,
+      text: (request) => requesterSubtitle(request) ?? "",
+      render: (request) => requesterSubtitle(request) ?? "None"
     },
     {
       id: "account",
       header: "Account",
-      width: 220,
+      width: 180,
       text: (request) => request.accountName ?? "",
       render: (request) => {
         const meta = request.accountType ? typeMap.get(request.accountType) : undefined;
@@ -106,7 +110,7 @@ export const PamApprovalRequestsPage = () => {
     {
       id: "requesting",
       header: "Requesting",
-      width: 128,
+      width: 112,
       render: (request) =>
         request.accessType === PamAccessType.Credential ? (
           <Badge tone="warn">Credentials</Badge>
@@ -117,20 +121,20 @@ export const PamApprovalRequestsPage = () => {
     {
       id: "folder",
       header: "Folder",
-      width: 184,
+      width: 168,
       text: (request) => request.folderName ?? "",
       render: (request) => request.folderName ?? "None"
     },
     {
       id: "duration",
       header: "Duration",
-      width: 112,
+      width: 96,
       render: (request) => formatDuration(request.requestData?.requestData?.duration)
     },
     {
       id: "requested",
       header: "Requested",
-      width: 184,
+      width: 168,
       render: (request) => formatRequestDate(request.createdAt)
     },
     {

@@ -284,11 +284,11 @@ const RequestDetail = ({
   const subject = certData?.certificateRequest?.commonName || certData?.profileName;
   const lede = isSigning ? (
     <>
-      Signing request for signer <code>{signingData?.signerName}</code> by {requester}.
+      Signing request for signer {signingData?.signerName} by {requester}.
     </>
   ) : (
     <>
-      Certificate issuance request for <code>{subject}</code> by {requester}
+      Certificate issuance request for {subject} by {requester}
       {application ? (
         <>
           {" on application "}
@@ -309,7 +309,7 @@ const RequestDetail = ({
     ["Requested", format(new Date(request.createdAt), "yyyy-MM-dd, hh:mm aaa"), { span: "half" }],
     ...(isSigning
       ? ([
-          ["Signer", <code key="signer">{signingData?.signerName}</code>],
+          ["Signer", signingData?.signerName],
           ...(signingData?.requestedWindowDuration
             ? [["Access duration", `${signingData.requestedWindowDuration} from approval`]]
             : []),
@@ -318,7 +318,7 @@ const RequestDetail = ({
             : [])
         ] as DataListItem[])
       : ([
-          ["Profile", <code key="profile">{certData?.profileName}</code>],
+          ["Profile", certData?.profileName],
           ...(application ? [["Application", application.name]] : [])
         ] as DataListItem[])),
     ...(request.justification

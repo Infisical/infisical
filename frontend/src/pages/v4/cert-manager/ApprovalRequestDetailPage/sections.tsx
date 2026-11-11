@@ -81,10 +81,7 @@ export const CertificateSections = ({
     return ca?.name ?? "None";
   };
   const subject = present([
-    Boolean(certRequest?.commonName) && [
-      "Common name (CN)",
-      <code key="cn">{certRequest?.commonName}</code>
-    ],
+    Boolean(certRequest?.commonName) && ["Common name (CN)", certRequest?.commonName],
     Boolean(organization) && ["Organization (O)", organization, { span: "half" }],
     Boolean(organizationalUnit) && [
       "Organizational unit (OU)",
@@ -123,7 +120,7 @@ export const CertificateSections = ({
                 formatValidity(certRequest?.validity?.ttl ?? "")
               ],
               ["Certificate authority", caValue()],
-              ["Certificate profile", <code key="profile">{data?.profileName}</code>],
+              ["Certificate profile", data?.profileName],
               basicConstraints?.isCA && [
                 "Basic constraints",
                 "Certificate authority",
