@@ -11,7 +11,7 @@ vi.mock("@app/lib/logger", () => ({
 import { BadRequestError } from "@app/lib/errors";
 
 // eslint-disable-next-line import/first
-import { verifyRequestedPermissions } from "./access-approval-request-fns";
+import { isRequestableSecretPath, verifyRequestedPermissions } from "./access-approval-request-fns";
 
 describe("verifyRequestedPermissions", () => {
   const makeRule = (action: string, env: string, secretPath: string, subject = "secrets") => ({
@@ -299,4 +299,15 @@ describe("verifyRequestedPermissions input hardening", () => {
     const permissions = packRules([makeRule("dev", "/apps/team-a/*")]);
     expect(verifyRequestedPermissions({ permissions }).secretPath).toBe("/apps/team-a/*");
   });
+});
+
+describe("isRequestableSecretPath", () => {
+  test.each(["/", "/apps", "/apps/api", "/apps/**", "/apps/*/db", "/**"])("accepts %s", (secretPath) =>
+    expect(isRequestableSecretPath(secretPath)).toBe(true)
+  );
+
+  test.each(["", "apps", "//", "/apps/", "/apps//api", "/apps/./api", "/apps/../x", "/apps ", "/ apps", "/apps /api"])(
+    "rejects %j",
+    (secretPath) => expect(isRequestableSecretPath(secretPath)).toBe(false)
+  );
 });

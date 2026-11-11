@@ -48,7 +48,7 @@ import {
   toLegacyAccessApprovalRequest,
   toSecretAccessRequestListItem
 } from "./access-approval-request-details-fns";
-import { verifyRequestedPermissions } from "./access-approval-request-fns";
+import { isRequestableSecretPath, verifyRequestedPermissions } from "./access-approval-request-fns";
 import {
   ApprovalStatus,
   TSecretAccessApprovalRequestServiceFactoryDep,
@@ -395,6 +395,11 @@ export const secretAccessApprovalRequestServiceFactory = ({
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
     const { envSlug, secretPath } = verifyRequestedPermissions({ permissions });
+    if (!isRequestableSecretPath(secretPath)) {
+      throw new BadRequestError({
+        message: `Secret path '${secretPath}' is not valid. Use a path like '/folder/subfolder', with no trailing '/', empty, '.' or '..' folder names, or spaces around folder names.`
+      });
+    }
     const environment = await projectEnvDAL.findOne({ projectId, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
     const envId = environment.id;

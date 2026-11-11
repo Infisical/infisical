@@ -181,6 +181,18 @@ describe("Access approval request routing", () => {
     expect(res.json().approval.policyId).toBe(narrow.json().approval.id);
   });
 
+  test("A request for a path with an empty folder name is refused", async () => {
+    const db = getDb();
+    const created = await createGlobalPolicy({ name: "routing-shape", secretPath: "/routing-shape/**" });
+    expect(created.statusCode).toBe(200);
+
+    const res = await createAccessRequest("/routing-shape//api");
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toContain("Secret path '/routing-shape//api' is not valid");
+    expect(await db(TableName.ApprovalRequests).where({ policyId: created.json().approval.id })).toHaveLength(0);
+  });
+
   test("A request against a path only a legacy policy covers is refused", async () => {
     const db = getDb();
     const secretPath = "/routing-legacy";
