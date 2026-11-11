@@ -1654,9 +1654,17 @@ export const secretServiceFactory = ({
     };
   };
 
-  const getSecretByIdRaw = async ({ secretId, actorId, actor, actorOrgId, actorAuthMethod }: TGetASecretByIdRawDTO) => {
+  const getSecretByIdRaw = async ({
+    secretId,
+    viewSecretValue,
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod
+  }: TGetASecretByIdRawDTO) => {
     const secret = await secretV2BridgeService.getSecretById({
       secretId,
+      viewSecretValue,
       actorId,
       actor,
       actorOrgId,

@@ -8,6 +8,7 @@ import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
+import { TCertRequestRequestData } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { TCertificateAuthorityWithAssociatedCa } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
@@ -45,7 +46,8 @@ export enum CertificateRenewalMode {
   SelfSigned = "self-signed",
   InternalCa = "internal-ca",
   KeyPreserving = "key-preserving",
-  ExternalCa = "external-ca"
+  ExternalCa = "external-ca",
+  AwaitingApproval = "awaiting-approval"
 }
 
 export const certificateSpanToTtl = (notBefore: Date, notAfter: Date): string => {
@@ -486,6 +488,27 @@ export const buildRenewalAuditChanges = (
     to: RENEWAL_ATTRIBUTES[field].issued(issuedRequest)
   })).filter(({ from, to }) => from !== to);
 
+export const haveDifferentSubjectAlternativeNames = (
+  replayedRequest: TCertificateRequest,
+  issuedRequest: TCertificateRequest
+) => {
+  const typedAltNames = (request: TCertificateRequest) =>
+    (request.subjectAlternativeNames ?? []).map((san) => `${san.type}:${san.value}`).join(",");
+  return typedAltNames(replayedRequest) !== typedAltNames(issuedRequest);
+};
+
+const requestedCustomExtensionKeys = (extensions: unknown) =>
+  readStoredCustomExtensions(extensions)
+    .filter((extension) => !extension.issuerAdded && !isIssuerGeneratedExtensionOid(extension.oid))
+    .map((extension) => `${extension.oid}|${extension.critical ? "critical" : ""}|${extension.value}`)
+    .sort()
+    .join(",");
+
+export const haveDifferentCustomExtensions = (
+  certificateExtensions: unknown,
+  renewalExtensions: TResolvedCustomExtension[] | undefined
+) => requestedCustomExtensionKeys(certificateExtensions) !== requestedCustomExtensionKeys(renewalExtensions ?? []);
+
 export type TIssuerModifiedField = {
   field: string;
   requested: string;
@@ -751,3 +774,49 @@ export const validateRenewalEligibility = (
     errors
   };
 };
+
+export const buildRenewalApprovalSnapshot = ({
+  certificateRequest,
+  renewalAltNames,
+  ttl,
+  effectiveSignatureAlgorithm,
+  effectiveKeyAlgorithm,
+  renewalBasicConstraints,
+  resolvedCustomExtensions
+}: {
+  certificateRequest: TCertificateRequest;
+  renewalAltNames: { type: CertSubjectAlternativeNameType; value: string }[];
+  ttl: string;
+  effectiveSignatureAlgorithm: CertSignatureAlgorithm;
+  effectiveKeyAlgorithm: CertKeyAlgorithm;
+  renewalBasicConstraints?: { isCA: boolean; pathLength?: number };
+  resolvedCustomExtensions?: TResolvedCustomExtension[];
+}): TCertRequestRequestData["certificateRequest"] => ({
+  commonName: certificateRequest.commonName,
+  organization: certificateRequest.organization,
+  organizationalUnit: certificateRequest.organizationalUnit,
+  country: certificateRequest.country,
+  state: certificateRequest.state,
+  locality: certificateRequest.locality,
+  domainComponents: certificateRequest.domainComponents,
+  keyUsages: certificateRequest.keyUsages,
+  extendedKeyUsages: certificateRequest.extendedKeyUsages,
+  altNames: renewalAltNames,
+  validity: { ttl },
+  signatureAlgorithm: effectiveSignatureAlgorithm,
+  keyAlgorithm: effectiveKeyAlgorithm,
+  basicConstraints: renewalBasicConstraints,
+  customExtensions: resolvedCustomExtensions
+});
+
+const canonicalJson = (value: unknown) =>
+  JSON.stringify(value, (_key, nested: unknown) =>
+    nested && typeof nested === "object" && !Array.isArray(nested)
+      ? Object.fromEntries(Object.entries(nested).sort(([a], [b]) => a.localeCompare(b)))
+      : nested
+  );
+
+export const isSameRenewalApprovalSnapshot = (
+  reviewed: TCertRequestRequestData["certificateRequest"],
+  rebuilt: TCertRequestRequestData["certificateRequest"]
+) => canonicalJson(reviewed) === canonicalJson(rebuilt);
