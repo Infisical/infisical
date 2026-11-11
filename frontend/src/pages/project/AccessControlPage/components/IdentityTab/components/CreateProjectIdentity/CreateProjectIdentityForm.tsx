@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -87,6 +87,8 @@ type Props = {
   onClose: () => void;
   // Replaces the redirect to the identity page, for callers that keep the user in their own flow.
   onComplete?: (identity: TAssignableIdentity) => void;
+  // For a caller whose overlay must stay open while the form saves.
+  onPendingChange?: (pending: boolean) => void;
 };
 
 type TAssignableIdentity = { id: string; name: string };
@@ -98,6 +100,7 @@ const ProjectIdentityFormContent = ({
   canGrantPrivileges,
   onClose,
   onComplete,
+  onPendingChange,
   assignableIdentities
 }: Props & { assignableIdentities: TAssignableIdentity[] }) => {
   const navigate = useNavigate();
@@ -149,6 +152,11 @@ const ProjectIdentityFormContent = ({
   } = form;
 
   const mode = useWatch({ control, name: "mode" });
+
+  useEffect(() => {
+    onPendingChange?.(isSubmitting);
+    return () => onPendingChange?.(false);
+  }, [isSubmitting, onPendingChange]);
 
   const { mutateAsync: createProjectIdentity } = useCreateProjectIdentity();
   const { mutateAsync: updateMembership } = useUpdateProjectIdentityMembership();

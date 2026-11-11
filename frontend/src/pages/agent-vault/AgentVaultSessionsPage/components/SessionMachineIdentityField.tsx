@@ -25,7 +25,7 @@ import {
 import { useDebounce } from "@app/hooks";
 import {
   useAddAgentVaultAccessBundleMembers,
-  useListAgentVaultAccessBundleMembers,
+  useIsAgentVaultAccessBundleMember,
   useListAgentVaultMembers
 } from "@app/hooks/api/agentVault";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
@@ -97,6 +97,7 @@ export const SessionMachineIdentityField = ({
   );
 
   const [search, setSearch] = useState("");
+  const [isCreatingIdentity, setIsCreatingIdentity] = useState(false);
   const [debouncedSearch] = useDebounce(search);
   const { data: identities, isFetching } = useListAgentVaultMembers(projectId, {
     actorType: AgentVaultMemberType.MachineIdentity,
@@ -108,30 +109,31 @@ export const SessionMachineIdentityField = ({
   const snippet = useSnippetClientId(identity);
 
   const {
-    data: bundleIdentities,
-    isPlaceholderData: isBundleListStale,
-    refetch: refetchBundleIdentities
-  } = useListAgentVaultAccessBundleMembers(projectId, accessBundle?.id ?? "", {
-    actorType: AgentVaultMemberType.MachineIdentity,
-    search: identity?.name,
-    limit: 50
-  });
-  const isGranted = bundleIdentities?.members.some((member) => member.id === identity?.id);
+    data: isGranted,
+    isPlaceholderData: isGrantCheckStale,
+    refetch: refetchGrantCheck
+  } = useIsAgentVaultAccessBundleMember(
+    projectId,
+    accessBundle?.id ?? "",
+    identity
+      ? { type: AgentVaultMemberType.MachineIdentity, id: identity.id, name: identity.name }
+      : null
+  );
   const latestGrant = {
     identity,
     needsGrant:
-      Boolean(identity && accessBundle && bundleIdentities) && !isAdminIdentity && !isGranted
+      Boolean(identity && accessBundle) && isGranted !== undefined && !isAdminIdentity && !isGranted
   };
-  // The list keeps the previous identity's members until the new search loads, which would
+  // The check keeps the previous identity's answer until the new one loads, which would
   // flash the warning for an identity that has the bundle.
   const [settledGrant, setSettledGrant] = useState(latestGrant);
   if (
-    !isBundleListStale &&
+    !isGrantCheckStale &&
     (settledGrant.identity?.id !== latestGrant.identity?.id ||
       settledGrant.needsGrant !== latestGrant.needsGrant)
   )
     setSettledGrant(latestGrant);
-  const grant = isBundleListStale ? settledGrant : latestGrant;
+  const grant = isGrantCheckStale ? settledGrant : latestGrant;
 
   const grantAccess = useAddAgentVaultAccessBundleMembers(projectId);
 
@@ -142,7 +144,7 @@ export const SessionMachineIdentityField = ({
         accessBundleId: accessBundle.id,
         machineIdentityIds: [identity.id]
       });
-      await refetchBundleIdentities();
+      await refetchGrantCheck();
       createNotification({
         text: `Granted ${accessBundle.name} to ${identity.name}`,
         type: "success"
@@ -212,6 +214,7 @@ export const SessionMachineIdentityField = ({
                     description: "Create a new machine identity or assign an existing one",
                     emptyLabel: "Create New Machine Identity",
                     formatLabel: () => "Create New Machine Identity",
+                    isPending: isCreatingIdentity,
                     renderForm: ({ cancel }) => (
                       <CreateProjectIdentityForm
                         projectId={projectId}
@@ -220,6 +223,7 @@ export const SessionMachineIdentityField = ({
                         canGrantPrivileges={false}
                         onClose={cancel}
                         onComplete={onIdentityChange}
+                        onPendingChange={setIsCreatingIdentity}
                       />
                     )
                   }
