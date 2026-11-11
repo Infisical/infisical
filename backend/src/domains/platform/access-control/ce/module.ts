@@ -1,4 +1,4 @@
-import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
+import { DataAccessDb, ReadFrom } from "@app/domains/lib/data-access-db";
 import type { TDomainEventEmitter } from "@app/domains/lib/event-emitter";
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { TransactionRunner, TTransactionRunner } from "@app/domains/lib/transaction-runner";
@@ -13,6 +13,7 @@ import { GrantService, TCachedPermissionInput } from "./service/grant-service";
 export * from "./model/actor-grants";
 export * from "./model/identity-attribute";
 export * from "./model/membership";
+export * from "./model/permission";
 export * from "./model/privilege";
 export * from "./model/role-assignment";
 export type { TGrantActor, TGrantScope } from "./data-access/grant-data-access";
@@ -22,23 +23,25 @@ export type { TCachedPermissionInput } from "./service/grant-service";
 export { reviveActorGrants } from "./service/grant-service";
 export * from "./service/permission-schemas";
 export * from "./service/permission-types";
+export * from "./service/rule-composition";
 export * from "./service/rule-interpolation";
+export * from "./service/rule-narrowing";
 export * from "./service/unpacked-permission";
 
 export type TAccessControlDomain = {
   // What the actor holds at the scope: memberships (direct and through groups) with their roles, privileges and
-  // attributes. Plain data; the scope owner builds the ability from it with its own roles. Empty when the actor
+  // attributes. Plain data; the scope owner builds the permission from it with its own roles. Empty when the actor
   // has no membership there.
-  fetchGrants: (actor: TGrantActor, scope: TGrantScope, options?: TReadOptions) => Promise<ActorGrants>;
+  fetchGrants: (input: { actor: TGrantActor; scope: TGrantScope; readFrom?: ReadFrom }) => Promise<ActorGrants>;
   // Caches a value the scope owner builds from an actor's grants in one project. The cached value is revalidated
   // against a fingerprint of those grants plus extraFingerprint, so a role, membership or privilege change shows
   // within seconds. The value must be JSON; pass revive to restore dates.
   withCache: <T>(input: TCachedPermissionInput<T>) => Promise<T>;
   // A named counter for cache inputs Access Control cannot see (a folder tree changing): bump it on change and fold
-  // version(name) into extraFingerprint.
-  invalidate: (name: string) => Promise<void>;
-  version: (name: string) => Promise<number>;
-  findMembershipsByIds: (ids: string[], options?: TReadOptions) => Promise<Membership[]>;
+  // version({ name }) into extraFingerprint.
+  invalidate: (input: { name: string }) => Promise<void>;
+  version: (input: { name: string }) => Promise<number>;
+  findMembershipsByIds: (input: { ids: string[]; readFrom?: ReadFrom }) => Promise<Membership[]>;
 };
 
 export type TAccessControlDataAccessDeps = {
@@ -77,11 +80,11 @@ export class AccessControlModule {
     const grants = new GrantService({ dataAccess, cache: new PermissionCache(deps.keyStore) });
 
     this.service = {
-      fetchGrants: (actor, scope, options) => grants.fetchGrants(actor, scope, options),
+      fetchGrants: ({ actor, scope, readFrom }) => grants.fetchGrants(actor, scope, { readFrom }),
       withCache: (input) => grants.withCache(input),
-      invalidate: (name) => grants.invalidate(name),
-      version: (name) => grants.version(name),
-      findMembershipsByIds: (ids, options) => dataAccess.memberships.findByIds(ids, options)
+      invalidate: ({ name }) => grants.invalidate(name),
+      version: ({ name }) => grants.version(name),
+      findMembershipsByIds: ({ ids, readFrom }) => dataAccess.memberships.findByIds(ids, { readFrom })
     };
   }
 }

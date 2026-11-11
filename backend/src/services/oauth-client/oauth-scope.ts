@@ -1,8 +1,10 @@
+import { narrowRules, TCaslRuleLike } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
+import { OauthScope } from "@app/lib/auth/oauth-scopes";
 
 // Coarse, named OAuth delegation scopes. A delegated OAuth access token can never do more than the
 // underlying user; scopes only *narrow* that ability (effective = userPermissions ∩ grantedScopes).
@@ -12,9 +14,7 @@ import {
 // Only secrets:read is exposed for now: the sole delegated use case is `infisical run` fetching
 // secrets at runtime (e.g. via Coder External Auth). Add further scopes only when a route is opted
 // into AuthMode.OAUTH to serve them.
-export enum OauthScope {
-  SecretsRead = "secrets:read"
-}
+export { OauthScope };
 
 // Which permission ability a rule applies to. getOrgPermission builds org-level abilities,
 // getProjectPermission builds project-level abilities; a scope can contribute to either or both.
@@ -79,16 +79,6 @@ export const parseOauthScopeString = (raw?: string): { granted: OauthScope[]; in
 export const getOauthScopeDescriptions = (scopes: OauthScope[]) =>
   scopes.map((scope) => ({ scope, description: OAUTH_SCOPE_DEFINITIONS[scope].description }));
 
-// CASL wildcards: "manage" matches every action on a subject, "all" matches every subject.
-const CASL_MANAGE_ACTION = "manage";
-const CASL_ALL_SUBJECT = "all";
-
-type TCaslRuleLike = {
-  action: string | string[];
-  subject?: string | string[];
-  inverted?: boolean;
-};
-
 const buildAllowedActionMap = (scopes: OauthScope[], level: OauthScopeLevel) => {
   const allowed = new Map<string, Set<string>>();
   scopes
@@ -102,39 +92,8 @@ const buildAllowedActionMap = (scopes: OauthScope[], level: OauthScopeLevel) => 
   return allowed;
 };
 
-// A rule on the CASL "all" subject (e.g. org/project admin) fans out to every in-scope subject;
-// any other subject maps to itself only when it is in scope, otherwise to nothing.
-const resolveTargetSubjects = (ruleSubject: string | undefined, allowed: Map<string, Set<string>>): string[] => {
-  if (ruleSubject === CASL_ALL_SUBJECT) return [...allowed.keys()];
-  if (ruleSubject && allowed.has(ruleSubject)) return [ruleSubject];
-  return [];
-};
-
-// Intersects a CASL rule set with the actions permitted by the granted scopes. This is purely
-// subtractive: allow-rules are dropped if their subject is out of scope, and otherwise narrowed to
-// the scope-permitted actions (conditions are preserved, so resource constraints still apply).
-// Inverted ("cannot") rules are kept untouched because they only further restrict access.
-const intersectRulesWithScopes = <T extends TCaslRuleLike>(rules: T[], allowed: Map<string, Set<string>>): T[] =>
-  rules.flatMap((rule) => {
-    if (rule.inverted) return [rule];
-
-    const ruleSubjects = Array.isArray(rule.subject) ? rule.subject : [rule.subject];
-    const ruleActions = Array.isArray(rule.action) ? rule.action : [rule.action];
-    const grantsManage = ruleActions.includes(CASL_MANAGE_ACTION);
-
-    return ruleSubjects.flatMap((ruleSubject) =>
-      resolveTargetSubjects(ruleSubject, allowed).flatMap((subject) => {
-        const allowedActions = allowed.get(subject) ?? new Set<string>();
-        const newActions = grantsManage
-          ? [...allowedActions]
-          : ruleActions.filter((action) => allowedActions.has(action));
-        return newActions.length ? [{ ...rule, subject, action: newActions }] : [];
-      })
-    );
-  });
-
 export const applyOauthScopeToOrgRules = <T extends TCaslRuleLike>(rules: T[], scopes: OauthScope[]): T[] =>
-  intersectRulesWithScopes(rules, buildAllowedActionMap(scopes, "org"));
+  narrowRules({ rules, allowed: buildAllowedActionMap(scopes, "org") });
 
 export const applyOauthScopeToProjectRules = <T extends TCaslRuleLike>(rules: T[], scopes: OauthScope[]): T[] =>
-  intersectRulesWithScopes(rules, buildAllowedActionMap(scopes, "project"));
+  narrowRules({ rules, allowed: buildAllowedActionMap(scopes, "project") });
