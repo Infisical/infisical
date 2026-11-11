@@ -941,6 +941,12 @@ export type TAgentVaultSkillDetail = TAgentVaultSkill & {
 
 export type TListAgentVaultServicesDTO = {
   search?: string;
+  // Only services that need (true) or don't need (false) the caller's personal values.
+  requiresSetup?: boolean;
+  // Only services in bundles granted to the caller.
+  granted?: boolean;
+  orderBy?: "name" | "type" | "createdAt";
+  orderDirection?: "asc" | "desc";
   limit?: number;
   offset?: number;
 };

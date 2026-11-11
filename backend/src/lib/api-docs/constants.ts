@@ -4713,6 +4713,12 @@ export const AGENT_VAULT = {
     limit: "The number of services to return.",
     offset: "The number of services to skip.",
     totalCount: "The number of services that match, across every page.",
+    requiresSetup:
+      "true lists only the services that still need your personal values; false leaves them out. Leave it out to list both.",
+    granted:
+      "true lists only services in access bundles granted to you, leaving out ones an admin reaches only through their role.",
+    orderBy: "What to sort services by: name, type, or createdAt.",
+    orderDirection: "The sort direction, asc or desc.",
     description:
       "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it.",
     updateDescription:

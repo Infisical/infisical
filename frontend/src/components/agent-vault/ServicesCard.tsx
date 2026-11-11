@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -49,6 +49,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   OverflowBadgeList,
+  Pagination,
   Table,
   TableBody,
   TableCell,
@@ -70,7 +71,7 @@ import {
 import { TAgentVaultBundleRef, TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
-enum SortColumn {
+export enum ServiceSortColumn {
   Name = "name",
   Type = "type",
   Target = "target",
@@ -87,16 +88,34 @@ const sortTargetOf = (service: TAgentVaultService) =>
   isNativeService(service) ? service.host : service.hostPattern;
 
 const SORT_COMPARATORS: Record<
-  SortColumn,
+  ServiceSortColumn,
   (a: TAgentVaultService, b: TAgentVaultService) => number
 > = {
-  [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
-  [SortColumn.Type]: (a, b) => a.type.localeCompare(b.type),
-  [SortColumn.Target]: (a, b) => sortTargetOf(a).localeCompare(sortTargetOf(b)),
-  [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  [ServiceSortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
+  [ServiceSortColumn.Type]: (a, b) => a.type.localeCompare(b.type),
+  [ServiceSortColumn.Target]: (a, b) => sortTargetOf(a).localeCompare(sortTargetOf(b)),
+  [ServiceSortColumn.Created]: (a, b) =>
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 };
 
 type TListedService = TAgentVaultService & { accessBundles?: TAgentVaultBundleRef[] };
+
+export type TServicesServerPaging = {
+  search: string;
+  onSearchChange: (search: string) => void;
+  sortColumn: ServiceSortColumn;
+  sortDirection: "ascending" | "descending";
+  onSortChange: (column: ServiceSortColumn, direction: "ascending" | "descending" | "none") => void;
+  page: number;
+  perPage: number;
+  totalCount: number;
+  onChangePage: (page: number) => void;
+  onChangePerPage: (perPage: number) => void;
+  // Filters the page owns, shown beside the search.
+  filters?: ReactNode;
+  // Whether a filter other than the search narrows the list, for the empty state.
+  isFiltered?: boolean;
+};
 
 type Props = {
   // Set on a bundle's page: the services listed are that bundle's, and the row action takes one out of it rather
@@ -107,6 +126,9 @@ type Props = {
   onAdd: () => void;
   onEdit: (service: TListedService) => void;
   onSetUp: (service: TAgentVaultService) => void;
+  // Set when the page lists one page of a server-side search and sort, rather than every service at once.
+  serverPaging?: TServicesServerPaging;
+  emptyDescription?: string;
 };
 
 // Two hosts is what the column fits comfortably; the rest go behind the count so the table keeps its
@@ -197,20 +219,27 @@ export const ServicesCard = ({
   canManage,
   onAdd,
   onEdit,
-  onSetUp
+  onSetUp,
+  serverPaging,
+  emptyDescription: emptyDescriptionOverride
 }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const [search, setSearch] = useState("");
+  const [localSearch, setLocalSearch] = useState("");
+  const search = serverPaging?.search ?? localSearch;
+  const setSearch = serverPaging?.onSearchChange ?? setLocalSearch;
   const [serviceToDelete, setServiceToDelete] = useState<TListedService | null>(null);
   const deleteService = useDeleteAgentVaultService(projectId);
   const removeService = useRemoveAgentVaultAccessBundleService(projectId);
   const isBundle = Boolean(accessBundleId);
 
-  const [sortColumn, setSortColumn] = useState(SortColumn.Created);
-  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
+  const [localSortColumn, setSortColumn] = useState(ServiceSortColumn.Created);
+  const [localSortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
+  const sortColumn = serverPaging?.sortColumn ?? localSortColumn;
+  const sortDirection = serverPaging?.sortDirection ?? localSortDirection;
 
   const displayed = useMemo(() => {
+    if (serverPaging) return services;
     const term = search.trim().toLowerCase();
     // A bundle holds few services, so the type is matched by search ("mcp", "http") rather than a filter.
     const filtered = services.filter((service) =>
@@ -226,11 +255,18 @@ export const ServicesCard = ({
 
     const ordered = [...filtered].sort(SORT_COMPARATORS[sortColumn]);
     return sortDirection === "ascending" ? ordered : ordered.reverse();
-  }, [services, search, sortColumn, sortDirection]);
+  }, [services, search, sortColumn, sortDirection, serverPaging]);
 
-  const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
+  const handleSort = (
+    column: ServiceSortColumn,
+    direction: "ascending" | "descending" | "none"
+  ) => {
+    if (serverPaging) {
+      serverPaging.onSortChange(column, direction);
+      return;
+    }
     if (direction === "none") {
-      setSortColumn(SortColumn.Created);
+      setSortColumn(ServiceSortColumn.Created);
       setSortDirection("descending");
       return;
     }
@@ -238,15 +274,24 @@ export const ServicesCard = ({
     setSortDirection(direction);
   };
 
-  const sortIconClassName = (column: SortColumn) =>
+  const sortIconClassName = (column: ServiceSortColumn) =>
     twMerge(
       "size-3.5 transition-transform",
       sortColumn === column && sortDirection === "descending" && "rotate-180",
       sortColumn !== column && "opacity-30"
     );
 
-  let emptyDescription = "Try a different search term.";
-  if (services.length === 0) {
+  const hasAny = serverPaging
+    ? serverPaging.totalCount > 0 ||
+      Boolean(serverPaging.search.trim()) ||
+      Boolean(serverPaging.isFiltered)
+    : services.length > 0;
+  const isNarrowed = serverPaging
+    ? Boolean(serverPaging.search.trim()) || Boolean(serverPaging.isFiltered)
+    : Boolean(search.trim());
+  let emptyDescription = "Try a different search term or filter.";
+  if (!isNarrowed && emptyDescriptionOverride) emptyDescription = emptyDescriptionOverride;
+  else if (!isNarrowed) {
     emptyDescription = isBundle
       ? "Add services to give this bundle access to external hosts."
       : "Add a service for each API, MCP server, database or SSH server agents need.";
@@ -295,8 +340,8 @@ export const ServicesCard = ({
         )}
       </CardHeader>
 
-      {services.length > 0 && (
-        <CardContent>
+      {hasAny && (
+        <CardContent className="flex gap-2">
           <InputGroup>
             <InputGroupAddon>
               <SearchIcon />
@@ -308,6 +353,7 @@ export const ServicesCard = ({
               placeholder="Search services..."
             />
           </InputGroup>
+          {serverPaging?.filters}
         </CardContent>
       )}
 
@@ -316,11 +362,11 @@ export const ServicesCard = ({
           <Empty className="border">
             <EmptyHeader>
               <EmptyTitle>
-                {services.length === 0 ? "No services yet" : "No services match your search"}
+                {isNarrowed ? "No services match your search" : "No services yet"}
               </EmptyTitle>
               <EmptyDescription>{emptyDescription}</EmptyDescription>
             </EmptyHeader>
-            {canManage && services.length === 0 && (
+            {canManage && !isNarrowed && (
               <Button variant="av" onClick={onAdd}>
                 <PlusIcon />
                 Add Service
@@ -335,33 +381,37 @@ export const ServicesCard = ({
               <TableHead
                 isTruncatable
                 className="w-2/5"
-                sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
-                onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
+                sortDirection={sortColumn === ServiceSortColumn.Name ? sortDirection : "none"}
+                onSortChange={(direction) => handleSort(ServiceSortColumn.Name, direction)}
               >
                 Name
-                <ChevronDownIcon className={sortIconClassName(SortColumn.Name)} />
+                <ChevronDownIcon className={sortIconClassName(ServiceSortColumn.Name)} />
               </TableHead>
               <TableHead
-                sortDirection={sortColumn === SortColumn.Type ? sortDirection : "none"}
-                onSortChange={(direction) => handleSort(SortColumn.Type, direction)}
+                sortDirection={sortColumn === ServiceSortColumn.Type ? sortDirection : "none"}
+                onSortChange={(direction) => handleSort(ServiceSortColumn.Type, direction)}
               >
                 Type
-                <ChevronDownIcon className={sortIconClassName(SortColumn.Type)} />
+                <ChevronDownIcon className={sortIconClassName(ServiceSortColumn.Type)} />
               </TableHead>
-              <TableHead
-                sortDirection={sortColumn === SortColumn.Target ? sortDirection : "none"}
-                onSortChange={(direction) => handleSort(SortColumn.Target, direction)}
-              >
-                Target
-                <ChevronDownIcon className={sortIconClassName(SortColumn.Target)} />
-              </TableHead>
+              {serverPaging ? (
+                <TableHead>Target</TableHead>
+              ) : (
+                <TableHead
+                  sortDirection={sortColumn === ServiceSortColumn.Target ? sortDirection : "none"}
+                  onSortChange={(direction) => handleSort(ServiceSortColumn.Target, direction)}
+                >
+                  Target
+                  <ChevronDownIcon className={sortIconClassName(ServiceSortColumn.Target)} />
+                </TableHead>
+              )}
               {!isBundle && <TableHead>Access Bundles</TableHead>}
               <TableHead
-                sortDirection={sortColumn === SortColumn.Created ? sortDirection : "none"}
-                onSortChange={(direction) => handleSort(SortColumn.Created, direction)}
+                sortDirection={sortColumn === ServiceSortColumn.Created ? sortDirection : "none"}
+                onSortChange={(direction) => handleSort(ServiceSortColumn.Created, direction)}
               >
                 Created
-                <ChevronDownIcon className={sortIconClassName(SortColumn.Created)} />
+                <ChevronDownIcon className={sortIconClassName(ServiceSortColumn.Created)} />
               </TableHead>
               <TableHead className="w-0" />
               <TableHead variant="action" />
@@ -478,6 +528,18 @@ export const ServicesCard = ({
             ))}
           </TableBody>
         </Table>
+      )}
+
+      {serverPaging && serverPaging.totalCount > 0 && (
+        <CardContent className="-mt-5 pt-0">
+          <Pagination
+            count={serverPaging.totalCount}
+            page={serverPaging.page}
+            perPage={serverPaging.perPage}
+            onChangePage={serverPaging.onChangePage}
+            onChangePerPage={serverPaging.onChangePerPage}
+          />
+        </CardContent>
       )}
 
       <ConfirmationAlertDialog

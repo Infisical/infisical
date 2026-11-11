@@ -186,16 +186,12 @@ export const AgentVaultAccessBundlesPage = () => {
                 size="sm"
                 onClick={() =>
                   navigate({
-                    to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
-                    params: {
-                      orgId: currentOrg.id,
-                      projectId,
-                      accessBundleId: bundlesNeedingSetup[0].id
-                    }
+                    to: "/organizations/$orgId/projects/agent-vault/$projectId/services",
+                    params: { orgId: currentOrg.id, projectId }
                   })
                 }
               >
-                Open {bundlesNeedingSetup[0].name}
+                Set Up on Services
               </Button>
             </AlertAction>
           </AlertDescription>

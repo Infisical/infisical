@@ -4344,11 +4344,10 @@ describe("Agent Vault V1 Router", async () => {
       expect(read.statusCode).toBe(200);
       expect((read.json().service as TProjectService).accessBundles).toHaveLength(2);
 
-      // The bundle read keeps accessBundleId on each service, set to the bundle read.
+      // The bundle read lists the service, without an accessBundleId: a service is in any number of bundles.
       const bundleRead = await inject("GET", `/api/v1/agent-vault/access-bundles/${second.id}`);
-      expect(bundleRead.json().accessBundle.services).toEqual([
-        expect.objectContaining({ id: service.id, accessBundleId: second.id })
-      ]);
+      expect(bundleRead.json().accessBundle.services).toEqual([expect.objectContaining({ id: service.id })]);
+      expect(bundleRead.json().accessBundle.services[0]).not.toHaveProperty("accessBundleId");
 
       // A service with no bundle is still a project service.
       const loose = await createService([], {
@@ -4566,6 +4565,61 @@ describe("Agent Vault V1 Router", async () => {
       } finally {
         await member.cleanup();
       }
+    });
+
+    test("the service list filters by setup and grant, and sorts and pages on the server", async () => {
+      const granted = await createAccessBundle("ps-setup-granted");
+      const other = await createAccessBundle("ps-setup-other");
+      const needsToken = await createService([granted.id], {
+        name: "ps-setup-a-token",
+        hostPattern: "setup-a.example.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      const ready = await createService([granted.id], {
+        name: "ps-setup-b-ready",
+        hostPattern: "setup-b.example.com",
+        credential: { type: "passthrough" }
+      });
+      const elsewhere = await createService([other.id], {
+        name: "ps-setup-c-elsewhere",
+        hostPattern: "setup-c.example.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      const names = (res: Awaited<ReturnType<typeof inject>>) =>
+        (res.json().services as TProjectService[]).map((service) => service.name);
+
+      const member = await createMemberIdentity(`ps-setup-member-${Date.now()}`);
+      try {
+        await grant(granted.id, member.id);
+        const pending = await member.as("GET", `${servicesUrl}?search=ps-setup&requiresSetup=true`);
+        expect(pending.statusCode, pending.payload).toBe(200);
+        expect(pending.json().totalCount).toBe(1);
+        expect(names(pending)).toEqual([needsToken.name]);
+        expect(names(await member.as("GET", `${servicesUrl}?search=ps-setup&requiresSetup=false`))).toEqual([
+          ready.name
+        ]);
+
+        await saveToken(member.as, needsToken.id, "sk-member");
+        expect((await member.as("GET", `${servicesUrl}?search=ps-setup&requiresSetup=true`)).json().totalCount).toBe(0);
+      } finally {
+        await member.cleanup();
+      }
+
+      // An admin reaches every bundle, so their count covers all of them unless they ask for granted ones only.
+      expect(names(await inject("GET", `${servicesUrl}?search=ps-setup&requiresSetup=true`))).toEqual([
+        needsToken.name,
+        elsewhere.name
+      ]);
+      const grantedOnly = await inject("GET", `${servicesUrl}?search=ps-setup&requiresSetup=true&granted=true`);
+      expect(grantedOnly.statusCode).toBe(200);
+      // Creating a bundle grants it to its creator, so both still count.
+      expect(names(grantedOnly)).toEqual([needsToken.name, elsewhere.name]);
+
+      const descending = await inject("GET", `${servicesUrl}?search=ps-setup&orderBy=name&orderDirection=desc`);
+      expect(names(descending)).toEqual([elsewhere.name, ready.name, needsToken.name]);
+      const secondPage = await inject("GET", `${servicesUrl}?search=ps-setup&orderBy=name&limit=1&offset=1`);
+      expect(secondPage.json()).toMatchObject({ totalCount: 3 });
+      expect(names(secondPage)).toEqual([ready.name]);
     });
 
     test("a service can't take the name of an inline service in a live session on its bundle until that session ends", async () => {

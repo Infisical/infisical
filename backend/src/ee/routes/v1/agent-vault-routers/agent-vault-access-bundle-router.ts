@@ -192,10 +192,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         200: z.object({
           accessBundle: AccessBundleSchema.extend({
             services: agentVaultServiceResponseSchema(
-              {
-                accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-                personalValues: AgentVaultPersonalValuesSchema.nullable()
-              },
+              { personalValues: AgentVaultPersonalValuesSchema.nullable() },
               { optionalVariableReferences: true }
             ).array()
           })

@@ -262,7 +262,17 @@ export type TDeleteServiceDTO = TAgentVaultProjectScoped & {
 
 export type TServiceByIdDTO = TAgentVaultProjectScoped & { serviceId: string };
 
-export type TListServicesDTO = TAgentVaultProjectScoped & { search?: string; limit: number; offset: number };
+export type TListServicesDTO = TAgentVaultProjectScoped & {
+  search?: string;
+  // Only services that need (true) or don't need (false) the caller's personal values.
+  requiresSetup?: boolean;
+  // Only services in bundles granted to the caller, so an admin can leave out the ones they reach by role alone.
+  granted?: boolean;
+  orderBy?: "name" | "type" | "createdAt";
+  orderDirection?: "asc" | "desc";
+  limit: number;
+  offset: number;
+};
 
 export type TBundleServiceDTO = TAgentVaultProjectScoped & { accessBundleId: string; serviceId: string };
 

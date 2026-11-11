@@ -15,6 +15,8 @@ import { AgentVaultCredentialType } from "../agent-vault/agent-vault-enums";
 
 export type TAgentVaultServiceDALFactory = ReturnType<typeof agentVaultServiceDALFactory>;
 
+export type TAgentVaultServiceOrderBy = "name" | "type" | "createdAt";
+
 // A project's own service, not one sent with a session, so it always has a name.
 export type TAgentVaultCatalogService = TAgentVaultServices & { name: string };
 
@@ -115,10 +117,22 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     {
       projectId,
       serviceIds,
+      excludeServiceIds,
       search,
+      orderBy = "name",
+      orderDirection = "asc",
       limit,
       offset
-    }: { projectId: string; serviceIds: string[] | null; search?: string; limit: number; offset: number },
+    }: {
+      projectId: string;
+      serviceIds: string[] | null;
+      excludeServiceIds?: string[];
+      search?: string;
+      orderBy?: TAgentVaultServiceOrderBy;
+      orderDirection?: "asc" | "desc";
+      limit: number;
+      offset: number;
+    },
     tx?: Knex
   ): Promise<{ services: TAgentVaultCatalogService[]; totalCount: number }> => {
     if (serviceIds?.length === 0) return { services: [], totalCount: 0 };
@@ -127,6 +141,7 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
       const listed = () => {
         const query = conn(TableName.AgentVaultService).where({ projectId }).whereNull("sessionId");
         if (serviceIds) void query.whereIn("id", serviceIds);
+        if (excludeServiceIds?.length) void query.whereNotIn("id", excludeServiceIds);
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;
           void query.where((qb) => {
@@ -137,7 +152,10 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
       };
       const count = (await listed().count("id as count").first()) as { count: string } | undefined;
       const services = (await listed()
+        .orderBy(orderBy, orderDirection)
+        // A total order, so pages never repeat or skip a service that ties.
         .orderBy("name", "asc")
+        .orderBy("id", "asc")
         .limit(limit)
         .offset(offset)
         .select("*")) as TAgentVaultCatalogService[];

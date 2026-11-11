@@ -973,15 +973,13 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       description: bundle.description ?? null,
       createdAt: bundle.createdAt,
       updatedAt: bundle.updatedAt,
-      services: services.map((service) => ({
-        // The bundle the service was read through, which clients written before services left bundles still read.
-        accessBundleId: bundle.id,
-        ...viewService(
+      services: services.map((service) =>
+        viewService(
           service,
           { customHeaders, substitutions, variableReferences },
           { canReadVariables, status: statuses.find((entry) => entry.serviceId === service.id) }
         )
-      }))
+      )
     };
   };
 
@@ -2338,13 +2336,17 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   const $readServicesAccess = async (dto: { projectId: string; ctx: TGetAccessBundleDTO["ctx"] }) => {
-    const { permission, accessBundleIds } = await getAgentVaultReachability({ permissionService, membershipDAL }, dto);
+    const { permission, accessBundleIds, grantedAccessBundleIds } = await getAgentVaultGrantedReachability(
+      { permissionService, membershipDAL },
+      dto
+    );
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.Read,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
     return {
       accessBundleIds,
+      grantedAccessBundleIds,
       canReadVariables: permission.can(
         ProjectPermissionAgentVaultAccessBundleActions.Edit,
         ProjectPermissionSub.AgentVaultAccessBundles
@@ -2352,15 +2354,36 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     };
   };
 
-  const listServices = async ({ projectId, ctx, search, limit, offset }: TListServicesDTO) => {
-    const { accessBundleIds, canReadVariables } = await $readServicesAccess({ projectId, ctx });
-    const serviceIds = accessBundleIds ? await agentVaultServiceDAL.findIdsInBundles(accessBundleIds) : null;
+  // The list a member sets up their personal values from, so it can be narrowed to what still needs them. Setup is
+  // counted over the same bundles the list is scoped to, the way the bundle list counts it.
+  const listServices = async ({ projectId, ctx, requiresSetup, granted, ...page }: TListServicesDTO) => {
+    const { accessBundleIds, grantedAccessBundleIds, canReadVariables } = await $readServicesAccess({ projectId, ctx });
+    const scopeBundleIds = granted ? grantedAccessBundleIds : accessBundleIds;
+    let serviceIds = scopeBundleIds ? await agentVaultServiceDAL.findIdsInBundles(scopeBundleIds) : null;
+    let excludeServiceIds: string[] = [];
+
+    const owner = ownerOrNullOf(ctx);
+    if (requiresSetup !== undefined) {
+      const statuses = owner
+        ? await agentVaultPersonalValueService.findStatusesForOwner({
+            projectId,
+            owner,
+            accessBundleIds: scopeBundleIds,
+            withVariableReferences: false
+          })
+        : [];
+      const pendingIds = [
+        ...new Set(statuses.filter((status) => !status.isConfigured).map((status) => status.serviceId))
+      ];
+      if (requiresSetup) serviceIds = serviceIds ? serviceIds.filter((id) => pendingIds.includes(id)) : pendingIds;
+      else excludeServiceIds = pendingIds;
+    }
+
     const { services, totalCount } = await agentVaultServiceDAL.findForList({
       projectId,
       serviceIds,
-      search,
-      limit,
-      offset
+      excludeServiceIds,
+      ...page
     });
     return {
       services: await $viewServices({ projectId, ctx }, services, accessBundleIds, canReadVariables),

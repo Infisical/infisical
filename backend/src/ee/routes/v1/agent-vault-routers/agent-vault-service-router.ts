@@ -63,6 +63,18 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
       tags: [ApiDocsTags.AgentVaultServices],
       querystring: z.object({
         projectId: AgentVaultProjectIdSchema,
+        requiresSetup: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .optional()
+          .describe(AGENT_VAULT.SERVICE.requiresSetup),
+        granted: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .optional()
+          .describe(AGENT_VAULT.SERVICE.granted),
+        orderBy: z.enum(["name", "type", "createdAt"]).default("name").describe(AGENT_VAULT.SERVICE.orderBy),
+        orderDirection: z.enum(["asc", "desc"]).default("asc").describe(AGENT_VAULT.SERVICE.orderDirection),
         ...agentVaultListQuery(AGENT_VAULT.SERVICE)
       }),
       response: {

@@ -435,9 +435,6 @@ export const useListAgentVaultAccessBundlesRequiringSetup = (projectId: string) 
   useListAgentVaultAccessBundles(projectId, { requiresSetup: true, limit: 100 });
 
 // Only the count is read, so one row is enough.
-export const useListGrantedAgentVaultAccessBundlesRequiringSetup = (projectId: string) =>
-  useListAgentVaultAccessBundles(projectId, { requiresSetup: true, granted: true, limit: 1 });
-
 export const useGetAgentVaultAccessBundle = (projectId: string, accessBundleId: string) => {
   const { currentOrg } = useOrganization();
 
@@ -890,6 +887,10 @@ export const useListAgentVaultServices = (
     enabled
   });
 };
+
+// The services in bundles granted to the caller that still need their personal values, for the sidebar and banners.
+export const useListGrantedAgentVaultServicesRequiringSetup = (projectId: string) =>
+  useListAgentVaultServices(projectId, { requiresSetup: true, granted: true, limit: 1 });
 
 export const useGetAgentVaultService = (projectId: string, serviceId: string) => {
   const { currentOrg } = useOrganization();
