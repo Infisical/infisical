@@ -9,6 +9,7 @@ export type TAgentVaultResolveDALFactory = ReturnType<typeof agentVaultResolveDA
 export type TResolveServiceRow = {
   id: string;
   name: string;
+  description: string | null;
   accessBundleName: string;
   type: string;
   hostPattern: string;
@@ -35,6 +36,9 @@ export type TResolveSkillRow = {
 
 type TResolveScope = { sessionId: string; projectId: string; accessBundleIds: string[] | null };
 
+// A session found only on the primary is newer than the replica, and so are the bundle links written with it.
+type TResolveReadOptions = { onPrimary?: boolean };
+
 export const agentVaultResolveDALFactory = (db: TDbClient) => {
   // The session's bundles that the actor can still reach: the bundle set fixed at mint, intersected with the bundles
   // the actor's live grants allow (accessBundleIds, null when every bundle in the project is allowed). Services and
@@ -58,21 +62,23 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
    * The hot path, and an intersection: a session's bundle set is a ceiling fixed at mint, re-checked against
    * live grants on every resolve, so losing a grant empties a running session without touching its row.
    *
-   * Read on the replica, so replica lag adds to the one-poll-interval staleness promise.
+   * Read on the replica unless onPrimary, so replica lag adds to the one-poll-interval staleness promise.
    */
   const findResolvableServices = async (
     {
       serviceId,
+      onPrimary,
       ...scope
-    }: TResolveScope & {
-      // Narrows to one service, for a credential refresh that must stay inside the session's resolved set.
-      serviceId?: string;
-    },
+    }: TResolveScope &
+      TResolveReadOptions & {
+        // Narrows to one service, for a credential refresh that must stay inside the session's resolved set.
+        serviceId?: string;
+      },
     tx?: Knex
   ): Promise<TResolveServiceRow[]> => {
     if (scope.accessBundleIds?.length === 0) return [];
     try {
-      const query = reachableSessionBundles(tx || db.replicaNode(), scope).join(
+      const query = reachableSessionBundles(tx || (onPrimary ? db : db.replicaNode()), scope).join(
         TableName.AgentVaultService,
         `${TableName.AgentVaultService}.accessBundleId`,
         `${TableName.AgentVaultAccessBundle}.id`
@@ -84,6 +90,7 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         .select(
           db.ref("id").withSchema(TableName.AgentVaultService),
           db.ref("name").withSchema(TableName.AgentVaultService),
+          db.ref("description").withSchema(TableName.AgentVaultService),
           db.ref("type").withSchema(TableName.AgentVaultService),
           db.ref("hostPattern").withSchema(TableName.AgentVaultService),
           db.ref("config").withSchema(TableName.AgentVaultService),
@@ -151,5 +158,24 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { findResolvableServices, findSessionSkills };
+  // The session's bundles the actor can still reach, in the order they were minted with, whether or not they hold a
+  // service.
+  const findReachableBundles = async (
+    { onPrimary, ...scope }: TResolveScope & TResolveReadOptions,
+    tx?: Knex
+  ): Promise<{ id: string; name: string }[]> => {
+    if (scope.accessBundleIds?.length === 0) return [];
+    try {
+      return (await reachableSessionBundles(tx || (onPrimary ? db : db.replicaNode()), scope)
+        .select(
+          db.ref("id").withSchema(TableName.AgentVaultAccessBundle),
+          db.ref("name").withSchema(TableName.AgentVaultAccessBundle)
+        )
+        .orderBy(`${TableName.AgentVaultSessionAccessBundle}.position`, "asc")) as { id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find reachable agent vault session bundles" });
+    }
+  };
+
+  return { findResolvableServices, findSessionSkills, findReachableBundles };
 };

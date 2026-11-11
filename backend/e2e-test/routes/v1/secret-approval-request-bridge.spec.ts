@@ -1,11 +1,15 @@
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
+import {
+  createSecretChangePolicy,
+  deleteSecretChangePolicy,
+  seedLegacySecretApprovalPolicy
+} from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { SecretType, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
-import { ApprovalStatus, RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
+import { ApprovalStatus, RequestState } from "@app/ee/services/secret-change-request/secret-change-request-types";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 
 const getDb = () => (globalThis as unknown as { testDb: Knex }).testDb;
@@ -82,31 +86,28 @@ const mergeRequest = (id: string) =>
     body: {}
   });
 
-const createGlobalSystemPolicy = async () => {
-  const res = await testServer.inject({
-    method: "POST",
-    url: "/api/v2/secret-approvals",
-    headers: authHeaders(),
-    body: {
-      projectId,
-      environment: envSlug,
-      secretPath: GLOBAL_SYSTEM_PATH,
-      approvers: [{ type: ApproverType.User, id: seedData1.id }],
-      approvals: 1,
-      name: "global-system-bridge-test-policy"
-    }
-  });
-  expect(res.statusCode).toBe(200);
-  return res.json().approval.id as string;
-};
+const createGlobalSystemPolicy = async () =>
+  (
+    await createSecretChangePolicy({
+      body: {
+        projectId,
+        environment: envSlug,
+        secretPath: GLOBAL_SYSTEM_PATH,
+        approvers: [{ type: ApproverType.User, id: seedData1.id }],
+        approvals: 1,
+        name: "global-system-bridge-test-policy"
+      },
+      authToken: jwtAuthToken
+    })
+  ).id;
 
-describe("Secret approval request bridge routing", () => {
+describe("Secret approval request routing", () => {
   let legacyPolicyId: string;
   let globalSystemPolicyId: string;
   let globalSystemFolderId: string;
   const globalSystemRequestIds: string[] = [];
-  const legacyTwinRequestIds: string[] = [];
-  const secretKeys = ["SAR_BRIDGE_MERGE", "SAR_BRIDGE_STATUS", "SAR_BRIDGE_LIST_LEGACY", "SAR_BRIDGE_STATUS_LEGACY"];
+  const legacyRequestIds: string[] = [];
+  const secretKeys = ["SAR_BRIDGE_DIRECT"];
 
   beforeAll(async () => {
     const db = getDb();
@@ -133,16 +134,9 @@ describe("Secret approval request bridge routing", () => {
 
   afterAll(async () => {
     const db = getDb();
-    const res = await testServer.inject({
-      method: "DELETE",
-      url: `/api/v1/secret-approvals/${legacyPolicyId}`,
-      headers: authHeaders()
-    });
-    if (res.statusCode !== 200 && res.statusCode !== 404) {
-      throw new Error(`cleanup: unexpected ${res.statusCode} deleting policy ${legacyPolicyId} - ${res.payload}`);
-    }
     await Promise.all(secretKeys.map((key) => deleteSecret(key)));
-    await db(TableName.SecretApprovalRequest).whereIn("id", legacyTwinRequestIds).del();
+    await db(TableName.SecretApprovalRequest).whereIn("id", legacyRequestIds).del();
+    await db(TableName.SecretApprovalPolicy).where({ id: legacyPolicyId }).del();
     await db(TableName.ApprovalRequests).whereIn("id", globalSystemRequestIds).del();
     await db(TableName.ApprovalPolicies).where({ id: globalSystemPolicyId }).del();
     await deleteFolder({
@@ -155,40 +149,46 @@ describe("Secret approval request bridge routing", () => {
     });
   });
 
-  test("a request created on a legacy policy is reviewed and merged by the legacy service", async () => {
-    const createRes = await createSecret("SAR_BRIDGE_MERGE", "value");
+  test("a policy that only exists in the legacy tables does not gate a write", async () => {
+    const createRes = await createSecret("SAR_BRIDGE_DIRECT", "value");
     expect(createRes.statusCode).toBe(200);
-    const { approval } = createRes.json();
-    expect(approval).toBeDefined();
-    expect(approval.policyId).toBe(legacyPolicyId);
-
-    const detailsRes = await getRequest(approval.id);
-    expect(detailsRes.statusCode).toBe(200);
-    expect(detailsRes.json().approval.id).toBe(approval.id);
-    expect(detailsRes.json().approval.policy.id).toBe(legacyPolicyId);
-
-    const reviewRes = await reviewRequest(approval.id, ApprovalStatus.APPROVED);
-    expect(reviewRes.statusCode).toBe(200);
-    expect(reviewRes.json().review.status).toBe(ApprovalStatus.APPROVED);
-
-    const mergeRes = await mergeRequest(approval.id);
-    expect(mergeRes.statusCode).toBe(200);
-    expect(mergeRes.json().approval.hasMerged).toBe(true);
+    expect(createRes.json().approval).toBeUndefined();
+    expect(createRes.json().secret).toMatchObject({ secretKey: "SAR_BRIDGE_DIRECT" });
+    expect(await getDb()(TableName.SecretApprovalRequest).where({ policyId: legacyPolicyId })).toEqual([]);
   });
 
-  test("a request created on a legacy policy is closed and reopened by the legacy service", async () => {
-    const createRes = await createSecret("SAR_BRIDGE_STATUS", "value");
-    expect(createRes.statusCode).toBe(200);
-    const { approval } = createRes.json();
-    expect(approval.policyId).toBe(legacyPolicyId);
+  test("a request that only exists in the legacy tables is not listed, counted or served", async () => {
+    const before = await countRequests();
+    expect(before.statusCode).toBe(200);
 
-    const closeRes = await setRequestStatus(approval.id, RequestState.Closed);
-    expect(closeRes.statusCode).toBe(200);
-    expect(closeRes.json().approval.status).toBe(RequestState.Closed);
+    const [legacyRequest] = await getDb()(TableName.SecretApprovalRequest)
+      .insert({
+        policyId: legacyPolicyId,
+        folderId: globalSystemFolderId,
+        slug: "sar-bridge-legacy-only",
+        status: RequestState.Open,
+        committerUserId: seedData1.id
+      })
+      .returning("*");
+    legacyRequestIds.push(legacyRequest.id);
 
-    const reopenRes = await setRequestStatus(approval.id, RequestState.Open);
-    expect(reopenRes.statusCode).toBe(200);
-    expect(reopenRes.json().approval.status).toBe(RequestState.Open);
+    const listRes = await listRequests();
+    expect(listRes.statusCode).toBe(200);
+    const listed: { approvals: TListedRequest[] } = listRes.json();
+    expect(listed.approvals.map((row) => row.id)).not.toContain(legacyRequest.id);
+
+    const after = await countRequests();
+    expect(after.statusCode).toBe(200);
+    expect(after.json().approvals).toEqual(before.json().approvals);
+
+    expect((await getRequest(legacyRequest.id)).statusCode).toBe(404);
+    expect((await reviewRequest(legacyRequest.id, ApprovalStatus.APPROVED)).statusCode).toBe(404);
+    expect((await setRequestStatus(legacyRequest.id, RequestState.Closed)).statusCode).toBe(404);
+    expect((await mergeRequest(legacyRequest.id)).statusCode).toBe(404);
+    expect(await getDb()(TableName.SecretApprovalRequest).where({ id: legacyRequest.id }).first()).toMatchObject({
+      status: RequestState.Open,
+      hasMerged: false
+    });
   });
 
   test("a secret written under a policy on the global approval system opens a secret change request there", async () => {
@@ -215,8 +215,6 @@ describe("Secret approval request bridge routing", () => {
       requesterEmail: seedData1.email,
       currentStep: 1
     });
-    expect(await db(TableName.SecretApprovalRequest).where({ id: approval.id }).first()).toBeUndefined();
-
     const change = await db(TableName.SecretChangeRequests).where({ approvalRequestId: approval.id }).first();
     expect(change).toMatchObject({ slug: approval.slug, folderId: globalSystemFolderId, hasMerged: false });
 
@@ -266,10 +264,7 @@ describe("Secret approval request bridge routing", () => {
     });
   });
 
-  test("the list and the count return requests from both systems for one project", async () => {
-    const legacyRes = await createSecret("SAR_BRIDGE_LIST_LEGACY", "value");
-    expect(legacyRes.statusCode).toBe(200);
-    const legacyRequest: TListedRequest = legacyRes.json().approval;
+  test("the list and the count return requests on the global approval system", async () => {
     const globalRes = await createSecret("SAR_BRIDGE_LIST_GLOBAL", "value", GLOBAL_SYSTEM_PATH);
     expect(globalRes.statusCode).toBe(200);
     const globalRequest: TListedRequest = globalRes.json().approval;
@@ -278,18 +273,11 @@ describe("Secret approval request bridge routing", () => {
     const listRes = await listRequests();
     expect(listRes.statusCode).toBe(200);
     const listed: { approvals: TListedRequest[]; totalCount: number } = listRes.json();
-    expect(listed.totalCount).toBeGreaterThanOrEqual(2);
-    expect(listed.approvals.find((row) => row.id === legacyRequest.id)).toMatchObject({
-      policy: { id: legacyPolicyId },
-      environment: envSlug,
-      status: RequestState.Open,
-      committerUser: { userId: seedData1.id },
-      approvers: [{ userId: seedData1.id }],
-      commits: [{ op: "create" }]
-    });
+    expect(listed.totalCount).toBeGreaterThanOrEqual(1);
     expect(listed.approvals.find((row) => row.id === globalRequest.id)).toMatchObject({
       policy: { id: globalSystemPolicyId, secretPath: GLOBAL_SYSTEM_PATH, deletedAt: null },
       environment: envSlug,
+      secretPath: GLOBAL_SYSTEM_PATH,
       status: RequestState.Open,
       committerUser: { userId: seedData1.id },
       approvers: [{ userId: seedData1.id }],
@@ -300,14 +288,12 @@ describe("Secret approval request bridge routing", () => {
     const openRes = await listRequests(`&status=${RequestState.Open}`);
     expect(openRes.statusCode).toBe(200);
     const open: { approvals: TListedRequest[] } = openRes.json();
-    expect(open.approvals.map((row) => row.id)).toEqual(
-      expect.arrayContaining([legacyRequest.id, globalRequest.id]) as string[]
-    );
+    expect(open.approvals.map((row) => row.id)).toContain(globalRequest.id);
     expect(open.approvals.every((row) => row.status === RequestState.Open)).toBe(true);
 
     const countRes = await countRequests();
     expect(countRes.statusCode).toBe(200);
-    expect(countRes.json().approvals.open).toBeGreaterThanOrEqual(2);
+    expect(countRes.json().approvals.open).toBeGreaterThanOrEqual(1);
   });
 
   test("a migrated request's legacy twin is not listed, counted or read", async () => {
@@ -328,7 +314,7 @@ describe("Secret approval request bridge routing", () => {
       committerUserId: seedData1.id
     };
     await getDb()(TableName.SecretApprovalRequest).insert(legacyTwin);
-    legacyTwinRequestIds.push(requestId);
+    legacyRequestIds.push(requestId);
 
     const listRes = await listRequests();
     expect(listRes.statusCode).toBe(200);
@@ -346,29 +332,8 @@ describe("Secret approval request bridge routing", () => {
     expect(getRes.json().approval).toMatchObject({ id: requestId, policy: { id: globalSystemPolicyId } });
   });
 
-  test("a status change keeps a request on the system it was opened on", async () => {
+  test("a request on the global approval system is closed and reopened in place", async () => {
     const db = getDb();
-
-    const legacyRes = await createSecret("SAR_BRIDGE_STATUS_LEGACY", "value");
-    expect(legacyRes.statusCode).toBe(200);
-    const legacyRequest: TListedRequest = legacyRes.json().approval;
-    const closeLegacyRes = await setRequestStatus(legacyRequest.id, RequestState.Closed);
-    expect(closeLegacyRes.statusCode).toBe(200);
-    expect(closeLegacyRes.json().approval.status).toBe(RequestState.Closed);
-    expect(await db(TableName.SecretApprovalRequest).where({ id: legacyRequest.id }).first()).toMatchObject({
-      status: RequestState.Closed,
-      statusChangedByUserId: seedData1.id
-    });
-    expect(await db(TableName.ApprovalRequests).where({ id: legacyRequest.id }).first()).toBeUndefined();
-    expect(
-      await db(TableName.SecretChangeRequests).where({ approvalRequestId: legacyRequest.id }).first()
-    ).toBeUndefined();
-    const reopenLegacyRes = await setRequestStatus(legacyRequest.id, RequestState.Open);
-    expect(reopenLegacyRes.statusCode).toBe(200);
-    expect(await db(TableName.SecretApprovalRequest).where({ id: legacyRequest.id }).first()).toMatchObject({
-      status: RequestState.Open
-    });
-    expect(await db(TableName.ApprovalRequests).where({ id: legacyRequest.id }).first()).toBeUndefined();
 
     const globalRes = await createSecret("SAR_BRIDGE_STATUS_GLOBAL", "value", GLOBAL_SYSTEM_PATH);
     expect(globalRes.statusCode).toBe(200);
@@ -388,7 +353,6 @@ describe("Secret approval request bridge routing", () => {
     expect(
       await db(TableName.SecretChangeRequests).where({ approvalRequestId: globalRequest.id }).first()
     ).toMatchObject({ statusChangedByUserId: seedData1.id, hasMerged: false });
-    expect(await db(TableName.SecretApprovalRequest).where({ id: globalRequest.id }).first()).toBeUndefined();
 
     const closeAgainRes = await setRequestStatus(globalRequest.id, RequestState.Closed);
     expect(closeAgainRes.statusCode).toBe(400);
@@ -400,7 +364,6 @@ describe("Secret approval request bridge routing", () => {
     expect(await db(TableName.ApprovalRequests).where({ id: globalRequest.id }).first()).toMatchObject({
       status: ApprovalRequestStatus.Open
     });
-    expect(await db(TableName.SecretApprovalRequest).where({ id: globalRequest.id }).first()).toBeUndefined();
   });
 
   test("deleting a policy on the global approval system closes its open requests and keeps them readable", async () => {
@@ -411,12 +374,7 @@ describe("Secret approval request bridge routing", () => {
     const request: TListedRequest = createRes.json().approval;
     globalSystemRequestIds.push(request.id);
 
-    const deleteRes = await testServer.inject({
-      method: "DELETE",
-      url: `/api/v2/secret-approvals/${globalSystemPolicyId}`,
-      headers: authHeaders()
-    });
-    expect(deleteRes.statusCode).toBe(200);
+    await deleteSecretChangePolicy({ policyId: globalSystemPolicyId, authToken: jwtAuthToken });
 
     expect(await db(TableName.ApprovalPolicies).where({ id: globalSystemPolicyId }).first()).toBeUndefined();
     expect(
