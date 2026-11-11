@@ -1,8 +1,13 @@
 import type { MongoAbility, RawRuleOf } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
+import ms from "ms";
 
 import {
+  PamAccessGrantStatus,
+  PamAccessRequestDecision,
+  PamAccessRequestStatus,
   PamAccessStatus,
+  PamAccessType,
   PamAccountAccessibilityIssue,
   PamAccountType,
   PamAccountWarning,
@@ -11,6 +16,7 @@ import {
   PamResourcePermissionActions,
   PamResourcePermissionSub,
   type PamFolderPermissionSet,
+  type TPamAccessRequest,
   type TPamIdentityMember,
   type TPamAccountListItem,
   type TPamAccountTypeMetadata,
@@ -282,6 +288,291 @@ const accounts: TPamAccountListItem[] = seeds.map((seed, index) => {
 const folderStore = createFixtureStore(folders);
 const accountStore = createFixtureStore(accounts);
 
+type RequestSeed = Partial<TPamAccessRequest> & {
+  account: string;
+  minutesAgo: number;
+  duration: string;
+  reason?: string;
+};
+
+const autoApprovalRules = {
+  ticket: {
+    id: uuid("c1", 1),
+    name: "Linked change ticket",
+    passed: true,
+    conditions: [
+      {
+        id: uuid("c2", 1),
+        description: "Ticket is in the Implement state",
+        passed: true,
+        reason: null
+      },
+      {
+        id: uuid("c2", 2),
+        description: "Ticket is assigned to the requester",
+        passed: true,
+        reason: null
+      }
+    ]
+  },
+  window: {
+    id: uuid("c1", 2),
+    name: "Change window",
+    passed: false,
+    conditions: [
+      {
+        id: uuid("c2", 3),
+        description: "Ticket's planned window includes now",
+        passed: false,
+        reason: "The planned window starts in 3 hours"
+      },
+      {
+        id: uuid("c2", 4),
+        description: "Ticket risk is Low or Moderate",
+        passed: false,
+        reason: "Ticket risk is High"
+      }
+    ]
+  },
+  oncall: {
+    id: uuid("c1", 3),
+    name: "On-call engineer",
+    passed: false,
+    conditions: [
+      {
+        id: uuid("c2", 5),
+        description: "Requester is on call for the service",
+        passed: false,
+        reason: "No PagerDuty schedule lists the requester right now"
+      }
+    ]
+  }
+};
+
+const ticketInput = (value: string) => ({
+  label: "ServiceNow change",
+  value,
+  url: `https://acme.service-now.com/change_request.do?number=${value}`
+});
+
+const requestSeeds: RequestSeed[] = [
+  {
+    account: "billing-admin",
+    minutesAgo: 6,
+    duration: "1h",
+    reason: "Backfill invoice totals for the October close",
+    requesterId: "u-miguel",
+    requesterName: "Miguel Ortega",
+    requesterEmail: "miguel@acme.dev",
+    accessType: PamAccessType.Session
+  },
+  {
+    account: "ledger-sa",
+    minutesAgo: 18,
+    duration: "30m",
+    reason: "Rotate the reporting role password after the audit finding",
+    requesterId: "u-priya",
+    requesterName: "Priya Raman",
+    requesterEmail: "priya@acme.dev",
+    accessType: PamAccessType.Credential
+  },
+  {
+    account: "aws-org-admin",
+    minutesAgo: 42,
+    duration: "2h",
+    reason: "Apply the SCP change in CHG0031877",
+    requesterId: "u-jonas",
+    requesterName: "Jonas Weber",
+    requesterEmail: "jonas@acme.dev",
+    accessType: PamAccessType.Session,
+    autoApproval: {
+      approvedAt: null,
+      approvedByRuleId: null,
+      inputs: [ticketInput("CHG0031877")],
+      rules: [autoApprovalRules.window, autoApprovalRules.oncall]
+    }
+  },
+  {
+    account: "reporting-oracle",
+    minutesAgo: 75,
+    duration: "4h",
+    reason: "Quarterly revenue export",
+    requesterId: "u-sarah",
+    requesterName: "Sarah Lin",
+    requesterEmail: "sarah@acme.dev",
+    accessType: PamAccessType.Session
+  },
+  {
+    account: "dc01-administrator",
+    minutesAgo: 130,
+    duration: "15m",
+    requesterId: null,
+    machineIdentityId: uuid("i0", 1),
+    requesterName: "deploy-bot",
+    requesterEmail: "",
+    accessType: PamAccessType.Session
+  },
+  {
+    account: "billing-admin",
+    minutesAgo: 190,
+    duration: "4h",
+    reason: "Investigate the duplicate charge incident",
+    requesterId: "u-amara",
+    requesterName: "Amara Okafor",
+    requesterEmail: "amara@acme.dev",
+    accessType: PamAccessType.Session,
+    status: PamAccessRequestStatus.Approved,
+    grantId: uuid("g0", 1),
+    grantExpiresAt: ahead(50),
+    grantStatus: PamAccessGrantStatus.Active
+  },
+  {
+    account: "aws-org-admin",
+    minutesAgo: 260,
+    duration: "1h",
+    reason: "Roll out the CloudTrail retention change",
+    requesterId: "u-jonas",
+    requesterName: "Jonas Weber",
+    requesterEmail: "jonas@acme.dev",
+    accessType: PamAccessType.Session,
+    status: PamAccessRequestStatus.Approved,
+    grantId: uuid("g0", 2),
+    grantExpiresAt: ahead(20),
+    grantStatus: PamAccessGrantStatus.Active,
+    autoApprovedAt: ago(259),
+    autoApproval: {
+      approvedAt: ago(259),
+      approvedByRuleId: autoApprovalRules.ticket.id,
+      inputs: [ticketInput("CHG0031802")],
+      rules: [autoApprovalRules.ticket, autoApprovalRules.window]
+    }
+  },
+  {
+    account: "ledger-sa",
+    minutesAgo: 60 * 7,
+    duration: "2h",
+    requesterId: "u-priya",
+    requesterName: "Priya Raman",
+    requesterEmail: "priya@acme.dev",
+    accessType: PamAccessType.Session,
+    status: PamAccessRequestStatus.Approved,
+    grantId: uuid("g0", 3),
+    grantExpiresAt: ahead(30),
+    grantStatus: PamAccessGrantStatus.Active,
+    isBreakGlass: true,
+    bypassReason: "Payments are failing in production and no approver is online"
+  },
+  {
+    account: "dc01-administrator",
+    minutesAgo: 60 * 20,
+    duration: "1h",
+    reason: "Reset a locked service account",
+    requesterId: "u-miguel",
+    requesterName: "Miguel Ortega",
+    requesterEmail: "miguel@acme.dev",
+    accessType: PamAccessType.Credential,
+    status: PamAccessRequestStatus.Approved,
+    grantId: uuid("g0", 4),
+    grantExpiresAt: ago(60 * 18),
+    grantStatus: PamAccessGrantStatus.Active
+  },
+  {
+    account: "reporting-oracle",
+    minutesAgo: 60 * 26,
+    duration: "8h",
+    reason: "Ad hoc analysis",
+    requesterId: "u-amara",
+    requesterName: "Amara Okafor",
+    requesterEmail: "amara@acme.dev",
+    accessType: PamAccessType.Session,
+    status: PamAccessRequestStatus.Approved,
+    grantId: uuid("g0", 5),
+    grantExpiresAt: ahead(60),
+    grantStatus: PamAccessGrantStatus.Revoked
+  },
+  {
+    account: "ledger-sa",
+    minutesAgo: 60 * 30,
+    duration: "1d",
+    reason: "Need it for the week",
+    requesterId: "u-jonas",
+    requesterName: "Jonas Weber",
+    requesterEmail: "jonas@acme.dev",
+    accessType: PamAccessType.Credential,
+    status: PamAccessRequestStatus.Rejected
+  },
+  {
+    account: "aws-org-admin",
+    minutesAgo: 60 * 50,
+    duration: "1h",
+    requesterId: null,
+    requesterName: "Deleted identity",
+    requesterEmail: "",
+    accessType: PamAccessType.Session,
+    status: PamAccessRequestStatus.Expired
+  },
+  {
+    account: "billing-admin",
+    minutesAgo: 60 * 72,
+    duration: "3600000ms",
+    reason: "Raised from the CLI by mistake",
+    requesterId: "u-priya",
+    requesterName: "Priya Raman",
+    requesterEmail: "priya@acme.dev",
+    status: PamAccessRequestStatus.Cancelled
+  }
+];
+
+const accessRequests: TPamAccessRequest[] = requestSeeds.map(
+  ({ account: accountName, minutesAgo, duration, reason, ...seed }, index) => {
+    const account = accounts.find((entry) => entry.name === accountName) ?? accounts[0];
+    return {
+      id: uuid("r1", index + 1),
+      projectId: DEMO_PAM_PROJECT_ID,
+      policyId: uuid("p0", 1),
+      requesterId: null,
+      requesterName: "",
+      requesterEmail: "",
+      type: "pam-access",
+      status: PamAccessRequestStatus.Pending,
+      justification: reason ?? null,
+      currentStep: 1,
+      requestData: {
+        version: 1,
+        requestData: {
+          accountId: account.id,
+          folderId: account.folderId,
+          reason,
+          duration,
+          accessType: seed.accessType
+        }
+      },
+      expiresAt: null,
+      scopeType: null,
+      scopeId: null,
+      createdAt: ago(minutesAgo),
+      updatedAt: ago(minutesAgo),
+      accountName: account.name,
+      accountType: account.accountType as PamAccountType,
+      folderName: account.folderName ?? undefined,
+      host:
+        account.accountType === PamAccountType.AwsIam
+          ? undefined
+          : `${account.name}.internal.acme.dev`,
+      grantId: null,
+      grantExpiresAt: null,
+      grantStatus: null,
+      isBreakGlass: false,
+      bypassReason: null,
+      autoApprovedAt: null,
+      autoApproval: null,
+      ...seed
+    };
+  }
+);
+
+const accessRequestStore = createFixtureStore(accessRequests);
+
 const PAM_PROJECT_TYPE = ProjectType.PAM;
 
 const memberFolderIds = new Set(
@@ -465,5 +756,53 @@ export const pamDemo: PamAdapter = {
       mutateAsync: ({ identityId, projectId }) =>
         remove.mutateAsync({ identityId, projectId, projectType: PAM_PROJECT_TYPE })
     };
-  }
+  },
+  usePendingMyApproval: () => ({
+    data: accessRequestStore.use(),
+    isPending: false,
+    error: null
+  }),
+  useReviewAccessRequest: () => ({
+    isPending: false,
+    mutateAsync: async ({ requestId, status }) => {
+      const request = accessRequestStore.get().find((entry) => entry.id === requestId);
+      if (!request || request.status !== PamAccessRequestStatus.Pending)
+        throw new Error("This request has already been reviewed");
+      const grantMs = ms(request.requestData?.requestData.duration ?? "1h");
+      const approved = status === PamAccessRequestDecision.Approved;
+      accessRequestStore.update((current) =>
+        current.map((entry) =>
+          entry.id === requestId
+            ? {
+                ...entry,
+                status: approved
+                  ? PamAccessRequestStatus.Approved
+                  : PamAccessRequestStatus.Rejected,
+                grantId: approved ? uuid("g1", current.indexOf(entry) + 1) : null,
+                grantExpiresAt: approved
+                  ? new Date(
+                      Date.now() + (typeof grantMs === "number" ? grantMs : ms("1h"))
+                    ).toISOString()
+                  : null,
+                grantStatus: approved ? PamAccessGrantStatus.Active : null
+              }
+            : entry
+        )
+      );
+      return {};
+    }
+  }),
+  useRevokeAccessRequest: () => ({
+    isPending: false,
+    mutateAsync: async ({ grantId }) => {
+      accessRequestStore.update((current) =>
+        current.map((entry) =>
+          entry.grantId === grantId
+            ? { ...entry, grantStatus: PamAccessGrantStatus.Revoked }
+            : entry
+        )
+      );
+      return {};
+    }
+  })
 };
