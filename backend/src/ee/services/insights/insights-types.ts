@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import {
   OrgAuthMethodDistributionSchema,
@@ -44,7 +44,7 @@ export type TGetInsightsCountsDTO = {
 
 // Org-scoped insights: aggregates spanning every secret management project in the organization.
 
-export type TOrgInsightsDTO = TOrgPermission;
+export type TOrgInsightsDTO = { orgId: string } & TActorInput;
 
 export type TGetOrgSecretsDuplicationDTO = TOrgInsightsDTO;
 

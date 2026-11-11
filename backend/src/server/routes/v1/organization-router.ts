@@ -137,11 +137,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const organization = await server.services.org.findOrganizationById({
-        userId: req.permission.id,
-        orgId: req.params.organizationId,
-        actorAuthMethod: req.permission.authMethod,
-        rootOrgId: req.permission.rootOrgId,
-        actorOrgId: req.permission.orgId
+        actor: req.permission,
+        orgId: req.params.organizationId
       });
       return { organization };
     }
@@ -354,10 +351,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           eventType: req.query.eventType,
           eventClass: req.query.eventClass
         },
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actor: req.permission.type
+        actor: req.permission
       });
 
       if (req.query.offset === 0) {
@@ -419,11 +413,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.auditLog.getAuditLogPostgresStorageStatus({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        orgId: req.permission.orgId
+        actor: req.permission
       });
     }
   });
@@ -454,11 +444,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const users = await server.services.org.findAllOrgMembers({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.params.organizationId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission,
+        orgId: req.params.organizationId
       });
       return { users: users.map((el) => ({ ...el, status: el.status || OrgMembershipStatus.Accepted })) };
     }
@@ -503,11 +490,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const users = await server.services.org.listOrgUserAccess({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.params.organizationId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission,
+        orgId: req.params.organizationId
       });
       return { users };
     }
@@ -608,10 +592,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const organization = await server.services.org.updateOrg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         orgId: req.params.organizationId,
         data: req.body
       });
@@ -650,10 +631,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.findIncidentContacts(
-        req.permission.id,
-        req.params.organizationId,
-        req.permission.authMethod,
-        req.permission.orgId
+        req.permission,
+        req.params.organizationId
       );
       return { incidentContactsOrg };
     }
@@ -678,11 +657,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.createIncidentContact(
-        req.permission.id,
+        req.permission,
         req.params.organizationId,
-        req.body.email,
-        req.permission.authMethod,
-        req.permission.orgId
+        req.body.email
       );
       return { incidentContactsOrg };
     }
@@ -706,11 +683,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const incidentContactsOrg = await req.server.services.org.deleteIncidentContact(
-        req.permission.id,
+        req.permission,
         req.params.organizationId,
-        req.params.incidentContactId,
-        req.permission.authMethod,
-        req.permission.orgId
+        req.params.incidentContactId
       );
       return { incidentContactsOrg };
     }
@@ -745,11 +720,8 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const groups = await server.services.org.getOrgGroups({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.params.organizationId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission,
+        orgId: req.params.organizationId
       });
 
       return { groups };

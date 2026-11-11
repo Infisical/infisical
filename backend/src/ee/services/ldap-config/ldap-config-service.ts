@@ -1,4 +1,3 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import {
@@ -12,7 +11,11 @@ import {
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -66,7 +69,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { isIdpAuthoritativeForDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TLdapConfigDALFactory } from "./ldap-config-dal";
 import {
   TCreateLdapCfgDTO,
@@ -121,7 +123,7 @@ type TLdapConfigServiceFactoryDep = {
     | "findUserEncKeyByUserId"
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseDomain: TLicenseDomain;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -158,7 +160,7 @@ export const ldapConfigServiceFactory = ({
   userDAL,
   userAliasDAL,
   additionalPrivilegeDAL,
-  permissionService,
+  organizationsDomain,
   licenseDomain,
   tokenService,
   smtpService,
@@ -174,10 +176,7 @@ export const ldapConfigServiceFactory = ({
 }: TLdapConfigServiceFactoryDep) => {
   const createLdapCfg = async ({
     actor,
-    actorId,
     orgId,
-    actorOrgId,
-    actorAuthMethod,
     isActive,
     url,
     bindDN,
@@ -191,15 +190,12 @@ export const ldapConfigServiceFactory = ({
     clientCertificate,
     clientKeyCertificate
   }: TCreateLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await organizationsDomain.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Ldap });
 
     const plan = await licenseDomain.getPlan(orgId);
     if (!plan.ldap)
@@ -332,11 +328,8 @@ export const ldapConfigServiceFactory = ({
 
   const updateLdapCfg = async ({
     actor,
-    actorId,
     orgId,
-    actorOrgId,
     isActive,
-    actorAuthMethod,
     url,
     bindDN,
     bindPass,
@@ -349,15 +342,12 @@ export const ldapConfigServiceFactory = ({
     clientCertificate,
     clientKeyCertificate
   }: TUpdateLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await organizationsDomain.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Ldap });
 
     const plan = await licenseDomain.getPlan(orgId);
     if (!plan.ldap)
@@ -466,22 +456,13 @@ export const ldapConfigServiceFactory = ({
     return config;
   };
 
-  const getLdapCfgWithPermissionCheck = async ({
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+  const getLdapCfgWithPermissionCheck = async ({ actor, orgId }: TGetLdapCfgDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Ldap });
     const ldap = await getLdapCfg({ orgId });
     const { clientKeyCertificate, ...rest } = ldap;
     return {
@@ -915,23 +896,13 @@ export const ldapConfigServiceFactory = ({
     }
   };
 
-  const getLdapGroupMaps = async ({
-    ldapConfigId,
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetLdapGroupMapsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+  const getLdapGroupMaps = async ({ ldapConfigId, actor, orgId }: TGetLdapGroupMapsDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Ldap });
 
     const ldapConfig = await ldapConfigDAL.findOne({
       id: ldapConfigId,
@@ -949,25 +920,13 @@ export const ldapConfigServiceFactory = ({
     return groupMaps;
   };
 
-  const createLdapGroupMap = async ({
-    ldapConfigId,
-    ldapGroupCN,
-    groupSlug,
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  }: TCreateLdapGroupMapDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+  const createLdapGroupMap = async ({ ldapConfigId, ldapGroupCN, groupSlug, actor, orgId }: TCreateLdapGroupMapDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Ldap });
 
     const plan = await licenseDomain.getPlan(orgId);
     if (!plan.ldap)
@@ -1023,24 +982,13 @@ export const ldapConfigServiceFactory = ({
     return groupMap;
   };
 
-  const deleteLdapGroupMap = async ({
-    ldapConfigId,
-    ldapGroupMapId,
-    actor,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteLdapGroupMapDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+  const deleteLdapGroupMap = async ({ ldapConfigId, ldapGroupMapId, actor, orgId }: TDeleteLdapGroupMapDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Delete, subject: OrgPermissionSubjects.Ldap });
 
     const plan = await licenseDomain.getPlan(orgId);
     if (!plan.ldap)
@@ -1069,10 +1017,7 @@ export const ldapConfigServiceFactory = ({
 
   const testLDAPConnection = async ({
     actor,
-    actorId,
     orgId,
-    actorAuthMethod,
-    actorOrgId,
     bindDN,
     bindPass,
     caCert,
@@ -1080,15 +1025,12 @@ export const ldapConfigServiceFactory = ({
     clientKeyCertificate,
     url
   }: TTestLdapConnectionDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await organizationsDomain.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Ldap });
 
     const plan = await licenseDomain.getPlan(orgId);
     if (!plan.ldap)

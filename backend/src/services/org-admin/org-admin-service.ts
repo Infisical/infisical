@@ -1,9 +1,10 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { AccessScope, OrganizationActionScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  OrgPermissionAdminConsoleAction,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { NotFoundError } from "@app/lib/errors";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -19,7 +20,7 @@ import { TAccessProjectDTO, TListOrgProjectsDTO } from "./org-admin-types";
 
 type TOrgAdminServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "find" | "findById" | "findProjectGhostUser" | "findOne">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
   membershipUserDAL: TMembershipUserDALFactory;
@@ -32,7 +33,7 @@ type TOrgAdminServiceFactoryDep = {
 export type TOrgAdminServiceFactory = ReturnType<typeof orgAdminServiceFactory>;
 
 export const orgAdminServiceFactory = ({
-  permissionService,
+  organizationsDomain,
   projectDAL,
   projectMembershipDAL,
   smtpService,
@@ -42,30 +43,15 @@ export const orgAdminServiceFactory = ({
   licenseDomain,
   orgDAL
 }: TOrgAdminServiceFactoryDep) => {
-  const listOrgProjects = async ({
-    actor,
-    limit,
-    actorId,
-    offset,
-    search,
-    actorOrgId,
-    actorAuthMethod
-  }: TListOrgProjectsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
+  const listOrgProjects = async ({ actor, limit, offset, search }: TListOrgProjectsDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor });
+    permission.assert({
+      action: OrgPermissionAdminConsoleAction.AccessAllProjects,
+      subject: OrgPermissionSubjects.AdminConsole
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAdminConsoleAction.AccessAllProjects,
-      OrgPermissionSubjects.AdminConsole
-    );
     const projects = await projectDAL.find(
       {
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         $search: {
           name: search || undefined
         }
@@ -77,26 +63,15 @@ export const orgAdminServiceFactory = ({
     return { projects, count };
   };
 
-  const grantProjectAdminAccess = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TAccessProjectDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
+  const grantProjectAdminAccess = async ({ actor, projectId }: TAccessProjectDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor });
+    permission.assert({
+      action: OrgPermissionAdminConsoleAction.AccessAllProjects,
+      subject: OrgPermissionSubjects.AdminConsole
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAdminConsoleAction.AccessAllProjects,
-      OrgPermissionSubjects.AdminConsole
-    );
 
+    const actorId = actor.principal.id;
+    const actorOrgId = actor.org.id;
     const project = await projectDAL.findOne({ id: projectId, orgId: actorOrgId });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 

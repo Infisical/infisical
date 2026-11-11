@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   orgAdminPermissions,
@@ -56,9 +57,12 @@ const createService = ({
     [HIGH_ROLE.slug]: { permission: high, role: HIGH_ROLE }
   };
 
-  const getOrgPermissionByRoles = vi
-    .fn()
-    .mockImplementation((roles: string[]) => roles.map((role) => abilityByRole[role]));
+  const getOrgPermissionByRoles = vi.fn().mockImplementation(({ roles }: { roles: string[] }) =>
+    roles.map((role) => ({
+      permission: Permission.fromRules({ rules: abilityByRole[role].permission.rules }),
+      role: abilityByRole[role].role
+    }))
+  );
 
   const externalGroupOrgRoleMappingDAL = {
     find: vi.fn().mockResolvedValue(currentMappings.map((mapping) => ({ orgId: ORG_ID, roleId: null, ...mapping }))),
@@ -67,8 +71,8 @@ const createService = ({
   };
 
   const service = externalGroupOrgRoleMappingServiceFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+    organizationsDomain: {
+      getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules })),
       getOrgPermissionByRoles
     } as never,
     licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, { rbac: true as false }),
@@ -79,11 +83,13 @@ const createService = ({
           existingCustomRoles.filter((role) => $in.slug?.includes(role.slug) || $in.id?.includes(role.id))
         )
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
     externalGroupOrgRoleMappingDAL: externalGroupOrgRoleMappingDAL as never
   });
 
-  const actor = { type: "user", id: "actor-id", authMethod: "email", orgId: ORG_ID } as never;
+  const actor = {
+    principal: { type: "user", id: "actor-id" },
+    org: { id: ORG_ID, rootOrgId: ORG_ID, shouldUseNewPrivilegeSystem }
+  } as never;
   const run = (mappings: { groupName: string; roleSlug: string }[]) =>
     service.updateExternalGroupOrgRoleMappings({ mappings }, actor);
 
@@ -186,7 +192,7 @@ describe("updateExternalGroupOrgRoleMappings privilege boundary", () => {
     });
 
     await expect(run([])).rejects.toThrow(PermissionBoundaryError);
-    expect(getOrgPermissionByRoles).toHaveBeenCalledWith([HIGH_ROLE.slug], ORG_ID);
+    expect(getOrgPermissionByRoles).toHaveBeenCalledWith({ orgId: ORG_ID, roles: [HIGH_ROLE.slug] });
   });
 
   test("a replaced mapping whose custom role no longer exists is skipped", async () => {

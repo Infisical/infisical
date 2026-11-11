@@ -30,10 +30,7 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const emailDomain = await server.services.emailDomain.createEmailDomain({
         domain: req.body.domain,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.permission.orgId
       });
 
@@ -83,10 +80,7 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.emailDomain.verifyEmailDomain({
         emailDomainId: req.params.emailDomainId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.permission.orgId
       });
 
@@ -135,10 +129,7 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const emailDomains = await server.services.emailDomain.listEmailDomains({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.permission.orgId
       });
 
@@ -167,10 +158,7 @@ export const registerEmailDomainRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const emailDomain = await server.services.emailDomain.deleteEmailDomain({
         emailDomainId: req.params.emailDomainId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.permission.orgId
       });
 

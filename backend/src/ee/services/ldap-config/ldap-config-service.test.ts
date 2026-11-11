@@ -1,7 +1,8 @@
-import { createMongoAbility } from "@casl/ability";
 import dns from "node:dns/promises";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
@@ -19,10 +20,12 @@ vi.mock("./ldap-fns", () => ({
 
 const createService = () =>
   ldapConfigServiceFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({
-        permission: createMongoAbility([{ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Ldap }])
-      })
+    organizationsDomain: {
+      getOrgPermission: vi.fn().mockResolvedValue(
+        Permission.fromRules({
+          rules: [{ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Ldap }]
+        })
+      )
     },
     licenseDomain: new FakeLicenseDomain().setPlan("org-id", { ldap: true as false })
   } as unknown as Parameters<typeof ldapConfigServiceFactory>[0]);
@@ -30,10 +33,10 @@ const createService = () =>
 // literal IPs keep the suite hermetic: blockLocalAndPrivateIpAddresses skips the DNS lookup
 const testConnection = (url: string) =>
   createService().testLDAPConnection({
-    actor: ActorType.USER,
-    actorId: "user-id",
-    actorOrgId: "org-id",
-    actorAuthMethod: null,
+    actor: {
+      principal: { type: ActorType.USER, id: "user-id", authMethod: null },
+      org: { id: "org-id", rootOrgId: "org-id", parentOrgId: "org-id" }
+    } as unknown as TActorContext,
     orgId: "org-id",
     url,
     bindDN: "cn=admin",

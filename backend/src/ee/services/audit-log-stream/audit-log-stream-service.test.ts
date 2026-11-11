@@ -50,8 +50,8 @@ const buildService = () => {
   const deps = {
     auditLogStreamDAL,
     licenseDomain,
-    permissionService: {
-      getOrgPermission: vi.fn(async () => ({ permission: { relevantRuleFor: () => ({ inverted: false }) } }))
+    organizationsDomain: {
+      getOrgPermission: vi.fn(async () => ({ assert: () => undefined }))
     },
     kmsCoreDomain: {}
   } as unknown as TAuditLogStreamServiceFactoryDep;
@@ -59,7 +59,9 @@ const buildService = () => {
   return { service: auditLogStreamServiceFactory(deps), auditLogStreamDAL };
 };
 
-const actor = {} as Parameters<ReturnType<typeof auditLogStreamServiceFactory>["updateById"]>[1];
+const actor = { org: { id: ORG_ID } } as unknown as Parameters<
+  ReturnType<typeof auditLogStreamServiceFactory>["updateById"]
+>[1];
 
 describe("auditLogStreamServiceFactory updateById Splunk port", () => {
   beforeEach(() => {

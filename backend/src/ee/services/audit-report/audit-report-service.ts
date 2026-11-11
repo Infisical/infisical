@@ -1,13 +1,12 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { TActorContexts } from "@app/domains/lib/actor-context";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionSecretsManagementInsightsActions,
-  OrgPermissionSubjects
+  OrgPermissionSubjects,
+  TOrganizationsDomain
 } from "@app/domains/platform/organizations/ce/module";
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
@@ -35,7 +34,9 @@ import {
 const MAX_EMAIL_RECIPIENTS = 20;
 
 type TAuditReportServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
+  actorContexts: Pick<TActorContexts, "forPrincipal">;
   licenseDomain: TLicenseDomain;
   auditReportDAL: TAuditReportDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -48,7 +49,9 @@ type TAuditReportServiceFactoryDep = {
 export type TAuditReportServiceFactory = ReturnType<typeof auditReportServiceFactory>;
 
 export const auditReportServiceFactory = ({
-  permissionService,
+  organizationsDomain,
+  secretsDomain,
+  actorContexts,
   licenseDomain,
   auditReportDAL,
   projectDAL,
@@ -106,6 +109,22 @@ export const auditReportServiceFactory = ({
     }
   };
 
+  // A recipient is checked as the user it is, not as the requester, so it gets a context of its own.
+  const $recipientContext = async (recipientUserId: string, orgId: string) => {
+    const user = await userDAL.findById(recipientUserId);
+    return actorContexts.forPrincipal(
+      {
+        type: ActorType.USER,
+        id: recipientUserId,
+        username: user?.username ?? "",
+        email: user?.email ?? null,
+        authMethod: null,
+        isSuperAdmin: false
+      },
+      orgId
+    );
+  };
+
   const $resolveRecipients = async (
     requestedRecipients: string[] | undefined,
     actor: TAuditReportServiceActor,
@@ -116,18 +135,18 @@ export const auditReportServiceFactory = ({
         throw new BadRequestError({ message: `A maximum of ${MAX_EMAIL_RECIPIENTS} recipients is allowed` });
       }
       const emails = [...new Set(requestedRecipients.map((email) => email.trim().toLowerCase()))];
-      await $assertRecipientsCanReadInsights(emails, actor.orgId, canRecipientReadInsights);
+      await $assertRecipientsCanReadInsights(emails, actor.org.id, canRecipientReadInsights);
       return emails;
     }
 
-    if (!(await canRecipientReadInsights(actor.id))) {
+    if (!(await canRecipientReadInsights(actor.principal.id))) {
       throw new ForbiddenRequestError({
         message:
           "You do not have permission to view insights, so this report cannot be sent to you. Add recipients who can view insights, or ask an administrator for insights access."
       });
     }
 
-    const user = await userDAL.findById(actor.id);
+    const user = await userDAL.findById(actor.principal.id);
     if (!user?.email) {
       throw new BadRequestError({ message: "At least one email recipient is required" });
     }
@@ -136,26 +155,19 @@ export const auditReportServiceFactory = ({
   };
 
   const generateReport = async (dto: TRequestAuditReportDTO, actor: TAuditReportServiceActor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: dto.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: dto.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionInsightsActions.GenerateReport,
-      ProjectPermissionSub.Insights
-    );
+    permission.assert({
+      action: ProjectPermissionInsightsActions.GenerateReport,
+      subject: ProjectPermissionSub.Insights
+    });
 
     const project = await projectDAL.findById(dto.projectId);
     if (!project) {
@@ -172,15 +184,14 @@ export const auditReportServiceFactory = ({
     const reportConfigs = $buildReportConfigs(dto.reports);
     const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor, async (recipientUserId) => {
       try {
-        const { permission: recipientPermission } = await permissionService.getProjectPermission({
-          actor: ActorType.USER,
-          actorId: recipientUserId,
-          projectId: dto.projectId,
-          actorAuthMethod: null,
-          actorOrgId: actor.orgId,
-          actionProjectType: ActionProjectType.SecretManager
+        const { permission: recipientPermission } = await secretsDomain.getSecretsPermission({
+          actor: await $recipientContext(recipientUserId, actor.org.id),
+          projectId: dto.projectId
         });
-        return recipientPermission.can(ProjectPermissionInsightsActions.Read, ProjectPermissionSub.Insights);
+        return recipientPermission.can({
+          action: ProjectPermissionInsightsActions.Read,
+          subject: ProjectPermissionSub.Insights
+        });
       } catch (error) {
         logger.debug(
           { error },
@@ -203,7 +214,7 @@ export const auditReportServiceFactory = ({
       return auditReportDAL.create(
         {
           projectId: dto.projectId,
-          requestedByUserId: actor.id,
+          requestedByUserId: actor.principal.id,
           status: AuditReportStatus.Pending,
           // jsonb columns must be serialized before insert — pg otherwise treats a top-level JS array as a
           // Postgres array literal rather than a JSON value.
@@ -233,26 +244,16 @@ export const auditReportServiceFactory = ({
   };
 
   const listReports = async (dto: TListAuditReportsDTO, actor: TAuditReportServiceActor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: dto.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: dto.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionInsightsActions.Read,
-      ProjectPermissionSub.Insights
-    );
+    permission.assert({ action: ProjectPermissionInsightsActions.Read, subject: ProjectPermissionSub.Insights });
 
     const reports = await auditReportDAL.findByProject(dto.projectId, {
       offset: dto.offset,
@@ -263,7 +264,7 @@ export const auditReportServiceFactory = ({
   };
 
   const getReportById = async (auditReportId: string, projectId: string, actor: TAuditReportServiceActor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
@@ -277,19 +278,9 @@ export const auditReportServiceFactory = ({
       throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: report.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: report.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionInsightsActions.Read,
-      ProjectPermissionSub.Insights
-    );
+    permission.assert({ action: ProjectPermissionInsightsActions.Read, subject: ProjectPermissionSub.Insights });
 
     return presentAuditReport(report);
   };
@@ -302,16 +293,11 @@ export const auditReportServiceFactory = ({
       throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: report.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: report.projectId });
 
-    if (!permission.can(ProjectPermissionInsightsActions.DeleteReport, ProjectPermissionSub.Insights)) {
+    if (
+      !permission.can({ action: ProjectPermissionInsightsActions.DeleteReport, subject: ProjectPermissionSub.Insights })
+    ) {
       throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 
@@ -321,20 +307,11 @@ export const auditReportServiceFactory = ({
 
   // Resolves the requesting actor's org-level permission; org reports are always scoped to the
   // actor's own org, so no caller-supplied org id is involved.
-  const $getOrgInsightsPermission = async (actor: TAuditReportServiceActor) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
-    return permission;
-  };
+  const $getOrgInsightsPermission = (actor: TAuditReportServiceActor) =>
+    organizationsDomain.getOrgPermission({ actor });
 
   const generateOrgReport = async (dto: TRequestOrgAuditReportDTO, actor: TAuditReportServiceActor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
@@ -342,10 +319,10 @@ export const auditReportServiceFactory = ({
     }
 
     const permission = await $getOrgInsightsPermission(actor);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSecretsManagementInsightsActions.GenerateReport,
-      OrgPermissionSubjects.SecretsManagementInsights
-    );
+    permission.assert({
+      action: OrgPermissionSecretsManagementInsightsActions.GenerateReport,
+      subject: OrgPermissionSubjects.SecretsManagementInsights
+    });
 
     const reportConfigs = $buildReportConfigs(dto.reports);
 
@@ -363,31 +340,26 @@ export const auditReportServiceFactory = ({
 
     const emailRecipients = await $resolveRecipients(dto.emailRecipients, actor, async (recipientUserId) => {
       try {
-        const { permission: recipientPermission } = await permissionService.getOrgPermission({
-          scope: OrganizationActionScope.Any,
-          actor: ActorType.USER,
-          actorId: recipientUserId,
-          orgId: actor.orgId,
-          actorAuthMethod: null,
-          actorOrgId: actor.orgId
+        const recipientPermission = await organizationsDomain.getOrgPermission({
+          actor: await $recipientContext(recipientUserId, actor.org.id)
         });
-        return recipientPermission.can(
-          OrgPermissionSecretsManagementInsightsActions.Read,
-          OrgPermissionSubjects.SecretsManagementInsights
-        );
+        return recipientPermission.can({
+          action: OrgPermissionSecretsManagementInsightsActions.Read,
+          subject: OrgPermissionSubjects.SecretsManagementInsights
+        });
       } catch (error) {
         logger.debug(
           { error },
-          `Audit report recipient cannot read org insights [orgId=${actor.orgId}] [userId=${recipientUserId}]`
+          `Audit report recipient cannot read org insights [orgId=${actor.org.id}] [userId=${recipientUserId}]`
         );
         return false;
       }
     });
 
     const report = await auditReportDAL.transaction(async (tx) => {
-      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgAuditReportRequest(actor.orgId)]);
+      await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.OrgAuditReportRequest(actor.org.id)]);
 
-      const inFlightCount = await auditReportDAL.countInFlightByOrg(actor.orgId, tx);
+      const inFlightCount = await auditReportDAL.countInFlightByOrg(actor.org.id, tx);
       if (inFlightCount >= MAX_CONCURRENT_AUDIT_REPORTS) {
         throw new BadRequestError({
           message: `This organization already has ${MAX_CONCURRENT_AUDIT_REPORTS} reports in progress. Please wait for them to finish.`
@@ -396,8 +368,8 @@ export const auditReportServiceFactory = ({
 
       return auditReportDAL.create(
         {
-          orgId: actor.orgId,
-          requestedByUserId: actor.id,
+          orgId: actor.org.id,
+          requestedByUserId: actor.principal.id,
           status: AuditReportStatus.Pending,
           // jsonb columns must be serialized before insert — pg otherwise treats a top-level JS array as a
           // Postgres array literal rather than a JSON value.
@@ -421,13 +393,13 @@ export const auditReportServiceFactory = ({
       }
     );
 
-    logger.info(`Org audit report requested [auditReportId=${report.id}] [orgId=${actor.orgId}]`);
+    logger.info(`Org audit report requested [auditReportId=${report.id}] [orgId=${actor.org.id}]`);
 
     return presentOrgAuditReport(report);
   };
 
   const listOrgReports = async (dto: TListOrgAuditReportsDTO, actor: TAuditReportServiceActor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Audit reports are not available on your plan. Please upgrade to access audit reports."
@@ -435,13 +407,13 @@ export const auditReportServiceFactory = ({
     }
 
     const permission = await $getOrgInsightsPermission(actor);
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSecretsManagementInsightsActions.Read,
-      OrgPermissionSubjects.SecretsManagementInsights
-    );
+    permission.assert({
+      action: OrgPermissionSecretsManagementInsightsActions.Read,
+      subject: OrgPermissionSubjects.SecretsManagementInsights
+    });
 
-    const reports = await auditReportDAL.findByOrg(actor.orgId, { offset: dto.offset, limit: dto.limit });
-    const totalCount = await auditReportDAL.countByOrg(actor.orgId);
+    const reports = await auditReportDAL.findByOrg(actor.org.id, { offset: dto.offset, limit: dto.limit });
+    const totalCount = await auditReportDAL.countByOrg(actor.org.id);
     return { reports: reports.map(presentOrgAuditReport), totalCount };
   };
 
@@ -450,16 +422,16 @@ export const auditReportServiceFactory = ({
 
     // A missing report, a project-scoped report, and another org's report all present as not found,
     // so report ids cannot be probed across scopes or tenants.
-    if (!report || !report.orgId || report.orgId !== actor.orgId) {
+    if (!report || !report.orgId || report.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }
 
     const permission = await $getOrgInsightsPermission(actor);
     if (
-      !permission.can(
-        OrgPermissionSecretsManagementInsightsActions.DeleteReport,
-        OrgPermissionSubjects.SecretsManagementInsights
-      )
+      !permission.can({
+        action: OrgPermissionSecretsManagementInsightsActions.DeleteReport,
+        subject: OrgPermissionSubjects.SecretsManagementInsights
+      })
     ) {
       throw new NotFoundError({ message: `Audit report with ID '${auditReportId}' not found` });
     }

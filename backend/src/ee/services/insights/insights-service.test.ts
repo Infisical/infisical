@@ -2,6 +2,8 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   OrgPermissionSecretsManagementInsightsActions,
@@ -10,7 +12,6 @@ import {
 } from "@app/domains/platform/organizations/ce/module";
 import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { insightsServiceFactory, PROJECT_WARNINGS_CHUNK_SIZE, TInsightsServiceFactoryDep } from "./insights-service";
 import { TSecretsProjectWarning } from "./insights-types";
@@ -118,14 +119,12 @@ const buildService = (catalog: TSecretsProjectWarning[]) => {
 
   const service = insightsServiceFactory({
     ...projectScopedDepStubs,
-    permissionService: {
-      getProjectPermission: unreachable("permissionService.getProjectPermission"),
-      getOrgPermission: async () => ({
-        permission: orgReadAbility(),
-        memberships: [],
-        hasRole: () => false
-      })
-    } as TInsightsServiceFactoryDep["permissionService"],
+    organizationsDomain: {
+      getOrgPermission: async () => Permission.fromRules({ rules: orgReadAbility().rules })
+    } as unknown as TInsightsServiceFactoryDep["organizationsDomain"],
+    secretsDomain: {
+      getSecretsPermission: unreachable("secretsDomain.getSecretsPermission")
+    },
     licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, { secretAccessInsights: true as false }),
     keyStore: {
       getItem: async () => null,
@@ -160,10 +159,10 @@ const buildService = (catalog: TSecretsProjectWarning[]) => {
 };
 
 const actor = (offset: number, limit: number) => ({
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: ORG_ID,
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+    org: { id: ORG_ID, rootOrgId: ORG_ID, parentOrgId: ORG_ID }
+  } as unknown as TActorContext,
   orgId: ORG_ID,
   offset,
   limit
@@ -221,13 +220,9 @@ describe("project access insights audit log store", () => {
   const today = new Date().toISOString().slice(0, 10);
 
   const projectActor = {
-    type: ActorType.USER,
-    id: "user-1",
-    authMethod: AuthMethod.EMAIL,
-    orgId: ORG_ID,
-    rootOrgId: ORG_ID,
-    parentOrgId: ORG_ID
-  } as OrgServiceActor;
+    principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+    org: { id: ORG_ID, rootOrgId: ORG_ID, parentOrgId: ORG_ID }
+  } as unknown as TActorContext;
 
   const buildProjectService = ({ withClickHouse }: { withClickHouse: boolean }) => {
     const postgres = {
@@ -256,14 +251,16 @@ describe("project access insights audit log store", () => {
       userDAL: {
         find: async () => [{ id: "user-1", firstName: "Ada", lastName: "Lovelace" }]
       } as unknown as TInsightsServiceFactoryDep["userDAL"],
-      permissionService: {
-        getProjectPermission: async () => ({
-          permission: createMongoAbility([
-            { action: ProjectPermissionInsightsActions.Read, subject: ProjectPermissionSub.Insights }
-          ])
-        }),
-        getOrgPermission: unreachable("permissionService.getOrgPermission")
-      } as unknown as TInsightsServiceFactoryDep["permissionService"],
+      secretsDomain: {
+        getSecretsPermission: async () => ({
+          permission: Permission.fromRules({
+            rules: [{ action: ProjectPermissionInsightsActions.Read, subject: ProjectPermissionSub.Insights }]
+          })
+        })
+      } as unknown as TInsightsServiceFactoryDep["secretsDomain"],
+      organizationsDomain: {
+        getOrgPermission: unreachable("organizationsDomain.getOrgPermission")
+      },
       licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, { secretAccessInsights: true as false }),
       keyStore: {
         getItem: async () => null,

@@ -368,6 +368,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
       const proxy = await server.services.agentVaultProxy.revokeProxyAccess({
         projectId,
         ctx: actorContext(req),
+        actor: req.permission,
         proxyId: req.params.proxyId
       });
 

@@ -109,10 +109,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const usageInsights = await server.services.insights.getSecretsUsageInsights({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.permission.orgId
       });
 
@@ -152,10 +149,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const projectWarnings = await server.services.insights.getSecretsProjects({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.permission.orgId,
         offset: req.query.offset,
         limit: req.query.limit
@@ -199,10 +193,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const accessVolume = await server.services.insights.getOrgAccessVolume({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.permission.orgId
       });
 
@@ -230,10 +221,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const authMethodDistribution = await server.services.insights.getOrgAuthMethodDistribution({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.permission.orgId
       });
 
@@ -272,10 +260,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const staticSecretUsage = await server.services.insights.getStaticSecretsUsage({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         orgId: req.permission.orgId
       });
 
@@ -664,10 +649,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     handler: async (req, reply) => {
       const { result, remainingTTL } = await server.services.insights.getOrgSecretsDuplication({
         orgId: req.permission.orgId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -720,10 +702,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       const secrets = await server.services.insights.searchOrgSecretsByValue({
         secretValue: req.body.secretValue,
         orgId: req.permission.orgId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

@@ -18,10 +18,10 @@ import {
 import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { TOrgInsightsDTO } from "@app/ee/services/insights/insights-types";
-import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 import {
   buildOrgInsightsGateStubs,
+  insightsActor,
   passThroughKeyStore,
   projectScopedInsightsDepStubs,
   usageInsightsDepStubs
@@ -89,11 +89,13 @@ const projects = {
 
 const projectList = Object.values(projects);
 
-const { permissionService, licenseDomain, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
+const { organizationsDomain, secretsDomain, licenseDomain, setCanReadInsights, setPlanHasInsights } =
+  buildOrgInsightsGateStubs();
 
 const insightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
-  permissionService,
+  organizationsDomain,
+  secretsDomain,
   licenseDomain,
   ...usageInsightsDepStubs,
   insightsDAL: insightsDALFactory(testDb),
@@ -101,10 +103,7 @@ const insightsService = insightsServiceFactory({
 });
 
 const actor = (orgId: string): TOrgInsightsDTO => ({
-  actor: ActorType.USER,
-  actorId: USER_ID,
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: orgId,
+  actor: insightsActor(USER_ID, orgId),
   orgId
 });
 

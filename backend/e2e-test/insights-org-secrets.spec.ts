@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
@@ -20,6 +20,7 @@ import {
   TSecretSyncsInsert,
   TUsersInsert
 } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
@@ -31,7 +32,6 @@ import { insightsServiceFactory, TInsightsServiceFactoryDep } from "@app/ee/serv
 import { TGetSecretsProjectWarningsDTO } from "@app/ee/services/insights/insights-types";
 import { SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { SecretSyncStatus } from "@app/services/secret-sync/secret-sync-types";
@@ -39,6 +39,7 @@ import { secretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-
 
 import {
   buildOrgInsightsGateStubs,
+  insightsActor,
   passThroughKeyStore,
   projectScopedInsightsDepStubs,
   usageInsightsDepStubs
@@ -82,11 +83,13 @@ const projectList = Object.values(projects);
 
 const DYNAMIC_SECRET_ID = randomUUID();
 
-const { permissionService, licenseDomain, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
+const { organizationsDomain, secretsDomain, licenseDomain, setCanReadInsights, setPlanHasInsights } =
+  buildOrgInsightsGateStubs();
 
 const insightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
-  permissionService,
+  organizationsDomain,
+  secretsDomain,
   licenseDomain,
   ...usageInsightsDepStubs,
   insightsDAL: insightsDALFactory(testDb),
@@ -94,10 +97,7 @@ const insightsService = insightsServiceFactory({
 });
 
 const actor = (orgId: string, page?: { offset: number; limit: number }): TGetSecretsProjectWarningsDTO => ({
-  actor: ActorType.USER,
-  actorId: USER_ID,
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: orgId,
+  actor: insightsActor(USER_ID, orgId),
   orgId,
   offset: page?.offset ?? 0,
   limit: page?.limit ?? 20
@@ -403,16 +403,16 @@ let grantedInsightsActions = [OrgPermissionSecretsManagementInsightsActions.Sear
 const dupInsightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
   ...usageInsightsDepStubs,
-  permissionService: {
-    ...dupGate.permissionService,
-    getOrgPermission: async () => ({
-      permission: createMongoAbility<OrgPermissionSet>(
-        grantedInsightsActions.map((action) => ({ action, subject: OrgPermissionSubjects.SecretsManagementInsights }))
-      ),
-      memberships: [],
-      hasRole: () => false
-    })
-  } as unknown as TInsightsServiceFactoryDep["permissionService"],
+  organizationsDomain: {
+    getOrgPermission: async () =>
+      Permission.fromRules<OrgPermissionSet>({
+        rules: grantedInsightsActions.map((action) => ({
+          action,
+          subject: OrgPermissionSubjects.SecretsManagementInsights
+        }))
+      })
+  } as unknown as TInsightsServiceFactoryDep["organizationsDomain"],
+  secretsDomain: dupGate.secretsDomain,
   licenseDomain: dupGate.licenseDomain,
   orgDAL: { ...usageInsightsDepStubs.orgDAL, findById: orgDALFactory(testDb).findById },
   // No secret here carries an encrypted value, so the decryptor is never invoked.
@@ -434,10 +434,7 @@ const dupInsightsService = insightsServiceFactory({
 });
 
 const dupOrgActor = {
-  actor: ActorType.USER,
-  actorId: DUP_USER_ID,
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: DUP_ORG_ID,
+  actor: insightsActor(DUP_USER_ID, DUP_ORG_ID),
   orgId: DUP_ORG_ID
 };
 

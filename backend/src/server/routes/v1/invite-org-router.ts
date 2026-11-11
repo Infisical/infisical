@@ -276,10 +276,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.org.resendOrgMemberInvitation({
         orgId: req.permission.orgId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         membershipId: req.body.membershipId
       });
     }

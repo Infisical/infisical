@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/return-await */
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
 import { Octokit } from "@octokit/core";
 import { paginateGraphql } from "@octokit/plugin-paginate-graphql";
 import { Octokit as OctokitRest } from "@octokit/rest";
@@ -9,7 +8,11 @@ import { Knex } from "knex";
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -38,7 +41,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGithubOrgSyncDALFactory } from "./github-org-sync-dal";
 import {
   TCreateGithubOrgSyncDTO,
@@ -375,7 +377,7 @@ export const assertGithubGroupMembersLinked = ({
 
 type TGithubOrgSyncServiceFactoryDep = {
   githubOrgSyncDAL: TGithubOrgSyncDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   kmsCoreDomain: TKmsCoreDomain;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -404,7 +406,7 @@ export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServic
 
 export const githubOrgSyncServiceFactory = ({
   githubOrgSyncDAL,
-  permissionService,
+  organizationsDomain,
   kmsCoreDomain,
   userGroupMembershipDAL,
   groupDAL,
@@ -454,17 +456,13 @@ export const githubOrgSyncServiceFactory = ({
     githubOrgAccessToken,
     isActive
   }: TCreateGithubOrgSyncDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId
+    const permission = await organizationsDomain.getOrgPermission({
+      actor: orgPermission,
+      scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSync);
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.GithubOrgSync });
+    const plan = await licenseDomain.getPlan(orgPermission.org.id);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -472,10 +470,10 @@ export const githubOrgSyncServiceFactory = ({
       });
     }
 
-    const existingConfig = await githubOrgSyncDAL.findOne({ orgId: orgPermission.orgId });
+    const existingConfig = await githubOrgSyncDAL.findOne({ orgId: orgPermission.org.id });
     if (existingConfig)
       throw new BadRequestError({
-        message: `Organization ${orgPermission.orgId} already has GitHub Organization sync config.`
+        message: `Organization ${orgPermission.org.id} already has GitHub Organization sync config.`
       });
 
     const octokit = new OctokitRest({
@@ -492,11 +490,11 @@ export const githubOrgSyncServiceFactory = ({
 
     const { encryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: orgPermission.orgId
+      orgId: orgPermission.org.id
     });
 
     const config = await githubOrgSyncDAL.create({
-      orgId: orgPermission.orgId,
+      orgId: orgPermission.org.id,
       githubOrgName,
       isActive,
       encryptedGithubOrgAccessToken: githubOrgAccessToken
@@ -513,17 +511,13 @@ export const githubOrgSyncServiceFactory = ({
     githubOrgAccessToken,
     isActive
   }: TUpdateGithubOrgSyncDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      scope: OrganizationActionScope.ParentOrganization,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId
+    const permission = await organizationsDomain.getOrgPermission({
+      actor: orgPermission,
+      scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.GithubOrgSync });
+    const plan = await licenseDomain.getPlan(orgPermission.org.id);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -531,15 +525,15 @@ export const githubOrgSyncServiceFactory = ({
       });
     }
 
-    const existingConfig = await githubOrgSyncDAL.findOne({ orgId: orgPermission.orgId });
+    const existingConfig = await githubOrgSyncDAL.findOne({ orgId: orgPermission.org.id });
     if (!existingConfig)
       throw new BadRequestError({
-        message: `Organization ${orgPermission.orgId} GitHub organization sync config missing.`
+        message: `Organization ${orgPermission.org.id} GitHub organization sync config missing.`
       });
 
     const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: orgPermission.orgId
+      orgId: orgPermission.org.id
     });
     const newData = {
       githubOrgName: githubOrgName || existingConfig.githubOrgName,
@@ -566,7 +560,7 @@ export const githubOrgSyncServiceFactory = ({
     }
 
     const config = await githubOrgSyncDAL.updateById(existingConfig.id, {
-      orgId: orgPermission.orgId,
+      orgId: orgPermission.org.id,
       githubOrgName: newData.githubOrgName,
       isActive,
       encryptedGithubOrgAccessToken: newData.githubOrgAccessToken
@@ -578,18 +572,14 @@ export const githubOrgSyncServiceFactory = ({
   };
 
   const deleteGithubOrgSync = async ({ orgPermission }: TDeleteGithubOrgSyncDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
+    const permission = await organizationsDomain.getOrgPermission({
+      actor: orgPermission,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
+    permission.assert({ action: OrgPermissionActions.Delete, subject: OrgPermissionSubjects.GithubOrgSync });
 
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    const plan = await licenseDomain.getPlan(orgPermission.org.id);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -597,10 +587,10 @@ export const githubOrgSyncServiceFactory = ({
       });
     }
 
-    const existingConfig = await githubOrgSyncDAL.findOne({ orgId: orgPermission.orgId });
+    const existingConfig = await githubOrgSyncDAL.findOne({ orgId: orgPermission.org.id });
     if (!existingConfig)
       throw new BadRequestError({
-        message: `Organization ${orgPermission.orgId} GitHub organization sync config missing.`
+        message: `Organization ${orgPermission.org.id} GitHub organization sync config missing.`
       });
 
     const config = await githubOrgSyncDAL.deleteById(existingConfig.id);
@@ -609,21 +599,17 @@ export const githubOrgSyncServiceFactory = ({
   };
 
   const getGithubOrgSync = async ({ orgPermission }: TDeleteGithubOrgSyncDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId: orgPermission.id,
-      actor: orgPermission.type,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
+    const permission = await organizationsDomain.getOrgPermission({
+      actor: orgPermission,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.GithubOrgSync });
 
-    const existingConfig = await githubOrgSyncDAL.findOne({ orgId: orgPermission.orgId });
+    const existingConfig = await githubOrgSyncDAL.findOne({ orgId: orgPermission.org.id });
     if (!existingConfig)
       throw new NotFoundError({
-        message: `Organization ${orgPermission.orgId} GitHub organization sync config missing.`
+        message: `Organization ${orgPermission.org.id} GitHub organization sync config missing.`
       });
 
     return existingConfig;
@@ -858,18 +844,14 @@ export const githubOrgSyncServiceFactory = ({
   };
 
   const validateGithubToken = async ({ orgPermission, githubOrgAccessToken }: TValidateGithubTokenDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId: orgPermission.id,
-      actor: orgPermission.type,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
+    const permission = await organizationsDomain.getOrgPermission({
+      actor: orgPermission,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.GithubOrgSync });
 
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    const plan = await licenseDomain.getPlan(orgPermission.org.id);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -877,7 +859,7 @@ export const githubOrgSyncServiceFactory = ({
       });
     }
 
-    const config = await githubOrgSyncDAL.findOne({ orgId: orgPermission.orgId });
+    const config = await githubOrgSyncDAL.findOne({ orgId: orgPermission.org.id });
     if (!config) {
       throw new BadRequestError({ message: "GitHub organization sync is not configured" });
     }
@@ -945,21 +927,14 @@ export const githubOrgSyncServiceFactory = ({
   };
 
   const syncAllTeams = async ({ orgPermission, auditLogInfo }: TSyncAllTeamsDTO): Promise<TSyncResult> => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
-      actor: orgPermission.type,
-      orgId: orgPermission.orgId,
-      actorId: orgPermission.id,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId
+    const permission = await organizationsDomain.getOrgPermission({
+      actor: orgPermission,
+      scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionActions.Edit,
-      OrgPermissionSubjects.GithubOrgSyncManual
-    );
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.GithubOrgSyncManual });
 
-    const plan = await licenseDomain.getPlan(orgPermission.orgId);
+    const plan = await licenseDomain.getPlan(orgPermission.org.id);
     if (!plan.githubOrgSync) {
       throw new BadRequestError({
         message:
@@ -967,14 +942,14 @@ export const githubOrgSyncServiceFactory = ({
       });
     }
 
-    const config = await githubOrgSyncDAL.findOne({ orgId: orgPermission.orgId });
+    const config = await githubOrgSyncDAL.findOne({ orgId: orgPermission.org.id });
     if (!config || !config?.isActive) {
       throw new BadRequestError({ message: "GitHub organization sync is not configured or not active" });
     }
 
     const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: orgPermission.orgId
+      orgId: orgPermission.org.id
     });
 
     if (!config.encryptedGithubOrgAccessToken) {
@@ -1004,7 +979,7 @@ export const githubOrgSyncServiceFactory = ({
       });
     }
 
-    const allMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(orgPermission.orgId);
+    const allMembers = await orgMembershipDAL.findOrgMembershipsWithUsersByOrgId(orgPermission.org.id);
     const activeMembers = allMembers.filter(
       (member) => member.status === "accepted" && member.isActive
     ) as OrgMembershipWithUser[];
@@ -1073,7 +1048,7 @@ export const githubOrgSyncServiceFactory = ({
     const allGithubTeamNames = Array.from(githubTeamMembersByName.keys());
 
     const existingTeamsOnInfisical = await groupDAL.find({
-      orgId: orgPermission.orgId,
+      orgId: orgPermission.org.id,
       $in: { name: allGithubTeamNames }
     });
     const existingTeamsMap = groupBy(existingTeamsOnInfisical, (i) => i.name);
@@ -1103,7 +1078,7 @@ export const githubOrgSyncServiceFactory = ({
           teamsToCreate.map((teamName) => ({
             name: teamName,
             slug: teamName,
-            orgId: orgPermission.orgId
+            orgId: orgPermission.org.id
           })),
           tx
         );
@@ -1112,7 +1087,7 @@ export const githubOrgSyncServiceFactory = ({
           newGroups.map((el) => ({
             actorGroupId: el.id,
             scope: AccessScope.Organization,
-            scopeOrgId: orgPermission.orgId
+            scopeOrgId: orgPermission.org.id
           })),
           tx
         );
@@ -1186,7 +1161,7 @@ export const githubOrgSyncServiceFactory = ({
 
       const currentMemberships = (await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(
         team.id,
-        orgPermission.orgId
+        orgPermission.org.id
       )) as GroupMembership[];
       const pendingChanges = resolveMembershipChanges(currentMemberships);
       const hasPendingChanges =
@@ -1195,7 +1170,7 @@ export const githubOrgSyncServiceFactory = ({
         const membershipChanges = await groupDAL.transaction(async (tx) => {
           const latestMemberships = (await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(
             team.id,
-            orgPermission.orgId,
+            orgPermission.org.id,
             tx
           )) as GroupMembership[];
           const latestChanges = resolveMembershipChanges(latestMemberships);
@@ -1203,7 +1178,7 @@ export const githubOrgSyncServiceFactory = ({
           const membershipsToRemove = phase === "remove" ? latestChanges.membershipsToRemove : [];
 
           if (usersToAdd.length > 0) {
-            await orgDAL.lockActorsForOrgAccess({ orgId: orgPermission.orgId, actorIds: usersToAdd }, tx);
+            await orgDAL.lockActorsForOrgAccess({ orgId: orgPermission.org.id, actorIds: usersToAdd }, tx);
             await userGroupMembershipDAL.insertMany(
               usersToAdd.map((userId) => ({
                 userId,
@@ -1252,7 +1227,7 @@ export const githubOrgSyncServiceFactory = ({
             removedMembershipCount: membershipsToRemove.length,
             sendPamCancellations: await terminatePamSessionsLosingGroupAccess({
               userIds: removedUserIds,
-              actorId: orgPermission.id,
+              actorId: orgPermission.principal.id,
               ...pamSessionDeps,
               tx
             })
@@ -1264,7 +1239,7 @@ export const githubOrgSyncServiceFactory = ({
         await createGithubOrgSyncAuditLogs({
           auditLogService,
           auditLogInfo,
-          orgId: orgPermission.orgId,
+          orgId: orgPermission.org.id,
           githubOrgName: config.githubOrgName,
           syncTrigger: "manual",
           changes: [
@@ -1310,9 +1285,9 @@ export const githubOrgSyncServiceFactory = ({
 
     if (createdTeams.size || updatedTeams.size) {
       // Team membership changes cascade into the group-expanded project identity meters.
-      licenseDomain.emit(orgPermission.orgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(orgPermission.orgId, Meter.PamIdentities.key);
-      licenseDomain.emit(orgPermission.orgId, Meter.AgentVaultIdentities.key);
+      licenseDomain.emit(orgPermission.org.id, Meter.SecretIdentities.key);
+      licenseDomain.emit(orgPermission.org.id, Meter.PamIdentities.key);
+      licenseDomain.emit(orgPermission.org.id, Meter.AgentVaultIdentities.key);
     }
 
     if (unmatchedGithubUsers.size) {
@@ -1325,7 +1300,7 @@ export const githubOrgSyncServiceFactory = ({
         `Skipped ${unmatchedLogins.length} GitHub team member${unmatchedLogins.length === 1 ? "" : "s"} without a verified Infisical GitHub link (${listedLogins.join(", ")}${remainingMessage}). Ask them to sign in with GitHub, then run the sync again.`
       );
       logger.info(
-        { orgId: orgPermission.orgId, count: unmatchedGithubUsers.size },
+        { orgId: orgPermission.org.id, count: unmatchedGithubUsers.size },
         "GitHub org sync skipped team members without a verified GitHub login"
       );
     }
@@ -1334,7 +1309,7 @@ export const githubOrgSyncServiceFactory = ({
 
     logger.info(
       {
-        orgId: orgPermission.orgId,
+        orgId: orgPermission.org.id,
         createdTeams: createdTeams.size,
         syncDuration
       },

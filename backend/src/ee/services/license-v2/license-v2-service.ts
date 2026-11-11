@@ -1,5 +1,3 @@
-import { ForbiddenError } from "@casl/ability";
-
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
 import {
@@ -10,7 +8,11 @@ import {
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionBillingActions, OrgPermissionSubjects,TOrganizationsDomain } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionBillingActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
@@ -18,7 +20,6 @@ import { logger } from "@app/lib/logger";
 import { isScopeNarrowedRequest } from "@app/lib/request-context/oauth-delegation";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TLicenseV2BreakdownDALFactory, TScopeOrgRow, TScopeProjectRow } from "./license-v2-breakdown-dal";
 import {
   BillingV2BreakdownDimension,
@@ -58,8 +59,7 @@ import {
 type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  organizationsDomain: Pick<TOrganizationsDomain, "resolveRootOrgId">;
+  organizationsDomain: Pick<TOrganizationsDomain, "resolveRootOrgId" | "getOrgPermission">;
   projectsDomain: TProjectsDomain;
   certManagerDomain: TCertManagerDomain;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
@@ -404,7 +404,6 @@ const toCatalogProduct = (product: TCatalogProduct): BillingV2CatalogProduct => 
 export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
-  permissionService,
   licenseDomain,
   organizationsDomain,
   projectsDomain,
@@ -487,33 +486,24 @@ export const licenseV2ServiceFactory = ({
     actor: TGetBillingV2OverviewDTO["actor"],
     isInstanceAdmin?: boolean
   ) => {
-    if (orgId !== actor.orgId && canReadAcrossOrgs(isInstanceAdmin)) {
+    if (orgId !== actor.org.id && canReadAcrossOrgs(isInstanceAdmin)) {
       return;
     }
-    const { permission } = await permissionService.getOrgPermission({
-      actorId: actor.id,
-      actor: actor.type,
+    const permission = await organizationsDomain.getOrgPermission({
+      actor,
       orgId,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
+    permission.assert({ action: OrgPermissionBillingActions.Read, subject: OrgPermissionSubjects.Billing });
   };
 
   const ensureManageBilling = async (orgId: string, actor: TGetBillingV2OverviewDTO["actor"]) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId: actor.id,
-      actor: actor.type,
+    const permission = await organizationsDomain.getOrgPermission({
+      actor,
       orgId,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
       scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionBillingActions.ManageBilling,
-      OrgPermissionSubjects.Billing
-    );
+    permission.assert({ action: OrgPermissionBillingActions.ManageBilling, subject: OrgPermissionSubjects.Billing });
   };
 
   // Fold the subscription items and the entitlement features sourced from a product into a single

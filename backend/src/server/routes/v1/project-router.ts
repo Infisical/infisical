@@ -940,10 +940,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const auditLogSettings = await server.services.auditLogSettings.getProjectSettings({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId
       });
       return { auditLogSettings };
@@ -972,10 +969,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const auditLogSettings = await server.services.auditLogSettings.updateProjectSettings({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId,
         eventClasses: req.body.eventClasses
       });

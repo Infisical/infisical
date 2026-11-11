@@ -1,4 +1,4 @@
-import { TGenericPermission } from "@app/lib/types";
+import { TActorInput, TGenericPermission } from "@app/lib/types";
 
 import {
   AgentVaultCredentialType,
@@ -41,6 +41,8 @@ export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
 };
 
 export type TProxyByIdDTO = TAgentVaultProxyScoped & { proxyId: string };
+
+export type TRevokeProxyAccessDTO = TProxyByIdDTO & TActorInput;
 
 export type TBootstrapProxyDTO = {
   proxyId: string;

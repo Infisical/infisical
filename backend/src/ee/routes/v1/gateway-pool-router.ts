@@ -44,7 +44,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const pool = await server.services.gatewayPool.createGatewayPool({
         name: req.body.name,
-        ...req.permission
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -107,7 +107,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.gatewayPool.getGatewayPoolById({
         poolId: req.params.poolId,
-        ...req.permission
+        actor: req.permission
       });
     }
   });
@@ -134,7 +134,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       const pool = await server.services.gatewayPool.updateGatewayPool({
         poolId: req.params.poolId,
         name: req.body.name,
-        ...req.permission
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -171,7 +171,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const pool = await server.services.gatewayPool.deleteGatewayPool({
         poolId: req.params.poolId,
-        ...req.permission
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -217,7 +217,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       const { membership, poolName, gatewayName } = await server.services.gatewayPool.addGatewayToPool({
         poolId: req.params.poolId,
         gatewayId: req.body.gatewayId,
-        ...req.permission
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -263,7 +263,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
       const { membership, poolName, gatewayName } = await server.services.gatewayPool.removeGatewayFromPool({
         poolId: req.params.poolId,
         gatewayId: req.params.gatewayId,
-        ...req.permission
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -338,7 +338,7 @@ export const registerGatewayPoolRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.gatewayPool.getConnectedResources({
         poolId: req.params.poolId,
-        ...req.permission
+        actor: req.permission
       });
     }
   });

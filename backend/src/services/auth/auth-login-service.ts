@@ -1,13 +1,7 @@
 import { Knex } from "knex";
 
-import {
-  AccessScope,
-  OrganizationActionScope,
-  OrgMembershipRole,
-  OrgMembershipStatus,
-  TUsers,
-  UserDeviceSchema
-} from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TUsers, UserDeviceSchema } from "@app/db/schemas";
+import { TActorContexts } from "@app/domains/lib/actor-context";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import {
   FOREIGN_SSO_SESSION_ERROR_NAME,
@@ -16,7 +10,6 @@ import {
   TOrganizationsDomain
 } from "@app/domains/platform/organizations/ce/module";
 import { EventType, TAuditLogServiceFactory, TMfaSatisfiedBy } from "@app/ee/services/audit-log/audit-log-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
@@ -93,8 +86,8 @@ type TAuthLoginServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  organizationsDomain: Pick<TOrganizationsDomain, "findSsoSessionRefusal">;
+  actorContexts: Pick<TActorContexts, "forPrincipal">;
+  organizationsDomain: Pick<TOrganizationsDomain, "findSsoSessionRefusal" | "getOrgPermission">;
   mfaLockoutService: Pick<
     TMfaLockoutServiceFactory,
     "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth" | "clearRecentMfaAuth"
@@ -115,7 +108,7 @@ export const authLoginServiceFactory = ({
   notificationService,
   membershipUserDAL,
   membershipRoleDAL,
-  permissionService,
+  actorContexts,
   organizationsDomain,
   mfaLockoutService
 }: TAuthLoginServiceFactoryDep) => {
@@ -1335,17 +1328,22 @@ export const authLoginServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: ActorType.USER,
-      actorId: user.id,
-      orgId: rootOrg.id,
-      actorAuthMethod: userAuthMethod,
-      actorOrgId: rootOrg.id,
-      scope: OrganizationActionScope.Any
-    });
+    // The user has no request context for the org being selected yet, so it gets one for the root org here.
+    const rootOrgActor = await actorContexts.forPrincipal(
+      {
+        type: ActorType.USER,
+        id: user.id,
+        username: user.username,
+        email: user.email ?? null,
+        authMethod: userAuthMethod,
+        isSuperAdmin: false
+      },
+      rootOrg.id
+    );
+    const permission = await organizationsDomain.getOrgPermission({ actor: rootOrgActor });
     const canBypassSso =
       rootOrg.bypassOrgAuthEnabled &&
-      permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
+      permission.can({ action: OrgPermissionSsoActions.BypassSsoEnforcement, subject: OrgPermissionSubjects.Sso });
 
     if (rootOrg.googleSsoAuthEnforced && userAuthMethod !== AuthMethod.GOOGLE) {
       if (!canBypassSso) {

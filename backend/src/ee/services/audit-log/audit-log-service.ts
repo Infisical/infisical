@@ -1,10 +1,17 @@
-import { ForbiddenError } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
-import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { TUsers } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import {
+  OrgPermissionAuditLogsActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
@@ -20,7 +27,6 @@ import { NotificationType } from "@app/services/notification/notification-types"
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TClickHouseAuditLogDALFactory } from "./audit-log-clickhouse-dal";
 import { TAuditLogDALFactory, TPamAuditLogScope } from "./audit-log-dal";
 import { getAuditLogEventClass, resolveEventClassFilter } from "./audit-log-event-classes";
@@ -48,7 +54,8 @@ const COLLAPSE_FLUSH_BACKOFF_MS = 3_000;
 type TAuditLogServiceFactoryDep = {
   auditLogDAL: TAuditLogDALFactory;
   clickhouseAuditLogDAL?: TClickHouseAuditLogDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   auditLogQueue: TAuditLogQueueServiceFactory;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "getEffectiveSettings">;
   licenseDomain: TLicenseDomain;
@@ -75,7 +82,8 @@ export const auditLogServiceFactory = ({
   auditLogQueue,
   auditLogSettingsService,
   licenseDomain,
-  permissionService,
+  organizationsDomain,
+  projectsDomain,
   queueService,
   keyStore,
   smtpService,
@@ -83,13 +91,7 @@ export const auditLogServiceFactory = ({
   notificationService,
   resolvePamAuditScope
 }: TAuditLogServiceFactoryDep): TAuditLogServiceFactory => {
-  const listAuditLogs: TAuditLogServiceFactory["listAuditLogs"] = async ({
-    actorAuthMethod,
-    actorId,
-    actorOrgId,
-    actor,
-    filter
-  }) => {
+  const listAuditLogs: TAuditLogServiceFactory["listAuditLogs"] = async ({ actor, filter }) => {
     // Products with their own permission model (e.g. PAM) scope logs by resource
     let pamScope: TPamAuditLogScope | null = null;
 
@@ -98,42 +100,22 @@ export const auditLogServiceFactory = ({
       pamScope = resolvePamAuditScope
         ? await resolvePamAuditScope({
             projectId: filter.projectId,
-            actor,
-            actorId,
-            actorAuthMethod,
-            actorOrgId
+            actor: actor.principal.type,
+            actorId: actor.principal.id,
+            actorAuthMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
+            actorOrgId: actor.org.id
           })
         : null;
 
       if (!pamScope) {
-        const { permission } = await permissionService.getProjectPermission({
-          actor,
-          actorId,
-          projectId: filter.projectId,
-          actorAuthMethod,
-          actorOrgId,
-          actionProjectType: ActionProjectType.Any
-        });
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionAuditLogsActions.Read,
-          ProjectPermissionSub.AuditLogs
-        );
+        const permission = await projectsDomain.getProjectPermission({ actor, projectId: filter.projectId });
+        permission.assert({ action: ProjectPermissionAuditLogsActions.Read, subject: ProjectPermissionSub.AuditLogs });
       }
     } else {
       // Organization-wide logs
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
+      const permission = await organizationsDomain.getOrgPermission({ actor });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionAuditLogsActions.Read,
-        OrgPermissionSubjects.AuditLogs
-      );
+      permission.assert({ action: OrgPermissionAuditLogsActions.Read, subject: OrgPermissionSubjects.AuditLogs });
     }
 
     if (filter.auditLogActorId && filter.actorType && !ACTOR_TYPE_TO_METADATA_ID_KEY[filter.actorType]) {
@@ -165,7 +147,7 @@ export const auditLogServiceFactory = ({
       secretPath: filter.secretPath,
       secretKey: filter.secretKey,
       environment: filter.environment,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       ...(filter.projectId ? { projectId: filter.projectId } : {}),
       ...(pamScope ? { pamScope } : {})
     };
@@ -337,21 +319,11 @@ export const auditLogServiceFactory = ({
   };
 
   const getAuditLogPostgresStorageStatus: TAuditLogServiceFactory["getAuditLogPostgresStorageStatus"] = async ({
-    actorAuthMethod,
-    actorId,
-    actorOrgId,
     actor
   }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
+    permission.assert({ action: OrgPermissionAuditLogsActions.Read, subject: OrgPermissionSubjects.AuditLogs });
 
     const appCfg = getConfig();
     const clickHouseConfigured = Boolean(appCfg.isClickHouseConfigured && appCfg.CLICKHOUSE_AUDIT_LOG_ENABLED);

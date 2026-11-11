@@ -1,15 +1,17 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { AccessScope, TUsers } from "@app/db/schemas";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
@@ -81,7 +83,7 @@ type TUserServiceFactoryDep = {
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   smtpService: Pick<TSmtpService, "sendMail">;
-  permissionService: TPermissionServiceFactory;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
   totpConfigDAL: Pick<TTotpConfigDALFactory, "findOne">;
   webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
@@ -102,7 +104,7 @@ export const userServiceFactory = ({
   groupProjectDAL,
   tokenService,
   smtpService,
-  permissionService,
+  organizationsDomain,
   userAliasDAL,
   totpConfigDAL,
   webAuthnCredentialDAL,
@@ -889,26 +891,19 @@ export const userServiceFactory = ({
     return updatedOrgMembership.projectFavorites;
   };
 
-  const listUserGroups = async ({ username, actorOrgId, actor, actorId, actorAuthMethod }: TListUserGroupsDTO) => {
+  const listUserGroups = async ({ username, actor }: TListUserGroupsDTO) => {
     // akhilmhdh: case sensitive email resolution
     const user = await userDAL.findOne({ username });
 
     if (!user) throw new NotFoundError({ name: `User with username '${username}' not found` });
 
     // This makes it so the user can always read information about themselves, but no one else if they don't have the Members Read permission.
-    if (user.id !== actorId) {
-      const { permission } = await permissionService.getOrgPermission({
-        actor,
-        actorId,
-        orgId: actorOrgId,
-        actorAuthMethod,
-        actorOrgId,
-        scope: OrganizationActionScope.Any
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+    if (user.id !== actor.principal.id) {
+      const permission = await organizationsDomain.getOrgPermission({ actor });
+      permission.assert({ action: OrgPermissionMemberActions.Read, subject: OrgPermissionSubjects.Member });
     }
 
-    const memberships = await groupProjectDAL.findByUserId(user.id, actorOrgId);
+    const memberships = await groupProjectDAL.findByUserId(user.id, actor.org.id);
     return memberships;
   };
 

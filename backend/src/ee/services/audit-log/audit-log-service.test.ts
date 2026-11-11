@@ -78,7 +78,8 @@ const createHarness = ({
 
   const service = auditLogServiceFactory({
     auditLogDAL: {} as never,
-    permissionService: {} as never,
+    organizationsDomain: {} as never,
+    projectsDomain: {} as never,
     auditLogQueue: auditLogQueue as never,
     auditLogSettingsService: auditLogSettingsService as never,
     licenseDomain,

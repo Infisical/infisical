@@ -158,11 +158,8 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const groups = await server.services.org.getOrgGroups({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission,
+        orgId: req.permission.orgId
       });
 
       return groups;

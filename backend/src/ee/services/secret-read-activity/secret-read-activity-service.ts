@@ -2,9 +2,11 @@ import { createMongoAbility } from "@casl/ability";
 import { setImmediate } from "node:timers/promises";
 
 import { SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";
@@ -21,7 +23,6 @@ import { conditionsMatcher } from "@app/lib/casl";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -81,7 +82,8 @@ const once = <T>(build: () => T) => {
 };
 
 type TSecretReadActivityServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermissions">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   licenseDomain: TLicenseDomain;
   secretReadActivityDAL: Pick<
     TSecretReadActivityDALFactory,
@@ -106,6 +108,7 @@ export type TSecretReadActivityServiceFactory = ReturnType<typeof secretReadActi
 
 export const secretReadActivityServiceFactory = ({
   permissionService,
+  secretsDomain,
   licenseDomain,
   secretReadActivityDAL,
   secretReadActivityQueue,
@@ -480,9 +483,9 @@ export const secretReadActivityServiceFactory = ({
 
   const getSecretReadActivity = async (
     { projectId, environment, secretPath, secretName }: TGetSecretReadActivityDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await checkInsightsPermission(permissionService, licenseDomain, projectId, actor);
+    const { permission } = await checkInsightsPermission(secretsDomain, licenseDomain, projectId, actor);
 
     // The secret is checked before the reach is built, which decrypts every secret that could reference it.
     const tree = await loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId);
@@ -499,17 +502,21 @@ export const secretReadActivityServiceFactory = ({
         message: `Secret with name '${secretName}' not found at path '${secretPath}' in environment '${environment}'`
       });
     }
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-      environment,
-      secretPath,
-      secretName,
-      secretTags: secret.tags?.map((tag) => tag.slug)
-    });
+    throwIfMissingSecretReadValueOrDescribePermission(
+      permission.toAbility(),
+      ProjectPermissionSecretActions.DescribeSecret,
+      {
+        environment,
+        secretPath,
+        secretName,
+        secretTags: secret.tags?.map((tag) => tag.slug)
+      }
+    );
 
     const windowStart = getReadActivityWindowStart();
     const [[activity], access] = await Promise.all([
       $getReadActivity({ projectId, windowStart, secret: { environment, secretPath, secretName }, tree }),
-      $loadProjectAccess(projectId, actor.orgId, windowStart)
+      $loadProjectAccess(projectId, actor.org.id, windowStart)
     ]);
     if (!activity) {
       throw new NotFoundError({
@@ -683,12 +690,9 @@ export const secretReadActivityServiceFactory = ({
     return { ...summary, unusedAccessFrom, remainingTTL };
   };
 
-  const listUnusedAccess = async (
-    { projectId, offset, limit, search }: TListUnusedAccessDTO,
-    actor: OrgServiceActor
-  ) => {
-    await checkInsightsPermission(permissionService, licenseDomain, projectId, actor);
-    const { rows, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
+  const listUnusedAccess = async ({ projectId, offset, limit, search }: TListUnusedAccessDTO, actor: TActorContext) => {
+    await checkInsightsPermission(secretsDomain, licenseDomain, projectId, actor);
+    const { rows, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.org.id);
     const needle = search?.trim().toLowerCase();
     const matching = needle ? rows.filter((row) => row.name.toLowerCase().includes(needle)) : rows;
     return {
@@ -699,10 +703,10 @@ export const secretReadActivityServiceFactory = ({
 
   const getUnusedAccessActor = async (
     { projectId, actorType, actorId }: TGetUnusedAccessActorDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await checkInsightsPermission(permissionService, licenseDomain, projectId, actor);
-    const { rows, details, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
+    const { permission } = await checkInsightsPermission(secretsDomain, licenseDomain, projectId, actor);
+    const { rows, details, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.org.id);
     const unusedAccessActor = rows.find((row) => row.actorType === actorType && row.actorId === actorId);
     if (!unusedAccessActor) {
       throw new NotFoundError({
@@ -718,7 +722,7 @@ export const secretReadActivityServiceFactory = ({
         key: KeyStorePrefixes.InsightsCache(projectId, `unused-access:${actorType}:${actorId}`),
         ttlSeconds: Math.max(remainingTTL, 1),
         fetcher: async () =>
-          (await $tallyUnusedAccess(projectId, actor.orgId)).tallies.get(actorId)?.unusedSecretIds ?? []
+          (await $tallyUnusedAccess(projectId, actor.org.id)).tallies.get(actorId)?.unusedSecretIds ?? []
       }));
 
     // The cache is shared by everyone in the project and can be a day old, so each listed secret is checked against
@@ -733,11 +737,15 @@ export const secretReadActivityServiceFactory = ({
         const location = tree.locationOf(secret.folderId);
         const canDescribe =
           location &&
-          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
-            ...location,
-            secretName: secret.key,
-            secretTags: secret.tags?.map((tag) => tag.slug)
-          });
+          hasSecretReadValueOrDescribePermission(
+            permission.toAbility(),
+            ProjectPermissionSecretActions.DescribeSecret,
+            {
+              ...location,
+              secretName: secret.key,
+              secretTags: secret.tags?.map((tag) => tag.slug)
+            }
+          );
         return location && canDescribe ? [{ secretKey: secret.key, ...location }] : [];
       })
       .sort(
