@@ -543,8 +543,9 @@ export const orgDALFactory = (db: TDbClient) => {
   const lockOrgTreeAccessForDeletion = async (rootOrgId: string, tx: Knex) => {
     try {
       const orgs = await tx(TableName.Organization)
-        .where({ id: rootOrgId })
-        .orWhere({ rootOrgId })
+        .where((qb) => {
+          void qb.where({ id: rootOrgId }).orWhere({ rootOrgId });
+        })
         .orderBy("id")
         .forUpdate()
         .select("id");
