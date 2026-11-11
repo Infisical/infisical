@@ -72,12 +72,12 @@ You can view a session's logs if you created the session or you're an admin of i
       }
       ```
 
-      - `serviceType`: `http`, `mcp`, `postgres`, `mysql`, or `ssh`, or `null` if no service matched the request
+      - `serviceType`: `http`, `mcp`, `postgres`, `mysql`, `cockroachdb`, `clickhouse`, `redis`, or `ssh`, or `null` if no service matched the request
       - `mcp`: left out for other requests to an MCP service, such as the `GET` that opens an event stream
       - `mcp.parsed`: `false` if the proxy couldn't read the calls from the request body, such as a compressed body, or if a method or tool name holds characters other than letters, digits, and `_ . : / -` or is longer than 128 characters
       - `mcp.truncated`: `true` if the request held more than 8 calls and the rest weren't recorded (left out otherwise)
 
-      If a record is for a database or SSH service, `method` is `POSTGRES`, `MYSQL`, or `SSH`, `path` is empty, `status` is `0`, and the record has a `native` object with what the connection did:
+      If a record is for a database or SSH service, `method` is `POSTGRES`, `MYSQL`, `COCKROACHDB`, `CLICKHOUSE`, `REDIS`, or `SSH`, `path` is empty, `status` is `0`, and the record has a `native` object with what the connection did:
 
       ```json
       {
@@ -98,8 +98,8 @@ You can view a session's logs if you created the session or you're an admin of i
 
       Each field of `native` is left out if it's empty:
 
-      - `native.statement`: A PostgreSQL or MySQL statement
-      - `native.result`: The statement's result, such as `SELECT 1`, or the error PostgreSQL returned
+      - `native.statement`: A SQL statement, or a Redis command as JSON text
+      - `native.result`: The statement's result, such as `SELECT 1` or the database's error, or Redis's reply as JSON text
       - `native.command`: An SSH command, in the record written when the command starts
       - `native.stdin`: Input the agent piped into an SSH command
       - `native.output`: Output from an SSH command or shell
@@ -192,7 +192,9 @@ If the agent sent several calls in one request, the row shows the first one. If 
 
 For a [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh), each row is one thing the connection did, shown with the service type, such as **PostgreSQL**, in place of the method. Select a row to see everything it recorded and copy it.
 
-- **PostgreSQL and MySQL:** A statement and its result, such as `SELECT 42` when PostgreSQL returns 42 rows, but never the rows themselves
+- **PostgreSQL, MySQL, and CockroachDB:** A statement and its result, such as `SELECT 42` when PostgreSQL returns 42 rows, but never the rows themselves
+- **ClickHouse:** A statement and a summary of its outcome, such as the number of rows read and written, or `ERROR` with ClickHouse's error, but never the rows themselves
+- **Redis:** A command and Redis's whole reply, both as JSON text, so the row holds any values the agent read
 - **SSH commands:** A row with the command when it starts, then rows with the input the agent piped into it and its output, written every minute while it runs
 - **SSH file transfers:** One `scp` or `sftp` file operation
 - **SSH shells:** What the shell printed, in rows of up to 64 KB or one minute
@@ -205,7 +207,7 @@ The proxy records statements, commands, and piped input as the agent wrote them,
 
 - If the agent puts a password in a statement or command, such as in `ALTER USER`, `IDENTIFIED BY`, or input piped to `sudo -S`, the log holds the password
 - In an SSH shell, the log holds typed input only if the shell didn't echo it, so a password typed at a prompt is recorded
-- For PostgreSQL, the values bound to a prepared statement are recorded with the statement, so the log can hold values from your database (MySQL records the statement without them)
+- For PostgreSQL and CockroachDB, the values bound to a prepared statement are recorded with the statement, so the log can hold values from your database (MySQL records the statement without them)
 
 ## Storing session logs in your own S3 bucket
 
