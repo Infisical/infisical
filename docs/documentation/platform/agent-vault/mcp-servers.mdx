@@ -3,7 +3,7 @@ title: "MCP servers"
 description: "Remote MCP servers that an AI agent can use during a session without holding their credentials."
 ---
 
-An MCP service lets an agent use a remote [MCP server](https://modelcontextprotocol.io/), such as Linear's or Notion's, during a [session](/documentation/platform/agent-vault/sessions). It's one of the two types of [service](/documentation/platform/agent-vault/services) you can add to an access bundle. The other type, an HTTP service, covers a web API that the agent calls directly.
+An MCP service lets an agent use a remote [MCP server](https://modelcontextprotocol.io/), such as Linear's or Notion's, during a [session](/documentation/platform/agent-vault/sessions). It's one of three [service types](/documentation/platform/agent-vault/services#service-types) you can add to an access bundle. The other two are HTTP services, for web APIs that the agent calls directly, and database and SSH services.
 
 You add the MCP server to your agent with its real URL and no credentials. When the agent connects to the server, the [proxy](/documentation/platform/agent-vault/proxies) attaches the service's credential, so the agent can call the server's tools without ever holding the credential.
 
@@ -18,7 +18,7 @@ You add the MCP server to your agent with its real URL and no credentials. When 
 
 <Steps>
   <Step>
-    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**.
+    In your Agent Vault project, go to **Access Bundles**. Select your access bundle, then select **Add Service**. In the **Services** list, select **Create New Service**.
   </Step>
   <Step>
     On the **Choose a template** panel, pick a template under **MCP Servers**, or select **Custom MCP Server** to connect any other remote MCP server.

@@ -10,8 +10,8 @@ never in anything the agent holds.
 
 | Noun | What it is |
 | --- | --- |
-| **Access bundle** | A named set of services. The unit you grant |
-| **Service** | One host pattern set plus its credential |
+| **Access bundle** | A named set of the project's services and skills. The unit you grant |
+| **Service** | One host pattern set (or database or SSH server) plus its credential, defined once per project and linked to any number of bundles |
 | **Session** | A minted token naming one actor, one of their bundles, services of its own, or both, and an expiry. The token *is* the session |
 | **Proxy** | One egress identity and its CA. Any number of processes can run it from its proxy token |
 
@@ -47,7 +47,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   `countOfBillableOrgProjects`; break the exclusion and every org loses a workspace slot.
 - Each handler resolves its project after zod validation: `resolveRequestedProjectId(req, projectId, "query" | "body")`
   (`ee/routes/v1/agent-vault-routers/agent-vault-router-fns.ts`) for lists, creates, project-level routes and lookups
-  by name, and `agentVaultProjectResolver.resolveFrom{AccessBundle,Skill,Proxy,Session,Variable,Authorization}` for
+  by name, and `agentVaultProjectResolver.resolveFrom{AccessBundle,Service,Skill,Proxy,Session,Variable,Authorization}` for
   by-id routes, which take the project from the row and check the caller's membership in it. A project that is missing,
   soft-deleted, of another type or in another org is a 404 that echoes only the sent id. On a by-id route, a row in a
   project the caller isn't a member of is the row's own 404 (the resolver maps `ProjectMembershipNotFound`), never
@@ -95,9 +95,10 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - `scopeResourceId` has no FK, so `deleteAccessBundle` deletes the grants itself, in the bundle delete's transaction,
   and `addMembers` locks the bundle row (`lockByIdInProject`) before inserting. Every path takes these rows in one
   order, bundle, services, grants, values, and a new one must too: the delete locks the bundle row and then its
-  services before deleting the grants and then the bundle, whose cascade takes the services and their values. A
-  personal values save takes its service and then the caller's grant, and a removal deletes grants before values,
-  so a delete that reached the grants before the services would deadlock with a save.
+  services before deleting the grants and then the bundle, whose cascade takes only the links, then clears the values of
+  grantees who no longer reach those services. A personal values save takes its service and then the caller's grants,
+  and a removal deletes grants before values, so a delete that reached the grants before the services would deadlock
+  with a save.
 - Granting is batch: one POST carries `{ userIds, machineIdentityIds, groupIds }`. The bundle row lock is what
   makes the dedupe read inside it authoritative, so an actor who already holds the bundle is returned in
   `skipped` rather than erroring; the unique index is only the backstop.
@@ -264,13 +265,40 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
 - **Delegation routes take no `AuthMode.OAUTH`.** The admin check reads the role, which a delegated token's scopes
   don't narrow, and a delegation lets an identity act as other users.
 
+## Services and bundles
+
+A service belongs to the project (`agent_vault_services.projectId`) and a bundle holds it through a link
+(`agent_vault_access_bundle_services`), the way skills work. `/services` creates, edits and deletes them, and
+`POST`/`DELETE /access-bundles/:id/services` add and remove a link. Personal values, OAuth sign-ins and tool loading are
+keyed by the service, so a member sets them once however many bundles give them the service.
+
+- **Names are unique per project** among the project's services (`agent_vault_services_project_name_unique`, partial on
+  `sessionId IS NULL`). A bundle read still puts `accessBundleId` on each service: released SDKs require it.
+- **A bundle can't hold two services covering one host**, so a host change is checked against every bundle the service
+  is in, and a create into bundles or a link against the bundle it joins (`checkHostPatternConflicts`). Under the
+  bundle row locks, after the project's `AgentVaultServiceNames` advisory lock.
+- **A service a bundle gains can't take the name of an inline service in a live session on that bundle**, or the session
+  would hold two services called the same, and an agent finds a database or SSH service by name. A rename, a create
+  into a bundle and a link all check (`assertNoLiveInlineNameClash`), and a mint with inline services and a bundle
+  re-checks the bundle's names in its transaction, all under `AgentVaultServiceNames`, so neither can pass the other.
+  Links change only under that lock too, so `updateService` can read a service's bundles and lock them.
+- **Removing a service from a bundle keeps it in the project**, and clears the personal values of everyone who no longer
+  reaches it through any bundle (`clearPersonalValuesAfterRevoke` with `everyActor`), admins excepted. Deleting a
+  service cascades to its links and everyone's values.
+- `agent_vault_services.accessBundleId` and the `agent_vault_session_inline_services` table are dead for one release, so
+  pods on the previous release keep resolving while this one rolls out. Nothing reads or writes them; drop both in the
+  next release's migration.
+
 ## Inline services
 
 An Agent Vault admin can send services with a session itself, without an access bundle or alongside one, for a caller
 that holds its own credentials and needs a host for one session only. The API calls them the session's `services` (on
 mint, on session reads and in the mint audit event); the code and the Sessions page say inline services, which is what
-tells them apart from a bundle's. They are rows of `agent_vault_session_inline_services` and belong to that session
-alone: nothing edits them, no bundle or other session reads them, and only resolve opens their secrets.
+tells them apart from a bundle's. They are rows of `agent_vault_services` with `sessionId` set, sharing every column and
+child table with a project's services so the two can't drift, and only `agent-vault-session-inline-service-dal.ts`
+reads or writes them. They belong to that session alone: nothing edits them, no bundle or other session reads them, and
+only resolve opens their secrets. The `agent_vault_services_inline_only_check` keeps member fields, OAuth and tool lists
+off them in the database too.
 
 - **Admin only, at mint and on every resolve.** Whoever starts the session decides which hosts it reaches and with
   which credentials, an admin's call for a bundle's services too. It also keeps `service-hosts` meaningful: a proxy lets
@@ -297,15 +325,17 @@ alone: nothing edits them, no bundle or other session reads them, and only resol
   are refused, and so is one covering a pattern the session's bundle covers. Mint checks it without the bundle lock, so
   a later bundle edit can still create the overlap; resolve puts the bundle's services first, and the Go matcher breaks
   a tie by slice order, so the bundle's service gets the host.
-- **Secrets go when the session ends; the rest stays.** The credential, custom header values and substitution values are
-  sealed together in `encryptedSecrets`, so deleting them is one write. The row keeps the name, type, hosts, rules,
+- **Secrets go when the session ends; the rest stays.** The credential (`encryptedCredential`) and the custom header and
+  substitution values (`encryptedValue` on the child rows) are set to NULL together with `secretsDeletedAt`, in one
+  transaction. The row keeps the name, type, hosts, rules,
   credential type, header names and placeholders, since sessions stay until their project is deleted and the Sessions page shows what an
   ended session could reach. Revoke deletes the secrets in its transaction, and the hourly `FrequentResourceCleanup`
   (`deleteSecretsOfEndedSessions`) catches sessions that expired or lost their owner, matching `deriveSessionStatus`.
   Neither writes the session row, so an ownerless session's `updatedAt` never moves. `ttl: never` is allowed, so such a
   session keeps its secrets until it is revoked or its owner is deleted.
-- **A NULL `encryptedSecrets` means nothing to send only for a pass-through service with no custom headers or
-  substitutions.** On any other service it means the session ended, and resolve leaves the service out.
+- **Resolve opens an inline service's values with `openInlineServiceSecrets`**, which returns none once
+  `secretsDeletedAt` is set or any value it needs is missing, so resolve leaves the service out rather than send a
+  half-built one. Only a pass-through service with no custom headers or substitutions goes out with nothing sealed.
 
 ## Database and SSH services
 
@@ -452,12 +482,12 @@ header" is the name in every layer; unqualified "header" means the credential's 
 
 - **There is no unique index on name or placeholder, and there must not be.** A rename that swaps two rows
   emits the two UPDATEs in sequence, so `UNIQUE (serviceId, lower(name))` fails the first against the
-  second row's current value. Uniqueness is the list-level refine plus the bundle lock. Adding an index
+  second row's current value. Uniqueness is the list-level refine plus the service row lock. Adding an index
   needs deferred constraints or delete-then-insert.
 - The proxy writes substitutions, then custom headers, then **the credential last**, so nothing can
   overwrite the credential. A path substitution rewrites the path after the policy check, so a restricted
   service re-checks it.
-- Stored rows **and the credential** are read inside the transaction, after the bundle lock. Outside it two
+- Stored rows **and the credential** are read inside the transaction, after the service lock. Outside it two
   concurrent PATCHes both pass the ownership check and the loser's writes no-op.
 - A refusal after substitution must never quote the path: by then it carries the real credential, and the
   error text is both the 403 body and the log line.
@@ -580,19 +610,19 @@ personal values can reference.
   service row: a credential type change deletes every member's values for the service, and taking a field back
   from members deletes that field's. Adding a member-provided field keeps what members saved, and they add only
   the new one.
-- **Losing a bundle through Agent Vault clears what an actor saved for its services**
-  (`clearPersonalValuesAfterRevoke`). It runs on a bundle revoke, on removal from the project, on leaving it, and on a
+- **Losing a service through Agent Vault clears what an actor saved for it** (`clearPersonalValuesAfterRevoke`): a
+  value stays while its owner reaches the service through a grant on any bundle it is in, or is an admin. It runs on a bundle revoke, on removal from the project, on leaving it, and on a
   demotion from admin, for the actors named and the members of a named group, after that change is written. It takes the project's
   `ClearAgentVaultPersonalValues` advisory lock last, after those writes, so of two changes that each leave the
   other's access in place (a demotion and the revoke of the last grant) the second checks against the first once
-  committed. It skips anyone who still holds the bundle through another grant, and anyone who is still a project
+  committed. It skips anyone who still reaches the service through another bundle, and anyone who is still a project
   admin, since an admin reaches every bundle. Platform paths run it too: removal from the project through the generic
   membership routes, leaving or deleting a group, and org exit (see [The project](#the-project)). A lapsed temporary
   role and a role change through the generic routes don't, so values can outlive the grant there and return with a
   later one. They are only ever the same actor's, and resolve still checks reach. Deleting a personal
   variable also clears the owner's values on bundles they no longer reach, which otherwise would hold the variable in
   place with nothing able to edit them. Personal variables survive all of this, and their Used By lists only the
-  bundles the owner still reaches.
+  services the owner still reaches.
 - Personal variables follow the global variables' reference rules: sealed text names them by id, a reference row
   per personal value (`agent_vault_personal_value_references`, a deferred foreign key), the delete takes the variable
   row `FOR UPDATE` and a personal values save takes the rows it references `FOR SHARE`. The save takes them before

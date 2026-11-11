@@ -4582,9 +4582,13 @@
                   {
                     "group": "Services",
                     "pages": [
+                      "api-reference/endpoints/agent-vault-services/list",
+                      "api-reference/endpoints/agent-vault-services/get",
                       "api-reference/endpoints/agent-vault-services/create",
                       "api-reference/endpoints/agent-vault-services/update",
                       "api-reference/endpoints/agent-vault-services/delete",
+                      "api-reference/endpoints/agent-vault-services/add-to-bundle",
+                      "api-reference/endpoints/agent-vault-services/remove-from-bundle",
                       "api-reference/endpoints/agent-vault-services/set-personal-values",
                       "api-reference/endpoints/agent-vault-services/delete-personal-values"
                     ]
