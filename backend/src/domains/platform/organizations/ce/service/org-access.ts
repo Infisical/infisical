@@ -12,7 +12,8 @@ import { OrgPermissionSet } from "./permission/org-permission";
 export class OrgPermission extends Permission<OrgPermissionSet> {
   private constructor(
     rules: TPermissionRule<OrgPermissionSet>[],
-    private readonly grants: ActorGrants
+    // What it was built from, for code that still reads the legacy membership rows.
+    readonly grants: ActorGrants
   ) {
     super(createAbility<OrgPermissionSet>(rules));
   }

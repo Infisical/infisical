@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { ProjectType, ServiceTokenScopes } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
@@ -27,8 +29,8 @@ export type TSecretsPermission = {
 
 export type TSecretsPermissionDeps = {
   projectsDomain: Pick<TProjectsDomain, "getProjectRules" | "findProject">;
-  accessControlDomain: Pick<TAccessControlDomain, "findFolderGrants" | "withCache">;
-  keyStore: Pick<TDomainKeyStore, "pgGetIntItem">;
+  accessControlDomain: Pick<TAccessControlDomain, "findFolderGrants" | "withCache" | "grantsFingerprint">;
+  keyStore: Pick<TDomainKeyStore, "pgGetIntItem" | "pgIncrementBy">;
   folderPaths: Pick<FolderPathDataAccess, "findLocations">;
   serviceTokens: Pick<ServiceTokenDataAccess, "findById">;
 };
@@ -39,6 +41,10 @@ type TCachedFolderGrant = TFolderGrant & { isTemporary: boolean; temporaryAccess
 const folderVersionKey = (projectId: string) => `project-folder-permission-version:${projectId}`;
 
 const FOLDER_GRANTS_CACHE_KEY = "secrets-folder-grants:v1";
+
+// Must comfortably exceed the cached permission's lifetime: an expired row reads as 0 and the next bump re-inserts at
+// 1, so a short expiry lets a live cached value's fingerprint collide with the resurrected counter.
+const FOLDER_VERSION_TTL = "2d";
 
 export class SecretsPermissionService {
   constructor(private readonly deps: TSecretsPermissionDeps) {}
@@ -71,6 +77,32 @@ export class SecretsPermissionService {
       }),
       folderGrants
     };
+  }
+
+  // Makes every cached folder grant of these projects revalidate: call it when a folder grant changes or a folder is
+  // moved, renamed or deleted. Pass the transaction the change is written in so the bump commits with it.
+  async invalidateFolderGrants({ projectIds, tx }: { projectIds: string[]; tx?: Knex }): Promise<void> {
+    for await (const projectId of [...new Set(projectIds.filter(Boolean))]) {
+      await this.deps.keyStore.pgIncrementBy(folderVersionKey(projectId), { incr: 1, tx, expiry: FOLDER_VERSION_TTL });
+    }
+  }
+
+  // A key that changes whenever the actor's Secret Manager permission in the project may have: its grants or the
+  // project's folder grants and folder tree. For caches of values derived from that permission.
+  async getPermissionFingerprint({
+    actor,
+    orgId,
+    projectId
+  }: {
+    actor: TGrantActor;
+    orgId: string;
+    projectId: string;
+  }): Promise<string> {
+    const [grants, folderVersion] = await Promise.all([
+      this.deps.accessControlDomain.grantsFingerprint({ actor, scope: { orgId, projectId } }),
+      this.deps.keyStore.pgGetIntItem(folderVersionKey(projectId))
+    ]);
+    return `${grants}:${folderVersion ?? 0}`;
   }
 
   // Cached with the actor's grants and revalidated against the folder version, then filtered for expiry on every

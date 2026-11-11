@@ -2,6 +2,11 @@ import { TDynamicSecrets } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 
+// Who is acting, for a service method: the request's actor context (pass req.permission), or one a background job
+// builds with actorContexts.system or forPrincipal. Replaces the flat actor, actorId, actorAuthMethod and
+// actorOrgId fields.
+export type TActorInput = { actor: TActorContext };
+
 export type TGenericPermission = {
   actor: ActorType;
   actorId: string;

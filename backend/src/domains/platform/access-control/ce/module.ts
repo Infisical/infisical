@@ -48,6 +48,9 @@ export type TAccessControlDomain = {
   // version({ name }) into extraFingerprint.
   invalidate: (input: { name: string }) => Promise<void>;
   version: (input: { name: string }) => Promise<number>;
+  // A hash of everything the actor's grants in one project (its resources and its org included) are read from. It
+  // changes when a membership, role, privilege or attribute changes or a temporary grant ends; for cache keys.
+  grantsFingerprint: (input: { actor: TGrantActor; scope: { orgId: string; projectId: string } }) => Promise<string>;
   findMembershipsByIds: (input: { ids: string[]; readFrom?: ReadFrom }) => Promise<Membership[]>;
   // The actor's own folder grants in a project (privileges on one secret folder), active or not.
   findFolderGrants: (input: { actor: TGrantActor; projectId: string; readFrom?: ReadFrom }) => Promise<Privilege[]>;
@@ -116,6 +119,7 @@ export class AccessControlModule {
       withCache: (input) => grants.withCache(input),
       invalidate: ({ name }) => grants.invalidate(name),
       version: ({ name }) => grants.version(name),
+      grantsFingerprint: ({ actor, scope }) => dataAccess.grants.fingerprint(actor, scope),
       findMembershipsByIds: ({ ids, readFrom }) => dataAccess.memberships.findByIds(ids, { readFrom }),
       findFolderGrants: ({ readFrom, ...input }) => dataAccess.privileges.findFolderGrants(input, { readFrom }),
       findProjectFolderGrants: ({ readFrom, ...input }) =>

@@ -14,7 +14,7 @@ import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
-import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { legacyPermissionEngineFactory } from "@app/ee/services/permission/permission-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { keyStoreFactory, KeyStorePrefixes } from "@app/keystore/keystore";
@@ -24,7 +24,6 @@ import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -61,7 +60,7 @@ beforeAll(async () => {
   await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
   const keyStore = keyStoreFactory(getConfig(), keyValueStoreDALFactory(testDb));
 
-  permissionService = permissionServiceFactory({
+  permissionService = legacyPermissionEngineFactory({
     permissionDAL: permissionDALFactory(testDb),
     serviceTokenDAL: serviceTokenDALFactory(testDb),
     projectDAL: projectDALFactory(testDb),
@@ -71,8 +70,7 @@ beforeAll(async () => {
     roleDAL: roleDALFactory(testDb),
     additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
     groupDAL: groupDALFactory(testDb),
-    secretFolderDAL: secretFolderDALFactory(testDb),
-    orgDAL: orgDALFactory(testDb)
+    secretFolderDAL: secretFolderDALFactory(testDb)
   });
 
   const username = `folder-rbac-${alphaNumericNanoId(8)}@example.com`.toLowerCase();

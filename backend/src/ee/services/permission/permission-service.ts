@@ -18,9 +18,7 @@ import {
   orgAdminPermissions,
   orgMemberPermissions,
   orgNoAccessPermissions,
-  OrgPermissionSet,
-  OrgPermissionSsoActions,
-  OrgPermissionSubjects
+  OrgPermissionSet
 } from "@app/domains/platform/organizations/ce/module";
 import {
   buildServiceTokenProjectPermission,
@@ -57,7 +55,7 @@ import {
 } from "@app/ee/services/permission/default-roles";
 import { ResourcePermissionSet } from "@app/ee/services/permission/resource-permission";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { withCacheFingerprint } from "@app/lib/cache/with-cache";
 import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -75,7 +73,6 @@ import {
   isValidOauthScope,
   OauthScope
 } from "@app/services/oauth-client/oauth-scope";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -92,8 +89,7 @@ import {
   getProjectPermissionFingerprint,
   interpolatePermissionRules,
   interpolateStoredIdentityRules,
-  isActiveRole,
-  validateOrgSSO
+  isActiveRole
 } from "./permission-fns";
 import {
   TBuildOrgPermissionDTO,
@@ -113,13 +109,6 @@ const getDelegatedOauthScopes = (): OauthScope[] | undefined => {
   if (!raw) return undefined;
   // The scopes were validated at consent time, but re-coerce defensively against the catalog.
   return raw.filter(isValidOauthScope);
-};
-
-// The issuing org belongs to the request's own session, so it only applies when the permission
-// being resolved is the requester's; a check made on another user's behalf has no session of its own.
-const getSessionIssuingRootOrgId = (actorId: string) => {
-  const userAuthInfo = requestContext.get(RequestContextKey.UserAuthInfo);
-  return userAuthInfo?.userId === actorId ? userAuthInfo.issuingRootOrgId : undefined;
 };
 
 const buildOrgPermissionRules = (orgUserRoles: TBuildOrgPermissionDTO) => {
@@ -378,10 +367,11 @@ type TPermissionServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "find" | "findFolderScopedPrivileges">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   secretFolderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
-export const permissionServiceFactory = ({
+// The original engine. permissionServiceFactory (permission-adapter.ts) serves every call through the domains and
+// runs this one beside it in tests only, to compare. Deleted with the adapter.
+export const legacyPermissionEngineFactory = ({
   permissionDAL,
   serviceTokenDAL,
   projectDAL,
@@ -391,60 +381,8 @@ export const permissionServiceFactory = ({
   roleDAL,
   additionalPrivilegeDAL,
   groupDAL,
-  secretFolderDAL,
-  orgDAL
+  secretFolderDAL
 }: TPermissionServiceFactoryDep): TPermissionServiceFactory => {
-  const getOrgSsoPolicy = async (rootOrgId: string) => {
-    const rootOrg = await requestMemoize(requestMemoKeys.orgFindById(rootOrgId), () => orgDAL.findById(rootOrgId));
-    return {
-      isOrgSsoEnforced: Boolean(rootOrg?.authEnforced),
-      isOrgGoogleSsoEnforced: Boolean(rootOrg?.googleSsoAuthEnforced),
-      isOrgSsoBypassEnabled: Boolean(rootOrg?.bypassOrgAuthEnabled)
-    };
-  };
-
-  const canBypassRootOrgSso = async (actorId: string, rootOrgId: string) => {
-    const rootPermissionData = await permissionDAL.getPermission({
-      scopeData: { scope: AccessScope.Organization, orgId: rootOrgId },
-      actorId,
-      actorType: ActorType.USER
-    });
-    if (!rootPermissionData?.length) return false;
-    return createMongoAbility<OrgPermissionSet>(
-      buildOrgPermissionRules(flattenActiveRolesFromMemberships(rootPermissionData, OrgMembershipRole.Custom)),
-      { conditionsMatcher }
-    ).can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);
-  };
-
-  // Bypass is looked up only when enforcement would refuse the session, and never cached, so revoking it
-  // applies on the next request and a request enforcement admits pays nothing for it.
-  const assertOrgSso = async ({
-    actorId,
-    actorAuthMethod,
-    rootOrgId,
-    canBypassSso
-  }: {
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    rootOrgId: string;
-    canBypassSso: () => boolean | Promise<boolean>;
-  }) => {
-    const ssoPolicy = await getOrgSsoPolicy(rootOrgId);
-    try {
-      validateOrgSSO({
-        actorAuthMethod,
-        ...ssoPolicy,
-        isAdmin: false,
-        issuingRootOrgId: getSessionIssuingRootOrgId(actorId),
-        rootOrgId
-      });
-    } catch (error) {
-      if (!(error instanceof ForbiddenRequestError) || !ssoPolicy.isOrgSsoBypassEnabled || !(await canBypassSso())) {
-        throw error;
-      }
-    }
-  };
-
   const getOrgPermission: TPermissionServiceFactory["getOrgPermission"] = async ({
     actor,
     actorId,
@@ -503,20 +441,6 @@ export const permissionServiceFactory = ({
       const fullPermission = createMongoAbility<OrgPermissionSet>(buildOrgPermissionRules(permissionFromRoles), {
         conditionsMatcher
       });
-
-      // SSO enforcement applies only to users. Evaluate it against the full ability — SSO bypass is a
-      // property of the user's roles, not of what an OAuth client was delegated.
-      if (actor === ActorType.USER) {
-        await assertOrgSso({
-          actorId,
-          actorAuthMethod,
-          rootOrgId: rootOrgId ?? orgId,
-          canBypassSso: () =>
-            rootOrgId
-              ? canBypassRootOrgSso(actorId, rootOrgId)
-              : fullPermission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso)
-        });
-      }
 
       // Delegated OAuth tokens get a scope-narrowed ability; first-party sessions get the full one.
       const oauthScopes = getDelegatedOauthScopes();
@@ -820,17 +744,6 @@ export const permissionServiceFactory = ({
       const permissionFromRoles = flattenActiveRolesFromMemberships(permissionData, ProjectMembershipRole.Custom);
 
       const hasRole = (role: string) => membershipsHaveActiveRole(permissionData, role);
-
-      // SSO enforcement runs on every request (uses per-request actorAuthMethod, not cached)
-      if (actor === ActorType.USER) {
-        const rootOrgId = permissionData?.[0].rootOrgId ?? projectDetails.orgId;
-        await assertOrgSso({
-          actorId,
-          actorAuthMethod,
-          rootOrgId,
-          canBypassSso: () => canBypassRootOrgSso(actorId, rootOrgId)
-        });
-      }
 
       const rules = buildProjectPermissionRules(permissionFromRoles, projectDetails.type, folderScopedPrivileges);
       const unescapedMetadata = objectify(
@@ -1388,30 +1301,6 @@ export const permissionServiceFactory = ({
     });
   };
 
-  const checkGroupProjectPermission: TPermissionServiceFactory["checkGroupProjectPermission"] = async ({
-    groupId,
-    projectId,
-    checkPermissions
-  }) => {
-    const rawGroupProjectPermissions = await permissionDAL.getProjectGroupPermissions(projectId, groupId);
-    const groupPermissions = rawGroupProjectPermissions.map((groupProjectPermission) => {
-      const rolePermissions =
-        groupProjectPermission.roles?.map(({ role, permissions }) => ({ role, permissions })) || [];
-      const rules = buildProjectPermissionRules(rolePermissions);
-      const permission = createMongoAbility<ProjectPermissionSet>(rules, {
-        conditionsMatcher
-      });
-
-      return {
-        permission,
-        id: groupProjectPermission.groupId,
-        name: groupProjectPermission.username,
-        membershipId: groupProjectPermission.id
-      };
-    });
-    return groupPermissions.some((groupPermission) => groupPermission.permission.can(...checkPermissions));
-  };
-
   const $folderGrantAuditSources = async (
     projectId: string,
     actorType: ActorType.USER | ActorType.IDENTITY,
@@ -1773,7 +1662,6 @@ export const permissionServiceFactory = ({
     getProjectPermissions,
     getOrgPermissionByRoles,
     getProjectPermissionByRoles,
-    checkGroupProjectPermission,
     getActorGrantAbilities,
     getMembershipPermissionAudit,
     getIdentityPermissionAudit,

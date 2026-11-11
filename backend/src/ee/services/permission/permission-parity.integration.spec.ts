@@ -31,7 +31,6 @@ import { TPrincipal } from "@app/lib/auth/principal";
 import { RequestContextKey } from "@app/lib/request-context/request-context-keys";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { orgDALFactory } from "@app/services/org/org-dal";
 import { projectDALFactory } from "@app/services/project/project-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -39,7 +38,7 @@ import { serviceTokenDALFactory } from "@app/services/service-token/service-toke
 import { userDALFactory } from "@app/services/user/user-dal";
 
 import { permissionDALFactory } from "./permission-dal";
-import { permissionServiceFactory } from "./permission-service";
+import { legacyPermissionEngineFactory } from "./permission-service";
 
 // The legacy service reads the OAuth scopes, the assumed privilege and the identity's auth info from the request
 // context; the new functions read them from the principal. Each case sets both.
@@ -84,7 +83,7 @@ describe("Permission parity: legacy permissionService and the domain functions",
   });
 
   const build = () => {
-    const legacy = permissionServiceFactory({
+    const legacy = legacyPermissionEngineFactory({
       permissionDAL: permissionDALFactory(h.db),
       serviceTokenDAL: serviceTokenDALFactory(h.db),
       projectDAL: projectDALFactory(h.db),
@@ -94,8 +93,7 @@ describe("Permission parity: legacy permissionService and the domain functions",
       roleDAL: roleDALFactory(h.db),
       additionalPrivilegeDAL: additionalPrivilegeDALFactory(h.db),
       groupDAL: groupDALFactory(h.db),
-      secretFolderDAL: secretFolderDALFactory(h.db),
-      orgDAL: orgDALFactory(h.db)
+      secretFolderDAL: secretFolderDALFactory(h.db)
     });
     const domains = createDomains({
       db: h.db,

@@ -32,6 +32,11 @@ export type TSecretsDomain = {
   getFolderGrantAuditSources: SecretsMemberAccess["getFolderGrantAuditSources"];
   // Each of a member's active folder grants as a permission of its own (allow rules only).
   getFolderGrantPermissions: SecretsMemberAccess["getFolderGrantPermissions"];
+  // Makes cached folder grants of these projects revalidate; call it in the transaction that changes a folder grant
+  // or the folder tree.
+  invalidateFolderGrants: SecretsPermissionService["invalidateFolderGrants"];
+  // Changes whenever the actor's Secret Manager permission in the project may have; for caches derived from it.
+  getPermissionFingerprint: SecretsPermissionService["getPermissionFingerprint"];
 };
 
 export type TSecretsDeps = {
@@ -67,7 +72,9 @@ export class SecretsModule {
       getSecretsPermission: (input) => permissions.getSecretsPermission(input),
       getProjectMemberPermissions: (input) => memberAccess.getProjectMemberPermissions(input),
       getFolderGrantAuditSources: (input) => memberAccess.getFolderGrantAuditSources(input),
-      getFolderGrantPermissions: (input) => memberAccess.getFolderGrantPermissions(input)
+      getFolderGrantPermissions: (input) => memberAccess.getFolderGrantPermissions(input),
+      invalidateFolderGrants: (input) => permissions.invalidateFolderGrants(input),
+      getPermissionFingerprint: (input) => permissions.getPermissionFingerprint(input)
     };
 
     licenseRegistry.registerUsageCounter({

@@ -260,15 +260,6 @@ export type TPermissionServiceFactory = {
       };
     }[]
   >;
-  checkGroupProjectPermission: ({
-    groupId,
-    projectId,
-    checkPermissions
-  }: {
-    groupId: string;
-    projectId: string;
-    checkPermissions: ProjectPermissionSet;
-  }) => Promise<boolean>;
   getActorGrantAbilities: (arg: {
     scopeData: AccessScopeData;
     actorId: string;

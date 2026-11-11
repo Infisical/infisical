@@ -2,7 +2,6 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, PureAbility, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { TOrganizations } from "@app/db/schemas";
 import {
   escapeHandlebarsMissingDict,
   handlebarsClient,
@@ -10,11 +9,7 @@ import {
   interpolateStoredIdentityRules,
   isActiveRole
 } from "@app/domains/platform/access-control/ce/module";
-import {
-  FOREIGN_SSO_SESSION_ERROR_NAME,
-  OrgPermissionSet,
-  ssoSessionRefusal
-} from "@app/domains/platform/organizations/ce/module";
+import { OrgPermissionSet } from "@app/domains/platform/organizations/ce/module";
 import {
   ActionAllowedConditions,
   ProjectPermissionGroupActions,
@@ -27,9 +22,9 @@ import {
   SecretSubjectFields
 } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
-import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, PermissionBoundaryError } from "@app/lib/errors";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
@@ -254,56 +249,6 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
   return true;
 }
 
-export { FOREIGN_SSO_SESSION_ERROR_NAME };
-
-// The legacy permission path's SSO check, kept as a backstop for the flows that check a session against another
-// org than the request's (select-organization, OAuth consent, token exchange) until they call Organizations
-// directly. The rule itself is ssoSessionRefusal, which the per-request check in the actor context uses too.
-function validateOrgSSO({
-  actorAuthMethod,
-  isOrgSsoEnforced,
-  isOrgGoogleSsoEnforced,
-  isOrgSsoBypassEnabled,
-  isAdmin,
-  issuingRootOrgId,
-  rootOrgId
-}: {
-  actorAuthMethod: ActorAuthMethod;
-  isOrgSsoEnforced: TOrganizations["authEnforced"];
-  isOrgGoogleSsoEnforced: TOrganizations["googleSsoAuthEnforced"];
-  isOrgSsoBypassEnabled: TOrganizations["bypassOrgAuthEnabled"];
-  isAdmin: boolean;
-  // Root org whose IdP issued the session, when the session is the request's own; tokens issued
-  // before the claim existed carry none and are taken at their auth method.
-  issuingRootOrgId?: string;
-  rootOrgId: string;
-}) {
-  if (actorAuthMethod === undefined) {
-    throw new UnauthorizedError({ name: "No auth method defined" });
-  }
-
-  if ((isOrgSsoEnforced || isOrgGoogleSsoEnforced) && isOrgSsoBypassEnabled && isAdmin) {
-    return;
-  }
-
-  const refusal = ssoSessionRefusal({
-    authMethod: actorAuthMethod,
-    sessionRootOrgId: issuingRootOrgId,
-    rootOrgId,
-    policy: {
-      authEnforced: Boolean(isOrgSsoEnforced),
-      googleSsoAuthEnforced: Boolean(isOrgGoogleSsoEnforced),
-      bypassOrgAuthEnabled: Boolean(isOrgSsoBypassEnabled)
-    }
-  });
-  if (refusal) {
-    throw new ForbiddenRequestError({
-      message: refusal.message,
-      ...(refusal.name === FOREIGN_SSO_SESSION_ERROR_NAME ? { name: FOREIGN_SSO_SESSION_ERROR_NAME } : {})
-    });
-  }
-}
-
 // This function serves as a transition layer between the old and new privilege management system
 // the old privilege management system is based on the actor having more privileges than the managed permission
 // the new privilege management system is based on the actor having the appropriate permission to perform the privilege change,
@@ -518,6 +463,5 @@ export {
   constructPermissionErrorMessage,
   escapeHandlebarsMissingDict,
   handlebarsClient,
-  validateOrgSSO,
   validatePrivilegeChangeOperation
 };

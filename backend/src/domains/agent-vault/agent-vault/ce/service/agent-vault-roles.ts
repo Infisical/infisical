@@ -1,4 +1,4 @@
-import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
+import { AbilityBuilder, AbilityTuple, createMongoAbility, MongoAbility } from "@casl/ability";
 
 import {
   ProjectPermissionActions,
@@ -12,8 +12,10 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TResourceRoles
 } from "@app/domains/platform/projects/ce/module";
+import { NotFoundError } from "@app/lib/errors";
 
 // Agent Vault project roles.
 // The admin set is written out rather than aliased to projectAdminPermissions: an Agent Vault admin has
@@ -162,3 +164,15 @@ const buildAgentVaultProjectMemberPermissionRules = () => {
 
 export const agentVaultProjectAdminPermissions = buildAgentVaultProjectAdminPermissionRules();
 export const agentVaultProjectMemberPermissions = buildAgentVaultProjectMemberPermissionRules();
+
+// The one role an access bundle membership holds. Reaching a bundle is a filter the services apply, so it adds no
+// rules, and a project admin gets nothing on a bundle it is not granted.
+export const AGENT_VAULT_BUNDLE_CONSUMER_ROLE = "consumer";
+
+export const agentVaultResourceRoles: TResourceRoles<AbilityTuple> = {
+  resolveRole: (role) => {
+    if (role === AGENT_VAULT_BUNDLE_CONSUMER_ROLE) return [];
+    throw new NotFoundError({ name: "AgentVaultRoleInvalid", message: `Agent Vault role '${role}' not found` });
+  },
+  projectAdminFallback: []
+};

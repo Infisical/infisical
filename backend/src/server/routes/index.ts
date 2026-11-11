@@ -155,8 +155,9 @@ import { pamSessionExpirationServiceFactory } from "@app/ee/services/pam-session
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-log-fns";
+import { permissionServiceFactory } from "@app/ee/services/permission/permission-adapter";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
-import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { legacyPermissionEngineFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { pkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { pkiAcmeAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-auth-dal";
@@ -252,6 +253,7 @@ import { RunMode } from "@app/lib/types";
 import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbeat";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
+import { withProjectAuditContext } from "@app/server/lib/project-audit-context";
 import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
@@ -661,7 +663,10 @@ export const registerRoutes = async (
   const kmsCoreDomain = domains.kmsCore.service;
   const instanceConfigCoreDomain = domains.instanceConfigCore.service;
   const organizationsDomain = domains.organizations.service;
-  const projectsDomain = domains.projects.service;
+  const accessControlDomain = domains.accessControl.service;
+  // Project permission functions record the project in the request for audit logs and metrics.
+  const projectsDomain = withProjectAuditContext.projects(domains.projects.service);
+  const secretsDomain = withProjectAuditContext.secrets(domains.secrets.service);
   const certManagerDomain = domains.certManager.service;
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
@@ -877,17 +882,28 @@ export const registerRoutes = async (
   const projectEventsService = projectEventsServiceFactory({ eventBus: eventBusService });
 
   const permissionService = permissionServiceFactory({
-    permissionDAL,
-    serviceTokenDAL,
-    projectDAL,
-    keyStore,
-    roleDAL,
     userDAL,
     identityDAL,
-    additionalPrivilegeDAL,
-    groupDAL,
-    secretFolderDAL: folderDAL,
-    orgDAL
+    actorContexts: domains.actorContexts,
+    accessControlDomain,
+    organizationsDomain,
+    projectsDomain,
+    secretsDomain,
+    // Tests run the original engine beside every call and fail on any difference.
+    shadow: appCfg.isTestMode
+      ? legacyPermissionEngineFactory({
+          permissionDAL,
+          serviceTokenDAL,
+          projectDAL,
+          keyStore,
+          roleDAL,
+          userDAL,
+          identityDAL,
+          additionalPrivilegeDAL,
+          groupDAL,
+          secretFolderDAL: folderDAL
+        })
+      : undefined
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
@@ -2535,7 +2551,7 @@ export const registerRoutes = async (
     approvalPolicySecretEnvironmentDAL
   });
 
-  const secretTagService = secretTagServiceFactory({ secretTagDAL, permissionService, secretV2BridgeDAL });
+  const secretTagService = secretTagServiceFactory({ secretTagDAL, secretsDomain, secretV2BridgeDAL });
   const secretValidationRuleService = secretValidationRuleServiceFactory({
     secretValidationRuleDAL,
     projectEnvDAL,

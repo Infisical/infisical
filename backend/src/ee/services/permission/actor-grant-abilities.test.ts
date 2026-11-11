@@ -11,7 +11,7 @@ import {
 } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 
-import { permissionServiceFactory } from "./permission-service";
+import { legacyPermissionEngineFactory } from "./permission-service";
 
 // Privilege boundaries compare the actor against every grant the target holds. An additional
 // privilege carries a raw permission blob and no role slug, so a resolver that walked only
@@ -31,7 +31,7 @@ const createService = (
   const folderPrivileges = opts.folderPrivileges ?? [];
   const additionalPrivilegeDAL = { findFolderScopedPrivileges: vi.fn().mockResolvedValue(folderPrivileges) };
 
-  const service = permissionServiceFactory({
+  const service = legacyPermissionEngineFactory({
     permissionDAL,
     roleDAL: { find: vi.fn().mockResolvedValue(customRoles) },
     projectDAL: {

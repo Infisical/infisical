@@ -36,7 +36,8 @@ export class ProjectPermission extends Permission<ProjectPermissionSet> {
   private constructor(
     rules: TPermissionRule<ProjectPermissionSet>[],
     readonly project: Project,
-    private readonly grants: ActorGrants
+    // What it was built from, for code that still reads the legacy membership rows.
+    readonly grants: ActorGrants
   ) {
     super(createAbility<ProjectPermissionSet>(rules));
   }

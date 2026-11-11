@@ -1,26 +1,28 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TCreateTagDTO = {
   color: string;
   slug: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateTagDTO = {
   id: string;
   slug?: string;
   color?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetTagByIdDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetTagBySlugDTO = {
   slug: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TDeleteTagDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
-export type TListProjectTagsDTO = TProjectPermission;
+export type TListProjectTagsDTO = { projectId: string } & TActorInput;

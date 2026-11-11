@@ -5,7 +5,7 @@ import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/domains/
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { NotFoundError } from "@app/lib/errors";
 
-import { permissionServiceFactory } from "./permission-service";
+import { legacyPermissionEngineFactory } from "./permission-service";
 
 // A membership row can outlive the role slug it points at, e.g. a product gets removed and its slugs
 // stop resolving. buildProjectPermissionRules already tolerates that (unknown slug -> no rules); the
@@ -32,7 +32,7 @@ const createService = () => {
     )
   };
 
-  const service = permissionServiceFactory({
+  const service = legacyPermissionEngineFactory({
     roleDAL,
     projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-id", type: "secret-manager" }) },
     serviceTokenDAL: {} as never,
@@ -42,8 +42,7 @@ const createService = () => {
     identityDAL: {} as never,
     additionalPrivilegeDAL: {} as never,
     groupDAL: {} as never,
-    secretFolderDAL: {} as never,
-    orgDAL: {} as never
+    secretFolderDAL: {} as never
   } as never);
 
   return { service, roleDAL };

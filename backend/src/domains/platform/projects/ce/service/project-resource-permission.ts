@@ -12,7 +12,8 @@ import {
 export class ProjectResourcePermission<TSet extends AbilityTuple> extends Permission<TSet> {
   private constructor(
     rules: TPermissionRule<TSet>[],
-    private readonly grants: ActorGrants,
+    // What it was built from, for code that still reads the legacy membership rows.
+    readonly grants: ActorGrants,
     // True when the actor has no role on the resource and gets the project-admin fallback only.
     readonly isImplicitAdmin: boolean,
     readonly isProjectAdmin: boolean

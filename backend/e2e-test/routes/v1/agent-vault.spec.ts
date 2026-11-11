@@ -37,7 +37,7 @@ import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
-import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
+import { legacyPermissionEngineFactory } from "@app/ee/services/permission/permission-service";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
@@ -116,7 +116,7 @@ const deleteOrgIdentity = async (identityId: string) => {
 };
 
 const buildPermissionService = () =>
-  permissionServiceFactory({
+  legacyPermissionEngineFactory({
     permissionDAL: permissionDALFactory(testDb),
     serviceTokenDAL: serviceTokenDALFactory(testDb),
     projectDAL: projectDALFactory(testDb),
@@ -126,8 +126,7 @@ const buildPermissionService = () =>
     identityDAL: identityDALFactory(testDb),
     additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
     groupDAL: groupDALFactory(testDb),
-    secretFolderDAL: secretFolderDALFactory(testDb),
-    orgDAL: orgDALFactory(testDb)
+    secretFolderDAL: secretFolderDALFactory(testDb)
   });
 
 const grantRows = (
