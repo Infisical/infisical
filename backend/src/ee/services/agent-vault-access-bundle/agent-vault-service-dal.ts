@@ -242,6 +242,19 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     }
   };
 
+  // The release before project services resolved a bundle's services by agent_vault_services.accessBundleId, so a pod
+  // still running it during a rollout keeps brokering a removed service until this column stops naming the bundle.
+  const clearLegacyAccessBundle = async (
+    { accessBundleId, serviceId }: { accessBundleId: string; serviceId: string },
+    tx: Knex
+  ) => {
+    try {
+      await tx(TableName.AgentVaultService).where({ id: serviceId, accessBundleId }).update({ accessBundleId: null });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Clear legacy agent vault service access bundle" });
+    }
+  };
+
   /**
    * The inline services of sessions that can still resolve and carry one of these bundles, with what they go by. A
    * catalog service in such a bundle must not take one of these names, or a live session would hold two services
@@ -403,6 +416,7 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     findLink,
     insertLinks,
     deleteLink,
+    clearLegacyAccessBundle,
     findLiveInlineNamesInBundles,
     findByIdPrimary,
     lockForPersonalValues,

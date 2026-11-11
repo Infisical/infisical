@@ -3291,7 +3291,15 @@ describe("Agent Vault V1 Router", async () => {
         const memberSession = await mintSession(member.as, bundle.name);
         expect((await resolve(memberSession, "github")).credential.value).toBe("token member_secret");
 
+        // The service is also in a bundle the member wasn't granted; Used By leaves that bundle out.
+        const ungranted = await createAccessBundle("mp-variables-ungranted");
+        const linked = await inject("POST", `/api/v1/agent-vault/access-bundles/${ungranted.id}/services`, {
+          serviceIds: [service.id]
+        });
+        expect(linked.statusCode, linked.payload).toBe(200);
+
         const memberList = await member.as("GET", personalVariablesUrl);
+        expect(memberList.payload).not.toContain(ungranted.id);
         expect(JSON.parse(memberList.payload).variables).toEqual([
           expect.objectContaining({
             key: "MY_TOKEN",
@@ -4514,9 +4522,13 @@ describe("Agent Vault V1 Router", async () => {
         await saveToken(onlyShared.as, service.id, "sk-only-shared");
         await saveToken(both.as, service.id, "sk-both");
         await saveToken(inject, service.id, "sk-admin");
+        // A service from before project services still names its bundle in the legacy column.
+        await testDb("agent_vault_services").where({ id: service.id }).update({ accessBundleId: shared.id });
 
         const detached = await inject("DELETE", `${bundleServicesUrl(shared.id)}/${service.id}`);
         expect(detached.statusCode, detached.payload).toBe(200);
+        // The release before resolved by that column, so a pod still on it during a rollout must stop seeing it too.
+        expect((await testDb("agent_vault_services").where({ id: service.id }).first()).accessBundleId).toBeNull();
         expect((detached.json().service as TProjectService).accessBundles).toEqual([
           { id: other.id, name: other.name }
         ]);

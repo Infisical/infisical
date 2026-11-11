@@ -2507,6 +2507,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           message: `Service with ID '${serviceId}' is not in the access bundle '${bundle.name}'`
         });
       }
+      await agentVaultServiceDAL.clearLegacyAccessBundle({ accessBundleId: bundle.id, serviceId: row.id }, tx);
       await clearPersonalValuesAfterRevoke(
         { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
         { projectId: rest.projectId, serviceIds: [row.id], everyActor: true },

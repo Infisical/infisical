@@ -170,15 +170,20 @@ export const agentVaultVariableServiceFactory = ({
     args: { projectId: string; ctx: TGenericPermission; owner: TAgentVaultOwner | null },
     services: TAgentVaultServiceUsingVariable[]
   ) => {
-    if (!services.length) return { reachable: services, unreachable: [] };
+    if (!services.length) return { reachable: services, unreachable: [], accessBundleIds: null };
     const accessBundleIds = await reachableBundleIdsOf(args);
-    if (!accessBundleIds) return { reachable: services, unreachable: [] };
+    if (!accessBundleIds) return { reachable: services, unreachable: [], accessBundleIds };
     const reachable = services.filter((service) => isReachable(service, accessBundleIds));
-    return { reachable, unreachable: services.filter((service) => !reachable.includes(service)) };
+    return { reachable, unreachable: services.filter((service) => !reachable.includes(service)), accessBundleIds };
   };
 
-  // Values never leave through this projection; only the audited value endpoint returns one.
-  const projectVariable = (variable: TAgentVaultVariable, services: TAgentVaultServiceUsingVariable[]) => ({
+  // Values never leave through this projection; only the audited value endpoint returns one. A service's bundles are
+  // cut to the ones the caller reaches, since a service they reach can also be in bundles they weren't granted.
+  const projectVariable = (
+    variable: TAgentVaultVariable,
+    services: TAgentVaultServiceUsingVariable[],
+    accessBundleIds: string[] | null
+  ) => ({
     id: variable.id,
     key: variable.key,
     scope: isPersonal(variable) ? AgentVaultVariableScope.Personal : AgentVaultVariableScope.Global,
@@ -189,7 +194,9 @@ export const agentVaultVariableServiceFactory = ({
         name: service.serviceName,
         type: service.serviceType,
         hostPattern: service.hostPattern,
-        accessBundles: service.accessBundles
+        accessBundles: accessBundleIds
+          ? service.accessBundles.filter((bundle) => accessBundleIds.includes(bundle.id))
+          : service.accessBundles
       })),
     createdAt: variable.createdAt,
     updatedAt: variable.updatedAt
@@ -245,7 +252,10 @@ export const agentVaultVariableServiceFactory = ({
     const services = await agentVaultVariableDAL.findServicesUsing(variables.map((variable) => variable.id));
     const reachable = services.filter((service) => isReachable(service, accessBundleIds));
 
-    return { variables: variables.map((variable) => projectVariable(variable, reachable)), totalCount };
+    return {
+      variables: variables.map((variable) => projectVariable(variable, reachable, accessBundleIds)),
+      totalCount
+    };
   };
 
   const createVariable = async ({ key, value, scope: scopeName, ...rest }: TCreateVariableDTO) => {
@@ -290,7 +300,7 @@ export const agentVaultVariableServiceFactory = ({
       });
 
     try {
-      return { variable: projectVariable(await write(), []) };
+      return { variable: projectVariable(await write(), [], null) };
     } catch (err) {
       if (isUniqueViolation(err)) throw duplicateKeyError(key, scope);
       throw err;
@@ -335,8 +345,11 @@ export const agentVaultVariableServiceFactory = ({
       throw err;
     }
 
-    const { reachable } = await splitByReach({ ...rest, owner: scope.owner }, result.services);
-    return { variable: projectVariable(result.updated, reachable), previousKey: result.previous.key };
+    const { reachable, accessBundleIds } = await splitByReach({ ...rest, owner: scope.owner }, result.services);
+    return {
+      variable: projectVariable(result.updated, reachable, accessBundleIds),
+      previousKey: result.previous.key
+    };
   };
 
   const deleteVariable = async ({ variableId, ...rest }: TVariableByIdDTO) => {
@@ -373,7 +386,7 @@ export const agentVaultVariableServiceFactory = ({
       });
 
     try {
-      return { variable: projectVariable(await remove(), []) };
+      return { variable: projectVariable(await remove(), [], null) };
     } catch (err) {
       if (hasPostgresErrorCode(err, DatabaseErrorCode.ForeignKeyViolation)) {
         throw new ConflictError({
@@ -393,7 +406,7 @@ export const agentVaultVariableServiceFactory = ({
     const { value } = JSON.parse(decryptor({ cipherTextBlob: variable.encryptedValue }).toString("utf-8")) as {
       value: string;
     };
-    return { variable: projectVariable(variable, []), value };
+    return { variable: projectVariable(variable, [], null), value };
   };
 
   return { listVariables, createVariable, updateVariable, deleteVariable, getVariableValue };
