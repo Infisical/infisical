@@ -12,7 +12,10 @@ import {
   UpdatePkiSyncFiltersField
 } from "@app/services/pki-sync/pki-sync-schemas";
 
-import { CLOUDFLARE_CUSTOM_CERTIFICATE_NAMING } from "./cloudflare-custom-certificate-pki-sync-constants";
+import {
+  CLOUDFLARE_CUSTOM_CERTIFICATE_NAMING,
+  CloudflareBundleMethod
+} from "./cloudflare-custom-certificate-pki-sync-constants";
 
 export const CloudflareCustomCertificatePkiSyncConfigSchema = z.object({
   zoneId: z.string().min(1, "Zone ID is required")
@@ -23,6 +26,7 @@ export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   healthCheckCommand: HostCommandSchema,
   postSyncCommand: HostCommandSchema,
+  bundleMethod: z.nativeEnum(CloudflareBundleMethod).optional(),
   certificateNameSchema: z
     .string()
     .trim()

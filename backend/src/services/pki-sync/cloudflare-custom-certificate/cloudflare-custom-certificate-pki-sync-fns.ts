@@ -13,6 +13,7 @@ import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
 import { PkiSyncError } from "../pki-sync-errors";
 import { TPkiSyncWithCredentials } from "../pki-sync-types";
+import { CloudflareBundleMethod } from "./cloudflare-custom-certificate-pki-sync-constants";
 import {
   CloudflareEdgeCertificate,
   TCloudflareCustomCertificatePkiSyncConfig
@@ -51,6 +52,37 @@ const getCloudflareApiToken = (pkiSync: TPkiSyncWithCredentials) => {
     });
   }
   return credentials.apiToken;
+};
+
+// Without an explicit bundle method, certificates from an Infisical CA use "force" because Cloudflare
+// cannot resolve a private chain; everything else lets Cloudflare build the chain.
+export const buildCloudflareCertificateBundle = ({
+  cert,
+  certificateChain,
+  caCertificate,
+  bundleMethod
+}: {
+  cert: string;
+  certificateChain?: string;
+  caCertificate?: string;
+  bundleMethod?: CloudflareBundleMethod;
+}) => {
+  const effectiveBundleMethod =
+    bundleMethod ?? (caCertificate ? CloudflareBundleMethod.Force : CloudflareBundleMethod.Ubiquitous);
+  const leaf = cert.trim();
+  let chain = certificateChain?.trim() || "";
+
+  // "force" serves the upload as-is and expects the chain before the leaf; the other methods expect the leaf first.
+  if (effectiveBundleMethod !== CloudflareBundleMethod.Force) {
+    return { bundleMethod: effectiveBundleMethod, certificate: chain ? `${leaf}\n${chain}` : leaf };
+  }
+
+  const rootCa = caCertificate?.trim();
+  if (rootCa && !chain.includes(rootCa)) {
+    chain = chain ? `${chain}\n${rootCa}` : rootCa;
+  }
+
+  return { bundleMethod: effectiveBundleMethod, certificate: chain ? `${chain}\n${leaf}` : leaf };
 };
 
 export const cloudflareCustomCertificatePkiSyncFactory = ({
@@ -131,6 +163,7 @@ export const cloudflareCustomCertificatePkiSyncFactory = ({
       | {
           certificateNameSchema?: string;
           canRemoveCertificates?: boolean;
+          bundleMethod?: CloudflareBundleMethod;
         }
       | undefined;
     const canRemoveCertificates = syncOptions?.canRemoveCertificates ?? true;
@@ -224,37 +257,12 @@ export const cloudflareCustomCertificatePkiSyncFactory = ({
       certificatesToUpload,
       async ({ key, cert, privateKey, certificateChain, caCertificate, certificateId, existingCloudflareId }) => {
         try {
-          // Determine if this certificate was issued by a private CA.
-          // When caCertificate is present, the cert was issued by an Infisical CA (private).
-          // Private CAs require bundle_method "force" with the full chain including root,
-          // while public CAs should use the configured bundle method without root (Cloudflare resolves the chain).
-          const isPrivateCA = !!caCertificate;
-
-          let fullCertificate: string;
-          const bundleMethod = isPrivateCA ? "force" : "ubiquitous";
-
-          // Certificate chain ordering differs based on bundle method:
-          // - Private CAs (bundle_method: "force"): Chain first, then leaf cert.
-          //   Cloudflare cannot resolve private CA chains, so we provide the full chain
-          // - Public CAs (bundle_method: "ubiquitous"): Leaf cert first, then chain.
-          //   Cloudflare resolves and optimizes the chain itself, so we provide
-          //   the leaf certificate first followed by any intermediates.
-          if (isPrivateCA) {
-            let chain = certificateChain?.trim() || "";
-            const rootCa = caCertificate.trim();
-            if (chain && !chain.includes(rootCa)) {
-              chain = `${chain}\n${rootCa}`;
-            } else if (!chain) {
-              chain = rootCa;
-            }
-            fullCertificate = `${chain}\n${cert.trim()}`;
-          } else if (bundleMethod === "force" && certificateChain) {
-            fullCertificate = `${certificateChain.trim()}\n${cert.trim()}`;
-          } else if (certificateChain) {
-            fullCertificate = `${cert.trim()}\n${certificateChain.trim()}`;
-          } else {
-            fullCertificate = cert.trim();
-          }
+          const { certificate: fullCertificate, bundleMethod } = buildCloudflareCertificateBundle({
+            cert,
+            certificateChain,
+            caCertificate,
+            bundleMethod: syncOptions?.bundleMethod
+          });
 
           let cloudflareCertId: string;
 

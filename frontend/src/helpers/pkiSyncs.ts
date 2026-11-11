@@ -232,6 +232,7 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "certificateNameSchema", label: "Certificate Name Schema" },
   { key: "caCertificateNameSchema", label: "CA Certificate Name Schema" },
   { key: "exportFormat", label: "Export Format" },
+  { key: "bundleMethod", label: "Bundle Method" },
   { key: "pemCertificateExtension", label: "Certificate File Extension" },
   { key: "keystoreAlias", label: "Keystore Alias" },
   { key: "fileMode", label: "File Permissions" },

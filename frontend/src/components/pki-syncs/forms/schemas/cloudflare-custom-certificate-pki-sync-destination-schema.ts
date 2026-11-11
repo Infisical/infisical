@@ -1,12 +1,14 @@
 import { z } from "zod";
 
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
+import { CloudflareBundleMethod } from "@app/hooks/api/pkiSyncs/types/cloudflare-custom-certificate-sync";
 
 import { BasePkiSyncSchema } from "./base-pki-sync-schema";
 
 // Only exposes user-configurable options
 const CloudflareCustomCertificateSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
+  bundleMethod: z.nativeEnum(CloudflareBundleMethod).optional(),
   certificateNameSchema: z
     .string()
     .trim()
