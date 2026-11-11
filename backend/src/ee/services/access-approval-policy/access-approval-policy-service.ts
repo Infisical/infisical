@@ -1,197 +1,103 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
-import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import {
-  TApprovalPolicyDALFactory,
-  TApprovalPolicySecretEnvironmentDALFactory
-} from "@app/services/approval-policy/approval-policy-dal";
-import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { secretAccessApprovalGlobalPolicyExists } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-fns";
-import { TSecretAccessApprovalGlobalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-service";
-import { TUserDALFactory } from "@app/services/user/user-dal";
+import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
+import { ActorType } from "@app/services/auth/auth-type";
+import { assertDelegatedApprovalPolicyConstraints } from "@app/services/delegated-approval/delegated-approval-fns";
+import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 
-import { TAccessApprovalRequestDALFactory } from "../access-approval-request/access-approval-request-dal";
-import { TAccessApprovalRequestReviewerDALFactory } from "../access-approval-request/access-approval-request-reviewer-dal";
-import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
-import { TGroupDALFactory } from "../group/group-dal";
 import {
-  TAccessApprovalPolicyApproverDALFactory,
-  TAccessApprovalPolicyBypasserDALFactory
-} from "./access-approval-policy-approver-dal";
-import { TAccessApprovalPolicyDALFactory } from "./access-approval-policy-dal";
-import { TAccessApprovalPolicyEnvironmentDALFactory } from "./access-approval-policy-environment-dal";
-import { approvalPolicyMembershipVerifierFactory } from "./access-approval-policy-fns";
+  approvalPolicyMembershipVerifierFactory,
+  buildSecretAccessPolicySteps,
+  revokeActiveSecretAccessGrants,
+  secretAccessApprovalGlobalPolicyExists
+} from "./access-approval-policy-fns";
 import {
   ApproverType,
   BypasserType,
-  TAccessApprovalPolicyServiceFactory,
+  TSecretAccessApprovalPolicyServiceFactoryDep,
+  TCreateAccessApprovalPolicy,
   TDeleteAccessApprovalPolicy,
+  TGetAccessApprovalPolicyByIdDTO,
   TGetAccessPolicyCountByEnvironmentDTO,
   TListAccessApprovalPoliciesDTO,
   TUpdateAccessApprovalPolicy
 } from "./access-approval-policy-types";
 
-type TAccessApprovalPolicyServiceFactoryDep = {
-  projectDAL: TProjectDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  accessApprovalPolicyDAL: TAccessApprovalPolicyDALFactory;
-  projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
-  accessApprovalPolicyApproverDAL: TAccessApprovalPolicyApproverDALFactory;
-  accessApprovalPolicyBypasserDAL: TAccessApprovalPolicyBypasserDALFactory;
-  groupDAL: TGroupDALFactory;
-  userDAL: Pick<TUserDALFactory, "find">;
-  accessApprovalRequestDAL: Pick<TAccessApprovalRequestDALFactory, "update" | "find" | "resetReviewByPolicyId">;
-  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  accessApprovalRequestReviewerDAL: Pick<TAccessApprovalRequestReviewerDALFactory, "update" | "delete">;
-  accessApprovalPolicyEnvironmentDAL: TAccessApprovalPolicyEnvironmentDALFactory;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findOne">;
-  approvalPolicySecretEnvironmentDAL: Pick<
-    TApprovalPolicySecretEnvironmentDALFactory,
-    "findPolicyByEnvIdsAndSecretPath"
-  >;
-  secretAccessApprovalGlobalPolicyBridge: Pick<
-    TSecretAccessApprovalGlobalPolicyBridgeServiceFactory,
-    | "updateAccessApprovalPolicy"
-    | "deleteAccessApprovalPolicy"
-    | "getAccessApprovalPolicyById"
-    | "listAccessApprovalPolicies"
-    | "countAccessApprovalPolicies"
-  >;
-};
+export type TSecretAccessApprovalPolicyServiceFactory = ReturnType<typeof secretAccessApprovalPolicyServiceFactory>;
 
-export const accessApprovalPolicyServiceFactory = ({
-  accessApprovalPolicyDAL,
-  accessApprovalPolicyApproverDAL,
-  accessApprovalPolicyBypasserDAL,
-  accessApprovalPolicyEnvironmentDAL,
-  groupDAL,
+type TApproverInput = TCreateAccessApprovalPolicy["approvers"];
+type TBypasserInput = NonNullable<TCreateAccessApprovalPolicy["bypassers"]>;
+type TSequencedSubject = { id: string; sequence?: number };
+type TPolicyStep = {
+  requiredApprovals: number;
+  approvers: { type: ApproverType; id: string }[];
+};
+type TPolicyReviewers = { steps: TPolicyStep[]; bypasserUserIds: string[]; groupBypassers: string[] };
+
+// defined for delegated approvals
+const NO_REVIEWERS: TPolicyReviewers = { steps: [], bypasserUserIds: [], groupBypassers: [] };
+
+const isDelegatedApprovalChanged = (
+  existing: TDelegatedApprovalPolicyInput | null,
+  incoming: TDelegatedApprovalPolicyInput
+) => existing?.type !== incoming.type || existing?.connectionId !== incoming.connectionId;
+
+export const secretAccessApprovalPolicyServiceFactory = ({
+  projectDAL,
   permissionService,
   projectEnvDAL,
-  projectDAL,
   userDAL,
-  accessApprovalRequestDAL,
-  additionalPrivilegeDAL,
-  accessApprovalRequestReviewerDAL,
+  groupDAL,
   approvalPolicyDAL,
+  approvalPolicyStepsDAL,
+  approvalPolicyStepApproversDAL,
+  approvalPolicyBypassersDAL,
   approvalPolicySecretEnvironmentDAL,
-  secretAccessApprovalGlobalPolicyBridge
-}: TAccessApprovalPolicyServiceFactoryDep): TAccessApprovalPolicyServiceFactory => {
-  const $usesGlobalApprovalBridge = async (policyId: string) => {
-    const globalPolicy = await approvalPolicyDAL.findOne({ id: policyId, type: ApprovalPolicyType.SecretAccess });
-    return Boolean(globalPolicy);
-  };
-
-  const $listGlobalApprovalPolicies = (projectId: string) =>
-    secretAccessApprovalGlobalPolicyBridge.listAccessApprovalPolicies({ projectId });
-
-  const $countGlobalApprovalPolicies = (projectId: string, envId: string) =>
-    secretAccessApprovalGlobalPolicyBridge.countAccessApprovalPolicies({ projectId, envId });
-
-  const $policyExists = async ({
-    envId,
-    envIds,
-    secretPath,
-    policyId
-  }: {
-    envId?: string;
-    envIds?: string[];
-    secretPath: string;
-    policyId?: string;
-  }) => {
-    const resolvedEnvIds = envId ? [envId] : envIds;
-    if (!resolvedEnvIds?.length) {
-      throw new BadRequestError({ message: "Must provide either envId or envIds" });
-    }
-
-    const conflictingEnvId = await secretAccessApprovalGlobalPolicyExists(
-      { envIds: resolvedEnvIds, secretPath, excludePolicyId: policyId },
-      { accessApprovalPolicyDAL, approvalPolicySecretEnvironmentDAL }
-    );
-    return Boolean(conflictingEnvId);
-  };
-
+  secretAccessApprovalPolicyDAL,
+  approvalRequestDAL,
+  approvalRequestStepsDAL,
+  approvalRequestStepEligibleApproversDAL,
+  approvalRequestGrantsDAL,
+  additionalPrivilegeDAL,
+  delegatedApprovalService,
+  licenseService
+}: TSecretAccessApprovalPolicyServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
-  const createAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["createAccessApprovalPolicy"] = async ({
-    name,
-    actor,
-    actorId,
-    actorOrgId,
-    secretPath,
-    actorAuthMethod,
-    approvals,
-    approvers,
-    bypassers,
-    projectSlug,
-    environment,
-    environments,
-    enforcementLevel,
-    allowedSelfApprovals,
-    approvalsRequired,
-    maxTimePeriod,
-    requestExpirationTime
-  }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
-
-    // If there is a group approver people might be added to the group later to meet the approvers quota
-    const groupApprovers = approvers.filter((approver) => approver.type === ApproverType.Group);
-
-    const userApprovers = approvers.filter((approver) => approver.type === ApproverType.User && approver.id) as {
-      id: string;
+  const $splitApprovers = (approvers: TApproverInput) => ({
+    groupApprovers: approvers.filter((approver) => approver.type === ApproverType.Group) as TSequencedSubject[],
+    userApprovers: approvers.filter(
+      (approver) => approver.type === ApproverType.User && approver.id
+    ) as TSequencedSubject[],
+    userApproverNames: approvers.filter((approver) => approver.type === ApproverType.User && approver.username) as {
+      username: string;
       sequence?: number;
-    }[];
+    }[]
+  });
 
-    const userApproverNames = approvers.filter(
-      (approver) => approver.type === ApproverType.User && approver.username
-    ) as { username: string; sequence?: number }[];
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.SecretApproval
-    );
-    const mergedEnvs = (environment ? [environment] : environments) || [];
-    if (mergedEnvs.length === 0) {
-      throw new BadRequestError({ message: "Must provide either environment or environments" });
-    }
-    const envs = await projectEnvDAL.find({ $in: { slug: mergedEnvs }, projectId: project.id });
-    if (!envs.length || envs.length !== mergedEnvs.length) {
-      const notFoundEnvs = mergedEnvs.filter((env) => !envs.find((el) => el.slug === env));
-      throw new NotFoundError({ message: `One or more environments not found: ${notFoundEnvs.join(", ")}` });
-    }
-
-    for (const env of envs) {
-      // eslint-disable-next-line no-await-in-loop
-      if (await $policyExists({ envId: env.id, secretPath })) {
-        throw new BadRequestError({
-          message: `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
-        });
-      }
-    }
+  const $resolveApprovers = async (
+    approvers: TApproverInput,
+    { projectId, orgId }: { projectId: string; orgId: string },
+    tx?: Knex
+  ) => {
+    const { groupApprovers, userApprovers, userApproverNames } = $splitApprovers(approvers);
 
     let approverUserIds = userApprovers;
     if (userApproverNames.length) {
-      const approverUsersInDB = await userDAL.find({
-        $in: {
-          username: userApproverNames.map((el) => el.username)
-        }
-      });
+      const approverUsersInDB = await userDAL.find(
+        {
+          $in: {
+            username: userApproverNames.map((el) => el.username)
+          }
+        },
+        { tx }
+      );
       const approverUsersInDBGroupByUsername = groupBy(approverUsersInDB, (i) => i.username);
       const invalidUsernames = userApproverNames.filter((el) => !approverUsersInDBGroupByUsername?.[el.username]?.[0]);
 
@@ -212,19 +118,32 @@ export const accessApprovalPolicyServiceFactory = ({
     if (approverUserIds.length > 0 || groupApprovers.length > 0) {
       await verifyProjectSubjectsMembership({
         userIds: approverUserIds.map((au) => au.id),
-        groupIds: groupApprovers.map((ga) => ga.id).filter(Boolean) as string[],
-        orgId: project.orgId,
-        projectId: project.id
+        groupIds: groupApprovers.map((ga) => ga.id).filter(Boolean),
+        orgId,
+        projectId,
+        tx
       });
     }
 
+    return { approverUserIds, groupApprovers };
+  };
+
+  const $resolveBypassers = async (
+    bypassers: TBypasserInput | undefined,
+    { projectId, orgId }: { projectId: string; orgId: string },
+    tx?: Knex
+  ) => {
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
 
     if (bypassers && bypassers.length) {
-      groupBypassers = bypassers
-        .filter((bypasser) => bypasser.type === BypasserType.Group)
-        .map((bypasser) => bypasser.id) as string[];
+      groupBypassers = [
+        ...new Set(
+          bypassers
+            .filter((bypasser) => bypasser.type === BypasserType.Group)
+            .map((bypasser) => bypasser.id) as string[]
+        )
+      ];
 
       const userBypassers = bypassers
         .filter((bypasser) => bypasser.type === BypasserType.User)
@@ -237,11 +156,14 @@ export const accessApprovalPolicyServiceFactory = ({
 
       bypasserUserIds = userBypassers;
       if (userBypasserNames.length) {
-        const bypasserUsers = await userDAL.find({
-          $in: {
-            username: userBypasserNames
-          }
-        });
+        const bypasserUsers = await userDAL.find(
+          {
+            $in: {
+              username: userBypasserNames
+            }
+          },
+          { tx }
+        );
 
         const bypasserNamesFromDb = bypasserUsers.map((user) => user.username);
         const invalidUsernames = userBypasserNames.filter((username) => !bypasserNamesFromDb.includes(username));
@@ -254,117 +176,399 @@ export const accessApprovalPolicyServiceFactory = ({
 
         bypasserUserIds = bypasserUserIds.concat(bypasserUsers.map((user) => user.id));
       }
-    }
+      bypasserUserIds = [...new Set(bypasserUserIds)];
 
-    const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
-    const accessApproval = await accessApprovalPolicyDAL.transaction(async (tx) => {
-      const doc = await accessApprovalPolicyDAL.create(
-        {
-          envId: envs[0].id,
-          approvals,
-          secretPath,
-          name,
-          enforcementLevel,
-          allowedSelfApprovals: allowedSelfApprovals ?? true,
-          maxTimePeriod,
-          requestExpirationTime
-        },
-        tx
-      );
-      await accessApprovalPolicyEnvironmentDAL.insertMany(
-        envs.map((el) => ({ policyId: doc.id, envId: el.id })),
-        tx
-      );
-
-      if (approverUserIds.length) {
-        await accessApprovalPolicyApproverDAL.insertMany(
-          approverUserIds.map((el) => ({
-            approverUserId: el.id,
-            policyId: doc.id,
-            sequence: el.sequence,
-            approvalsRequired: el.sequence
-              ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
-              : approvals
-          })),
-          tx
+      if (groupBypassers.length > 0) {
+        const orgGroups = await groupDAL.find(
+          {
+            $in: { id: groupBypassers },
+            orgId
+          },
+          { tx }
         );
-      }
 
-      if (groupApprovers) {
-        await accessApprovalPolicyApproverDAL.insertMany(
-          groupApprovers.map((el) => ({
-            approverGroupId: el.id,
-            policyId: doc.id,
-            sequence: el.sequence,
-            approvalsRequired: el.sequence
-              ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
-              : approvals
-          })),
-          tx
-        );
+        if (orgGroups.length !== groupBypassers.length) {
+          const foundGroupIdsInOrg = new Set(orgGroups.map((group) => group.id));
+          const missingGroupIds = groupBypassers.filter((id) => !foundGroupIdsInOrg.has(id));
+          throw new BadRequestError({
+            message: `One or more specified bypasser groups are not part of the organization or do not exist. Invalid or non-member group IDs: ${missingGroupIds.join(", ")}`
+          });
+        }
       }
 
       if (bypasserUserIds.length) {
         await verifyProjectSubjectsMembership({
           userIds: bypasserUserIds,
           groupIds: [],
-          orgId: project.orgId,
-          projectId: project.id
+          orgId,
+          projectId,
+          tx
         });
-
-        await accessApprovalPolicyBypasserDAL.insertMany(
-          bypasserUserIds.map((userId) => ({
-            bypasserUserId: userId,
-            policyId: doc.id
-          })),
-          tx
-        );
       }
+    }
 
-      if (groupBypassers.length) {
-        await accessApprovalPolicyBypasserDAL.insertMany(
-          groupBypassers.map((groupId) => ({
-            bypasserGroupId: groupId,
-            policyId: doc.id
-          })),
+    return { bypasserUserIds, groupBypassers };
+  };
+
+  const $buildSteps = ({
+    approverUserIds,
+    groupApprovers,
+    approvalsRequired,
+    approvals
+  }: {
+    approverUserIds: TSequencedSubject[];
+    groupApprovers: TSequencedSubject[];
+    approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
+    approvals?: number;
+  }): TPolicyStep[] =>
+    buildSecretAccessPolicySteps(
+      [
+        ...approverUserIds.map((el) => ({ type: ApproverType.User, id: el.id, sequence: el.sequence ?? 1 })),
+        ...groupApprovers.map((el) => ({ type: ApproverType.Group, id: el.id, sequence: el.sequence ?? 1 }))
+      ],
+      approvalsRequired,
+      approvals
+    );
+
+  const $insertStepsAndBypassers = async (
+    {
+      policyId,
+      steps,
+      bypasserUserIds,
+      groupBypassers
+    }: { policyId: string; steps: TPolicyStep[]; bypasserUserIds: string[]; groupBypassers: string[] },
+    tx: Knex
+  ) => {
+    const stepDocs = await approvalPolicyStepsDAL.insertMany(
+      steps.map((step, i) => ({
+        policyId,
+        stepNumber: i + 1,
+        requiredApprovals: step.requiredApprovals
+      })),
+      tx
+    );
+
+    await approvalPolicyStepApproversDAL.insertMany(
+      steps.flatMap((step, i) =>
+        step.approvers.map((approver) => ({
+          policyStepId: stepDocs[i].id,
+          userId: approver.type === ApproverType.User ? approver.id : null,
+          groupId: approver.type === ApproverType.Group ? approver.id : null
+        }))
+      ),
+      tx
+    );
+
+    if (bypasserUserIds.length || groupBypassers.length) {
+      await approvalPolicyBypassersDAL.insertMany(
+        [
+          ...bypasserUserIds.map((userId) => ({ policyId, userId, groupId: null })),
+          ...groupBypassers.map((groupId) => ({ policyId, userId: null, groupId }))
+        ],
+        tx
+      );
+    }
+  };
+
+  // A delegated policy hands review off entirely, so it carries no approver steps or bypassers of its own.
+  const $resolveReviewers = async (
+    {
+      delegatedApproval,
+      enforcementLevel,
+      allowedSelfApprovals,
+      approvers,
+      bypassers,
+      approvalsRequired,
+      approvals
+    }: {
+      delegatedApproval: TDelegatedApprovalPolicyInput | null;
+      enforcementLevel: string;
+      allowedSelfApprovals: boolean;
+      approvers: TApproverInput;
+      bypassers: TBypasserInput | undefined;
+      approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
+      approvals?: number;
+    },
+    scope: { projectId: string; orgId: string },
+    tx?: Knex
+  ): Promise<TPolicyReviewers> => {
+    if (delegatedApproval) {
+      assertDelegatedApprovalPolicyConstraints({ enforcementLevel, approvers, bypassers, allowedSelfApprovals });
+      return NO_REVIEWERS;
+    }
+
+    if (!approvers.length) throw new BadRequestError({ message: "At least one approver should be provided" });
+    const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope, tx);
+    const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope, tx);
+    const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired, approvals });
+    return { steps, bypasserUserIds, groupBypassers };
+  };
+
+  const $assertNoPendingRequests = async (policy: { id: string; name: string }, tx: Knex) => {
+    const pendingRequests = await approvalRequestDAL.findPendingByPolicyIdForUpdate(policy.id, tx);
+    if (!pendingRequests.length) return;
+    throw new ConflictError({
+      message: `Policy '${policy.name}' is handled by a delegated approval system and has ${pendingRequests.length} pending request(s). Resolve or cancel them before updating the policy.`
+    });
+  };
+
+  const $getProjectPermission = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    projectId
+  }: Pick<TUpdateAccessApprovalPolicy, "actor" | "actorId" | "actorAuthMethod" | "actorOrgId"> & {
+    projectId: string;
+  }) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    return permission;
+  };
+
+  const $resetPendingRequestSteps = async (
+    { policyId, steps }: { policyId: string; steps: TPolicyStep[] },
+    tx: Knex
+  ) => {
+    const pendingRequests = await approvalRequestDAL.findPendingByPolicyIdForUpdate(policyId, tx);
+    if (!pendingRequests.length) return;
+
+    const requestIds = pendingRequests.map((request) => request.id);
+    await approvalRequestStepsDAL.delete({ $in: { requestId: requestIds } }, tx);
+    await Promise.all(
+      requestIds.map((requestId) =>
+        insertApprovalRequestSteps(
+          { requestId, policySteps: steps },
+          { approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL },
           tx
-        );
+        )
+      )
+    );
+    await approvalRequestDAL.update({ $in: { id: requestIds } }, { currentStep: 1 }, tx);
+  };
+
+  const $findPolicyById = async (policyId: string, organizationId: string, message: string, tx?: Knex) => {
+    const [policy] = await secretAccessApprovalPolicyDAL.findSecretAccessPolicies(
+      {
+        policyId,
+        organizationId
+      },
+      tx
+    );
+    if (!policy) throw new NotFoundError({ message });
+    return policy;
+  };
+
+  const $assertNoConflictingPolicy = async (
+    {
+      envs,
+      secretPath,
+      excludePolicyId
+    }: { envs: { id: string; slug: string }[]; secretPath: string; excludePolicyId?: string },
+    tx?: Knex
+  ) => {
+    if (!envs.length) return;
+
+    const conflictingEnvId = await secretAccessApprovalGlobalPolicyExists(
+      { envIds: envs.map((env) => env.id), secretPath, excludePolicyId },
+      { approvalPolicySecretEnvironmentDAL },
+      tx
+    );
+    if (!conflictingEnvId) return;
+
+    const env = envs.find((candidate) => candidate.id === conflictingEnvId);
+    throw new BadRequestError({
+      message: env
+        ? `A policy for secret path '${secretPath}' already exists in environment '${env.slug}'`
+        : `A policy for secret path '${secretPath}' already exists`
+    });
+  };
+
+  const $replacePolicyScope = async (
+    {
+      policyId,
+      envs,
+      secretPath,
+      steps
+    }: { policyId: string; envs: { id: string; slug: string }[]; secretPath: string; steps: TPolicyStep[] },
+    tx: Knex
+  ) => {
+    await approvalPolicySecretEnvironmentDAL.findByPolicyIdForUpdate(policyId, tx);
+    await $assertNoConflictingPolicy({ envs, secretPath, excludePolicyId: policyId }, tx);
+    await approvalPolicySecretEnvironmentDAL.delete({ policyId }, tx);
+    await approvalPolicySecretEnvironmentDAL.insertMany(
+      envs.map((env) => ({ policyId, envId: env.id, secretPath })),
+      tx
+    );
+    await $resetPendingRequestSteps({ policyId, steps }, tx);
+  };
+
+  const $applyDelegatedApprovalChange = async (
+    {
+      policyId,
+      existing,
+      incoming
+    }: {
+      policyId: string;
+      existing: TDelegatedApprovalPolicyInput | null;
+      incoming: TDelegatedApprovalPolicyInput | null | undefined;
+    },
+    tx: Knex
+  ) => {
+    if (incoming === undefined) return;
+    if (incoming === null) {
+      if (existing) await delegatedApprovalService.deletePolicyByPolicyId(policyId, tx);
+      return;
+    }
+    if (!existing) {
+      await delegatedApprovalService.createPolicy({ policyId, ...incoming }, tx);
+      return;
+    }
+    if (isDelegatedApprovalChanged(existing, incoming)) {
+      await delegatedApprovalService.updatePolicy({ policyId, ...incoming }, tx);
+    }
+  };
+
+  const createAccessApprovalPolicy = async ({
+    name,
+    actor,
+    actorId,
+    actorOrgId,
+    secretPath,
+    actorAuthMethod,
+    approvals,
+    approvers,
+    bypassers,
+    projectSlug,
+    environment,
+    environments,
+    enforcementLevel,
+    allowedSelfApprovals: allowedSelfApprovalsInput,
+    approvalsRequired,
+    maxTimePeriod,
+    requestExpirationTime,
+    delegatedApproval,
+    orgActor
+  }: TCreateAccessApprovalPolicy) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+
+    const permission = await $getProjectPermission({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId: project.id
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Create,
+      ProjectPermissionSub.SecretApproval
+    );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to create access approval policy due to plan restriction. Upgrade plan to create access approval policy."
+      });
+    }
+
+    const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApproval;
+
+    const mergedEnvs = (environment ? [environment] : environments) || [];
+    if (mergedEnvs.length === 0) {
+      throw new BadRequestError({ message: "Must provide either environment or environments" });
+    }
+    const envs = await projectEnvDAL.find({ $in: { slug: mergedEnvs }, projectId: project.id });
+    if (!envs.length || envs.length !== mergedEnvs.length) {
+      const notFoundEnvs = mergedEnvs.filter((env) => !envs.find((el) => el.slug === env));
+      throw new NotFoundError({ message: `One or more environments not found: ${notFoundEnvs.join(", ")}` });
+    }
+
+    const reviewers = await $resolveReviewers(
+      {
+        delegatedApproval: delegatedApproval ?? null,
+        enforcementLevel,
+        allowedSelfApprovals,
+        approvers,
+        bypassers,
+        approvalsRequired,
+        approvals
+      },
+      { projectId: project.id, orgId: project.orgId }
+    );
+    if (delegatedApproval) {
+      await delegatedApprovalService.validateConnection({ ...delegatedApproval, projectId: project.id }, orgActor);
+    }
+
+    await $assertNoConflictingPolicy({ envs, secretPath });
+
+    const policy = await approvalPolicyDAL.transaction(async (tx) => {
+      const doc = await approvalPolicyDAL.create(
+        {
+          projectId: project.id,
+          organizationId: project.orgId,
+          type: ApprovalPolicyType.SecretAccess,
+          name,
+          enforcementLevel,
+          bypassForMachineIdentities: false,
+          scopeType: null,
+          scopeId: null,
+          conditions: { version: 1, conditions: {} },
+          constraints: {
+            version: 1,
+            constraints: {
+              allowedSelfApprovals,
+              requestExpirationTime: requestExpirationTime ?? null,
+              maxTimePeriod: maxTimePeriod ?? null
+            }
+          }
+        },
+        tx
+      );
+
+      await approvalPolicySecretEnvironmentDAL.insertMany(
+        envs.map((env) => ({ policyId: doc.id, envId: env.id, secretPath })),
+        tx
+      );
+
+      if (delegatedApproval) {
+        await delegatedApprovalService.createPolicy({ policyId: doc.id, ...delegatedApproval }, tx);
+      } else {
+        await $insertStepsAndBypassers({ policyId: doc.id, ...reviewers }, tx);
       }
 
       return doc;
     });
 
-    return { ...accessApproval, environments: envs, projectId: project.id, environment: envs[0] };
+    return {
+      id: policy.id,
+      name: policy.name,
+      secretPath,
+      approvals: reviewers.steps[0]?.requiredApprovals ?? 1,
+      envId: envs[0].id,
+      createdAt: policy.createdAt,
+      updatedAt: policy.updatedAt,
+      enforcementLevel: policy.enforcementLevel,
+      deletedAt: null,
+      allowedSelfApprovals,
+      bypassForMachineIdentities: false,
+      maxTimePeriod: maxTimePeriod ?? null,
+      requestExpirationTime: requestExpirationTime ?? null,
+      environment: envs[0],
+      environments: envs,
+      projectId: project.id,
+      delegatedApproval: delegatedApproval ?? null
+    };
   };
 
-  const getAccessApprovalPolicyByProjectSlug: TAccessApprovalPolicyServiceFactory["getAccessApprovalPolicyByProjectSlug"] =
-    async ({ actorId, actor, actorOrgId, actorAuthMethod, projectSlug }: TListAccessApprovalPoliciesDTO) => {
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-      if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
-
-      // Anyone in the project should be able to get the policies.
-      await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: project.id,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.SecretManager
-      });
-
-      const legacyPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, deletedAt: null });
-      const globalPolicies = await $listGlobalApprovalPolicies(project.id);
-
-      return [
-        ...legacyPolicies.map((policy) => ({
-          ...policy,
-          environment: policy.environments[0]
-        })),
-        ...globalPolicies
-      ];
-    };
-
-  const updateAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["updateAccessApprovalPolicy"] = async ({
+  const updateAccessApprovalPolicy = async ({
     policyId,
     approvers,
     bypassers,
@@ -376,7 +580,7 @@ export const accessApprovalPolicyServiceFactory = ({
     actorAuthMethod,
     approvals,
     enforcementLevel,
-    allowedSelfApprovals,
+    allowedSelfApprovals: allowedSelfApprovalsInput,
     approvalsRequired,
     environments,
     maxTimePeriod,
@@ -384,349 +588,218 @@ export const accessApprovalPolicyServiceFactory = ({
     delegatedApproval,
     orgActor
   }: TUpdateAccessApprovalPolicy) => {
-    if (await $usesGlobalApprovalBridge(policyId)) {
-      return secretAccessApprovalGlobalPolicyBridge.updateAccessApprovalPolicy({
-        policyId,
-        approvers,
-        bypassers,
-        secretPath,
-        name,
-        actorId,
-        actor,
-        actorOrgId,
-        actorAuthMethod,
-        approvals,
-        enforcementLevel,
-        allowedSelfApprovals,
-        approvalsRequired,
-        environments,
-        maxTimePeriod,
-        requestExpirationTime,
-        delegatedApproval,
-        orgActor
-      });
-    }
+    const policy = await $findPolicyById(
+      policyId,
+      actorOrgId,
+      `Access approval policy with ID '${policyId}' not found`
+    );
 
-    if (delegatedApproval) {
-      throw new BadRequestError({
-        message: `Access approval policy with ID '${policyId}' is on the legacy approval system and cannot be handled by a delegated approval system.`
-      });
-    }
-    if (!approvers.length) {
-      throw new BadRequestError({ message: "At least one approver should be provided" });
-    }
-
-    const groupApprovers = approvers.filter((approver) => approver.type === ApproverType.Group);
-
-    const userApprovers = approvers.filter((approver) => approver.type === ApproverType.User && approver.id) as {
-      id: string;
-      sequence?: number;
-    }[];
-    const userApproverNames = approvers.filter(
-      (approver) => approver.type === ApproverType.User && approver.username
-    ) as { username: string; sequence?: number }[];
-
-    const accessApprovalPolicy = await accessApprovalPolicyDAL.findById(policyId);
-    if (!accessApprovalPolicy) {
-      throw new NotFoundError({
-        message: `Access approval policy with ID '${policyId}' not found`
-      });
-    }
-
-    const currentApprovals = approvals || accessApprovalPolicy.approvals;
-    if (
-      groupApprovers?.length === 0 &&
-      userApprovers &&
-      currentApprovals > userApprovers.length + userApproverNames.length
-    ) {
-      throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
-    }
-
-    let envs = accessApprovalPolicy.environments;
-    if (
-      environments &&
-      (environments.length !== envs.length || environments.some((env) => !envs.find((el) => el.slug === env)))
-    ) {
-      envs = await projectEnvDAL.find({ $in: { slug: environments }, projectId: accessApprovalPolicy.projectId });
-    }
-
-    for (const env of envs) {
-      if (
-        // eslint-disable-next-line no-await-in-loop
-        await $policyExists({
-          envId: env.id,
-          secretPath: secretPath || accessApprovalPolicy.secretPath,
-          policyId: accessApprovalPolicy.id
-        })
-      ) {
-        throw new BadRequestError({
-          message: `A policy for secret path '${secretPath || accessApprovalPolicy.secretPath}' already exists in environment '${env.slug}'`
-        });
-      }
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await $getProjectPermission({
       actor,
       actorId,
-      projectId: accessApprovalPolicy.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: policy.projectId
     });
-
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
 
-    let groupBypassers: string[] = [];
-    let bypasserUserIds: string[] = [];
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to update access approval policy due to plan restriction. Upgrade plan to update access approval policy."
+      });
+    }
 
-    if (bypassers && bypassers.length) {
-      groupBypassers = bypassers
-        .filter((bypasser) => bypasser.type === BypasserType.Group)
-        .map((bypasser) => bypasser.id) as string[];
-
-      groupBypassers = [...new Set(groupBypassers)];
-
-      const userBypassers = bypassers
-        .filter((bypasser) => bypasser.type === BypasserType.User)
-        .map((bypasser) => bypasser.id)
-        .filter(Boolean) as string[];
-
-      const userBypasserNames = bypassers
-        .map((bypasser) => (bypasser.type === BypasserType.User ? bypasser.username : undefined))
-        .filter(Boolean) as string[];
-
-      bypasserUserIds = userBypassers;
-      if (userBypasserNames.length) {
-        const bypasserUsers = await userDAL.find({
-          $in: {
-            username: userBypasserNames
-          }
-        });
-
-        const bypasserNamesFromDb = bypasserUsers.map((user) => user.username);
-        const invalidUsernames = userBypasserNames.filter((username) => !bypasserNamesFromDb.includes(username));
-
-        if (invalidUsernames.length) {
-          throw new BadRequestError({
-            message: `Invalid bypasser user: ${invalidUsernames.join(", ")}`
-          });
-        }
-
-        bypasserUserIds = [...new Set(bypasserUserIds.concat(bypasserUsers.map((user) => user.id)))];
-      }
-
-      // Validate group bypassers
-      if (groupBypassers.length > 0) {
-        const orgGroups = await groupDAL.find({
-          $in: { id: groupBypassers },
-          orgId: actorOrgId
-        });
-
-        if (orgGroups.length !== groupBypassers.length) {
-          const foundGroupIdsInOrg = new Set(orgGroups.map((group) => group.id));
-          const missingGroupIds = groupBypassers.filter((id) => !foundGroupIdsInOrg.has(id));
-          throw new BadRequestError({
-            message: `One or more specified bypasser groups are not part of the organization or do not exist. Invalid or non-member group IDs: ${missingGroupIds.join(", ")}`
-          });
-        }
+    let envs: { id: string; slug: string }[] = policy.environments;
+    if (environments) {
+      envs = await projectEnvDAL.find({ $in: { slug: environments }, projectId: policy.projectId });
+      if (envs.length !== environments.length) {
+        const notFoundEnvs = environments.filter((env) => !envs.find((el) => el.slug === env));
+        throw new NotFoundError({ message: `One or more environments not found: ${notFoundEnvs.join(", ")}` });
       }
     }
 
-    const approvalsRequiredGroupByStepNumber = groupBy(approvalsRequired || [], (i) => i.stepNumber);
-    const updatedPolicy = await accessApprovalPolicyDAL.transaction(async (tx) => {
-      const doc = await accessApprovalPolicyDAL.updateById(
-        accessApprovalPolicy.id,
+    const nextSecretPath = secretPath || policy.secretPath;
+    const currentEnvSlugs = new Set(policy.environments.map((env) => env.slug));
+    const environmentsChanged =
+      environments !== undefined &&
+      (envs.length !== currentEnvSlugs.size || envs.some((env) => !currentEnvSlugs.has(env.slug)));
+    const scopeChanged = nextSecretPath !== policy.secretPath || environmentsChanged;
+
+    const nextDelegatedApproval = delegatedApproval === undefined ? policy.delegatedApproval : delegatedApproval;
+    if (nextDelegatedApproval) {
+      // we might need to change this in the future to check a specific permission if this is changed on the license server
+      await delegatedApprovalService.assertPlanAllowsPolicyEdit(nextDelegatedApproval.type, actorOrgId);
+      if (isDelegatedApprovalChanged(policy.delegatedApproval, nextDelegatedApproval)) {
+        await delegatedApprovalService.validateConnection(
+          { ...nextDelegatedApproval, projectId: policy.projectId },
+          orgActor
+        );
+      }
+    }
+
+    return approvalPolicyDAL.transaction(async (tx) => {
+      const lockedPolicy = await approvalPolicyDAL.findByIdForUpdate(policy.id, tx);
+      if (!lockedPolicy) {
+        throw new NotFoundError({ message: `Access approval policy with ID '${policyId}' not found` });
+      }
+
+      const current = await $findPolicyById(
+        policy.id,
+        actorOrgId,
+        `Access approval policy with ID '${policyId}' not found`,
+        tx
+      );
+      const existingDelegatedApproval = current.delegatedApproval;
+      const delegatedApprovalAfterUpdate =
+        delegatedApproval === undefined ? existingDelegatedApproval : delegatedApproval;
+      const involvesDelegatedApproval = Boolean(existingDelegatedApproval || delegatedApprovalAfterUpdate);
+      const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApprovalAfterUpdate;
+      const reviewers = await $resolveReviewers(
         {
-          approvals,
-          secretPath,
+          delegatedApproval: delegatedApprovalAfterUpdate,
+          enforcementLevel: enforcementLevel ?? current.enforcementLevel,
+          allowedSelfApprovals,
+          approvers,
+          bypassers,
+          approvalsRequired,
+          approvals: approvals ?? current.approvals
+        },
+        { projectId: current.projectId, orgId: actorOrgId },
+        tx
+      );
+      if (involvesDelegatedApproval) await $assertNoPendingRequests(current, tx);
+
+      await approvalPolicyDAL.updateById(
+        policy.id,
+        {
           name,
           enforcementLevel,
-          allowedSelfApprovals: allowedSelfApprovals ?? true,
-          maxTimePeriod,
-          requestExpirationTime
+          constraints: {
+            version: 1,
+            constraints: {
+              allowedSelfApprovals,
+              requestExpirationTime:
+                requestExpirationTime === undefined ? current.requestExpirationTime : requestExpirationTime,
+              maxTimePeriod: maxTimePeriod === undefined ? current.maxTimePeriod : maxTimePeriod
+            }
+          }
         },
         tx
       );
 
-      await accessApprovalPolicyApproverDAL.delete({ policyId: doc.id }, tx);
+      await approvalPolicyStepsDAL.delete({ policyId: policy.id }, tx);
+      await approvalPolicyBypassersDAL.delete({ policyId: policy.id }, tx);
+      if (!delegatedApprovalAfterUpdate) await $insertStepsAndBypassers({ policyId: policy.id, ...reviewers }, tx);
 
-      let approverUserIds = userApprovers;
-      if (userApprovers.length || userApproverNames.length) {
-        if (userApproverNames.length) {
-          const approverUsersInDB = await userDAL.find({
-            $in: {
-              username: userApproverNames.map((el) => el.username)
-            }
-          });
-          const approverUsersInDBGroupByUsername = groupBy(approverUsersInDB, (i) => i.username);
-
-          const invalidUsernames = userApproverNames.filter(
-            (el) => !approverUsersInDBGroupByUsername?.[el.username]?.[0]
-          );
-
-          if (invalidUsernames.length) {
-            throw new BadRequestError({
-              message: `Invalid approver user: ${invalidUsernames.map((i) => i.username).join(", ")}`
-            });
-          }
-
-          approverUserIds = approverUserIds.concat(
-            userApproverNames.map((el) => ({
-              id: approverUsersInDBGroupByUsername[el.username]?.[0].id,
-              sequence: el.sequence
-            }))
-          );
-        }
-      }
-      if (approverUserIds.length > 0 || groupApprovers.length > 0) {
-        await verifyProjectSubjectsMembership({
-          userIds: approverUserIds.map((au) => au.id),
-          groupIds: groupApprovers.map((ga) => ga.id).filter(Boolean) as string[],
-          orgId: actorOrgId,
-          projectId: accessApprovalPolicy.projectId
-        });
-      }
-      if (userApprovers.length || userApproverNames.length) {
-        await accessApprovalPolicyApproverDAL.insertMany(
-          approverUserIds.map((el) => ({
-            approverUserId: el.id,
-            policyId: doc.id,
-            sequence: el.sequence,
-            approvalsRequired: el.sequence
-              ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
-              : approvals
-          })),
+      if (scopeChanged) {
+        await $replacePolicyScope(
+          { policyId: policy.id, envs, secretPath: nextSecretPath, steps: reviewers.steps },
           tx
         );
       }
 
-      if (groupApprovers) {
-        await accessApprovalPolicyApproverDAL.insertMany(
-          groupApprovers.map((el) => ({
-            approverGroupId: el.id,
-            policyId: doc.id,
-            sequence: el.sequence,
-            approvalsRequired: el.sequence
-              ? approvalsRequiredGroupByStepNumber?.[el.sequence]?.[0]?.numberOfApprovals
-              : approvals
-          })),
-          tx
-        );
-      }
+      await $applyDelegatedApprovalChange(
+        { policyId: policy.id, existing: existingDelegatedApproval, incoming: delegatedApproval },
+        tx
+      );
 
-      if (environments) {
-        await accessApprovalPolicyEnvironmentDAL.delete({ policyId: doc.id }, tx);
-        await accessApprovalPolicyEnvironmentDAL.insertMany(
-          envs.map((env) => ({ policyId: doc.id, envId: env.id })),
-          tx
-        );
-      }
-
-      await accessApprovalPolicyBypasserDAL.delete({ policyId: doc.id }, tx);
-
-      if (bypasserUserIds.length) {
-        await verifyProjectSubjectsMembership({
-          userIds: bypasserUserIds,
-          groupIds: [],
-          orgId: actorOrgId,
-          projectId: accessApprovalPolicy.projectId
-        });
-
-        await accessApprovalPolicyBypasserDAL.insertMany(
-          bypasserUserIds.map((userId) => ({
-            bypasserUserId: userId,
-            policyId: doc.id
-          })),
-          tx
-        );
-      }
-
-      if (groupBypassers.length) {
-        await accessApprovalPolicyBypasserDAL.insertMany(
-          groupBypassers.map((groupId) => ({
-            bypasserGroupId: groupId,
-            policyId: doc.id
-          })),
-          tx
-        );
-      }
-
-      await accessApprovalRequestDAL.resetReviewByPolicyId(doc.id, tx);
-
-      return doc;
+      const [updatedPolicy] = await secretAccessApprovalPolicyDAL.findSecretAccessPolicies({ policyId: policy.id }, tx);
+      return updatedPolicy;
     });
-
-    return {
-      ...updatedPolicy,
-      environments: accessApprovalPolicy.environments,
-      environment: accessApprovalPolicy.environments[0],
-      projectId: accessApprovalPolicy.projectId
-    };
   };
 
-  const deleteAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["deleteAccessApprovalPolicy"] = async ({
+  const deleteAccessApprovalPolicy = async ({
     policyId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
   }: TDeleteAccessApprovalPolicy) => {
-    if (await $usesGlobalApprovalBridge(policyId)) {
-      return secretAccessApprovalGlobalPolicyBridge.deleteAccessApprovalPolicy({
-        policyId,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId
-      });
-    }
+    const policy = await $findPolicyById(
+      policyId,
+      actorOrgId,
+      `Secret approval policy with ID '${policyId}' not found`
+    );
 
-    const policy = await accessApprovalPolicyDAL.findById(policyId);
-    if (!policy) throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
-
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await $getProjectPermission({
       actor,
       actorId,
-      projectId: policy.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: policy.projectId
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionActions.Delete,
       ProjectPermissionSub.SecretApproval
     );
 
-    await accessApprovalPolicyDAL.transaction(async (tx) => {
-      await accessApprovalPolicyDAL.softDeleteById(policyId, tx);
-      const allAccessApprovalRequests = await accessApprovalRequestDAL.find({ policyId });
+    await approvalPolicyDAL.transaction(async (tx) => {
+      await approvalRequestDAL.update(
+        { policyId: policy.id, status: ApprovalRequestStatus.Pending },
+        { status: ApprovalRequestStatus.Cancelled },
+        tx
+      );
 
-      if (allAccessApprovalRequests.length) {
-        const accessApprovalRequestsIds = allAccessApprovalRequests.map((request) => request.id);
+      const requests = await approvalRequestDAL.find({ policyId: policy.id }, { tx });
+      await revokeActiveSecretAccessGrants(
+        {
+          requestIds: requests.map((request) => request.id),
+          revokedByUserId: actor === ActorType.USER ? actorId : null
+        },
+        { approvalRequestGrantsDAL, additionalPrivilegeDAL },
+        tx
+      );
 
-        const privilegeIdsArray = allAccessApprovalRequests
-          .map((request) => request.privilegeId)
-          .filter((id): id is string => id != null);
-
-        if (privilegeIdsArray.length) {
-          await additionalPrivilegeDAL.delete({ $in: { id: privilegeIdsArray } }, tx);
-        }
-
-        await accessApprovalRequestReviewerDAL.update(
-          { $in: { id: accessApprovalRequestsIds }, status: ApprovalStatus.PENDING },
-          { status: ApprovalStatus.REJECTED },
-          tx
-        );
-      }
+      await approvalPolicyDAL.deleteById(policy.id, tx);
     });
 
-    return {
-      ...policy,
-      environment: policy.environments[0]
-    };
+    return policy;
   };
 
-  const getAccessPolicyCountByEnvSlug: TAccessApprovalPolicyServiceFactory["getAccessPolicyCountByEnvSlug"] = async ({
+  const getAccessApprovalPolicyById = async ({
+    policyId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetAccessApprovalPolicyByIdDTO) => {
+    const policy = await $findPolicyById(
+      policyId,
+      actorOrgId,
+      `Cannot find access approval policy with ID ${policyId}`
+    );
+
+    const permission = await $getProjectPermission({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      projectId: policy.projectId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+
+    return policy;
+  };
+
+  const getAccessApprovalPolicyByProjectSlug = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectSlug
+  }: TListAccessApprovalPoliciesDTO) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
+
+    // Anyone in the project should be able to get the policies.
+    await $getProjectPermission({ actor, actorId, actorAuthMethod, actorOrgId, projectId: project.id });
+
+    return secretAccessApprovalPolicyDAL.findSecretAccessPolicies({ projectId: project.id });
+  };
+
+  const getAccessPolicyCountByEnvSlug = async ({
     actor,
     actorOrgId,
     actorAuthMethod,
@@ -735,84 +808,26 @@ export const accessApprovalPolicyServiceFactory = ({
     envSlug
   }: TGetAccessPolicyCountByEnvironmentDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
-
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await $getProjectPermission({ actor, actorId, actorAuthMethod, actorOrgId, projectId: project.id });
 
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
 
-    const legacyPolicies = await accessApprovalPolicyDAL.find(
-      {
-        projectId: project.id,
-        deletedAt: null
-      },
-      { envId: environment.id }
-    );
-    if (!legacyPolicies) {
-      throw new NotFoundError({ message: `No policies found in environment with slug '${envSlug}'` });
-    }
-    const globalPolicyCount = await $countGlobalApprovalPolicies(project.id, environment.id);
-
-    return { count: legacyPolicies.length + globalPolicyCount };
-  };
-
-  const getAccessApprovalPolicyById: TAccessApprovalPolicyServiceFactory["getAccessApprovalPolicyById"] = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    policyId
-  }) => {
-    if (await $usesGlobalApprovalBridge(policyId)) {
-      return secretAccessApprovalGlobalPolicyBridge.getAccessApprovalPolicyById({
-        policyId,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId
-      });
-    }
-
-    const [policy] = await accessApprovalPolicyDAL.find({}, { policyId });
-
-    if (!policy) {
-      throw new NotFoundError({
-        message: `Cannot find access approval policy with ID ${policyId}`
-      });
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: policy.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+    const policies = await secretAccessApprovalPolicyDAL.findSecretAccessPolicies({
+      projectId: project.id,
+      envId: environment.id
     });
-
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
-
-    return {
-      ...policy,
-      environment: policy.environments[0]
-    };
+    return { count: policies.length };
   };
 
   return {
-    getAccessPolicyCountByEnvSlug,
     createAccessApprovalPolicy,
-    deleteAccessApprovalPolicy,
     updateAccessApprovalPolicy,
+    deleteAccessApprovalPolicy,
+    getAccessApprovalPolicyById,
     getAccessApprovalPolicyByProjectSlug,
-    getAccessApprovalPolicyById
+    getAccessPolicyCountByEnvSlug
   };
 };

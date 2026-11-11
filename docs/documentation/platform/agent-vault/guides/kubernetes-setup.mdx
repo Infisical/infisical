@@ -14,7 +14,7 @@ This guide deploys an Agent Vault [proxy](/documentation/platform/agent-vault/pr
 
 ## Prerequisites
 
-- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
+- The **Admin** role in an [Agent Vault project](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A Kubernetes cluster whose network plugin enforces network policies, such as [Cilium](https://cilium.io) or [Calico](https://www.tigera.io/project-calico/)
 - [`curl`](https://curl.se), [`jq`](https://jqlang.org), and [`openssl`](https://openssl-library.org) on the machine where you run the script in Step 6
@@ -151,7 +151,7 @@ spec:
 
 Store the proxy token in a Secret named `agent-vault-proxy` in the `agent-vault` namespace, under the key `INFISICAL_AGENT_VAULT_PROXY_TOKEN`. The proxy's pods start once the Secret exists.
 
-On the **Proxies** page in Agent Vault, the proxy's status changes to **Healthy** once it connects. Both replicas use the same token and certificate authority, and the Service spreads connections across them ([high availability](/documentation/platform/agent-vault/proxies#high-availability)).
+On the **Proxies** page of your Agent Vault project, the proxy's status changes to **Healthy** once it connects. Both replicas use the same token and certificate authority, and the Service spreads connections across them ([high availability](/documentation/platform/agent-vault/proxies#high-availability)).
 
 ## Step 3: Create the agents namespace
 
@@ -324,7 +324,7 @@ Remove the real API keys from your agent's configuration. If an SDK won't start 
 
 ### Start the agent with a new session
 
-This script is a minimal orchestrator that runs one agent with its own session. Replace `<access-bundle-name>` with your access bundle's name, and `https://app.infisical.com` with your instance's URL if you don't use US Cloud:
+This script is a minimal orchestrator that runs one agent with its own session. Replace `<project-id>` with the ID of your Agent Vault project ([find the project ID](/documentation/platform/agent-vault/projects#find-the-project-id)), `<access-bundle-name>` with your access bundle's name, and `https://app.infisical.com` with your instance's URL if you don't use US Cloud:
 
 ```bash expandable
 set -euo pipefail
@@ -347,14 +347,14 @@ echo "Run ID: $RUN_ID"
 SESSION=$(curl -fsS -X POST "$INFISICAL_URL/api/v1/agent-vault/sessions" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"accessBundle\": \"<access-bundle-name>\", \"ttl\": \"35m\", \"label\": \"kubernetes run $RUN_ID\"}")
+  -d "{\"projectId\": \"<project-id>\", \"accessBundle\": \"<access-bundle-name>\", \"ttl\": \"35m\", \"label\": \"kubernetes run $RUN_ID\"}")
 SESSION_ID=$(echo "$SESSION" | jq -r .session.id)
 
 cleanup() {
   # Revoke first, so the session ends even if deleting the pod fails.
   curl -fsS -X POST "$INFISICAL_URL/api/v1/agent-vault/sessions/$SESSION_ID/revoke" \
     -H "Authorization: Bearer $ACCESS_TOKEN" > /dev/null \
-    || echo "Couldn't revoke session $SESSION_ID. Revoke it in Agent Vault." >&2
+    || echo "Couldn't revoke session $SESSION_ID. Revoke it in your Agent Vault project." >&2
   kubectl -n agents delete "pod/agent-$RUN_ID" "secret/agent-$RUN_ID" --ignore-not-found
 }
 trap cleanup EXIT
@@ -413,7 +413,7 @@ kubectl -n agents exec agent-<run-id> -- infisical agent-vault run -- \
 kubectl -n agents exec agent-<run-id> -- curl -s --max-time 5 https://example.com
 ```
 
-In Agent Vault, find the session under **Sessions** > **All Sessions** by its label, `kubernetes run <run-id>`. It's **Active** while the agent runs and **Revoked** after the script exits. [View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to see each request the agent made.
+In your Agent Vault project, find the session under **Sessions** > **All Sessions** by its label, `kubernetes run <run-id>`. It's **Active** while the agent runs and **Revoked** after the script exits. [View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to see each request the agent made.
 
 <Check>
   Your agents now run in pods that contain only a session token, can only connect to the proxy, and lose access when the session is revoked.

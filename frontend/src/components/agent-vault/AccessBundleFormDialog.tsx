@@ -19,6 +19,7 @@ import {
   FieldLabel,
   Input
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { agentVaultDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import {
   useCreateAgentVaultAccessBundle,
@@ -47,8 +48,9 @@ export const AccessBundleFormDialog = ({
   accessBundle,
   onCreated
 }: Props) => {
-  const createAccessBundle = useCreateAgentVaultAccessBundle();
-  const updateAccessBundle = useUpdateAgentVaultAccessBundle();
+  const { projectId } = useProject();
+  const createAccessBundle = useCreateAgentVaultAccessBundle(projectId);
+  const updateAccessBundle = useUpdateAgentVaultAccessBundle(projectId);
   const isUpdate = Boolean(accessBundle);
 
   const {

@@ -347,12 +347,7 @@ export const SelectionPanel = ({
     } else if (areSomeEntriesDeleted) {
       createNotification({
         type: "warning",
-        text: `Deletion partially completed. The following environments could not be processed due to conflicts: ${failedEnvs.join(", ")}.`
-      });
-    } else {
-      createNotification({
-        type: "error",
-        text: `Failed to delete selected ${resourceLabel}`
+        text: `Deletion partially completed. The following environments could not be processed: ${failedEnvs.join(", ")}.`
       });
     }
   };

@@ -158,7 +158,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getById" | "find">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByCaId">;
   certificateAuthorityQueue: TCertificateAuthorityQueueFactory; // TODO: Pick
-  certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find">;
+  certificateDAL: Pick<TCertificateDALFactory, "transaction" | "create" | "find" | "primaryNode">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
@@ -1719,6 +1719,18 @@ export const internalCertificateAuthorityServiceFactory = ({
       projectDAL,
       kmsService
     });
+    if (caCert) {
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: certificateManagerKmsId });
+      const currentCaCertObj = new x509.X509Certificate(
+        await kmsDecryptor({ cipherTextBlob: caCert.encryptedCertificate })
+      );
+      if (currentCaCertObj.subjectName.toString() !== certObj.subjectName.toString()) {
+        throw new BadRequestError({
+          message: `The certificate subject '${certObj.subject}' must exactly match the CA's current certificate subject '${currentCaCertObj.subject}', including the order of its fields. Certificates already issued by this CA name the current subject as their issuer, so changing it would break their revocation checks.`
+        });
+      }
+    }
+
     const kmsEncryptor = await kmsService.encryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });

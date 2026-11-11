@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectVersion, SecretKeyEncoding, TableName, TUsers } from "@app/db/schemas";
+import { clearPersonalValuesInProjects } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -417,12 +418,15 @@ export const removeUsersFromGroupByUserIds = async ({
   actorId,
   userDAL,
   userGroupMembershipDAL,
+  identityGroupMembershipDAL,
+  agentVaultPersonalValueDAL,
   projectKeyDAL,
   additionalPrivilegeDAL,
   tx: outerTx,
   membershipGroupDAL,
   groupDAL,
   shouldFailOnMissingMembers = true,
+  deferPersonalValueClear = false,
   usageMeteringService,
   alertChannelRecipientDAL,
   eventEmitter,
@@ -434,7 +438,7 @@ export const removeUsersFromGroupByUserIds = async ({
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
     if (userIds.length === 0) {
-      return { users: [], sendPamCancellations: () => {} };
+      return { users: [], sendPamCancellations: () => {}, projectIds: [] as string[] };
     }
 
     const foundMembers = await userDAL.find(
@@ -481,7 +485,7 @@ export const removeUsersFromGroupByUserIds = async ({
       // filter out users not in group for idempotent operation
       const filteredFoundMembers = foundMembers.filter((m) => existingUserGroupMembershipsUserIdsSet.has(m.id));
       if (filteredFoundMembers.length === 0) {
-        return { users: [], sendPamCancellations: () => {} };
+        return { users: [], sendPamCancellations: () => {}, projectIds: [] as string[] };
       }
       // continue with filtered list
       foundMembers.length = 0;
@@ -614,6 +618,15 @@ export const removeUsersFromGroupByUserIds = async ({
       );
     }
 
+    if (!deferPersonalValueClear) {
+      // After the group rows are gone, so the clear keeps only the values of users who still hold the bundle another way.
+      await clearPersonalValuesInProjects(
+        { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+        { projectIds, userIds: foundMembers.map((m) => m.id) },
+        tx
+      );
+    }
+
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
 
     await emitGroupMembershipRemoved(
@@ -642,7 +655,11 @@ export const removeUsersFromGroupByUserIds = async ({
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     usageMeteringService?.emit(group.orgId, PamIdentities.key);
     usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
-    return { users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending), sendPamCancellations };
+    return {
+      users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending),
+      sendPamCancellations,
+      projectIds
+    };
   };
 
   if (outerTx) {
@@ -667,6 +684,8 @@ export const removeIdentitiesFromGroup = async ({
   membershipDAL,
   groupDAL,
   identityGroupMembershipDAL,
+  userGroupMembershipDAL,
+  agentVaultPersonalValueDAL,
   additionalPrivilegeDAL,
   usageMeteringService,
   eventEmitter,
@@ -766,6 +785,14 @@ export const removeIdentitiesFromGroup = async ({
           identityId: identityIdsArray
         }
       },
+      tx
+    );
+
+    // After the group rows are gone, so the clear keeps only the values of identities who still hold the bundle
+    // another way.
+    await clearPersonalValuesInProjects(
+      { agentVaultPersonalValueDAL, userGroupMembershipDAL, identityGroupMembershipDAL },
+      { projectIds, identityIds: identityIdsArray },
       tx
     );
 

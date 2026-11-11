@@ -1,4 +1,4 @@
-ARG INFISICAL_CLI_VERSION=0.44.12
+ARG INFISICAL_CLI_VERSION=0.45.4
 
 # Required for pkcs11js and TDS driver (SAP ASE dynamic secrets). Shared by build and prod-deps.
 FROM node:26.12.1-trixie-slim AS native-build

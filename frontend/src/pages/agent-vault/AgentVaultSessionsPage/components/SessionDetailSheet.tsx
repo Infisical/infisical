@@ -4,6 +4,7 @@ import { BanIcon, BotIcon, PackageIcon, PencilIcon, UserIcon } from "lucide-reac
 import { twMerge } from "tailwind-merge";
 
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
+import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Button,
@@ -25,7 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
@@ -51,6 +52,7 @@ export const SessionDetailSheet = ({
   onRevoke,
   onEditLabel
 }: Props) => {
+  const { projectId } = useProject();
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
 
@@ -75,7 +77,7 @@ export const SessionDetailSheet = ({
         {!session && isPending && (
           <Empty className="m-4 border">
             <EmptyHeader>
-              <Spinner size="sm" />
+              <Spinner size="sm" variant="av" />
             </EmptyHeader>
           </Empty>
         )}
@@ -153,9 +155,10 @@ export const SessionDetailSheet = ({
                         <DetailValue className="flex min-w-0">
                           {session.accessBundle.id ? (
                             <Link
-                              to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
                               params={{
                                 orgId: currentOrg.id,
+                                projectId,
                                 accessBundleId: session.accessBundle.id
                               }}
                               className="group flex min-w-0 items-center gap-2"
@@ -185,7 +188,8 @@ export const SessionDetailSheet = ({
                               <TooltipTrigger asChild>
                                 <span className="flex min-w-0 items-center gap-2">
                                   <ServiceIcon
-                                    hostPattern={service.hostPattern}
+                                    hostPattern={hostPatternOf(service)}
+                                    serviceType={service.type}
                                     className="size-5"
                                   />
                                   <span className="truncate">{service.name}</span>

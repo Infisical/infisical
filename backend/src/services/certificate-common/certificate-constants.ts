@@ -13,6 +13,18 @@ export const PKI_TEXT_COLUMN_MAX_LENGTH = 255;
 
 export const PKI_ALT_NAMES_COLUMN_MAX_LENGTH = 4096;
 
+/**
+ * Post-quantum keys and signatures (ML-DSA, SLH-DSA) make PEM CSRs far larger than RSA/ECDSA ones;
+ * an SLH-DSA-256f CSR alone is over 60 KB.
+ */
+export const CSR_MAX_LENGTH = 128 * 1024;
+
+export const csrSchema = z
+  .string()
+  .trim()
+  .min(1, "CSR cannot be empty")
+  .max(CSR_MAX_LENGTH, "CSR cannot exceed 128 KB");
+
 const MAX_CERTIFICATE_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
 
 /**

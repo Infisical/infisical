@@ -2,11 +2,11 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { QueueName, TQueueServiceFactory } from "@app/queue";
+import { QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
 import { TMeteredFeature } from "./usage-counters";
 import { TUsageMeteringServiceFactory } from "./usage-metering-service";
-import { TUsageReporter, UsageReportError } from "./usage-reporter";
+import { TUsageEvent, TUsageReporter, UsageReportError } from "./usage-reporter";
 
 // Self-hosted is a single license covering the whole database, so usage is reported once at this
 // instance identity ("full database" level) rather than per organization. Mirrors
@@ -128,6 +128,49 @@ export const usageEventQueueFactory = ({
     }
   };
 
+  // No plan-slug gate as in handleUsageEvent: getPlan serves a slugless fallback during a License
+  // Server outage, which would drop events nothing re-sends. The server's own 404 "license not found"
+  // or 422 (a dimension not metered on this license, a date it will not bill) is final for the batch,
+  // so it is logged and dropped; anything else retries the job.
+  const handleMeteringEvents = async (
+    orgId: string,
+    events: TQueueJobTypes[QueueName.MeteringEvent]["payload"]["events"]
+  ) => {
+    if (!usageReporter || !events.length) {
+      return;
+    }
+
+    const reportOrgId = isCloud ? orgId : SELF_HOSTED_LICENSE_ORG_ID;
+    const payload: TUsageEvent[] = events.map((e) => ({
+      event_id: e.eventId,
+      dimension_key: e.dimensionKey,
+      quantity: e.quantity,
+      occurred_at: e.occurredAt,
+      source
+    }));
+
+    try {
+      const results = await usageReporter.reportEvents(reportOrgId, payload);
+      logger.info(
+        `usage-event-queue: reported metering events [orgId=${reportOrgId}] [count=${results.length}] [deduped=${
+          results.filter((r) => r.status === "deduped").length
+        }]`
+      );
+    } catch (error) {
+      if (
+        error instanceof UsageReportError &&
+        (error.status === 422 || (error.status === 404 && error.serverMessage.includes("license not found")))
+      ) {
+        logger.warn(
+          `usage-event-queue: metering events rejected, dropping [orgId=${reportOrgId}] [count=${events.length}] [status=${error.status}] [message=${error.serverMessage}]`
+        );
+        return;
+      }
+      logger.error(error, `usage-event-queue: failed to report metering events [orgId=${reportOrgId}]`);
+      throw error;
+    }
+  };
+
   // Self-hosted true-up: a daily backstop for cap visibility and renewal on top of event-driven
   // reporting. Self-hosted usage is metered and reported once at the instance identity, so this just
   // re-emits each meter once (no per-org fan-out); handleUsageEvent counts instance-wide and dedups.
@@ -152,6 +195,9 @@ export const usageEventQueueFactory = ({
         limiter: { max: 50, duration: 1000 }
       }
     );
+    queueService.start(QueueName.MeteringEvent, (job) => handleMeteringEvents(job.data.orgId, job.data.events), {
+      concurrency: 5
+    });
   };
 
   const init = () => {
@@ -166,5 +212,5 @@ export const usageEventQueueFactory = ({
     });
   };
 
-  return { init, handleUsageEvent, flushInstanceUsage };
+  return { init, handleUsageEvent, handleMeteringEvents, flushInstanceUsage };
 };

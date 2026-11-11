@@ -10,10 +10,9 @@ import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-
 import { validateSecretMovePermissions } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
-import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
-import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
+import { shouldApplyPolicy } from "@app/ee/services/secret-change-policy/secret-change-policy-fns";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
+import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { TSecretRotationV2DALFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-dal";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -84,8 +83,8 @@ type TSecretFolderServiceFactoryDep = {
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
   eventEmitter: TEventEmitter;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
-  secretApprovalPolicyService: Pick<
-    TSecretApprovalPolicyServiceFactory,
+  secretChangePolicyService: Pick<
+    TSecretChangePolicyServiceFactory,
     "getSecretApprovalPolicy" | "getSecretApprovalPolicyByPaths"
   >;
   secretV2BridgeDAL: Pick<
@@ -108,11 +107,10 @@ type TSecretFolderServiceFactoryDep = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
-  secretApprovalRequestCreationFns: Pick<
-    TSecretApprovalRequestCreationFnsFactory,
-    "createSecretApprovalRequestV2Bridge"
+  secretChangeRequestService: Pick<
+    TSecretChangeRequestServiceFactory,
+    "findFolderIdsWithOpenRequests" | "createSecretApprovalRequestV2Bridge"
   >;
-  secretApprovalRequestService: Pick<TSecretApprovalRequestServiceFactory, "findFolderIdsWithOpenRequests">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets">;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "find">;
@@ -136,15 +134,14 @@ export const secretFolderServiceFactory = ({
   folderCommitService,
   eventEmitter,
   projectDAL,
-  secretApprovalPolicyService,
+  secretChangePolicyService,
   secretV2BridgeDAL,
   kmsService,
   secretVersionDAL,
   secretTagDAL,
   secretVersionTagDAL,
   resourceMetadataDAL,
-  secretApprovalRequestCreationFns,
-  secretApprovalRequestService,
+  secretChangeRequestService,
   secretQueueService,
   secretSyncQueue,
   dynamicSecretDAL,
@@ -749,7 +746,7 @@ export const secretFolderServiceFactory = ({
       id: folder.id
     }));
 
-    const folderIdsWithOpenRequests = await secretApprovalRequestService.findFolderIdsWithOpenRequests(
+    const folderIdsWithOpenRequests = await secretChangeRequestService.findFolderIdsWithOpenRequests(
       folderPolicyPaths.map((p) => p.id),
       tx
     );
@@ -774,7 +771,7 @@ export const secretFolderServiceFactory = ({
       // eslint-disable-next-line no-continue
       if (!secrets.some((s) => s.folderId === folderPolicyPath.id)) continue;
 
-      const policy = await secretApprovalPolicyService.getSecretApprovalPolicy(
+      const policy = await secretChangePolicyService.getSecretApprovalPolicy(
         projectId,
         env.slug,
         folderPolicyPath.path,
@@ -1675,7 +1672,7 @@ export const secretFolderServiceFactory = ({
     dynamicSecretDAL,
     honeyTokenDAL,
     secretRotationV2DAL,
-    secretApprovalPolicyService
+    secretChangePolicyService
   };
 
   // computes the reasons a folder subtree cannot be moved, shared by the read-only eligibility check and the
@@ -2130,8 +2127,8 @@ export const secretFolderServiceFactory = ({
             resourceMetadataDAL,
             folderCommitService,
             eventEmitter,
-            secretApprovalPolicyService,
-            secretApprovalRequestCreationFns,
+            secretChangePolicyService,
+            secretChangeRequestService,
             secretQueueService,
             reminderService,
             secretValidationRuleService

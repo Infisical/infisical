@@ -115,16 +115,14 @@ export const Route = createFileRoute("/_restrict-login-signup")({
 
     const orgId = data.subOrganizationId || data.organizationId;
     if (orgId) {
-      // A signed-in visitor from a pricing-page trial button gets that plan's trial confirmation on
-      // their current organization's billing page, which falls back to projects when they can't trial.
+      // A signed-in visitor from a pricing-page trial button lands on their organization's billing page
+      // with that product's upgrade dialog open on the plan they picked.
       const trialIntent =
         location.pathname.replace(/\/$/, "") === "/signup"
           ? parseSignupTrialSearch(location.searchStr)
           : null;
       if (trialIntent) {
-        const billingSearch = new URLSearchParams(
-          getSignupTrialBillingSearch(trialIntent, `/organizations/${orgId}/projects`)
-        );
+        const billingSearch = new URLSearchParams(getSignupTrialBillingSearch(trialIntent));
         throw redirect({
           href: `/organizations/${data.organizationId ?? orgId}/billing?${billingSearch.toString()}`
         });

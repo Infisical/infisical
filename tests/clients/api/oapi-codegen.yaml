@@ -734,3 +734,45 @@ output-options:
     - createAzureKeyVaultAppConnection
     - updateAzureKeyVaultAppConnection
     - deleteAzureKeyVaultAppConnection
+    - createKmsKey
+    - updateKmsKey
+    - rotateKmsKey
+    - deleteKmsKey
+    - listKmsKeys
+    - getKmsKeyById
+    - getKmsKeyByName
+    - encryptWithKmsKey
+    - decryptWithKmsKey
+    - getKmsKeyPublicKey
+    - getKmsKeyPrivateKey
+    - bulkImportKmsKeys
+    - bulkExportKmsKeyPrivateKeys
+    - listKmsKeySigningAlgorithms
+    - signWithKmsKey
+    - verifyWithKmsKey
+    - generateMacWithKmsKey
+    - verifyMacWithKmsKey
+    - createKmipClient
+    - updateKmipClient
+    - deleteKmipClient
+    - getKmipClient
+    - listKmipClients
+    - createKmipClientCertificate
+    - registerKmipServer
+    - createKmipServer
+    - getKmipServer
+    - listKmipServers
+    - updateKmipServer
+    - generateKmipServerEnrollmentToken
+    - revokeKmipServerAccess
+    - deleteKmipServer
+    - loginKmipServer
+    - connectKmipServer
+    - kmipCreate
+    - kmipGet
+    - kmipGetAttributes
+    - kmipDestroy
+    - kmipActivate
+    - kmipRevoke
+    - kmipLocate
+    - kmipRegister

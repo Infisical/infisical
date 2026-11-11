@@ -36,7 +36,8 @@ import {
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
   useOrganization,
-  useProjectPermission
+  useProjectPermission,
+  useProject
 } from "@app/context";
 import {
   useAddAgentVaultAccessBundleSkill,
@@ -56,6 +57,7 @@ type Props = {
 };
 
 export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Props) => {
+  const { projectId } = useProject();
   const { permission } = useProjectPermission();
   const { openSheet } = useAgentVaultSheetState("skillId");
   const { currentOrg } = useOrganization();
@@ -63,10 +65,12 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
     ProjectPermissionAgentVaultSkillActions.Create,
     ProjectPermissionSub.AgentVaultSkills
   );
-  const { data: bundleSkills = [], isPending } =
-    useListAgentVaultAccessBundleSkills(accessBundleId);
-  const addSkill = useAddAgentVaultAccessBundleSkill();
-  const removeSkill = useRemoveAgentVaultAccessBundleSkill();
+  const { data: bundleSkills = [], isPending } = useListAgentVaultAccessBundleSkills(
+    projectId,
+    accessBundleId
+  );
+  const addSkill = useAddAgentVaultAccessBundleSkill(projectId);
+  const removeSkill = useRemoveAgentVaultAccessBundleSkill(projectId);
   const [skillToRemove, setSkillToRemove] = useState<TAgentVaultBundleSkill | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [createName, setCreateName] = useState<string | null>(null);
@@ -157,8 +161,8 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
                 <TableRow key={skill.id} linked>
                   <TableCell isTruncatable>
                     <RowLink
-                      to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                      params={{ orgId: currentOrg.id, accessBundleId }}
+                      to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId"
+                      params={{ orgId: currentOrg.id, projectId, accessBundleId }}
                       search={(prev) => ({ ...prev, skillId: skill.id })}
                       title={skill.description}
                     >

@@ -33,12 +33,12 @@ import { TOrderCertificateForSubscriberDTO } from "./internal/internal-certifica
 
 type TCertificateAuthorityQueueFactoryDep = {
   certificateAuthorityDAL: TCertificateAuthorityDALFactory;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update" | "findOne">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem">;
   certificateAuthorityCrlDAL: TCertificateAuthorityCrlDALFactory;
-  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: TCertificateAuthoritySecretDALFactory;
   certificateDAL: TCertificateDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
@@ -64,8 +64,8 @@ const CA_CRL_REBUILD_BATCH_SIZE = 100;
 
 export const certificateAuthorityQueueFactory = ({
   certificateAuthorityCrlDAL,
-  certificateAuthorityCertDAL,
   certificateAuthorityDAL,
+  certificateAuthorityCertDAL,
   certificateAuthoritySecretDAL,
   certificateDAL,
   projectDAL,

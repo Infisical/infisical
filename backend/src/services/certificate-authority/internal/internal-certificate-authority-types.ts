@@ -386,6 +386,14 @@ export type TGetCaCertChainDTO = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
 
+export type TGetActiveCaCertificateDTO = {
+  internalCa: { dn: string; activeCaCertId?: string | null };
+  kmsId: string;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey">;
+  tx?: Knex;
+};
+
 export type TBuildIssuedCertificateChainDTO = {
   caId: string;
   caCert: string;
@@ -406,7 +414,7 @@ export type TRebuildCaCrlDTO = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
-  certificateDAL: Pick<TCertificateDALFactory, "find">;
+  certificateDAL: Pick<TCertificateDALFactory, "find" | "primaryNode">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey" | "encryptWithKmsKey">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;

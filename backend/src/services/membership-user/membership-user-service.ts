@@ -648,7 +648,13 @@ export const membershipUserServiceFactory = ({
             tx
           );
         }
+      }
 
+      await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
+      const doc = await membershipUserDAL.deleteById(existingMembership.id, tx);
+
+      if (dto.scopeData.scope === AccessScope.Project) {
+        // After the membership delete: clearing Agent Vault personal values keeps them for anyone still a project admin.
         await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
           {
             projectId: dto.scopeData.projectId,
@@ -657,12 +663,6 @@ export const membershipUserServiceFactory = ({
           },
           tx
         );
-      }
-
-      await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
-      const doc = await membershipUserDAL.deleteById(existingMembership.id, tx);
-
-      if (dto.scopeData.scope === AccessScope.Project) {
         await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [dto.selector.userId] }, tx);
       }
 

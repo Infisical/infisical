@@ -13,9 +13,12 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { nativeTargetText } from "@app/components/agent-vault/nativeServiceMeta";
 import { OAuthStatusBadge } from "@app/components/agent-vault/service-sheet/OAuthAuthorizeCard";
 import {
   displayHostPattern,
+  hostPatternOf,
+  isNativeService,
   SERVICE_TYPE_LABELS
 } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
@@ -53,6 +56,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
@@ -70,8 +74,14 @@ enum SortColumn {
   Created = "created"
 }
 
-const targetOf = (service: TAgentVaultService) =>
-  service.type === AgentVaultServiceType.Mcp ? service.serverUrl : service.hostPattern;
+const targetOf = (service: TAgentVaultService) => {
+  if (isNativeService(service)) return nativeTargetText(service);
+  return service.type === AgentVaultServiceType.Mcp ? service.serverUrl : service.hostPattern;
+};
+
+// The host, not the shown URL, so MCP servers sort among the HTTP hosts instead of together under "https".
+const sortTargetOf = (service: TAgentVaultService) =>
+  isNativeService(service) ? service.host : service.hostPattern;
 
 const SORT_COMPARATORS: Record<
   SortColumn,
@@ -79,8 +89,7 @@ const SORT_COMPARATORS: Record<
 > = {
   [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
   [SortColumn.Type]: (a, b) => a.type.localeCompare(b.type),
-  // The host, not the shown URL, so MCP servers sort among the HTTP hosts instead of together under "https".
-  [SortColumn.Target]: (a, b) => a.hostPattern.localeCompare(b.hostPattern),
+  [SortColumn.Target]: (a, b) => sortTargetOf(a).localeCompare(sortTargetOf(b)),
   [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
 };
 
@@ -114,14 +123,66 @@ const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
   );
 };
 
-const TargetCell = ({ service }: { service: TAgentVaultService }) =>
-  service.type === AgentVaultServiceType.Mcp ? (
-    <span className="block max-w-72 truncate text-sm" title={service.serverUrl}>
-      {service.serverUrl.replace(/^https:\/\//i, "")}
+const TargetCell = ({ service }: { service: TAgentVaultService }) => {
+  if (service.type === AgentVaultServiceType.Mcp) {
+    return (
+      <span className="block max-w-72 truncate text-sm" title={service.serverUrl}>
+        {service.serverUrl.replace(/^https:\/\//i, "")}
+      </span>
+    );
+  }
+  if (service.type === AgentVaultServiceType.Http) {
+    return <HostsCell hostPattern={service.hostPattern} />;
+  }
+  const target = nativeTargetText(service);
+  return (
+    <span className="block max-w-72 truncate text-sm" title={target}>
+      {target}
     </span>
-  ) : (
-    <HostsCell hostPattern={service.hostPattern} />
   );
+};
+
+// A connection missing scopes still works for what it was granted, so it stays configured but asks to reconnect.
+const PersonalSetupBadge = ({
+  personalValues,
+  onClick
+}: {
+  personalValues: NonNullable<TAgentVaultService["personalValues"]>;
+  onClick: () => void;
+}) => {
+  if (!personalValues.isConfigured) {
+    return (
+      <Badge variant="warning" asChild>
+        <button type="button" onClick={onClick}>
+          <TriangleAlertIcon />
+          Requires Setup
+        </button>
+      </Badge>
+    );
+  }
+  if (
+    personalValues.fields.some(
+      (field) => field.oauth?.status === AgentVaultOauthStatus.NeedsAdditionalScopes
+    )
+  ) {
+    return (
+      <Badge variant="warning" asChild>
+        <button type="button" onClick={onClick}>
+          <TriangleAlertIcon />
+          Missing Scopes
+        </button>
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="neutral" asChild>
+      <button type="button" onClick={onClick}>
+        <CircleCheckIcon />
+        Configured
+      </button>
+    </Badge>
+  );
+};
 
 export const ServicesCard = ({
   accessBundleId,
@@ -131,9 +192,10 @@ export const ServicesCard = ({
   onEdit,
   onSetUp
 }: Props) => {
+  const { projectId } = useProject();
   const [search, setSearch] = useState("");
   const [serviceToDelete, setServiceToDelete] = useState<TAgentVaultService | null>(null);
-  const deleteService = useDeleteAgentVaultService();
+  const deleteService = useDeleteAgentVaultService(projectId);
 
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
@@ -144,7 +206,8 @@ export const ServicesCard = ({
     const filtered = services.filter((service) =>
       [
         service.name,
-        service.hostPattern,
+        service.description ?? "",
+        hostPatternOf(service) ?? "",
         targetOf(service),
         service.type,
         SERVICE_TYPE_LABELS[service.type]
@@ -198,8 +261,8 @@ export const ServicesCard = ({
           <DocumentationLinkBadge href={AgentVaultDocsUrls.services} />
         </CardTitle>
         <CardDescription>
-          A service defines one HTTP API or MCP server the agent can reach, and the credential the
-          proxy attaches to its requests.
+          A service defines one API, MCP server, database or SSH server the agent can reach, and the
+          credential the proxy uses for it.
         </CardDescription>
         {canManage && (
           <CardAction>
@@ -253,6 +316,8 @@ export const ServicesCard = ({
           <TableHeader>
             <TableRow>
               <TableHead
+                isTruncatable
+                className="w-2/5"
                 sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
                 onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
               >
@@ -287,14 +352,25 @@ export const ServicesCard = ({
           <TableBody>
             {displayed.map((service) => (
               <TableRow key={service.id}>
-                <TableCell>
+                <TableCell isTruncatable className="min-w-64">
                   <div className="flex items-center gap-2">
-                    <ServiceIcon hostPattern={service.hostPattern} />
-                    {service.name}
+                    <ServiceIcon hostPattern={hostPatternOf(service)} serviceType={service.type} />
+                    <span className="truncate" title={service.name}>
+                      {service.name}
+                    </span>
                     {service.credential.type === AgentVaultCredentialType.OAuth &&
+                      service.credential.status &&
                       service.credential.status !== AgentVaultOauthStatus.Connected && (
                         <OAuthStatusBadge status={service.credential.status} />
                       )}
+                    {service.description && (
+                      <span
+                        className="min-w-0 flex-1 truncate text-sm text-muted"
+                        title={service.description}
+                      >
+                        {service.description}
+                      </span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -317,22 +393,12 @@ export const ServicesCard = ({
                 </TableCell>
                 <TableCell>
                   <div className="flex justify-center">
-                    {service.personalValues &&
-                      (service.personalValues.isConfigured ? (
-                        <Badge variant="neutral" asChild>
-                          <button type="button" onClick={() => onSetUp(service)}>
-                            <CircleCheckIcon />
-                            Configured
-                          </button>
-                        </Badge>
-                      ) : (
-                        <Badge variant="warning" asChild>
-                          <button type="button" onClick={() => onSetUp(service)}>
-                            <TriangleAlertIcon />
-                            Requires Setup
-                          </button>
-                        </Badge>
-                      ))}
+                    {service.personalValues && (
+                      <PersonalSetupBadge
+                        personalValues={service.personalValues}
+                        onClick={() => onSetUp(service)}
+                      />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell variant="action">

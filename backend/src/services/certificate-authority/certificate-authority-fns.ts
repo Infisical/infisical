@@ -31,6 +31,7 @@ import {
   TGetCaCertChainDTO,
   TGetCaCertChainsDTO,
   TGetCaCredentialsDTO,
+  TGetActiveCaCertificateDTO,
   TGetCaSignerDTO,
   TRebuildCaCrlDTO
 } from "./internal/internal-certificate-authority-types";
@@ -623,7 +624,7 @@ export const buildCaCrlParams = async ({
   caNotAfter,
   entries
 }: {
-  issuer: string;
+  issuer: string | x509.Name;
   caPublicKey: CryptoKey;
   caCertificate?: x509.X509Certificate;
   crlNumber: number;
@@ -755,6 +756,23 @@ export const getIssuedCaCertChain = async ({
   return { caCert, caCertChain, certificateChainPem };
 };
 
+export const getActiveCaCertificate = async ({
+  internalCa,
+  kmsId,
+  certificateAuthorityCertDAL,
+  kmsService,
+  tx
+}: TGetActiveCaCertificateDTO) => {
+  if (!internalCa.activeCaCertId) return undefined;
+
+  const caCert = await certificateAuthorityCertDAL.findById(internalCa.activeCaCertId, tx);
+  if (!caCert) throw new NotFoundError({ message: "CA certificate not found" });
+
+  const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId });
+  const decryptedCaCert = await kmsDecryptor({ cipherTextBlob: caCert.encryptedCertificate });
+  return new x509.X509Certificate(decryptedCaCert);
+};
+
 /**
  * Rebuilds the certificate revocation list (CRL)
  * for CA with id [caId]
@@ -762,8 +780,8 @@ export const getIssuedCaCertChain = async ({
 export const rebuildCaCrl = async ({
   caId,
   certificateAuthorityDAL,
-  certificateAuthorityCrlDAL,
   certificateAuthorityCertDAL,
+  certificateAuthorityCrlDAL,
   certificateAuthoritySecretDAL,
   projectDAL,
   certificateDAL,
@@ -798,14 +816,13 @@ export const rebuildCaCrl = async ({
       kmsId: keyId
     });
 
-    let caCertificate: x509.X509Certificate | undefined;
-    if (ca.internalCa.activeCaCertId) {
-      const activeCaCert = await certificateAuthorityCertDAL.findById(ca.internalCa.activeCaCertId, primary);
-      const kmsDecryptor = await kmsService.decryptWithKmsKey({ kmsId: keyId });
-      caCertificate = new x509.X509Certificate(
-        await kmsDecryptor({ cipherTextBlob: activeCaCert.encryptedCertificate })
-      );
-    }
+    const caCertificate = await getActiveCaCertificate({
+      internalCa: ca.internalCa,
+      kmsId: keyId,
+      certificateAuthorityCertDAL,
+      kmsService,
+      tx: primary
+    });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caId: ca.id }, primary);
     if (!caCrl) throw new NotFoundError({ message: `CRL for CA with ID '${caId}' not found` });
@@ -814,7 +831,7 @@ export const rebuildCaCrl = async ({
 
     const crlNumber = Number(caCrl.crlNumber) + 1;
     const crlParams = await buildCaCrlParams({
-      issuer: ca.internalCa.dn,
+      issuer: caCertificate?.subjectName ?? ca.internalCa.dn,
       caPublicKey: signer.caPublicKey,
       caCertificate,
       crlNumber,

@@ -1,7 +1,11 @@
 import crypto from "node:crypto";
 
 import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { seedLegacySecretApprovalPolicy } from "e2e-test/testUtils/secret-approval-policies";
+import {
+  createSecretChangePolicy,
+  seedLegacySecretApprovalPolicy,
+  updateSecretChangePolicy
+} from "e2e-test/testUtils/secret-approval-policies";
 import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
@@ -43,27 +47,16 @@ const createProjectUser = async (label: string) => {
 };
 
 const createGlobalPolicy = async (name: string, secretPath: string, approver: { type: ApproverType; id: string }) => {
-  const res = await testServer.inject({
-    method: "POST",
-    url: "/api/v2/secret-approvals",
-    headers: authHeaders(),
-    body: { projectId, environment: envSlug, secretPath, approvers: [approver], approvals: 1, name }
+  const { id: policyId } = await createSecretChangePolicy({
+    body: { projectId, environment: envSlug, secretPath, approvers: [approver], approvals: 1, name },
+    authToken: jwtAuthToken
   });
-  expect(res.statusCode).toBe(200);
-  const policyId = (res.json() as { approval: { id: string } }).approval.id;
   expect(await getDb()(TableName.ApprovalPolicies).where({ id: policyId }).first()).toBeDefined();
   return policyId;
 };
 
-const replaceGlobalPolicyApprover = async (policyId: string, approver: { type: ApproverType; id: string }) => {
-  const res = await testServer.inject({
-    method: "PATCH",
-    url: `/api/v2/secret-approvals/${policyId}`,
-    headers: authHeaders(),
-    body: { approvers: [approver], approvals: 1 }
-  });
-  expect(res.statusCode).toBe(200);
-};
+const replaceGlobalPolicyApprover = (policyId: string, approver: { type: ApproverType; id: string }) =>
+  updateSecretChangePolicy({ policyId, body: { approvers: [approver], approvals: 1 }, authToken: jwtAuthToken });
 
 const removeProjectUser = (username: string) =>
   testServer.inject({
@@ -213,7 +206,7 @@ describe("Global approval system guards outside the approval routes", () => {
     expect(await getDb()(TableName.SecretFolder).where({ id: child.id }).first()).toBeUndefined();
   });
 
-  test("a folder with an open legacy change request cannot be deleted until the request is closed", async () => {
+  test("a folder with an open request that only exists in the legacy tables is deletable", async () => {
     const { parentName, parent, child } = await createFolderTree();
     const legacyPolicy = await seedLegacySecretApprovalPolicy(getDb(), {
       projectId,
@@ -223,14 +216,7 @@ describe("Global approval system guards outside the approval routes", () => {
       approverUserId: seedData1.id
     });
     legacyPolicyIds.push(legacyPolicy.id);
-    const legacyRequestId = await seedOpenLegacyRequest(child.id, legacyPolicy.id);
-    legacyRequestIds.push(legacyRequestId);
-
-    const blocked = await deleteFolderRequest(parent.id, "/");
-    expect(blocked.statusCode).toBe(400);
-    expect(blocked.json().message).toBe(openRequestMessage(`/${parentName}/child`));
-
-    await getDb()(TableName.SecretApprovalRequest).where({ id: legacyRequestId }).update({ status: "close" });
+    legacyRequestIds.push(await seedOpenLegacyRequest(child.id, legacyPolicy.id));
 
     await deleteFolder({
       workspaceId: projectId,
@@ -241,5 +227,21 @@ describe("Global approval system guards outside the approval routes", () => {
       forceDelete: true
     });
     expect(await getDb()(TableName.SecretFolder).where({ id: child.id }).first()).toBeUndefined();
+  });
+
+  test("a user who only approves a policy in the legacy tables is removable", async () => {
+    const { userId, username } = await createProjectUser("legacy-approver");
+    userIds.push(userId);
+    const legacyPolicy = await seedLegacySecretApprovalPolicy(getDb(), {
+      projectId,
+      environment: envSlug,
+      secretPath: "/legacy-user-guard",
+      name: "legacy-user-guard",
+      approverUserId: userId
+    });
+    legacyPolicyIds.push(legacyPolicy.id);
+
+    const removed = await removeProjectUser(username);
+    expect(removed.statusCode).toBe(200);
   });
 });

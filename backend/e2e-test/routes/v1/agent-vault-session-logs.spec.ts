@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
 import { FAKE_DEFAULT_STORAGE, fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
 import { fakeS3Bucket } from "e2e-test/fakes/s3";
+import { agentVaultRequester, createAgentVaultProject, deleteAgentVaultProject } from "e2e-test/testUtils/agent-vault";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
 import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 import { v7 as uuidv7 } from "uuid";
@@ -29,13 +30,10 @@ import {
 
 initLogger();
 
-const authHeader = { authorization: `Bearer ${jwtAuthToken}` };
+// The spec's own Agent Vault project, created in beforeAll. Project-level requests name it.
+let projectId: string;
 
-const inject = (method: "GET" | "POST" | "PATCH" | "DELETE", url: string, body?: Record<string, unknown>) =>
-  testServer.inject({ method, url, headers: authHeader, ...(body ? { body } : {}) });
-
-const getProjectId = async () =>
-  (JSON.parse((await inject("GET", "/api/v1/agent-vault/project")).payload) as { projectId: string }).projectId;
+const inject = agentVaultRequester(jwtAuthToken, () => projectId);
 
 const createAccessBundle = async (name: string) => {
   const res = await inject("POST", "/api/v1/agent-vault/access-bundles", { name });
@@ -88,8 +86,7 @@ const createMemberIdentity = async (name: string) => {
 
   return {
     id: identity.id,
-    as: (method: "GET" | "POST" | "PATCH", url: string, body?: Record<string, unknown>) =>
-      testServer.inject({ method, url, headers: { authorization: `Bearer ${token}` }, ...(body ? { body } : {}) }),
+    as: agentVaultRequester(token, () => projectId),
     cleanup: () => inject("DELETE", `/api/v1/identities/${identity.id}`)
   };
 };
@@ -164,7 +161,6 @@ const sessionFolder = (sessionId: string, prefix: string | null = "logs") =>
 describe("Agent Vault session logs", async () => {
   let connectionId: string;
   let connectionName: string;
-  let projectId: string;
 
   const externalStorage = (fields: Record<string, unknown> = {}) => ({
     type: "external",
@@ -179,21 +175,15 @@ describe("Agent Vault session logs", async () => {
     saveConfig({ enabled: true, storage: externalStorage(fields) });
 
   beforeAll(async () => {
-    projectId = await getProjectId();
-    expect(
-      (await inject("POST", `/api/v1/organization-admin/projects/${projectId}/grant-admin-access`)).statusCode
-    ).toBe(200);
+    projectId = await createAgentVaultProject({ authToken: jwtAuthToken, name: `session-logs-${Date.now()}` });
     connectionName = `session-logs-aws-${Date.now()}`;
     connectionId = await createAwsAppConnection({ name: connectionName, authToken: jwtAuthToken });
   });
 
-  // This file sorts before agent-vault.spec.ts, which asserts the Agent Vault project bootstraps with no members.
+  // The saved settings reference the connection, so they go before it does.
   afterAll(async () => {
     await testDb("agent_vault_session_log_configs").where({ projectId }).del();
-    await testDb("agent_vault_sessions").where({ projectId }).del();
-    await testDb("agent_vault_proxies").where({ projectId }).del();
-    await testDb("agent_vault_access_bundles").where({ projectId }).del();
-    await testDb("memberships").where({ scopeProjectId: projectId }).del();
+    await deleteAgentVaultProject({ authToken: jwtAuthToken, projectId });
     await deleteAwsAppConnection({ connectionId, authToken: jwtAuthToken });
   });
 
@@ -202,7 +192,7 @@ describe("Agent Vault session logs", async () => {
     fakeAwsConnection.reset();
     fakeDefaultStorage.reset();
     await testDb("agent_vault_session_log_configs").where({ projectId }).del();
-    // Tests create their own proxies, and an org can hold only AGENT_VAULT_MAX_PROXIES_PER_ORG.
+    // Tests create their own proxies, and a project can hold only AGENT_VAULT_MAX_PROXIES_PER_PROJECT.
     await testDb("agent_vault_proxies").where({ projectId }).del();
   });
 
@@ -1212,7 +1202,6 @@ describe("Agent Vault session logs", async () => {
 
     test("a session on a user's behalf is the identity's: its logs go to the identity and admins, never the user", async () => {
       await configure();
-      const projectId = await getProjectId();
       const bundle = await createAccessBundle(`session-logs-obo-${Date.now()}`);
       const bot = await createMemberIdentity(`session-logs-obo-bot-${Date.now()}`);
       const alice = await createUser("session-logs-obo-alice");
@@ -1225,11 +1214,9 @@ describe("Agent Vault session logs", async () => {
           machineIdentityIds: [bot.id]
         });
         expect(granted.statusCode).toBe(200);
-        const delegated = await testServer.inject({
-          method: "PUT",
-          url: `/api/v1/agent-vault/delegations/${bot.id}`,
-          headers: authHeader,
-          body: { scope: "selected", userIds: [alice.userId] }
+        const delegated = await inject("PUT", `/api/v1/agent-vault/delegations/${bot.id}`, {
+          scope: "selected",
+          userIds: [alice.userId]
         });
         expect(delegated.statusCode).toBe(200);
 
