@@ -9,6 +9,7 @@ import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-s
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -87,7 +88,10 @@ type TUserServiceFactoryDep = {
     | "findAllOrgsByUserId"
   >;
   orgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization">;
-  membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
+  membershipUserDAL: Pick<
+    TMembershipUserDALFactory,
+    "find" | "insertMany" | "findOne" | "updateById" | "findOrgsWhereUserIsLastAdmin"
+  >;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
@@ -731,10 +735,16 @@ export const userServiceFactory = ({
     return { challenge: preferred ?? userFactors[0], accepted: userFactors };
   };
 
-  const deleteUser = async (
-    userId: string,
-    { lastMemberOrganizationIds }: { lastMemberOrganizationIds?: string[] } = {}
-  ) => {
+  const $formatOrgNames = (orgs: { name: string }[]) => {
+    const isSingleOrg = orgs.length === 1;
+    return {
+      isSingleOrg,
+      orgNoun: isSingleOrg ? "the organization" : "the organizations",
+      orgNames: orgs.map((org) => `'${org.name}'`).join(", ")
+    };
+  };
+
+  const getMyDeletionEligibility = async (userId: string) => {
     // If the deleting user is the only remaining server admin, block self-deletion.
     // The super_admin table's `initialized` flag is not reset on user delete, so
     // letting the last super admin self-delete leaves /admin/signup permanently
@@ -742,30 +752,62 @@ export const userServiceFactory = ({
     // DB intervention (#6091). The super-admin-service.deleteUser path enforces
     // the same guard for admin-initiated deletes; this mirrors it for self-delete.
     const userToDelete = await userDAL.findById(userId);
-
+    let isOnlyServerAdmin = false;
     if (userToDelete?.superAdmin) {
       const superAdmins = await userDAL.find({ superAdmin: true });
-      if (superAdmins.length === 1 && superAdmins[0].id === userId) {
-        throw new BadRequestError({
-          message:
-            "Cannot delete the only server admin on this instance. Promote another user to server admin before deleting this account."
-        });
-      }
+      isOnlyServerAdmin = superAdmins.length === 1 && superAdmins[0].id === userId;
     }
 
-    // An org nobody can sign in to keeps billing with no way to cancel it.
+    // An org nobody can sign in to keeps billing with no way to cancel it, so it is deleted with the account.
     const lastMemberOrgs = (await orgDAL.findAllOrgsByUserId(userId, { lastMember: true })).filter(
       (org) => org.userStatus !== OrgMembershipStatus.Invited
     );
+
+    // An org that keeps members but loses its only admin has nobody left to manage it. Orgs deleted
+    // with the account don't count, sub-orgs included since deleting the root cascades to them.
+    const deletedOrgIds = new Set(lastMemberOrgs.map((org) => org.id));
+    const lastAdminOrgs = (await membershipUserDAL.findOrgsWhereUserIsLastAdmin(userId)).filter(
+      (org) => !deletedOrgIds.has(org.id) && !(org.rootOrgId && deletedOrgIds.has(org.rootOrgId))
+    );
+
+    return {
+      canDelete: !isOnlyServerAdmin && !lastAdminOrgs.length,
+      isOnlyServerAdmin,
+      lastMemberOrganizations: lastMemberOrgs.map(({ id, name }) => ({ id, name })),
+      lastAdminOrganizations: lastAdminOrgs.map(({ id, name }) => ({ id, name }))
+    };
+  };
+
+  const deleteUser = async (
+    userId: string,
+    { lastMemberOrganizationIds }: { lastMemberOrganizationIds?: string[] } = {}
+  ) => {
+    const {
+      isOnlyServerAdmin,
+      lastMemberOrganizations: lastMemberOrgs,
+      lastAdminOrganizations
+    } = await getMyDeletionEligibility(userId);
+
+    if (isOnlyServerAdmin) {
+      throw new BadRequestError({
+        message:
+          "Cannot delete the only server admin on this instance. Promote another user to server admin before deleting this account."
+      });
+    }
+
+    if (lastAdminOrganizations.length) {
+      const { orgNoun, orgNames } = $formatOrgNames(lastAdminOrganizations);
+      throw new BadRequestError({
+        message: `You are the only admin of ${orgNoun} ${orgNames}. Promote another member to admin before deleting your account.`
+      });
+    }
 
     // Only delete orgs the caller actually saw. If the list changed, make them look again.
     const confirmedOrgIds = new Set(lastMemberOrganizationIds ?? []);
     const matchesConfirmed =
       lastMemberOrgs.length === confirmedOrgIds.size && lastMemberOrgs.every((org) => confirmedOrgIds.has(org.id));
     if (!matchesConfirmed) {
-      const orgNames = lastMemberOrgs.map((org) => `'${org.name}'`).join(", ");
-      const isSingleOrg = lastMemberOrgs.length === 1;
-      const orgNoun = isSingleOrg ? "the organization" : "the organizations";
+      const { isSingleOrg, orgNoun, orgNames } = $formatOrgNames(lastMemberOrgs);
       if (!lastMemberOrganizationIds) {
         throw new BadRequestError({
           message: `You are the last member of ${orgNoun} ${orgNames}. Invite another member, or delete ${isSingleOrg ? "it" : "them"} along with your account.`
@@ -796,6 +838,21 @@ export const userServiceFactory = ({
     let sendPamCancellations = () => {};
 
     const user = await userDAL.transaction(async (tx) => {
+      // The check above can't hold locks across the org deletions, so repeat it under the same per-org lock
+      // every admin demotion and removal takes, or a concurrent one could leave an org with no admin.
+      // Sorted so two transactions locking overlapping orgs can't deadlock each other.
+      const memberOrgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId))].sort();
+      for await (const orgId of memberOrgIds) {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("org", orgId)]);
+      }
+      const lastAdminOrgsNow = await membershipUserDAL.findOrgsWhereUserIsLastAdmin(userId, tx);
+      if (lastAdminOrgsNow.length) {
+        const { orgNoun, orgNames } = $formatOrgNames(lastAdminOrgsNow);
+        throw new BadRequestError({
+          message: `You are now the only admin of ${orgNoun} ${orgNames}. Promote another member to admin before deleting your account.`
+        });
+      }
+
       sendPamCancellations = await terminatePamSessionsForUsers({
         orgIds: orgMemberships.map((m) => m.scopeOrgId),
         userIds: [userId],
@@ -971,6 +1028,7 @@ export const userServiceFactory = ({
     verifyCurrentEmailOTP,
     updateUserEmail,
     deleteUser,
+    getMyDeletionEligibility,
     getMe,
     getStepUpMfaMethod,
     getFactorEnrollmentStepUpMfaMethods,

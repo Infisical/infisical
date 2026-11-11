@@ -458,9 +458,15 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
   });
 });
 
-const buildDeleteUserService = (lastMemberOrgs: { id: string; name: string; userStatus: string }[]) => {
+type TLastAdminOrg = { id: string; name: string; rootOrgId: string | null };
+
+const buildDeleteUserService = (
+  lastMemberOrgs: { id: string; name: string; userStatus: string }[],
+  lastAdminOrgs: TLastAdminOrg[] = []
+) => {
   isSmtpConfigured = true;
   const calls: string[] = [];
+  const tx = { raw: vi.fn() };
 
   const orgDeletionService = {
     deleteOrganization: vi.fn(async (orgId: string) => {
@@ -470,26 +476,30 @@ const buildDeleteUserService = (lastMemberOrgs: { id: string; name: string; user
   };
   const userDAL = {
     findById: vi.fn().mockResolvedValue({ ...user, superAdmin: false }),
-    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
+    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(tx)),
     deleteById: vi.fn(async () => {
       calls.push("deleteUser");
       return user;
     })
   };
   const orgDAL = { findAllOrgsByUserId: vi.fn().mockResolvedValue(lastMemberOrgs) };
+  const membershipUserDAL = {
+    find: vi.fn().mockResolvedValue([]),
+    findOrgsWhereUserIsLastAdmin: vi.fn().mockResolvedValue(lastAdminOrgs)
+  };
 
   const service = userServiceFactory({
     userDAL,
     orgDAL,
     orgDeletionService,
-    membershipUserDAL: { find: vi.fn().mockResolvedValue([]) },
+    membershipUserDAL,
     pamSessionDAL: { findLiveByOrgAndUserIds: vi.fn().mockResolvedValue([]) },
     alertChannelRecipientDAL: { deleteByPrincipals: vi.fn() },
     usageMeteringService: { emit: vi.fn() },
     smtpService: { sendMail: vi.fn().mockResolvedValue(undefined) }
   } as unknown as Parameters<typeof userServiceFactory>[0]);
 
-  return { service, calls, orgDAL, orgDeletionService, userDAL };
+  return { service, calls, orgDAL, orgDeletionService, userDAL, membershipUserDAL, tx };
 };
 
 describe("deleteUser last member organizations", () => {
@@ -543,7 +553,7 @@ describe("deleteUser last member organizations", () => {
   });
 
   test("refuses the only server admin before touching any organization", async () => {
-    const { service, orgDAL, orgDeletionService, userDAL } = buildDeleteUserService([
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([
       { id: "org-1", name: "Acme", userStatus: "accepted" }
     ]);
     userDAL.findById.mockResolvedValue({ ...user, superAdmin: true });
@@ -552,7 +562,6 @@ describe("deleteUser last member organizations", () => {
     await expect(service.deleteUser(USER_ID, { lastMemberOrganizationIds: ["org-1"] })).rejects.toThrow(
       /only server admin/
     );
-    expect(orgDAL.findAllOrgsByUserId).not.toHaveBeenCalled();
     expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
     expect(userDAL.deleteById).not.toHaveBeenCalled();
   });
@@ -575,6 +584,62 @@ describe("deleteUser last member organizations", () => {
     orgDeletionService.deleteOrganization.mockRejectedValueOnce(new Error("boom"));
 
     await expect(service.deleteUser(USER_ID, { lastMemberOrganizationIds: ["org-1"] })).rejects.toThrow("boom");
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteUser last admin organizations", () => {
+  test("refuses and deletes nothing while the user is the only admin of an org with other members", async () => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService(
+      [{ id: "org-1", name: "Acme", userStatus: "accepted" }],
+      [{ id: "org-2", name: "Beta", rootOrgId: null }]
+    );
+
+    await expect(service.deleteUser(USER_ID, { lastMemberOrganizationIds: ["org-1"] })).rejects.toThrow(
+      /only admin of the organization 'Beta'/
+    );
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("ignores orgs and sub-orgs deleted with the account", async () => {
+    const { service, calls } = buildDeleteUserService(
+      [{ id: "org-1", name: "Acme", userStatus: "accepted" }],
+      [
+        { id: "org-1", name: "Acme", rootOrgId: null },
+        { id: "sub-1", name: "Acme Team", rootOrgId: "org-1" }
+      ]
+    );
+
+    const eligibility = await service.getMyDeletionEligibility(USER_ID);
+    expect(eligibility).toEqual({
+      canDelete: true,
+      isOnlyServerAdmin: false,
+      lastMemberOrganizations: [{ id: "org-1", name: "Acme" }],
+      lastAdminOrganizations: []
+    });
+    expect(calls).toEqual([]);
+  });
+
+  test("reports sub-orgs the user is the only admin of", async () => {
+    const { service } = buildDeleteUserService([], [{ id: "sub-1", name: "Acme Team", rootOrgId: "org-1" }]);
+
+    await expect(service.getMyDeletionEligibility(USER_ID)).resolves.toMatchObject({
+      canDelete: false,
+      lastAdminOrganizations: [{ id: "sub-1", name: "Acme Team" }]
+    });
+  });
+
+  test("rechecks under the org locks and keeps the account if another admin was removed meanwhile", async () => {
+    const { service, membershipUserDAL, userDAL, tx } = buildDeleteUserService([]);
+    membershipUserDAL.find.mockResolvedValue([{ scopeOrgId: "org-b" }, { scopeOrgId: "org-a" }]);
+    membershipUserDAL.findOrgsWhereUserIsLastAdmin
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "org-a", name: "Acme", rootOrgId: null }]);
+
+    await expect(service.deleteUser(USER_ID)).rejects.toThrow(/now the only admin of the organization 'Acme'/);
+    expect(tx.raw).toHaveBeenCalledTimes(2);
+    expect(membershipUserDAL.findOrgsWhereUserIsLastAdmin).toHaveBeenLastCalledWith(USER_ID, tx);
     expect(userDAL.deleteById).not.toHaveBeenCalled();
   });
 });

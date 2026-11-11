@@ -67,13 +67,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "listOrganizations",
-      querystring: z.object({
-        lastMember: z
-          .enum(["true", "false"])
-          .default("false")
-          .transform((value) => value === "true")
-          .describe(ORGANIZATIONS.LIST.lastMember)
-      }),
       response: {
         200: z.object({
           organizations: sanitizedOrganizationSchema
@@ -90,9 +83,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     // for one org would enumerate every org the user belongs to.
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
-      const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id, {
-        lastMember: req.query.lastMember
-      });
+      const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
       return { organizations };
     }
   });

@@ -557,6 +557,38 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/me/deletion-eligibility",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "getMyDeletionEligibility",
+      response: {
+        200: z.object({
+          deletionEligibility: z.object({
+            canDelete: z.boolean().describe(USERS.GET_DELETION_ELIGIBILITY.canDelete),
+            isOnlyServerAdmin: z.boolean().describe(USERS.GET_DELETION_ELIGIBILITY.isOnlyServerAdmin),
+            lastMemberOrganizations: z
+              .object({ id: z.string(), name: z.string() })
+              .array()
+              .describe(USERS.GET_DELETION_ELIGIBILITY.lastMemberOrganizations),
+            lastAdminOrganizations: z
+              .object({ id: z.string(), name: z.string() })
+              .array()
+              .describe(USERS.GET_DELETION_ELIGIBILITY.lastAdminOrganizations)
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const deletionEligibility = await server.services.user.getMyDeletionEligibility(req.permission.id);
+      return { deletionEligibility };
+    }
+  });
+
+  server.route({
     method: "DELETE",
     url: "/me",
     config: {

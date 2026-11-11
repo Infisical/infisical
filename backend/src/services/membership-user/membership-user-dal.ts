@@ -1,7 +1,14 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, AccessScopeData, MembershipsSchema, OrgMembershipRole, TableName } from "@app/db/schemas";
+import {
+  AccessScope,
+  AccessScopeData,
+  MembershipsSchema,
+  OrgMembershipRole,
+  OrgMembershipStatus,
+  TableName
+} from "@app/db/schemas";
 import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 import { buildKnexFilterForSearchResource } from "@app/lib/search-resource/db";
@@ -393,5 +400,48 @@ export const membershipUserDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findUsers, getUserById, listAvailableUsers, countActiveAdmins };
+  // Orgs (sub-orgs included) where the user holds the only admin membership that countActiveAdmins counts.
+  const findOrgsWhereUserIsLastAdmin = async (userId: string, tx?: Knex) => {
+    try {
+      const activeAdminMemberships = (qb: Knex.QueryBuilder, alias: string) =>
+        qb
+          .join(`${TableName.MembershipRole} as ${alias}Role`, `${alias}Role.membershipId`, `${alias}.id`)
+          .whereNotNull(`${alias}.actorUserId`)
+          .where(`${alias}.isActive`, true)
+          .where(`${alias}Role.role`, OrgMembershipRole.Admin)
+          .where(`${alias}Role.isTemporary`, false)
+          .where(`${alias}.scope`, AccessScope.Organization);
+
+      // Primary only: this backs the last-admin guard, so replica lag cannot be tolerated.
+      const orgs = await activeAdminMemberships((tx || db)(`${TableName.Membership} as own`), "own")
+        .join(TableName.Organization, `${TableName.Organization}.id`, "own.scopeOrgId")
+        .where("own.actorUserId", userId)
+        .where((statusQb) => {
+          void statusQb.whereNull("own.status").orWhereNot("own.status", OrgMembershipStatus.Invited);
+        })
+        .whereNotExists((qb) => {
+          void activeAdminMemberships(qb.select(db.raw("1")).from(`${TableName.Membership} as other`), "other")
+            .where("other.scopeOrgId", db.ref("own.scopeOrgId"))
+            .whereNot("other.id", db.ref("own.id"));
+        })
+        .distinct(
+          `${TableName.Organization}.id`,
+          `${TableName.Organization}.name`,
+          `${TableName.Organization}.rootOrgId`
+        );
+
+      return orgs as { id: string; name: string; rootOrgId: string | null }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "MembershipUserFindOrgsWhereUserIsLastAdmin" });
+    }
+  };
+
+  return {
+    ...orm,
+    findUsers,
+    getUserById,
+    listAvailableUsers,
+    countActiveAdmins,
+    findOrgsWhereUserIsLastAdmin
+  };
 };

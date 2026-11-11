@@ -24,6 +24,7 @@ import {
   RenameUserDTO,
   TokenVersion,
   TOrgUserAccess,
+  TUserDeletionEligibility,
   TWorkspaceUser,
   UpdateOrgMembershipDTO,
   User,
@@ -72,6 +73,23 @@ export const useGetMyDuplicateAccount = () =>
       myAccount: users?.find((el) => el.isMyAccount)
     })
   });
+
+export const useGetMyDeletionEligibility = ({ enabled = true }: { enabled?: boolean } = {}) => {
+  return useQuery({
+    queryKey: userKeys.myDeletionEligibility,
+    queryFn: async () => {
+      const {
+        data: { deletionEligibility }
+      } = await apiRequest.get<{ deletionEligibility: TUserDeletionEligibility }>(
+        "/api/v2/users/me/deletion-eligibility"
+      );
+      return deletionEligibility;
+    },
+    // Default is 60s, but the delete dialog needs the live state.
+    staleTime: 0,
+    enabled
+  });
+};
 
 export const useDeleteMe = () => {
   const queryClient = useQueryClient();

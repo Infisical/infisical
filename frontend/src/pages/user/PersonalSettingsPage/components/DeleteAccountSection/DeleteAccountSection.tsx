@@ -4,6 +4,13 @@ import { Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Card,
   CardDescription,
@@ -13,9 +20,39 @@ import {
   ConfirmationAlertDialog
 } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { useDeleteMe, useGetBillingOverview, useGetLastMemberOrganizations } from "@app/hooks/api";
+import { useDeleteMe, useGetBillingOverview, useGetMyDeletionEligibility } from "@app/hooks/api";
+import { TUserDeletionEligibility } from "@app/hooks/api/users/types";
 
 const DELETE_CONFIRMATION = "delete my account";
+
+const OrgList = ({ orgs }: { orgs: { id: string; name: string }[] }) => (
+  <ul className="list-disc pl-5">
+    {orgs.map((org) => (
+      <li key={org.id} className="font-medium text-foreground">
+        {org.name}
+      </li>
+    ))}
+  </ul>
+);
+
+const BlockedReasons = ({ eligibility }: { eligibility: TUserDeletionEligibility }) => (
+  <div className="flex flex-col gap-2">
+    {eligibility.isOnlyServerAdmin && (
+      <p>
+        You are the only server admin on this instance. Promote another user to server admin first.
+      </p>
+    )}
+    {eligibility.lastAdminOrganizations.length > 0 && (
+      <>
+        <p>
+          You are the only admin of these organizations. Promote another member to admin in each one
+          first, so the organization keeps someone who can manage it.
+        </p>
+        <OrgList orgs={eligibility.lastAdminOrganizations} />
+      </>
+    )}
+  </div>
+);
 
 export const DeleteAccountSection = () => {
   const navigate = useNavigate();
@@ -23,16 +60,23 @@ export const DeleteAccountSection = () => {
 
   const { mutateAsync: deleteUserMutateAsync, isPending } = useDeleteMe();
   const {
-    data: lastMemberOrgs = [],
-    isPending: isLoadingLastMemberOrgs,
-    refetch: refetchLastMemberOrgs
-  } = useGetLastMemberOrganizations({ enabled: isOpen });
+    data: eligibility,
+    isFetching: isLoadingEligibility,
+    refetch: refetchEligibility
+  } = useGetMyDeletionEligibility({ enabled: false });
 
+  const lastMemberOrgs = eligibility?.lastMemberOrganizations ?? [];
   const deletesOrgs = lastMemberOrgs.length > 0;
+  const isBlocked = eligibility ? !eligibility.canDelete : false;
 
   // isCloud is instance-wide, so any org works.
   const overview = useGetBillingOverview(lastMemberOrgs[0]?.id ?? "", { enabled: deletesOrgs });
   const cancelsSubscriptions = overview.data ? overview.data.isCloud : isInfisicalCloud();
+
+  const handleOpen = async () => {
+    const { isSuccess } = await refetchEligibility();
+    if (isSuccess) setIsOpen(true);
+  };
 
   const handleDeleteAccountSubmit = async () => {
     try {
@@ -48,8 +92,8 @@ export const DeleteAccountSection = () => {
       setIsOpen(false);
       navigate({ to: "/login" });
     } catch {
-      // The global toast shows the error. Refetch in case the server refused because the list changed.
-      await refetchLastMemberOrgs();
+      // The global toast shows the error. Refetch in case the server refused because the state changed.
+      await refetchEligibility();
     }
   };
 
@@ -64,15 +108,31 @@ export const DeleteAccountSection = () => {
           </CardDescription>
         </CardHeader>
         <CardFooter className="min-h-8 justify-end border-t border-danger/15 bg-danger/5 p-4">
-          <Button variant="danger" size="sm" onClick={() => setIsOpen(true)}>
+          <Button variant="danger" size="sm" isPending={isLoadingEligibility} onClick={handleOpen}>
             <Trash2Icon />
             Delete account
           </Button>
         </CardFooter>
       </Card>
 
+      <AlertDialog open={isOpen && isBlocked} onOpenChange={setIsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>You can&apos;t delete your account yet</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="w-full">
+                {eligibility && <BlockedReasons eligibility={eligibility} />}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <ConfirmationAlertDialog
-        isOpen={isOpen}
+        isOpen={isOpen && !isBlocked}
         onOpenChange={setIsOpen}
         title="Delete your account?"
         description={
@@ -84,13 +144,7 @@ export const DeleteAccountSection = () => {
                 {cancelsSubscriptions &&
                   " Their subscriptions are canceled immediately, and any remaining prepaid commitment is forfeited without a refund."}
               </p>
-              <ul className="list-disc pl-5">
-                {lastMemberOrgs.map((org) => (
-                  <li key={org.id} className="font-medium text-foreground">
-                    {org.name}
-                  </li>
-                ))}
-              </ul>
+              <OrgList orgs={lastMemberOrgs} />
               <p>This cannot be undone.</p>
             </div>
           ) : (
@@ -99,7 +153,7 @@ export const DeleteAccountSection = () => {
         }
         confirmKey={DELETE_CONFIRMATION}
         confirmLabel={deletesOrgs ? "Delete account and organizations" : "Delete account"}
-        isPending={isPending || isLoadingLastMemberOrgs}
+        isPending={isPending || isLoadingEligibility}
         onConfirm={handleDeleteAccountSubmit}
       />
     </>
