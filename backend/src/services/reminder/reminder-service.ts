@@ -1,14 +1,13 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, TableName } from "@app/db/schemas";
+import { TableName } from "@app/db/schemas";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { toGenericPermission } from "@app/lib/types";
 
 import { TChannelRecipientInput } from "../alert/alert-channel-service-types";
 import { AlertChannelType } from "../alert/alert-channel-types";
@@ -41,7 +40,7 @@ type TReminderServiceFactoryDep = {
     | "findOrphanedResourceIds"
     | "filterRecipientsInScope"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "findOneWithTags" | "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
 };
@@ -50,7 +49,7 @@ export const reminderServiceFactory = ({
   reminderDAL,
   eventEmitter,
   alertService,
-  permissionService,
+  secretsDomain,
   secretV2BridgeDAL,
   folderDAL
 }: TReminderServiceFactoryDep): TReminderServiceFactory => {
@@ -162,26 +161,14 @@ export const reminderServiceFactory = ({
   // the secret, the schedule, the recipients, and the alert module's own checks on the reminder's alert. A
   // caller that writes something else in the same request (a secret update) prepares first, so a refused
   // reminder fails the request before that write.
-  const prepareReminder: TReminderServiceFactory["prepareReminder"] = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    reminder
-  }) => {
+  const prepareReminder: TReminderServiceFactory["prepareReminder"] = async ({ actor, reminder }) => {
     const { secret, subjectFields } = await $getSecretForPermissionCheck(reminder.secretId!);
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: secret.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: secret.projectId });
+    permission.assert({
+      action: ProjectPermissionSecretActions.Edit,
+      subject: ProjectPermissionSub.Secrets,
+      fields: subjectFields
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
-      subject(ProjectPermissionSub.Secrets, subjectFields)
-    );
 
     const { nextReminderDate, fromDate } = $schedule(reminder);
 
@@ -199,16 +186,13 @@ export const reminderServiceFactory = ({
             replaceRecipients: {
               channelType: AlertChannelType.EMAIL,
               recipients: await $resolveEmailRecipients({
-                orgId: actorOrgId,
+                orgId: actor.org.id,
                 projectId: secret.projectId,
                 recipients: reminder.recipients
               })
             }
           },
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod
+      ...toGenericPermission(actor)
     });
 
     return {
@@ -239,30 +223,11 @@ export const reminderServiceFactory = ({
     return result;
   };
 
-  const getReminder: TReminderServiceFactory["getReminder"] = async ({
-    secretId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: {
-    secretId: string;
-    actor: ActorType;
-    actorId: string;
-    actorOrgId: string;
-    actorAuthMethod: ActorAuthMethod;
-  }) => {
+  const getReminder: TReminderServiceFactory["getReminder"] = async ({ secretId, actor }) => {
     const { secret, subjectFields } = await $getSecretForPermissionCheck(secretId);
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: secret.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: secret.projectId });
     throwIfMissingSecretReadValueOrDescribePermission(
-      permission,
+      permission.toAbility(),
       ProjectPermissionSecretActions.DescribeSecret,
       subjectFields
     );
@@ -349,33 +314,15 @@ export const reminderServiceFactory = ({
     await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, tx);
   };
 
-  const deleteReminder: TReminderServiceFactory["deleteReminder"] = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    secretId
-  }: {
-    actor: ActorType;
-    actorId: string;
-    actorOrgId: string;
-    actorAuthMethod: ActorAuthMethod;
-    secretId: string;
-  }) => {
+  const deleteReminder: TReminderServiceFactory["deleteReminder"] = async ({ actor, secretId }) => {
     const { secret, subjectFields } = await $getSecretForPermissionCheck(secretId);
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: secret.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: secret.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
-      subject(ProjectPermissionSub.Secrets, subjectFields)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretActions.Edit,
+      subject: ProjectPermissionSub.Secrets,
+      fields: subjectFields
+    });
     await deleteReminderBySecretId(secretId, secret.projectId);
   };
 

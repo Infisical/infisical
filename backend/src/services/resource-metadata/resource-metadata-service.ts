@@ -1,9 +1,8 @@
 import { TDbClient } from "@app/db";
-import { ActionProjectType } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
@@ -19,7 +18,7 @@ type TResourceMetadataServiceFactoryDep = {
     TResourceMetadataDALFactory,
     "searchSecretMetadata" | "searchSecretMetadataWithEncryptedValues" | "transaction"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds" | "findBySecretPathMultiEnv" | "findByEnvsDeep">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   kmsCoreDomain: TKmsCoreDomain;
@@ -40,14 +39,14 @@ type TMatchedSecret = {
 export const resourceMetadataServiceFactory = ({
   db,
   resourceMetadataDAL,
-  permissionService,
+  secretsDomain,
   folderDAL,
   projectEnvDAL,
   kmsCoreDomain
 }: TResourceMetadataServiceFactoryDep) => {
   // Project-scoped secret metadata search. The base query matches on org + project + key/value; the
   // results are then filtered so the requester actually has DescribeSecret permission on each returned
-  // secret (path/tag aware). Requesting a project the actor cannot access throws (via getProjectPermission).
+  // secret (path/tag aware). Requesting a project the actor cannot access throws (via getSecretsPermission).
   const searchSecretMetadata = async ({
     projectId,
     filters,
@@ -61,14 +60,8 @@ export const resourceMetadataServiceFactory = ({
       throw new BadRequestError({ message: "At least one metadata filter is required" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
+    const orgId = actor.org.id;
 
     const searchLimit = MAX_SECRET_METADATA_SEARCH_SECRETS;
     let scopedFolderIds: string[] | undefined;
@@ -87,11 +80,11 @@ export const resourceMetadataServiceFactory = ({
     // ciphertext), so their candidates are fetched by key and matched in-app after decryption below.
     const { plaintextMatched, encryptedCandidates } = await resourceMetadataDAL.transaction(async (tx) => {
       const plaintext = await resourceMetadataDAL.searchSecretMetadata(
-        { orgId: actor.orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds, environments },
+        { orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds, environments },
         tx
       );
       const encrypted = await resourceMetadataDAL.searchSecretMetadataWithEncryptedValues(
-        { orgId: actor.orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds, environments },
+        { orgId, projectId, filters, operator, tagSlugs, folderIds: scopedFolderIds, environments },
         tx
       );
       return { plaintextMatched: plaintext, encryptedCandidates: encrypted };
@@ -168,7 +161,7 @@ export const resourceMetadataServiceFactory = ({
       if (!folder) return [];
 
       const canDescribe = hasSecretReadValueOrDescribePermission(
-        permission,
+        permission.toAbility(),
         ProjectPermissionSecretActions.DescribeSecret,
         {
           environment: folder.environmentSlug,
@@ -188,7 +181,7 @@ export const resourceMetadataServiceFactory = ({
           secretPath: folder.path,
           tags: secret.tags,
           secretValueHidden: !hasSecretReadValueOrDescribePermission(
-            permission,
+            permission.toAbility(),
             ProjectPermissionSecretActions.ReadValue,
             {
               environment: folder.environmentSlug,

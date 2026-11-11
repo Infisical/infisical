@@ -1,6 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import {
@@ -79,9 +80,10 @@ const createService = ({ revocationFailing = false } = {}) => {
     } as never,
     licenseDomain: new FakeLicenseDomain().setPlan("org-1", { dynamicSecret: true as false }),
     folderDAL: { findBySecretPath: vi.fn(async () => ({ id: "folder-1", envId: "env-1" })) } as never,
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }])
+    secretsDomain: {
+      getSecretsPermission: vi.fn(async () => ({
+        permission: Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }),
+        folderGrants: []
       }))
     } as never,
     projectDAL: { findProjectBySlug: vi.fn(async () => ({ id: "project-1" })) } as never,
@@ -100,10 +102,10 @@ const createService = ({ revocationFailing = false } = {}) => {
 };
 
 const actor = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorOrgId: "org-1",
-  actorAuthMethod: AuthMethod.EMAIL,
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+    org: { id: "org-1" }
+  } as unknown as TActorContext,
   projectSlug: "project",
   environmentSlug: "dev",
   path: "/"

@@ -8,7 +8,6 @@ import {
 } from "@app/domains/platform/projects/ce/module";
 import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { TDynamicSecretWithMetadata } from "@app/lib/types";
@@ -111,10 +110,7 @@ export const proxiedServiceServiceFactory = ({
     // another secret (${OTHER}). Expanding here under the caller's permissions makes getSecrets throw if they
     // can't read a transitively-referenced secret, blocking them from attaching a value they can't fully read.
     const { secrets, imports } = await secretV2BridgeService.getSecrets({
-      actor: actor.principal.type,
-      actorId: actor.principal.id,
-      actorOrgId: actor.org.id,
-      actorAuthMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
+      actor,
       projectId,
       environment,
       path: secretPath,

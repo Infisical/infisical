@@ -786,10 +786,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await server.services.project.enableSecretBlindIndex({
         projectId: req.params.projectId,
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       return { message: "Successfully enabled secret blind indexing" };
@@ -826,10 +823,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.project.getSecretBlindIndexMigrationStatus({
         projectId: req.params.projectId,
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
     }
   });

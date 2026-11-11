@@ -1,5 +1,4 @@
-import { OrganizationActionScope } from "@app/db/schemas";
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
 import type { THoneyTokenConfigServiceFactoryDep } from "../../honey-token-config/honey-token-config-types";
@@ -9,8 +8,8 @@ import { getManagedHoneyTokenUnavailableReason } from "./honey-token-aws-fns";
 
 export const honeyTokenAwsConfigServiceFactory = ({
   honeyTokenConfigDAL,
-  permissionService
-}: Pick<THoneyTokenConfigServiceFactoryDep, "honeyTokenConfigDAL" | "permissionService">) => {
+  organizationsDomain
+}: Pick<THoneyTokenConfigServiceFactoryDep, "honeyTokenConfigDAL" | "organizationsDomain">) => {
   const $getOrganizationUnavailableReason = async (orgId: string) => {
     const orgConfig = await honeyTokenConfigDAL.findOne({ orgId, type: HoneyTokenType.AWS });
 
@@ -24,15 +23,8 @@ export const honeyTokenAwsConfigServiceFactory = ({
 
   // Any org member can list these, since creating a honey token in a project depends on them. They hold
   // no settings, only whether each AWS account can be used.
-  const listDeploymentOptions = async (orgPermission: OrgServiceActor) => {
-    await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: orgPermission.orgId,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId
-    });
+  const listDeploymentOptions = async ({ actor }: TActorInput) => {
+    await organizationsDomain.getOrgPermission({ actor });
 
     return [
       {
@@ -41,7 +33,7 @@ export const honeyTokenAwsConfigServiceFactory = ({
       },
       {
         managedBy: HoneyTokenManagedBy.Organization,
-        unavailableReason: await $getOrganizationUnavailableReason(orgPermission.orgId)
+        unavailableReason: await $getOrganizationUnavailableReason(actor.org.id)
       }
     ];
   };

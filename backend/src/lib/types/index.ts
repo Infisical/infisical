@@ -92,6 +92,21 @@ export type OrgServiceActor = {
 // context itself.
 export type TRequestPermission = OrgServiceActor & TActorContext;
 
+// The flat fields of an actor context, for a migrated service calling one that still takes them.
+export const toOrgServiceActor = ({ principal, org }: TActorContext): OrgServiceActor => ({
+  type: principal.type,
+  id: principal.id,
+  authMethod: principal.type === ActorType.USER ? principal.authMethod : null,
+  orgId: org.id,
+  rootOrgId: org.rootOrgId,
+  parentOrgId: org.parentOrgId
+});
+
+export const toGenericPermission = (actor: TActorContext): TGenericPermission => {
+  const { type, id, authMethod, orgId } = toOrgServiceActor(actor);
+  return { actor: type, actorId: id, actorAuthMethod: authMethod, actorOrgId: orgId };
+};
+
 export type ProjectServiceActor = {
   type: ActorType;
   id: string;

@@ -1,5 +1,5 @@
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectMembershipRole } from "@app/db/schemas";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { TSecretDALFactory } from "../secret/secret-dal";
@@ -12,7 +12,7 @@ import {
 } from "./secret-blind-index-types";
 
 type TSecretBlindIndexServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   secretBlindIndexDAL: TSecretBlindIndexDALFactory;
   secretDAL: Pick<TSecretDALFactory, "bulkUpdate">;
 };
@@ -21,45 +21,19 @@ export type TSecretBlindIndexServiceFactory = ReturnType<typeof secretBlindIndex
 
 export const secretBlindIndexServiceFactory = ({
   secretBlindIndexDAL,
-  permissionService,
+  secretsDomain,
   secretDAL
 }: TSecretBlindIndexServiceFactoryDep) => {
-  const getSecretBlindIndexStatus = async ({
-    actor,
-    projectId,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetProjectBlindIndexStatusDTO) => {
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+  const getSecretBlindIndexStatus = async ({ actor, projectId }: TGetProjectBlindIndexStatusDTO) => {
+    await secretsDomain.getSecretsPermission({ actor, projectId });
 
     const secretCount = await secretBlindIndexDAL.countOfSecretsWithNullSecretBlindIndex(projectId);
     return Number(secretCount);
   };
 
-  const getProjectSecrets = async ({
-    projectId,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    actor
-  }: TGetProjectSecretsDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    if (!hasRole(ProjectMembershipRole.Admin)) {
+  const getProjectSecrets = async ({ projectId, actor }: TGetProjectSecretsDTO) => {
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       throw new ForbiddenRequestError({ message: "Insufficient privileges, user must be admin" });
     }
 
@@ -67,23 +41,9 @@ export const secretBlindIndexServiceFactory = ({
     return secrets;
   };
 
-  const updateProjectSecretName = async ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    secretsToUpdate
-  }: TUpdateProjectSecretNameDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    if (!hasRole(ProjectMembershipRole.Admin)) {
+  const updateProjectSecretName = async ({ projectId, actor, secretsToUpdate }: TUpdateProjectSecretNameDTO) => {
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       throw new ForbiddenRequestError({ message: "Insufficient privileges, user must be admin" });
     }
 

@@ -1033,7 +1033,7 @@ export const registerRoutes = async (
   const folderPermissionService = folderPermissionServiceFactory({
     additionalPrivilegeDAL,
     secretFolderDAL: folderDAL,
-    permissionService,
+    secretsDomain,
     folderPermissionDAL,
     licenseDomain,
     keyStore
@@ -1055,7 +1055,7 @@ export const registerRoutes = async (
   const resourceMetadataService = resourceMetadataServiceFactory({
     db,
     resourceMetadataDAL,
-    permissionService,
+    secretsDomain,
     folderDAL,
     projectEnvDAL,
     kmsCoreDomain
@@ -1439,7 +1439,7 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     folderTreeCheckpointResourcesDAL,
     folderCommitQueueService,
-    permissionService,
+    secretsDomain,
     kmsCoreDomain,
     secretTagDAL,
     resourceMetadataDAL
@@ -1697,7 +1697,7 @@ export const registerRoutes = async (
     reminderDAL,
     eventEmitter: eventOutboxService,
     alertService,
-    permissionService,
+    secretsDomain,
     secretV2BridgeDAL,
     folderDAL
   });
@@ -2492,7 +2492,8 @@ export const registerRoutes = async (
   });
 
   const secretValueTrackingService = secretValueTrackingServiceFactory({
-    permissionService,
+    organizationsDomain,
+    secretsDomain,
     orgDAL,
     projectDAL,
     secretValueTrackingQueue
@@ -2586,7 +2587,7 @@ export const registerRoutes = async (
   const secretValidationRuleService = secretValidationRuleServiceFactory({
     secretValidationRuleDAL,
     projectEnvDAL,
-    permissionService,
+    secretsDomain,
     kmsCoreDomain,
     folderDAL,
     secretDAL: secretV2BridgeDAL,
@@ -2601,7 +2602,7 @@ export const registerRoutes = async (
     orgDAL,
     projectEnvDAL,
     folderDAL,
-    permissionService,
+    secretsDomain,
     secretImportDAL,
     projectDAL,
     secretDAL,
@@ -2614,12 +2615,12 @@ export const registerRoutes = async (
     folderDAL,
     projectDAL,
     orgDAL,
-    permissionService,
+    secretsDomain,
     secretV2BridgeDAL,
     licenseDomain
   });
   const secretBlindIndexService = secretBlindIndexServiceFactory({
-    permissionService,
+    secretsDomain,
     secretDAL,
     secretBlindIndexDAL
   });
@@ -2677,7 +2678,7 @@ export const registerRoutes = async (
     folderCommitService,
     secretQueueService,
     secretDAL: secretV2BridgeDAL,
-    permissionService,
+    secretsDomain,
     secretVersionTagDAL: secretVersionTagV2BridgeDAL,
     secretTagDAL,
     projectEnvDAL,
@@ -2736,7 +2737,7 @@ export const registerRoutes = async (
     secretVersionDAL,
     secretVersionTagDAL,
     secretBlindIndexDAL,
-    permissionService,
+    secretsDomain,
     projectDAL,
     secretDAL,
     secretTagDAL,
@@ -2761,7 +2762,7 @@ export const registerRoutes = async (
 
   const folderService = secretFolderServiceFactory({
     eventEmitter: eventOutboxService,
-    permissionService,
+    secretsDomain,
     additionalPrivilegeDAL,
     folderDAL,
     folderVersionDAL,
@@ -2790,7 +2791,7 @@ export const registerRoutes = async (
   });
 
   const secretSharingService = secretSharingServiceFactory({
-    permissionService,
+    organizationsDomain,
     secretSharingDAL,
     orgAssetDAL,
     orgDAL,
@@ -3086,7 +3087,7 @@ export const registerRoutes = async (
     folderCommitService,
     secretService,
     folderService,
-    permissionService,
+    secretsDomain,
     folderDAL,
     projectEnvDAL,
     secretApprovalRequestService,
@@ -3227,7 +3228,8 @@ export const registerRoutes = async (
     dynamicSecretLeaseDAL,
     dynamicSecretProviders,
     folderDAL,
-    permissionService,
+    secretsDomain,
+    organizationsDomain,
     licenseDomain,
     kmsCoreDomain,
     gatewayV2DAL,
@@ -3237,7 +3239,7 @@ export const registerRoutes = async (
 
   const dynamicSecretLeaseService = dynamicSecretLeaseServiceFactory({
     projectDAL,
-    permissionService,
+    secretsDomain,
     dynamicSecretQueueService,
     dynamicSecretDAL,
     dynamicSecretLeaseDAL,
@@ -3680,7 +3682,7 @@ export const registerRoutes = async (
 
   const honeyTokenConfigService = honeyTokenConfigServiceFactory({
     honeyTokenConfigDAL,
-    permissionService,
+    organizationsDomain,
     kmsCoreDomain,
     licenseDomain,
     appConnectionDAL,
@@ -3692,7 +3694,7 @@ export const registerRoutes = async (
     honeyTokenDAL,
     honeyTokenConfigDAL,
     honeyTokenEventDAL,
-    permissionService,
+    secretsDomain,
     licenseDomain,
     kmsCoreDomain,
     appConnectionDAL,
@@ -3750,7 +3752,7 @@ export const registerRoutes = async (
     appConnectionDAL,
     appConnectionService,
     kmsCoreDomain,
-    permissionService,
+    secretsDomain,
     orgDAL,
     folderDAL,
     projectEnvDAL,
@@ -3782,7 +3784,7 @@ export const registerRoutes = async (
   const secretRotationV2Service = secretRotationV2ServiceFactory({
     eventEmitter: eventOutboxService,
     secretRotationV2DAL,
-    permissionService,
+    secretsDomain,
     appConnectionService,
     folderDAL,
     projectBotService,
@@ -3816,7 +3818,7 @@ export const registerRoutes = async (
   });
 
   const secretReadActivityService = secretReadActivityServiceFactory({
-    permissionService,
+    secretsDomain,
     licenseDomain,
     secretReadActivityDAL,
     secretReadActivityQueue,
@@ -3831,8 +3833,7 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
     kmsCoreDomain,
-    keyStore,
-    secretsDomain
+    keyStore
   });
 
   const insightsService = insightsServiceFactory({
@@ -4918,7 +4919,8 @@ export const registerRoutes = async (
   const migrationService = externalMigrationServiceFactory({
     externalMigrationQueue,
     userDAL,
-    permissionService,
+    organizationsDomain,
+    secretsDomain,
     gatewayV2DAL,
     appConnectionService,
     secretService,

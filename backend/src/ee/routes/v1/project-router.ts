@@ -192,10 +192,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const migration = await server.services.secret.startSecretV2Migration({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId
       });
 

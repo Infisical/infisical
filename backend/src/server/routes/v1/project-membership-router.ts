@@ -819,7 +819,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.createFolderGrant({
-        permission: req.permission,
+        actor: req.permission,
         projectId: req.params.projectId,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
@@ -889,7 +889,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.updateFolderGrant({
-        permission: req.permission,
+        actor: req.permission,
         projectId: req.params.projectId,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
@@ -952,7 +952,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.deleteFolderGrant({
-        permission: req.permission,
+        actor: req.permission,
         projectId: req.params.projectId,
         environmentSlug: req.body.environmentSlug,
         secretPath: req.body.secretPath,
@@ -1013,7 +1013,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { folderAccess } = await server.services.folderPermission.listActorFolderGrants({
-        permission: req.permission,
+        actor: req.permission,
         projectId: req.params.projectId,
         target: { actorId: req.params.userId, actorType: ActorType.USER }
       });
@@ -1061,7 +1061,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) =>
       server.services.folderPermission.listFolderAccessUsers({
-        permission: req.permission,
+        actor: req.permission,
         projectId: req.params.projectId,
         environmentSlug: req.query.environmentSlug,
         secretPath: req.query.secretPath,

@@ -1,8 +1,8 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import isEqual from "lodash.isequal";
 
-import { ActionProjectType, SecretType, TableName } from "@app/db/schemas";
+import { SecretType, TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
@@ -10,9 +10,9 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/auth0-client-secret/auth0-client-secret-rotation-fns";
 import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-fns";
 import { clickhouseCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/clickhouse-credentials/clickhouse-credentials-rotation-fns";
@@ -74,7 +74,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { takeRowScanWindow } from "@app/lib/fn";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
-import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { OrderByDirection, toOrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -147,7 +147,7 @@ type TLocalAccountRotationGeneratedCredentials =
 export type TSecretRotationV2ServiceFactoryDep = {
   secretRotationV2DAL: TSecretRotationV2DALFactory;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsCoreDomain: TKmsCoreDomain;
   licenseDomain: TLicenseDomain;
@@ -245,7 +245,7 @@ export const secretRotationV2ServiceFactory = ({
   secretVersionTagV2BridgeDAL,
   secretTagDAL,
   resourceMetadataDAL,
-  permissionService,
+  secretsDomain,
   appConnectionService,
   projectBotService,
   licenseDomain,
@@ -377,38 +377,34 @@ export const secretRotationV2ServiceFactory = ({
     const envSlug = overrides?.environment ?? rotation.environment?.slug;
     const secretPath = overrides?.secretPath ?? rotation.folder?.path;
     const hasAny = connectionId || envSlug || secretPath;
-    if (!hasAny) return ProjectPermissionSub.SecretRotation;
-    return subject(ProjectPermissionSub.SecretRotation, {
-      ...(envSlug && { environment: envSlug }),
-      ...(secretPath && { secretPath }),
-      ...(connectionId && { connectionId })
-    });
+    if (!hasAny) return { subject: ProjectPermissionSub.SecretRotation };
+    return {
+      subject: ProjectPermissionSub.SecretRotation,
+      fields: {
+        ...(envSlug && { environment: envSlug }),
+        ...(secretPath && { secretPath }),
+        ...(connectionId && { connectionId })
+      }
+    };
   };
 
   const listSecretRotationsByProjectId = async (
     { projectId, type }: TListSecretRotationsV2ByProjectId,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
         message: "Failed to access secret rotations due to plan restriction. Upgrade plan to access secret rotations."
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.Read,
-      ProjectPermissionSub.SecretRotation
-    );
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.Read,
+      subject: ProjectPermissionSub.SecretRotation
+    });
 
     const secretRotations = await secretRotationV2DAL.find({
       ...(type && { type }),
@@ -418,14 +414,14 @@ export const secretRotationV2ServiceFactory = ({
     return Promise.all(
       secretRotations
         .filter((rotation) =>
-          permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
+          permission.can({ action: ProjectPermissionSecretRotationActions.Read, ...getSecretRotationSubject(rotation) })
         )
         .map((rotation) => expandSecretRotation(rotation, kmsCoreDomain))
     );
   };
 
-  const findSecretRotationById = async ({ type, rotationId }: TFindSecretRotationV2ByIdDTO, actor: OrgServiceActor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+  const findSecretRotationById = async ({ type, rotationId }: TFindSecretRotationV2ByIdDTO, actor: TActorContext) => {
+    const plan = await licenseDomain.getPlan(actor.org.id);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -441,19 +437,12 @@ export const secretRotationV2ServiceFactory = ({
 
     const { projectId, connection } = secretRotation;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.Read,
-      getSecretRotationSubject(secretRotation)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.Read,
+      ...getSecretRotationSubject(secretRotation)
+    });
 
     if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
       throw new BadRequestError({
@@ -465,9 +454,9 @@ export const secretRotationV2ServiceFactory = ({
 
   const findSecretRotationGeneratedCredentialsById = async (
     { type, rotationId }: TFindSecretRotationV2ByIdDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -484,19 +473,12 @@ export const secretRotationV2ServiceFactory = ({
 
     const { projectId, connection, encryptedGeneratedCredentials } = secretRotation;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
-      getSecretRotationSubject(secretRotation)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+      ...getSecretRotationSubject(secretRotation)
+    });
 
     if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
       throw new BadRequestError({
@@ -517,9 +499,9 @@ export const secretRotationV2ServiceFactory = ({
 
   const findSecretRotationByName = async (
     { type, rotationName, secretPath, environment, projectId }: TFindSecretRotationV2ByNameDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -546,19 +528,12 @@ export const secretRotationV2ServiceFactory = ({
 
     const { connection, id: rotationId } = secretRotation;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.Read,
-      getSecretRotationSubject(secretRotation)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.Read,
+      ...getSecretRotationSubject(secretRotation)
+    });
 
     if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
       throw new BadRequestError({
@@ -578,23 +553,16 @@ export const secretRotationV2ServiceFactory = ({
       temporaryParameters,
       ...payload
     }: TCreateSecretRotationV2DTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
         message: "Failed to create secret rotation due to plan restriction. Upgrade plan to create secret rotations."
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -604,14 +572,14 @@ export const secretRotationV2ServiceFactory = ({
           "Project version does not support Secret Rotation V2. Please upgrade your project via the Infiscal Dashboard to gain access."
       });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.Create,
-      getSecretRotationSubject({
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.Create,
+      ...getSecretRotationSubject({
         environment: { slug: environment },
         folder: { path: secretPath },
         connection: payload.connectionId ? { id: payload.connectionId } : undefined
       })
-    );
+    });
 
     const folder = await folderDAL.findBySecretPath(projectId, environment, secretPath);
 
@@ -624,7 +592,7 @@ export const secretRotationV2ServiceFactory = ({
     const connection = await appConnectionService.validateAppConnectionUsageById(
       getSecretRotationConnectionApps(payload.type),
       { connectionId: payload.connectionId, projectId },
-      actor
+      toOrgServiceActor(actor)
     );
 
     const passwordValidationContext = await $resolvePasswordValidationContext({
@@ -687,7 +655,7 @@ export const secretRotationV2ServiceFactory = ({
           projectId
         });
         const { encryptor } = projectCipher;
-        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
+        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.org.id, kmsCoreDomain });
 
         return secretRotationV2DAL.transaction(async (tx) => {
           await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.SecretRotationV2Creation(folder.id)]);
@@ -749,8 +717,8 @@ export const secretRotationV2ServiceFactory = ({
             folderCommitService,
             resourceMetadataDAL,
             actor: {
-              type: actor.type,
-              actorId: actor.id
+              type: actor.principal.type,
+              actorId: actor.principal.id
             }
           });
 
@@ -803,8 +771,8 @@ export const secretRotationV2ServiceFactory = ({
     }
   };
 
-  const updateSecretRotation = async (dto: TUpdateSecretRotationV2DTO, actor: OrgServiceActor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+  const updateSecretRotation = async (dto: TUpdateSecretRotationV2DTO, actor: TActorContext) => {
+    const plan = await licenseDomain.getPlan(actor.org.id);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -825,19 +793,12 @@ export const secretRotationV2ServiceFactory = ({
     const { folder, environment, projectId, folderId, connection } = secretRotation;
     const secretsMapping = secretRotation.secretsMapping as TSecretRotationV2["secretsMapping"];
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.Edit,
-      getSecretRotationSubject(secretRotation)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.Edit,
+      ...getSecretRotationSubject(secretRotation)
+    });
 
     if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
       throw new BadRequestError({
@@ -905,8 +866,8 @@ export const secretRotationV2ServiceFactory = ({
             secretManagerDecryptor: mappingSecretManager!.decryptor,
             resourceMetadataDAL,
             actor: {
-              type: actor.type,
-              actorId: actor.id
+              type: actor.principal.type,
+              actorId: actor.principal.id
             }
           });
 
@@ -972,7 +933,7 @@ export const secretRotationV2ServiceFactory = ({
 
   const deleteSecretRotation = async (
     { type, rotationId, deleteSecrets, revokeGeneratedCredentials }: TDeleteSecretRotationV2DTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const secretRotation = await secretRotationV2DAL.findById(rotationId);
 
@@ -984,19 +945,12 @@ export const secretRotationV2ServiceFactory = ({
     const { folder, environment, projectId, encryptedGeneratedCredentials, connection, folderId, secretsMapping } =
       secretRotation;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.Delete,
-      getSecretRotationSubject(secretRotation)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.Delete,
+      ...getSecretRotationSubject(secretRotation)
+    });
 
     if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
       throw new BadRequestError({
@@ -1017,8 +971,8 @@ export const secretRotationV2ServiceFactory = ({
             })),
             projectId,
             folderId,
-            actorId: actor.id, // not actually used since rotated secrets are shared
-            actorType: actor.type,
+            actorId: actor.principal.id, // not actually used since rotated secrets are shared
+            actorType: actor.principal.type,
             folderCommitService,
             secretVersionDAL: secretVersionV2BridgeDAL,
             tx
@@ -1079,9 +1033,9 @@ export const secretRotationV2ServiceFactory = ({
 
   const moveSecretRotation = async (
     { type, rotationId, destinationEnvironment, destinationSecretPath, overwriteDestination }: TMoveSecretRotationV2DTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -1109,19 +1063,12 @@ export const secretRotationV2ServiceFactory = ({
         message: "A rotation is currently in progress for this secret rotation. Please try again shortly."
       });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.Delete,
-      getSecretRotationSubject(secretRotation)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.Delete,
+      ...getSecretRotationSubject(secretRotation)
+    });
 
     const destinationFolder = await folderDAL.findBySecretPath(
       projectId,
@@ -1139,13 +1086,13 @@ export const secretRotationV2ServiceFactory = ({
         message: "Source and destination locations are the same"
       });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.Create,
-      getSecretRotationSubject(secretRotation, {
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.Create,
+      ...getSecretRotationSubject(secretRotation, {
         environment: destinationEnvironment,
         secretPath: destinationSecretPath
       })
-    );
+    });
 
     const mappedKeys = Object.values(secretsMapping as TSecretRotationV2["secretsMapping"]);
 
@@ -1156,7 +1103,7 @@ export const secretRotationV2ServiceFactory = ({
 
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } = projectCipher;
 
-    const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
+    const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.org.id, kmsCoreDomain });
 
     const updatedRotation = await secretRotationV2DAL.transaction(async (tx) => {
       const conflictingRotation = await secretRotationV2DAL.findOne({
@@ -1185,21 +1132,22 @@ export const secretRotationV2ServiceFactory = ({
       if (conflictingDestinationSecrets.length && overwriteDestination) {
         // Require secret-level delete permission.
         conflictingDestinationSecrets.forEach((conflictingSecret) => {
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionSecretActions.Delete,
-            subject(ProjectPermissionSub.Secrets, {
+          permission.assert({
+            action: ProjectPermissionSecretActions.Delete,
+            subject: ProjectPermissionSub.Secrets,
+            fields: {
               environment: destinationEnvironment,
               secretPath: destinationSecretPath,
               secretName: conflictingSecret.key,
               secretTags: conflictingSecret.tags?.map((el) => el.slug)
-            })
-          );
+            }
+          });
         });
 
         const overwrittenSecrets = await secretV2BridgeDAL.deleteMany(
           conflictingDestinationSecrets.map((s) => ({ key: s.key, type: SecretType.Shared })),
           destinationFolder.id,
-          actor.id,
+          actor.principal.id,
           tx
         );
         await emitSecretsModified(
@@ -1262,7 +1210,7 @@ export const secretRotationV2ServiceFactory = ({
 
         for await (const secret of sourceSecrets) {
           await fnUpdateMovedSecretReferences({
-            orgId: actor.orgId,
+            orgId: actor.org.id,
             projectId,
             sourceEnvironment: environment.slug,
             sourceSecretPath: folder.path,
@@ -1652,9 +1600,9 @@ export const secretRotationV2ServiceFactory = ({
 
   const rotateSecretRotation = async (
     { rotationId, type, auditLogInfo }: TRotateSecretRotationV2,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -1671,19 +1619,12 @@ export const secretRotationV2ServiceFactory = ({
 
     const { projectId, connection } = secretRotation;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.RotateSecrets,
-      getSecretRotationSubject(secretRotation)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.RotateSecrets,
+      ...getSecretRotationSubject(secretRotation)
+    });
 
     if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
       throw new BadRequestError({
@@ -1712,9 +1653,9 @@ export const secretRotationV2ServiceFactory = ({
 
   const checkSecretRotationCredentials = async (
     { rotationId, type, auditLogInfo }: TCheckSecretRotationV2Credentials,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -1731,19 +1672,12 @@ export const secretRotationV2ServiceFactory = ({
 
     const { projectId, connection, encryptedGeneratedCredentials, activeIndex, folderId } = secretRotation;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
-      getSecretRotationSubject(secretRotation)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.ReadGeneratedCredentials,
+      ...getSecretRotationSubject(secretRotation)
+    });
 
     if (!getSecretRotationConnectionApps(type).includes(connection.app as AppConnection))
       throw new BadRequestError({
@@ -1819,24 +1753,18 @@ export const secretRotationV2ServiceFactory = ({
 
   const getDashboardSecretRotationCount = async (
     { projectId, environments, secretPath, search }: TGetDashboardSecretRotationV2Count,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     // we don't check plan for dashboard like dynamic secret, actions will be prevented
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     const permissiveEnvironments = environments.filter((environment) =>
-      permission.can(
-        ProjectPermissionSecretRotationActions.Read,
-        subject(ProjectPermissionSub.SecretRotation, { environment, secretPath })
-      )
+      permission.can({
+        action: ProjectPermissionSecretRotationActions.Read,
+        subject: ProjectPermissionSub.SecretRotation,
+        fields: { environment, secretPath }
+      })
     );
 
     if (!permissiveEnvironments.length) return 0;
@@ -1862,7 +1790,7 @@ export const secretRotationV2ServiceFactory = ({
 
     const rotationsForCount = secretRotations as (TSecretRotationV2PermissionContext & { name: string })[];
     const allowedRotations = rotationsForCount.filter((rotation) =>
-      permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
+      permission.can({ action: ProjectPermissionSecretRotationActions.Read, ...getSecretRotationSubject(rotation) })
     );
     const count = new Set(allowedRotations.map((r) => r.name)).size;
 
@@ -1880,24 +1808,18 @@ export const secretRotationV2ServiceFactory = ({
       orderBy = SecretsOrderBy.Name,
       orderDirection = OrderByDirection.ASC
     }: TGetDashboardSecretRotationsV2,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     // we don't check plan for dashboard like dynamic secret, actions will be prevented
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     const permissiveEnvironments = environments.filter((environment) =>
-      permission.can(
-        ProjectPermissionSecretRotationActions.Read,
-        subject(ProjectPermissionSub.SecretRotation, { environment, secretPath })
-      )
+      permission.can({
+        action: ProjectPermissionSecretRotationActions.Read,
+        subject: ProjectPermissionSub.SecretRotation,
+        fields: { environment, secretPath }
+      })
     );
 
     if (!permissiveEnvironments.length) return [];
@@ -1929,7 +1851,7 @@ export const secretRotationV2ServiceFactory = ({
 
     // Filter by per-rotation permission so connectionId (and other) restrictions are enforced.
     const secretRotations = secretRotationsRaw.filter((rotation: TSecretRotationV2PermissionContext) =>
-      permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
+      permission.can({ action: ProjectPermissionSecretRotationActions.Read, ...getSecretRotationSubject(rotation) })
     );
 
     const { decryptor: secretManagerDecryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
@@ -1941,7 +1863,7 @@ export const secretRotationV2ServiceFactory = ({
       secretRotations.map(async ({ secrets, ...rotation }) => {
         const decryptedSecrets = secrets.map((secret) => {
           const canDescribeSecret = hasSecretReadValueOrDescribePermission(
-            permission,
+            permission.toAbility(),
             ProjectPermissionSecretActions.DescribeSecret,
             {
               environment: rotation.environment.slug,
@@ -1958,7 +1880,7 @@ export const secretRotationV2ServiceFactory = ({
           }
 
           const secretValueHidden = !hasSecretReadValueOrDescribePermission(
-            permission,
+            permission.toAbility(),
             ProjectPermissionSecretActions.ReadValue,
             {
               environment: rotation.environment.slug,
@@ -2011,22 +1933,16 @@ export const secretRotationV2ServiceFactory = ({
 
   const getQuickSearchSecretRotations = async (
     { folderMappings, filters: { search, limit, offset, orderDirection }, projectId }: TQuickSearchSecretRotationsV2,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     const permissiveFolderMappings = folderMappings.filter(({ path, environment }) =>
-      permission.can(
-        ProjectPermissionSecretRotationActions.Read,
-        subject(ProjectPermissionSub.SecretRotation, { environment, secretPath: path })
-      )
+      permission.can({
+        action: ProjectPermissionSecretRotationActions.Read,
+        subject: ProjectPermissionSub.SecretRotation,
+        fields: { environment, secretPath: path }
+      })
     );
 
     if (!permissiveFolderMappings.length) return { secretRotations: [], isLimitReached: false };
@@ -2060,7 +1976,7 @@ export const secretRotationV2ServiceFactory = ({
 
     // Filter by per-rotation permission so connectionId (and other) restrictions are enforced.
     const secretRotations = windowedSecretRotations.filter((rotation) =>
-      permission.can(ProjectPermissionSecretRotationActions.Read, getSecretRotationSubject(rotation))
+      permission.can({ action: ProjectPermissionSecretRotationActions.Read, ...getSecretRotationSubject(rotation) })
     ) as TSecretRotationV2[];
 
     return { secretRotations, isLimitReached };
@@ -2077,9 +1993,9 @@ export const secretRotationV2ServiceFactory = ({
         | SecretRotation.WindowsLocalAccount
         | SecretRotation.HpIloLocalAccount;
     },
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
 
     if (!plan.secretRotation)
       throw new BadRequestError({
@@ -2106,19 +2022,12 @@ export const secretRotationV2ServiceFactory = ({
     const { projectId, environment, folder, connection, encryptedGeneratedCredentials, parameters, folderId } =
       secretRotation;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretRotationActions.RotateSecrets,
-      getSecretRotationSubject(secretRotation)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretRotationActions.RotateSecrets,
+      ...getSecretRotationSubject(secretRotation)
+    });
 
     const localAccountParams = parameters as TLocalAccountRotation["parameters"];
 
@@ -2201,7 +2110,7 @@ export const secretRotationV2ServiceFactory = ({
           projectId
         });
         const { encryptor, decryptor } = projectCipher;
-        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.orgId, kmsCoreDomain });
+        const blindIndexer = await createSecretBlindIndexer({ projectCipher, orgId: actor.org.id, kmsCoreDomain });
 
         let isRecovery = false;
         const reconciled = await secretRotationV2DAL.transaction(async (tx) => {

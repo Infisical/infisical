@@ -1,12 +1,9 @@
-import { ForbiddenError, subject } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionProjectFolderGrantActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash } from "@app/lib/fn";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -32,7 +29,7 @@ type TProjectFolderGrantServiceFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findById" | "findSecretPathByFolderIds">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId">;
   licenseDomain: TLicenseDomain;
 };
@@ -42,40 +39,31 @@ export const projectFolderGrantServiceFactory = ({
   folderDAL,
   projectDAL,
   orgDAL,
-  permissionService,
+  secretsDomain,
   secretV2BridgeDAL,
   licenseDomain
 }: TProjectFolderGrantServiceFactoryDep) => {
   const createGrant = async ({
-    actorId,
     actor,
-    actorAuthMethod,
-    actorOrgId,
     sourceProjectId,
     environment,
     secretPath,
     targetProjectId
   }: TCreateProjectFolderGrantDTO) => {
-    const plan = await licenseDomain.getPlan(actorOrgId);
-    const org = await orgDAL.findOrgById(actorOrgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
+    const org = await orgDAL.findOrgById(actor.org.id);
     if (!plan.crossProjectSecretSharing || !org?.allowCrossProjectSecretSharing) {
       throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
     }
 
     const canonicalSecretPath = normalizeSecretPath(secretPath);
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      projectId: sourceProjectId,
-      actionProjectType: ActionProjectType.SecretManager
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: sourceProjectId });
+    permission.assert({
+      action: ProjectPermissionProjectFolderGrantActions.CreateGrant,
+      subject: ProjectPermissionSub.ProjectFolderGrant,
+      fields: { environment, secretPath: canonicalSecretPath }
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionProjectFolderGrantActions.CreateGrant,
-      subject(ProjectPermissionSub.ProjectFolderGrant, { environment, secretPath: canonicalSecretPath })
-    );
 
     const folder = await folderDAL.findBySecretPath(sourceProjectId, environment, canonicalSecretPath);
     if (!folder) {
@@ -85,7 +73,7 @@ export const projectFolderGrantServiceFactory = ({
     }
 
     const targetProject = await projectDAL.findById(targetProjectId);
-    if (!targetProject || targetProject.orgId !== actorOrgId) {
+    if (!targetProject || targetProject.orgId !== actor.org.id) {
       throw new NotFoundError({ message: "Target project not found in this organization" });
     }
 
@@ -108,15 +96,8 @@ export const projectFolderGrantServiceFactory = ({
     return grant;
   };
 
-  const deleteGrant = async ({
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId,
-    grantId,
-    sourceProjectId
-  }: TDeleteProjectFolderGrantDTO) => {
-    const org = await orgDAL.findOrgById(actorOrgId);
+  const deleteGrant = async ({ actor, grantId, sourceProjectId }: TDeleteProjectFolderGrantDTO) => {
+    const org = await orgDAL.findOrgById(actor.org.id);
     if (!(org?.allowCrossProjectSecretSharing ?? false)) {
       throw new ForbiddenRequestError({ message: "Cross-project secret sharing is not enabled for this organization" });
     }
@@ -131,21 +112,15 @@ export const projectFolderGrantServiceFactory = ({
       throw new NotFoundError({ message: "Grant not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      projectId: sourceProjectId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionProjectFolderGrantActions.RevokeGrant,
-      subject(ProjectPermissionSub.ProjectFolderGrant, {
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: sourceProjectId });
+    permission.assert({
+      action: ProjectPermissionProjectFolderGrantActions.RevokeGrant,
+      subject: ProjectPermissionSub.ProjectFolderGrant,
+      fields: {
         environment: folderInfo.environmentSlug,
         secretPath: folderInfo.path
-      })
-    );
+      }
+    });
 
     const deleted = await projectFolderGrantDAL.deleteById(grantId);
     // Invalidate the target project's secret cache so revoked references stop resolving immediately
@@ -153,30 +128,17 @@ export const projectFolderGrantServiceFactory = ({
     return { ...deleted, environment: folderInfo.environmentSlug, secretPath: folderInfo.path };
   };
 
-  const listGrantsByProject = async ({
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId,
-    sourceProjectId
-  }: TListProjectFolderGrantsDTO) => {
-    const org = await orgDAL.findOrgById(actorOrgId);
+  const listGrantsByProject = async ({ actor, sourceProjectId }: TListProjectFolderGrantsDTO) => {
+    const org = await orgDAL.findOrgById(actor.org.id);
     if (!(org?.allowCrossProjectSecretSharing ?? false)) {
       return [];
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      projectId: sourceProjectId,
-      actionProjectType: ActionProjectType.SecretManager
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: sourceProjectId });
+    permission.assert({
+      action: ProjectPermissionProjectFolderGrantActions.ReadGrant,
+      subject: ProjectPermissionSub.ProjectFolderGrant
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionProjectFolderGrantActions.ReadGrant,
-      ProjectPermissionSub.ProjectFolderGrant
-    );
 
     const grants = await projectFolderGrantDAL.listBySourceProject(sourceProjectId);
 
@@ -190,26 +152,13 @@ export const projectFolderGrantServiceFactory = ({
     }));
   };
 
-  const listGrantsForTargetProject = async ({
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId,
-    targetProjectId
-  }: TListProjectFolderGrantsForTargetDTO) => {
-    const org = await orgDAL.findOrgById(actorOrgId);
+  const listGrantsForTargetProject = async ({ actor, targetProjectId }: TListProjectFolderGrantsForTargetDTO) => {
+    const org = await orgDAL.findOrgById(actor.org.id);
     if (!(org?.allowCrossProjectSecretSharing ?? false)) {
       return [];
     }
 
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      projectId: targetProjectId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await secretsDomain.getSecretsPermission({ actor, projectId: targetProjectId });
 
     const grants = await projectFolderGrantDAL.listByTargetProject(targetProjectId);
 
@@ -237,31 +186,17 @@ export const projectFolderGrantServiceFactory = ({
     }));
   };
 
-  const getGrantUsage = async ({
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId,
-    grantId,
-    sourceProjectId
-  }: TGetGrantUsageDTO) => {
+  const getGrantUsage = async ({ actor, grantId, sourceProjectId }: TGetGrantUsageDTO) => {
     const grant = await projectFolderGrantDAL.findById(grantId);
     if (!grant || grant.sourceProjectId !== sourceProjectId) {
       throw new NotFoundError({ message: "Grant not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      projectId: sourceProjectId,
-      actionProjectType: ActionProjectType.SecretManager
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: sourceProjectId });
+    permission.assert({
+      action: ProjectPermissionProjectFolderGrantActions.ReadGrant,
+      subject: ProjectPermissionSub.ProjectFolderGrant
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionProjectFolderGrantActions.ReadGrant,
-      ProjectPermissionSub.ProjectFolderGrant
-    );
 
     const [folderInfo] = await folderDAL.findSecretPathByFolderIds(sourceProjectId, [grant.sourceFolderId]);
     if (!folderInfo) {

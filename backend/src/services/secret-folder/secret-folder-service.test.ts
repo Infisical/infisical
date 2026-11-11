@@ -1,18 +1,14 @@
 import { vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { secretFolderServiceFactory } from "./secret-folder-service";
 
-const actor: OrgServiceActor = {
-  type: ActorType.USER,
-  id: "user-1",
-  authMethod: null,
-  orgId: "org-1",
-  rootOrgId: "org-1",
-  parentOrgId: "org-1"
-};
+const actor = {
+  principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+  org: { id: "org-1", rootOrgId: "org-1", parentOrgId: "org-1" }
+} as unknown as TActorContext;
 
 const buildService = ({
   parents,
@@ -26,7 +22,7 @@ const buildService = ({
     findByEnvsDeep: vi.fn().mockResolvedValue(relativeFolders)
   };
   const service = secretFolderServiceFactory({
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({}) },
+    secretsDomain: { getSecretsPermission: vi.fn().mockResolvedValue({}) },
     projectEnvDAL: { findBySlugs: vi.fn().mockResolvedValue([{ id: "env-prod", slug: "prod" }]) },
     folderDAL
   } as unknown as Parameters<typeof secretFolderServiceFactory>[0]);

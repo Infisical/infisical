@@ -3,7 +3,7 @@ import { Knex } from "knex";
 import { ProjectType, SortDirection, TProjectKeys } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { TActorInput, TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import { WorkflowIntegration } from "../workflow-integration/workflow-integration-types";
 
@@ -69,7 +69,7 @@ export type TToggleProjectDeleteProtectionDTO = {
   hasDeleteProtection: boolean;
 } & TProjectActorInput;
 
-export type TEnableSecretBlindIndexDTO = TProjectPermission;
+export type TEnableSecretBlindIndexDTO = TProjectActorInput;
 
 export type TUpdateProjectVersionLimitDTO = {
   pitVersionLimit: number;

@@ -1,11 +1,14 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { OrganizationActionScope, OrgMembershipStatus, TOrganizations, TSecretSharing } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionSecretShareAction, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  OrgPermissionSecretShareAction,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
@@ -15,7 +18,7 @@ import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { OrgServiceActor, SecretSharingAccessType } from "@app/lib/types";
+import { SecretSharingAccessType } from "@app/lib/types";
 
 import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TOrgAssetDALFactory } from "../org-asset/org-asset-dal";
@@ -38,7 +41,7 @@ import {
 } from "./secret-sharing-types";
 
 type TSecretSharingServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   secretSharingDAL: TSecretSharingDALFactory;
   orgAssetDAL: TOrgAssetDALFactory;
   orgDAL: TOrgDALFactory;
@@ -72,7 +75,7 @@ const mapIdentifierToId = (sharedSecret: TSecretSharing): Omit<TSecretSharing, "
 };
 
 export const secretSharingServiceFactory = ({
-  permissionService,
+  organizationsDomain,
   secretSharingDAL,
   orgAssetDAL,
   orgDAL,
@@ -138,10 +141,7 @@ export const secretSharingServiceFactory = ({
 
   const createSharedSecret = async ({
     actor,
-    actorId,
     orgId,
-    actorAuthMethod,
-    actorOrgId,
     secretValue,
     name,
     password,
@@ -153,14 +153,7 @@ export const secretSharingServiceFactory = ({
   }: TCreateSharedSecretDTO) => {
     const appCfg = getConfig();
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
     if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
 
     const expiresAt = new Date(Date.now() + ms(expiresIn));
@@ -243,8 +236,8 @@ export const secretSharingServiceFactory = ({
       password: hashedPassword,
       expiresAt: new Date(expiresAt),
       expiresAfterViews: maxViews,
-      ...(actor === ActorType.USER && { userId: actorId }),
-      ...(actor === ActorType.IDENTITY && { identityId: actorId }),
+      ...(actor.principal.type === ActorType.USER && { userId: actor.principal.id }),
+      ...(actor.principal.type === ActorType.IDENTITY && { identityId: actor.principal.id }),
       orgId,
       accessType,
       authorizedEmails: emails && emails.length > 0 ? JSON.stringify(emails) : undefined,
@@ -257,21 +250,23 @@ export const secretSharingServiceFactory = ({
     if (emails && emails.length > 0) {
       let displayUsername: string | undefined;
 
-      if (actor === ActorType.USER) {
-        const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+      if (actor.principal.type === ActorType.USER) {
+        const user = await requestMemoize(requestMemoKeys.userFindById(actor.principal.id), () =>
+          userDAL.findById(actor.principal.id)
+        );
 
         if (!user) {
-          throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+          throw new NotFoundError({ message: `User with ID '${actor.principal.id}' not found` });
         }
 
         displayUsername = user.username;
-      } else if (actor === ActorType.IDENTITY) {
-        const identity = await requestMemoize(requestMemoKeys.identityFindById(actorId), () =>
-          identityDAL.findById(actorId)
+      } else if (actor.principal.type === ActorType.IDENTITY) {
+        const identity = await requestMemoize(requestMemoKeys.identityFindById(actor.principal.id), () =>
+          identityDAL.findById(actor.principal.id)
         );
 
         if (!identity) {
-          throw new NotFoundError({ message: `Identity with ID '${actorId}' not found` });
+          throw new NotFoundError({ message: `Identity with ID '${actor.principal.id}' not found` });
         }
 
         displayUsername = `${identity.name} (Machine Identity)`;
@@ -304,24 +299,8 @@ export const secretSharingServiceFactory = ({
     };
   };
 
-  const createSecretRequest = async ({
-    actor,
-    accessType,
-    expiresIn,
-    name,
-    actorId,
-    orgId,
-    actorAuthMethod,
-    actorOrgId
-  }: TCreateSecretRequestDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+  const createSecretRequest = async ({ actor, accessType, expiresIn, name, orgId }: TCreateSecretRequestDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
     if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
 
     const expiresAt = new Date(Date.now() + ms(expiresIn));
@@ -330,7 +309,7 @@ export const secretSharingServiceFactory = ({
 
     const newSecretRequest = await secretSharingDAL.create({
       type: SecretSharingType.Request,
-      userId: actorId,
+      userId: actor.principal.id,
       orgId,
       name,
       encryptedSecret: null,
@@ -341,31 +320,17 @@ export const secretSharingServiceFactory = ({
     return { id: newSecretRequest.id };
   };
 
-  const revealSecretRequestValue = async ({
-    id,
-    actor,
-    actorId,
-    actorOrgId,
-    orgId,
-    actorAuthMethod
-  }: TRevealSecretRequestValueDTO) => {
+  const revealSecretRequestValue = async ({ id, actor, orgId }: TRevealSecretRequestValueDTO) => {
     const secretRequest = await secretSharingDAL.getSecretRequestById(id);
 
     if (!secretRequest) {
       throw new NotFoundError({ message: `Secret request with ID '${id}' not found` });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
     if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
 
-    if (secretRequest.userId !== actorId || secretRequest.orgId !== orgId) {
+    if (secretRequest.userId !== actor.principal.id || secretRequest.orgId !== orgId) {
       throw new ForbiddenRequestError({ name: "User does not have permission to access this secret request" });
     }
 
@@ -379,13 +344,7 @@ export const secretSharingServiceFactory = ({
     return { ...secretRequest, secretValue: decryptedSecret.toString() };
   };
 
-  const getSecretRequestById = async ({
-    id,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetSecretRequestByIdDTO) => {
+  const getSecretRequestById = async ({ id, actor }: TGetSecretRequestByIdDTO) => {
     const secretRequest = await secretSharingDAL.getSecretRequestById(id);
 
     if (!secretRequest) {
@@ -397,18 +356,11 @@ export const secretSharingServiceFactory = ({
         throw new BadRequestError({ message: "No organization ID present on secret request" });
       }
 
-      if (!actorOrgId) {
+      if (!actor) {
         throw new UnauthorizedError();
       }
 
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: secretRequest.orgId,
-        actorAuthMethod,
-        actorOrgId
-      });
+      const permission = await organizationsDomain.getOrgPermission({ actor, orgId: secretRequest.orgId });
       if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
     }
 
@@ -432,14 +384,7 @@ export const secretSharingServiceFactory = ({
     return secretRequest?.orgId ?? null;
   };
 
-  const setSecretRequestValue = async ({
-    id,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    secretValue
-  }: TSetSecretRequestValueDTO) => {
+  const setSecretRequestValue = async ({ id, actor, secretValue }: TSetSecretRequestValueDTO) => {
     const appCfg = getConfig();
 
     const secretRequest = await secretSharingDAL.getSecretRequestById(id);
@@ -455,24 +400,19 @@ export const secretSharingServiceFactory = ({
         throw new BadRequestError({ message: "No organization ID present on secret request" });
       }
 
-      if (!actorOrgId) {
+      if (!actor) {
         throw new UnauthorizedError();
       }
 
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: secretRequest.orgId,
-        actorAuthMethod,
-        actorOrgId
-      });
+      const permission = await organizationsDomain.getOrgPermission({ actor, orgId: secretRequest.orgId });
       if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
 
-      const user = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+      const user = await requestMemoize(requestMemoKeys.userFindById(actor.principal.id), () =>
+        userDAL.findById(actor.principal.id)
+      );
 
       if (!user) {
-        throw new NotFoundError({ message: `User with ID '${actorId}' not found` });
+        throw new NotFoundError({ message: `User with ID '${actor.principal.id}' not found` });
       }
 
       respondentUsername = user.username;
@@ -550,42 +490,27 @@ export const secretSharingServiceFactory = ({
     return mapIdentifierToId(newSharedSecret);
   };
 
-  const getSharedSecrets = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    offset,
-    limit,
-    type
-  }: TGetSharedSecretsDTO) => {
-    if (!actorOrgId) throw new ForbiddenRequestError();
+  const getSharedSecrets = async ({ actor, offset, limit, type }: TGetSharedSecretsDTO) => {
+    if (!actor.org.id) throw new ForbiddenRequestError();
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor });
     if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
 
     const secrets = await secretSharingDAL.find(
       {
-        ...(actor === ActorType.USER && { userId: actorId }),
-        ...(actor === ActorType.IDENTITY && { identityId: actorId }),
-        orgId: actorOrgId,
+        ...(actor.principal.type === ActorType.USER && { userId: actor.principal.id }),
+        ...(actor.principal.type === ActorType.IDENTITY && { identityId: actor.principal.id }),
+        orgId: actor.org.id,
         type
       },
       { offset, limit, sort: [["createdAt", "desc"]] }
     );
 
     const count = await secretSharingDAL.countAllUserOrgSharedSecrets({
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       type,
-      ...(actor === ActorType.USER && { userId: actorId }),
-      ...(actor === ActorType.IDENTITY && { identityId: actorId })
+      ...(actor.principal.type === ActorType.USER && { userId: actor.principal.id }),
+      ...(actor.principal.type === ActorType.IDENTITY && { identityId: actor.principal.id })
     });
 
     return {
@@ -786,15 +711,8 @@ export const secretSharingServiceFactory = ({
   };
 
   const deleteSharedSecretById = async (deleteSharedSecretInput: TDeleteSharedSecretDTO) => {
-    const { actor, actorId, orgId, actorAuthMethod, actorOrgId, sharedSecretId } = deleteSharedSecretInput;
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const { actor, orgId, sharedSecretId } = deleteSharedSecretInput;
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
     if (!permission) throw new ForbiddenRequestError({ name: "User does not belong to the specified organization" });
 
     let sharedSecret;
@@ -813,14 +731,14 @@ export const secretSharingServiceFactory = ({
       throw new NotFoundError({ message: `Shared secret with ID '${sharedSecretId}' not found` });
     }
 
-    if (actor === ActorType.USER) {
-      if (sharedSecret.userId !== actorId) {
+    if (actor.principal.type === ActorType.USER) {
+      if (sharedSecret.userId !== actor.principal.id) {
         throw new ForbiddenRequestError({
           message: "User does not have permission to delete shared secret"
         });
       }
-    } else if (actor === ActorType.IDENTITY) {
-      if (sharedSecret.identityId !== actorId) {
+    } else if (actor.principal.type === ActorType.IDENTITY) {
+      if (sharedSecret.identityId !== actor.principal.id) {
         throw new ForbiddenRequestError({
           message: "Identity does not have permission to delete shared secret"
         });
@@ -847,22 +765,19 @@ export const secretSharingServiceFactory = ({
     return sharedSecret?.orgId ?? null;
   };
 
-  const getOrgBrandConfig = async (orgId: string, actor?: OrgServiceActor) => {
+  const getOrgBrandConfig = async (orgId: string, actor?: TActorContext) => {
     // When accessed via public endpoint (from shared secret), don't check permission
     if (actor) {
-      const { permission } = await permissionService.getOrgPermission({
-        actor: actor.type,
-        actorId: actor.id,
+      const permission = await organizationsDomain.getOrgPermission({
+        actor,
         orgId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
         scope: OrganizationActionScope.ParentOrganization
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionSecretShareAction.ManageSettings,
-        OrgPermissionSubjects.SecretShare
-      );
+      permission.assert({
+        action: OrgPermissionSecretShareAction.ManageSettings,
+        subject: OrgPermissionSubjects.SecretShare
+      });
     }
 
     const plan = await licenseDomain.getPlan(orgId);
@@ -892,22 +807,19 @@ export const secretSharingServiceFactory = ({
     };
   };
 
-  const getBrandingAsset = async (orgId: string, assetType: string, actor?: OrgServiceActor) => {
+  const getBrandingAsset = async (orgId: string, assetType: string, actor?: TActorContext) => {
     // When accessed via public endpoint (from shared secret), don't check permission
     if (actor) {
-      const { permission } = await permissionService.getOrgPermission({
-        actor: actor.type,
-        actorId: actor.id,
+      const permission = await organizationsDomain.getOrgPermission({
+        actor,
         orgId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
         scope: OrganizationActionScope.ParentOrganization
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionSecretShareAction.ManageSettings,
-        OrgPermissionSubjects.SecretShare
-      );
+      permission.assert({
+        action: OrgPermissionSecretShareAction.ManageSettings,
+        subject: OrgPermissionSubjects.SecretShare
+      });
     }
 
     const plan = await licenseDomain.getPlan(orgId);
@@ -928,40 +840,34 @@ export const secretSharingServiceFactory = ({
     assetType: string,
     data: Buffer,
     contentType: string,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
+    const permission = await organizationsDomain.getOrgPermission({
+      actor,
       orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSecretShareAction.ManageSettings,
-      OrgPermissionSubjects.SecretShare
-    );
+    permission.assert({
+      action: OrgPermissionSecretShareAction.ManageSettings,
+      subject: OrgPermissionSubjects.SecretShare
+    });
 
     const size = data.length;
     return orgAssetDAL.upsertFirstAsset(orgId, assetType, data, contentType, size);
   };
 
-  const deleteBrandingAsset = async (orgId: string, assetType: string, actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
+  const deleteBrandingAsset = async (orgId: string, assetType: string, actor: TActorContext) => {
+    const permission = await organizationsDomain.getOrgPermission({
+      actor,
       orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionSecretShareAction.ManageSettings,
-      OrgPermissionSubjects.SecretShare
-    );
+    permission.assert({
+      action: OrgPermissionSecretShareAction.ManageSettings,
+      subject: OrgPermissionSubjects.SecretShare
+    });
 
     await orgAssetDAL.deleteAssetsByType(orgId, assetType);
   };

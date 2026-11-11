@@ -53,10 +53,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { data, lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.create({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           name: req.body.dynamicSecretName,
           ...req.body
         });
@@ -135,10 +132,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.revokeLease({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           leaseId: req.params.leaseId,
           ...req.body
         });
@@ -228,10 +222,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.renewLease({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           leaseId: req.params.leaseId,
           ...req.body
         });
@@ -310,10 +301,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const { lease, dynamicSecret, projectId, environment, secretPath } =
         await server.services.dynamicSecretLease.getLeaseDetails({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           leaseId: req.params.leaseId,
           ...req.query
         });

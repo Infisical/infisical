@@ -1,13 +1,16 @@
 import { MongoAbility, subject } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
+import { OrgMembershipRole } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TOrganizationsDomain } from "@app/domains/platform/organizations/ce/module";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import {
   AuditLogInfo,
   EventType,
@@ -18,13 +21,12 @@ import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
-import { OrgServiceActor } from "@app/lib/types";
+import { OrgServiceActor, toGenericPermission, toOrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
@@ -152,7 +154,8 @@ const $assertVaultImportCreatePermissions = ({
 };
 
 type TExternalMigrationServiceFactoryDep = {
-  permissionService: TPermissionServiceFactory;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   secretService: TSecretServiceFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   externalMigrationQueue: TExternalMigrationQueueFactory;
@@ -176,7 +179,8 @@ type TExternalMigrationServiceFactoryDep = {
 export type TExternalMigrationServiceFactory = ReturnType<typeof externalMigrationServiceFactory>;
 
 export const externalMigrationServiceFactory = ({
-  permissionService,
+  organizationsDomain,
+  secretsDomain,
   externalMigrationQueue,
   userDAL,
   gatewayV2Service,
@@ -231,40 +235,25 @@ export const externalMigrationServiceFactory = ({
     return gatewayDetails;
   };
 
-  const importEnvKeyData = async ({
-    decryptionKey,
-    encryptedJson,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TImportEnvKeyDataDTO) => {
+  const importEnvKeyData = async ({ decryptionKey, encryptedJson, actor }: TImportEnvKeyDataDTO) => {
     if (crypto.isFipsModeEnabled()) {
       throw new BadRequestError({ message: "EnvKey migration is not supported when running in FIPS mode." });
     }
 
-    const { hasRole } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId: actorOrgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.Any
-    });
-    if (!hasRole(OrgMembershipRole.Admin)) {
+    const permission = await organizationsDomain.getOrgPermission({ actor });
+    if (!permission.hasRole({ slug: OrgMembershipRole.Admin })) {
       throw new ForbiddenRequestError({ message: "Only admins can import data" });
     }
 
+    const actorId = actor.principal.id;
+    const actorOrgId = actor.org.id;
     const user = await userDAL.findById(actorId);
     const json = await decryptEnvKeyDataFn(decryptionKey, encryptedJson);
     const envKeyData = await parseEnvKeyDataFn(json);
 
     const stringifiedJson = JSON.stringify({
       data: envKeyData,
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod
+      ...toGenericPermission(actor)
     });
 
     recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "external_migration" });
@@ -288,24 +277,16 @@ export const externalMigrationServiceFactory = ({
     vaultUrl,
     gatewayId,
     gatewayPoolId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
+    actor
   }: TImportVaultDataDTO) => {
-    const { hasRole } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId: actorOrgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor });
 
-    if (!hasRole(OrgMembershipRole.Admin)) {
+    if (!permission.hasRole({ slug: OrgMembershipRole.Admin })) {
       throw new ForbiddenRequestError({ message: "Only admins can import data" });
     }
 
+    const actorId = actor.principal.id;
+    const actorOrgId = actor.org.id;
     const user = await userDAL.findById(actorId);
 
     if (gatewayId && gatewayPoolId) {
@@ -326,7 +307,7 @@ export const externalMigrationServiceFactory = ({
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actorOrgId,
-        actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
+        actor: toOrgServiceActor(actor)
       });
       const picked = await gatewayPoolService.pickHealthyGateway(gatewayPoolId);
       effectiveGatewayId = picked.id;
@@ -348,10 +329,7 @@ export const externalMigrationServiceFactory = ({
 
     const stringifiedJson = JSON.stringify({
       data: vaultData,
-      actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod
+      ...toGenericPermission(actor)
     });
 
     recordLegacyRootKeyUsageMetric({ operation: "encrypt", surface: "external_migration" });
@@ -368,23 +346,10 @@ export const externalMigrationServiceFactory = ({
     });
   };
 
-  const hasCustomVaultMigration = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    provider
-  }: THasCustomVaultMigrationDTO) => {
-    const { hasRole } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId: actorOrgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.Any
-    });
+  const hasCustomVaultMigration = async ({ actor, provider }: THasCustomVaultMigrationDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor });
 
-    if (!hasRole(OrgMembershipRole.Admin)) {
+    if (!permission.hasRole({ slug: OrgMembershipRole.Admin })) {
       throw new ForbiddenRequestError({ message: "Only admins can check custom migration status" });
     }
 
@@ -394,7 +359,7 @@ export const externalMigrationServiceFactory = ({
       });
     }
 
-    return actorOrgId in vaultMigrationTransformMappings;
+    return actor.org.id in vaultMigrationTransformMappings;
   };
 
   const getVaultNamespaces = async ({ actor, connectionId }: { actor: OrgServiceActor; connectionId: string }) => {
@@ -477,7 +442,7 @@ export const externalMigrationServiceFactory = ({
     secretsPerPath,
     auditLogInfo
   }: {
-    actor: OrgServiceActor;
+    actor: TActorContext;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -512,19 +477,12 @@ export const externalMigrationServiceFactory = ({
       }
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     const unitsWithSecrets = units.filter(({ secrets }) => secrets.length);
 
     // Fetched before the transaction: KMS Core is never called inside one.
-    const ciphers = await prepareSecretWriteCiphers({ kmsCoreDomain, projectId, orgId: actor.orgId });
+    const ciphers = await prepareSecretWriteCiphers({ kmsCoreDomain, projectId, orgId: actor.org.id });
     const results = await folderDAL.transaction(async (tx) => {
       const [baseFolder, ...candidateFolders] = await folderDAL.findByManySecretPath(
         [basePath, ...candidatePaths].map((candidatePath) => ({ envId: env.id, secretPath: candidatePath })),
@@ -540,7 +498,7 @@ export const externalMigrationServiceFactory = ({
       const pathsToCreate = candidatePaths.filter((_, idx) => !candidateFolders[idx]);
 
       $assertVaultImportCreatePermissions({
-        permission,
+        permission: permission.toAbility(),
         environment,
         pathsToCreate,
         units
@@ -568,10 +526,7 @@ export const externalMigrationServiceFactory = ({
       if (foldersToCreate.length) {
         await folderService.createManyFolders({
           projectId,
-          actor: actor.type,
-          actorId: actor.id,
-          actorAuthMethod: actor.authMethod,
-          actorOrgId: actor.orgId,
+          actor,
           folders: foldersToCreate,
           tx
         });
@@ -598,10 +553,7 @@ export const externalMigrationServiceFactory = ({
 
         // eslint-disable-next-line no-await-in-loop
         const secretOperation = await secretService.createManySecretsRaw({
-          actorId: actor.id,
-          actor: actor.type,
-          actorAuthMethod: actor.authMethod,
-          actorOrgId: actor.orgId,
+          actor,
           projectId,
           environment,
           secretPath: folderPath,
@@ -634,9 +586,9 @@ export const externalMigrationServiceFactory = ({
         projectId,
         environment,
         environmentName: env.name,
-        actor: actor.type,
-        actorId: actor.id,
-        actorOrgId: actor.orgId,
+        actor: actor.principal.type,
+        actorId: actor.principal.id,
+        actorOrgId: actor.org.id,
         auditLogInfo,
         writtenFolders: writtenResults.map(({ folderPath, secrets }) => ({
           folderPath,
@@ -681,7 +633,7 @@ export const externalMigrationServiceFactory = ({
     keepVaultStructure,
     auditLogInfo
   }: {
-    actor: OrgServiceActor;
+    actor: TActorContext;
     projectId: string;
     environment: string;
     secretPath: string;
@@ -695,7 +647,7 @@ export const externalMigrationServiceFactory = ({
     const connection = (await appConnectionService.validateAppConnectionUsageById(
       AppConnection.HCVault,
       { connectionId, projectId },
-      actor
+      toOrgServiceActor(actor)
     )) as THCVaultConnection;
 
     if (!vaultSecretPaths.length) {
@@ -757,10 +709,7 @@ export const externalMigrationServiceFactory = ({
 
     try {
       const secretOperation = await secretService.createManySecretsRaw({
-        actorId: actor.id,
-        actor: actor.type,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
+        actor,
         secretPath,
         environment,
         projectId,
@@ -962,16 +911,13 @@ export const externalMigrationServiceFactory = ({
     actor,
     auditLogInfo
   }: TImportDopplerSecretsDTO) => {
-    const appConnection = await getDopplerConnectionForImport(connectionId, targetProjectId, actor);
+    const appConnection = await getDopplerConnectionForImport(connectionId, targetProjectId, toOrgServiceActor(actor));
 
     const dopplerSecrets = await getDopplerSecrets(appConnection, dopplerProject, dopplerEnvironment);
 
     try {
       const secretOperation = await secretService.createManySecretsRaw({
-        actorId: actor.id,
-        actor: actor.type,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId,
+        actor,
         projectId: targetProjectId,
         environment: targetEnvironment,
         secretPath: targetSecretPath,

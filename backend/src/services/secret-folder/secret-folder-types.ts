@@ -1,5 +1,4 @@
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
-import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TActorInput } from "@app/lib/types";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 export enum ReservedFolders {
@@ -11,7 +10,8 @@ export type TCreateFolderDTO = {
   path: string;
   name: string;
   description?: string | null;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateFolderDTO = {
   environment: string;
@@ -19,7 +19,8 @@ export type TUpdateFolderDTO = {
   id: string;
   name: string;
   description?: string | null;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateManyFoldersDTO = {
   projectSlug?: string;
@@ -30,14 +31,15 @@ export type TUpdateManyFoldersDTO = {
     name: string;
     description?: string | null;
   }[];
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteFolderDTO = {
   environment: string;
   path: string;
   idOrName: string;
   forceDelete?: boolean;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetFolderDTO = {
   environment: string;
@@ -49,11 +51,12 @@ export type TGetFolderDTO = {
   offset?: number;
   recursive?: boolean;
   lastSecretModified?: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetFolderByIdDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 // eligibility can optionally be checked against a destination; when provided, the result also reports whether the
 // destination is governed by a secret approval policy (a move into such a path is rejected by moveFolder).
@@ -88,7 +91,8 @@ export type TMoveFolderDTO = {
   destinationEnvironment: string;
   destinationPath: string;
   shouldOverwrite?: boolean;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TMoveFolderResult = {
   folderId: string;
@@ -110,12 +114,8 @@ export type TFindFoldersDeepByParentIdsDTO = {
   orderDirection?: OrderByDirection;
 };
 
-export type TCreateManyFoldersDTO = {
+export type TCreateManyFoldersDTO = TActorInput & {
   projectId: string;
-  actor: ActorType;
-  actorId: string;
-  actorAuthMethod: ActorAuthMethod;
-  actorOrgId?: string;
   folders: Array<{
     name: string;
     environment: string;
@@ -124,12 +124,8 @@ export type TCreateManyFoldersDTO = {
   }>;
 };
 
-export type TDeleteManyFoldersDTO = {
+export type TDeleteManyFoldersDTO = TActorInput & {
   projectId: string;
-  actor: ActorType;
-  actorId: string;
-  actorAuthMethod: ActorAuthMethod;
-  actorOrgId?: string;
   folders: Array<{
     environment: string;
     path: string;
