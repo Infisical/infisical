@@ -23,7 +23,7 @@ import { Route as indexImport } from './pages/index'
 import { Route as designSystemRoutesFallbackImport } from './pages/design-system/routes/fallback'
 import { Route as middlewaresInjectOrgDetailsImport } from './pages/middlewares/inject-org-details'
 import { Route as designSystemRoutesOverviewImport } from './pages/design-system/routes/overview'
-import { Route as v4UserPersonalSettingsPageRouteImport } from './pages/v4/user/PersonalSettingsPage/route'
+import { Route as v4UserRouteImport } from './pages/v4/user/route'
 import { Route as v4AuthPasswordSetupPageRouteImport } from './pages/v4/auth/PasswordSetupPage/route'
 import { Route as v4AdminRouteImport } from './pages/v4/admin/route'
 import { Route as v4SecretSharingPublicRouteImport } from './pages/v4/secret-sharing/public/route'
@@ -65,6 +65,7 @@ import { Route as organizationSignupOnboardingPageRouteImport } from './pages/or
 import { Route as organizationNoOrgPageRouteImport } from './pages/organization/NoOrgPage/route'
 import { Route as organizationOauthConsentPageRouteImport } from './pages/organization/OauthConsentPage/route'
 import { Route as MfaSessionPageRouteImport } from './pages/MfaSessionPage/route'
+import { Route as v4UserPersonalSettingsPageRouteImport } from './pages/v4/user/PersonalSettingsPage/route'
 import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
 import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as designSystemRoutesComponentImport } from './pages/design-system/routes/component'
@@ -636,12 +637,11 @@ const designSystemRoutesOverviewRoute = designSystemRoutesOverviewImport.update(
   } as any,
 )
 
-const v4UserPersonalSettingsPageRouteRoute =
-  v4UserPersonalSettingsPageRouteImport.update({
-    id: '/personal-settings',
-    path: '/personal-settings',
-    getParentRoute: () => v4RouteRoute,
-  } as any)
+const v4UserRouteRoute = v4UserRouteImport.update({
+  id: '/personal-settings',
+  path: '/personal-settings',
+  getParentRoute: () => v4RouteRoute,
+} as any)
 
 const v4AuthPasswordSetupPageRouteRoute =
   v4AuthPasswordSetupPageRouteImport.update({
@@ -927,6 +927,13 @@ const MfaSessionPageRouteRoute = MfaSessionPageRouteImport.update({
   path: '/mfa-session/$mfaSessionId',
   getParentRoute: () => middlewaresAuthenticateRoute,
 } as any)
+
+const v4UserPersonalSettingsPageRouteRoute =
+  v4UserPersonalSettingsPageRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => v4UserRouteRoute,
+  } as any)
 
 const authSignUpPageRouteRoute = authSignUpPageRouteImport.update({
   id: '/',
@@ -3866,7 +3873,7 @@ declare module '@tanstack/react-router' {
       id: '/v4/personal-settings'
       path: '/personal-settings'
       fullPath: '/v4/personal-settings'
-      preLoaderRoute: typeof v4UserPersonalSettingsPageRouteImport
+      preLoaderRoute: typeof v4UserRouteImport
       parentRoute: typeof v4RouteImport
     }
     '/design-system/': {
@@ -3924,6 +3931,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup/'
       preLoaderRoute: typeof authSignUpPageRouteImport
       parentRoute: typeof RestrictLoginSignupSignupImport
+    }
+    '/v4/personal-settings/': {
+      id: '/v4/personal-settings/'
+      path: '/'
+      fullPath: '/v4/personal-settings/'
+      preLoaderRoute: typeof v4UserPersonalSettingsPageRouteImport
+      parentRoute: typeof v4UserRouteImport
     }
     '/_authenticate/mfa-session/$mfaSessionId': {
       id: '/_authenticate/mfa-session/$mfaSessionId'
@@ -6919,6 +6933,18 @@ const v4AdminRouteRouteWithChildren = v4AdminRouteRoute._addFileChildren(
   v4AdminRouteRouteChildren,
 )
 
+interface v4UserRouteRouteChildren {
+  v4UserPersonalSettingsPageRouteRoute: typeof v4UserPersonalSettingsPageRouteRoute
+}
+
+const v4UserRouteRouteChildren: v4UserRouteRouteChildren = {
+  v4UserPersonalSettingsPageRouteRoute: v4UserPersonalSettingsPageRouteRoute,
+}
+
+const v4UserRouteRouteWithChildren = v4UserRouteRoute._addFileChildren(
+  v4UserRouteRouteChildren,
+)
+
 interface V4OrganizationsOrgIdProjectsRouteChildren {
   v4OrganizationProjectsPageRouteRoute: typeof v4OrganizationProjectsPageRouteRoute
   v4OrganizationNotPortedPageProjectsRouteRoute: typeof v4OrganizationNotPortedPageProjectsRouteRoute
@@ -7156,7 +7182,7 @@ interface v4RouteRouteChildren {
   v4SecretSharingPublicRouteRoute: typeof v4SecretSharingPublicRouteRouteWithChildren
   v4AdminRouteRoute: typeof v4AdminRouteRouteWithChildren
   v4AuthPasswordSetupPageRouteRoute: typeof v4AuthPasswordSetupPageRouteRoute
-  v4UserPersonalSettingsPageRouteRoute: typeof v4UserPersonalSettingsPageRouteRoute
+  v4UserRouteRoute: typeof v4UserRouteRouteWithChildren
   v4AuthMfaSessionPageRouteRoute: typeof v4AuthMfaSessionPageRouteRoute
   v4OrganizationRouteRoute: typeof v4OrganizationRouteRouteWithChildren
   v4AuthNoOrgPageRouteRoute: typeof v4AuthNoOrgPageRouteRoute
@@ -7168,7 +7194,7 @@ const v4RouteRouteChildren: v4RouteRouteChildren = {
   v4SecretSharingPublicRouteRoute: v4SecretSharingPublicRouteRouteWithChildren,
   v4AdminRouteRoute: v4AdminRouteRouteWithChildren,
   v4AuthPasswordSetupPageRouteRoute: v4AuthPasswordSetupPageRouteRoute,
-  v4UserPersonalSettingsPageRouteRoute: v4UserPersonalSettingsPageRouteRoute,
+  v4UserRouteRoute: v4UserRouteRouteWithChildren,
   v4AuthMfaSessionPageRouteRoute: v4AuthMfaSessionPageRouteRoute,
   v4OrganizationRouteRoute: v4OrganizationRouteRouteWithChildren,
   v4AuthNoOrgPageRouteRoute: v4AuthNoOrgPageRouteRoute,
@@ -8570,7 +8596,7 @@ export interface FileRoutesByFullPath {
   '/shared/new': typeof publicShareSecretPageRouteRoute
   '/v4/admin': typeof v4AdminAdminShellRouteRouteWithChildren
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
-  '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
+  '/v4/personal-settings': typeof v4UserRouteRouteWithChildren
   '/design-system/': typeof designSystemRoutesOverviewRoute
   '/personal-settings': typeof userLayoutRouteWithChildren
   '/login': typeof RestrictLoginSignupLoginRouteWithChildren
@@ -8578,6 +8604,7 @@ export interface FileRoutesByFullPath {
   '/design-system/$': typeof designSystemRoutesFallbackRoute
   '/login/': typeof authLoginPageRouteRoute
   '/signup/': typeof authSignUpPageRouteRoute
+  '/v4/personal-settings/': typeof v4UserPersonalSettingsPageRouteRoute
   '/mfa-session/$mfaSessionId': typeof MfaSessionPageRouteRoute
   '/organization/oauth-consent': typeof organizationOauthConsentPageRouteRoute
   '/organizations/none': typeof organizationNoOrgPageRouteRoute
@@ -8990,12 +9017,12 @@ export interface FileRoutesByTo {
   '/shared/new': typeof publicShareSecretPageRouteRoute
   '/v4/admin': typeof v4AdminGeneralPageRouteRoute
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
-  '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
   '/design-system': typeof designSystemRoutesOverviewRoute
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
   '/design-system/$': typeof designSystemRoutesFallbackRoute
   '/login': typeof authLoginPageRouteRoute
   '/signup': typeof authSignUpPageRouteRoute
+  '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
   '/mfa-session/$mfaSessionId': typeof MfaSessionPageRouteRoute
   '/organization/oauth-consent': typeof organizationOauthConsentPageRouteRoute
   '/organizations/none': typeof organizationNoOrgPageRouteRoute
@@ -9382,7 +9409,7 @@ export interface FileRoutesById {
   '/v4/_v4-public': typeof v4SecretSharingPublicRouteRouteWithChildren
   '/v4/admin': typeof v4AdminRouteRouteWithChildren
   '/v4/password-setup': typeof v4AuthPasswordSetupPageRouteRoute
-  '/v4/personal-settings': typeof v4UserPersonalSettingsPageRouteRoute
+  '/v4/personal-settings': typeof v4UserRouteRouteWithChildren
   '/design-system/': typeof designSystemRoutesOverviewRoute
   '/_authenticate/_inject-org-details': typeof middlewaresInjectOrgDetailsRouteWithChildren
   '/_authenticate/personal-settings': typeof AuthenticatePersonalSettingsRouteWithChildren
@@ -9391,6 +9418,7 @@ export interface FileRoutesById {
   '/design-system/$': typeof designSystemRoutesFallbackRoute
   '/_restrict-login-signup/login/': typeof authLoginPageRouteRoute
   '/_restrict-login-signup/signup/': typeof authSignUpPageRouteRoute
+  '/v4/personal-settings/': typeof v4UserPersonalSettingsPageRouteRoute
   '/_authenticate/mfa-session/$mfaSessionId': typeof MfaSessionPageRouteRoute
   '/_authenticate/organization/oauth-consent': typeof organizationOauthConsentPageRouteRoute
   '/_authenticate/organizations/none': typeof organizationNoOrgPageRouteRoute
@@ -9824,6 +9852,7 @@ export interface FileRouteTypes {
     | '/design-system/$'
     | '/login/'
     | '/signup/'
+    | '/v4/personal-settings/'
     | '/mfa-session/$mfaSessionId'
     | '/organization/oauth-consent'
     | '/organizations/none'
@@ -10235,12 +10264,12 @@ export interface FileRouteTypes {
     | '/shared/new'
     | '/v4/admin'
     | '/v4/password-setup'
-    | '/v4/personal-settings'
     | '/design-system'
     | '/personal-settings'
     | '/design-system/$'
     | '/login'
     | '/signup'
+    | '/v4/personal-settings'
     | '/mfa-session/$mfaSessionId'
     | '/organization/oauth-consent'
     | '/organizations/none'
@@ -10634,6 +10663,7 @@ export interface FileRouteTypes {
     | '/design-system/$'
     | '/_restrict-login-signup/login/'
     | '/_restrict-login-signup/signup/'
+    | '/v4/personal-settings/'
     | '/_authenticate/mfa-session/$mfaSessionId'
     | '/_authenticate/organization/oauth-consent'
     | '/_authenticate/organizations/none'
@@ -11217,8 +11247,11 @@ export const routeTree = rootRoute
       "parent": "/v4"
     },
     "/v4/personal-settings": {
-      "filePath": "v4/user/PersonalSettingsPage/route.tsx",
-      "parent": "/v4"
+      "filePath": "v4/user/route.tsx",
+      "parent": "/v4",
+      "children": [
+        "/v4/personal-settings/"
+      ]
     },
     "/design-system/": {
       "filePath": "design-system/routes/overview.tsx",
@@ -11276,6 +11309,10 @@ export const routeTree = rootRoute
     "/_restrict-login-signup/signup/": {
       "filePath": "auth/SignUpPage/route.tsx",
       "parent": "/_restrict-login-signup/signup"
+    },
+    "/v4/personal-settings/": {
+      "filePath": "v4/user/PersonalSettingsPage/route.tsx",
+      "parent": "/v4/personal-settings"
     },
     "/_authenticate/mfa-session/$mfaSessionId": {
       "filePath": "MfaSessionPage/route.tsx",
