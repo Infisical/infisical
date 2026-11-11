@@ -17,8 +17,12 @@ import {
 } from "./agent-vault-enums";
 import { AGENT_VAULT_DEFAULT_PORT, parseHostPatterns } from "./agent-vault-host-pattern-fns";
 import {
+  AGENT_VAULT_NATIVE_MESSAGES,
+  AgentVaultClickhouseServiceConfigSchema,
+  AgentVaultCockroachdbServiceConfigSchema,
   AgentVaultMysqlServiceConfigSchema,
   AgentVaultPostgresServiceConfigSchema,
+  AgentVaultRedisServiceConfigSchema,
   AgentVaultSshServiceConfigSchema,
   isNativeServiceType,
   TAgentVaultNativeServiceConfig,
@@ -113,6 +117,9 @@ export type TAgentVaultServiceTypeDefinition = {
   label: string;
   article: "A" | "An";
   configSchema: z.ZodObject<z.ZodRawShape>;
+  // A rule across config fields, checked after configSchema. Kept apart because the field checks read the schema's
+  // shape, which a refined schema doesn't expose.
+  checkConfig?: (config: TAgentVaultServiceConfig) => { field: string; message: string } | null;
   allowedCredentialTypes: AgentVaultCredentialType[];
   // Null when the caller enters the host pattern itself. A database or SSH service derives none: its host lives in config,
   // and a host pattern would let HTTP matching attach its password to web requests to that host.
@@ -192,6 +199,49 @@ export const AGENT_VAULT_SERVICE_TYPES: Record<AgentVaultServiceType, TAgentVaul
     supportsTransformations: { customHeaders: false, substitutions: false },
     unsupportedFieldHint:
       "Its server is set with 'host' and 'port', and request rules apply only to HTTP and MCP services."
+  },
+  [AgentVaultServiceType.Redis]: {
+    type: AgentVaultServiceType.Redis,
+    label: "Redis",
+    article: "A",
+    configSchema: AgentVaultRedisServiceConfigSchema,
+    allowedCredentialTypes: [AgentVaultCredentialType.Basic],
+    deriveHostPattern: () => null,
+    supportsRequestRules: false,
+    supportsToolRules: false,
+    supportsTransformations: { customHeaders: false, substitutions: false },
+    unsupportedFieldHint:
+      "Its server is set with 'host', 'port' and 'tls', and request rules apply only to HTTP and MCP services."
+  },
+  [AgentVaultServiceType.Cockroachdb]: {
+    type: AgentVaultServiceType.Cockroachdb,
+    label: "CockroachDB",
+    article: "A",
+    configSchema: AgentVaultCockroachdbServiceConfigSchema,
+    allowedCredentialTypes: [AgentVaultCredentialType.Basic],
+    deriveHostPattern: () => null,
+    supportsRequestRules: false,
+    supportsToolRules: false,
+    supportsTransformations: { customHeaders: false, substitutions: false },
+    unsupportedFieldHint:
+      "Its server is set with 'host', 'port' and 'database', and request rules apply only to HTTP and MCP services."
+  },
+  [AgentVaultServiceType.Clickhouse]: {
+    type: AgentVaultServiceType.Clickhouse,
+    label: "ClickHouse",
+    article: "A",
+    configSchema: AgentVaultClickhouseServiceConfigSchema,
+    checkConfig: (config) =>
+      config.nativePort !== undefined && config.nativePort === config.port
+        ? { field: "nativePort", message: AGENT_VAULT_NATIVE_MESSAGES.nativePortSameAsPort }
+        : null,
+    allowedCredentialTypes: [AgentVaultCredentialType.Basic],
+    deriveHostPattern: () => null,
+    supportsRequestRules: false,
+    supportsToolRules: false,
+    supportsTransformations: { customHeaders: false, substitutions: false },
+    unsupportedFieldHint:
+      "Its server is set with 'host', 'port', 'nativePort' and 'database', and request rules apply only to HTTP and MCP services."
   }
 };
 
@@ -321,17 +371,19 @@ export const buildServiceConfig = (
     sent.tls && typeof sent.tls === "object" && storedConfig.tls && typeof storedConfig.tls === "object"
       ? { ...storedConfig.tls, ...shake(sent.tls as Record<string, unknown>, (value) => value === undefined) }
       : sent.tls;
-  const parsed = definition.configSchema.safeParse({
-    ...storedConfig,
-    ...sent,
-    ...(tls === undefined ? {} : { tls })
-  });
+  const merged: Record<string, unknown> = { ...storedConfig, ...sent, ...(tls === undefined ? {} : { tls }) };
+  // A ClickHouse service's `nativePort: null` removes it. Any other null still fails the schema below.
+  if (merged.nativePort === null) delete merged.nativePort;
+  const parsed = definition.configSchema.safeParse(merged);
   if (!parsed.success) {
     const [issue] = parsed.error.issues;
     const field = issue.path.join(".");
     throw new BadRequestError({ message: field ? `'${field}': ${issue.message}` : issue.message });
   }
-  return parsed.data as TAgentVaultServiceConfig;
+  const config = parsed.data as TAgentVaultServiceConfig;
+  const problem = definition.checkConfig?.(config);
+  if (problem) throw new BadRequestError({ message: `'${problem.field}': ${problem.message}` });
+  return config;
 };
 
 export const resolveServiceHostPattern = (
@@ -360,12 +412,21 @@ export type TAgentVaultServiceTypeFields =
       hostPattern: string;
     }
   | {
-      type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql;
+      type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql | AgentVaultServiceType.Cockroachdb;
       host: string;
       port: number;
       database: string;
       tls: TServiceResponseTls;
     }
+  | {
+      type: AgentVaultServiceType.Clickhouse;
+      host: string;
+      port: number;
+      nativePort: number | null;
+      database: string;
+      tls: TServiceResponseTls;
+    }
+  | { type: AgentVaultServiceType.Redis; host: string; port: number; tls: TServiceResponseTls }
   | { type: AgentVaultServiceType.Ssh; host: string; port: number };
 
 const toResponseTls = (tls: TAgentVaultNativeTls): TServiceResponseTls => ({
@@ -399,9 +460,20 @@ export const toServiceTypeFields = (row: {
       return { type, serverUrl, transport, hostPattern };
     }
     case AgentVaultServiceType.Postgres:
-    case AgentVaultServiceType.Mysql: {
+    case AgentVaultServiceType.Mysql:
+    case AgentVaultServiceType.Cockroachdb: {
       const { host, port, database, tls } = row.config as z.infer<typeof AgentVaultPostgresServiceConfigSchema>;
       return { type, host, port, database, tls: toResponseTls(tls) };
+    }
+    case AgentVaultServiceType.Clickhouse: {
+      const { host, port, nativePort, database, tls } = row.config as z.infer<
+        typeof AgentVaultClickhouseServiceConfigSchema
+      >;
+      return { type, host, port, nativePort: nativePort ?? null, database, tls: toResponseTls(tls) };
+    }
+    case AgentVaultServiceType.Redis: {
+      const { host, port, tls } = row.config as z.infer<typeof AgentVaultRedisServiceConfigSchema>;
+      return { type, host, port, tls: toResponseTls(tls) };
     }
     default: {
       const { host, port } = row.config as z.infer<typeof AgentVaultSshServiceConfigSchema>;

@@ -126,6 +126,20 @@ describe("sessionLogMethodLabel", () => {
       )
     ).toBe("GET");
   });
+
+  it("names Redis, CockroachDB and ClickHouse rows by their product", () => {
+    expect(
+      sessionLogMethodLabel(record({ method: "REDIS", serviceType: AgentVaultServiceType.Redis }))
+    ).toBe("Redis");
+    expect(
+      sessionLogMethodLabel(record({ method: "COCKROACHDB", serviceType: null, native: {} }))
+    ).toBe("CockroachDB");
+    expect(
+      sessionLogMethodLabel(
+        record({ method: "CLICKHOUSE", serviceType: AgentVaultServiceType.Clickhouse })
+      )
+    ).toBe("ClickHouse");
+  });
 });
 
 describe("nativeSessionLogSections", () => {

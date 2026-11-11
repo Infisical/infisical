@@ -10,6 +10,7 @@ import { addHostIssues, hostError } from "@app/helpers/agentVaultHostPattern";
 import { addPathPrefixIssues, pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 import { variableReferenceError } from "@app/helpers/agentVaultVariables";
 import {
+  AGENT_VAULT_NATIVE_DEFAULT_PORTS,
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
   AgentVaultMcpTransport,
@@ -127,6 +128,9 @@ export const NATIVE_CREDENTIAL_TYPES: Record<
 > = {
   [AgentVaultServiceType.Postgres]: [AgentVaultCredentialType.Basic],
   [AgentVaultServiceType.Mysql]: [AgentVaultCredentialType.Basic],
+  [AgentVaultServiceType.Cockroachdb]: [AgentVaultCredentialType.Basic],
+  [AgentVaultServiceType.Clickhouse]: [AgentVaultCredentialType.Basic],
+  [AgentVaultServiceType.Redis]: [AgentVaultCredentialType.Basic],
   [AgentVaultServiceType.Ssh]: [AgentVaultCredentialType.Basic, AgentVaultCredentialType.SshKey]
 };
 
@@ -147,7 +151,10 @@ export const SERVICE_TYPE_LABELS: Record<AgentVaultServiceType, string> = {
   [AgentVaultServiceType.Mcp]: "MCP Server",
   [AgentVaultServiceType.Postgres]: "PostgreSQL",
   [AgentVaultServiceType.Mysql]: "MySQL",
-  [AgentVaultServiceType.Ssh]: "SSH"
+  [AgentVaultServiceType.Ssh]: "SSH",
+  [AgentVaultServiceType.Redis]: "Redis",
+  [AgentVaultServiceType.Cockroachdb]: "CockroachDB",
+  [AgentVaultServiceType.Clickhouse]: "ClickHouse"
 };
 
 export type TServiceKind = "http" | "mcp" | "native";
@@ -159,7 +166,29 @@ export const serviceKindOf = (serviceType: AgentVaultServiceType): TServiceKind 
 };
 
 export const hasDatabase = (serviceType: AgentVaultServiceType) =>
-  serviceType === AgentVaultServiceType.Postgres || serviceType === AgentVaultServiceType.Mysql;
+  serviceType === AgentVaultServiceType.Postgres ||
+  serviceType === AgentVaultServiceType.Mysql ||
+  serviceType === AgentVaultServiceType.Cockroachdb ||
+  serviceType === AgentVaultServiceType.Clickhouse;
+
+export const hasTls = (serviceType: AgentVaultServiceType) =>
+  hasDatabase(serviceType) || serviceType === AgentVaultServiceType.Redis;
+
+// ClickHouse serves TLS on other ports than plain HTTP and TCP, so its defaults follow the TLS toggle.
+const CLICKHOUSE_PORTS = {
+  plain: { port: "8123", nativePort: "9000" },
+  tls: { port: "8443", nativePort: "9440" }
+};
+
+export const defaultNativePorts = (
+  serviceType: TAgentVaultNativeServiceType,
+  tlsEnabled: boolean
+): { port: string; nativePort: string } => {
+  if (serviceType !== AgentVaultServiceType.Clickhouse) {
+    return { port: String(AGENT_VAULT_NATIVE_DEFAULT_PORTS[serviceType]), nativePort: "" };
+  }
+  return CLICKHOUSE_PORTS[tlsEnabled ? "tls" : "plain"];
+};
 
 // The agent reaches a database or SSH service at `<name>.svc.agent-vault`, and a DNS label stops at 63 bytes.
 export const MAX_NATIVE_SERVICE_NAME_LENGTH = 63;
@@ -445,6 +474,7 @@ export const NATIVE_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "description",
     "host",
     "port",
+    "nativePort",
     "database",
     "tlsEnabled",
     "tlsVerify",
@@ -557,6 +587,8 @@ export const buildServiceSchema = (
       // A database or SSH service's server. The port stays text so a half-typed value can be shown and refused.
       host: z.string(),
       port: z.string(),
+      // ClickHouse's native protocol port, beside its HTTP one in `port`. Empty leaves it unset.
+      nativePort: z.string(),
       database: z.string(),
       tlsEnabled: z.boolean(),
       tlsVerify: z.boolean(),
@@ -639,9 +671,18 @@ export const buildServiceSchema = (
         if (hostIssue) issue("host", hostIssue);
         const portIssue = nativePortError(data.port);
         if (portIssue) issue("port", portIssue);
+        if (data.serviceType === AgentVaultServiceType.Clickhouse && data.nativePort.trim()) {
+          const nativePortIssue = nativePortError(data.nativePort);
+          if (nativePortIssue) issue("nativePort", nativePortIssue);
+          else if (!portIssue && Number(data.nativePort.trim()) === Number(data.port.trim())) {
+            issue("nativePort", "The native port must differ from the HTTP port.");
+          }
+        }
         if (hasDatabase(data.serviceType)) {
           const databaseIssue = nativeDatabaseError(data.database);
           if (databaseIssue) issue("database", databaseIssue);
+        }
+        if (hasTls(data.serviceType)) {
           // The CA field is hidden unless the proxy verifies the certificate, and nothing sends it then.
           const caIssue =
             data.tlsEnabled && data.tlsVerify ? certificateAuthorityError(data.tlsCa) : null;

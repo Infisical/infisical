@@ -77,6 +77,44 @@ describe("database and SSH service request schemas", () => {
     expect(updateMessages({ type: "ssh", port: 2222, database: null, tls: null })).toEqual([]);
   });
 
+  test("a Redis service takes TLS but no database, and can't send a null TLS", () => {
+    const redis = {
+      type: "redis",
+      name: "cache",
+      host: "cache.internal",
+      credential: { type: "basic", username: "default" }
+    };
+    expect(createMessages({ ...redis, tls: { enabled: false } })).toEqual([]);
+    expect(AgentVaultCreateServiceBodySchema.parse(redis)).not.toHaveProperty("database");
+    expect(updateMessages({ type: "redis", database: null })).toEqual([]);
+    expect(updateMessages({ type: "redis", tls: null })).toEqual([
+      "Send the TLS settings to change, or leave 'tls' out to keep them. To turn TLS off, send 'tls': { 'enabled': false }."
+    ]);
+  });
+
+  test("CockroachDB and ClickHouse services need a database", () => {
+    expect(createMessages(postgres({ type: "cockroachdb", database: undefined }))).toEqual(["Required"]);
+    expect(createMessages(postgres({ type: "clickhouse", port: 8123, database: undefined }))).toEqual(["Required"]);
+    expect(updateMessages({ type: "cockroachdb", database: null })).toEqual([
+      "A CockroachDB service always has a database. Send its name, or leave 'database' out to keep it."
+    ]);
+  });
+
+  test("a ClickHouse service takes a native port, and an update can remove it with null", () => {
+    expect(createMessages(postgres({ type: "clickhouse", nativePort: 9000 }))).toEqual([
+      "Set the ClickHouse HTTP port: usually 8443 with TLS, or 8123 without."
+    ]);
+    expect(createMessages(postgres({ type: "clickhouse", port: 8443, nativePort: 9440 }))).toEqual([]);
+    expect(createMessages(postgres({ type: "clickhouse", port: 8443, nativePort: 70000 }))).toEqual([
+      "The port must be between 1 and 65535."
+    ]);
+    expect(updateMessages({ type: "clickhouse", nativePort: null })).toEqual([]);
+    expect(AgentVaultUpdateServiceBodySchema.parse({ type: "clickhouse", nativePort: null })).toHaveProperty(
+      "nativePort",
+      null
+    );
+  });
+
   test.each([
     ["", undefined],
     ["   ", undefined],
@@ -222,6 +260,39 @@ const STORED_TYPES = [
     fields: ["host", "port"],
     bundleFields: [],
     inlineFields: []
+  },
+  {
+    type: AgentVaultServiceType.Redis,
+    config: { host: "cache.internal", port: 6379, tls: TLS },
+    hostPattern: null,
+    allowedMethods: null,
+    allowedPathPrefixes: null,
+    credential: BASIC,
+    fields: ["host", "port", "tls"],
+    bundleFields: [],
+    inlineFields: []
+  },
+  {
+    type: AgentVaultServiceType.Cockroachdb,
+    config: { host: "crdb.internal", port: 26257, database: "app", tls: TLS },
+    hostPattern: null,
+    allowedMethods: null,
+    allowedPathPrefixes: null,
+    credential: BASIC,
+    fields: ["host", "port", "database", "tls"],
+    bundleFields: [],
+    inlineFields: []
+  },
+  {
+    type: AgentVaultServiceType.Clickhouse,
+    config: { host: "ch.internal", port: 8123, nativePort: 9000, database: "default", tls: TLS },
+    hostPattern: null,
+    allowedMethods: null,
+    allowedPathPrefixes: null,
+    credential: BASIC,
+    fields: ["host", "port", "nativePort", "database", "tls"],
+    bundleFields: [],
+    inlineFields: []
   }
 ];
 
@@ -338,7 +409,10 @@ describe("service responses", () => {
     [AgentVaultServiceType.Mcp, { ...BASIC }],
     [AgentVaultServiceType.Postgres, { ...BEARER }],
     [AgentVaultServiceType.Mysql, { ...SSH_KEY }],
-    [AgentVaultServiceType.Ssh, { type: AgentVaultCredentialType.Passthrough }]
+    [AgentVaultServiceType.Ssh, { type: AgentVaultCredentialType.Passthrough }],
+    [AgentVaultServiceType.Redis, { ...SSH_KEY }],
+    [AgentVaultServiceType.Cockroachdb, { ...BEARER }],
+    [AgentVaultServiceType.Clickhouse, { type: AgentVaultCredentialType.Passthrough }]
   ])("a bundle %s service refuses a %o credential", (type, credential) => {
     const row = STORED_TYPES.find((stored) => stored.type === type)!;
     const result = AgentVaultServiceSchema.safeParse(
@@ -436,7 +510,10 @@ describe("a service's variable references", () => {
     [AgentVaultServiceType.Mcp, [CREDENTIAL_REFERENCE, CUSTOM_HEADER_REFERENCE], [SUBSTITUTION_REFERENCE]],
     [AgentVaultServiceType.Postgres, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]],
     [AgentVaultServiceType.Mysql, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]],
-    [AgentVaultServiceType.Ssh, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]]
+    [AgentVaultServiceType.Ssh, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]],
+    [AgentVaultServiceType.Redis, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]],
+    [AgentVaultServiceType.Cockroachdb, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]],
+    [AgentVaultServiceType.Clickhouse, [CREDENTIAL_REFERENCE], [CUSTOM_HEADER_REFERENCE, SUBSTITUTION_REFERENCE]]
   ])("a %s service lists only the kinds it can store", (type, kept, refused) => {
     const row = STORED_TYPES.find((stored) => stored.type === type)!;
     const parse = (variableReferences: unknown[]) =>
@@ -493,8 +570,13 @@ describe("credential titles", () => {
 
   test("a basic credential is Basic Auth for HTTP and Username and Password for a database or SSH", () => {
     expect(credentialTitlesOf(AgentVaultServiceSchema, AgentVaultServiceType.Http).basic).toBe("Basic Auth");
-    [AgentVaultServiceType.Postgres, AgentVaultServiceType.Mysql, AgentVaultServiceType.Ssh].forEach((type) =>
-      expect(credentialTitlesOf(AgentVaultServiceSchema, type).basic).toBe("Username and Password")
-    );
+    [
+      AgentVaultServiceType.Postgres,
+      AgentVaultServiceType.Mysql,
+      AgentVaultServiceType.Ssh,
+      AgentVaultServiceType.Redis,
+      AgentVaultServiceType.Cockroachdb,
+      AgentVaultServiceType.Clickhouse
+    ].forEach((type) => expect(credentialTitlesOf(AgentVaultServiceSchema, type).basic).toBe("Username and Password"));
   });
 });

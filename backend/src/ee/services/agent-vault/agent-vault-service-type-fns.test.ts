@@ -4,7 +4,7 @@ import * as x509 from "@peculiar/x509";
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { AgentVaultCredentialType, AgentVaultMcpTransport, AgentVaultServiceType } from "./agent-vault-enums";
-import { describeNativeTlsCaChange } from "./agent-vault-native-config-schemas";
+import { describeNativeTlsCaChange, toResolvedNativeTarget } from "./agent-vault-native-config-schemas";
 import {
   AGENT_VAULT_SERVICE_TYPES,
   agentVaultMcpServerUrlSchema,
@@ -304,6 +304,137 @@ describe("database and SSH services", () => {
     expect(
       dropReadBackServiceFields(ssh, { hostPattern: null, serverUrl: null, customHeaders: [], database: null }, null)
     ).toEqual({ hostPattern: undefined, serverUrl: undefined, customHeaders: undefined, database: undefined });
+  });
+});
+
+describe("Redis, CockroachDB and ClickHouse services", () => {
+  const redis = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Redis];
+  const cockroachdb = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Cockroachdb];
+  const clickhouse = AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Clickhouse];
+
+  test("fill in their default port and TLS settings", () => {
+    expect(buildServiceConfig(redis, { host: "cache.internal" })).toEqual({
+      host: "cache.internal",
+      port: 6379,
+      tls: { enabled: true, verify: true }
+    });
+    expect(buildServiceConfig(cockroachdb, { host: "crdb.internal", database: "app" })).toEqual({
+      host: "crdb.internal",
+      port: 26257,
+      database: "app",
+      tls: { enabled: true, verify: true }
+    });
+    expect(buildServiceConfig(clickhouse, { host: "ch.internal", port: 8443, database: "default" })).toEqual({
+      host: "ch.internal",
+      port: 8443,
+      database: "default",
+      tls: { enabled: true, verify: true }
+    });
+  });
+
+  test("a ClickHouse service has no default port, since TLS and plain HTTP use different ones", () => {
+    expect(() => buildServiceConfig(clickhouse, { host: "ch.internal", database: "default" })).toThrow(
+      "'port': Set the ClickHouse HTTP port: usually 8443 with TLS, or 8123 without."
+    );
+  });
+
+  test("have no host pattern and take only a username and password", () => {
+    [redis, cockroachdb, clickhouse].forEach((definition) => {
+      expect(definition.deriveHostPattern?.({})).toBeNull();
+      expect(definition.allowedCredentialTypes).toEqual([AgentVaultCredentialType.Basic]);
+    });
+  });
+
+  test("a Redis service takes TLS but no database", () => {
+    expect(findUnsupportedServiceFields(redis, { database: "0", tls: { enabled: false } })).toEqual(["database"]);
+    expect(buildServiceConfig(redis, { host: "cache.internal", tls: { enabled: false } })).toMatchObject({
+      tls: { enabled: false, verify: true }
+    });
+  });
+
+  test("CockroachDB and ClickHouse need a database", () => {
+    expect(() => buildServiceConfig(cockroachdb, { host: "crdb.internal" })).toThrow("'database'");
+    expect(() => buildServiceConfig(clickhouse, { host: "ch.internal", port: 8123 })).toThrow("'database'");
+  });
+
+  test("only a ClickHouse service takes a native port", () => {
+    expect(findUnsupportedServiceFields(clickhouse, { nativePort: 9000 })).toEqual([]);
+    [redis, cockroachdb, AGENT_VAULT_SERVICE_TYPES[AgentVaultServiceType.Postgres]].forEach((definition) =>
+      expect(findUnsupportedServiceFields(definition, { nativePort: 9000 })).toEqual(["nativePort"])
+    );
+  });
+
+  test("a ClickHouse native port is kept, checked, and must differ from the HTTP port", () => {
+    expect(
+      buildServiceConfig(clickhouse, { host: "ch.internal", port: 8123, database: "default", nativePort: 9000 })
+    ).toMatchObject({ port: 8123, nativePort: 9000 });
+    expect(() =>
+      buildServiceConfig(clickhouse, { host: "ch.internal", port: 8123, database: "default", nativePort: 0 })
+    ).toThrow("'nativePort': The port must be between 1 and 65535.");
+    expect(() =>
+      buildServiceConfig(clickhouse, { host: "ch.internal", database: "default", port: 9000, nativePort: 9000 })
+    ).toThrow("'nativePort': The native port must differ from the HTTP port");
+  });
+
+  test("an update checks the ports against what is stored, and null removes the native port", () => {
+    const stored = {
+      host: "ch.internal",
+      port: 8123,
+      nativePort: 9000,
+      database: "default",
+      tls: { enabled: true, verify: true }
+    };
+    expect(() => buildServiceConfig(clickhouse, { port: 9000 }, stored)).toThrow("must differ from the HTTP port");
+    expect(buildServiceConfig(clickhouse, { nativePort: null }, stored)).not.toHaveProperty("nativePort");
+    expect(buildServiceConfig(clickhouse, { port: 8443 }, stored)).toMatchObject({ port: 8443, nativePort: 9000 });
+  });
+
+  test("are named with the right article", () => {
+    expect(() => assertCredentialTypeSupported(redis, AgentVaultCredentialType.Bearer)).toThrow(
+      "A Redis service can't use a bearer token as its credential. Use a username and password."
+    );
+    expect(() => assertServiceFieldsSupported(clickhouse, { allowedMethods: ["GET"] })).toThrow(
+      "A ClickHouse service doesn't take 'allowedMethods'."
+    );
+  });
+});
+
+describe("the native target resolve sends", () => {
+  test("carries a ClickHouse service's native port, and null for every other type", () => {
+    const tls = { enabled: true, verify: true };
+    expect(
+      toResolvedNativeTarget(AgentVaultServiceType.Clickhouse, {
+        host: "ch.internal",
+        port: 8123,
+        nativePort: 9000,
+        database: "default",
+        tls
+      })
+    ).toEqual({
+      host: "ch.internal",
+      port: 8123,
+      nativePort: 9000,
+      database: "default",
+      tls: { enabled: true, verify: true, ca: null }
+    });
+    expect(
+      toResolvedNativeTarget(AgentVaultServiceType.Clickhouse, { host: "ch.internal", port: 8123, database: "d", tls })
+    ).toMatchObject({ nativePort: null });
+    expect(toResolvedNativeTarget(AgentVaultServiceType.Redis, { host: "cache.internal", port: 6379, tls })).toEqual({
+      host: "cache.internal",
+      port: 6379,
+      nativePort: null,
+      database: null,
+      tls: { enabled: true, verify: true, ca: null }
+    });
+    expect(
+      toResolvedNativeTarget(AgentVaultServiceType.Postgres, {
+        host: "db",
+        port: 5432,
+        nativePort: 9000,
+        database: "d"
+      })
+    ).toMatchObject({ nativePort: null });
   });
 });
 

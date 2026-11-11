@@ -414,7 +414,7 @@ infisical agent-vault run -- claude
 infisical agent-vault connect [service...] [flags]
 ```
 
-Open a port on `127.0.0.1` for each [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh) you name, or for every one in the session with `--all`. Each connection goes to the Agent Vault proxy over TLS, and the proxy logs in with the service's account, so the client uses any username and no password. The command keeps running. Once the ports are open, it prints each service's address and an example command, and the ports stay open until you stop the command with Ctrl+C.
+Open a port on `127.0.0.1` for each [database or SSH service](/documentation/platform/agent-vault/databases-and-ssh) you name, or for every one in the session with `--all`. Connect a client such as `psql`, `mysql`, `clickhouse-client`, `curl`, `redis-cli`, or `ssh` to the port with any username and no password. Each connection goes to the Agent Vault proxy over TLS, and the proxy logs in with the service's account. The command keeps running. Once the ports are open, it prints each service's address and an example command, and the ports stay open until you stop the command with Ctrl+C.
 
 Before it opens any port, the command checks each service with the proxy. If the proxy refuses a service you named, the command stops with the proxy's reason. With `--all`, it skips each refused service and prints its name and the reason. It stops only if the proxy refuses every service.
 

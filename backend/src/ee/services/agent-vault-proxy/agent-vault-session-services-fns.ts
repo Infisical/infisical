@@ -198,7 +198,8 @@ const howToUse = (
     const { label } = getAgentVaultServiceType(service.type);
     const kind = service.type === AgentVaultServiceType.Ssh ? `${label} server` : `${label} database`;
     parts.push(
-      `${kind}, not reachable over HTTP. Run infisical agent-vault connect ${service.name} and leave it running: it prints a local address on 127.0.0.1 and an example command. Point your client at that address with any username and no password: the proxy logs in with the service's account.`
+      // ClickHouse has an HTTP interface of its own, which the agent also reaches through the local port.
+      `${kind}, ${service.type === AgentVaultServiceType.Clickhouse ? "reached only through a local port, its HTTP interface included" : "not reachable over HTTP"}. Run infisical agent-vault connect ${service.name} and leave it running: it prints a local address on 127.0.0.1 and an example command. Point your client at that address with any username and no password: the proxy logs in with the service's account.`
     );
   } else if (service.type === AgentVaultServiceType.Mcp) {
     const transport = description.transport ?? AgentVaultMcpTransport.StreamableHttp;

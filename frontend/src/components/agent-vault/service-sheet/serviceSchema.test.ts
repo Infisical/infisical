@@ -14,6 +14,7 @@ import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import {
   buildServiceSchema,
   certificateAuthorityError,
+  defaultNativePorts,
   credentialLabel,
   isOAuthAuthorizationMissing,
   MAX_ALLOWED_TOOLS,
@@ -40,6 +41,7 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   hosts: [],
   host: "",
   port: "",
+  nativePort: "",
   database: "",
   tlsEnabled: true,
   tlsVerify: true,
@@ -418,6 +420,13 @@ const issuesOf = (form: TServiceForm) => {
   return result.success ? [] : result.error.issues.map((issue) => issue.path.join("."));
 };
 
+const messageOf = (form: TServiceForm, path: string) => {
+  const result = buildServiceSchema().safeParse(form);
+  return result.success
+    ? undefined
+    : result.error.issues.find((issue) => issue.path.join(".") === path)?.message;
+};
+
 describe("buildServiceSchema with a database or SSH service", () => {
   it("accepts a database service without a password", () => {
     expect(issuesOf(nativeForm())).toEqual([]);
@@ -470,6 +479,23 @@ describe("buildServiceSchema with a database or SSH service", () => {
     ).toEqual(["username"]);
   });
 
+  it("checks a Redis service's TLS but not a database", () => {
+    const corrupt = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----";
+    const redis = { serviceType: AgentVaultServiceType.Redis, database: "", username: "default" };
+    expect(issuesOf(nativeForm(redis))).toEqual([]);
+    expect(issuesOf(nativeForm({ ...redis, tlsCa: corrupt }))).toEqual(["tlsCa"]);
+  });
+
+  it("checks a ClickHouse native port only when set, and keeps it apart from the HTTP port", () => {
+    const clickhouse = { serviceType: AgentVaultServiceType.Clickhouse, port: "8443" };
+    expect(issuesOf(nativeForm({ ...clickhouse, nativePort: "" }))).toEqual([]);
+    expect(issuesOf(nativeForm({ ...clickhouse, nativePort: "9440" }))).toEqual([]);
+    expect(issuesOf(nativeForm({ ...clickhouse, nativePort: "70000" }))).toEqual(["nativePort"]);
+    expect(messageOf(nativeForm({ ...clickhouse, nativePort: "8443" }), "nativePort")).toBe(
+      "The native port must differ from the HTTP port."
+    );
+  });
+
   it("refuses an SSH key for a database service", () => {
     expect(
       issuesOf(
@@ -489,13 +515,6 @@ m6vnMTAPBgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0gAMEUCICdfpO1XCFqQ
 WA+1sWlXd7ldriRKlXd1JDYUpvWV/NU4AiEAlzyBy0Tu2alxzI+D9KCEXd6Mm3gI
 WiB0v7UEiIl2WqA=
 -----END CERTIFICATE-----`;
-
-const messageOf = (form: TServiceForm, path: string) => {
-  const result = buildServiceSchema().safeParse(form);
-  return result.success
-    ? undefined
-    : result.error.issues.find((issue) => issue.path.join(".") === path)?.message;
-};
 
 describe("nativeHostError, which mirrors the API's host rule", () => {
   it("accepts host names, underscores in a label, IPv4, IPv6 and a bracketed IPv6", () => {
@@ -670,5 +689,23 @@ describe("buildServiceSchema with a description", () => {
     ]);
     // Joiners are real text, in emoji sequences and several scripts.
     expect(descriptionIssues("Family \u{1F468}\u200D\u{1F469}\u200D\u{1F467} tickets")).toEqual([]);
+  });
+});
+
+describe("defaultNativePorts", () => {
+  it("moves ClickHouse to its TLS ports and leaves other types on one port", () => {
+    expect(defaultNativePorts(AgentVaultServiceType.Clickhouse, true)).toEqual({
+      port: "8443",
+      nativePort: "9440"
+    });
+    expect(defaultNativePorts(AgentVaultServiceType.Clickhouse, false)).toEqual({
+      port: "8123",
+      nativePort: "9000"
+    });
+    expect(defaultNativePorts(AgentVaultServiceType.Redis, true)).toEqual({
+      port: "6379",
+      nativePort: ""
+    });
+    expect(defaultNativePorts(AgentVaultServiceType.Cockroachdb, true).port).toBe("26257");
   });
 });

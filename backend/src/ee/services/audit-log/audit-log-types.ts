@@ -6682,6 +6682,8 @@ interface AgentVaultServiceCreateEvent {
     // Database and SSH services only. A host pattern is never set on those, so they report these instead.
     host?: string;
     port?: number;
+    // ClickHouse services only: the native TCP port, beside the HTTP one in `port`.
+    nativePort?: number;
     database?: string;
     tlsEnabled?: boolean;
     tlsVerify?: boolean;
@@ -6723,6 +6725,8 @@ interface AgentVaultServiceUpdateEvent {
     // Database and SSH services only. A host pattern is never set on those, so they report these instead.
     host?: string;
     port?: number;
+    // Null when the update removed a ClickHouse service's native port.
+    nativePort?: number | null;
     database?: string;
     tlsEnabled?: boolean;
     tlsVerify?: boolean;
@@ -7031,6 +7035,7 @@ interface AgentVaultSessionMintEvent {
       hostPattern?: string;
       host?: string;
       port?: number;
+      nativePort?: number;
       database?: string;
       tlsEnabled?: boolean;
       tlsVerify?: boolean;

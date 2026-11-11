@@ -180,6 +180,7 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
                 .object({
                   host: z.string(),
                   port: z.number(),
+                  nativePort: z.number().nullable(),
                   database: z.string().nullable(),
                   tls: z.object({ enabled: z.boolean(), verify: z.boolean(), ca: z.string().nullable() }).nullable()
                 })

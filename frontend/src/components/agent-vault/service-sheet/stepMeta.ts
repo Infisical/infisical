@@ -117,6 +117,30 @@ const NATIVE_STEP_COPY: Record<
     credentialRight:
       "The proxy logs in to the server for the agent, so the agent never holds the password. What the agent can read or change is up to that account's grants."
   },
+  [AgentVaultServiceType.Cockroachdb]: {
+    details: "What this service is called and the CockroachDB cluster it connects to.",
+    detailsRight:
+      "The agent connects to this service by its name, and the proxy opens the connection to the cluster. The user's privileges decide which databases the agent can use.",
+    credential: "The CockroachDB user the proxy logs in as.",
+    credentialRight:
+      "The proxy logs in to the cluster for the agent, so the agent never holds the password. What the agent can read or change is up to that user's privileges."
+  },
+  [AgentVaultServiceType.Clickhouse]: {
+    details: "What this service is called and the ClickHouse server it connects to.",
+    detailsRight:
+      "The agent connects to this service by its name over HTTP or ClickHouse's native protocol, and the proxy opens the connection to the server. The user's grants decide which databases the agent can use.",
+    credential: "The ClickHouse user the proxy logs in as.",
+    credentialRight:
+      "The proxy logs in to the server for the agent, so the agent never holds the password. What the agent can read or change is up to that user's grants."
+  },
+  [AgentVaultServiceType.Redis]: {
+    details: "What this service is called and the Redis server it connects to.",
+    detailsRight:
+      "The agent connects to this service by its name, and the proxy opens the connection to the server.",
+    credential: 'The Redis user the proxy logs in as. Keep "default" to use the default user.',
+    credentialRight:
+      "The proxy logs in to the server for the agent, so the agent never holds the password. What the agent can run is up to that user's ACL."
+  },
   [AgentVaultServiceType.Ssh]: {
     details: "What this service is called and the server it connects to.",
     detailsRight:

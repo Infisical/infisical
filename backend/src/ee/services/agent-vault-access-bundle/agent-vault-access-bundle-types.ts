@@ -140,7 +140,17 @@ export type TAgentVaultServiceSummary = {
         { field: AgentVaultVariableReferenceField.Substitution }
       >[];
     })
-  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql }> & {
+  | (Extract<
+      TAgentVaultServiceTypeFields,
+      {
+        type:
+          | AgentVaultServiceType.Postgres
+          | AgentVaultServiceType.Mysql
+          | AgentVaultServiceType.Redis
+          | AgentVaultServiceType.Cockroachdb
+          | AgentVaultServiceType.Clickhouse;
+      }
+    > & {
       credential: TAgentVaultBasicCredentialSummary;
       variableReferences: TAgentVaultCredentialReferenceSummary[];
     })
@@ -212,6 +222,7 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
   transport?: AgentVaultMcpTransport;
   host?: string;
   port?: number;
+  nativePort?: number;
   database?: string;
   tls?: TAgentVaultNativeTlsInput;
   allowedMethods?: AgentVaultHttpMethod[] | null;
@@ -237,6 +248,8 @@ export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   // Null only as the read-back value of a type that doesn't take them.
   host?: string | null;
   port?: number | null;
+  // Null also removes a ClickHouse service's native port.
+  nativePort?: number | null;
   database?: string | null;
   tls?: TAgentVaultNativeTlsInput | null;
   allowedMethods?: AgentVaultHttpMethod[] | null;

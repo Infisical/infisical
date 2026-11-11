@@ -30,6 +30,7 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   hosts: ["api.stripe.com"],
   host: "",
   port: "",
+  nativePort: "",
   database: "",
   tlsEnabled: true,
   tlsVerify: true,
@@ -692,6 +693,17 @@ const postgresForm = (overrides: Partial<TServiceForm> = {}) =>
     ...overrides
   });
 
+const storedClickhouse = {
+  ...storedNativeBase,
+  type: AgentVaultServiceType.Clickhouse,
+  host: "ch.internal",
+  port: 8443,
+  nativePort: 9440,
+  database: "default",
+  tls: { enabled: true, verify: true, ca: null },
+  credential: { type: AgentVaultCredentialType.Basic, memberProvidedFields: [] }
+} satisfies TAgentVaultService;
+
 const sshKeyForm = (overrides: Partial<TServiceForm> = {}) =>
   form({
     serviceType: AgentVaultServiceType.Ssh,
@@ -854,5 +866,81 @@ describe("native service requests", () => {
     expect(buildCreateServiceRequest("bundle-1", postgresForm({ tlsCa: " PEM " }))).toMatchObject({
       tls: { enabled: true, verify: true, ca: "PEM" }
     });
+  });
+
+  it("builds a Redis service with TLS and no database", () => {
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        postgresForm({
+          serviceType: AgentVaultServiceType.Redis,
+          name: "cache",
+          port: "6379",
+          database: "ignored",
+          username: "default"
+        })
+      )
+    ).toEqual({
+      accessBundleId: "bundle-1",
+      type: AgentVaultServiceType.Redis,
+      name: "cache",
+      host: "db.internal",
+      port: 6379,
+      tls: { enabled: true, verify: true, ca: null },
+      credential: {
+        type: AgentVaultCredentialType.Basic,
+        username: "default",
+        password: "pw",
+        memberProvidedFields: []
+      }
+    });
+  });
+
+  it("builds a CockroachDB service like a PostgreSQL one", () => {
+    expect(
+      buildCreateServiceRequest(
+        "bundle-1",
+        postgresForm({ serviceType: AgentVaultServiceType.Cockroachdb, port: "26257" })
+      )
+    ).toMatchObject({
+      type: AgentVaultServiceType.Cockroachdb,
+      port: 26257,
+      database: "orders",
+      tls: { enabled: true, verify: true, ca: null }
+    });
+  });
+
+  const clickhouseForm = (overrides: Partial<TServiceForm> = {}) =>
+    postgresForm({
+      serviceType: AgentVaultServiceType.Clickhouse,
+      host: "ch.internal",
+      port: "8443",
+      nativePort: " 9440 ",
+      database: "default",
+      ...overrides
+    });
+
+  it("sends a ClickHouse native port on create only when set", () => {
+    expect(buildCreateServiceRequest("bundle-1", clickhouseForm())).toMatchObject({
+      type: AgentVaultServiceType.Clickhouse,
+      port: 8443,
+      nativePort: 9440,
+      database: "default"
+    });
+    expect(
+      buildCreateServiceRequest("bundle-1", clickhouseForm({ nativePort: "" }))
+    ).not.toHaveProperty("nativePort");
+  });
+
+  it("sends null to clear a ClickHouse native port on update", () => {
+    expect(
+      buildUpdateServiceRequest("bundle-1", storedClickhouse, clickhouseForm({ nativePort: "" }))
+    ).toMatchObject({ nativePort: null });
+    expect(buildUpdateServiceRequest("bundle-1", storedClickhouse, clickhouseForm())).toMatchObject(
+      { nativePort: 9440 }
+    );
+    expect(
+      buildUpdateServiceRequest("bundle-1", storedPostgres, postgresForm())
+    ).not.toHaveProperty("nativePort");
   });
 });
