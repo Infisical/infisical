@@ -604,11 +604,7 @@ const invalidateVariables = (
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
   projectId: string
-) =>
-  Promise.all([
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId, projectId) }),
-    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId, projectId) })
-  ]);
+) => invalidateServices(queryClient, orgId, projectId);
 
 export const useCreateAgentVaultVariable = (projectId: string) => {
   const { currentOrg } = useOrganization();

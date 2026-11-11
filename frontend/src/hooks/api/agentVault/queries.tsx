@@ -434,7 +434,6 @@ export const useListAgentVaultAccessBundles = (
 export const useListAgentVaultAccessBundlesRequiringSetup = (projectId: string) =>
   useListAgentVaultAccessBundles(projectId, { requiresSetup: true, limit: 100 });
 
-// Only the count is read, so one row is enough.
 export const useGetAgentVaultAccessBundle = (projectId: string, accessBundleId: string) => {
   const { currentOrg } = useOrganization();
 

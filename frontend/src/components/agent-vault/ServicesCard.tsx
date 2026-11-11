@@ -335,7 +335,7 @@ export const ServicesCard = ({
         <CardDescription>
           {isBundle
             ? "The services agents can reach with this bundle. Each one is defined once in the project and can be in any number of bundles."
-            : "A service defines one API, MCP server, database or SSH server the agent can reach, and the credential the proxy uses for it. Add it to access bundles to give agents access."}
+            : `A service defines one API, MCP server, database or SSH server the agent can reach, and the credential the proxy uses for it.${canManage ? " Add it to access bundles to give agents access." : ""}`}
         </CardDescription>
         {canManage && (
           <CardAction>
@@ -554,7 +554,7 @@ export const ServicesCard = ({
                                 onClick={() => setServiceToDelete(service)}
                               >
                                 {isBundle ? <UnlinkIcon /> : <TrashIcon />}
-                                {isBundle ? "Remove from Bundle" : "Delete"}
+                                {isBundle ? "Remove From Bundle" : "Delete"}
                               </DropdownMenuItem>
                             </>
                           )}
@@ -596,6 +596,7 @@ export const ServicesCard = ({
             : "It leaves every access bundle it's in, agents lose the credential at the next proxy poll, and members' personal values for it are deleted. This cannot be undone."
         }
         confirmKey={serviceToDelete?.name ?? ""}
+        confirmLabel={isBundle ? "Remove" : "Delete"}
         isPending={deleteService.isPending || removeService.isPending}
         onConfirm={handleDelete}
       />

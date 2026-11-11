@@ -2,9 +2,8 @@ import { linkOptions } from "@tanstack/react-router";
 
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { OverflowBadgeList } from "@app/components/v3";
-import { useOrganization, useProject, useProjectPermission } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { TAgentVaultVariableUsedByService } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 const ServiceBundles = ({ service }: { service: TAgentVaultVariableUsedByService }) => {
   const bundles = service.accessBundles ?? [];
@@ -32,9 +31,6 @@ export const UsedByServiceBadges = ({
 }) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
-  // The Services page is an admin's, so a member's badges don't link to it.
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   if (usedByServices.length === 0) return <span className="text-sm text-muted">Unused</span>;
 
@@ -46,12 +42,10 @@ export const UsedByServiceBadges = ({
       getIcon={renderServiceIcon}
       getTooltip={renderServiceBundles}
       getLinkProps={() =>
-        isAdmin
-          ? linkOptions({
-              to: "/organizations/$orgId/projects/agent-vault/$projectId/services",
-              params: { orgId: currentOrg.id, projectId }
-            })
-          : undefined
+        linkOptions({
+          to: "/organizations/$orgId/projects/agent-vault/$projectId/services",
+          params: { orgId: currentOrg.id, projectId }
+        })
       }
     />
   );

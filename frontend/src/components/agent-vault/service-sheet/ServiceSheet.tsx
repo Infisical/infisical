@@ -731,6 +731,15 @@ export const ServiceSheet = ({
 
       if (
         serverResponse?.error === ApiErrorTypes.BadRequestError &&
+        (serverResponse.details as { field?: string } | undefined)?.field === "name"
+      ) {
+        setError("name", { type: "server", message: serverResponse.message });
+        setStep(stepKeys.indexOf(ServiceStep.Details));
+        return;
+      }
+
+      if (
+        serverResponse?.error === ApiErrorTypes.BadRequestError &&
         serverResponse.message.includes("already covers")
       ) {
         setError(isMcp ? "serverUrl" : "hosts", {

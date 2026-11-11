@@ -1,11 +1,24 @@
 import { useState } from "react";
-import { NetworkIcon, TriangleAlertIcon } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { FilterIcon, NetworkIcon, TriangleAlertIcon } from "lucide-react";
 
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
 import { ServicesCard, ServiceSortColumn } from "@app/components/agent-vault/ServicesCard";
 import { PageTitle } from "@app/components/PageTitle";
-import { Alert, AlertAction, AlertDescription, Button, PageHeader } from "@app/components/v3";
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  Button,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+  IconButton,
+  PageHeader
+} from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   getUserTablePreference,
@@ -36,10 +49,23 @@ export const AgentVaultServicesPage = () => {
 
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const [onlyRequiringSetup, setOnlyRequiringSetup] = useState(false);
   const [sortColumn, setSortColumn] = useState(ServiceSortColumn.Name);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("ascending");
   const [page, setPage] = useState(1);
+  // In the URL, so the Access Bundles banner can open the page filtered and a reload keeps the filter.
+  const navigate = useNavigate();
+  const { requiresSetup } = useSearch({ strict: false }) as { requiresSetup?: boolean };
+  const onlyRequiringSetup = Boolean(requiresSetup);
+  const toggleRequiringSetup = () => {
+    navigate({
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        requiresSetup: !onlyRequiringSetup || undefined
+      }),
+      replace: true
+    } as never);
+    setPage(1);
+  };
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference("agentVaultServicesTable", PreferenceKey.PerPage, 20)
   );
@@ -90,15 +116,13 @@ export const AgentVaultServicesPage = () => {
               Your sessions can&apos;t reach {requiringSetupCount === 1 ? "it" : "them"} until you
               set {requiringSetupCount === 1 ? "it" : "them"} up.
             </p>
-            <AlertAction>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setServiceToSetUp(firstRequiringSetup)}
-              >
-                Set Up {firstRequiringSetup.name}
-              </Button>
-            </AlertAction>
+            {!onlyRequiringSetup && (
+              <AlertAction>
+                <Button variant="outline" size="sm" onClick={toggleRequiringSetup}>
+                  View Services
+                </Button>
+              </AlertAction>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -151,16 +175,29 @@ export const AgentVaultServicesPage = () => {
           },
           isFiltered: onlyRequiringSetup,
           filters: (
-            <Button
-              variant={onlyRequiringSetup ? "av" : "outline"}
-              onClick={() => {
-                setOnlyRequiringSetup((value) => !value);
-                setPage(1);
-              }}
-            >
-              <TriangleAlertIcon />
-              Requires Setup
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  aria-label="Filter services"
+                  variant={onlyRequiringSetup ? "av" : "outline"}
+                >
+                  <FilterIcon />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Personal Values</DropdownMenuLabel>
+                <DropdownMenuCheckboxItem
+                  checked={onlyRequiringSetup}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleRequiringSetup();
+                  }}
+                >
+                  <TriangleAlertIcon className="text-warning" />
+                  Requires Setup
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )
         }}
       />

@@ -258,7 +258,7 @@ The proxy picks up a changed list within its [poll interval](/documentation/plat
 
     **The service rejected your credential:** The server rejected the token you set for a [member-provided](#leave-the-credential-to-each-member) service. [Update your personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for the service.
 
-    **Reconnect your account:** The service is [member provided](#leave-the-credential-to-each-member), and the provider no longer accepts your login, or the server asked for scopes your connection doesn't grant. On the **Services** page, select **Requires Setup** or **Missing Scopes** next to the service, then select **Reconnect**. If the message under your connection says the provider refused the service's OAuth app, reconnecting won't help. Ask a project admin to update the service's OAuth app.
+    **Reconnect your account:** The service is [member provided](#leave-the-credential-to-each-member), and the provider no longer accepts your login, or the server asked for scopes your connection doesn't grant. On the **Services** page, or on the page of the access bundle that the error names, select **Requires Setup** or **Missing Scopes** next to the service, then select **Reconnect**. If the message under your connection says the provider refused the service's OAuth app, reconnecting won't help. Ask a project admin to update the service's OAuth app.
   </Accordion>
   <Accordion title="Authorize fails on a self-hosted instance">
     The redirect URI that Infisical gives the provider is your instance's `SITE_URL` followed by `/agent-vault/oauth/callback`. Check that:
