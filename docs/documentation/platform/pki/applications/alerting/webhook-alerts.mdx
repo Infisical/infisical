@@ -159,7 +159,7 @@ The `subject` field is the same value without the `com.infisical.` prefix.
 
 ## Webhook payload format
 
-`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, a `title` (its common name, or its first SAN or serial number when it has none), a one-line `summary`, a `severity`, and a list of display `fields`. In application and organization-wide alerts, each item also has a `url` that opens the certificate in Infisical. To act on a certificate in code, read `resource` instead of `fields`: it holds the certificate's typed values, with ISO 8601 dates and the raw revocation reason code. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about.
+`data.items` lists the certificates the alert fired for. Each item has the certificate's ID, a `title` (its common name, or its first SAN or serial number when it has none), a one-line `summary`, a `severity`, and a list of display `fields`. Except in signer certificate expiration alerts, each item also has a `url` that opens the certificate in Infisical. To act on a certificate in code, read `resource` instead of `fields`: it holds the certificate's typed values, with ISO 8601 dates and the raw revocation reason code. An expiration request can include several certificates, and `data.alert.condition` holds the alert's lead time as you entered it, such as `30d` or `2w`. Issuance, renewal, and revocation requests include the one certificate the event was about.
 
 To find out which kind of alert sent a request, read `data.alert.resourceType`:
 

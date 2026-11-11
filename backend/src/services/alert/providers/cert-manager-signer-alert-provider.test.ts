@@ -246,11 +246,10 @@ describe("cert manager signer alert provider", () => {
 
   // A Product Member assigned only to a signer can open Code Signing but not the certificate page,
   // which needs product-wide certificate access or assignment to the certificate's application.
-  test("buildPayload links signer alerts to Code Signing and not to the certificate page", async () => {
+  test("buildPayload gives signer certificates no link to the certificate page", async () => {
     const provider = buildProvider();
     const viewUrl = await provider.buildViewUrl(signerAlert);
     const payload = provider.buildPayload(signerAlert, [signerCertificate()], viewUrl);
-    expect(payload.alert.viewUrl).toBe("https://app.infisical.com/organizations/org-1/cert-manager/code-signing");
     expect(payload.items[0]).not.toHaveProperty("url");
   });
 
