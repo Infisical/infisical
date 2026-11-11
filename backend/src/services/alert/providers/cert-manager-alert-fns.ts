@@ -251,10 +251,7 @@ export const buildCertificateAlertPayload = ({
       resourceType: alert.resourceType,
       ...(alert.resourceId ? { resourceId: alert.resourceId } : {}),
       ...(alertBefore ? { condition: alertBefore } : {}),
-      viewUrl:
-        targets.length === 1
-          ? `${getConfig().SITE_URL}/organizations/${alert.orgId}/cert-manager/certificates/${targets[0].id}`
-          : viewUrl
+      viewUrl
     },
     eventKey: alert.eventType,
     eventLabel: CERTIFICATE_ALERT_KIND_LABELS[kind],
@@ -301,7 +298,8 @@ export const buildCertificateAlertPayload = ({
           profileName: certificate.profileName,
           applicationId: certificate.applicationId,
           applicationName: certificate.applicationName
-        }
+        },
+        url: `${getConfig().SITE_URL}/organizations/${alert.orgId}/cert-manager/certificates/${certificate.id}`
       };
     })
   };

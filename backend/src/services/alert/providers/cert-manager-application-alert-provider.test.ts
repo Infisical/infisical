@@ -211,21 +211,23 @@ describe("cert manager application alert provider", () => {
     });
   });
 
-  test("buildPayload links an alert about one certificate to that certificate", async () => {
-    const { provider } = buildProvider();
-    const payload = provider.buildPayload(alertContext(), [sampleCertificate()], "https://app.infisical.com/view");
-    expect(payload.alert.viewUrl).toBe(
-      "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-1"
-    );
-  });
-
-  test("buildPayload keeps the application link when the alert covers several certificates", async () => {
+  test("buildPayload links each certificate to its own page and keeps the application as the overview link", async () => {
     const { provider } = buildProvider();
     const payload = provider.buildPayload(
       alertContext(),
       [sampleCertificate(), sampleCertificate({ id: "cert-2" })],
       "https://app.infisical.com/view"
     );
+    expect(payload.alert.viewUrl).toBe("https://app.infisical.com/view");
+    expect(payload.items.map((item) => item.url)).toEqual([
+      "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-1",
+      "https://app.infisical.com/organizations/org-1/cert-manager/certificates/cert-2"
+    ]);
+  });
+
+  test("buildPayload keeps the application as the overview link even for one certificate", async () => {
+    const { provider } = buildProvider();
+    const payload = provider.buildPayload(alertContext(), [sampleCertificate()], "https://app.infisical.com/view");
     expect(payload.alert.viewUrl).toBe("https://app.infisical.com/view");
   });
 
