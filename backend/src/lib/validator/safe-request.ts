@@ -472,6 +472,9 @@ export const getSharedHttpsAgent = (options: TSharedHttpsAgentOptions): https.Ag
 
 type TSafeRequestExtras = {
   allowPrivateIps?: boolean;
+  // Skip an ambient HTTP(S)_PROXY for this request even when SAFE_REQUEST_FORCE_DIRECT_EGRESS is off, for callers
+  // whose previous transport never used one
+  forceDirectEgress?: boolean;
   addressFamily?: 4 | 6;
   ca?: string | string[];
   rejectUnauthorized?: boolean;
@@ -515,7 +518,8 @@ const dispatch = async <T>(
   data: unknown,
   options: TSafeRequestConfig & TSafeRequestExtras = {}
 ) => {
-  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, ...axiosOpts } = options;
+  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, forceDirectEgress, ...axiosOpts } =
+    options;
   const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
   const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
@@ -531,14 +535,15 @@ const dispatch = async <T>(
     maxRedirects: 0,
     // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
     // pinned agent (the proxy would re-resolve the target, defeating the pin).
-    ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
+    ...((appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS || forceDirectEgress) && { proxy: false as const }),
     httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
     httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
   });
 };
 
 const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
-  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, url, ...axiosOpts } = config;
+  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, forceDirectEgress, url, ...axiosOpts } =
+    config;
   const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
   const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
@@ -552,7 +557,7 @@ const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
     maxRedirects: 0,
     // Force direct egress so an ambient HTTP(S)_PROXY can't route around the
     // pinned agent (the proxy would re-resolve the target, defeating the pin).
-    ...(appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS && { proxy: false as const }),
+    ...((appCfg.SAFE_REQUEST_FORCE_DIRECT_EGRESS || forceDirectEgress) && { proxy: false as const }),
     httpAgent: protocol === "http:" ? (agent as http.Agent | undefined) : undefined,
     httpsAgent: protocol === "https:" ? (agent as https.Agent | undefined) : undefined
   });
@@ -594,6 +599,8 @@ export const buildSsrfSafeJwksFetcher = async (jwksUri: string, options: { ca?: 
   return async (uri: string) => {
     const { data } = await safeRequest.get<{ keys: unknown[] }>(uri, {
       ca: options.ca,
+      // jwks-rsa's own request never used a proxy, and a proxy resolves the host itself, which would undo the pin
+      forceDirectEgress: true,
       timeout: options.timeoutMs ?? DEFAULT_JWKS_FETCH_TIMEOUT_MS
     });
     return data;
