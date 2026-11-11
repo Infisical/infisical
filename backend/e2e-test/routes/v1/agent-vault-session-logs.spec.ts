@@ -1,5 +1,11 @@
 import crypto from "node:crypto";
 
+import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
+import { FAKE_DEFAULT_STORAGE, fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
+import { fakeS3Bucket } from "e2e-test/fakes/s3";
+import { agentVaultRequester, createAgentVaultProject, deleteAgentVaultProject } from "e2e-test/testUtils/agent-vault";
+import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
+import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 import { v7 as uuidv7 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
@@ -16,13 +22,6 @@ import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-sess
 import { chunkIdTimeMs, toRev } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import { initLogger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-
-import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
-import { FAKE_DEFAULT_STORAGE, fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
-import { fakeS3Bucket } from "e2e-test/fakes/s3";
-import { agentVaultRequester, createAgentVaultProject, deleteAgentVaultProject } from "e2e-test/testUtils/agent-vault";
-import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
-import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
 import {
   down as dropSessionLogStorageType,
