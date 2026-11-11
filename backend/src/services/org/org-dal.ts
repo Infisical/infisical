@@ -484,7 +484,8 @@ export const orgDALFactory = (db: TDbClient) => {
 
   // Root orgs where nobody but the user can sign in, so they are deleted with the user's account. Anyone else
   // with an accepted, active membership (direct or via a group, in the org or one of its sub-orgs, since those
-  // go with the root) keeps the org. Ghost users are legacy service accounts and do not count.
+  // go with the root) keeps the org. Ghost users are legacy service accounts and do not count. The user's own
+  // membership has to be active too: a user the org deactivated must not be able to delete it.
   const findOrgsWhereUserIsLastMember = async (userId: string, tx?: Knex): Promise<{ id: string; name: string }[]> => {
     try {
       const signInMembershipsOfOrgTree = (qb: Knex.QueryBuilder, alias: string) =>
@@ -508,6 +509,7 @@ export const orgDALFactory = (db: TDbClient) => {
         .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
         .where(`${TableName.Membership}.actorUserId`, userId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.isActive`, true)
         .whereNull(`${TableName.Organization}.rootOrgId`)
         .where((statusQb) => {
           void statusQb
