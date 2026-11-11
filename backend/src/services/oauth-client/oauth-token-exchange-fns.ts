@@ -5,7 +5,7 @@ import { TOidcConfigs } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { buildSsrfSafeAgent, safeRequest } from "@app/lib/validator/safe-request";
+import { buildSsrfSafeJwksFetcher, safeRequest } from "@app/lib/validator/safe-request";
 
 import { OauthTokenError, OauthTokenErrorCode } from "./oauth-token-error";
 
@@ -90,11 +90,11 @@ const jwksClientCache = createTtlCache<JwksClient>({
 
 const getJwksClient = (jwksUri: string) =>
   jwksClientCache.getOrCreate(jwksUri, async () => {
-    const requestAgent = await buildSsrfSafeAgent(jwksUri, { keepAlive: true });
+    const fetcher = await buildSsrfSafeJwksFetcher(jwksUri);
 
     return new JwksClient({
       jwksUri,
-      requestAgent,
+      fetcher,
       cache: true,
       cacheMaxEntries: 5,
       cacheMaxAge: JWKS_CLIENT_TTL_MS,

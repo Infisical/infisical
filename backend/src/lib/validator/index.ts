@@ -6,6 +6,7 @@ export {
 export type { TSsrfSafeUrl, TValidatedHost } from "./safe-request";
 export {
   buildSsrfSafeAgent,
+  buildSsrfSafeJwksFetcher,
   buildSsrfSafeUrl,
   buildUncachedSsrfSafeAgent,
   PRIVATE_ADDRESS_REFUSED_MESSAGE,

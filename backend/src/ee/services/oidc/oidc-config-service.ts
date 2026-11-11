@@ -38,7 +38,6 @@ import {
   blockLocalAndPrivateIpAddresses,
   matchesAllowedEmailDomain,
   sanitizeEmail,
-  validateAndPinUrl,
   validateEmail
 } from "@app/lib/validator";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
@@ -91,7 +90,7 @@ import {
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
 } from "./oidc-config-types";
-import { createSsrfSafeOidcClient, secureOidcIssuer, SsrfSafeIssuer } from "./oidc-ssrf-fns";
+import { createSsrfSafeOidcClient, discoverOidcIssuer, secureOidcIssuer } from "./oidc-ssrf-fns";
 
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<
@@ -913,8 +912,7 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await validateAndPinUrl(oidcCfg.discoveryURL);
-      issuer = await SsrfSafeIssuer.discover(oidcCfg.discoveryURL);
+      issuer = await discoverOidcIssuer(oidcCfg.discoveryURL);
     } else {
       if (
         !oidcCfg.issuer ||

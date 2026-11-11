@@ -14,6 +14,9 @@ export const REBIND_HOST = "rebind.invalid";
 export const PUBLIC_IP = "127.0.0.1";
 export const INTERNAL_IP = "127.0.0.2";
 
+// The rebinding name and any name under it
+export const isRebindHost = (hostname: string) => hostname === REBIND_HOST || hostname.endsWith(`.${REBIND_HOST}`);
+
 // What the rebinding name resolves to for lookups made with the callback API (node:dns lookup), which is what
 // net.connect and http.request use when they connect. Validation uses node:dns/promises, which a suite mocks
 // separately.
@@ -23,7 +26,7 @@ const originalLookup = dns.lookup;
 
 export const installConnectTimeDns = () => {
   const lookup = ((hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
-    if (hostname !== REBIND_HOST) {
+    if (!isRebindHost(hostname)) {
       (originalLookup as (...args: unknown[]) => void)(hostname, optionsOrCb, maybeCb);
       return;
     }

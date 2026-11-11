@@ -580,3 +580,22 @@ export const safeRequest = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   request: <T = any>(config: TSafeRequestFullConfig) => dispatchFull<T>(config)
 };
+
+// jwks-rsa's own default
+const JWKS_FETCH_TIMEOUT_MS = 30_000;
+
+// jwks-rsa parses the JWKS URL with the legacy url.parse, which can read a host differently from the WHATWG
+// parser the checks use (http://127.0.0.1%61.example is 127.0.0.1a.example to one and 127.0.0.1 to the other),
+// so a requestAgent pinned to the checked host does not stop it. Give JwksClient this as its fetcher instead:
+// the request goes through safeRequest and jwks-rsa never opens a connection itself. The URL is also checked
+// here, so a bad one fails when the client is built.
+export const buildSsrfSafeJwksFetcher = async (jwksUri: string, options: { ca?: string } = {}) => {
+  await validateAndPinUrl(jwksUri);
+  return async (uri: string) => {
+    const { data } = await safeRequest.get<{ keys: unknown[] }>(uri, {
+      ca: options.ca,
+      timeout: JWKS_FETCH_TIMEOUT_MS
+    });
+    return data;
+  };
+};

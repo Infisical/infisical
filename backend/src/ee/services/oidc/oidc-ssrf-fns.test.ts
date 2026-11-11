@@ -14,7 +14,7 @@ import {
   TTargetPair
 } from "@app/lib/validator/dns-rebinding.test-utils";
 
-import { createSsrfSafeOidcClient, secureOidcIssuer, SsrfSafeIssuer } from "./oidc-ssrf-fns";
+import { createSsrfSafeOidcClient, discoverOidcIssuer, secureOidcIssuer, SsrfSafeIssuer } from "./oidc-ssrf-fns";
 
 // The OIDC login makes server-side requests to IdP endpoints an org admin configures: discovery, JWKS and the
 // token exchange. Each test points them at a name whose DNS answer changes after validation (see
@@ -24,7 +24,7 @@ const { validationAnswer } = vi.hoisted(() => ({ validationAnswer: { address: "1
 vi.mock("node:dns/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:dns/promises")>();
   const lookup = (hostname: string, options: LookupAllOptions) =>
-    hostname === "rebind.invalid"
+    hostname === "rebind.invalid" || hostname.endsWith(".rebind.invalid")
       ? Promise.resolve([{ address: validationAnswer.address, family: 4 }])
       : actual.lookup(hostname, options);
   return { ...actual, lookup, default: { ...actual, lookup } };
@@ -174,6 +174,36 @@ describe("OIDC SSO requests under DNS rebinding", () => {
 
     discoveredTokenEndpoint = `http://[::1]:${targets.port}/token`;
     await expect(secureOidcIssuer(await discoverFromPublicAnswer())).rejects.toThrow("Local IPs not allowed as URL");
+  });
+
+  // To the WHATWG parser this host is 127.0.0.2a.rebind.invalid; the legacy url.parse reads it as 127.0.0.2
+  const parserDifferentialUrl = () => `http://127.0.0.2%61.${REBIND_HOST}:${targets.port}`;
+
+  it("control: Issuer.discover sends a host the parsers disagree on to the IP the legacy parser reads", async () => {
+    connectTimeAnswer.address = PUBLIC_IP;
+
+    // The legacy parser also moves the port into the path, so the request dials the internal IP on port 80
+    await expect(Issuer.discover(parserDifferentialUrl())).rejects.toThrow(`connect ECONNREFUSED ${INTERNAL_IP}:80`);
+
+    expect(targets.hits.public).toBe(0);
+  });
+
+  it("discovers from the host that was checked when the parsers disagree on it", async () => {
+    connectTimeAnswer.address = PUBLIC_IP;
+
+    await discoverOidcIssuer(parserDifferentialUrl());
+
+    expect(targets.hits).toEqual({ public: 1, internal: 0 });
+  });
+
+  it("refuses a request to an internal IP literal even when nothing checked the URL first", async () => {
+    discoveredTokenEndpoint = `http://${INTERNAL_IP}:${targets.port}/token`;
+    const issuer = await discoverFromPublicAnswer();
+    const client = createSsrfSafeOidcClient(issuer, { client_id: "id", client_secret: "secret" });
+
+    await expect(client.grant({ grant_type: "client_credentials" })).rejects.toThrow("Local IPs not allowed as URL");
+
+    expect(targets.hits.internal).toBe(0);
   });
 
   it("control: without the endpoint check, a discovered internal IP endpoint is called", async () => {

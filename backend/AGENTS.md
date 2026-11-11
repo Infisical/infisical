@@ -865,7 +865,7 @@ Note that `logger.ts` also has a `redactedKeys` list applied to structured-objec
 ### Outbound requests to user-configured URLs
 
 **Fetch a URL a user configured through `safeRequest` (`src/lib/validator/safe-request.ts`), never `blockLocalAndPrivateIpAddresses` followed by `request` or another client.** The check and the connection each resolve DNS, so a name that answers a public address to the check and an internal one to the connection gets through. `safeRequest` connects to the IPs it validated. For a client that does not go through axios, pick by what it accepts:
-- an agent: `buildSsrfSafeAgent`.
+- an agent: `buildSsrfSafeAgent`, but only if the client parses its URL with the WHATWG `URL` parser. The agent pins the checked hostname, and a client using the legacy `url.parse` can read another host from the same string (`http://127.0.0.1%61.example` is `127.0.0.1` to it), which skips the pin. jwks-rsa is one: give `JwksClient` a `fetcher` from `buildSsrfSafeJwksFetcher` instead of a `requestAgent`.
 - a lookup function (openid-client): `ssrfSafeLookup`, with `validateAndPinUrl` on each URL first because Node skips the lookup for an IP literal host (not `validateSsrfUrl`, which rejects bracketed IPv6 literals), and a dedicated agent without keep-alive because a pooled socket skips it too (see `ee/services/oidc/oidc-ssrf-fns.ts`).
 - neither (ldapjs): `buildSsrfSafeUrl`, which puts a validated IP in the URL and keeps the certificate check on the original name.
 
