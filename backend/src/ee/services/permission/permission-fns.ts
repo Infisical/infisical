@@ -10,7 +10,11 @@ import {
   interpolateStoredIdentityRules,
   isActiveRole
 } from "@app/domains/platform/access-control/ce/module";
-import { OrgPermissionSet } from "@app/domains/platform/organizations/ce/module";
+import {
+  FOREIGN_SSO_SESSION_ERROR_NAME,
+  OrgPermissionSet,
+  ssoSessionRefusal
+} from "@app/domains/platform/organizations/ce/module";
 import {
   ActionAllowedConditions,
   ProjectPermissionGroupActions,
@@ -23,14 +27,9 @@ import {
   SecretSubjectFields
 } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorAuthMethod, ActorType, AuthMethod } from "@app/lib/auth/actor-types";
+import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
-import {
-  BadRequestError,
-  ForbiddenRequestError,
-  PermissionBoundaryError,
-  UnauthorizedError
-} from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 
@@ -255,21 +254,11 @@ export function checkForInvalidPermissionCombination(permissions: z.infer<typeof
   return true;
 }
 
-function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
-  if (!actorAuthMethod) return false;
+export { FOREIGN_SSO_SESSION_ERROR_NAME };
 
-  return [
-    AuthMethod.AZURE_SAML,
-    AuthMethod.OKTA_SAML,
-    AuthMethod.JUMPCLOUD_SAML,
-    AuthMethod.GOOGLE_SAML,
-    AuthMethod.KEYCLOAK_SAML,
-    AuthMethod.AUTH0_SAML
-  ].includes(actorAuthMethod);
-}
-
-export const FOREIGN_SSO_SESSION_ERROR_NAME = "ForeignSsoSession";
-
+// The legacy permission path's SSO check, kept as a backstop for the flows that check a session against another
+// org than the request's (select-organization, OAuth consent, token exchange) until they call Organizations
+// directly. The rule itself is ssoSessionRefusal, which the per-request check in the actor context uses too.
 function validateOrgSSO({
   actorAuthMethod,
   isOrgSsoEnforced,
@@ -297,34 +286,20 @@ function validateOrgSSO({
     return;
   }
 
-  // case: google sso is enforced, but the actor is not using google sso
-  if (isOrgGoogleSsoEnforced && actorAuthMethod !== null && actorAuthMethod !== AuthMethod.GOOGLE) {
+  const refusal = ssoSessionRefusal({
+    authMethod: actorAuthMethod,
+    sessionRootOrgId: issuingRootOrgId,
+    rootOrgId,
+    policy: {
+      authEnforced: Boolean(isOrgSsoEnforced),
+      googleSsoAuthEnforced: Boolean(isOrgGoogleSsoEnforced),
+      bypassOrgAuthEnabled: Boolean(isOrgSsoBypassEnabled)
+    }
+  });
+  if (refusal) {
     throw new ForbiddenRequestError({
-      message:
-        "Organization authentication is enforced. Cannot access org-scoped resource. Login with Google SSO to access this resource."
-    });
-  }
-
-  // case: SAML SSO is enforced, but the actor is not using SAML SSO
-  if (
-    isOrgSsoEnforced &&
-    actorAuthMethod !== null &&
-    !isAuthMethodSaml(actorAuthMethod) &&
-    actorAuthMethod !== AuthMethod.OIDC
-  ) {
-    throw new ForbiddenRequestError({
-      message:
-        "Organization authentication is enforced. Cannot access org-scoped resource. Login with SAML SSO to access this resource."
-    });
-  }
-
-  // A session another org's IdP minted would otherwise satisfy this org's enforcement without its
-  // IdP, MFA or deprovisioning ever seeing the login.
-  if (isOrgSsoEnforced && actorAuthMethod !== null && issuingRootOrgId && issuingRootOrgId !== rootOrgId) {
-    throw new ForbiddenRequestError({
-      name: FOREIGN_SSO_SESSION_ERROR_NAME,
-      message:
-        "This organization requires its own SSO. Your session was issued by another organization's identity provider; log in again through this organization's SSO."
+      message: refusal.message,
+      ...(refusal.name === FOREIGN_SSO_SESSION_ERROR_NAME ? { name: FOREIGN_SSO_SESSION_ERROR_NAME } : {})
     });
   }
 }
@@ -543,7 +518,6 @@ export {
   constructPermissionErrorMessage,
   escapeHandlebarsMissingDict,
   handlebarsClient,
-  isAuthMethodSaml,
   validateOrgSSO,
   validatePrivilegeChangeOperation
 };

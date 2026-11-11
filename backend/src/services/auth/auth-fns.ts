@@ -1,4 +1,4 @@
-import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
+import { isAuthMethodSaml } from "@app/domains/platform/organizations/ce/module";
 import { AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";

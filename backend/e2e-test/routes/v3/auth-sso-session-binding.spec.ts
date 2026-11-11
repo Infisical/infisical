@@ -160,6 +160,37 @@ describe("Auth SSO session binding", () => {
     }
   });
 
+  test("A password session gets 401 on every route once its org starts enforcing SSO", async () => {
+    const get = (url: string) =>
+      testServer.inject({ method: "GET", url, headers: { authorization: `Bearer ${jwtAuthToken}` } });
+    expect((await get(`/api/v2/organizations/${ORG_A_ID}/memberships`)).statusCode).toBe(200);
+
+    await setAuthEnforced(ORG_A_ID, true);
+    const refusedMemberships = await get(`/api/v2/organizations/${ORG_A_ID}/memberships`);
+    // No permission check runs here; the session itself is refused.
+    const refusedUser = await get("/api/v1/user");
+
+    expect(refusedMemberships.statusCode).toBe(401);
+    expect(refusedMemberships.json().message).toMatch(/Login with SAML SSO/);
+    expect(refusedUser.statusCode).toBe(401);
+  });
+
+  test("A password session of an admin the org lets bypass SSO keeps working", async () => {
+    await getDb()(TableName.Organization).where({ id: ORG_A_ID }).update({ bypassOrgAuthEnabled: true });
+    try {
+      await setAuthEnforced(ORG_A_ID, true);
+      const listed = await testServer.inject({
+        method: "GET",
+        url: `/api/v2/organizations/${ORG_A_ID}/memberships`,
+        headers: { authorization: `Bearer ${jwtAuthToken}` }
+      });
+
+      expect(listed.statusCode).toBe(200);
+    } finally {
+      await getDb()(TableName.Organization).where({ id: ORG_A_ID }).update({ bypassOrgAuthEnabled: false });
+    }
+  });
+
   test("A session another org's IdP issued stops working once the org starts enforcing SSO", async () => {
     const { userId, tokens } = await loginThroughOrgBIdp();
     await addMemberToOrgA(userId);
@@ -175,7 +206,7 @@ describe("Auth SSO session binding", () => {
     await setAuthEnforced(ORG_A_ID, true);
     const refused = await listMemberships();
 
-    expect(refused.statusCode).toBe(403);
+    expect(refused.statusCode).toBe(401);
     expect(refused.json().message).toMatch(/another organization's identity provider/);
   });
 
@@ -216,7 +247,7 @@ describe("Auth SSO session binding", () => {
       expect(markerKeys.length).toBeGreaterThan(0);
       const refused = await readProject();
 
-      expect(refused.statusCode).toBe(403);
+      expect(refused.statusCode).toBe(401);
       expect(refused.json().message).toMatch(/another organization's identity provider/);
     } finally {
       await setAuthEnforced(ORG_A_ID, false);
@@ -289,7 +320,7 @@ describe("Auth SSO session binding", () => {
       await setAuthEnforced(ORG_A_ID, true);
       const refused = await listSubOrgMemberships();
 
-      expect(refused.statusCode).toBe(403);
+      expect(refused.statusCode).toBe(401);
       expect(refused.json().message).toMatch(/another organization's identity provider/);
     });
 
@@ -300,7 +331,7 @@ describe("Auth SSO session binding", () => {
       await setAuthEnforced(ORG_A_ID, true);
       const refused = await listSubOrgMemberships();
 
-      expect(refused.statusCode).toBe(403);
+      expect(refused.statusCode).toBe(401);
       expect(refused.json().message).toMatch(/another organization's identity provider/);
     });
 
@@ -339,7 +370,7 @@ describe("Auth SSO session binding", () => {
         await setRootOrgRole(OrgMembershipRole.Member);
         const refused = await readProject();
 
-        expect(refused.statusCode).toBe(403);
+        expect(refused.statusCode).toBe(401);
         expect(refused.json().message).toMatch(/another organization's identity provider/);
       } finally {
         await setAuthEnforced(ORG_A_ID, false);

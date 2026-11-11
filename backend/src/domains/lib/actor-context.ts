@@ -46,13 +46,16 @@ export const memoizePlan = (load: () => Promise<TPlanProps>): (() => Promise<TPl
 export type TActorContextSources = {
   findActorOrg: (orgId: string) => Promise<TActorOrg | undefined>;
   getPlan: (orgId: string) => Promise<TPlanProps>;
+  // Refuses a request whose session the org's sign-in policy does not allow (SSO enforcement).
+  assertSessionAllowed: (input: { principal: TPrincipal; org: TActorOrg }) => Promise<void>;
 };
 
 export type TActorContexts = {
   // The context for a principal acting in one org. Refuses an org that does not exist.
   forPrincipal: (principal: TPrincipal, orgId: string) => Promise<TActorContext>;
-  // The context the auth middleware puts on a request. A session not yet scoped to an existing org (before an org is
-  // selected, or a deprecated API key) gets a context whose org and plan refuse when used.
+  // The context the auth middleware puts on a request, after the org's sign-in policy admits the session. A session
+  // not yet scoped to an existing org (before an org is selected, or a deprecated API key) gets a context whose org
+  // and plan refuse when used.
   forRequest: (principal: TPrincipal, orgId: string | undefined) => Promise<TActorContext>;
   // The context for work the platform does in an org on nobody's behalf: queues, crons, consumers.
   system: (orgId: string) => Promise<TActorContext>;
@@ -87,7 +90,9 @@ export const actorContexts = (sources: TActorContextSources): TActorContexts => 
   };
   const forRequest = async (principal: TPrincipal, orgId: string | undefined): Promise<TActorContext> => {
     const org = orgId && UUID_PATTERN.test(orgId) ? await sources.findActorOrg(orgId) : undefined;
-    return org ? scoped(principal, org) : unscopedContext(principal);
+    if (!org) return unscopedContext(principal);
+    await sources.assertSessionAllowed({ principal, org });
+    return scoped(principal, org);
   };
   return { forPrincipal, forRequest, system: (orgId) => forPrincipal(platformPrincipal(), orgId) };
 };

@@ -59,7 +59,7 @@ const setup = () => {
     inMemory!.transactionRunner.run(({ dataAccess }) =>
       dataAccess.roles.create({ orgId, name: "Inviter", slug: "inviter", permissions })
     );
-  return { service, actor, addOrgRole, addCustomRole, orgId };
+  return { service, actor, addOrgRole, addCustomRole, orgId, userId };
 };
 
 describe("OrgPermissionService.getOrgPermission", () => {
@@ -187,5 +187,36 @@ describe("OrgPermissionService.getOrgPermission", () => {
 
     // Assert
     expect(second).toBe(first);
+  });
+});
+
+describe("OrgPermissionService.canBypassSso", () => {
+  test("should let a root org admin bypass and not a member", async () => {
+    // Setup
+    const admin = setup();
+    await admin.addOrgRole(OrgMembershipRole.Admin);
+    const member = setup();
+    await member.addOrgRole(OrgMembershipRole.Member);
+
+    // Action
+    const [adminCan, memberCan] = await Promise.all([
+      admin.service.canBypassSso({ userId: admin.userId, rootOrgId: admin.orgId }),
+      member.service.canBypassSso({ userId: member.userId, rootOrgId: member.orgId })
+    ]);
+
+    // Assert
+    expect(adminCan).toBe(true);
+    expect(memberCan).toBe(false);
+  });
+
+  test("should refuse a user with no membership in the root org", async () => {
+    // Setup
+    const { service, userId } = setup();
+
+    // Action
+    const can = await service.canBypassSso({ userId, rootOrgId: randomUUID() });
+
+    // Assert
+    expect(can).toBe(false);
   });
 });

@@ -192,7 +192,8 @@ export const createDomains = (deps: TDomainDeps) => {
   // Built once per request by the auth middleware, and by background jobs acting in an org.
   const actorContextBuilder = actorContexts({
     findActorOrg: (orgId) => organizations.service.findActorOrg({ orgId }),
-    getPlan: (orgId) => license.service.getPlan(orgId)
+    getPlan: (orgId) => license.service.getPlan(orgId),
+    assertSessionAllowed: (input) => organizations.service.assertSessionAllowed(input)
   });
 
   return {

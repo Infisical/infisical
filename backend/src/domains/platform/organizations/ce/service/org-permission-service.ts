@@ -4,6 +4,7 @@ import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorMemo } from "@app/domains/lib/actor-memo";
 import {
+  ActorGrants,
   buildRules,
   narrowRules,
   TAccessControlDomain,
@@ -18,7 +19,9 @@ import {
   orgAdminPermissions,
   orgMemberPermissions,
   orgNoAccessPermissions,
-  OrgPermissionSet
+  OrgPermissionSet,
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects
 } from "./permission/org-permission";
 
 export type TGetOrgPermissionInput = {
@@ -77,19 +80,37 @@ export class OrgPermissionService {
         throw new ForbiddenRequestError({ message: "Parent organization cannot do this operation" });
       }
 
-      const rules = buildRules<MongoAbility<OrgPermissionSet>>({
-        entries: grants.activeEntries(OrgMembershipRole.Custom),
-        customRoleSlug: OrgMembershipRole.Custom,
-        resolveRole: (role) => ORG_ROLES[role],
-        onUnknownRole: (role) =>
-          new NotFoundError({ name: "OrgRoleInvalid", message: `Organization role '${role}' not found` })
-      });
+      const rules = OrgPermissionService.orgRules(grants);
 
       // A delegated OAuth token keeps only what its scopes allow; a first-party session keeps everything.
       const scopes = principal.type === ActorType.USER ? principal.oauth?.scopes : undefined;
       const finalRules = scopes ? narrowRules({ rules, allowed: orgOauthAllowlist(scopes) }) : rules;
 
       return OrgPermission.build({ rules: finalRules, grants });
+    });
+  }
+
+  // Whether the user's root org roles let it through the root org's SSO enforcement. Evaluated on its full roles:
+  // the bypass belongs to the user, not to what an OAuth client was delegated.
+  async canBypassSso({ userId, rootOrgId }: { userId: string; rootOrgId: string }): Promise<boolean> {
+    const grants = await this.deps.accessControlDomain.fetchGrants({
+      actor: { type: ActorType.USER, id: userId },
+      scope: { scope: AccessScope.Organization, orgId: rootOrgId }
+    });
+    if (!grants.hasMembership) return false;
+    return OrgPermission.build({ rules: OrgPermissionService.orgRules(grants), grants }).can({
+      action: OrgPermissionSsoActions.BypassSsoEnforcement,
+      subject: OrgPermissionSubjects.Sso
+    });
+  }
+
+  private static orgRules(grants: ActorGrants): TPermissionRule<OrgPermissionSet>[] {
+    return buildRules<MongoAbility<OrgPermissionSet>>({
+      entries: grants.activeEntries(OrgMembershipRole.Custom),
+      customRoleSlug: OrgMembershipRole.Custom,
+      resolveRole: (role) => ORG_ROLES[role],
+      onUnknownRole: (role) =>
+        new NotFoundError({ name: "OrgRoleInvalid", message: `Organization role '${role}' not found` })
     });
   }
 }

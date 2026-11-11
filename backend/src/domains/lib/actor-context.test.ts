@@ -27,19 +27,23 @@ const orgRow = (id: string): TActorOrg => ({
 const setup = () => {
   const orgs = new Map<string, TActorOrg>();
   let planLoads = 0;
+  const assertSessionAllowed = vi.fn<(input: { principal: TPrincipal; org: TActorOrg }) => Promise<void>>(
+    async () => {}
+  );
   const contexts = actorContexts({
     findActorOrg: async (orgId) => orgs.get(orgId),
     getPlan: async () => {
       planLoads += 1;
       return { slug: "pro" } as TPlanProps;
-    }
+    },
+    assertSessionAllowed
   });
   const addOrg = () => {
     const org = orgRow(randomUUID());
     orgs.set(org.id, org);
     return org;
   };
-  return { contexts, addOrg, planLoads: () => planLoads };
+  return { contexts, addOrg, assertSessionAllowed, planLoads: () => planLoads };
 };
 
 describe("actorContexts.forRequest", () => {
@@ -53,6 +57,31 @@ describe("actorContexts.forRequest", () => {
 
     // Assert
     expect(context.org.id).toBe(org.id);
+  });
+
+  test("should refuse the request when the org's sign-in policy refuses the session", async () => {
+    // Setup
+    const { contexts, addOrg, assertSessionAllowed } = setup();
+    const org = addOrg();
+    assertSessionAllowed.mockRejectedValueOnce(new Error("Organization authentication is enforced"));
+
+    // Action
+    const context = contexts.forRequest(user, org.id);
+
+    // Assert
+    await expect(context).rejects.toThrow("Organization authentication is enforced");
+    expect(assertSessionAllowed).toHaveBeenCalledWith({ principal: user, org });
+  });
+
+  test("should not check the session of a request not scoped to an org", async () => {
+    // Setup
+    const { contexts, assertSessionAllowed } = setup();
+
+    // Action
+    await contexts.forRequest(user, "API_KEY");
+
+    // Assert
+    expect(assertSessionAllowed).not.toHaveBeenCalled();
   });
 
   test("should refuse with a readable error when an unscoped session's org is used", async () => {

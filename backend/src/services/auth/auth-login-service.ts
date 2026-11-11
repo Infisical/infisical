@@ -9,9 +9,12 @@ import {
   UserDeviceSchema
 } from "@app/db/schemas";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
-import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  FOREIGN_SSO_SESSION_ERROR_NAME,
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
 import { EventType, TAuditLogServiceFactory, TMfaSatisfiedBy } from "@app/ee/services/audit-log/audit-log-types";
-import { FOREIGN_SSO_SESSION_ERROR_NAME } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType, AuthMethod, AuthTokenType, MfaMethod } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
