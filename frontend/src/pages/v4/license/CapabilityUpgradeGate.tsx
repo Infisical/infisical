@@ -187,7 +187,6 @@ const CapabilityUpgradeDialog = ({
       onCloseAutoFocus={onCloseAutoFocus}
       footer={
         <Button
-          data-upgrade-cta
           variant="primary"
           className="w-full"
           onClick={
