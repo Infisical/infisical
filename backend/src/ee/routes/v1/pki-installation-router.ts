@@ -129,6 +129,10 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
                   .boolean()
                   .optional()
                   .describe("Whether the requesting actor has read permission on the certificate."),
+                canExportPkcs12: z
+                  .boolean()
+                  .optional()
+                  .describe("Whether the requesting actor can export the certificate as a PKCS12 keystore."),
                 subjectOrganization: z.string().nullable().optional(),
                 subjectOrganizationalUnit: z.string().nullable().optional(),
                 subjectCountry: z.string().nullable().optional(),

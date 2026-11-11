@@ -169,6 +169,7 @@ export type TPkiInstallationCert = {
   applicationId?: string | null;
   hasPrivateKey?: boolean;
   canRead?: boolean;
+  canExportPkcs12?: boolean;
 };
 
 export type TPkiDiscoveryScan = {

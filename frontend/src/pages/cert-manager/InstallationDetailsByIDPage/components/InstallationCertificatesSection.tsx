@@ -140,6 +140,7 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                   ? getCertValidUntilBadgeDetails(cert.notAfter)
                   : null;
                 const canReadCertificate = Boolean(cert.canRead);
+                const canExportPkcs12 = Boolean(cert.canExportPkcs12);
 
                 return (
                   <TableRow key={cert.certificateId} linked>
@@ -196,13 +197,17 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                         </Tooltip>
                         <DropdownMenuContent align="end" sideOffset={2}>
                           <DropdownMenuItem
-                            isDisabled={!canReadCertificate || !cert.serialNumber}
+                            isDisabled={
+                              !(canReadCertificate || canExportPkcs12) || !cert.serialNumber
+                            }
                             onClick={(e) => {
                               e.stopPropagation();
                               handlePopUpOpen("certificateExport", {
                                 certificateId: cert.certificateId,
                                 serialNumber: cert.serialNumber,
-                                hasPrivateKey: cert.hasPrivateKey
+                                hasPrivateKey: cert.hasPrivateKey,
+                                canExportPem: canReadCertificate,
+                                canExportPkcs12
                               });
                             }}
                           >

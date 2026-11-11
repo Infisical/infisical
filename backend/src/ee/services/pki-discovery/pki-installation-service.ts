@@ -124,43 +124,68 @@ export const pkiInstallationServiceFactory = ({
     const { connectionId } = (installation.locationDetails as TPkiInstallationLocationDetails | null) ?? {};
     const connection = connectionId ? await appConnectionDAL.findById(connectionId) : undefined;
 
-    const canReadViaApplication = new Map<string, Promise<boolean>>();
-    const checkApplicationRead = (applicationId: string) => {
-      let result = canReadViaApplication.get(applicationId);
+    const loadApplicationPermission = (applicationId: string) =>
+      permissionService
+        .getResourcePermission({
+          actor,
+          actorId,
+          projectId: installation.projectId,
+          resourceType: ResourceType.CertificateApplication,
+          resourceId: applicationId,
+          actorAuthMethod,
+          actorOrgId
+        })
+        .then(({ permission: appPermission }) => appPermission)
+        .catch(() => null);
+    const applicationPermissions = new Map<string, ReturnType<typeof loadApplicationPermission>>();
+    const getApplicationPermission = (applicationId: string) => {
+      let result = applicationPermissions.get(applicationId);
       if (!result) {
-        result = permissionService
-          .getResourcePermission({
-            actor,
-            actorId,
-            projectId: installation.projectId,
-            resourceType: ResourceType.CertificateApplication,
-            resourceId: applicationId,
-            actorAuthMethod,
-            actorOrgId
-          })
-          .then(({ permission: appPermission }) =>
-            appPermission.can(ResourcePermissionCertificateActions.Read, ResourcePermissionSub.Certificates)
-          )
-          .catch(() => false);
-        canReadViaApplication.set(applicationId, result);
+        result = loadApplicationPermission(applicationId);
+        applicationPermissions.set(applicationId, result);
       }
       return result;
     };
 
     const certificates = await Promise.all(
       installation.certificates.map(async ({ metadata, ...cert }) => {
-        const canReadAtProject = permission.can(
-          ProjectPermissionCertificateActions.Read,
-          subject(ProjectPermissionSub.Certificates, {
-            commonName: cert.commonName ?? undefined,
-            altNames: cert.altNames?.split(",").map((s: string) => s.trim()),
-            serialNumber: cert.serialNumber ?? undefined,
-            metadata
-          })
+        const altNames = cert.altNames?.split(",").map((s: string) => s.trim());
+        const readSubject = subject(ProjectPermissionSub.Certificates, {
+          commonName: cert.commonName ?? undefined,
+          altNames,
+          serialNumber: cert.serialNumber ?? undefined,
+          metadata
+        });
+        // getCertPkcs12 goes through getCertBundle, whose subject also has friendlyName and status
+        const bundleSubject = subject(ProjectPermissionSub.Certificates, {
+          commonName: cert.commonName ?? undefined,
+          altNames,
+          serialNumber: cert.serialNumber ?? undefined,
+          friendlyName: cert.friendlyName ?? undefined,
+          status: cert.status ?? undefined,
+          metadata
+        });
+
+        const appPermission = cert.applicationId ? await getApplicationPermission(cert.applicationId) : null;
+        const canReadViaApplication = Boolean(
+          appPermission?.can(ResourcePermissionCertificateActions.Read, ResourcePermissionSub.Certificates)
         );
-        const canRead =
-          canReadAtProject || (cert.applicationId ? await checkApplicationRead(cert.applicationId) : false);
-        return { ...cert, canRead };
+
+        const canRead = permission.can(ProjectPermissionCertificateActions.Read, readSubject) || canReadViaApplication;
+
+        const canReadBundle =
+          permission.can(ProjectPermissionCertificateActions.Read, bundleSubject) || canReadViaApplication;
+        const canReadPrivateKey = cert.applicationId
+          ? Boolean(
+              appPermission?.can(
+                ResourcePermissionCertificateActions.ReadPrivateKey,
+                ResourcePermissionSub.Certificates
+              )
+            )
+          : permission.can(ProjectPermissionCertificateActions.ReadPrivateKey, bundleSubject);
+        const canExportPkcs12 = cert.hasPrivateKey && canReadBundle && canReadPrivateKey;
+
+        return { ...cert, canRead, canExportPkcs12 };
       })
     );
 
