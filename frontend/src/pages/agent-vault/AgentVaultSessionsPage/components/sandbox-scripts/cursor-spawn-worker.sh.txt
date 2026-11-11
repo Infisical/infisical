@@ -20,7 +20,7 @@ ACCESS_TOKEN=$(curl -fsS -X POST https://app.infisical.com/api/v1/auth/universal
 SESSION_TOKEN=$(curl -fsS -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"accessBundle\": \"<access-bundle-name>\", \"ttl\": \"24h\", \"label\": \"cursor $POD_NAME\"}" \
+  -d "{\"projectId\": \"<project-id>\", \"accessBundle\": \"<access-bundle-name>\", \"ttl\": \"24h\", \"label\": \"cursor $POD_NAME\"}" \
   | jq -er .session.token)
 
 POD_UID=$(kubectl create -f - -o 'jsonpath={.metadata.uid}' <<EOF

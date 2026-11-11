@@ -414,7 +414,8 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
               <Item key={option.value} variant="outline" asChild>
                 <button
                   type="button"
-                  className="cursor-pointer flex-col items-start gap-3 p-4 hover:border-product-av/30 hover:bg-product-av/5"
+                  // Item only styles hover for links, so a button adds its own.
+                  className="cursor-pointer hover:border-product-av/30 hover:bg-product-av/5"
                   onClick={() => onPlatformPick(option.value)}
                 >
                   <ItemMedia className="size-8">{option.icon}</ItemMedia>
