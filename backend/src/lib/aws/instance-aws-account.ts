@@ -7,11 +7,33 @@ import { CustomAWSHasher } from "./hashing";
 import { getInfisicalAwsCredentials } from "./instance-credentials";
 import { AWS_REQUEST_TIMEOUTS } from "./s3";
 
+export const AWS_ACCOUNT_DETECTION_TIMEOUT_MS = 10_000;
+
 let instanceAwsAccountId: string | undefined;
 
 export const getInstanceAwsAccountId = () => instanceAwsAccountId;
 
-export const detectInstanceAwsAccountId = async (): Promise<string | undefined> => {
+const readCallerAccount = async (sts: STSClient, abortSignal: AbortSignal) => {
+  try {
+    const { Account } = await sts.send(new GetCallerIdentityCommand({}), { abortSignal });
+    return Account || undefined;
+  } catch (err) {
+    if (abortSignal.aborted) return undefined;
+
+    // The default credential chain found nothing, which is the normal outcome when Infisical is not on AWS.
+    if ((err as { name?: string }).name === "CredentialsProviderError") {
+      logger.debug("AWS account detection: no AWS credentials found, so the instance is not running on AWS");
+      return undefined;
+    }
+
+    logger.warn(err, "AWS account detection: could not read the AWS account ID with STS GetCallerIdentity");
+    return undefined;
+  }
+};
+
+export const detectInstanceAwsAccountId = async (
+  timeoutMs = AWS_ACCOUNT_DETECTION_TIMEOUT_MS
+): Promise<string | undefined> => {
   const sts = new STSClient({
     region: process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1",
     sha256: CustomAWSHasher,
@@ -21,25 +43,29 @@ export const detectInstanceAwsAccountId = async (): Promise<string | undefined> 
     maxAttempts: 2
   });
 
-  try {
-    const { Account } = await sts.send(new GetCallerIdentityCommand({}));
-    return Account || undefined;
-  } catch (err) {
-    // The default credential chain found nothing, which is the normal outcome when Infisical is not on AWS.
-    if ((err as { name?: string }).name === "CredentialsProviderError") {
-      logger.debug("AWS account detection: no AWS credentials found, so the instance is not running on AWS");
-      return undefined;
-    }
+  const abortController = new AbortController();
+  let timer: NodeJS.Timeout | undefined;
 
-    logger.warn(err, "AWS account detection: could not read the AWS account ID with STS GetCallerIdentity");
-    return undefined;
+  // The abort signal only reaches the STS request. Credential providers (IMDS, ECS, IRSA's own STS call) don't
+  // see it, so the race is what bounds the whole lookup.
+  const timedOut = new Promise<undefined>((resolve) => {
+    timer = setTimeout(() => {
+      abortController.abort();
+      logger.warn(`AWS account detection: gave up after ${timeoutMs}ms without an answer from AWS`);
+      resolve(undefined);
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([readCallerAccount(sts, abortController.signal), timedOut]);
   } finally {
+    clearTimeout(timer);
     sts.destroy();
   }
 };
 
 // Not awaited at boot: off AWS the credential chain spends time probing instance metadata, and /api/status only
-// needs the value once it is known.
+// needs the value once it is known. detectInstanceAwsAccountId bounds the time spent.
 export const startInstanceAwsAccountDetection = () => {
   void detectInstanceAwsAccountId()
     .then((accountId) => {
