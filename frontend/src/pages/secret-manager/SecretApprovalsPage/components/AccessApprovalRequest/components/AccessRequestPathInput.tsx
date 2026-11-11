@@ -5,6 +5,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  InputGroupText,
   Popover,
   PopoverAnchor,
   PopoverContent
@@ -128,11 +129,13 @@ export const AccessRequestPathInput = ({
           className={cn(isEntireScope && !isError && "border-warning/50")}
         >
           <InputGroupAddon>
-            {isEntireScope ? (
-              <FolderTreeIcon className="text-warning" />
-            ) : (
-              <FolderIcon className="text-folder" />
-            )}
+            <InputGroupText>
+              {isEntireScope ? (
+                <FolderTreeIcon className="text-warning" />
+              ) : (
+                <FolderIcon className="text-folder" />
+              )}
+            </InputGroupText>
           </InputGroupAddon>
           <InputGroupInput
             id={id}
