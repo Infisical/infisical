@@ -3,10 +3,12 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AwsConnectionMethod } from "@app/hooks/api/appConnections/types/aws-connection";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
+import { GitHubRadarConnectionMethod } from "@app/hooks/api/appConnections/types/github-radar-connection";
 import { PostgresConnectionMethod } from "@app/hooks/api/appConnections/types/postgres-connection";
 import {
   awsConnectionFormSchema,
   gitHubPatConnectionFormSchema,
+  gitHubRadarConnectionFormSchema,
   postgresConnectionFormSchema
 } from "@app/lib/schemas/app-connections";
 
@@ -14,6 +16,31 @@ const methodLabel = (method: Parameters<typeof getAppConnectionMethodDetails>[0]
   getAppConnectionMethodDetails(method).name;
 
 export const CONNECTION_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> = {
+  [AppConnection.GitHubRadar]: {
+    app: AppConnection.GitHubRadar,
+    name: APP_CONNECTION_MAP[AppConnection.GitHubRadar].name,
+    schema: gitHubRadarConnectionFormSchema,
+    methods: [
+      {
+        value: GitHubRadarConnectionMethod.App,
+        label: methodLabel(GitHubRadarConnectionMethod.App),
+        credentials: {},
+        fields: [],
+        redirect: {
+          submitLabel: "Connect to GitHub",
+          href: ({ option }) =>
+            typeof option?.appClientSlug === "string" && option.appClientSlug
+              ? `https://github.com/apps/${encodeURIComponent(option.appClientSlug)}/installations/new`
+              : undefined,
+          unconfigured: "This server has no GitHub App configured for GitHub Radar.",
+          credentials: ({ callback }) => ({
+            code: callback.code ?? "",
+            installationId: callback.installation_id ?? ""
+          })
+        }
+      }
+    ]
+  },
   [AppConnection.AWS]: {
     app: AppConnection.AWS,
     name: APP_CONNECTION_MAP[AppConnection.AWS].name,

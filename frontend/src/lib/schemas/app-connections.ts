@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AwsConnectionMethod } from "@app/hooks/api/appConnections/types/aws-connection";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
+import { GitHubRadarConnectionMethod } from "@app/hooks/api/appConnections/types/github-radar-connection";
 import { PostgresConnectionMethod } from "@app/hooks/api/appConnections/types/postgres-connection";
 
 import { slugSchema } from "./slugSchema";
@@ -123,6 +124,11 @@ export const gitHubConnectionFormSchema = z.discriminatedUnion("method", [
   gitHubOAuthSchema,
   gitHubPatConnectionFormSchema
 ]);
+
+export const gitHubRadarConnectionFormSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.GitHubRadar),
+  method: z.nativeEnum(GitHubRadarConnectionMethod)
+});
 
 const postgresRootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.Postgres),

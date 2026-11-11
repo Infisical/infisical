@@ -148,6 +148,7 @@ import { Route as v4ProjectMemberDetailsByIDPageCertManagerRouteImport } from '.
 import { Route as v4ProjectIdentityDetailsByIDPageCertManagerRouteImport } from './pages/v4/project/IdentityDetailsByIDPage/cert-manager/route'
 import { Route as v4ProjectGroupDetailsByIDPageCertManagerRouteImport } from './pages/v4/project/GroupDetailsByIDPage/cert-manager/route'
 import { Route as v4CertManagerCertificateDetailsByIDPageRouteImport } from './pages/v4/cert-manager/CertificateDetailsByIDPage/route'
+import { Route as v4OrganizationAppConnectionCallbackPageRouteImport } from './pages/v4/organization/AppConnectionCallbackPage/route'
 import { Route as adminResourceOverviewPageRouteImport } from './pages/admin/ResourceOverviewPage/route'
 import { Route as organizationSsoPageRouteImport } from './pages/organization/SsoPage/route'
 import { Route as organizationProjectsPageRouteImport } from './pages/organization/ProjectsPage/route'
@@ -1572,6 +1573,13 @@ const v4CertManagerCertificateDetailsByIDPageRouteRoute =
   v4CertManagerCertificateDetailsByIDPageRouteImport.update({
     id: '/cert-manager/certificates/$certificateId',
     path: '/cert-manager/certificates/$certificateId',
+    getParentRoute: () => v4OrganizationRouteRoute,
+  } as any)
+
+const v4OrganizationAppConnectionCallbackPageRouteRoute =
+  v4OrganizationAppConnectionCallbackPageRouteImport.update({
+    id: '/app-connections/$appConnection/callback',
+    path: '/app-connections/$appConnection/callback',
     getParentRoute: () => v4OrganizationRouteRoute,
   } as any)
 
@@ -4695,6 +4703,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof adminResourceOverviewPageRouteImport
       parentRoute: typeof adminLayoutImport
     }
+    '/v4/organizations/$orgId/app-connections/$appConnection/callback': {
+      id: '/v4/organizations/$orgId/app-connections/$appConnection/callback'
+      path: '/app-connections/$appConnection/callback'
+      fullPath: '/v4/organizations/$orgId/app-connections/$appConnection/callback'
+      preLoaderRoute: typeof v4OrganizationAppConnectionCallbackPageRouteImport
+      parentRoute: typeof v4OrganizationRouteImport
+    }
     '/v4/organizations/$orgId/cert-manager/certificates/$certificateId': {
       id: '/v4/organizations/$orgId/cert-manager/certificates/$certificateId'
       path: '/cert-manager/certificates/$certificateId'
@@ -7054,6 +7069,7 @@ interface v4OrganizationRouteRouteChildren {
   v4SecretScanningSecretScanningFindingsPageRouteRoute: typeof v4SecretScanningSecretScanningFindingsPageRouteRoute
   v4PamPamAccountsPageRouteRoute: typeof v4PamPamAccountsPageRouteRoute
   v4SecretScanningSecretScanningDataSourcesPageRouteRoute: typeof v4SecretScanningSecretScanningDataSourcesPageRouteRoute
+  v4OrganizationAppConnectionCallbackPageRouteRoute: typeof v4OrganizationAppConnectionCallbackPageRouteRoute
   v4CertManagerCertificateDetailsByIDPageRouteRoute: typeof v4CertManagerCertificateDetailsByIDPageRouteRoute
   v4ProjectGroupDetailsByIDPageCertManagerRouteRoute: typeof v4ProjectGroupDetailsByIDPageCertManagerRouteRoute
   v4ProjectIdentityDetailsByIDPageCertManagerRouteRoute: typeof v4ProjectIdentityDetailsByIDPageCertManagerRouteRoute
@@ -7116,6 +7132,8 @@ const v4OrganizationRouteRouteChildren: v4OrganizationRouteRouteChildren = {
   v4PamPamAccountsPageRouteRoute: v4PamPamAccountsPageRouteRoute,
   v4SecretScanningSecretScanningDataSourcesPageRouteRoute:
     v4SecretScanningSecretScanningDataSourcesPageRouteRoute,
+  v4OrganizationAppConnectionCallbackPageRouteRoute:
+    v4OrganizationAppConnectionCallbackPageRouteRoute,
   v4CertManagerCertificateDetailsByIDPageRouteRoute:
     v4CertManagerCertificateDetailsByIDPageRouteRoute,
   v4ProjectGroupDetailsByIDPageCertManagerRouteRoute:
@@ -8684,6 +8702,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/organizations/$orgId/sso': typeof organizationSsoPageRouteRoute
   '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
+  '/v4/organizations/$orgId/app-connections/$appConnection/callback': typeof v4OrganizationAppConnectionCallbackPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/certificates/$certificateId': typeof v4CertManagerCertificateDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/groups/$groupId': typeof v4ProjectGroupDetailsByIDPageCertManagerRouteRoute
   '/v4/organizations/$orgId/cert-manager/identities/$identityId': typeof v4ProjectIdentityDetailsByIDPageCertManagerRouteRoute
@@ -9096,6 +9115,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/organizations/$orgId/sso': typeof organizationSsoPageRouteRoute
   '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
+  '/v4/organizations/$orgId/app-connections/$appConnection/callback': typeof v4OrganizationAppConnectionCallbackPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/certificates/$certificateId': typeof v4CertManagerCertificateDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/groups/$groupId': typeof v4ProjectGroupDetailsByIDPageCertManagerRouteRoute
   '/v4/organizations/$orgId/cert-manager/identities/$identityId': typeof v4ProjectIdentityDetailsByIDPageCertManagerRouteRoute
@@ -9501,6 +9521,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/sso': typeof organizationSsoPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview': typeof adminResourceOverviewPageRouteRoute
+  '/v4/organizations/$orgId/app-connections/$appConnection/callback': typeof v4OrganizationAppConnectionCallbackPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/certificates/$certificateId': typeof v4CertManagerCertificateDetailsByIDPageRouteRoute
   '/v4/organizations/$orgId/cert-manager/groups/$groupId': typeof v4ProjectGroupDetailsByIDPageCertManagerRouteRoute
   '/v4/organizations/$orgId/cert-manager/identities/$identityId': typeof v4ProjectIdentityDetailsByIDPageCertManagerRouteRoute
@@ -9930,6 +9951,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects'
     | '/organizations/$orgId/sso'
     | '/admin/resources/overview'
+    | '/v4/organizations/$orgId/app-connections/$appConnection/callback'
     | '/v4/organizations/$orgId/cert-manager/certificates/$certificateId'
     | '/v4/organizations/$orgId/cert-manager/groups/$groupId'
     | '/v4/organizations/$orgId/cert-manager/identities/$identityId'
@@ -10341,6 +10363,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects'
     | '/organizations/$orgId/sso'
     | '/admin/resources/overview'
+    | '/v4/organizations/$orgId/app-connections/$appConnection/callback'
     | '/v4/organizations/$orgId/cert-manager/certificates/$certificateId'
     | '/v4/organizations/$orgId/cert-manager/groups/$groupId'
     | '/v4/organizations/$orgId/cert-manager/identities/$identityId'
@@ -10744,6 +10767,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/sso'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview'
+    | '/v4/organizations/$orgId/app-connections/$appConnection/callback'
     | '/v4/organizations/$orgId/cert-manager/certificates/$certificateId'
     | '/v4/organizations/$orgId/cert-manager/groups/$groupId'
     | '/v4/organizations/$orgId/cert-manager/identities/$identityId'
@@ -11405,6 +11429,7 @@ export const routeTree = rootRoute
         "/v4/organizations/$orgId/secret-scanning/findings",
         "/v4/organizations/$orgId/pam/accounts/",
         "/v4/organizations/$orgId/secret-scanning/data-sources/",
+        "/v4/organizations/$orgId/app-connections/$appConnection/callback",
         "/v4/organizations/$orgId/cert-manager/certificates/$certificateId",
         "/v4/organizations/$orgId/cert-manager/groups/$groupId",
         "/v4/organizations/$orgId/cert-manager/identities/$identityId",
@@ -11885,6 +11910,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview": {
       "filePath": "admin/ResourceOverviewPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/admin/_admin-layout"
+    },
+    "/v4/organizations/$orgId/app-connections/$appConnection/callback": {
+      "filePath": "v4/organization/AppConnectionCallbackPage/route.tsx",
+      "parent": "/v4/organizations/$orgId"
     },
     "/v4/organizations/$orgId/cert-manager/certificates/$certificateId": {
       "filePath": "v4/cert-manager/CertificateDetailsByIDPage/route.tsx",

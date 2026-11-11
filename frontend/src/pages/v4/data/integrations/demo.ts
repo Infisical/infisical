@@ -6,6 +6,7 @@ import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/typ
 import { DatabricksConnectionMethod } from "@app/hooks/api/appConnections/types/databricks-connection";
 import { GcpConnectionMethod } from "@app/hooks/api/appConnections/types/gcp-connection";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
+import { GitHubRadarConnectionMethod } from "@app/hooks/api/appConnections/types/github-radar-connection";
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 import { VercelConnectionMethod } from "@app/hooks/api/appConnections/types/vercel-connection";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -20,6 +21,11 @@ const options = [
   {
     app: AppConnection.GitHub,
     methods: [GitHubConnectionMethod.App, GitHubConnectionMethod.OAuth, GitHubConnectionMethod.Pat]
+  },
+  {
+    app: AppConnection.GitHubRadar,
+    methods: [GitHubRadarConnectionMethod.App],
+    appClientSlug: "infisical-radar-demo"
   },
   { app: AppConnection.Vercel, methods: [VercelConnectionMethod.ApiToken] },
   { app: AppConnection.GCP, methods: [GcpConnectionMethod.ServiceAccountImpersonation] },
