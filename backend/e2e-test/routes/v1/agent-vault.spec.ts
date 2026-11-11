@@ -64,6 +64,7 @@ import {
 import { createIsolatedOrgAndProject, createSubOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { createIdentityActor } from "e2e-test/testUtils/identities";
 import { overrideLicenseFeatures } from "e2e-test/testUtils/license";
+import { clearPermissionCaches } from "e2e-test/testUtils/permission-cache";
 import { pollUntil } from "e2e-test/testUtils/poll";
 import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
@@ -1024,7 +1025,7 @@ describe("Agent Vault V1 Router", async () => {
       await testDb("membership_roles")
         .where({ membershipId: membership.id })
         .update({ role: ProjectMembershipRole.Member });
-      await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+      await clearPermissionCaches(cacheKeys, [secondProjectId]);
 
       try {
         const inviteeEmail = `agent-vault-invite-member-${crypto.randomUUID()}@localhost.local`;
@@ -1039,7 +1040,7 @@ describe("Agent Vault V1 Router", async () => {
         await testDb("membership_roles")
           .where({ membershipId: membership.id })
           .update({ role: ProjectMembershipRole.Admin });
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await clearPermissionCaches(cacheKeys, [secondProjectId]);
       }
     });
   });
@@ -6809,15 +6810,23 @@ describe("Agent Vault V1 Router", async () => {
         expect(
           (await inject("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [owner.id], role })).statusCode
         ).toBe(200);
-        await testKeyStore.deleteItemsByKeyIn([
-          KeyStorePrefixes.ProjectPermissionMarker(
-            projectId,
-            ActorType.IDENTITY,
-            owner.id,
-            ActionProjectType.AgentVault
-          ),
-          KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.IDENTITY, owner.id, ActionProjectType.AgentVault)
-        ]);
+        await clearPermissionCaches(
+          [
+            KeyStorePrefixes.ProjectPermissionMarker(
+              projectId,
+              ActorType.IDENTITY,
+              owner.id,
+              ActionProjectType.AgentVault
+            ),
+            KeyStorePrefixes.ProjectPermissionData(
+              projectId,
+              ActorType.IDENTITY,
+              owner.id,
+              ActionProjectType.AgentVault
+            )
+          ],
+          [projectId]
+        );
       };
       try {
         await setRole("admin");
@@ -7364,13 +7373,13 @@ describe("Agent Vault V1 Router", async () => {
         await testDb("membership_roles")
           .where({ id: role.id })
           .update({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await clearPermissionCaches(cacheKeys, [projectId]);
         await expect(resolve()).rejects.toThrow(UnauthorizedError);
       } finally {
         await testDb("membership_roles")
           .where({ id: role.id })
           .update({ isTemporary: false, temporaryAccessEndTime: null });
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await clearPermissionCaches(cacheKeys, [projectId]);
       }
 
       expect((await resolve()).services).toHaveLength(1);
@@ -8802,10 +8811,18 @@ describe("Agent Vault V1 Router", async () => {
         .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: seedData1.id })
         .first();
     const clearSeedPermissionCache = (projectId: string) =>
-      testKeyStore.deleteItemsByKeyIn([
-        KeyStorePrefixes.ProjectPermissionMarker(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault),
-        KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
-      ]);
+      clearPermissionCaches(
+        [
+          KeyStorePrefixes.ProjectPermissionMarker(
+            projectId,
+            ActorType.USER,
+            seedData1.id,
+            ActionProjectType.AgentVault
+          ),
+          KeyStorePrefixes.ProjectPermissionData(projectId, ActorType.USER, seedData1.id, ActionProjectType.AgentVault)
+        ],
+        [projectId]
+      );
 
     test("the generic role change refuses to demote the last Agent Vault admin", async () => {
       const projectId = await projectFor();
@@ -9443,14 +9460,14 @@ describe("Agent Vault V1 Router", async () => {
         await testDb("membership_roles")
           .where({ membershipId: groupMembership.id })
           .update({ isTemporary: true, temporaryAccessEndTime: new Date(Date.now() - 60_000) });
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await clearPermissionCaches(cacheKeys, [projectId]);
 
         expect((await resolve()).services).toHaveLength(0);
         const lapsed = await mint();
         expect(lapsed.statusCode).toBe(400);
         expect(JSON.parse(lapsed.payload).message).toContain("is granted to you");
       } finally {
-        await testKeyStore.deleteItemsByKeyIn(cacheKeys);
+        await clearPermissionCaches(cacheKeys, [projectId]);
         await deleteUaIdentity(agent.id);
         await group.cleanup();
       }
