@@ -68,9 +68,9 @@ Infisical uses this connection to create each record and to read each decision b
 
 ## Step 3: Set up the approval flow
 
-The Infisical application includes an approval flow, **Infisical - Default Approval**. The flow asks every user with the `x_infis_approvals.approver` role to approve each new request, so the first approver who approves or rejects the request decides it. In the final step, the flow notifies Infisical of the decision.
+The Infisical application includes an approval flow, **Infisical - Default Approval**. The flow asks the members of an approvers group to approve each new request, so the first member who approves or rejects the request decides it. In the final step, the flow notifies Infisical of the decision.
 
-When you install the application, the flow is inactive. Create a group for your approvers, then activate the flow.
+When you install the application, the flow is inactive and has no approvers. Create a group for your approvers, assign the group to the flow, then activate the flow.
 
 ### Create a group for your approvers
 
@@ -114,7 +114,7 @@ When you install the application, the flow is inactive. Create a group for your 
   <Step>
     Select **Edit...** on the **Group Members** tab.
 
-    ![Group Members Tab](/images/platform/workflow-integrations/servicenow-integration/infisical-approvers-members-tab.png)
+    ![Group Members Tab](/images/platform/workflow-integrations/servicenow-integration/approvers-group-members-tab.png)
 
   </Step>
   <Step>
@@ -125,7 +125,7 @@ When you install the application, the flow is inactive. Create a group for your 
   </Step>
 </Steps>
 
-### Activate the flow
+### Assign the group and activate the flow
 
 <Steps>
   <Step>
@@ -141,7 +141,31 @@ When you install the application, the flow is inactive. Create a group for your 
 
   </Step>
   <Step>
-    If the flow shows **Inactive** next to its name, select **Activate**.
+    Select **Edit flow**.
+
+    ![Edit the Flow](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-edit.png)
+
+  </Step>
+  <Step>
+    Select the **Ask For Approval on x_infis_approvals_access_request** action. Under **Rules**, select the group icon next to the approvers field.
+
+    ![Add a Group to the Approval Rule](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-add-group.png)
+
+  </Step>
+  <Step>
+    Search for the group you created and select it.
+
+    ![Pick the Approvers Group](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-pick-group.png)
+
+  </Step>
+  <Step>
+    Check that the group appears in the approvers field, then select **Done**.
+
+    ![Approvers Group Assigned to the Rule](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-group-done.png)
+
+  </Step>
+  <Step>
+    Select **Activate**.
 
     ![Activate the Flow](/images/platform/workflow-integrations/servicenow-integration/default-approval-flow-activate.png)
 
