@@ -1,14 +1,14 @@
-import { subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
-import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
+import { ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -48,8 +48,6 @@ import { NotificationType } from "../../../services/notification/notification-ty
 import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
-import { flattenActiveRolesFromMemberships } from "../permission/permission-service";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
@@ -57,7 +55,7 @@ import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-a
 
 type TSecretApprovalRequestServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById" | "deleteById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<
@@ -117,7 +115,7 @@ export const accessApprovalRequestServiceFactory = ({
   groupDAL,
   projectDAL,
   projectEnvDAL,
-  permissionService,
+  secretsDomain,
   accessApprovalRequestDAL,
   accessApprovalRequestReviewerDAL,
   accessApprovalPolicyDAL,
@@ -265,30 +263,20 @@ export const accessApprovalRequestServiceFactory = ({
   const createAccessApprovalRequest: TAccessApprovalRequestServiceFactory["createAccessApprovalRequest"] = async ({
     isTemporary,
     temporaryRange,
-    actorId,
     permissions: requestedPermissions,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     projectSlug,
     note
   }) => {
     const cfg = getConfig();
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone can create an access approval request.
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await secretsDomain.getSecretsPermission({ actor, projectId: project.id });
 
-    const requestedByUser = await requestMemoize(requestMemoKeys.userFindById(actorId), () =>
-      userDAL.findById(actorId)
+    const requestedByUser = await requestMemoize(requestMemoKeys.userFindById(actor.principal.id), () =>
+      userDAL.findById(actor.principal.id)
     );
     if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
 
@@ -315,8 +303,8 @@ export const accessApprovalRequestServiceFactory = ({
         envSlug,
         envName: environment.name,
         secretPath,
-        requestedByUserId: actorId,
-        actorOrgId,
+        requestedByUserId: actor.principal.id,
+        actorOrgId: actor.org.id,
         permissions: requestedPermissions,
         isTemporary,
         temporaryRange,
@@ -363,7 +351,7 @@ export const accessApprovalRequestServiceFactory = ({
         approverGroupIds.map((groupApproverId) =>
           groupDAL
             .findAllGroupPossibleUsers({
-              orgId: actorOrgId,
+              orgId: actor.org.id,
               groupId: groupApproverId
             })
             .then((group) => group.members)
@@ -380,7 +368,7 @@ export const accessApprovalRequestServiceFactory = ({
 
     const duplicateRequests = await accessApprovalRequestDAL.find({
       policyId: policy.id,
-      requestedByUserId: actorId,
+      requestedByUserId: actor.principal.id,
       permissions: JSON.stringify(requestedPermissions),
       isTemporary
     });
@@ -415,7 +403,7 @@ export const accessApprovalRequestServiceFactory = ({
 
     const approval = await accessApprovalRequestDAL.create({
       policyId: policy.id,
-      requestedByUserId: actorId,
+      requestedByUserId: actor.principal.id,
       temporaryRange: temporaryRange || null,
       permissions: JSON.stringify(requestedPermissions),
       isTemporary,
@@ -463,7 +451,7 @@ export const accessApprovalRequestServiceFactory = ({
       await notificationService.createUserNotifications(
         approverUsers.map((approver) => ({
           userId: approver.id,
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           type: NotificationType.ACCESS_APPROVAL_REQUEST,
           title: "Access Approval Request",
           body: `**${requesterFullName}** (${requestedByUser.email}) has requested ${isTemporary ? "temporary" : "permanent"} access to **${secretPath}** in the **${envSlug}** environment for project **${project.name}**.`,
@@ -522,10 +510,7 @@ export const accessApprovalRequestServiceFactory = ({
 
   const updateAccessApprovalRequest: TAccessApprovalRequestServiceFactory["updateAccessApprovalRequest"] = async ({
     temporaryRange,
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     editNote,
     requestId
   }) => {
@@ -547,18 +532,14 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
+    const { permission } = await secretsDomain.getSecretsPermission({
       actor,
-      actorId,
-      projectId: accessApprovalRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: accessApprovalRequest.projectId
     });
 
-    const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
+    const isApprover = policy.approvers.find((approver) => approver.userId === actor.principal.id);
 
-    if (!hasRole(ProjectMembershipRole.Admin) && !isApprover) {
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin }) && !isApprover) {
       throw new ForbiddenRequestError({ message: "You are not authorized to modify this request" });
     }
 
@@ -580,7 +561,9 @@ export const accessApprovalRequestServiceFactory = ({
       throw new BadRequestError({ message: "This access request has expired" });
     }
 
-    const editedByUser = await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+    const editedByUser = await requestMemoize(requestMemoKeys.userFindById(actor.principal.id), () =>
+      userDAL.findById(actor.principal.id)
+    );
 
     if (!editedByUser) throw new NotFoundError({ message: "Editing user not found" });
 
@@ -617,7 +600,7 @@ export const accessApprovalRequestServiceFactory = ({
           temporaryRange,
           isTemporary: true,
           editNote,
-          editedByUserId: actorId
+          editedByUserId: actor.principal.id
         },
         tx
       );
@@ -678,7 +661,7 @@ export const accessApprovalRequestServiceFactory = ({
           .filter((approver) => Boolean(approver.userId) && approver.userId !== editedByUser.id)
           .map((approver) => ({
             userId: approver.userId!,
-            orgId: actorOrgId,
+            orgId: actor.org.id,
             type: NotificationType.ACCESS_APPROVAL_REQUEST_UPDATED,
             title: "Access Approval Request Updated",
             body: `**${editorFullName}** (${editedByUser.email}) has updated the access request submitted by **${requesterFullName}** (${requestedByUser.email}) for **${secretPath}** in the **${envSlug}** environment for project **${project.name}**.`,
@@ -753,32 +736,22 @@ export const accessApprovalRequestServiceFactory = ({
     projectSlug,
     authorUserId,
     envSlug,
-    actor,
-    actorOrgId,
-    actorId,
-    actorAuthMethod
+    actor
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: project.id });
 
-    const canReadAllApprovalRequests = permission.can(
-      ProjectPermissionApprovalRequestActions.Read,
-      ProjectPermissionSub.ApprovalRequests
-    );
+    const canReadAllApprovalRequests = permission.can({
+      action: ProjectPermissionApprovalRequestActions.Read,
+      subject: ProjectPermissionSub.ApprovalRequests
+    });
 
     let requests = await $listRequestsAcrossSystems(project.id);
 
     if (!canReadAllApprovalRequests) {
-      requests = requests.filter((request) => request.requestedByUserId === actorId);
+      requests = requests.filter((request) => request.requestedByUserId === actor.principal.id);
     }
 
     if (authorUserId) {
@@ -806,9 +779,6 @@ export const accessApprovalRequestServiceFactory = ({
     requestId,
     actor,
     status,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     bypassReason
   }) => {
     if (await secretAccessApprovalGlobalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
@@ -816,9 +786,6 @@ export const accessApprovalRequestServiceFactory = ({
         requestId,
         actor,
         status,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
         bypassReason
       });
     }
@@ -859,19 +826,15 @@ export const accessApprovalRequestServiceFactory = ({
         })
       : undefined;
 
-    const { hasRole, memberships } = await permissionService.getProjectPermission({
+    const { permission } = await secretsDomain.getSecretsPermission({
       actor,
-      actorId,
-      projectId: accessApprovalRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: accessApprovalRequest.projectId
     });
 
     // A user whose only active project role is NoAccess is not authorized to review the request,
     // even with a break-glass approval. If they also hold another active role (e.g. via a group),
     // allow the review to proceed.
-    const activeRoles = flattenActiveRolesFromMemberships(memberships, ProjectMembershipRole.Custom);
+    const activeRoles = permission.grants.activeEntries(ProjectMembershipRole.Custom);
     const hasOnlyNoAccessRole =
       activeRoles.length > 0 && activeRoles.every((r) => r.role === ProjectMembershipRole.NoAccess);
 
@@ -879,22 +842,23 @@ export const accessApprovalRequestServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to review this request" });
     }
 
-    const isSelfApproval = actorId === accessApprovalRequest.requestedByUserId;
+    const isSelfApproval = actor.principal.id === accessApprovalRequest.requestedByUserId;
     const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
-    const canBypass = !policy.bypassers.length || policy.bypassers.some((bypasser) => bypasser.userId === actorId);
+    const canBypass =
+      !policy.bypassers.length || policy.bypassers.some((bypasser) => bypasser.userId === actor.principal.id);
     const cannotBypassUnderSoftEnforcement = !(isSoftEnforcement && canBypass);
 
     // Calculate break glass attempt before sequence checks
     const isBreakGlassApprovalAttempt =
       policy.enforcementLevel === EnforcementLevel.Soft &&
-      actorId === accessApprovalRequest.requestedByUserId &&
+      actor.principal.id === accessApprovalRequest.requestedByUserId &&
       status === ApprovalStatus.APPROVED;
 
-    const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
+    const isApprover = policy.approvers.find((approver) => approver.userId === actor.principal.id);
 
     const isSelfRejection = isSelfApproval && status === ApprovalStatus.REJECTED;
 
-    const isBypasser = policy.bypassers.some((bypasser) => bypasser.userId === actorId);
+    const isBypasser = policy.bypassers.some((bypasser) => bypasser.userId === actor.principal.id);
 
     // Self-approval is blocked when the policy disallows it, unless this is a soft-enforcement break-glass approval and the user is on the bypasser list.
     // this does not work for policies where all bypassers are allowed to self-approve.
@@ -915,8 +879,8 @@ export const accessApprovalRequestServiceFactory = ({
     }
 
     if (
-      !hasRole(ProjectMembershipRole.Admin) &&
-      accessApprovalRequest.requestedByUserId !== actorId && // The request wasn't made by the current user
+      !permission.hasRole({ slug: ProjectMembershipRole.Admin }) &&
+      accessApprovalRequest.requestedByUserId !== actor.principal.id && // The request wasn't made by the current user
       !isApprover // The request isn't performed by an assigned approver
     ) {
       throw new ForbiddenRequestError({ message: "You are not authorized to approve this request" });
@@ -969,7 +933,7 @@ export const accessApprovalRequestServiceFactory = ({
     };
     if (presentSequence) {
       const isApproverOfTheSequence = policy.approvers.find(
-        (el) => el.sequence === presentSequence.step && el.userId === actorId
+        (el) => el.sequence === presentSequence.step && el.userId === actor.principal.id
       );
 
       // Only throw if actor is not the approver and not bypassing
@@ -991,7 +955,7 @@ export const accessApprovalRequestServiceFactory = ({
       const existingReviewByActorInTx = await accessApprovalRequestReviewerDAL.findOne(
         {
           requestId: accessApprovalRequest.id,
-          reviewerUserId: actorId
+          reviewerUserId: actor.principal.id
         },
         tx
       );
@@ -1009,7 +973,7 @@ export const accessApprovalRequestServiceFactory = ({
           {
             status,
             requestId: accessApprovalRequest.id,
-            reviewerUserId: actorId
+            reviewerUserId: actor.principal.id
           },
           tx
         );
@@ -1075,7 +1039,7 @@ export const accessApprovalRequestServiceFactory = ({
               privilegeId: privilegeIdToSet,
               status: ApprovalStatus.APPROVED,
               approvedAt: new Date(),
-              approvedByUserId: actorId,
+              approvedByUserId: actor.principal.id,
               // A break-glass approval grants access without the required reviews; persist the
               // reason so the bypass can be surfaced in the UI and audit log after the fact.
               bypassReason: isBreakGlassApprovalAttempt ? bypassReason || null : null
@@ -1093,7 +1057,7 @@ export const accessApprovalRequestServiceFactory = ({
     if (isBreakGlassApprovalAttempt) {
       try {
         const cfg = getConfig();
-        const actingUser = await userDAL.findById(actorId);
+        const actingUser = await userDAL.findById(actor.principal.id);
 
         if (actingUser) {
           const policyApproverUserIds = policy.approvers
@@ -1113,7 +1077,7 @@ export const accessApprovalRequestServiceFactory = ({
             await notificationService.createUserNotifications(
               approverUsersForEmail.map((approver) => ({
                 userId: approver.id,
-                orgId: actorOrgId,
+                orgId: actor.org.id,
                 type: NotificationType.ACCESS_POLICY_BYPASSED,
                 title: "Secret Access Policy Bypassed",
                 body: `**${actingUser.firstName} ${actingUser.lastName}** (${actingUser.email}) has accessed a secret in **${policy.secretPath || "/"}** in the **${environment?.name || permissionEnvironment}** environment for project **${project.name}** without obtaining the required approval.`,
@@ -1182,14 +1146,11 @@ export const accessApprovalRequestServiceFactory = ({
   };
 
   const retryDelegatedApprovalDispatch: TAccessApprovalRequestServiceFactory["retryDelegatedApprovalDispatch"] =
-    async ({ requestId, actor, actorId, actorOrgId, actorAuthMethod }) => {
+    async ({ requestId, actor }) => {
       if (await secretAccessApprovalGlobalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
         return secretAccessApprovalGlobalRequestBridge.retryDelegatedApprovalDispatch({
           requestId,
-          actor,
-          actorId,
-          actorOrgId,
-          actorAuthMethod
+          actor
         });
       }
 
@@ -1200,18 +1161,12 @@ export const accessApprovalRequestServiceFactory = ({
 
   const cancelAccessRequest: TAccessApprovalRequestServiceFactory["cancelAccessRequest"] = async ({
     requestId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
+    actor
   }) => {
     if (await secretAccessApprovalGlobalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
       return secretAccessApprovalGlobalRequestBridge.cancelAccessApprovalRequest({
         requestId,
-        actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod
+        actor
       });
     }
 
@@ -1222,18 +1177,12 @@ export const accessApprovalRequestServiceFactory = ({
 
   const revokeAccessRequest: TAccessApprovalRequestServiceFactory["revokeAccessRequest"] = async ({
     requestId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
+    actor
   }) => {
     if (await secretAccessApprovalGlobalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
       return secretAccessApprovalGlobalRequestBridge.revokeAccessApprovalRequest({
         requestId,
-        actor,
-        actorId,
-        actorOrgId,
-        actorAuthMethod
+        actor
       });
     }
 
@@ -1241,13 +1190,9 @@ export const accessApprovalRequestServiceFactory = ({
     if (!accessApprovalRequest)
       throw new NotFoundError({ message: `Access approval request with ID '${requestId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await secretsDomain.getSecretsPermission({
       actor,
-      actorId,
-      projectId: accessApprovalRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: accessApprovalRequest.projectId
     });
 
     const targetUser = await requestMemoize(requestMemoKeys.userFindById(accessApprovalRequest.requestedByUserId), () =>
@@ -1255,16 +1200,21 @@ export const accessApprovalRequestServiceFactory = ({
     );
     if (!targetUser) throw new NotFoundError({ message: "Target user not found" });
 
-    const memberSubject = subject(ProjectPermissionSub.Member, {
-      userEmail: targetUser.email ?? undefined
-    });
+    const memberFields = { userEmail: targetUser.email ?? undefined };
 
-    const canAssignAdditionalPrivileges = permission.can(
-      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
-      memberSubject
+    const canAssignAdditionalPrivileges = permission.can({
+      action: ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      subject: ProjectPermissionSub.Member,
+      fields: memberFields
+    });
+    const canGrantPrivilegesLegacy = permission.can({
+      action: ProjectPermissionMemberActions.GrantPrivileges,
+      subject: ProjectPermissionSub.Member,
+      fields: memberFields
+    });
+    const isApprover = accessApprovalRequest.policy.approvers.some(
+      (approver) => approver.userId === actor.principal.id
     );
-    const canGrantPrivilegesLegacy = permission.can(ProjectPermissionMemberActions.GrantPrivileges, memberSubject);
-    const isApprover = accessApprovalRequest.policy.approvers.some((approver) => approver.userId === actorId);
 
     if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy && !isApprover) {
       throw new ForbiddenRequestError({
@@ -1282,7 +1232,7 @@ export const accessApprovalRequestServiceFactory = ({
         {
           status: ApprovalStatus.REVOKED,
           revokedAt: new Date(),
-          revokedByUserId: actorId,
+          revokedByUserId: actor.principal.id,
           privilegeId: null
         },
         tx
@@ -1344,35 +1294,21 @@ export const accessApprovalRequestServiceFactory = ({
     };
   };
 
-  const getCount: TAccessApprovalRequestServiceFactory["getCount"] = async ({
-    projectSlug,
-    policyId,
-    actor,
-    actorAuthMethod,
-    actorId,
-    actorOrgId
-  }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+  const getCount: TAccessApprovalRequestServiceFactory["getCount"] = async ({ projectSlug, policyId, actor }) => {
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: project.id });
 
-    const canReadAllApprovalRequests = permission.can(
-      ProjectPermissionApprovalRequestActions.Read,
-      ProjectPermissionSub.ApprovalRequests
-    );
+    const canReadAllApprovalRequests = permission.can({
+      action: ProjectPermissionApprovalRequestActions.Read,
+      subject: ProjectPermissionSub.ApprovalRequests
+    });
 
     const count = await $countRequestsAcrossSystems({
       projectId: project.id,
       policyId,
-      requestedByUserId: canReadAllApprovalRequests ? undefined : actorId
+      requestedByUserId: canReadAllApprovalRequests ? undefined : actor.principal.id
     });
 
     return { count };

@@ -16,6 +16,7 @@ import {
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
@@ -104,6 +105,7 @@ import {
 
 type TSecretApprovalRequestServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretApprovalRequestDAL: TSecretApprovalRequestDALFactory;
   secretApprovalRequestSecretDAL: TSecretApprovalRequestSecretDALFactory;
@@ -189,6 +191,7 @@ export const secretApprovalRequestServiceFactory = ({
   secretBlindIndexDAL,
   projectDAL,
   permissionService,
+  secretsDomain,
   secretVersionDAL,
   secretQueueService,
   projectBotService,
@@ -246,33 +249,19 @@ export const secretApprovalRequestServiceFactory = ({
   const $useSecretChangeGlobalRequestBridge = async (requestId: string, tx?: Knex) =>
     Boolean(await secretChangeGlobalRequestBridgeService.findSecretChangeRequest(requestId, tx));
 
-  const requestCount = async ({
-    projectId,
-    policyId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TApprovalRequestCountDTO) => {
-    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
+  const requestCount = async ({ projectId, policyId, actor }: TApprovalRequestCountDTO) => {
+    if (actor.principal.type === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     // Check if user has SecretApprovalRequest.Read permission to list all requests
-    const canReadAllApprovalRequests = permission.can(
-      ProjectPermissionSecretApprovalRequestActions.Read,
-      ProjectPermissionSub.SecretApprovalRequest
-    );
+    const canReadAllApprovalRequests = permission.can({
+      action: ProjectPermissionSecretApprovalRequestActions.Read,
+      subject: ProjectPermissionSub.SecretApprovalRequest
+    });
 
     // If user has the permission, count all requests; otherwise count only their requests
-    const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
+    const userIdFilter = canReadAllApprovalRequests ? undefined : actor.principal.id;
 
     const [legacyCount, secretChangeCount] = await Promise.all([
       secretApprovalRequestDAL.findProjectRequestCount(projectId, userIdFilter, policyId),
@@ -286,10 +275,7 @@ export const secretApprovalRequestServiceFactory = ({
 
   const getSecretApprovals = async ({
     projectId,
-    actorId,
     actor,
-    actorAuthMethod,
-    actorOrgId,
     status,
     environment,
     committer,
@@ -299,26 +285,19 @@ export const secretApprovalRequestServiceFactory = ({
     orderBy,
     orderDirection
   }: TListApprovalsDTO) => {
-    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
+    if (actor.principal.type === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     // Check if user has SecretApprovalRequest.Read permission to list all requests
-    const canReadAllApprovalRequests = permission.can(
-      ProjectPermissionSecretApprovalRequestActions.Read,
-      ProjectPermissionSub.SecretApprovalRequest
-    );
+    const canReadAllApprovalRequests = permission.can({
+      action: ProjectPermissionSecretApprovalRequestActions.Read,
+      subject: ProjectPermissionSub.SecretApprovalRequest
+    });
 
     // If user has the permission, don't filter by userId (they see all requests)
     // Otherwise, filter to only show requests where they are committer or approver
-    const userIdFilter = canReadAllApprovalRequests ? undefined : actorId;
+    const userIdFilter = canReadAllApprovalRequests ? undefined : actor.principal.id;
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
@@ -386,8 +365,8 @@ export const secretApprovalRequestServiceFactory = ({
       return secretChangeGlobalRequestBridgeService.getSecretChangeRequestById(dto);
     }
 
-    const { actor, actorId, actorOrgId, actorAuthMethod, id } = dto;
-    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
+    const { actor, id } = dto;
+    if (actor.principal.type === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(id);
 
@@ -398,29 +377,22 @@ export const secretApprovalRequestServiceFactory = ({
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
     const { policy } = secretApprovalRequest;
-    const { hasRole, permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     // Check if user has SecretApprovalRequest.Read permission
     // Secret values are controlled by underlying secret.ReadValue permissions
-    const canReadApprovalRequests = permission.can(
-      ProjectPermissionSecretApprovalRequestActions.Read,
-      ProjectPermissionSub.SecretApprovalRequest
-    );
+    const canReadApprovalRequests = permission.can({
+      action: ProjectPermissionSecretApprovalRequestActions.Read,
+      subject: ProjectPermissionSub.SecretApprovalRequest
+    });
 
     // User can view details if they have Read permission, are admin, committer, or approver
     if (
       !canReadApprovalRequests &&
-      !hasRole(ProjectMembershipRole.Admin) &&
-      secretApprovalRequest.committerUserId !== actorId &&
-      secretApprovalRequest.committerIdentityId !== actorId &&
-      !policy.approvers.find(({ userId }) => userId === actorId)
+      !permission.hasRole({ slug: ProjectMembershipRole.Admin }) &&
+      secretApprovalRequest.committerUserId !== actor.principal.id &&
+      secretApprovalRequest.committerIdentityId !== actor.principal.id &&
+      !policy.approvers.find(({ userId }) => userId === actor.principal.id)
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
@@ -429,8 +401,8 @@ export const secretApprovalRequestServiceFactory = ({
       secretApprovalRequest.folderId
     ]);
     const canReadSecretValue = buildSecretApprovalCommitValueAccess({
-      permission,
-      isReviewer: policy.approvers.some(({ userId }) => userId === actorId),
+      permission: permission.toAbility(),
+      isReviewer: policy.approvers.some(({ userId }) => userId === actor.principal.id),
       isRequestOpen: secretApprovalRequest.status === RequestState.Open,
       environment: secretApprovalRequest.environment,
       secretPath: secretPath?.[0]?.path
@@ -562,12 +534,12 @@ export const secretApprovalRequestServiceFactory = ({
       return secretChangeGlobalRequestBridgeService.reviewSecretChangeRequest(dto);
     }
 
-    const { approvalId, actor, status, comment, actorId, actorAuthMethod, actorOrgId } = dto;
+    const { approvalId, actor, status, comment } = dto;
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) {
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
     }
-    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+    if (actor.principal.type !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     if (secretApprovalRequest.status !== RequestState.Open)
       throw new BadRequestError({ message: "You can only review open approval requests" });
@@ -578,24 +550,20 @@ export const secretApprovalRequestServiceFactory = ({
         message: "The policy associated with this secret approval request has been deleted."
       });
     }
-    if (!policy.allowedSelfApprovals && actorId === secretApprovalRequest.committerUserId) {
+    if (!policy.allowedSelfApprovals && actor.principal.id === secretApprovalRequest.committerUserId) {
       throw new BadRequestError({
         message: "Failed to review secret approval request. Users are not authorized to review their own request."
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: ActorType.USER,
-      actorId,
-      projectId: secretApprovalRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+    const { permission } = await secretsDomain.getSecretsPermission({
+      actor,
+      projectId: secretApprovalRequest.projectId
     });
     if (
-      !hasRole(ProjectMembershipRole.Admin) &&
-      secretApprovalRequest.committerUserId !== actorId &&
-      !policy.approvers.find(({ userId }) => userId === actorId)
+      !permission.hasRole({ slug: ProjectMembershipRole.Admin }) &&
+      secretApprovalRequest.committerUserId !== actor.principal.id &&
+      !policy.approvers.find(({ userId }) => userId === actor.principal.id)
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
@@ -603,7 +571,7 @@ export const secretApprovalRequestServiceFactory = ({
       const review = await secretApprovalRequestReviewerDAL.findOne(
         {
           requestId: secretApprovalRequest.id,
-          reviewerUserId: actorId
+          reviewerUserId: actor.principal.id
         },
         tx
       );
@@ -613,7 +581,7 @@ export const secretApprovalRequestServiceFactory = ({
             status,
             comment,
             requestId: secretApprovalRequest.id,
-            reviewerUserId: actorId
+            reviewerUserId: actor.principal.id
           },
           tx
         );
@@ -658,14 +626,14 @@ export const secretApprovalRequestServiceFactory = ({
       return secretChangeGlobalRequestBridgeService.updateSecretChangeRequestStatus(dto);
     }
 
-    const { actorId, status, approvalId, actor, actorOrgId, actorAuthMethod } = dto;
+    const { status, approvalId, actor } = dto;
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest) {
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
     }
-    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+    if (actor.principal.type !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.secretApproval && status === RequestState.Open) {
       throw new BadRequestError({
         message:
@@ -680,18 +648,14 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: ActorType.USER,
-      actorId,
-      projectId: secretApprovalRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+    const { permission } = await secretsDomain.getSecretsPermission({
+      actor,
+      projectId: secretApprovalRequest.projectId
     });
     if (
-      !hasRole(ProjectMembershipRole.Admin) &&
-      secretApprovalRequest.committerUserId !== actorId &&
-      !policy.approvers.find(({ userId }) => userId === actorId)
+      !permission.hasRole({ slug: ProjectMembershipRole.Admin }) &&
+      secretApprovalRequest.committerUserId !== actor.principal.id &&
+      !policy.approvers.find(({ userId }) => userId === actor.principal.id)
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
@@ -704,7 +668,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const updatedRequest = await secretApprovalRequestDAL.updateById(secretApprovalRequest.id, {
       status,
-      statusChangedByUserId: actorId
+      statusChangedByUserId: actor.principal.id
     });
 
     const statusAction =
@@ -745,11 +709,11 @@ export const secretApprovalRequestServiceFactory = ({
       return secretChangeGlobalRequestBridgeService.mergeSecretChangeRequest(dto);
     }
 
-    const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason, requireApprovals } = dto;
+    const { approvalId, actor, bypassReason, requireApprovals } = dto;
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest)
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
-    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+    if (actor.principal.type !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     const { policy, folderId, projectId, bypassers, environment } = secretApprovalRequest;
     if (policy.deletedAt) {
@@ -768,19 +732,12 @@ export const secretApprovalRequestServiceFactory = ({
     if (secretApprovalRequest.status !== RequestState.Open)
       throw new BadRequestError({ message: "You can only approve or reject open approval requests" });
 
-    const { hasRole, permission } = await permissionService.getProjectPermission({
-      actor: ActorType.USER,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     if (
-      !hasRole(ProjectMembershipRole.Admin) &&
-      secretApprovalRequest.committerUserId !== actorId &&
-      !policy.approvers.find(({ userId }) => userId === actorId)
+      !permission.hasRole({ slug: ProjectMembershipRole.Admin }) &&
+      secretApprovalRequest.committerUserId !== actor.principal.id &&
+      !policy.approvers.find(({ userId }) => userId === actor.principal.id)
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
@@ -795,7 +752,7 @@ export const secretApprovalRequestServiceFactory = ({
         approverId ? reviewers[approverId] === ApprovalStatus.APPROVED : false
       ).length;
     const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
-    const canBypass = !bypassers.length || bypassers.some((bypasser) => bypasser.userId === actorId);
+    const canBypass = !bypassers.length || bypassers.some((bypasser) => bypasser.userId === actor.principal.id);
 
     if (!hasMinApproval && requireApprovals)
       throw new BadRequestError({
@@ -824,7 +781,11 @@ export const secretApprovalRequestServiceFactory = ({
         commits: secretApprovalSecrets
       });
       const cipher = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-      const blindIndexer = await createSecretBlindIndexer({ projectCipher: cipher, orgId: actorOrgId, kmsCoreDomain });
+      const blindIndexer = await createSecretBlindIndexer({
+        projectCipher: cipher,
+        orgId: actor.org.id,
+        kmsCoreDomain
+      });
 
       mergeStatus = await secretApprovalRequestDAL.transaction(async (tx) => {
         const secrets = await applySecretApprovalCommitsV2Bridge({
@@ -833,10 +794,10 @@ export const secretApprovalRequestServiceFactory = ({
           environment,
           envId: policyEnvId,
           secretPath: folder.path,
-          actor,
-          actorId,
-          actorOrgId,
-          permission,
+          actor: actor.principal.type,
+          actorId: actor.principal.id,
+          actorOrgId: actor.org.id,
+          permission: permission.toAbility(),
           cipher,
           blindIndexer,
           creates,
@@ -851,7 +812,7 @@ export const secretApprovalRequestServiceFactory = ({
             conflicts: JSON.stringify(conflicts),
             hasMerged: true,
             status: RequestState.Closed,
-            statusChangedByUserId: actorId,
+            statusChangedByUserId: actor.principal.id,
             bypassReason: isMergedViaBypass ? bypassReason || null : null
           },
           tx
@@ -1039,7 +1000,7 @@ export const secretApprovalRequestServiceFactory = ({
             conflicts: JSON.stringify(conflicts),
             hasMerged: true,
             status: RequestState.Closed,
-            statusChangedByUserId: actorId,
+            statusChangedByUserId: actor.principal.id,
             bypassReason: isMergedViaBypass ? bypassReason || null : null
           },
           tx
@@ -1089,12 +1050,12 @@ export const secretApprovalRequestServiceFactory = ({
 
     await secretQueueService.syncSecrets({
       projectId,
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       secretPath: folder.path,
       environmentSlug: folder.environmentSlug,
       environmentName: folder.environmentName,
-      actorId,
-      actor,
+      actorId: actor.principal.id,
+      actor: actor.principal.type,
       events
     });
 
@@ -1130,7 +1091,7 @@ export const secretApprovalRequestServiceFactory = ({
         project,
         environmentName: env.name,
         secretPath: policy.secretPath,
-        actorId,
+        actorId: actor.principal.id,
         approverUserIds: policy.approvers.map((approver: { userId: string | null | undefined }) => approver.userId!),
         bypassReason
       });

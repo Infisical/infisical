@@ -1,6 +1,4 @@
-import { ForbiddenError, subject } from "@casl/ability";
-
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { ProjectMembershipRole } from "@app/db/schemas";
 import {
   ProjectPermissionActions,
   ProjectPermissionApprovalRequestActions,
@@ -10,7 +8,6 @@ import {
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { verifyRequestedPermissions } from "@app/ee/services/access-approval-request/access-approval-request-fns";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
-import { flattenActiveRolesFromMemberships } from "@app/ee/services/permission/permission-service";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { isGlobSubsetOfGlob } from "@app/lib/casl/glob-subset";
 import { getConfig } from "@app/lib/config/env";
@@ -69,7 +66,7 @@ export type TSecretAccessApprovalGlobalRequestBridgeServiceFactory = ReturnType<
 export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
   projectDAL,
   projectEnvDAL,
-  permissionService,
+  secretsDomain,
   userDAL,
   userGroupMembershipDAL,
   approvalRequestDAL,
@@ -442,26 +439,16 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     requestId,
     status,
     bypassReason,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
+    actor
   }: TReviewSecretAccessApprovalGlobalRequestDTO) => {
     const request = await $findRequestById(requestId);
 
-    const { memberships } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: request.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: request.projectId });
 
     // A user whose only active project role is NoAccess is not authorized to review the request,
     // even with a break-glass approval. If they also hold another active role (e.g. via a group),
     // allow the review to proceed.
-    const activeRoles = flattenActiveRolesFromMemberships(memberships, ProjectMembershipRole.Custom);
+    const activeRoles = permission.grants.activeEntries(ProjectMembershipRole.Custom);
     const hasOnlyNoAccessRole =
       activeRoles.length > 0 && activeRoles.every((r) => r.role === ProjectMembershipRole.NoAccess);
     if (hasOnlyNoAccessRole) {
@@ -506,7 +493,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       }
     }
 
-    const isSelfReview = actorId === request.requesterId;
+    const isSelfReview = actor.principal.id === request.requesterId;
     const isApproving = status === ApprovalStatus.APPROVED;
     const isBreakGlassAttempt = bypassReason !== undefined;
     if (isBreakGlassAttempt && !isApproving) {
@@ -518,7 +505,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       });
     }
 
-    const actorGroupIds = await $getActorGroupIds(actorId, actorOrgId);
+    const actorGroupIds = await $getActorGroupIds(actor.principal.id, actor.org.id);
 
     const [project, requestedByUser] = await Promise.all([
       projectDAL.findById(request.projectId),
@@ -563,12 +550,12 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       }
 
       const isEligible =
-        actor === ActorType.USER &&
+        actor.principal.type === ActorType.USER &&
         isSelfReview &&
         (await secretAccessApprovalGlobalResource.isBreakGlassEligible({
           policy,
           bypassers: policy.bypassers,
-          actor: { id: actorId },
+          actor: { id: actor.principal.id },
           userGroupIds: actorGroupIds
         }));
       if (!isEligible) {
@@ -608,11 +595,11 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
 
         const stepApprovals = await approvalRequestApprovalsDAL.find({ stepId: currentStep.id }, { tx });
         const bypassApproval =
-          stepApprovals.find((a) => a.approverUserId === actorId) ??
+          stepApprovals.find((a) => a.approverUserId === actor.principal.id) ??
           (await approvalRequestApprovalsDAL.create(
             {
               stepId: currentStep.id,
-              approverUserId: actorId,
+              approverUserId: actor.principal.id,
               decision: ApprovalRequestApprovalDecision.Approved
             },
             tx
@@ -626,7 +613,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
         return bypassApproval;
       });
 
-      const actingUser = await userDAL.findById(actorId);
+      const actingUser = await userDAL.findById(actor.principal.id);
       if (actingUser) {
         await notifySecretAccessBypass(
           {
@@ -679,19 +666,19 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       }));
 
       const isSelfRejection = isSelfReview && !isApproving;
-      if (!isSelfRejection && !isPolicySubjectMatch(stepApprovers, actorId, actorGroupIds)) {
+      if (!isSelfRejection && !isPolicySubjectMatch(stepApprovers, actor.principal.id, actorGroupIds)) {
         throw new BadRequestError({ message: "You are not a reviewer in this step" });
       }
 
       const stepApprovals = await approvalRequestApprovalsDAL.find({ stepId: currentStep.id }, { tx });
-      if (stepApprovals.some((a) => a.approverUserId === actorId)) {
+      if (stepApprovals.some((a) => a.approverUserId === actor.principal.id)) {
         throw new BadRequestError({ message: "You have already reviewed this request" });
       }
 
       const createdApproval = await approvalRequestApprovalsDAL.create(
         {
           stepId: currentStep.id,
-          approverUserId: actorId,
+          approverUserId: actor.principal.id,
           decision: isApproving ? ApprovalRequestApprovalDecision.Approved : ApprovalRequestApprovalDecision.Rejected
         },
         tx
@@ -787,36 +774,28 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     };
   };
 
-  const revokeAccessApprovalRequest = async ({
-    requestId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TRevokeSecretAccessApprovalGlobalRequestDTO) => {
+  const revokeAccessApprovalRequest = async ({ requestId, actor }: TRevokeSecretAccessApprovalGlobalRequestDTO) => {
     const request = await $findRequestById(requestId);
     if (!request.requesterId) {
       throw new NotFoundError({ message: "The user who created this access request no longer exists" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: request.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: request.projectId });
 
     const targetUser = await userDAL.findById(request.requesterId);
     if (!targetUser) throw new NotFoundError({ message: "Target user not found" });
 
-    const memberSubject = subject(ProjectPermissionSub.Member, { userEmail: targetUser.email ?? undefined });
-    const canAssignAdditionalPrivileges = permission.can(
-      ProjectPermissionMemberActions.AssignAdditionalPrivileges,
-      memberSubject
-    );
-    const canGrantPrivilegesLegacy = permission.can(ProjectPermissionMemberActions.GrantPrivileges, memberSubject);
+    const memberFields = { userEmail: targetUser.email ?? undefined };
+    const canAssignAdditionalPrivileges = permission.can({
+      action: ProjectPermissionMemberActions.AssignAdditionalPrivileges,
+      subject: ProjectPermissionSub.Member,
+      fields: memberFields
+    });
+    const canGrantPrivilegesLegacy = permission.can({
+      action: ProjectPermissionMemberActions.GrantPrivileges,
+      subject: ProjectPermissionSub.Member,
+      fields: memberFields
+    });
 
     const [policy] = request.policyId
       ? await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({ policyId: request.policyId })
@@ -824,8 +803,8 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
 
     let isApprover = false;
     if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy && policy) {
-      const actorGroupIds = await $getActorGroupIds(actorId, actorOrgId);
-      isApprover = isPolicySubjectMatch(policy.approvers, actorId, actorGroupIds);
+      const actorGroupIds = await $getActorGroupIds(actor.principal.id, actor.org.id);
+      isApprover = isPolicySubjectMatch(policy.approvers, actor.principal.id, actorGroupIds);
     }
 
     if (!canAssignAdditionalPrivileges && !canGrantPrivilegesLegacy && !isApprover) {
@@ -850,7 +829,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       }
       await approvalRequestGrantsDAL.updateById(
         grant.id,
-        { status: ApprovalRequestGrantStatus.Revoked, revokedAt: new Date(), revokedByUserId: actorId },
+        { status: ApprovalRequestGrantStatus.Revoked, revokedAt: new Date(), revokedByUserId: actor.principal.id },
         tx
       );
       await additionalPrivilegeDAL.delete({ grantId: grant.id }, tx);
@@ -879,27 +858,17 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
 
   const retryDelegatedApprovalDispatch = async ({
     requestId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
+    actor
   }: TRetrySecretAccessApprovalGlobalRequestDispatchDTO) => {
     const request = await $findRequestById(requestId);
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: request.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: request.projectId });
 
-    if (request.requesterId !== actorId) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionApprovalRequestActions.Read,
-        ProjectPermissionSub.ApprovalRequests
-      );
+    if (request.requesterId !== actor.principal.id) {
+      permission.assert({
+        action: ProjectPermissionApprovalRequestActions.Read,
+        subject: ProjectPermissionSub.ApprovalRequests
+      });
     }
 
     const auditDetails = await $describeRequestForAudit(request);
@@ -947,29 +916,13 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     });
   };
 
-  const cancelAccessApprovalRequest = async ({
-    requestId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TCancelSecretAccessApprovalGlobalRequestDTO) => {
+  const cancelAccessApprovalRequest = async ({ requestId, actor }: TCancelSecretAccessApprovalGlobalRequestDTO) => {
     const request = await $findRequestById(requestId);
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: request.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: request.projectId });
 
-    if (request.requesterId !== actorId) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Edit,
-        ProjectPermissionSub.SecretApproval
-      );
+    if (request.requesterId !== actor.principal.id) {
+      permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.SecretApproval });
     }
 
     const delegatedRequest = await delegatedApprovalService.getRequestByRequestId(request.id);

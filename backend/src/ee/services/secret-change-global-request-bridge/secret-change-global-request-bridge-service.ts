@@ -1,18 +1,19 @@
 import { Knex } from "knex";
 
-import { AccessScope, ActionProjectType, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
+import { AccessScope, ProjectMembershipRole, TApprovalRequests } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { EnforcementLevel } from "@app/lib/types";
+import { EnforcementLevel, TActorInput } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
@@ -133,6 +134,7 @@ type TSecretChangeGlobalRequestBridgeServiceFactoryDep = {
     "findSecretChangePolicyById"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   licenseDomain: TLicenseDomain;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath" | "findSecretPathByFolderIds">;
@@ -192,6 +194,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   membershipUserDAL,
   secretChangeGlobalPolicyBridgeService,
   permissionService,
+  secretsDomain,
   licenseDomain,
   userGroupMembershipDAL,
   folderDAL,
@@ -316,25 +319,13 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
 
   const $assertCanActOnRequest = async ({
     approvalRequest,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
+    actor,
     action
   }: {
     approvalRequest: TApprovalRequests;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
     action: "review" | "merge" | "update";
-  }) => {
-    const { hasRole, permission } = await permissionService.getProjectPermission({
-      actor: ActorType.USER,
-      actorId,
-      projectId: approvalRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+  } & TActorInput) => {
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: approvalRequest.projectId });
 
     const steps = await approvalRequestDAL.findStepsByRequestId(approvalRequest.id);
     const currentStep = steps.find((step) => step.stepNumber === approvalRequest.currentStep);
@@ -344,17 +335,17 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       });
     }
 
-    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actorId, actorOrgId);
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.principal.id, actor.org.id);
     const userGroupIds = new Set(userGroups.map((group) => group.groupId));
     if (
-      !hasRole(ProjectMembershipRole.Admin) &&
-      approvalRequest.requesterId !== actorId &&
-      !isEligibleStepApprover(currentStep, actorId, userGroupIds)
+      !permission.hasRole({ slug: ProjectMembershipRole.Admin }) &&
+      approvalRequest.requesterId !== actor.principal.id &&
+      !isEligibleStepApprover(currentStep, actor.principal.id, userGroupIds)
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
 
-    return { hasRole, permission, steps, currentStep, userGroupIds };
+    return { permission, steps, currentStep, userGroupIds };
   };
 
   const $findUnmetStep = (steps: TRequestSteps, eligibleByStepId: Map<string, Set<string>>) =>
@@ -610,14 +601,11 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   const mergeSecretChangeRequest: TSecretChangeGlobalRequestBridgeMethods["mergeSecretChangeRequest"] = async ({
     approvalId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     bypassReason,
     requireApprovals
   }) => {
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
-    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+    if (actor.principal.type !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     if (secretChangeRequest.hasMerged) {
       throw new BadRequestError({ message: "This secret approval request has already been merged." });
@@ -631,9 +619,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
 
     const { permission, steps, userGroupIds } = await $assertCanActOnRequest({
       approvalRequest,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
+      actor,
       action: "merge"
     });
 
@@ -647,7 +633,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       !policy.bypassers.length ||
       policy.bypassers.some(
         (bypasser) =>
-          (bypasser.type === BypasserType.User && bypasser.id === actorId) ||
+          (bypasser.type === BypasserType.User && bypasser.id === actor.principal.id) ||
           (bypasser.type === BypasserType.Group && userGroupIds.has(bypasser.id))
       );
     const resolveBypass = (requestSteps: TRequestSteps) =>
@@ -674,7 +660,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       commits
     });
     const cipher = await kmsCoreDomain.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-    const blindIndexer = await createSecretBlindIndexer({ projectCipher: cipher, orgId: actorOrgId, kmsCoreDomain });
+    const blindIndexer = await createSecretBlindIndexer({ projectCipher: cipher, orgId: actor.org.id, kmsCoreDomain });
 
     const merged = await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(approvalRequest.id, tx);
@@ -690,10 +676,10 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         environment: folder.environmentSlug,
         envId: folder.envId,
         secretPath: folder.path,
-        actor,
-        actorId,
-        actorOrgId,
-        permission,
+        actor: actor.principal.type,
+        actorId: actor.principal.id,
+        actorOrgId: actor.org.id,
+        permission: permission.toAbility(),
         cipher,
         blindIndexer,
         creates,
@@ -707,7 +693,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         {
           conflicts: JSON.stringify(conflicts),
           hasMerged: true,
-          statusChangedByUserId: actorId,
+          statusChangedByUserId: actor.principal.id,
           bypassReason: bypass.bypassReason
         },
         tx
@@ -722,7 +708,14 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       return { secrets, approvalRequest: mergedApprovalRequest, secretChangeRequest: mergedChangeRequest, bypass };
     });
 
-    await syncMergedSecrets({ projectId, actorOrgId, actor, actorId, folder, secrets: merged.secrets });
+    await syncMergedSecrets({
+      projectId,
+      actorOrgId: actor.org.id,
+      actor: actor.principal.type,
+      actorId: actor.principal.id,
+      folder,
+      secrets: merged.secrets
+    });
 
     try {
       await queueChangeRequestWebhook({
@@ -748,7 +741,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         project,
         environmentName: folder.environmentName,
         secretPath: folder.path,
-        actorId,
+        actorId: actor.principal.id,
         approverUserIds: unique(policy.userApprovers.map((approver) => approver.userId)),
         bypassReason: merged.bypass.bypassReason
       });
@@ -782,21 +775,18 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   const reviewSecretChangeRequest: TSecretChangeGlobalRequestBridgeMethods["reviewSecretChangeRequest"] = async ({
     approvalId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     status,
     comment
   }) => {
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
-    if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+    if (actor.principal.type !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
     if (approvalRequest.status !== ApprovalRequestStatus.Open) {
       throw new BadRequestError({ message: "You can only review open approval requests" });
     }
 
     const policy = await $findSecretChangePolicyOrThrow(approvalRequest.policyId);
-    if (!policy.allowedSelfApprovals && actorId === approvalRequest.requesterId) {
+    if (!policy.allowedSelfApprovals && actor.principal.id === approvalRequest.requesterId) {
       throw new BadRequestError({
         message: "Failed to review secret approval request. Users are not authorized to review their own request."
       });
@@ -804,9 +794,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
 
     const { currentStep } = await $assertCanActOnRequest({
       approvalRequest,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
+      actor,
       action: "review"
     });
 
@@ -821,7 +809,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         throw new BadRequestError({ message: "You can only review open approval requests" });
       }
       return upsertApprovalRequestStepDecision(
-        { stepId: currentStep.id, approverUserId: actorId, decision, comment },
+        { stepId: currentStep.id, approverUserId: actor.principal.id, decision, comment },
         { approvalRequestApprovalsDAL },
         tx
       );
@@ -859,8 +847,8 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   };
 
   const updateSecretChangeRequestStatus: TSecretChangeGlobalRequestBridgeMethods["updateSecretChangeRequestStatus"] =
-    async ({ approvalId, actor, actorId, actorAuthMethod, actorOrgId, status }) => {
-      const plan = await licenseDomain.getPlan(actorOrgId);
+    async ({ approvalId, actor, status }) => {
+      const plan = await licenseDomain.getPlan(actor.org.id);
       if (!plan.secretApproval && status === RequestState.Open) {
         throw new BadRequestError({
           message:
@@ -869,10 +857,10 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       }
 
       const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
-      if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
+      if (actor.principal.type !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
       const policy = await $findSecretChangePolicyOrThrow(approvalRequest.policyId);
-      await $assertCanActOnRequest({ approvalRequest, actorId, actorAuthMethod, actorOrgId, action: "update" });
+      await $assertCanActOnRequest({ approvalRequest, actor, action: "update" });
 
       const alreadyInStatusMessage =
         status === RequestState.Open ? "Approval request is already open" : "Approval request is already closed";
@@ -899,7 +887,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         const updatedApprovalRequest = await approvalRequestDAL.updateById(approvalRequest.id, { status }, tx);
         const updatedChangeRequest = await secretChangeGlobalRequestBridgeDAL.updateById(
           lockedChangeRequest.id,
-          { statusChangedByUserId: actorId },
+          { statusChangedByUserId: actor.principal.id },
           tx
         );
         return { approvalRequest: updatedApprovalRequest, secretChangeRequest: updatedChangeRequest };
@@ -940,26 +928,16 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
 
   const getSecretChangeRequestById: TSecretChangeGlobalRequestBridgeMethods["getSecretChangeRequestById"] = async ({
     id,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }) => {
-    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
+    if (actor.principal.type === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(id);
     const { projectId } = approvalRequest;
     const [folder] = await folderDAL.findSecretPathByFolderIds(projectId, [secretChangeRequest.folderId]);
     if (!folder) throw new NotFoundError({ message: `Secret approval request with ID '${id}' not found` });
 
-    const { hasRole, permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     const steps = await approvalRequestDAL.findStepsByRequestId(approvalRequest.id);
     const policy = approvalRequest.policyId
@@ -978,17 +956,17 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       userIdsByGroupId
     );
     const bypasserUserIds = resolveActorUserIds(bypassers, userIdsByGroupId);
-    const isReviewer = approverUserIds.includes(actorId);
+    const isReviewer = approverUserIds.includes(actor.principal.id);
 
-    const canReadApprovalRequests = permission.can(
-      ProjectPermissionSecretApprovalRequestActions.Read,
-      ProjectPermissionSub.SecretApprovalRequest
-    );
+    const canReadApprovalRequests = permission.can({
+      action: ProjectPermissionSecretApprovalRequestActions.Read,
+      subject: ProjectPermissionSub.SecretApprovalRequest
+    });
     if (
       !canReadApprovalRequests &&
-      !hasRole(ProjectMembershipRole.Admin) &&
-      approvalRequest.requesterId !== actorId &&
-      approvalRequest.machineIdentityId !== actorId &&
+      !permission.hasRole({ slug: ProjectMembershipRole.Admin }) &&
+      approvalRequest.requesterId !== actor.principal.id &&
+      approvalRequest.machineIdentityId !== actor.principal.id &&
       !isReviewer
     ) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
@@ -1098,7 +1076,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         commits,
         decryptor,
         canReadSecretValue: buildSecretApprovalCommitValueAccess({
-          permission,
+          permission: permission.toAbility(),
           isReviewer,
           isRequestOpen: approvalRequest.status === ApprovalRequestStatus.Open,
           environment: folder.environmentSlug,

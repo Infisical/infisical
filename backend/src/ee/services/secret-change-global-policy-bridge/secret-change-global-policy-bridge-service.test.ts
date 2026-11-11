@@ -3,6 +3,8 @@ import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectVersion } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { TPlanProps } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
@@ -66,14 +68,8 @@ const buildRow = (overrides: Partial<TSecretChangePolicyRow> = {}): TSecretChang
 });
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: "actor-1",
-  actorOrgId: ORG_ID,
-  actorAuthMethod: null
-} as unknown as Pick<
-  Parameters<ReturnType<typeof secretChangeGlobalPolicyBridgeServiceFactory>["createSecretChangePolicy"]>[0],
-  "actor" | "actorId" | "actorOrgId" | "actorAuthMethod"
->;
+  actor: { principal: { type: ActorType.USER, id: "actor-1" }, org: { id: ORG_ID } } as unknown as TActorContext
+};
 
 type TMembership = { effectiveUserIds: string[]; effectiveGroupIds: string[] };
 type TExistingPolicy = { id: string; environments: { id: string }[] };
@@ -163,7 +159,12 @@ const buildService = ({
         Promise.resolve(users.filter((user) => $in.username.includes(user.username)))
       )
     },
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
+    secretsDomain: {
+      getSecretsPermission: vi.fn().mockResolvedValue({
+        permission: Permission.fromRules({ rules: permission.rules }),
+        folderGrants: []
+      })
+    },
     licenseDomain
   };
 
@@ -817,7 +818,7 @@ describe("secretChangeGlobalPolicyBridge getSecretChangePolicyById", () => {
       policyId: "policy-1",
       organizationId: ORG_ID
     });
-    expect(deps.permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(deps.secretsDomain.getSecretsPermission).not.toHaveBeenCalled();
   });
 
   test("rejects an actor without read permission on secret approvals", async () => {
@@ -831,7 +832,7 @@ describe("secretChangeGlobalPolicyBridge getSecretChangePolicyById", () => {
     const { service, deps } = buildService({ permission: allowRead, rows: [row] });
 
     await expect(getById(service)).resolves.toEqual(toSecretChangePolicy(row));
-    expect(deps.permissionService.getProjectPermission).toHaveBeenCalledWith(
+    expect(deps.secretsDomain.getSecretsPermission).toHaveBeenCalledWith(
       expect.objectContaining({ projectId: PROJECT_ID })
     );
   });

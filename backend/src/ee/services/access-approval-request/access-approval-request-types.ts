@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import {
   DelegatedApprovalPolicyType,
   DelegatedApprovalRequestStatus
@@ -19,14 +19,14 @@ export type TVerifyPermission = {
 export type TGetAccessRequestCountDTO = {
   projectSlug: string;
   policyId?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TReviewAccessRequestDTO = {
   requestId: string;
   status: ApprovalStatus;
   envName?: string;
   bypassReason?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCreateAccessApprovalRequestDTO = {
   projectSlug: string;
@@ -34,31 +34,31 @@ export type TCreateAccessApprovalRequestDTO = {
   isTemporary: boolean;
   temporaryRange?: string;
   note?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRevokeAccessRequestDTO = {
   requestId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRetryDelegatedApprovalDispatchDTO = {
   requestId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCancelAccessRequestDTO = {
   requestId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateAccessApprovalRequestDTO = {
   requestId: string;
   temporaryRange: string;
   editNote: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListApprovalRequestsDTO = {
   projectSlug: string;
   authorUserId?: string;
   envSlug?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export interface TAccessApprovalRequestServiceFactory {
   createAccessApprovalRequest: (arg: TCreateAccessApprovalRequestDTO) => Promise<{

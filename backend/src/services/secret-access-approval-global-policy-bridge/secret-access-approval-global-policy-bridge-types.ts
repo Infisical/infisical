@@ -1,3 +1,4 @@
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import {
   TCreateAccessApprovalPolicy,
@@ -6,7 +7,6 @@ import {
   TUpdateAccessApprovalPolicy
 } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import {
   TApprovalPolicyBypassersDALFactory,
@@ -30,7 +30,7 @@ import { TSecretAccessApprovalGlobalPolicyBridgeDALFactory } from "./secret-acce
 
 export type TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findEffectiveProjectSubjectsMembership">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;

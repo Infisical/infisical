@@ -1344,7 +1344,7 @@ export const registerRoutes = async (
     projectEnvDAL,
     projectDAL,
     userDAL,
-    permissionService,
+    secretsDomain,
     licenseDomain
   });
 
@@ -1353,7 +1353,7 @@ export const registerRoutes = async (
     secretApprovalPolicyApproverDAL: sapApproverDAL,
     secretApprovalPolicyBypasserDAL: sapBypasserDAL,
     secretApprovalPolicyEnvironmentDAL: sapEnvironmentDAL,
-    permissionService,
+    secretsDomain,
     secretApprovalPolicyDAL,
     licenseDomain,
     projectDAL,
@@ -2606,6 +2606,7 @@ export const registerRoutes = async (
     secretApprovalRequestSecretDAL,
     secretChangeGlobalPolicyBridgeService,
     permissionService,
+    secretsDomain,
     licenseDomain,
     userGroupMembershipDAL,
     folderDAL,
@@ -2665,6 +2666,7 @@ export const registerRoutes = async (
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
     eventEmitter: eventOutboxService,
     permissionService,
+    secretsDomain,
     projectBotService,
     folderDAL,
     secretDAL,
@@ -3412,7 +3414,7 @@ export const registerRoutes = async (
   const secretAccessApprovalGlobalRequestBridgeService = secretAccessApprovalGlobalRequestBridgeServiceFactory({
     projectDAL,
     projectEnvDAL,
-    permissionService,
+    secretsDomain,
     userDAL,
     userGroupMembershipDAL,
     approvalRequestDAL,
@@ -3455,7 +3457,7 @@ export const registerRoutes = async (
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
     projectDAL,
-    permissionService,
+    secretsDomain,
     accessApprovalRequestReviewerDAL,
     accessApprovalPolicyDAL,
     secretAccessApprovalGlobalResource,
@@ -3477,7 +3479,7 @@ export const registerRoutes = async (
 
   const secretAccessApprovalGlobalPolicyBridgeService = secretAccessApprovalGlobalPolicyBridgeServiceFactory({
     projectDAL,
-    permissionService,
+    secretsDomain,
     projectEnvDAL,
     userDAL,
     groupDAL,
@@ -3502,7 +3504,7 @@ export const registerRoutes = async (
     accessApprovalPolicyBypasserDAL,
     accessApprovalPolicyEnvironmentDAL,
     groupDAL,
-    permissionService,
+    secretsDomain,
     projectEnvDAL,
     projectDAL,
     userDAL,
@@ -4224,7 +4226,9 @@ export const registerRoutes = async (
     approvalPolicyStepsDAL,
     approvalPolicyStepApproversDAL,
     approvalPolicyBypassersDAL,
-    permissionService,
+    organizationsDomain,
+    projectsDomain,
+    certManagerDomain,
     licenseDomain,
     projectMembershipDAL,
     membershipDAL,

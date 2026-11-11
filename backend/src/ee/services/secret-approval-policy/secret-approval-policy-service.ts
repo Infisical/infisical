@@ -1,10 +1,9 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
+import { ProjectVersion } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
@@ -35,7 +34,7 @@ import {
 } from "./secret-approval-policy-types";
 
 type TSecretApprovalPolicyServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findEffectiveProjectSubjectsMembership">;
@@ -62,7 +61,7 @@ export type TSecretApprovalPolicyServiceFactory = ReturnType<typeof secretApprov
 
 export const secretApprovalPolicyServiceFactory = ({
   secretApprovalPolicyDAL,
-  permissionService,
+  secretsDomain,
   secretApprovalPolicyApproverDAL,
   secretApprovalPolicyBypasserDAL,
   secretApprovalPolicyEnvironmentDAL,
@@ -112,9 +111,6 @@ export const secretApprovalPolicyServiceFactory = ({
     const {
       name,
       actor,
-      actorId,
-      actorOrgId,
-      actorAuthMethod,
       approvals,
       approvers,
       bypassers,
@@ -142,20 +138,10 @@ export const secretApprovalPolicyServiceFactory = ({
     if (!groupApprovers.length && approvals > approvers.length)
       throw new BadRequestError({ message: "Approvals cannot be greater than approvers" });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.SecretApproval
-    );
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.SecretApproval });
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message:
@@ -269,7 +255,7 @@ export const secretApprovalPolicyServiceFactory = ({
       await verifyProjectSubjectsMembership({
         userIds: userApproverIds,
         groupIds: groupApprovers,
-        orgId: actorOrgId,
+        orgId: actor.org.id,
         projectId
       });
 
@@ -293,7 +279,7 @@ export const secretApprovalPolicyServiceFactory = ({
         await verifyProjectSubjectsMembership({
           userIds: bypasserUserIds,
           groupIds: [],
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           projectId
         });
 
@@ -310,7 +296,7 @@ export const secretApprovalPolicyServiceFactory = ({
         await verifyProjectSubjectsMembership({
           userIds: [],
           groupIds: groupBypassers,
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           projectId
         });
 
@@ -342,10 +328,7 @@ export const secretApprovalPolicyServiceFactory = ({
       environments,
       secretPath,
       name,
-      actorId,
       actor,
-      actorOrgId,
-      actorAuthMethod,
       approvals,
       secretPolicyId,
       enforcementLevel,
@@ -394,17 +377,13 @@ export const secretApprovalPolicyServiceFactory = ({
       }
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await secretsDomain.getSecretsPermission({
       actor,
-      actorId,
-      projectId: secretApprovalPolicy.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: secretApprovalPolicy.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.SecretApproval });
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message:
@@ -493,7 +472,7 @@ export const secretApprovalPolicyServiceFactory = ({
         await verifyProjectSubjectsMembership({
           userIds: userApproverIds,
           groupIds: groupApprovers ?? [],
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           projectId: secretApprovalPolicy.projectId
         });
 
@@ -533,7 +512,7 @@ export const secretApprovalPolicyServiceFactory = ({
         await verifyProjectSubjectsMembership({
           userIds: bypasserUserIds,
           groupIds: [],
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           projectId: secretApprovalPolicy.projectId
         });
 
@@ -550,7 +529,7 @@ export const secretApprovalPolicyServiceFactory = ({
         await verifyProjectSubjectsMembership({
           userIds: [],
           groupIds: groupBypassers,
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           projectId: secretApprovalPolicy.projectId
         });
 
@@ -578,24 +557,14 @@ export const secretApprovalPolicyServiceFactory = ({
       return secretChangeGlobalPolicyBridgeService.deleteSecretChangePolicy(dto);
     }
 
-    const { secretPolicyId, actor, actorId, actorAuthMethod, actorOrgId } = dto;
+    const { secretPolicyId, actor } = dto;
 
     const sapPolicy = await secretApprovalPolicyDAL.findById(secretPolicyId);
     if (!sapPolicy)
       throw new NotFoundError({ message: `Secret approval policy with ID '${secretPolicyId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: sapPolicy.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.SecretApproval
-    );
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: sapPolicy.projectId });
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.SecretApproval });
 
     const deletedPolicy = await secretApprovalPolicyDAL.transaction(async (tx) => {
       await secretApprovalRequestDAL.update(
@@ -614,22 +583,9 @@ export const secretApprovalPolicyServiceFactory = ({
     };
   };
 
-  const getSecretApprovalPolicyByProjectId = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TListSapDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+  const getSecretApprovalPolicyByProjectId = async ({ actor, projectId }: TListSapDTO) => {
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretApproval });
 
     const [legacyPolicies, secretChangePolicies] = await Promise.all([
       secretApprovalPolicyDAL.find({ projectId, deletedAt: null }),
@@ -675,23 +631,8 @@ export const secretApprovalPolicyServiceFactory = ({
     return policyByPath;
   };
 
-  const getSecretApprovalPolicyOfFolder = async ({
-    projectId,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    environment,
-    secretPath
-  }: TGetBoardSapDTO) => {
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+  const getSecretApprovalPolicyOfFolder = async ({ projectId, actor, environment, secretPath }: TGetBoardSapDTO) => {
+    await secretsDomain.getSecretsPermission({ actor, projectId });
 
     return getSecretApprovalPolicy(projectId, environment, secretPath);
   };
@@ -701,7 +642,7 @@ export const secretApprovalPolicyServiceFactory = ({
       return secretChangeGlobalPolicyBridgeService.getSecretChangePolicyById(dto);
     }
 
-    const { actorId, actor, actorOrgId, actorAuthMethod, sapId } = dto;
+    const { actor, sapId } = dto;
     const [sapPolicy] = await secretApprovalPolicyDAL.find({}, { sapId });
 
     if (!sapPolicy) {
@@ -710,16 +651,9 @@ export const secretApprovalPolicyServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: sapPolicy.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: sapPolicy.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretApproval });
 
     return sapPolicy;
   };

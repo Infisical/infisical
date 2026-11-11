@@ -1,8 +1,5 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
@@ -40,7 +37,7 @@ import {
 
 type TAccessApprovalPolicyServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   accessApprovalPolicyDAL: TAccessApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   accessApprovalPolicyApproverDAL: TAccessApprovalPolicyApproverDALFactory;
@@ -72,7 +69,7 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalPolicyBypasserDAL,
   accessApprovalPolicyEnvironmentDAL,
   groupDAL,
-  permissionService,
+  secretsDomain,
   projectEnvDAL,
   projectDAL,
   userDAL,
@@ -122,10 +119,7 @@ export const accessApprovalPolicyServiceFactory = ({
   const createAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["createAccessApprovalPolicy"] = async ({
     name,
     actor,
-    actorId,
-    actorOrgId,
     secretPath,
-    actorAuthMethod,
     approvals,
     approvers,
     bypassers,
@@ -138,7 +132,7 @@ export const accessApprovalPolicyServiceFactory = ({
     maxTimePeriod,
     requestExpirationTime
   }) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // If there is a group approver people might be added to the group later to meet the approvers quota
@@ -153,19 +147,9 @@ export const accessApprovalPolicyServiceFactory = ({
       (approver) => approver.type === ApproverType.User && approver.username
     ) as { username: string; sequence?: number }[];
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: project.id });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.SecretApproval
-    );
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.SecretApproval });
     const mergedEnvs = (environment ? [environment] : environments) || [];
     if (mergedEnvs.length === 0) {
       throw new BadRequestError({ message: "Must provide either environment or environments" });
@@ -338,19 +322,12 @@ export const accessApprovalPolicyServiceFactory = ({
   };
 
   const getAccessApprovalPolicyByProjectSlug: TAccessApprovalPolicyServiceFactory["getAccessApprovalPolicyByProjectSlug"] =
-    async ({ actorId, actor, actorOrgId, actorAuthMethod, projectSlug }: TListAccessApprovalPoliciesDTO) => {
-      const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    async ({ actor, projectSlug }: TListAccessApprovalPoliciesDTO) => {
+      const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
       if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
       // Anyone in the project should be able to get the policies.
-      await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: project.id,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.SecretManager
-      });
+      await secretsDomain.getSecretsPermission({ actor, projectId: project.id });
 
       const legacyPolicies = await accessApprovalPolicyDAL.find({ projectId: project.id, deletedAt: null });
       const globalPolicies = await $listGlobalApprovalPolicies(project.id);
@@ -370,10 +347,7 @@ export const accessApprovalPolicyServiceFactory = ({
     bypassers,
     secretPath,
     name,
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     approvals,
     enforcementLevel,
     allowedSelfApprovals,
@@ -391,10 +365,7 @@ export const accessApprovalPolicyServiceFactory = ({
         bypassers,
         secretPath,
         name,
-        actorId,
         actor,
-        actorOrgId,
-        actorAuthMethod,
         approvals,
         enforcementLevel,
         allowedSelfApprovals,
@@ -465,16 +436,12 @@ export const accessApprovalPolicyServiceFactory = ({
       }
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const { permission } = await secretsDomain.getSecretsPermission({
       actor,
-      actorId,
-      projectId: accessApprovalPolicy.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+      projectId: accessApprovalPolicy.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.SecretApproval });
 
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
@@ -519,7 +486,7 @@ export const accessApprovalPolicyServiceFactory = ({
       if (groupBypassers.length > 0) {
         const orgGroups = await groupDAL.find({
           $in: { id: groupBypassers },
-          orgId: actorOrgId
+          orgId: actor.org.id
         });
 
         if (orgGroups.length !== groupBypassers.length) {
@@ -582,7 +549,7 @@ export const accessApprovalPolicyServiceFactory = ({
         await verifyProjectSubjectsMembership({
           userIds: approverUserIds.map((au) => au.id),
           groupIds: groupApprovers.map((ga) => ga.id).filter(Boolean) as string[],
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           projectId: accessApprovalPolicy.projectId
         });
       }
@@ -628,7 +595,7 @@ export const accessApprovalPolicyServiceFactory = ({
         await verifyProjectSubjectsMembership({
           userIds: bypasserUserIds,
           groupIds: [],
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           projectId: accessApprovalPolicy.projectId
         });
 
@@ -666,36 +633,20 @@ export const accessApprovalPolicyServiceFactory = ({
 
   const deleteAccessApprovalPolicy: TAccessApprovalPolicyServiceFactory["deleteAccessApprovalPolicy"] = async ({
     policyId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TDeleteAccessApprovalPolicy) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
       return secretAccessApprovalGlobalPolicyBridge.deleteAccessApprovalPolicy({
         policyId,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId
+        actor
       });
     }
 
     const policy = await accessApprovalPolicyDAL.findById(policyId);
     if (!policy) throw new NotFoundError({ message: `Secret approval policy with ID '${policyId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: policy.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.SecretApproval
-    );
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: policy.projectId });
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.SecretApproval });
 
     await accessApprovalPolicyDAL.transaction(async (tx) => {
       await accessApprovalPolicyDAL.softDeleteById(policyId, tx);
@@ -728,24 +679,14 @@ export const accessApprovalPolicyServiceFactory = ({
 
   const getAccessPolicyCountByEnvSlug: TAccessApprovalPolicyServiceFactory["getAccessPolicyCountByEnvSlug"] = async ({
     actor,
-    actorOrgId,
-    actorAuthMethod,
     projectSlug,
-    actorId,
     envSlug
   }: TGetAccessPolicyCountByEnvironmentDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
 
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: project.id,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    await secretsDomain.getSecretsPermission({ actor, projectId: project.id });
 
     const environment = await projectEnvDAL.findOne({ projectId: project.id, slug: envSlug });
     if (!environment) throw new NotFoundError({ message: `Environment with slug '${envSlug}' not found` });
@@ -766,19 +707,13 @@ export const accessApprovalPolicyServiceFactory = ({
   };
 
   const getAccessApprovalPolicyById: TAccessApprovalPolicyServiceFactory["getAccessApprovalPolicyById"] = async ({
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     policyId
   }) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
       return secretAccessApprovalGlobalPolicyBridge.getAccessApprovalPolicyById({
         policyId,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId
+        actor
       });
     }
 
@@ -790,16 +725,9 @@ export const accessApprovalPolicyServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: policy.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: policy.projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretApproval });
 
     return {
       ...policy,

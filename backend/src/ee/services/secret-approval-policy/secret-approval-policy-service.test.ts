@@ -3,6 +3,8 @@ import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectVersion } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   ProjectPermissionActions,
@@ -31,14 +33,8 @@ const allowAll = createMongoAbility<ProjectPermissionSet>(
 );
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: "actor-1",
-  actorOrgId: ORG_ID,
-  actorAuthMethod: null
-} as unknown as Pick<
-  Parameters<ReturnType<typeof secretApprovalPolicyServiceFactory>["getSecretApprovalPolicyById"]>[0],
-  "actor" | "actorId" | "actorOrgId" | "actorAuthMethod"
->;
+  actor: { principal: { type: ActorType.USER, id: "actor-1" }, org: { id: ORG_ID } } as unknown as TActorContext
+};
 
 const makePolicy = (id: string, secretPath: string, createdAt: string) => ({
   id,
@@ -62,7 +58,12 @@ const buildService = ({
 } = {}) => {
   const deps = {
     projectDAL: { findById: vi.fn().mockResolvedValue({ id: PROJECT_ID, version: projectVersion }) },
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: allowAll }) },
+    secretsDomain: {
+      getSecretsPermission: vi.fn().mockResolvedValue({
+        permission: Permission.fromRules({ rules: allowAll.rules }),
+        folderGrants: []
+      })
+    },
     licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, { secretApproval: true as false }),
     projectEnvDAL: {
       find: vi.fn().mockResolvedValue([ENV_DEV]),
@@ -108,7 +109,7 @@ describe("secretApprovalPolicyService createSecretApprovalPolicy", () => {
     await expect(service.createSecretApprovalPolicy(createDto)).resolves.toEqual({ id: "bridge-policy" });
 
     expect(deps.secretChangeGlobalPolicyBridgeService.createSecretChangePolicy).toHaveBeenCalledWith(createDto);
-    expect(deps.permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(deps.secretsDomain.getSecretsPermission).not.toHaveBeenCalled();
     expect(deps.secretApprovalPolicyDAL.findPolicyByEnvIdAndSecretPath).not.toHaveBeenCalled();
   });
 

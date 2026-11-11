@@ -8,9 +8,13 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TActorInput } from "@app/lib/types";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
+import {
+  TApprovalPolicyServiceFactory,
+  toApprovalActorContext
+} from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalActor } from "@app/services/approval-policy/approval-policy-types";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TPamAccessPolicyInputs } from "@app/services/approval-policy/pam-access/pam-access-policy-types";
@@ -127,6 +131,13 @@ export const pamAccessRequestServiceFactory = ({
     orgId: ctx.actorOrgId
   });
 
+  const toPamActor = (actor: TActorInput["actor"]): TActorContext => ({
+    actorId: actor.principal.id,
+    actor: actor.principal.type,
+    actorOrgId: actor.org.id,
+    actorAuthMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null
+  });
+
   // Requests and grants attribute their actor to exactly one column: a user or a machine identity.
   // These build the matching filter so every lookup stays scoped to the calling actor's own rows.
   // Machine identities have no email; their name is the only human-readable attribution available.
@@ -171,7 +182,8 @@ export const pamAccessRequestServiceFactory = ({
 
   // Attach the access grant's expiry and status to each request. Requests themselves carry no expiry
   // or revocation state; the meaningful "expires"/"revoked" lives on the grant created on approval.
-  const getApprovalConfiguration = async ({ folderId, projectId, ...ctx }: TGetApprovalConfigurationDTO) => {
+  const getApprovalConfiguration = async ({ folderId, projectId, actor }: TGetApprovalConfigurationDTO) => {
+    const ctx = toPamActor(actor);
     await verifyProductMembership(permissionService, projectId, ctx);
 
     const folder = await pamFolderDAL.findById(folderId);
@@ -183,7 +195,7 @@ export const pamAccessRequestServiceFactory = ({
       ApprovalPolicyType.PamAccess,
       ApprovalPolicyScope.PamFolder,
       folderId,
-      toApprovalActor(ctx)
+      toApprovalActorContext(actor)
     );
 
     return {
@@ -201,8 +213,9 @@ export const pamAccessRequestServiceFactory = ({
     notificationConfigs,
     breakGlassUsers,
     autoApproval,
-    ...ctx
+    actor
   }: TSetApprovalConfigurationDTO) => {
+    const ctx = toPamActor(actor);
     await verifyProductMembership(permissionService, projectId, ctx);
     const folder = await assertFolderPolicyManagement(folderId, projectId, ctx);
 
@@ -225,7 +238,7 @@ export const pamAccessRequestServiceFactory = ({
               ApprovalPolicyType.PamAccess,
               ApprovalPolicyScope.PamFolder,
               folderId,
-              toApprovalActor(ctx)
+              toApprovalActorContext(actor)
             )
           ).autoApproval.rules;
       if (!rules.length) {
@@ -299,7 +312,7 @@ export const pamAccessRequestServiceFactory = ({
         conditions: [],
         constraints: { accessDuration: { min: "30s", max: "7d" } }
       },
-      toApprovalActor(ctx)
+      toApprovalActorContext(actor)
     );
 
     // Removed only once the policy saves, so a failed save keeps the Slack configs.
@@ -317,7 +330,8 @@ export const pamAccessRequestServiceFactory = ({
     };
   };
 
-  const breakGlassRequest = async ({ requestId, projectId, bypassReason, ...ctx }: TBreakGlassAccessRequestDTO) => {
+  const breakGlassRequest = async ({ requestId, projectId, bypassReason, actor }: TBreakGlassAccessRequestDTO) => {
+    const ctx = toPamActor(actor);
     await verifyProductMembership(permissionService, projectId, ctx);
 
     const trimmedReason = bypassReason.trim();
@@ -369,7 +383,7 @@ export const pamAccessRequestServiceFactory = ({
     const { request: updatedRequest, bypassMetadata } = await approvalPolicyService.approveRequest(
       requestId,
       { bypassReason: trimmedReason },
-      toApprovalActor(ctx),
+      toApprovalActorContext(actor),
       ApprovalPolicyType.PamAccess
     );
 
@@ -405,8 +419,9 @@ export const pamAccessRequestServiceFactory = ({
     accessType = PamAccessType.Session,
     breakGlass = false,
     autoApprovalInputs,
-    ...ctx
+    actor
   }: TCreateAccessRequestDTO) => {
+    const ctx = toPamActor(actor);
     const trimmedReason = reason?.trim() || undefined;
 
     if (!accountId && !path) {
@@ -463,7 +478,7 @@ export const pamAccessRequestServiceFactory = ({
         requesterName: requester.name,
         requesterEmail: requester.email
       },
-      toApprovalActor(ctx)
+      toApprovalActorContext(actor)
     );
 
     if (breakGlass) {
@@ -471,7 +486,7 @@ export const pamAccessRequestServiceFactory = ({
         requestId: request.id,
         projectId,
         bypassReason: trimmedReason as string,
-        ...ctx
+        actor
       });
       return {
         request: result.request,
@@ -499,7 +514,8 @@ export const pamAccessRequestServiceFactory = ({
     };
   };
 
-  const listRequests = async ({ projectId, folderId, status, offset, limit, ...ctx }: TListAccessRequestsDTO) => {
+  const listRequests = async ({ projectId, folderId, status, offset, limit, actor }: TListAccessRequestsDTO) => {
+    const ctx = toPamActor(actor);
     await verifyProductMembership(permissionService, projectId, ctx);
 
     if (!folderId) {
@@ -511,7 +527,7 @@ export const pamAccessRequestServiceFactory = ({
       ApprovalPolicyScope.PamFolder,
       folderId,
       { status, offset, limit },
-      toApprovalActor(ctx)
+      toApprovalActorContext(actor)
     );
 
     return { requests: await pamAccessApprovalResource.decorateRequests(requests), totalCount };

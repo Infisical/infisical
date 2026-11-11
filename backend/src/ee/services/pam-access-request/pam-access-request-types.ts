@@ -1,4 +1,5 @@
 import { ActorType } from "@app/lib/auth/actor-types";
+import { TActorInput } from "@app/lib/types";
 import { ApprovalRequestApprovalDecision, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
 import {
   TAutoApprovalConfig,
@@ -11,7 +12,7 @@ import { TActorContext } from "../pam/pam-permission";
 export type TGetApprovalConfigurationDTO = {
   folderId: string;
   projectId: string;
-} & TActorContext;
+} & TActorInput;
 
 export type TPamNotificationConfigInput = {
   workflowIntegrationId: string;
@@ -30,13 +31,13 @@ export type TSetApprovalConfigurationDTO = {
   breakGlassUsers?: { type: ApproverType; id: string }[];
   // undefined leaves the stored rules unchanged
   autoApproval?: TAutoApprovalConfig;
-} & TActorContext;
+} & TActorInput;
 
 export type TBreakGlassAccessRequestDTO = {
   requestId: string;
   projectId: string;
   bypassReason: string;
-} & TActorContext;
+} & TActorInput;
 
 export type TCreateAccessRequestDTO = {
   breakGlass?: boolean;
@@ -47,7 +48,7 @@ export type TCreateAccessRequestDTO = {
   duration: string;
   accessType?: PamAccessType;
   autoApprovalInputs?: TAutoApprovalInputValue[];
-} & TActorContext;
+} & TActorInput;
 
 export type TListAccessRequestsDTO = {
   projectId: string;
@@ -55,7 +56,7 @@ export type TListAccessRequestsDTO = {
   status?: string;
   offset?: number;
   limit?: number;
-} & TActorContext;
+} & TActorInput;
 
 export type TListPendingMyApprovalDTO = {
   projectId: string;

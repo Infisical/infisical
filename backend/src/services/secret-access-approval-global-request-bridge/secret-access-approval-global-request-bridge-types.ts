@@ -1,4 +1,5 @@
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import {
   TCancelAccessRequestDTO,
   TRetryDelegatedApprovalDispatchDTO,
@@ -6,7 +7,6 @@ import {
   TRevokeAccessRequestDTO
 } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -35,7 +35,7 @@ import { TSecretAccessApprovalGlobalRequestBridgeDALFactory } from "./secret-acc
 export type TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   userDAL: Pick<TUserDALFactory, "find" | "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "findGroupMembershipsByUserIdInOrg">;
   approvalRequestDAL: Pick<
