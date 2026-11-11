@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { orgAdminPermissions } from "@app/domains/platform/organizations/ce/module";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -42,9 +43,11 @@ const createService = ({ groupOrgId }: { groupOrgId: string }) => {
   const licenseDomain = new FakeLicenseDomain().setPlan(ORG_ID, { groups: true as false });
 
   const service = groupServiceFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: admin }),
-      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: admin }])
+    organizationsDomain: {
+      getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: admin.rules as never })),
+      getOrgPermissionByRoles: vi
+        .fn()
+        .mockResolvedValue([{ permission: Permission.fromRules({ rules: admin.rules as never }) }])
     } as never,
     licenseDomain,
     orgDAL: {
@@ -77,7 +80,12 @@ const createService = ({ groupOrgId }: { groupOrgId: string }) => {
     alertChannelRecipientDAL: { delete: vi.fn() } as never
   } as never);
 
-  const actor = { actor: "user", actorId: "actor-id", actorAuthMethod: "email", actorOrgId: ORG_ID };
+  const actor = {
+    actor: {
+      principal: { type: "user", id: "actor-id" },
+      org: { id: ORG_ID, rootOrgId: ORG_ID, shouldUseNewPrivilegeSystem: false }
+    }
+  };
 
   return {
     addUser: () => service.addUserToGroup({ id: GROUP_ID, username: USERNAME, ...actor } as never),
@@ -169,13 +177,18 @@ describe("group membership ownership boundary", () => {
   // cannot be used to confirm that group ids exist in an org the caller cannot reach.
   test("a group the actor's org has no membership row for is still not found", async () => {
     const service = groupServiceFactory({
-      permissionService: {
-        getOrgPermission: vi.fn().mockResolvedValue({ permission: admin })
+      organizationsDomain: {
+        getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: admin.rules as never }))
       } as never,
       membershipGroupDAL: { getGroupById: vi.fn().mockResolvedValue(undefined) } as never
     } as never);
 
-    const actor = { actor: "user", actorId: "actor-id", actorAuthMethod: "email", actorOrgId: ORG_ID };
+    const actor = {
+      actor: {
+        principal: { type: "user", id: "actor-id" },
+        org: { id: ORG_ID, rootOrgId: ORG_ID, shouldUseNewPrivilegeSystem: false }
+      }
+    };
 
     await expect(service.addUserToGroup({ id: GROUP_ID, username: USERNAME, ...actor } as never)).rejects.toThrow(
       NotFoundError

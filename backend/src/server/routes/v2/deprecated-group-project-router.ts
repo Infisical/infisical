@@ -84,7 +84,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
           ? [{ role: req.body.role, isTemporary: false }]
           : [{ role: ProjectMembershipRole.NoAccess, isTemporary: false }]);
       const { membership: groupMembership, group } = await server.services.membershipGroup.createMembership({
-        permission: req.permission,
+        actor: req.permission,
         data: {
           groupId,
           roles
@@ -172,7 +172,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
     },
     handler: async (req) => {
       const { membership: groupMembership, group } = await server.services.membershipGroup.updateMembership({
-        permission: req.permission,
+        actor: req.permission,
         selector: {
           groupId: req.params.groupId
         },
@@ -239,7 +239,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
     },
     handler: async (req) => {
       const { membership: groupMembership, group } = await server.services.membershipGroup.deleteMembership({
-        permission: req.permission,
+        actor: req.permission,
         selector: {
           groupId: req.params.groupId
         },
@@ -321,7 +321,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
     },
     handler: async (req) => {
       const { memberships: groupMemberships } = await server.services.membershipGroup.listMemberships({
-        permission: req.permission,
+        actor: req.permission,
         data: {},
         scopeData: {
           scope: AccessScope.Project,
@@ -382,7 +382,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
     },
     handler: async (req) => {
       const { membership: groupMembership } = await server.services.membershipGroup.getMembershipByGroupId({
-        permission: req.permission,
+        actor: req.permission,
         selector: {
           groupId: req.params.groupId
         },
@@ -449,10 +449,7 @@ export const registerDeprecatedGroupProjectRouter = async (server: FastifyZodPro
       const { users, totalCount } = await server.services.groupProject.listProjectGroupUsers({
         id: req.params.groupId,
         projectId: req.params.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.query
       });
 

@@ -1,8 +1,9 @@
-import { ForbiddenError, subject } from "@casl/ability";
-
-import { AccessScope, ActionProjectType } from "@app/db/schemas";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { AccessScope } from "@app/db/schemas";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import { NotFoundError } from "@app/lib/errors";
 
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -15,7 +16,7 @@ import {
 
 type TIdentityProjectServiceFactoryDep = {
   identityProjectDAL: TIdentityProjectDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
 };
 
@@ -23,33 +24,20 @@ export type TIdentityProjectServiceFactory = ReturnType<typeof identityProjectSe
 
 export const identityProjectServiceFactory = ({
   identityProjectDAL,
-  permissionService,
+  projectsDomain,
   membershipIdentityDAL
 }: TIdentityProjectServiceFactoryDep) => {
   const listProjectIdentities = async ({
     projectId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     limit,
     offset,
     orderBy,
     orderDirection,
     search
   }: TListProjectIdentityDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionIdentityActions.Read,
-      ProjectPermissionSub.Identity
-    );
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionIdentityActions.Read, subject: ProjectPermissionSub.Identity });
 
     const identityMemberships = await identityProjectDAL.findByProjectId(projectId, {
       limit,
@@ -61,10 +49,11 @@ export const identityProjectServiceFactory = ({
 
     const totalCount = await identityProjectDAL.getCountByProjectId(projectId, { search });
     const filteredMemberships = identityMemberships.filter((el) =>
-      permission.can(
-        ProjectPermissionIdentityActions.Read,
-        subject(ProjectPermissionSub.Identity, { identityId: el.identity.id })
-      )
+      permission.can({
+        action: ProjectPermissionIdentityActions.Read,
+        subject: ProjectPermissionSub.Identity,
+        fields: { identityId: el.identity.id }
+      })
     );
 
     return { identityMemberships: filteredMemberships, totalCount };
@@ -73,24 +62,15 @@ export const identityProjectServiceFactory = ({
   const getProjectIdentityByIdentityId = async ({
     projectId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     identityId
   }: TGetProjectIdentityByIdentityIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionIdentityActions.Read,
-      subject(ProjectPermissionSub.Identity, { identityId })
-    );
+    permission.assert({
+      action: ProjectPermissionIdentityActions.Read,
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId }
+    });
 
     const [identityMembership] = await identityProjectDAL.findByProjectId(projectId, { identityId });
     if (!identityMembership)
@@ -102,15 +82,12 @@ export const identityProjectServiceFactory = ({
 
   const getProjectIdentityByMembershipId = async ({
     identityMembershipId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TGetProjectIdentityByMembershipIdDTO) => {
     const membership = await membershipIdentityDAL.findOne({
       id: identityMembershipId,
       scope: AccessScope.Project,
-      scopeOrgId: actorOrgId
+      scopeOrgId: actor.org.id
     });
 
     if (!membership || !membership.scopeProjectId || !membership.actorIdentityId) {
@@ -119,19 +96,13 @@ export const identityProjectServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: membership.scopeProjectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId: membership.scopeProjectId });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionIdentityActions.Read,
-      subject(ProjectPermissionSub.Identity, { identityId: membership.actorIdentityId })
-    );
+    permission.assert({
+      action: ProjectPermissionIdentityActions.Read,
+      subject: ProjectPermissionSub.Identity,
+      fields: { identityId: membership.actorIdentityId }
+    });
 
     const [identityMembership] = await identityProjectDAL.findByProjectId(membership.scopeProjectId, {
       identityId: membership.actorIdentityId

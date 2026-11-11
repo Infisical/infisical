@@ -79,7 +79,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
 
       const stringifiedPermissions = JSON.stringify(packRules(req.body.permissions));
       const role = await server.services.role.createRole({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -149,7 +149,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const role = await server.services.role.getRoleById({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -208,7 +208,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
 
       const stringifiedPermissions = req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined;
       const role = await server.services.role.updateRole({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -282,7 +282,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const role = await server.services.role.deleteRole({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -342,7 +342,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { roles } = await server.services.role.listRoles({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -381,7 +381,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const role = await server.services.role.getRoleBySlug({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -422,7 +422,7 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { permissions, memberships } = await server.services.role.getUserPermission({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId

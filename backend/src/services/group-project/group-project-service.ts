@@ -1,20 +1,20 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
-import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import {
+  ProjectPermissionGroupActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import { TListProjectGroupUsersDTO } from "@app/ee/services/group/group-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 
 import { TGroupDALFactory } from "../../ee/services/group/group-dal";
 
 type TGroupProjectServiceFactoryDep = {
   groupDAL: Pick<TGroupDALFactory, "findOne" | "findAllGroupPossibleUsers">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
 };
 
 export type TGroupProjectServiceFactory = ReturnType<typeof groupProjectServiceFactory>;
 
-export const groupProjectServiceFactory = ({ groupDAL, permissionService }: TGroupProjectServiceFactoryDep) => {
+export const groupProjectServiceFactory = ({ groupDAL, projectsDomain }: TGroupProjectServiceFactoryDep) => {
   const listProjectGroupUsers = async ({
     id,
     projectId,
@@ -22,26 +22,16 @@ export const groupProjectServiceFactory = ({ groupDAL, permissionService }: TGro
     limit,
     username,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     search,
     filter
   }: TListProjectGroupUsersDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionGroupActions.Read, ProjectPermissionSub.Groups);
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionGroupActions.Read, subject: ProjectPermissionSub.Groups });
 
     // getProjectPermission above throws NotFoundError if the project doesn't exist and
-    // guarantees actorOrgId === project.orgId — no separate project lookup needed.
+    // guarantees actor.org.id === project.orgId — no separate project lookup needed.
     const { members, totalCount } = await groupDAL.findAllGroupPossibleUsers({
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       groupId: id,
       offset,
       limit,

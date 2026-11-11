@@ -907,8 +907,10 @@ export const registerRoutes = async (
   });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
-    permissionService,
-    userDAL
+    projectsDomain,
+    actorContexts: domains.actorContexts,
+    userDAL,
+    identityDAL
   });
 
   const licenseV2BreakdownDAL = licenseV2BreakdownDALFactory(db);
@@ -981,7 +983,9 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     approvalRequestDAL,
     roleDAL,
-    permissionService,
+    organizationsDomain,
+    projectsDomain,
+    actorContexts: domains.actorContexts,
     orgDAL,
     groupDAL,
     licenseDomain,
@@ -1001,7 +1005,8 @@ export const registerRoutes = async (
   });
 
   const roleService = roleServiceFactory({
-    permissionService,
+    organizationsDomain,
+    projectsDomain,
     roleDAL,
     projectDAL,
     identityDAL,
@@ -1013,9 +1018,10 @@ export const registerRoutes = async (
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
     membershipDAL,
-    orgDAL,
-    permissionService,
+    projectsDomain,
+    actorContexts: domains.actorContexts,
     userDAL,
+    identityDAL,
     projectDAL
   });
 
@@ -1276,7 +1282,8 @@ export const registerRoutes = async (
     membershipIdentityDAL,
     membershipRoleDAL,
     orgDAL,
-    permissionService,
+    organizationsDomain,
+    projectsDomain,
     roleDAL,
     additionalPrivilegeDAL,
     licenseDomain,
@@ -1299,7 +1306,8 @@ export const registerRoutes = async (
     alertChannelRecipientDAL,
     membershipUserDAL,
     orgDAL,
-    permissionService,
+    organizationsDomain,
+    projectsDomain,
     roleDAL,
     userDAL,
     projectDAL,
@@ -1374,7 +1382,7 @@ export const registerRoutes = async (
     projectBotDAL,
     projectKeyDAL,
     additionalPrivilegeDAL,
-    permissionService,
+    organizationsDomain,
     licenseDomain,
     oidcConfigDAL,
     membershipGroupDAL,
@@ -1390,7 +1398,7 @@ export const registerRoutes = async (
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
-    permissionService
+    projectsDomain
   });
 
   const folderCommitChangesDAL = folderCommitChangesDALFactory(db);
@@ -1676,7 +1684,7 @@ export const registerRoutes = async (
     emailDispatchGuard
   });
 
-  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
+  const projectBotService = projectBotServiceFactory({ projectsDomain, projectBotDAL, projectDAL });
 
   const reminderService = reminderServiceFactory({
     reminderDAL,
@@ -1831,7 +1839,7 @@ export const registerRoutes = async (
   const projectMembershipService = projectMembershipServiceFactory({
     projectMembershipDAL,
     projectDAL,
-    permissionService,
+    projectsDomain,
     userDAL,
     userAliasDAL,
     orgDAL,
@@ -1856,7 +1864,7 @@ export const registerRoutes = async (
   });
 
   const projectKeyService = projectKeyServiceFactory({
-    permissionService,
+    projectsDomain,
     projectKeyDAL,
     membershipUserDAL
   });
@@ -2185,7 +2193,7 @@ export const registerRoutes = async (
 
   const projectTemplateService = projectTemplateServiceFactory({
     licenseDomain,
-    permissionService,
+    organizationsDomain,
     projectTemplateDAL,
     projectTemplateUserMembershipDAL,
     projectTemplateGroupMembershipDAL,
@@ -2490,7 +2498,9 @@ export const registerRoutes = async (
   });
 
   const projectService = projectServiceFactory({
-    permissionService,
+    organizationsDomain,
+    secretsDomain,
+    certManagerDomain,
     projectDAL,
     projectsDomain,
     projectQueue: projectQueueService,
@@ -2541,7 +2551,7 @@ export const registerRoutes = async (
   });
 
   const projectEnvService = projectEnvServiceFactory({
-    permissionService,
+    secretsDomain,
     projectEnvDAL,
     keyStore,
     licenseDomain,
@@ -2826,7 +2836,7 @@ export const registerRoutes = async (
     projectEnvDAL,
     serviceTokenDAL,
     userDAL,
-    permissionService,
+    secretsDomain,
     projectDAL,
     accessTokenQueue,
     smtpService,
@@ -2870,7 +2880,7 @@ export const registerRoutes = async (
   const identityProjectService = identityProjectServiceFactory({
     identityProjectDAL,
     membershipIdentityDAL,
-    permissionService
+    projectsDomain
   });
 
   const identityAuthTemplateService = identityAuthTemplateServiceFactory({
@@ -3340,7 +3350,10 @@ export const registerRoutes = async (
     folderVersionDAL,
     notificationService,
     secretApprovalRequestService,
-    auditLogService
+    auditLogService,
+    actorContexts: domains.actorContexts,
+    userDAL,
+    identityDAL
   });
 
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({

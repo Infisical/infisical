@@ -1,6 +1,6 @@
 import { AccessScopeData, TemporaryPermissionMode } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { OrgServiceActor } from "@app/lib/types";
 
 export interface TAdditionalPrivilegesScopeFactory {
   onCreateAdditionalPrivilegesGuard: (arg: TCreateAdditionalPrivilegesDTO) => Promise<void>;
@@ -14,7 +14,7 @@ export interface TAdditionalPrivilegesScopeFactory {
 }
 
 export type TCreateAdditionalPrivilegesDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     actorId: string;
@@ -29,7 +29,7 @@ export type TCreateAdditionalPrivilegesDTO = {
 };
 
 export type TUpdateAdditionalPrivilegesDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     id: string;
@@ -47,7 +47,7 @@ export type TUpdateAdditionalPrivilegesDTO = {
 };
 
 export type TListAdditionalPrivilegesDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     actorId: string;
@@ -56,7 +56,7 @@ export type TListAdditionalPrivilegesDTO = {
 };
 
 export type TDeleteAdditionalPrivilegesDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     id: string;
@@ -66,7 +66,7 @@ export type TDeleteAdditionalPrivilegesDTO = {
 };
 
 export type TGetAdditionalPrivilegesByIdDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     id: string;
@@ -76,7 +76,7 @@ export type TGetAdditionalPrivilegesByIdDTO = {
 };
 
 export type TGetAdditionalPrivilegesByNameDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     name: string;

@@ -122,7 +122,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { data: memberships } = await server.services.membershipUser.listMemberships({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -173,7 +173,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         req.permission.orgId
       );
       const membership = await server.services.membershipUser.getMembershipByUserId({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -222,7 +222,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const membership = await server.services.membershipUser.getMembershipByUserId({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -343,10 +343,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const membership = await server.services.projectMembership.getProjectMembershipByUsername({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId,
         username: req.body.username
       });
@@ -382,7 +379,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { users } = await server.services.membershipUser.listAvailableUsers({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -440,7 +437,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
 
       await server.services.membershipUser.createMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -453,7 +450,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       });
 
       const { memberships } = await server.services.membershipUser.createMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -557,7 +554,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       );
 
       const { membership } = await server.services.membershipUser.updateMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -629,10 +626,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const memberships = await server.services.projectMembership.deleteProjectMemberships({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.params.projectId,
         emails: req.body.emails,
         usernames: req.body.usernames
@@ -706,7 +700,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
       );
 
       const { membership } = await server.services.membershipUser.deleteMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -770,8 +764,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const membership = await server.services.projectMembership.leaveProject({
-        actorId: req.permission.id,
-        actor: req.permission.type,
+        actor: req.permission,
         projectId: req.params.projectId
       });
 

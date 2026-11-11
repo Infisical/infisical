@@ -1,7 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope, getAdminMemberOnlyProductLabel, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { newProjectMembershipGroupFactory } from "@app/services/membership-group/project/project-membership-group-factory";
 import { newProjectMembershipIdentityFactory } from "@app/services/membership-identity/project/project-membership-identity-factory";
@@ -13,10 +13,10 @@ const PROJECT_ID = "project-1";
 // Only the collaborators reached before the role check; anything later is left undefined so a guard
 // that fails to reject shows up as a crash rather than a silent pass.
 const buildDeps = (projectType: ProjectType) => ({
-  permissionService: {
+  projectsDomain: {
     getProjectPermission: vi
       .fn()
-      .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+      .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] as never }))
   },
   projectDAL: { findById: vi.fn().mockResolvedValue({ id: PROJECT_ID, type: projectType }) },
   orgDAL: {},
@@ -35,7 +35,7 @@ const buildDeps = (projectType: ProjectType) => ({
 
 const dto = (role: string) => ({
   scopeData: { scope: AccessScope.Project, projectId: PROJECT_ID },
-  permission: { type: "user", id: "actor-1", authMethod: undefined, orgId: "org-1" },
+  actor: { principal: { type: "user", id: "actor-1" }, org: { id: "org-1", rootOrgId: "org-1" } },
   data: { roles: [{ role }], groupId: "group-1", identityId: "identity-1", username: "user-1" },
   selector: { username: "user-1" }
 });

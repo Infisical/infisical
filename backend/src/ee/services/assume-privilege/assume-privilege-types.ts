@@ -1,12 +1,12 @@
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
-import { OrgServiceActor } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { ActorType } from "@app/lib/auth/actor-types";
 
 export type TAssumeProjectPrivilegeDTO = {
   targetActorType: ActorType.USER | ActorType.IDENTITY;
   targetActorId: string;
   projectId: string;
   tokenVersionId: string;
-  actorPermissionDetails: OrgServiceActor;
+  actor: TActorContext;
 };
 
 export interface TAssumePrivilegeServiceFactory {
@@ -14,7 +14,7 @@ export interface TAssumePrivilegeServiceFactory {
     targetActorType,
     targetActorId,
     projectId,
-    actorPermissionDetails,
+    actor,
     tokenVersionId
   }: TAssumeProjectPrivilegeDTO) => Promise<{
     actorType: ActorType.USER | ActorType.IDENTITY;
@@ -25,7 +25,6 @@ export interface TAssumePrivilegeServiceFactory {
   verifyAssumePrivilegeToken: (
     token: string,
     tokenVersionId: string,
-    actorAuthMethod: ActorAuthMethod,
     actorOrgId: string
   ) => Promise<{
     tokenVersionId: string;

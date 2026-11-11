@@ -1,25 +1,26 @@
-import { ForbiddenError, MongoAbility, RawRule, subject } from "@casl/ability";
+import { MongoAbility, RawRule, subject } from "@casl/ability";
 
-import { AccessScope, ActionProjectType } from "@app/db/schemas";
+import { AccessScope } from "@app/db/schemas";
+import type { TActorContext, TActorContexts } from "@app/domains/lib/actor-context";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { OrgServiceActor } from "@app/lib/types";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { buildMemberActorContext } from "@app/services/membership/membership-fns";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -32,31 +33,34 @@ type TPermissionRule = RawRule & {
 };
 
 type TProjectAdditionalPrivilegesScopeFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  actorContexts: Pick<TActorContexts, "forPrincipal">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "findOne">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipDAL: Pick<TMembershipDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const newProjectAdditionalPrivilegesFactory = ({
-  permissionService,
+  projectsDomain,
+  actorContexts,
   additionalPrivilegeDAL,
-  orgDAL,
   membershipDAL,
   userDAL,
+  identityDAL,
   projectDAL
 }: TProjectAdditionalPrivilegesScopeFactoryDep): TAdditionalPrivilegesScopeFactory => {
-  const $getPermission = (permission: OrgServiceActor, projectId: string) => {
-    return permissionService.getProjectPermission({
-      actor: permission.type,
-      actorId: permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: permission.authMethod,
-      projectId,
-      actorOrgId: permission.orgId
-    });
+  const $getTargetPermission = async (
+    actor: TActorContext,
+    target: { type: ActorType.USER | ActorType.IDENTITY; id: string },
+    projectId: string
+  ) => {
+    const targetActor = await buildMemberActorContext(
+      { actorContexts, userDAL, identityDAL },
+      { target, orgId: actor.org.id, requester: actor }
+    );
+    return projectsDomain.getProjectPermission({ actor: targetActor, projectId });
   };
 
   const getScopeField: TAdditionalPrivilegesScopeFactory["getScopeField"] = (dto) => {
@@ -432,12 +436,12 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const scope = getScopeField(dto.scopeData);
       const { actorType, actorId } = dto.data;
 
-      const { permission } = await $getPermission(dto.permission, scope.value);
+      const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
       const permissionSet =
         actorType === ActorType.USER
           ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
-      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+      permission.assert({ action: permissionSet[0], subject: permissionSet[1] });
 
       const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
         projectDAL.findById(scope.value)
@@ -451,14 +455,8 @@ export const newProjectAdditionalPrivilegesFactory = ({
         });
       }
 
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(dto.permission.orgId),
-        () => orgDAL.findById(dto.permission.orgId)
-      );
-      const { permission: targetUserPermission, memberships } = await $getPermission(
-        { ...dto.permission, type: actorType, id: actorId },
-        scope.value
-      );
+      const { shouldUseNewPrivilegeSystem } = dto.actor.org;
+      const targetUserPermission = await $getTargetPermission(dto.actor, { type: actorType, id: actorId }, scope.value);
 
       let targetIdentifier: string | undefined;
       if (shouldUseNewPrivilegeSystem) {
@@ -476,9 +474,9 @@ export const newProjectAdditionalPrivilegesFactory = ({
         actorType,
         actorId,
         permissions: dto.data.permissions,
-        permission,
-        targetUserPermission,
-        memberships,
+        permission: permission.toAbility(),
+        targetUserPermission: targetUserPermission.toAbility(),
+        memberships: targetUserPermission.memberships.map((membership) => membership.toJSON()),
         shouldUseNewPrivilegeSystem,
         targetIdentifier,
         errorMessage: "Failed to create additional privileges"
@@ -490,21 +488,15 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const scope = getScopeField(dto.scopeData);
       const { actorType, actorId } = dto.selector;
 
-      const { permission } = await $getPermission(dto.permission, scope.value);
+      const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
       const permissionSet =
         actorType === ActorType.USER
           ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
-      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+      permission.assert({ action: permissionSet[0], subject: permissionSet[1] });
 
-      const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-        requestMemoKeys.orgFindById(dto.permission.orgId),
-        () => orgDAL.findById(dto.permission.orgId)
-      );
-      const { permission: targetUserPermission, memberships } = await $getPermission(
-        { ...dto.permission, type: actorType, id: actorId },
-        scope.value
-      );
+      const { shouldUseNewPrivilegeSystem } = dto.actor.org;
+      const targetUserPermission = await $getTargetPermission(dto.actor, { type: actorType, id: actorId }, scope.value);
 
       let targetIdentifier: string | undefined;
       if (shouldUseNewPrivilegeSystem) {
@@ -543,9 +535,9 @@ export const newProjectAdditionalPrivilegesFactory = ({
         actorType,
         actorId,
         permissions: permissionsToValidate,
-        permission,
-        targetUserPermission,
-        memberships,
+        permission: permission.toAbility(),
+        targetUserPermission: targetUserPermission.toAbility(),
+        memberships: targetUserPermission.memberships.map((membership) => membership.toJSON()),
         shouldUseNewPrivilegeSystem,
         targetIdentifier,
         errorMessage: "Failed to update additional privileges"
@@ -557,15 +549,15 @@ export const newProjectAdditionalPrivilegesFactory = ({
       const scope = getScopeField(dto.scopeData);
       const { actorType } = dto.selector;
 
-      const { permission } = await $getPermission(dto.permission, scope.value);
+      const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
       const permissionSet =
         actorType === ActorType.USER
           ? ([ProjectPermissionMemberActions.Edit, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Edit, ProjectPermissionSub.Identity] as const);
-      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+      permission.assert({ action: permissionSet[0], subject: permissionSet[1] });
 
       const membership = await membershipDAL.findOne({
-        scopeOrgId: dto.permission.orgId,
+        scopeOrgId: dto.actor.org.id,
         scopeProjectId: scope.value,
         [actorType === ActorType.USER ? "actorUserId" : "actorIdentityId"]: dto.selector.actorId
       });
@@ -583,11 +575,11 @@ export const newProjectAdditionalPrivilegesFactory = ({
       actorType === ActorType.USER
         ? ([ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member] as const)
         : ([ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity] as const);
-    const { permission } = await $getPermission(dto.permission, scope.value);
-    ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+    const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
+    permission.assert({ action: permissionSet[0], subject: permissionSet[1] });
 
     const membership = await membershipDAL.findOne({
-      scopeOrgId: dto.permission.orgId,
+      scopeOrgId: dto.actor.org.id,
       scopeProjectId: scope.value,
       [actorType === ActorType.USER ? "actorUserId" : "actorIdentityId"]: dto.selector.actorId
     });
@@ -604,11 +596,11 @@ export const newProjectAdditionalPrivilegesFactory = ({
         actorType === ActorType.USER
           ? ([ProjectPermissionMemberActions.Read, ProjectPermissionSub.Member] as const)
           : ([ProjectPermissionIdentityActions.Read, ProjectPermissionSub.Identity] as const);
-      const { permission } = await $getPermission(dto.permission, scope.value);
-      ForbiddenError.from(permission).throwUnlessCan(...permissionSet);
+      const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
+      permission.assert({ action: permissionSet[0], subject: permissionSet[1] });
 
       const membership = await membershipDAL.findOne({
-        scopeOrgId: dto.permission.orgId,
+        scopeOrgId: dto.actor.org.id,
         scopeProjectId: scope.value,
         [actorType === ActorType.USER ? "actorUserId" : "actorIdentityId"]: dto.selector.actorId
       });

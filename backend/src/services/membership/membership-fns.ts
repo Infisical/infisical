@@ -1,3 +1,4 @@
+import { MongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 
 import {
@@ -8,13 +9,17 @@ import {
   ProjectType,
   TableName
 } from "@app/db/schemas";
+import type { TActorContext, TActorContexts } from "@app/domains/lib/actor-context";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 // secretsTemporaryAccess gates temporary (time-bound) role assignment in Secret Management projects.
 // It is ignored when null (no restriction); an explicit boolean enforces it, blocking temporary role
@@ -77,6 +82,11 @@ export const resolveMembershipRoleSlugs = (roles: TMembershipRole[]) => [
       .filter((slug) => slug !== OrgMembershipRole.NoAccess && slug !== ProjectMembershipRole.NoAccess)
   )
 ];
+
+// The role permissions as the CASL abilities the privilege boundary helpers take.
+export const toRoleAbilities = (
+  rolePermissions: { permission: { toAbility: () => MongoAbility }; role?: { slug: string } }[]
+) => rolePermissions.map(({ permission, role }) => ({ permission: permission.toAbility(), role }));
 
 type TAssertWillRetainProjectAdminArg = {
   scopeProjectId: string;
@@ -149,4 +159,52 @@ export const assertProductWillRetainAdmin = async ({
     productLabel: project.type === ProjectType.AgentVault ? "This project" : productLabel,
     tx
   });
+};
+
+type TMemberActorContextDeps = {
+  actorContexts: Pick<TActorContexts, "forPrincipal">;
+  userDAL: Pick<TUserDALFactory, "findById">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
+};
+
+// The actor context of a user or identity in the org, to build that member's own permission. A requester's sign-in
+// method and delegated OAuth scopes carry over to it, as they did when the legacy permission engine built it.
+export const buildMemberActorContext = async (
+  { actorContexts, userDAL, identityDAL }: TMemberActorContextDeps,
+  {
+    target,
+    orgId,
+    requester
+  }: {
+    target: { type: ActorType.USER | ActorType.IDENTITY; id: string };
+    orgId: string;
+    requester?: TActorContext;
+  }
+): Promise<TActorContext> => {
+  if (requester && requester.principal.type === target.type && requester.principal.id === target.id) {
+    return requester;
+  }
+  if (target.type === ActorType.USER) {
+    const requestingUser = requester?.principal.type === ActorType.USER ? requester.principal : undefined;
+    const user = await requestMemoize(requestMemoKeys.userFindById(target.id), () => userDAL.findById(target.id));
+    return actorContexts.forPrincipal(
+      {
+        type: ActorType.USER,
+        id: target.id,
+        username: user?.username ?? "",
+        email: user?.email ?? null,
+        authMethod: requestingUser?.authMethod ?? null,
+        isSuperAdmin: Boolean(user?.superAdmin),
+        oauth: requestingUser?.oauth
+      },
+      orgId
+    );
+  }
+  const identity = await requestMemoize(requestMemoKeys.identityFindById(target.id), () =>
+    identityDAL.findById(target.id)
+  );
+  return actorContexts.forPrincipal(
+    { type: ActorType.IDENTITY, id: target.id, name: identity?.name ?? "", isInstanceAdmin: false },
+    orgId
+  );
 };

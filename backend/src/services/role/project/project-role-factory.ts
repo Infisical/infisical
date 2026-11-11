@@ -1,12 +1,10 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { AccessScope, ActionProjectType, ProjectType } from "@app/db/schemas";
+import { AccessScope, ProjectType } from "@app/db/schemas";
 import {
   isCustomProjectRole,
   ProjectPermissionActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
@@ -16,12 +14,12 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TRoleScopeFactory } from "../role-types";
 
 type TProjectRoleScopeFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const newProjectRoleFactory = ({
-  permissionService,
+  projectsDomain,
   projectDAL
 }: TProjectRoleScopeFactoryDep): TRoleScopeFactory => {
   const getScopeField: TRoleScopeFactory["getScopeField"] = (dto) => {
@@ -35,80 +33,38 @@ export const newProjectRoleFactory = ({
 
   const onCreateRoleGuard: TRoleScopeFactory["onCreateRoleGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Role);
+    const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.Role });
   };
 
   const onUpdateRoleGuard: TRoleScopeFactory["onUpdateRoleGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Role);
+    const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Role });
   };
 
   const onDeleteRoleGuard: TRoleScopeFactory["onDeleteRoleGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.Role);
+    const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.Role });
   };
 
   const onListRoleGuard: TRoleScopeFactory["onListRoleGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+    const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Role });
   };
 
   const onGetRoleByIdGuard: TRoleScopeFactory["onGetRoleByIdGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+    const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Role });
   };
 
   const onGetRoleBySlugGuard: TRoleScopeFactory["onGetRoleBySlugGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      actionProjectType: ActionProjectType.Any,
-      actorAuthMethod: dto.permission.authMethod,
-      projectId: scope.value,
-      actorOrgId: dto.permission.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Role);
+    const permission = await projectsDomain.getProjectPermission({ actor: dto.actor, projectId: scope.value });
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Role });
   };
 
   const getPredefinedRoles: TRoleScopeFactory["getPredefinedRoles"] = async (scopeData) => {

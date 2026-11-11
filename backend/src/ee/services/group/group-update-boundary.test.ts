@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   orgAdminPermissions,
@@ -67,11 +68,13 @@ const createUpdate = ({
   const membershipRoleDAL = { create: vi.fn(), delete: vi.fn() };
 
   const service = groupServiceFactory({
-    permissionService: {
-      getOrgPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
+    organizationsDomain: {
+      getOrgPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never })),
       getOrgPermissionByRoles: vi
         .fn()
-        .mockImplementation((roles: string[]) => roles.map((role) => ({ permission: abilityByRole[role] })))
+        .mockImplementation(({ roles }: { roles: string[] }) =>
+          roles.map((role) => ({ permission: Permission.fromRules({ rules: abilityByRole[role].rules as never }) }))
+        )
     } as never,
     licenseDomain: new FakeLicenseDomain().setPlan(ORG_ID, { groups: true as false }),
     orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
@@ -88,7 +91,12 @@ const createUpdate = ({
     membershipRoleDAL: membershipRoleDAL as never
   } as never);
 
-  const actor = { actor: "user", actorId: "actor-id", actorAuthMethod: "email", actorOrgId: ORG_ID };
+  const actor = {
+    actor: {
+      principal: { type: "user", id: "actor-id" },
+      org: { id: ORG_ID, rootOrgId: ORG_ID, shouldUseNewPrivilegeSystem }
+    }
+  };
 
   const run = () => service.updateGroup({ id: GROUP_ID, role: incomingRole, ...actor } as never);
   const remove = () => service.deleteGroup({ id: GROUP_ID, ...actor } as never);

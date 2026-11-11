@@ -1,9 +1,10 @@
-import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
-import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas";
+import { AccessScope, TableName } from "@app/db/schemas";
+import { Membership } from "@app/domains/platform/access-control/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TOrganizationsDomain } from "@app/domains/platform/organizations/ce/module";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -31,27 +32,21 @@ import {
   TUpdateRoleDTO
 } from "./role-types";
 
-const stripExpiredTemporaryRoles = <
-  M extends {
-    roles: Array<{
-      role: string;
-      isTemporary?: boolean;
-      temporaryAccessEndTime?: Date | null;
-    }>;
-  }
->(
-  memberships: M[]
-): M[] =>
-  memberships.map((m) => ({
-    ...m,
-    roles: m.roles.filter((r) => !r.isTemporary || (r.temporaryAccessEndTime && new Date() < r.temporaryAccessEndTime))
+// The membership rows the permissions endpoints return, with expired temporary roles left out.
+const membershipRows = (memberships: Membership[]) =>
+  memberships.map((membership) => ({
+    id: membership.id,
+    actorUserId: membership.actor.type === ActorType.USER ? membership.actor.id : null,
+    actorGroupId: membership.viaGroupId,
+    roles: membership.activeRoles().map((role) => ({ role: role.role }))
   }));
 
 type TRoleServiceFactoryDep = {
   roleDAL: TRoleDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   userDAL: Pick<TUserDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
@@ -62,7 +57,8 @@ export type TRoleServiceFactory = ReturnType<typeof roleServiceFactory>;
 
 export const roleServiceFactory = ({
   roleDAL,
-  permissionService,
+  organizationsDomain,
+  projectsDomain,
   projectDAL,
   identityDAL,
   userDAL,
@@ -71,11 +67,11 @@ export const roleServiceFactory = ({
   licenseDomain
 }: TRoleServiceFactoryDep) => {
   const orgRoleFactory = newOrgRoleFactory({
-    permissionService,
+    organizationsDomain,
     externalGroupOrgRoleMappingDAL
   });
   const projectRoleFactory = newProjectRoleFactory({
-    permissionService,
+    projectsDomain,
     projectDAL
   });
   const scopeFactory = {
@@ -88,7 +84,7 @@ export const roleServiceFactory = ({
     const factory = scopeFactory[scopeData.scope];
     await factory.onCreateRoleGuard(dto);
 
-    const plan = await licenseDomain.getPlan(dto.permission.orgId);
+    const plan = await licenseDomain.getPlan(dto.actor.org.id);
     if (!plan?.rbac) {
       throw new BadRequestError({
         message:
@@ -127,7 +123,7 @@ export const roleServiceFactory = ({
 
     await factory.onUpdateRoleGuard(dto);
 
-    const plan = await licenseDomain.getPlan(dto.permission.orgId);
+    const plan = await licenseDomain.getPlan(dto.actor.org.id);
     if (!plan?.rbac) {
       throw new BadRequestError({
         message:
@@ -247,7 +243,7 @@ export const roleServiceFactory = ({
   };
 
   const getProjectRoleById = async (dto: TGetProjectRoleByIdDTO) => {
-    const { permission, selector } = dto;
+    const { actor, selector } = dto;
 
     const [role] = await roleDAL.find({ id: selector.id, $notNull: ["projectId"] }, { limit: 1 });
     if (!role) {
@@ -259,18 +255,18 @@ export const roleServiceFactory = ({
     }
 
     const project = await projectDAL.findById(role.projectId);
-    if (!project || project.orgId !== permission.orgId) {
+    if (!project || project.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Role with id ${selector.id} not found` });
     }
 
     const scopeData = {
       scope: AccessScope.Project,
-      orgId: permission.orgId,
+      orgId: actor.org.id,
       projectId: role.projectId
     } as const;
 
     const roleResult = await getRoleById({
-      permission,
+      actor,
       scopeData,
       selector: { id: role.id }
     });
@@ -304,29 +300,18 @@ export const roleServiceFactory = ({
 
   const getUserPermission = async (dto: TGetUserPermissionDTO) => {
     if (dto.scopeData.scope === AccessScope.Organization) {
-      const { permission, memberships } = await permissionService.getOrgPermission({
-        actorId: dto.permission.id,
-        actor: dto.permission.type,
-        orgId: dto.permission.orgId,
-        actorOrgId: dto.permission.orgId,
-        actorAuthMethod: dto.permission.authMethod,
-        scope: OrganizationActionScope.Any
-      });
+      const permission = await organizationsDomain.getOrgPermission({ actor: dto.actor });
       return {
-        permissions: packRules(permission.rules),
-        memberships: stripExpiredTemporaryRoles(memberships),
+        permissions: permission.pack(),
+        memberships: membershipRows(permission.memberships),
         assumedPrivilegeDetails: undefined
       };
     }
 
     if (dto.scopeData.scope === AccessScope.Project) {
-      const { permission, memberships } = await permissionService.getProjectPermission({
-        actor: dto.permission.type,
-        actorId: dto.permission.id,
-        actionProjectType: ActionProjectType.Any,
-        actorAuthMethod: dto.permission.authMethod,
-        projectId: dto.scopeData.projectId,
-        actorOrgId: dto.permission.orgId
+      const permission = await projectsDomain.getProjectPermission({
+        actor: dto.actor,
+        projectId: dto.scopeData.projectId
       });
 
       const assumedPrivilegeDetailsCtx = requestContext.get(RequestContextKey.AssumedPrivilegeDetails);
@@ -359,8 +344,8 @@ export const roleServiceFactory = ({
       }
 
       return {
-        permissions: packRules(permission.rules),
-        memberships: stripExpiredTemporaryRoles(memberships),
+        permissions: permission.pack(),
+        memberships: membershipRows(permission.memberships),
         assumedPrivilegeDetails
       };
     }
