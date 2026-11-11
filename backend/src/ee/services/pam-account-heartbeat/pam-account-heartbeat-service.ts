@@ -1,8 +1,9 @@
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { testBuiltConnectionWithGateway } from "@app/ee/services/gateway-v2/gateway-v2-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { NotFoundError } from "@app/lib/errors";
 import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
@@ -28,7 +29,7 @@ import {
   validateCredentials
 } from "../pam-account/pam-account-schemas";
 import { PamAccountType, PamHeartbeatStatus, PamSshAuthMethod } from "../pam/pam-enums";
-import { checkAccountAccess, TActorContext } from "../pam/pam-permission";
+import { checkAccountAccess } from "../pam/pam-permission";
 import { TCheckAccountHeartbeatDTO, TPamHeartbeatResult } from "./pam-account-heartbeat-types";
 import {
   classifyCloudProbeError,
@@ -48,7 +49,7 @@ type TPamAccountHeartbeatServiceFactoryDep = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
   kmsCoreDomain: TKmsCoreDomain;
-  permissionService: TPermissionServiceFactory;
+  pamDomain: Pick<TPamDomain, "getPamPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   rotationHandlers?: typeof PAM_ROTATION_FACTORY_MAP;
 };
@@ -60,7 +61,7 @@ export const pamAccountHeartbeatServiceFactory = ({
   gatewayV2Service,
   gatewayPoolService,
   kmsCoreDomain,
-  permissionService,
+  pamDomain,
   projectDAL,
   rotationHandlers = PAM_ROTATION_FACTORY_MAP
 }: TPamAccountHeartbeatServiceFactoryDep) => {
@@ -338,7 +339,7 @@ export const pamAccountHeartbeatServiceFactory = ({
 
     // ViewCredentials, not EditAccounts: this sends the credential wherever the account currently points.
     await checkAccountAccess(
-      permissionService,
+      pamDomain,
       account.id,
       account.folderId,
       projectId,
@@ -356,7 +357,7 @@ export const pamAccountHeartbeatServiceFactory = ({
     }
 
     await checkAccountAccess(
-      permissionService,
+      pamDomain,
       account.id,
       account.folderId,
       projectId,

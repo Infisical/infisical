@@ -2,6 +2,7 @@ import net from "node:net";
 
 import type WebSocket from "ws";
 
+import { TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -10,7 +11,6 @@ import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
 import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -64,7 +64,7 @@ import {
 type TPamWebAccessServiceFactoryDep = {
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
   pamAccessRequestService: Pick<TPamAccessRequestServiceFactory, "checkGrant">;
-  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
+  pamDomain: Pick<TPamDomain, "getPamPermission">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   pamSessionDAL: Pick<
@@ -119,7 +119,7 @@ type THandleWebSocketConnectionDTO = {
 export const pamWebAccessServiceFactory = ({
   pamAccountDAL,
   pamAccessRequestService,
-  permissionService,
+  pamDomain,
   auditLogService,
   tokenService,
   pamSessionDAL,
@@ -205,24 +205,19 @@ export const pamWebAccessServiceFactory = ({
     // Approval is a layer on top of standing access: gated accounts require LaunchSessions AND an
     // approved grant, so losing LaunchSessions blocks launch even while a grant is still active.
     await checkAccountAccess(
-      permissionService,
+      pamDomain,
       accountId,
       account.folderId,
       projectId,
       ResourcePermissionPamResourceActions.LaunchSessions,
-      {
-        actorId: actor.id,
-        actor: actor.type,
-        actorOrgId: actor.orgId,
-        actorAuthMethod: actor.authMethod
-      }
+      actor
     );
 
     let grantRemainingMs: number | null = null;
     if (requiresApproval) {
       const grant = await pamAccessRequestService.checkGrant({
         // Web access is JWT-only, so the actor is always a user
-        actorId: actor.id,
+        actorId: actor.principal.id,
         actor: ActorType.USER,
         accountId,
         accountFolderId: account.folderId,
@@ -245,10 +240,7 @@ export const pamWebAccessServiceFactory = ({
       membershipRoleDAL,
       projectId,
       account,
-      {
-        actor: actor.type,
-        actorId: actor.id
-      }
+      { type: actor.principal.type, id: actor.principal.id }
     );
     if (launchAccessRemainingMs !== null && launchAccessRemainingMs <= 0) {
       throw new ForbiddenRequestError({ message: "Your access to this account is no longer active" });
@@ -278,8 +270,8 @@ export const pamWebAccessServiceFactory = ({
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL },
         {
-          userId: actor.id,
-          orgId: actor.orgId,
+          userId: actor.principal.id,
+          orgId: actor.org.id,
           actorEmail,
           accountId: account.id,
           mfaSessionId,
@@ -298,8 +290,8 @@ export const pamWebAccessServiceFactory = ({
       maxSessionDurationMs = Math.min(maxSessionDurationMs, launchAccessRemainingMs);
     }
 
-    await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
-    const activeCount = await pamSessionDAL.countActiveWebSessions(actor.id, projectId);
+    await pamSessionDAL.endExpiredWebSessions(actor.principal.id, projectId);
+    const activeCount = await pamSessionDAL.countActiveWebSessions(actor.principal.id, projectId);
     if (activeCount >= MAX_WEB_SESSIONS_PER_USER) {
       throw new BadRequestError({
         message: `You have reached the maximum of ${MAX_WEB_SESSIONS_PER_USER} active web access sessions. Close an existing session and try again.`
@@ -308,7 +300,7 @@ export const pamWebAccessServiceFactory = ({
 
     const token = await tokenService.createTokenForUser({
       type: TokenType.TOKEN_PAM_WS_TICKET,
-      userId: actor.id,
+      userId: actor.principal.id,
       payload: JSON.stringify({
         accountId,
         projectId,
@@ -340,7 +332,7 @@ export const pamWebAccessServiceFactory = ({
       }
     });
 
-    return { ticket: `${actor.id}:${token}` };
+    return { ticket: `${actor.principal.id}:${token}` };
   };
 
   const handleWebSocketConnection = async ({
@@ -522,10 +514,7 @@ export const pamWebAccessServiceFactory = ({
         membershipRoleDAL,
         projectId,
         account,
-        {
-          actor: ActorType.USER,
-          actorId: userId
-        }
+        { type: ActorType.USER, id: userId }
       );
       if (launchAccessRemainingMs !== null) {
         if (launchAccessRemainingMs <= 0) {

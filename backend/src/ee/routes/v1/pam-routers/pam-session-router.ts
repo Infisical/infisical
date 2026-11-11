@@ -80,12 +80,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { sessions, totalCount } = await server.services.pamSession.listSessions(
         req.internalPamProjectId,
-        {
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        req.permission,
         { offset: req.query.offset, limit: req.query.limit, search: req.query.search, status: req.query.status }
       );
       return { sessions, totalCount };
@@ -109,12 +104,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const session = await server.services.pamSession.getSessionById(req.params.sessionId, {
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
-      });
+      const session = await server.services.pamSession.getSessionById(req.params.sessionId, req.permission);
       if (!session) {
         throw new NotFoundError({ message: "Session not found" });
       }
@@ -256,12 +246,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { session, projectId, accountName } = await server.services.pamSession.terminateSession(
         req.params.sessionId,
-        {
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
+        req.permission
       );
 
       await server.services.auditLog.createAuditLog({
@@ -367,12 +352,7 @@ export const registerPamWebAccessRouter = async (server: FastifyZodProvider) => 
       const result = await server.services.pamSession.access({
         path: req.body.path,
         projectId: req.internalPamProjectId,
-        actor: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        actor: req.permission,
         actorEmail,
         actorName,
         actorIp: req.realIp ?? "",

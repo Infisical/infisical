@@ -1,16 +1,19 @@
 import { Knex } from "knex";
 import pLimit from "p-limit";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "@app/ee/services/secret-rotation-v2/shared/utils";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { WinRmRpcEndpoint } from "@app/lib/gateway-v2/winrm-rpc";
 import { logger } from "@app/lib/logger";
+import { TActorInput } from "@app/lib/types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -25,12 +28,7 @@ import { getCredentialAccountIds, resolveHostsViaDcDns, winrmRpcWithGateway } fr
 import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
 import { generateRdsAuthToken } from "../pam-session/aws-iam/aws-iam-federation";
 import { PamAccountType, PamHeartbeatStatus, PamPostgresAuthMethod, PamProductRole } from "../pam/pam-enums";
-import {
-  checkAccountAccess,
-  getResourceIdsWithActions,
-  TActorContext,
-  verifyProductMembership
-} from "../pam/pam-permission";
+import { checkAccountAccess, getResourceIdsWithActions, verifyProductMembership } from "../pam/pam-permission";
 import {
   TGetPamAccountRotationDTO,
   TListPamRotationCandidatesDTO,
@@ -85,7 +83,8 @@ type TPamAccountRotationServiceFactoryDep = {
   >;
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  pamDomain: Pick<TPamDomain, "getPamPermission">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   kmsCoreDomain: TKmsCoreDomain;
@@ -101,7 +100,8 @@ export type TPamAccountRotationServiceFactory = ReturnType<typeof pamAccountRota
 export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServiceFactoryDep) => {
   const {
     pamAccountDAL,
-    permissionService,
+    projectsDomain,
+    pamDomain,
     membershipDAL,
     membershipRoleDAL,
     kmsCoreDomain,
@@ -150,7 +150,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     projectId: string,
     action: ResourcePermissionPamResourceActions,
     ctx: TActorContext
-  ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+  ) => checkAccountAccess(pamDomain, accountId, folderId, projectId, action, ctx);
 
   const getRotationConfig = (templateSettings: unknown) =>
     PamTemplateSettingsSchema.safeParse(templateSettings).data?.rotation;
@@ -463,8 +463,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
 
     // Only surface what the caller may already see: accounts they can read, and source names only for a PAM
     // Admin, so the warning can't leak resources behind folder or product authorization they don't hold.
-    const { hasRole } = await verifyProductMembership(permissionService, projectId, ctx);
-    const canViewSources = hasRole(PamProductRole.Admin);
+    const productPermission = await verifyProductMembership(projectsDomain, projectId, ctx);
+    const canViewSources = productPermission.hasRole({ slug: PamProductRole.Admin });
     const visible = await Promise.all(
       [...byAccount.values()].map(async (ref) => {
         const canRead = await checkAccount(
@@ -855,8 +855,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   const getRotation = async ({
     accountId,
     projectId,
-    ...ctx
-  }: TGetPamAccountRotationDTO & TActorContext): Promise<TPamAccountRotationView> => {
+    actor: ctx
+  }: TGetPamAccountRotationDTO & TActorInput): Promise<TPamAccountRotationView> => {
     const account = await loadAccount(accountId, projectId);
     await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.ReadAccounts, ctx);
 
@@ -915,7 +915,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     };
   };
 
-  const getSharedIdentity = async ({ accountId, projectId, ...ctx }: TGetPamAccountRotationDTO & TActorContext) => {
+  const getSharedIdentity = async ({ accountId, projectId, actor: ctx }: TGetPamAccountRotationDTO & TActorInput) => {
     const account = await loadAccountFromPrimary(accountId, projectId);
     await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.ReadAccounts, ctx);
     return getSharedIdentityReferences(account, projectId, ctx);
@@ -925,8 +925,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     accountId,
     rotationAccountId,
     projectId,
-    ...ctx
-  }: TSetPamRotationAccountDTO & TActorContext) => {
+    actor: ctx
+  }: TSetPamRotationAccountDTO & TActorInput) => {
     const account = await loadAccountFromPrimary(accountId, projectId);
     await checkAccount(
       accountId,
@@ -1032,8 +1032,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   const rotateNow = async ({
     accountId,
     projectId,
-    ...ctx
-  }: TRotatePamAccountDTO & TActorContext): Promise<{
+    actor: ctx
+  }: TRotatePamAccountDTO & TActorInput): Promise<{
     accountName: string;
     accountType: string;
     rotationAccountId: string | null;
@@ -1070,8 +1070,8 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
   const listRotationCandidates = async ({
     accountId,
     projectId,
-    ...ctx
-  }: TListPamRotationCandidatesDTO & TActorContext) => {
+    actor: ctx
+  }: TListPamRotationCandidatesDTO & TActorInput) => {
     const account = await loadAccount(accountId, projectId);
     await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.ReadAccounts, ctx);
 

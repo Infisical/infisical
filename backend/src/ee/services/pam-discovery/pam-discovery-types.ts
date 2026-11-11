@@ -1,8 +1,8 @@
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TActorInput } from "@app/lib/types";
 
 import { PamAccountType } from "../pam/pam-enums";
-import { TActorContext } from "../pam/pam-permission";
 import { PamDiscoveryImportStatus, PamDiscoverySchedule, PamDiscoveryType } from "./pam-discovery-enums";
 
 export type TDiscoveredAccount = {
@@ -61,7 +61,7 @@ export type TCreateDiscoverySourceDTO = {
   gatewayPoolId?: string;
   schedule: PamDiscoverySchedule;
   configuration: Record<string, unknown>;
-} & TActorContext;
+} & TActorInput;
 
 export type TUpdateDiscoverySourceDTO = {
   projectId: string;
@@ -73,32 +73,32 @@ export type TUpdateDiscoverySourceDTO = {
   gatewayPoolId?: string | null;
   schedule?: PamDiscoverySchedule;
   configuration?: Record<string, unknown>;
-} & TActorContext;
+} & TActorInput;
 
 export type TDeleteDiscoverySourceDTO = {
   projectId: string;
   sourceId: string;
   discoveryType: PamDiscoveryType;
-} & TActorContext;
+} & TActorInput;
 export type TGetDiscoverySourceDTO = {
   projectId: string;
   sourceId: string;
   discoveryType: PamDiscoveryType;
-} & TActorContext;
-export type TListDiscoverySourcesDTO = { projectId: string; search?: string } & TActorContext;
+} & TActorInput;
+export type TListDiscoverySourcesDTO = { projectId: string; search?: string } & TActorInput;
 export type TTriggerScanDTO = {
   projectId: string;
   sourceId: string;
   discoveryType: PamDiscoveryType;
-} & TActorContext;
-export type TListRunsDTO = { projectId: string; sourceId: string; offset?: number; limit?: number } & TActorContext;
+} & TActorInput;
+export type TListRunsDTO = { projectId: string; sourceId: string; offset?: number; limit?: number } & TActorInput;
 export type TListDiscoveredDTO = {
   projectId: string;
   sourceId: string;
   search?: string;
   offset?: number;
   limit?: number;
-} & TActorContext;
+} & TActorInput;
 
 export type TImportDiscoveredDTO = {
   projectId: string;
@@ -106,7 +106,7 @@ export type TImportDiscoveredDTO = {
   folderId: string;
   accounts: { discoveredAccountId: string; templateId: string; name?: string; rotationAccountId?: string }[];
   auditLogInfo: AuditLogInfo;
-} & TActorContext;
+} & TActorInput;
 
 export type TImportDiscoveredResult = {
   discoveredAccountId: string;
@@ -124,4 +124,4 @@ export type TImportDiscoveredResult = {
 export type TListAccountDependenciesDTO = {
   projectId: string;
   accountId: string;
-} & TActorContext;
+} & TActorInput;

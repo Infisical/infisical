@@ -672,6 +672,7 @@ export const registerRoutes = async (
   const secretScanningDomain = withProjectAuditContext.secretScanning(domains.secretScanning.service);
   const agentVaultDomain = withProjectAuditContext.agentVault(domains.agentVault.service);
   const codeSigningDomain = domains.codeSigning.service;
+  const pamDomain = domains.pam.service;
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
   // the fleet reports itself in Redis and every api pod complains when the reports stop.
@@ -1275,7 +1276,7 @@ export const registerRoutes = async (
     notificationService,
     resolvePamAuditScope: pamAuditLogScopeResolverFactory({
       projectDAL,
-      permissionService,
+      projectsDomain,
       membershipDAL,
       membershipRoleDAL,
       pamAccountDAL
@@ -2341,7 +2342,8 @@ export const registerRoutes = async (
     orgDAL,
     pamAccountTemplateDAL,
     pamAccountDAL,
-    permissionService,
+    projectsDomain,
+    organizationsDomain,
     gatewayV2DAL,
     gatewayPoolService,
     appConnectionDAL,
@@ -2367,7 +2369,8 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
     identityDAL,
-    permissionService,
+    projectsDomain,
+    pamDomain,
     gatewayV2Service,
     licenseDomain
   });
@@ -4276,7 +4279,8 @@ export const registerRoutes = async (
     pamSessionDAL,
     membershipDAL,
     membershipRoleDAL,
-    permissionService,
+    projectsDomain,
+    pamDomain,
     userDAL,
     gatewayV2Service,
     kmsCoreDomain
@@ -4359,7 +4363,8 @@ export const registerRoutes = async (
     approvalRequestDAL,
     pamAccountDAL,
     pamFolderDAL,
-    permissionService,
+    projectsDomain,
+    pamDomain,
     userDAL,
     identityDAL,
     pamFolderNotificationConfigDAL,
@@ -4372,7 +4377,9 @@ export const registerRoutes = async (
     pamFolderDAL,
     membershipDAL,
     membershipRoleDAL,
-    permissionService,
+    organizationsDomain,
+    projectsDomain,
+    pamDomain,
     pamAccessRequestService,
     userDAL,
     userGroupMembershipDAL,
@@ -4396,7 +4403,9 @@ export const registerRoutes = async (
     userDAL,
     orgDAL,
     mfaSessionService,
-    permissionService,
+    organizationsDomain,
+    projectsDomain,
+    pamDomain,
     kmsCoreDomain,
     gatewayV2DAL,
     gatewayV2Service,
@@ -4412,7 +4421,8 @@ export const registerRoutes = async (
 
   const pamAccountRotationService = pamAccountRotationServiceFactory({
     pamAccountDAL,
-    permissionService,
+    projectsDomain,
+    pamDomain,
     membershipDAL,
     membershipRoleDAL,
     kmsCoreDomain,
@@ -4433,7 +4443,9 @@ export const registerRoutes = async (
     pamAccountDAL,
     pamAccountService,
     pamAccountRotationService,
-    permissionService,
+    organizationsDomain,
+    projectsDomain,
+    pamDomain,
     kmsCoreDomain,
     gatewayV2DAL,
     gatewayV2Service,
@@ -4448,7 +4460,7 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     kmsCoreDomain,
-    permissionService,
+    pamDomain,
     projectDAL
   });
 
@@ -4458,7 +4470,8 @@ export const registerRoutes = async (
     pamFolderDAL,
     membershipDAL,
     membershipRoleDAL,
-    permissionService,
+    projectsDomain,
+    pamDomain,
     kmsCoreDomain,
     gatewayV2Service,
     gatewayPoolService,
@@ -4475,7 +4488,8 @@ export const registerRoutes = async (
     pamSessionDAL,
     pamSessionEventChunkDAL,
     pamAccountDAL,
-    permissionService,
+    projectsDomain,
+    pamDomain,
     kmsCoreDomain,
     appConnectionDAL
   });
@@ -4483,7 +4497,7 @@ export const registerRoutes = async (
   const pamWebAccessService = pamWebAccessServiceFactory({
     pamAccountDAL,
     pamAccessRequestService,
-    permissionService,
+    pamDomain,
     auditLogService,
     tokenService,
     pamSessionDAL,

@@ -1,11 +1,13 @@
 import { Knex } from "knex";
 
 import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApprovalPolicyActions,
   ResourcePermissionPamResourceActions,
@@ -27,7 +29,12 @@ import {
   ApprovalRequestStatus,
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
-import { PolicyBypasser, TApprovalActor, TApprovalResource } from "@app/services/approval-policy/approval-policy-types";
+import {
+  PolicyBypasser,
+  TApprovalActor,
+  TApprovalActorContext,
+  TApprovalResource
+} from "@app/services/approval-policy/approval-policy-types";
 import {
   TApprovalRequestDALFactory,
   TApprovalRequestGrantsDALFactory
@@ -67,12 +74,7 @@ import {
   PamProductRole,
   PamSessionStatus
 } from "../pam/pam-enums";
-import {
-  checkAccountAccess,
-  checkFolderPermission,
-  TActorContext,
-  verifyProductMembership
-} from "../pam/pam-permission";
+import { checkAccountAccess, checkFolderPermission, verifyProductMembership } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
 import { buildPamAccessRequestEvent } from "./pam-access-request-events";
 import { escapeMarkdown, getSlackSendTargets } from "./pam-access-request-fns";
@@ -93,7 +95,8 @@ type TPamAccessApprovalResourceDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  pamDomain: Pick<TPamDomain, "getPamPermission">;
   userDAL: Pick<TUserDALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   kmsCoreDomain: TKmsCoreDomain;
@@ -126,12 +129,9 @@ export type TPamAccessApprovalResource = TApprovalResource<
   ) => Promise<{ revoked: TApprovalRequestGrants; sendCancellationSignals: () => void }>;
 };
 
-const toActorContext = (actor: TApprovalActor): TActorContext => ({
-  actorId: actor.id,
-  actor: actor.type,
-  actorOrgId: actor.orgId,
-  actorAuthMethod: actor.authMethod
-});
+// The approval service hands a resource the actor its caller passed, which is always the request's actor context
+// (req.permission, or one built with toApprovalActorContext).
+const toActorContext = (actor: TApprovalActor): TActorContext => actor as TApprovalActorContext;
 
 type TBreakGlassSubject = {
   projectId: string;
@@ -156,7 +156,8 @@ export const pamAccessApprovalResourceFactory = ({
   pamSessionDAL,
   membershipDAL,
   membershipRoleDAL,
-  permissionService,
+  projectsDomain,
+  pamDomain,
   userDAL,
   gatewayV2Service,
   kmsCoreDomain,
@@ -325,22 +326,22 @@ export const pamAccessApprovalResourceFactory = ({
     }
 
     const ctx = toActorContext(actor);
-    await verifyProductMembership(permissionService, projectId, ctx);
+    await verifyProductMembership(projectsDomain, projectId, ctx);
     await $assertFolderInProject(scopeId, projectId);
 
-    const { permission } = await checkFolderPermission(permissionService, scopeId, projectId, ctx);
-    const canManage = permission.can(
-      ResourcePermissionPamResourceActions.ManagePolicies,
-      ResourcePermissionSub.PamResource
-    );
+    const permission = await checkFolderPermission(pamDomain, scopeId, projectId, ctx);
+    const canManage = permission.can({
+      action: ResourcePermissionPamResourceActions.ManagePolicies,
+      subject: ResourcePermissionSub.PamResource
+    });
 
     if (canManage) return;
 
     const isRead = action === ResourcePermissionApprovalPolicyActions.Read;
-    const canAudit = permission.can(
-      ResourcePermissionPamResourceActions.ViewAuditLogs,
-      ResourcePermissionSub.PamResource
-    );
+    const canAudit = permission.can({
+      action: ResourcePermissionPamResourceActions.ViewAuditLogs,
+      subject: ResourcePermissionSub.PamResource
+    });
     if (isRead && canAudit) return;
 
     throw new ForbiddenRequestError({
@@ -358,10 +359,16 @@ export const pamAccessApprovalResourceFactory = ({
     if (!scopeId) return false;
 
     try {
-      const { permission } = await checkFolderPermission(permissionService, scopeId, projectId, toActorContext(actor));
+      const permission = await checkFolderPermission(pamDomain, scopeId, projectId, toActorContext(actor));
       return (
-        permission.can(ResourcePermissionPamResourceActions.ManagePolicies, ResourcePermissionSub.PamResource) ||
-        permission.can(ResourcePermissionPamResourceActions.ViewAuditLogs, ResourcePermissionSub.PamResource)
+        permission.can({
+          action: ResourcePermissionPamResourceActions.ManagePolicies,
+          subject: ResourcePermissionSub.PamResource
+        }) ||
+        permission.can({
+          action: ResourcePermissionPamResourceActions.ViewAuditLogs,
+          subject: ResourcePermissionSub.PamResource
+        })
       );
     } catch {
       return false;
@@ -403,7 +410,7 @@ export const pamAccessApprovalResourceFactory = ({
     const ctx = toActorContext(actor);
     const isCredentialRequest = inputs.accessType === PamAccessType.Credential;
 
-    await verifyProductMembership(permissionService, projectId, ctx);
+    await verifyProductMembership(projectsDomain, projectId, ctx);
 
     const account = await pamAccountDAL.findByIdWithDetails(inputs.accountId);
     if (!account || account.projectId !== projectId || account.folderId !== inputs.folderId) {
@@ -413,7 +420,7 @@ export const pamAccessApprovalResourceFactory = ({
     // Approval is a layer on top of standing access: only users who already hold the underlying
     // permission may request the temporary grant that unlocks it.
     await checkAccountAccess(
-      permissionService,
+      pamDomain,
       account.id,
       account.folderId,
       projectId,
@@ -598,7 +605,7 @@ export const pamAccessApprovalResourceFactory = ({
 
     try {
       await checkAccountAccess(
-        permissionService,
+        pamDomain,
         account.id,
         folderId,
         projectId,
@@ -667,14 +674,14 @@ export const pamAccessApprovalResourceFactory = ({
     actor
   }) => {
     const ctx = toActorContext(actor);
-    const { hasRole } = await verifyProductMembership(permissionService, grant.projectId, ctx);
+    const productPermission = await verifyProductMembership(projectsDomain, grant.projectId, ctx);
 
     const accountId = request ? requestDataOf(request)?.accountId : undefined;
     const account = accountId ? await pamAccountDAL.findByIdWithDetails(accountId) : null;
 
     if (account && account.projectId === grant.projectId) {
       await checkAccountAccess(
-        permissionService,
+        pamDomain,
         account.id,
         account.folderId,
         grant.projectId,
@@ -684,7 +691,7 @@ export const pamAccessApprovalResourceFactory = ({
       return;
     }
 
-    if (!hasRole(PamProductRole.Admin)) {
+    if (!productPermission.hasRole({ slug: PamProductRole.Admin })) {
       throw new ForbiddenRequestError({ message: "You are not authorized to revoke this approval" });
     }
   };

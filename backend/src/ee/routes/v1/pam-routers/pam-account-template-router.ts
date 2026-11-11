@@ -51,10 +51,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         projectId: req.internalPamProjectId,
         search: req.query.search,
         type: req.query.type,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { templates };
     }
@@ -85,10 +82,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       const template = await server.services.pamAccountTemplate.getById({
         templateId: req.params.templateId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { template };
     }
@@ -124,10 +118,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       const { corsProbeUrl, ...template } = await server.services.pamAccountTemplate.create({
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -193,10 +184,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
         templateId: req.params.templateId,
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -248,10 +236,7 @@ export const registerPamAccountTemplateRouter = async (server: FastifyZodProvide
       const template = await server.services.pamAccountTemplate.deleteTemplate({
         templateId: req.params.templateId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

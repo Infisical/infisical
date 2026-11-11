@@ -2,9 +2,11 @@ import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@ca
 import { PackRule, packRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ProjectType, ResourceType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -17,13 +19,6 @@ import {
   ResourcePermissionSub
 } from "../permission/resource-permission";
 
-export type TActorContext = {
-  actorId: string;
-  actor: ActorType;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
-};
-
 const pamRoleHasAction = (role: string, action: ResourcePermissionPamResourceActions): boolean => {
   try {
     const rules = resolveResourceRoleRules(ResourceType.PamFolder, role);
@@ -34,8 +29,8 @@ const pamRoleHasAction = (role: string, action: ResourcePermissionPamResourceAct
   }
 };
 
-type TPermissionDep = Pick<TPermissionServiceFactory, "getResourcePermission">;
-type TProjectPermissionDep = Pick<TPermissionServiceFactory, "getProjectPermission">;
+type TPamDep = Pick<TPamDomain, "getPamPermission">;
+type TProjectsDep = Pick<TProjectsDomain, "getProjectPermission">;
 type TMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
 type TBatchMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
 type TMembershipRoleDep = Pick<TMembershipRoleDALFactory, "find">;
@@ -65,75 +60,42 @@ const activeRoleByMembershipId = (roles: Awaited<ReturnType<TMembershipRoleDALFa
   );
 };
 
-export const verifyProductMembership = async (
-  permissionService: TProjectPermissionDep,
-  projectId: string,
-  ctx: TActorContext
-) => {
-  const { hasRole } = await permissionService.getProjectPermission({
-    actor: ctx.actor,
-    actorId: ctx.actorId,
-    projectId,
-    actorAuthMethod: ctx.actorAuthMethod,
-    actorOrgId: ctx.actorOrgId,
-    actionProjectType: ActionProjectType.PAM
-  });
-  return { hasRole };
-};
+export const verifyProductMembership = (projectsDomain: TProjectsDep, projectId: string, ctx: TActorContext) =>
+  projectsDomain.getProjectPermission({ actor: ctx, projectId, type: ProjectType.PAM });
 
-export const checkFolderPermission = async (
-  permissionService: TPermissionDep,
-  folderId: string,
-  projectId: string,
-  ctx: TActorContext
-) => {
-  return permissionService.getResourcePermission({
-    actor: ctx.actor,
-    actorId: ctx.actorId,
-    projectId,
-    resourceType: ResourceType.PamFolder,
-    resourceId: folderId,
-    actorAuthMethod: ctx.actorAuthMethod,
-    actorOrgId: ctx.actorOrgId
-  });
-};
+export const checkFolderPermission = (pamDomain: TPamDep, folderId: string, projectId: string, ctx: TActorContext) =>
+  pamDomain.getPamPermission({ actor: ctx, projectId, folderId });
 
+// The folder's roles and the account's count together. A folder member the folder does not give the action, with no
+// role on the account, is refused as a non-member of the account, as when the account was checked on its own.
 export const checkAccountAccess = async (
-  permissionService: TPermissionDep,
+  pamDomain: TPamDep,
   accountId: string,
   folderId: string | null | undefined,
   projectId: string,
   action: ResourcePermissionPamResourceActions,
   ctx: TActorContext
 ) => {
-  if (folderId) {
-    try {
-      const { permission } = await checkFolderPermission(permissionService, folderId, projectId, ctx);
-      ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
-      return;
-    } catch (err) {
-      // No folder access: fall back to direct account access
-      if (!(err instanceof ForbiddenError) && !(err instanceof ForbiddenRequestError)) throw err;
-    }
+  const permission = await pamDomain.getPamPermission({ actor: ctx, projectId, folderId, accountId });
+  const check = { action, subject: ResourcePermissionSub.PamResource };
+  const { memberships } = permission;
+  if (
+    folderId &&
+    !permission.isProjectAdmin &&
+    memberships.length > 0 &&
+    memberships.every((membership) => membership.resourceId !== accountId) &&
+    permission.cannot(check)
+  ) {
+    throw new ForbiddenRequestError({ message: `You are not a member of this ${ResourceType.PamAccount}.` });
   }
-
-  const { permission } = await permissionService.getResourcePermission({
-    actor: ctx.actor,
-    actorId: ctx.actorId,
-    projectId,
-    resourceType: ResourceType.PamAccount,
-    resourceId: accountId,
-    actorAuthMethod: ctx.actorAuthMethod,
-    actorOrgId: ctx.actorOrgId
-  });
-  ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.PamResource);
+  permission.assert(check);
 };
 
 const findActivePamMemberships = async (
   membershipDAL: TMembershipDep,
   membershipRoleDAL: TMembershipRoleDep,
   projectId: string,
-  ctx: Pick<TActorContext, "actor" | "actorId">,
+  actor: { type: ActorType; id: string },
   tx?: Knex,
   isRelevant: (membership: { scopeResourceId?: string | null }) => boolean = () => true
 ) => {
@@ -142,8 +104,8 @@ const findActivePamMemberships = async (
       {
         projectId,
         resourceType: ResourceType.PamFolder,
-        actorType: ctx.actor,
-        actorId: ctx.actorId
+        actorType: actor.type,
+        actorId: actor.id
       },
       tx
     ),
@@ -151,8 +113,8 @@ const findActivePamMemberships = async (
       {
         projectId,
         resourceType: ResourceType.PamAccount,
-        actorType: ctx.actor,
-        actorId: ctx.actorId
+        actorType: actor.type,
+        actorId: actor.id
       },
       tx
     )
@@ -176,13 +138,13 @@ export const getLaunchAccessRemainingMs = async (
   membershipRoleDAL: TMembershipRoleDep,
   projectId: string,
   account: { id: string; folderId?: string | null },
-  ctx: Pick<TActorContext, "actor" | "actorId">
+  actor: { type: ActorType; id: string }
 ): Promise<number | null> => {
   const { folderMemberships, accountMemberships, roles } = await findActivePamMemberships(
     membershipDAL,
     membershipRoleDAL,
     projectId,
-    ctx,
+    actor,
     undefined,
     (m) => m.scopeResourceId === account.id || (Boolean(account.folderId) && m.scopeResourceId === account.folderId)
   );
@@ -205,7 +167,7 @@ export const getLaunchAccessRemainingMs = async (
 
 // Non-throwing counterpart to checkAccountAccess, for deciding what a caller may do.
 export const accountAccessAllows = async (
-  permissionService: TPermissionDep,
+  pamDomain: TPamDep,
   accountId: string,
   folderId: string | null | undefined,
   projectId: string,
@@ -213,7 +175,7 @@ export const accountAccessAllows = async (
   ctx: TActorContext
 ): Promise<boolean> => {
   try {
-    await checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+    await checkAccountAccess(pamDomain, accountId, folderId, projectId, action, ctx);
     return true;
   } catch (err) {
     if (err instanceof ForbiddenError || err instanceof ForbiddenRequestError) return false;
@@ -235,7 +197,13 @@ export const getResourceIdsWithActions = async (
     folderMemberships: activeFolderMemberships,
     accountMemberships: activeAccountMemberships,
     roles
-  } = await findActivePamMemberships(membershipDAL, membershipRoleDAL, projectId, ctx, tx);
+  } = await findActivePamMemberships(
+    membershipDAL,
+    membershipRoleDAL,
+    projectId,
+    { type: ctx.principal.type, id: ctx.principal.id },
+    tx
+  );
   const roleByMembershipId = activeRoleByMembershipId(roles);
 
   const folderIds = activeFolderMemberships
@@ -322,14 +290,14 @@ export const getAccountPermissionRulesMap = async (
     membershipDAL.findResourceMembershipsForActor({
       projectId,
       resourceType: ResourceType.PamFolder,
-      actorType: ctx.actor,
-      actorId: ctx.actorId
+      actorType: ctx.principal.type,
+      actorId: ctx.principal.id
     }),
     membershipDAL.findResourceMembershipsForActor({
       projectId,
       resourceType: ResourceType.PamAccount,
-      actorType: ctx.actor,
-      actorId: ctx.actorId
+      actorType: ctx.principal.type,
+      actorId: ctx.principal.id
     })
   ]);
 

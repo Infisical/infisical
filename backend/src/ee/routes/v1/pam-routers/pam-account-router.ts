@@ -182,10 +182,7 @@ const registerPerTypeEndpoints = (
         accountType,
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -263,10 +260,7 @@ const registerPerTypeEndpoints = (
         accountType,
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -324,10 +318,7 @@ const registerPerTypeEndpoints = (
       const account = await server.services.pamAccount.deleteAccount({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -414,10 +405,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         templateId: req.query.templateId,
         accountType: req.query.accountType,
         search: req.query.search,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { accounts };
     }
@@ -483,10 +471,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { accounts, totalCount } = await server.services.pamAccount.listAccessible({
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search,
@@ -529,10 +514,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const data = await server.services.pamAccount.getAccountPermissions({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { data };
     }
@@ -567,10 +549,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const rotation = await server.services.pamAccountRotation.getRotation({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { rotation };
     }
@@ -608,10 +587,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const dependencies = await server.services.pamDiscovery.listAccountDependencies({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { dependencies };
     }
@@ -641,10 +617,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         accountId: req.params.accountId,
         rotationAccountId: req.body.rotationAccountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -708,12 +681,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const heartbeat = await server.services.pamAccountHeartbeat.getHeartbeat(
         { accountId: req.params.accountId, projectId: req.internalPamProjectId },
-        {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
+        req.permission
       );
       return { heartbeat };
     }
@@ -739,12 +707,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.pamAccountHeartbeat.checkAccount(
         { accountId: req.params.accountId, projectId: req.internalPamProjectId },
-        {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        }
+        req.permission
       );
 
       await server.services.auditLog.createAuditLog({
@@ -784,10 +747,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.pamAccountRotation.rotateNow({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -856,10 +816,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       return server.services.pamAccountRotation.listRotationCandidates({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
     }
   });
@@ -884,10 +841,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const account = await server.services.pamAccount.getById({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { account } as unknown as { account: z.infer<typeof SanitizedAccountDetailSchema> };
     }
@@ -925,10 +879,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         reason: req.body.reason,
         mfaSessionId: req.body.mfaSessionId,
         tokenVersionId: isUserSessionAuth(req.auth) ? req.auth.tokenVersionId : undefined,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -973,10 +924,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       if (result.created) {
@@ -1016,10 +964,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       if (result.created) {
@@ -1059,10 +1004,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.pamAccount.getOrCreateSshCa({
         accountId: req.params.accountId,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       // Trim trailing newline; otherwise the script's echo/grep treat it as a blank line and skip later keys.
       const caPublicKey = result.publicKey.trim();
