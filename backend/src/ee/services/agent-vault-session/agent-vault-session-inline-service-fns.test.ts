@@ -72,6 +72,15 @@ describe("prepareInlineServices", () => {
     expect(service.secrets?.substitutions).toEqual(["42", "eu"]);
   });
 
+  test("keeps the description it was sent with, and null for a service sent without one", () => {
+    const [described, bare] = prepareInlineServices([
+      httpBearer({ description: "Payments, read only" }),
+      httpBearer({ hostPattern: "other.example.com" })
+    ]);
+    expect(described.description).toBe("Payments, read only");
+    expect(bare.description).toBeNull();
+  });
+
   test("seals nothing for a pass-through service with nothing to send", () => {
     const [service] = prepareInlineServices([
       httpBearer({ credential: { type: AgentVaultCredentialType.Passthrough } })
@@ -227,6 +236,13 @@ describe("inline service reads", () => {
     expect(toInlineServiceSummary(storedRow({ name: "example" })).name).toBe("example");
   });
 
+  test("the summary carries the description, and null for a service sent without one", () => {
+    expect(toInlineServiceSummary(storedRow({ description: "Payments, read only" })).description).toBe(
+      "Payments, read only"
+    );
+    expect(toInlineServiceSummary(storedRow()).description).toBeNull();
+  });
+
   test("the summary carries no secret, nor anything else stored beside the credential", () => {
     const summary = toInlineServiceSummary(
       storedRow({
@@ -357,5 +373,95 @@ describe("toResolvedInlineService", () => {
       headerPrefix: "Bearer",
       value: "token"
     });
+  });
+});
+
+describe("database and SSH services sent with a session", () => {
+  const KEY = "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----";
+  const postgres = (overrides: Partial<TAgentVaultInlineServiceInput> = {}): TAgentVaultInlineServiceInput => ({
+    type: AgentVaultServiceType.Postgres,
+    name: "analytics",
+    host: "db.internal",
+    database: "app",
+    credential: { type: AgentVaultCredentialType.Basic, username: "agent", password: "p" },
+    ...overrides
+  });
+
+  test("have no host pattern and keep their server in config", () => {
+    const [service] = prepareInlineServices([postgres()]);
+    expect(service.hostPattern).toBeNull();
+    expect(service.config).toEqual({
+      host: "db.internal",
+      port: 5432,
+      database: "app",
+      tls: { enabled: true, verify: true }
+    });
+  });
+
+  test("need a username to log in as", () => {
+    expect(() =>
+      prepareInlineServices([postgres({ credential: { type: AgentVaultCredentialType.Basic, password: "p" } })])
+    ).toThrow("A PostgreSQL service needs a username to log in as. Set one in the credential.");
+  });
+
+  test("never overlap an HTTP service on the same host", () => {
+    expect(() =>
+      prepareInlineServices([postgres(), httpBearer({ name: "web", hostPattern: "db.internal" })])
+    ).not.toThrow();
+    expect(() =>
+      assertNoAccessBundleConflicts(prepareInlineServices([postgres()]), {
+        name: "bundle",
+        services: [{ id: "s1", name: "web", hostPattern: "db.internal:5432" }]
+      })
+    ).not.toThrow();
+  });
+
+  test("an SSH key goes out to the proxy as it was sent", () => {
+    const [prepared] = prepareInlineServices([
+      {
+        type: AgentVaultServiceType.Ssh,
+        name: "bastion",
+        host: "bastion.internal",
+        credential: { type: AgentVaultCredentialType.SshKey, username: "agent", privateKey: KEY }
+      }
+    ]);
+    expect(prepared.credentialConfig).toEqual({ type: AgentVaultCredentialType.SshKey, hasCertificate: false });
+
+    const row = storedRow({
+      name: "bastion",
+      type: AgentVaultServiceType.Ssh,
+      config: prepared.config,
+      hostPattern: null,
+      credentialType: AgentVaultCredentialType.SshKey,
+      credentialConfig: prepared.credentialConfig
+    });
+    const resolved = toResolvedInlineService(row, prepared.secrets);
+    expect(resolved?.credential).toEqual({
+      type: AgentVaultCredentialType.SshKey,
+      username: "agent",
+      privateKey: KEY
+    });
+    expect(resolved?.native).toEqual({ host: "bastion.internal", port: 22, database: null, tls: null });
+    const summary = toInlineServiceSummary(row);
+    expect(summary).toMatchObject({ type: AgentVaultServiceType.Ssh, host: "bastion.internal", port: 22 });
+    expect(summary).not.toHaveProperty("hostPattern");
+  });
+
+  test("a basic secret is never read as an SSH key", () => {
+    const row = storedRow({
+      name: "bastion",
+      type: AgentVaultServiceType.Ssh,
+      config: { host: "bastion.internal", port: 22 },
+      hostPattern: null,
+      credentialType: AgentVaultCredentialType.SshKey,
+      credentialConfig: { type: AgentVaultCredentialType.SshKey, hasCertificate: false }
+    });
+    expect(
+      toResolvedInlineService(row, {
+        credential: { username: "agent", password: "p" },
+        customHeaders: [],
+        substitutions: []
+      })
+    ).toBeNull();
   });
 });

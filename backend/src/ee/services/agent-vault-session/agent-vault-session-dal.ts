@@ -159,8 +159,8 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Revoking by token reads the primary: a script that mints and revokes straight away would otherwise get a 401
-  // from a replica that hasn't seen the new session.
+  // Revoking by token and listing the proxy CA fingerprints read the primary: a script that mints and then revokes
+  // or connects straight away would otherwise get a 401 from a replica that hasn't seen the new session.
   const findByTokenHashOnPrimary = async (tokenHash: string): Promise<TAgentVaultSessions | undefined> => {
     try {
       return await db(TableName.AgentVaultSession).where({ tokenHash }).first();

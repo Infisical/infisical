@@ -782,6 +782,14 @@ Rules for code outside the consumer:
   the daily `org-access-reconcile-sweep` cron is a backstop. End-to-end coverage:
   `e2e-test/routes/v1/org-access-reconcile.spec.ts`.
 
+### Organization Deletion
+
+Every organization delete (the org's own admin, a server admin, a sub-org's parent) goes through
+`orgDeletionService.deleteOrganization` (`services/org/org-deletion-service.ts`), never `orgDAL.deleteById`
+directly. It runs the cross-table cleanups and emits `OrganizationModifiedEventV1` (`org-events.ts`) inside
+the delete transaction; `license-org-deleted-consumer.ts` then tells the license server to cancel the
+subscription, retrying through the outbox. A delete that skips the service leaves the customer billing.
+
 ### Soft-Delete + Async Cleanup
 
 Resources whose deletion cascades across many/large tables use a **soft-delete + paced async hard-delete** pattern instead of a synchronous cascade in the request path.
@@ -934,6 +942,22 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   `credentials.federatedCredential` (issuer URL, subject, audience), built on every read by
   `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.
   The issuer is null when `SITE_URL` is unset, so reading a connection never fails on it.
+
+### KMS public key publishing (JWKS per key)
+
+A sign-verify CMEK can publish its public key as a JWKS at `/api/v1/kms/keys/<keyId>/jwks.json`, unauthenticated,
+for verifiers such as Okta `private_key_jwt`. `kms_keys.isPublicKeyPublished` turns it on through the key's `PATCH`.
+
+- **Publishing needs `publish-public-key` on top of `edit`.** Only admins get it by default, like `export-private-key`.
+- **Unpublished, disabled and missing keys all return the same 404**, as does a key in a project pending deletion,
+  so the URL never confirms that a key exists.
+- **The `kid` is `<keyId>:v<version>` and can never change**, because tokens already carry it. Sign-verify keys have
+  one version today; when they get versioning, the same URL serves the versions still being verified, and that is
+  how rotation is meant to work. RSA JWKs omit `alg`, since the key signs RS* and PS*. ML-DSA can't be published.
+- **The JWKS is cached in Redis for 60 seconds** and cleared by every update and delete in `cmek-service`. Changes
+  made elsewhere, such as KMIP, show within that TTL.
+- KMS ECDSA signatures are DER, so an ES* JWT signed through the sign API needs its signature re-encoded as raw R||S
+  before a JWKS verifier accepts it.
 
 ### Enterprise (EE) Features
 

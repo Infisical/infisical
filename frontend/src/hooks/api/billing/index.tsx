@@ -2,7 +2,6 @@ export {
   billingSubmitMutationKey,
   useAddBillingPaymentMethod,
   useBuyBillingProduct,
-  useCancelBillingSubscription,
   useCancelBillingTrial,
   useChangeBillingCommitment,
   useConfirmBillingTrialPayment,
@@ -10,7 +9,6 @@ export {
   usePreviewBillingChange,
   useRefreshBillingEntitlements,
   useRemoveBillingProduct,
-  useResumeBillingSubscription,
   useStartBillingTrial,
   useUpgradeBillingProduct
 } from "./mutations";

@@ -76,7 +76,6 @@ export const useAgentVaultSetupProgress = () => {
   const hasConnectedProxy = Boolean(proxies.data?.proxies.some((proxy) => proxy.heartbeat));
   const newestBundle = newestBundles.data?.accessBundles[0];
   const hasService = (fullestBundles.data?.accessBundles[0]?.serviceCount ?? 0) > 0;
-  const isSessionCountLoaded = Boolean(sessions.data);
   const hasSession = (sessions.data?.totalCount ?? 0) > 0;
   const completedCount = [hasConnectedProxy, Boolean(newestBundle), hasService, hasSession].filter(
     Boolean
@@ -102,7 +101,6 @@ export const useAgentVaultSetupProgress = () => {
     hasConnectedProxy,
     newestBundle,
     hasService,
-    isSessionCountLoaded,
     hasSession,
     completedCount,
     nextStep: isLoaded ? nextStep : null

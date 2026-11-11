@@ -17,10 +17,6 @@ import {
 } from "lucide-react";
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
-import {
-  useAgentVaultSetupProgress,
-  useOpenAgentVaultSetupStep
-} from "@app/components/agent-vault/SetupChecklist";
 import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
@@ -95,7 +91,6 @@ import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
 import { InlineServicesList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
-import { SampleSessionSheet, SampleSessionTable } from "./components/SampleSessionSheet";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
 import { SessionIdentity } from "./components/SessionIdentity";
@@ -145,7 +140,6 @@ export const AgentVaultSessionsPage = () => {
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
   const [sessionToLabel, setSessionToLabel] = useState<TAgentVaultSession | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isSampleOpen, setIsSampleOpen] = useState(false);
   const { id: openSessionId, openSheet } = useAgentVaultSheetState();
 
   const { data, isPending } = useListAgentVaultSessions(projectId, {
@@ -186,22 +180,6 @@ export const AgentVaultSessionsPage = () => {
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
   useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
 
-  const setupProgress = useAgentVaultSetupProgress();
-  const openSetupStep = useOpenAgentVaultSetupStep(setupProgress);
-  // An admin sees the sample only while the org has no session at all. A member can't list the org's
-  // sessions, so they see it while they have none of their own.
-  const isSampleShown =
-    !isFiltered && (!isAdmin || (setupProgress.isSessionCountLoaded && !setupProgress.hasSession));
-  // Offered only once the next step is known; until then there's nowhere to send the admin.
-  const { nextStep } = setupProgress;
-  const startSetup = nextStep
-    ? () => {
-        setupProgress.restore();
-        setIsSampleOpen(false);
-        openSetupStep(nextStep);
-      }
-    : undefined;
-
   let emptyTitle: string;
   let emptyDescription: string;
   if (isFiltered) {
@@ -217,7 +195,7 @@ export const AgentVaultSessionsPage = () => {
     emptyDescription = "Create a session to get a token an agent can run with.";
   }
 
-  const emptyState = !isSampleShown ? (
+  const emptyState = (
     <CardContent>
       <Empty className="border">
         <EmptyHeader>
@@ -236,25 +214,6 @@ export const AgentVaultSessionsPage = () => {
         )}
       </Empty>
     </CardContent>
-  ) : (
-    <>
-      <SampleSessionTable onOpen={() => setIsSampleOpen(true)} />
-      <CardContent className="flex items-center justify-between gap-4">
-        <span className="text-sm text-muted">
-          {emptyDescription} Open the sample to see what a session records.
-        </span>
-        {!hasReachableBundles && isAdmin && (
-          <Button variant="av" size="sm" asChild>
-            <Link
-              to="/organizations/$orgId/projects/agent-vault/$projectId/access-bundles"
-              params={{ orgId: currentOrg.id, projectId }}
-            >
-              Go to Access Bundles
-            </Link>
-          </Button>
-        )}
-      </CardContent>
-    </>
   );
 
   return (
@@ -614,12 +573,6 @@ export const AgentVaultSessionsPage = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setSessionToRevoke(null);
         }}
-      />
-
-      <SampleSessionSheet
-        isOpen={isSampleOpen}
-        onOpenChange={setIsSampleOpen}
-        onSetUp={isAdmin ? startSetup : undefined}
       />
 
       <SessionDetailSheet

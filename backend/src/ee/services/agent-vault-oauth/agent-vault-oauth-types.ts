@@ -194,5 +194,5 @@ export type TRefreshServiceTokenDTO = {
   expiresWithinSeconds?: number;
   // Where the caller will send the token. A service that moved since is a 409, never a token for the new server.
   // `serverUrl` undefined skips that half of the check.
-  destination: { hostPattern: string; serverUrl?: string | null };
+  destination: { hostPattern: string | null; serverUrl?: string | null };
 };

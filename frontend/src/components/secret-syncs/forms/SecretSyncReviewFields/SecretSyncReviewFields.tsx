@@ -105,7 +105,8 @@ export const SecretSyncReviewFields = () => {
     connection,
     environment,
     secretPath,
-    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema, includeAllSubFolders },
+    includeAllSubFolders,
+    syncOptions: { disableSecretDeletion, initialSyncBehavior, keySchema },
     destination,
     isAutoSyncEnabled
   } = watch();

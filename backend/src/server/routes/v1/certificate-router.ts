@@ -1270,6 +1270,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         .nullish(),
       response: {
         200: z.object({
+          status: z.nativeEnum(CertificateRequestStatus),
           certificate: z.string().trim(),
           issuingCaCertificate: z.string().trim(),
           certificateChain: z.string().trim(),
@@ -1312,22 +1313,26 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             applicationName: data.applicationName,
             renewalKeySource: req.body?.renewalKeySource ?? CertificateRenewalKeySource.New,
             externalConfiguration: req.body?.externalConfiguration,
-            changedAttributes: data.changedAttributes ?? []
+            changedAttributes: data.changedAttributes ?? [],
+            status: data.status
           }
         }
       });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.CertificateRenewed,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          orgId: req.permission.orgId,
-          projectId: data.projectId
-        }
-      });
+      if (data.status !== CertificateRequestStatus.PENDING_APPROVAL) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.CertificateRenewed,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            orgId: req.permission.orgId,
+            projectId: data.projectId
+          }
+        });
+      }
 
       return {
+        status: data.status,
         certificate: data.certificate || "",
         issuingCaCertificate: data.issuingCaCertificate || "",
         certificateChain: data.certificateChain || "",
@@ -1506,6 +1511,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             profileName: z.string().nullable().optional(),
             applicationName: z.string().nullable().optional(),
             hasPrivateKey: z.boolean().describe(CERTIFICATES.GET.hasPrivateKey),
+            canRenewFromCsr: z.boolean().describe(CERTIFICATES.GET.canRenewFromCsr),
             latestRenewalCertificateId: z
               .string()
               .uuid()
@@ -1773,6 +1779,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         certificatePem: z.string().trim().min(1).describe(CERTIFICATES.IMPORT.certificatePem),
         privateKeyPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.privateKeyPem),
         chainPem: z.string().trim().min(1).optional().describe(CERTIFICATES.IMPORT.chainPem),
+        csr: csrSchema.optional().describe(CERTIFICATES.IMPORT.csr),
 
         friendlyName: z.string().trim().max(255).optional().describe(CERTIFICATES.IMPORT.friendlyName),
         pkiCollectionId: z.string().trim().optional().describe(CERTIFICATES.IMPORT.pkiCollectionId),
@@ -1815,7 +1822,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             certificateProfileId: cert.profileId ?? undefined,
             profileName: profileName ?? undefined,
             caId: cert.caId ?? undefined,
-            caName: caName ?? undefined
+            caName: caName ?? undefined,
+            hasCsr: Boolean(req.body.csr)
           }
         }
       });

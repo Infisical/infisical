@@ -35,7 +35,11 @@ const BundleServices = ({ bundle }: { bundle: TBundleUsage }) => (
     <ul className="flex flex-col gap-1.5">
       {bundle.services.map((service) => (
         <li key={service.id} className="flex items-center gap-2">
-          <ServiceIcon hostPattern={service.hostPattern} className="size-5" />
+          <ServiceIcon
+            hostPattern={service.hostPattern}
+            serviceType={service.type}
+            className="size-5"
+          />
           <span className="truncate">{service.name}</span>
         </li>
       ))}

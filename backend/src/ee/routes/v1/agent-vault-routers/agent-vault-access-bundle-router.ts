@@ -5,6 +5,7 @@ import { auditActorFields } from "@app/ee/services/agent-vault/agent-vault-actor
 import {
   AgentVaultCredentialType,
   AgentVaultMemberType,
+  AgentVaultServiceType,
   AgentVaultVariableReferenceField
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
@@ -18,7 +19,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
+import {
+  actorContext,
+  resolveRequestedProjectId,
+  serviceTransformationNamesOf,
+  serviceTypeReportFieldsOf
+} from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
   AgentVaultBundleSkillSchema,
@@ -35,6 +41,7 @@ import {
   AgentVaultPersonalValuesSchema,
   AgentVaultProductMemberSchema,
   AgentVaultProjectIdSchema,
+  agentVaultServiceResponseSchema,
   AgentVaultServiceSchema,
   AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
@@ -112,6 +119,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
             memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
             hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns),
+            nativeServices: z
+              .object({
+                name: z.string().describe(AGENT_VAULT.ACCESS_BUNDLE.nativeServiceName),
+                type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.ACCESS_BUNDLE.nativeServiceType)
+              })
+              .array()
+              .describe(AGENT_VAULT.ACCESS_BUNDLE.nativeServices),
             servicesRequiringSetup: z
               .object({
                 id: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetupId),
@@ -204,9 +218,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       response: {
         200: z.object({
           accessBundle: AccessBundleSchema.extend({
-            services: AgentVaultServiceSchema.partial({ variableReferences: true })
-              .extend({ personalValues: AgentVaultPersonalValuesSchema.nullable() })
-              .array()
+            services: agentVaultServiceResponseSchema(
+              { personalValues: AgentVaultPersonalValuesSchema.nullable() },
+              { optionalVariableReferences: true }
+            ).array()
           })
         })
       }
@@ -359,6 +374,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: req.params.accessBundleId,
         ...req.body
       });
+      const serviceTypeFields = serviceTypeReportFieldsOf(service);
+      const transformationNames = serviceTransformationNamesOf(service);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -371,10 +388,9 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleName,
             serviceId: service.id,
             name: service.name,
+            description: service.description,
             serviceType: service.type,
-            serverUrl: service.serverUrl ?? undefined,
-            transport: service.transport ?? undefined,
-            hostPattern: service.hostPattern,
+            ...serviceTypeFields,
             credentialType: service.credential.type,
             headerName:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerName : undefined,
@@ -384,13 +400,12 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.issuer : undefined,
             oauthScopes:
               service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.grantedScopes : undefined,
-            ...pick(service, SERVICE_RULE_AUDIT_FIELDS),
             memberProvidedFields:
-              service.credential.type === AgentVaultCredentialType.Passthrough
+              service.credential.type === AgentVaultCredentialType.Passthrough ||
+              service.credential.type === AgentVaultCredentialType.SshKey
                 ? undefined
                 : service.credential.memberProvidedFields,
-            customHeaderNames: service.customHeaders.map((header) => header.name),
-            substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder),
+            ...transformationNames,
             variableKeys: variableKeysOf(service)
           }
         }
@@ -403,12 +418,14 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           serviceId: service.id,
           serviceType: service.type,
           credentialType: service.credential.type,
-          hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
-          allowedMethodCount: service.allowedMethods?.length ?? 0,
-          allowedPathPrefixCount: service.allowedPathPrefixes?.length ?? 0,
-          allowedToolCount: service.allowedTools?.length ?? 0,
-          customHeaderCount: service.customHeaders.length,
-          substitutionCount: service.substitutions.length,
+          hostPatternCount: serviceTypeFields.hostPattern
+            ? parseHostPatterns(serviceTypeFields.hostPattern).patterns.length
+            : 0,
+          allowedMethodCount: serviceTypeFields.allowedMethods?.length ?? 0,
+          allowedPathPrefixCount: serviceTypeFields.allowedPathPrefixes?.length ?? 0,
+          allowedToolCount: serviceTypeFields.allowedTools?.length ?? 0,
+          customHeaderCount: transformationNames.customHeaderNames.length,
+          substitutionCount: transformationNames.substitutionPlaceholders.length,
           variableReferenceCount: service.variableReferences.length
         }
       });
@@ -451,6 +468,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         });
       const isOauthAuthorized =
         req.body.credential?.type === AgentVaultCredentialType.OAuth && Boolean(req.body.credential.authorizationId);
+      const serviceTypeFields = serviceTypeReportFieldsOf(service);
+      const transformationNames = serviceTransformationNamesOf(service);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -464,11 +483,18 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleName,
             serviceId: service.id,
             name: req.body.name,
+            description: req.body.description,
             serviceType: service.type,
             serverUrl: update.serverUrl,
             transport: update.transport,
+            host: update.host,
+            port: update.port,
+            database: update.database,
+            tlsEnabled: update.tlsEnabled,
+            tlsVerify: update.tlsVerify,
+            tlsCaChanged: update.tlsCaChanged,
             // Derived from the server URL for an MCP service, so it is reported whenever that changed.
-            hostPattern: update.hostPattern ?? (update.serverUrl ? service.hostPattern : undefined),
+            hostPattern: update.hostPattern ?? (update.serverUrl ? serviceTypeFields.hostPattern : undefined),
             credentialType: req.body.credential?.type,
             headerName:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
@@ -489,13 +515,15 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             ...pick(update, SERVICE_RULE_AUDIT_FIELDS),
             // The setting after the update, present whenever the update touched the credential.
             memberProvidedFields:
-              req.body.credential && service.credential.type !== AgentVaultCredentialType.Passthrough
+              req.body.credential &&
+              service.credential.type !== AgentVaultCredentialType.Passthrough &&
+              service.credential.type !== AgentVaultCredentialType.SshKey
                 ? service.credential.memberProvidedFields
                 : undefined,
-            customHeaderNames: req.body.customHeaders?.map((header) => header.name),
+            customHeaderNames: update.customHeaders?.map((header) => header.name),
             // A row omitting a value keeps the stored secret, so sending one is what marks a rotation.
             // Without this a rotation and a no-op save write the same row.
-            customHeadersReplaced: req.body.customHeaders
+            customHeadersReplaced: update.customHeaders
               ?.filter((header) => header.value !== undefined)
               .map((header) => header.name),
             substitutionPlaceholders: update.substitutions?.map((substitution) => substitution.placeholder),
@@ -505,9 +533,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             credentialReplaced,
             personalValuesCleared,
             variableKeys:
-              req.body.credential || req.body.customHeaders || update.substitutions
-                ? variableKeysOf(service)
-                : undefined
+              req.body.credential || update.customHeaders || update.substitutions ? variableKeysOf(service) : undefined
           }
         }
       });
@@ -519,12 +545,14 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           serviceId: service.id,
           serviceType: service.type,
           credentialType: service.credential.type,
-          hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
-          allowedMethodCount: service.allowedMethods?.length ?? 0,
-          allowedPathPrefixCount: service.allowedPathPrefixes?.length ?? 0,
-          allowedToolCount: service.allowedTools?.length ?? 0,
-          customHeaderCount: service.customHeaders.length,
-          substitutionCount: service.substitutions.length,
+          hostPatternCount: serviceTypeFields.hostPattern
+            ? parseHostPatterns(serviceTypeFields.hostPattern).patterns.length
+            : 0,
+          allowedMethodCount: serviceTypeFields.allowedMethods?.length ?? 0,
+          allowedPathPrefixCount: serviceTypeFields.allowedPathPrefixes?.length ?? 0,
+          allowedToolCount: serviceTypeFields.allowedTools?.length ?? 0,
+          customHeaderCount: transformationNames.customHeaderNames.length,
+          substitutionCount: transformationNames.substitutionPlaceholders.length,
           variableReferenceCount: service.variableReferences.length
         }
       });

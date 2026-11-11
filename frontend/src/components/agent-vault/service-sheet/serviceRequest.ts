@@ -2,25 +2,32 @@ import {
   AgentVaultCredentialType,
   AgentVaultServiceType,
   AgentVaultVariableReferenceField,
-  TAgentVaultMemberProvidedField
+  isNativeServiceType,
+  TAgentVaultMemberProvidedField,
+  TAgentVaultNativeServiceType
 } from "@app/hooks/api/agentVault";
 import {
+  TAgentVaultBasicCredentialInput,
   TAgentVaultCredentialInput,
   TAgentVaultCredentialUpdate,
   TAgentVaultOauthCredentialInput,
   TAgentVaultService,
+  TAgentVaultSshKeyCredentialInput,
+  TAgentVaultSshKeyCredentialUpdate,
   TCreateAgentVaultServiceDTO,
   TListAgentVaultMcpToolsDTO,
   TUpdateAgentVaultServiceDTO
 } from "@app/hooks/api/agentVault/types";
 
 import {
+  hasDatabase,
   hostOf,
   isAllMethods,
   isCredentialMemberProvided,
   isMemberProvidedOAuthService,
   McpToolScope,
   newOAuthAuthorizationId,
+  serverUrlOf,
   storedMemberFields,
   TServiceForm,
   UNCHANGED_SECRET
@@ -50,6 +57,20 @@ const memberFieldsOf = (data: TServiceForm) => {
   };
 };
 
+const buildBasicCredential = (data: TServiceForm): TAgentVaultBasicCredentialInput => {
+  const { basic, isMemberProvided } = memberFieldsOf(data);
+  return {
+    type: AgentVaultCredentialType.Basic,
+    username: isMemberProvided(AgentVaultVariableReferenceField.CredentialUsername)
+      ? undefined
+      : (data.username ?? ""),
+    password: isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)
+      ? undefined
+      : (data.secret ?? ""),
+    memberProvidedFields: basic
+  };
+};
+
 const buildBearerCredential = (data: TServiceForm) => {
   const { bearer } = memberFieldsOf(data);
   return {
@@ -61,22 +82,10 @@ const buildBearerCredential = (data: TServiceForm) => {
 
 // A member-provided field is sent without a value: each member sets their own.
 const buildHttpCredential = (data: TServiceForm): TAgentVaultCredentialInput => {
-  const { basic, isMemberProvided } = memberFieldsOf(data);
   if (data.credentialType === AgentVaultCredentialType.Passthrough) {
     return { type: AgentVaultCredentialType.Passthrough };
   }
-  if (data.credentialType === AgentVaultCredentialType.Basic) {
-    return {
-      type: AgentVaultCredentialType.Basic,
-      username: isMemberProvided(AgentVaultVariableReferenceField.CredentialUsername)
-        ? undefined
-        : (data.username ?? ""),
-      password: isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)
-        ? undefined
-        : (data.secret ?? ""),
-      memberProvidedFields: basic
-    };
-  }
+  if (data.credentialType === AgentVaultCredentialType.Basic) return buildBasicCredential(data);
   return buildBearerCredential(data);
 };
 
@@ -212,35 +221,129 @@ const buildMcpFields = (data: TServiceForm) => ({
   allowedTools: data.toolScope === McpToolScope.Selected ? data.allowedTools : null
 });
 
+const buildSshKeyCredential = (data: TServiceForm): TAgentVaultSshKeyCredentialInput => ({
+  type: AgentVaultCredentialType.SshKey,
+  username: (data.username ?? "").trim(),
+  privateKey: data.sshPrivateKey.trim(),
+  ...(data.sshCertificate.trim() ? { certificate: data.sshCertificate.trim() } : {})
+});
+
+// A part left at the sentinel, or emptied, keeps what is stored. Only Remove Certificate sends null.
+const buildSshKeyCredentialPatch = (data: TServiceForm): TAgentVaultSshKeyCredentialUpdate => {
+  const changed = (value: string | undefined) =>
+    value === UNCHANGED_SECRET ? "" : (value ?? "").trim();
+  const username = changed(data.username);
+  const privateKey = changed(data.sshPrivateKey);
+  const certificate = changed(data.sshCertificate);
+  let certificatePatch: { certificate?: string | null } = {};
+  if (data.sshCertificateRemoved) certificatePatch = { certificate: null };
+  else if (certificate) certificatePatch = { certificate };
+  return {
+    type: AgentVaultCredentialType.SshKey,
+    ...(username ? { username } : {}),
+    ...(privateKey ? { privateKey } : {}),
+    ...certificatePatch
+  };
+};
+
+// The CA is left out while TLS is off: its field is hidden then, and leaving it out keeps a stored one for when TLS
+// is turned back on. An emptied CA is null, which clears a stored one and is the same as none on create.
+// The proxy reads the CA only while it verifies the certificate, so it is left out otherwise and a stored one is kept.
+const buildNativeTls = (data: TServiceForm) => {
+  if (!data.tlsEnabled) return { enabled: false, verify: data.tlsVerify };
+  if (!data.tlsVerify) return { enabled: true, verify: false };
+  return { enabled: true, verify: true, ca: data.tlsCa.trim() || null };
+};
+
+const buildNativeConnection = (data: TServiceForm, serviceType: TAgentVaultNativeServiceType) => ({
+  name: data.name,
+  host: data.host.trim(),
+  port: Number(data.port.trim()),
+  ...(hasDatabase(serviceType) ? { database: data.database.trim(), tls: buildNativeTls(data) } : {})
+});
+
+const buildNativeCreateRequest = (
+  accessBundleId: string,
+  data: TServiceForm,
+  serviceType: TAgentVaultNativeServiceType
+): TCreateAgentVaultServiceDTO => {
+  const connection = buildNativeConnection(data, serviceType);
+  if (serviceType === AgentVaultServiceType.Ssh) {
+    return {
+      accessBundleId,
+      type: serviceType,
+      ...connection,
+      credential:
+        data.credentialType === AgentVaultCredentialType.SshKey
+          ? buildSshKeyCredential(data)
+          : buildBasicCredential(data)
+    };
+  }
+  return {
+    accessBundleId,
+    type: serviceType,
+    ...connection,
+    database: data.database.trim(),
+    credential: buildBasicCredential(data)
+  };
+};
+
+const buildNativeCredentialPatch = (
+  data: TServiceForm
+): TAgentVaultCredentialUpdate | TAgentVaultSshKeyCredentialUpdate =>
+  data.credentialType === AgentVaultCredentialType.SshKey
+    ? buildSshKeyCredentialPatch(data)
+    : buildHttpCredentialPatch(data);
+
 export const buildCreateServiceRequest = (
   accessBundleId: string,
   data: TServiceForm
-): TCreateAgentVaultServiceDTO =>
-  data.serviceType === AgentVaultServiceType.Mcp
+): TCreateAgentVaultServiceDTO => {
+  const description = data.description.trim() || undefined;
+  if (isNativeServiceType(data.serviceType)) {
+    return { ...buildNativeCreateRequest(accessBundleId, data, data.serviceType), description };
+  }
+  return data.serviceType === AgentVaultServiceType.Mcp
     ? {
         accessBundleId,
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
+        description,
         credential: buildMcpCredential(data)
       }
     : {
         accessBundleId,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
+        description,
         credential: buildHttpCredential(data)
       };
+};
 
 export const buildUpdateServiceRequest = (
   accessBundleId: string,
   service: TAgentVaultService,
   data: TServiceForm
-): TUpdateAgentVaultServiceDTO =>
-  data.serviceType === AgentVaultServiceType.Mcp
+): TUpdateAgentVaultServiceDTO => {
+  // Null rather than left out, so clearing the field removes the saved description.
+  const description = data.description.trim() || null;
+  if (isNativeServiceType(data.serviceType)) {
+    return {
+      accessBundleId,
+      serviceId: service.id,
+      type: data.serviceType,
+      ...buildNativeConnection(data, data.serviceType),
+      description,
+      credential: buildNativeCredentialPatch(data)
+    };
+  }
+  return data.serviceType === AgentVaultServiceType.Mcp
     ? {
         accessBundleId,
         serviceId: service.id,
         type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
+        description,
         ...withCredential(buildMcpCredentialPatch(data, service))
       }
     : {
@@ -248,8 +351,10 @@ export const buildUpdateServiceRequest = (
         serviceId: service.id,
         type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
+        description,
         credential: buildHttpCredentialPatch(data)
       };
+};
 
 /** The admin's own token or sign-in, used once to list the tools of a service whose members each provide theirs. */
 export type TMcpToolsOwnCredential = { token: string } | { authorizationId: string };
@@ -324,7 +429,8 @@ export const membersClearedNotice = (
   const storedFields = storedMemberFields(service);
   const isMcp = data.serviceType === AgentVaultServiceType.Mcp;
   const typeChanged = storedType !== data.credentialType;
-  const storedHost = service.serverUrl ? hostOf(service.serverUrl) : "";
+  const storedServerUrl = serverUrlOf(service);
+  const storedHost = storedServerUrl ? hostOf(storedServerUrl) : "";
   const wasMemberOAuth = isMemberProvidedOAuthService(service);
 
   if (wasMemberOAuth) {
@@ -341,7 +447,7 @@ export const membersClearedNotice = (
         description: `Every member's connection to ${storedHost} will be removed, and sessions will use your account.`
       };
     }
-    const isServerChanged = isMcp && data.serverUrl.trim() !== service.serverUrl;
+    const isServerChanged = isMcp && data.serverUrl.trim() !== storedServerUrl;
     if (isServerChanged || isMemberOAuthClientChanged(data, service)) {
       return {
         title: connectionsRemoved,

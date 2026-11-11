@@ -22,8 +22,8 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
-import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
-import { TSecretApprovalRequestCreationFnsFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-creation-fns";
+import { TSecretChangePolicyServiceFactory } from "@app/ee/services/secret-change-policy/secret-change-policy-service";
+import { TSecretChangeRequestServiceFactory } from "@app/ee/services/secret-change-request/secret-change-request-service";
 import { scanSecretPolicyViolations } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
@@ -167,11 +167,8 @@ type TSecretV2BridgeServiceFactoryDep = {
   >;
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "findByFolderIds" | "findByIds">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "handleSecretReminder" | "removeSecretReminder">;
-  secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
-  secretApprovalRequestCreationFns: Pick<
-    TSecretApprovalRequestCreationFnsFactory,
-    "createSecretApprovalRequestV2Bridge"
-  >;
+  secretChangePolicyService: Pick<TSecretChangePolicyServiceFactory, "getSecretApprovalPolicy">;
+  secretChangeRequestService: Pick<TSecretChangeRequestServiceFactory, "createSecretApprovalRequestV2Bridge">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -212,8 +209,8 @@ export const secretV2BridgeServiceFactory = ({
   secretQueueService,
   secretImportDAL,
   secretVersionTagDAL,
-  secretApprovalPolicyService,
-  secretApprovalRequestCreationFns,
+  secretChangePolicyService,
+  secretChangeRequestService,
   kmsService,
   resourceMetadataDAL,
   keyStore,
@@ -3406,8 +3403,8 @@ export const secretV2BridgeServiceFactory = ({
         resourceMetadataDAL,
         folderCommitService,
         eventEmitter,
-        secretApprovalPolicyService,
-        secretApprovalRequestCreationFns,
+        secretChangePolicyService,
+        secretChangeRequestService,
         secretQueueService,
         reminderService,
         secretValidationRuleService

@@ -7,26 +7,15 @@ import {
   ProjectMembershipRole,
   ProjectUpgradeStatus,
   ProjectVersion,
-  SecretApprovalRequestsSecretsSchema,
   SecretKeyEncoding,
   SecretsSchema,
   SecretVersionsSchema,
   TableName,
   TIntegrationAuths,
-  TSecretApprovalRequestsSecrets,
   TSecrets,
   TSecretVersions
 } from "@app/db/schemas";
-import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-dal";
-import { TSecretApprovalRequestSecretDALFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-secret-dal";
-import { RequestState } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
-import {
-  decryptIntegrationAuths,
-  decryptSecretApprovals,
-  decryptSecrets,
-  decryptSecretVersions,
-  SymmetricKeySize
-} from "@app/lib/crypto";
+import { decryptIntegrationAuths, decryptSecrets, decryptSecretVersions, SymmetricKeySize } from "@app/lib/crypto";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
@@ -55,8 +44,6 @@ type TProjectQueueFactoryDep = {
   folderDAL: Pick<TSecretFolderDALFactory, "find">;
   secretDAL: Pick<TSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "find" | "create" | "delete" | "insertMany">;
-  secretApprovalRequestDAL: Pick<TSecretApprovalRequestDALFactory, "find">;
-  secretApprovalSecretDAL: Pick<TSecretApprovalRequestSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne" | "delete" | "create">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   integrationAuthDAL: TIntegrationAuthDALFactory;
@@ -78,8 +65,6 @@ export const projectQueueFactory = ({
   userDAL,
   secretVersionDAL,
   integrationAuthDAL,
-  secretApprovalRequestDAL,
-  secretApprovalSecretDAL,
   projectKeyDAL,
   projectBotDAL,
   projectEnvDAL,
@@ -158,7 +143,6 @@ export const projectQueueFactory = ({
       });
       const secrets: TSecrets[] = [];
       const secretVersions: TSecretVersions[] = [];
-      const approvalSecrets: TSecretApprovalRequestsSecrets[] = [];
       const folderSecretVersionIdsToDelete: string[] = [];
 
       for (const folder of projectFolders) {
@@ -186,24 +170,12 @@ export const projectQueueFactory = ({
         );
         folderSecretVersionIdsToDelete.push(...deletedSecretVersions.map((el) => el.id));
 
-        const approvalRequests = await secretApprovalRequestDAL.find({
-          status: RequestState.Open,
-          folderId: folder.id
-        });
-        const secretApprovals = await secretApprovalSecretDAL.find({
-          $in: {
-            requestId: approvalRequests.map((el) => el.id)
-          }
-        });
-
         secrets.push(...folderSecrets);
         secretVersions.push(...folderSecretVersions);
-        approvalSecrets.push(...secretApprovals);
       }
 
       const decryptedSecrets = decryptSecrets(secrets, userPrivateKey, oldProjectKey);
       const decryptedSecretVersions = decryptSecretVersions(secretVersions, userPrivateKey, oldProjectKey);
-      const decryptedApprovalSecrets = decryptSecretApprovals(approvalSecrets, userPrivateKey, oldProjectKey);
       const decryptedIntegrationAuths = decryptIntegrationAuths(projectIntegrationAuths, userPrivateKey, oldProjectKey);
 
       // Get the existing bot and the existing project keys for the members of the project
@@ -377,7 +349,6 @@ export const projectQueueFactory = ({
 
         const updatedSecrets: TSecrets[] = [];
         const updatedSecretVersions: TSecretVersions[] = [];
-        const updatedSecretApprovals: TSecretApprovalRequestsSecrets[] = [];
         const updatedIntegrationAuths: TIntegrationAuths[] = [];
         for (const rawSecret of decryptedSecrets) {
           const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
@@ -477,53 +448,6 @@ export const projectQueueFactory = ({
           updatedSecretVersions.push(payload);
         }
 
-        for (const rawSecretApproval of decryptedApprovalSecrets) {
-          const secretKeyEncrypted = crypto.encryption().symmetric().encrypt({
-            plaintext: rawSecretApproval.decrypted.secretKey,
-            key: botKey,
-            keySize: SymmetricKeySize.Bits128
-          });
-          const secretValueEncrypted = crypto
-            .encryption()
-            .symmetric()
-            .encrypt({
-              plaintext: rawSecretApproval.decrypted.secretValue || "",
-              key: botKey,
-              keySize: SymmetricKeySize.Bits128
-            });
-          const secretCommentEncrypted = crypto
-            .encryption()
-            .symmetric()
-            .encrypt({
-              plaintext: rawSecretApproval.decrypted.secretComment || "",
-              key: botKey,
-              keySize: SymmetricKeySize.Bits128
-            });
-
-          const payload: TSecretApprovalRequestsSecrets = {
-            ...rawSecretApproval.original,
-            keyEncoding: SecretKeyEncoding.UTF8,
-
-            secretKeyCiphertext: secretKeyEncrypted.ciphertext,
-            secretKeyIV: secretKeyEncrypted.iv,
-            secretKeyTag: secretKeyEncrypted.tag,
-
-            secretValueCiphertext: secretValueEncrypted.ciphertext,
-            secretValueIV: secretValueEncrypted.iv,
-            secretValueTag: secretValueEncrypted.tag,
-
-            secretCommentCiphertext: secretCommentEncrypted.ciphertext,
-            secretCommentIV: secretCommentEncrypted.iv,
-            secretCommentTag: secretCommentEncrypted.tag
-          } as const;
-
-          if (!SecretApprovalRequestsSecretsSchema.safeParse(payload).success) {
-            throw new Error(`Invalid secret approval payload: ${JSON.stringify(payload)}`);
-          }
-
-          updatedSecretApprovals.push(payload);
-        }
-
         for (const integrationAuth of decryptedIntegrationAuths) {
           const access = crypto.encryption().symmetric().encrypt({
             plaintext: integrationAuth.decrypted.access,
@@ -571,19 +495,12 @@ export const projectQueueFactory = ({
         if (updatedSecretVersions.length !== secretVersions.length) {
           throw new Error("Failed to update some secret versions");
         }
-        if (updatedSecretApprovals.length !== approvalSecrets.length) {
-          throw new Error("Failed to update some secret approvals");
-        }
         if (updatedIntegrationAuths.length !== projectIntegrationAuths.length) {
           throw new Error("Failed to update some integration auths");
         }
 
         const secretUpdates = await secretDAL.bulkUpdateNoVersionIncrement(updatedSecrets, tx);
         const secretVersionUpdates = await secretVersionDAL.bulkUpdateNoVersionIncrement(updatedSecretVersions, tx);
-        const secretApprovalUpdates = await secretApprovalSecretDAL.bulkUpdateNoVersionIncrement(
-          updatedSecretApprovals,
-          tx
-        );
         const integrationAuthUpdates = await integrationAuthDAL.bulkUpdate(
           updatedIntegrationAuths.map((el) => ({
             filter: { id: el.id },
@@ -608,7 +525,6 @@ export const projectQueueFactory = ({
         if (
           secretUpdates.length !== updatedSecrets.length ||
           secretVersionUpdates.length !== updatedSecretVersions.length ||
-          secretApprovalUpdates.length !== updatedSecretApprovals.length ||
           integrationAuthUpdates.length !== updatedIntegrationAuths.length
         ) {
           throw new Error("Parts of the upgrade failed. Some secrets were not updated");
