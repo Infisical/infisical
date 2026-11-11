@@ -2934,6 +2934,40 @@ describe("CertificateV3Service", () => {
         expect(insertedRows).not.toContainEqual(expect.objectContaining({ certificateRequestId: expect.anything() }));
       });
 
+      it("replaces a held external renewal's tags with the certificate's current tags when it is approved", async () => {
+        const externalCa = {
+          ...mockCA,
+          internalCa: undefined,
+          externalCa: { id: "ext-ca-1", type: CaType.ACME, configuration: {} }
+        } as any;
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+        vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(externalCa);
+        const reviewedCertificateRequest = await holdAndReadSnapshot();
+        setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
+        vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(externalCa);
+        mockResourceMetadataDAL.find.mockResolvedValue([{ key: "team", value: "billing", orgId: "org-123" }]);
+        mockCertificateRequestDAL.updateById.mockResolvedValue({ id: "held-req-1", createdAt: new Date() });
+
+        await service.renewApprovedCertificate({
+          certificateRequestId: "held-req-1",
+          organizationId: "org-123",
+          renewal: { certificateId: "cert-123", renewalKeySource: CertificateRenewalKeySource.New, caId: "ca-123" },
+          reviewedCertificateRequest
+        });
+
+        expect(mockResourceMetadataDAL.delete).toHaveBeenCalledWith({ certificateRequestId: "held-req-1" }, {});
+        expect(mockResourceMetadataDAL.insertMany).toHaveBeenCalledWith(
+          [expect.objectContaining({ key: "team", value: "billing", certificateRequestId: "held-req-1" })],
+          {}
+        );
+        expect(mockResourceMetadataDAL.delete.mock.invocationCallOrder[0]).toBeLessThan(
+          mockResourceMetadataDAL.insertMany.mock.invocationCallOrder[0]
+        );
+        expect(mockCertificateIssuanceQueue.queueCertificateIssuance).toHaveBeenCalledWith(
+          expect.objectContaining({ certificateRequestId: "held-req-1" })
+        );
+      });
+
       it("applies an approved renewal to the certificate that replaced the original while it waited", async () => {
         setupRenewal({ ...mockOriginalCert, source: CertificateSource.Imported });
         const reviewedCertificateRequest = await holdAndReadSnapshot();

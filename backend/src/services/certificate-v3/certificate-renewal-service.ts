@@ -1866,14 +1866,18 @@ export const certificateRenewalServiceFactory = ({
         approvedCertificateRequestId
       );
 
-      if (!approvedCertificateRequestId) {
+      await certificateDAL.transaction(async (tx) => {
+        if (approvedCertificateRequestId) {
+          await resourceMetadataDAL.delete({ certificateRequestId: certificateRequest.id }, tx);
+        }
         await copyMetadataFromCertificate(resourceMetadataDAL, {
           sourceCertificateId: originalCert.id,
           targetCertificateRequestId: certificateRequest.id,
           targetCertificateRequestCreatedAt: certificateRequest.createdAt,
-          orgId: actorOrgId
+          orgId: actorOrgId,
+          tx
         });
-      }
+      });
 
       await certificateIssuanceQueue.queueCertificateIssuance({
         certificateId: renewalOrderId,
