@@ -5,6 +5,7 @@ import { TOidcConfigs } from "@app/db/schemas";
 import { OIDCConfigurationType, OIDCJWTSignatureAlgorithm } from "@app/ee/services/oidc/oidc-config-types";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { buildOidcDiscoveryDocumentUrl } from "@app/lib/oauth";
 import { buildSsrfSafeJwksFetcher, safeRequest } from "@app/lib/validator/safe-request";
 
 import { OauthTokenError, OauthTokenErrorCode } from "./oauth-token-error";
@@ -19,18 +20,8 @@ const ASYMMETRIC_SIGNATURE_ALGORITHMS: readonly string[] = [
   OIDCJWTSignatureAlgorithm.EDDSA
 ];
 
-const WELL_KNOWN_OPENID_CONFIGURATION = "/.well-known/openid-configuration";
-
 // Mirrors what openid-client's Issuer.discover accepts, so a config that works for browser SSO login
 // resolves the same way here: the URL may already point at the document, or be the issuer base.
-const buildDiscoveryDocumentUrl = (discoveryUrl: string) => {
-  const url = new URL(discoveryUrl);
-  if (url.pathname.includes("/.well-known/")) return url.toString();
-
-  url.pathname = `${url.pathname.replace(/\/$/, "")}${WELL_KNOWN_OPENID_CONFIGURATION}`;
-  return url.toString();
-};
-
 type TOidcDiscoveryMetadata = { jwks_uri?: string; issuer?: string };
 
 // Entries hold the in-flight promise so concurrent callers on a cold entry coalesce onto one fetch.
@@ -131,7 +122,7 @@ export const resolveOidcTrustAnchor = async (oidcConfig: TOidcConfigs): Promise<
 
     let metadata: TOidcDiscoveryMetadata;
     try {
-      metadata = await getDiscoveryMetadata(buildDiscoveryDocumentUrl(oidcConfig.discoveryURL));
+      metadata = await getDiscoveryMetadata(buildOidcDiscoveryDocumentUrl(oidcConfig.discoveryURL));
     } catch (error) {
       logger.error(
         { error, orgId: oidcConfig.orgId },

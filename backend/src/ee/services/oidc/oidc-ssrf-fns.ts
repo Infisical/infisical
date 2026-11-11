@@ -7,6 +7,7 @@ import { ClientMetadata, custom, Issuer } from "openid-client";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
+import { buildOidcDiscoveryDocumentUrl } from "@app/lib/oauth";
 import { stripIpv6Brackets } from "@app/lib/tls";
 import { PRIVATE_ADDRESS_REFUSED_MESSAGE, ssrfSafeLookup, validateAndPinUrl } from "@app/lib/validator";
 
@@ -43,14 +44,10 @@ export class SsrfSafeIssuer extends Issuer {
 // other). Given a URL that already names /.well-known/, it requests that URL unchanged, through the WHATWG
 // parser, so build it here and check exactly what will be requested.
 export const discoverOidcIssuer = async (discoveryURL: string) => {
-  const discoveryDocumentUrl = new URL(discoveryURL);
-  const { pathname } = discoveryDocumentUrl;
-  if (!pathname.includes("/.well-known/")) {
-    discoveryDocumentUrl.pathname = `${pathname.endsWith("/") ? pathname : `${pathname}/`}.well-known/openid-configuration`;
-  }
+  const discoveryDocumentUrl = buildOidcDiscoveryDocumentUrl(discoveryURL);
 
-  await validateAndPinUrl(discoveryDocumentUrl.href);
-  return SsrfSafeIssuer.discover(discoveryDocumentUrl.href);
+  await validateAndPinUrl(discoveryDocumentUrl);
+  return SsrfSafeIssuer.discover(discoveryDocumentUrl);
 };
 
 // Checks every endpoint the login flow calls and installs the lookup hook on the issuer (JWKS) and the client

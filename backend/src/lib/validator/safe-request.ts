@@ -164,7 +164,7 @@ const makePinnedLookup = ({ hostname: validatedHostname, entries }: TValidatedHo
 // dns.lookup replacement that refuses internal addresses, for clients that make their own HTTP requests and
 // take a lookup function but no agent we could build ahead of time (openid-client). The addresses it checks are
 // the ones the socket connects to, so DNS cannot answer differently between the check and the connection.
-// Node does not call lookup for an IP literal host, so validate those URLs (validateSsrfUrl) before the request.
+// Node does not call lookup for an IP literal host, so validate those URLs (validateAndPinUrl) before the request.
 export const ssrfSafeLookup = ((hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
   const callback = (typeof optionsOrCb === "function" ? optionsOrCb : maybeCb) as TLookupOneCallback &
     TLookupAllCallback;

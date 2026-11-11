@@ -26,7 +26,7 @@ import { TIntegrationDALFactory } from "../integration/integration-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
-import { getApps, getAppsVercel } from "./integration-app-list";
+import { getApps, getAppsVercel, getOctopusDeployBaseUrl } from "./integration-app-list";
 import { TCircleCIContext } from "./integration-app-types";
 import { TIntegrationAuthDALFactory } from "./integration-auth-dal";
 import { IntegrationAuthMetadataSchema, TIntegrationAuthMetadata } from "./integration-auth-schema";
@@ -1971,10 +1971,13 @@ export const integrationAuthServiceFactory = ({
 
     // The Octopus SDK makes its requests with its own axios instance, which follows redirects and resolves the
     // host again on every call, so the API is called through safeRequest instead
-    const { data: spaces } = await safeRequest.get<{ Items: OctopusSpace[] }>(`${integrationAuth.url}/api/spaces`, {
-      params: { partialName: "", take: 1000 },
-      headers: { "X-Octopus-ApiKey": accessToken, Accept: "application/json" }
-    });
+    const { data: spaces } = await safeRequest.get<{ Items: OctopusSpace[] }>(
+      `${getOctopusDeployBaseUrl(integrationAuth.url!)}/api/spaces`,
+      {
+        params: { partialName: "", take: 1000 },
+        headers: { "X-Octopus-ApiKey": accessToken, Accept: "application/json" }
+      }
+    );
 
     return spaces.Items;
   };

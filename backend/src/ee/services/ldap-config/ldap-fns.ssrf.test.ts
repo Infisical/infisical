@@ -152,9 +152,23 @@ describe("LDAP connections under DNS rebinding", () => {
     validationAnswer.addresses = [INTERNAL_IP];
 
     await expect(pinLdapTarget(`ldap://${REBIND_HOST}:${targets.port}`, undefined)).rejects.toThrow(
-      "Local IPs not allowed as URL"
+      "The LDAP server URL resolves to a private or local IP address"
     );
     expect(targets.hits.public + targets.hits.internal).toBe(0);
+  });
+
+  it("tells a self-hosted instance how to allow an LDAP server on its internal network", async () => {
+    validationAnswer.addresses = [INTERNAL_IP];
+
+    await expect(
+      testLDAPConfig({ url: `ldap://${REBIND_HOST}:${targets.port}`, bindDN: "cn=admin", bindPass: "x", caCert: "" })
+    ).rejects.toThrow("set the ALLOW_INTERNAL_IP_CONNECTIONS environment variable to true");
+  });
+
+  it("testLDAPConfig reports an unresolvable host as a failed connection instead of throwing", async () => {
+    await expect(
+      testLDAPConfig({ url: "ldap://unresolvable.invalid:389", bindDN: "cn=admin", bindPass: "x", caCert: "" })
+    ).resolves.toBe(false);
   });
 });
 

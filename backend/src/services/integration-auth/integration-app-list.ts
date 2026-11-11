@@ -1141,6 +1141,16 @@ const getAppsAzureDevOps = async ({ accessToken, orgName }: { accessToken: strin
   return apps;
 };
 
+// The Octopus SDK cut the instance URL at its last /api/ segment and dropped a trailing slash before adding its
+// own paths. Calling the API directly has to do the same, or a URL entered as https://host/api would request
+// https://host/api/api/spaces.
+export const getOctopusDeployBaseUrl = (instanceURL: string) => {
+  const withSlash = instanceURL.endsWith("/") ? instanceURL : `${instanceURL}/`;
+  const apiSegment = withSlash.lastIndexOf("/api/");
+  const base = apiSegment >= 1 ? withSlash.slice(0, apiSegment) : withSlash;
+  return base.endsWith("/") ? base.slice(0, -1) : base;
+};
+
 const getAppsOctopusDeploy = async ({
   apiKey,
   instanceURL,
@@ -1153,16 +1163,17 @@ const getAppsOctopusDeploy = async ({
   // The Octopus SDK makes its requests with its own axios instance, which follows redirects and resolves the
   // host again on every call, so the API is called through safeRequest instead
   const headers = { "X-Octopus-ApiKey": apiKey, Accept: "application/json" };
+  const baseUrl = getOctopusDeployBaseUrl(instanceURL);
 
-  const { data: spaces } = await safeRequest.get<{ Items: { Id: string; Name: string }[] }>(
-    `${instanceURL}/api/spaces`,
-    { params: { partialName: spaceName, skip: 0, take: 2147483647 }, headers }
-  );
+  const { data: spaces } = await safeRequest.get<{ Items: { Id: string; Name: string }[] }>(`${baseUrl}/api/spaces`, {
+    params: { partialName: spaceName, skip: 0, take: 2147483647 },
+    headers
+  });
   const space = spaces.Items.find((item) => item.Name === spaceName);
   if (!space) throw new NotFoundError({ message: `Octopus Deploy space '${spaceName}' not found` });
 
   const { data: projects } = await safeRequest.get<{ Items: { Id: string; Name: string }[] }>(
-    `${instanceURL}/api/${space.Id}/projects`,
+    `${baseUrl}/api/${space.Id}/projects`,
     { params: { take: 1000 }, headers }
   );
 

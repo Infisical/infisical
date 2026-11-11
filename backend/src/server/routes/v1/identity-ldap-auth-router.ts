@@ -44,25 +44,24 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     }
 
     process.nextTick(async () => {
+      let target: Awaited<ReturnType<typeof pinLdapTarget>>;
       try {
-        const { url, tlsOptions } = await pinLdapTarget(
-          ldapConfig.url,
-          ldapConfig.caCert ? { ca: [ldapConfig.caCert] } : undefined
-        );
-        done(null, {
-          server: {
-            url,
-            bindDN: ldapConfig.bindDN,
-            bindCredentials: ldapConfig.bindPass,
-            searchBase: ldapConfig.searchBase,
-            searchFilter: ldapConfig.searchFilter,
-            ...(tlsOptions ? { tlsOptions } : {})
-          },
-          passReqToCallback: true
-        });
+        target = await pinLdapTarget(ldapConfig.url, ldapConfig.caCert ? { ca: [ldapConfig.caCert] } : undefined);
       } catch (err) {
         done(err);
+        return;
       }
+      done(null, {
+        server: {
+          url: target.url,
+          bindDN: ldapConfig.bindDN,
+          bindCredentials: ldapConfig.bindPass,
+          searchBase: ldapConfig.searchBase,
+          searchFilter: ldapConfig.searchFilter,
+          ...(target.tlsOptions ? { tlsOptions: target.tlsOptions } : {})
+        },
+        passReqToCallback: true
+      });
     });
   };
 
