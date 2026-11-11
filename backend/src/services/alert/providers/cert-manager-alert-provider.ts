@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -85,14 +85,14 @@ const assertNoResource = (resourceId?: string | null) =>
 
 export type TCertManagerAlertProviderDep = {
   certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   licenseDomain: TLicenseDomain;
   certManagerProjectResolver: Pick<TCertManagerProjectResolverFactory, "getActiveProjectId">;
 };
 
 export const certManagerAlertProviderFactory = ({
   certManagerCertificateAlertDAL,
-  permissionService,
+  projectsDomain,
   licenseDomain,
   certManagerProjectResolver
 }: TCertManagerAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
@@ -156,7 +156,7 @@ export const certManagerAlertProviderFactory = ({
     assertNoResource(resourceId);
 
     await assertCertManagerAdminAlertPermission(
-      permissionService,
+      projectsDomain,
       { action, projectId, actor },
       "Certificate Manager alerts can send details of certificates from any application, so only Certificate Manager admins can create or edit them. Create the alert on an application instead."
     );

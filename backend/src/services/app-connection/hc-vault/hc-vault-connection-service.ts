@@ -1,7 +1,7 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { KvVersion } from "@app/services/external-migration/external-migration-types";
 
 import { AppConnection } from "../app-connection-enums";
@@ -11,7 +11,7 @@ import { THCVaultConnection } from "./hc-vault-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<THCVaultConnection>;
 
 export const hcVaultConnectionService = (
@@ -19,7 +19,7 @@ export const hcVaultConnectionService = (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
-  const listMounts = async (connectionId: string, actor: OrgServiceActor) => {
+  const listMounts = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.HCVault, connectionId, actor);
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: appConnection.gatewayId,

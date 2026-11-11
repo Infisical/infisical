@@ -74,7 +74,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { takeRowScanWindow } from "@app/lib/fn";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
-import { OrderByDirection, toOrgServiceActor } from "@app/lib/types";
+import { OrderByDirection } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -592,7 +592,7 @@ export const secretRotationV2ServiceFactory = ({
     const connection = await appConnectionService.validateAppConnectionUsageById(
       getSecretRotationConnectionApps(payload.type),
       { connectionId: payload.connectionId, projectId },
-      toOrgServiceActor(actor)
+      actor
     );
 
     const passwordValidationContext = await $resolvePasswordValidationContext({

@@ -355,8 +355,7 @@ export const accessApprovalPolicyServiceFactory = ({
     environments,
     maxTimePeriod,
     requestExpirationTime,
-    delegatedApproval,
-    orgActor
+    delegatedApproval
   }: TUpdateAccessApprovalPolicy) => {
     if (await $usesGlobalApprovalBridge(policyId)) {
       return secretAccessApprovalGlobalPolicyBridge.updateAccessApprovalPolicy({
@@ -373,8 +372,7 @@ export const accessApprovalPolicyServiceFactory = ({
         environments,
         maxTimePeriod,
         requestExpirationTime,
-        delegatedApproval,
-        orgActor
+        delegatedApproval
       });
     }
 

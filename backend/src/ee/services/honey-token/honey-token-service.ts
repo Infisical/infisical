@@ -11,7 +11,7 @@ import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
-import { OrderByDirection, toOrgServiceActor } from "@app/lib/types";
+import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
@@ -177,7 +177,7 @@ export const honeyTokenServiceFactory = ({
       const appConnection = await appConnectionService.validateAppConnectionUsageById(
         provider.connectionApp,
         { connectionId, projectId },
-        toOrgServiceActor(actor)
+        actor
       );
 
       if (appConnection.projectId) {

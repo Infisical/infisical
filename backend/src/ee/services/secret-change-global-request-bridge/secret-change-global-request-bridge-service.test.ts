@@ -286,7 +286,7 @@ const withActorContext = ({ actor, actorId, actorOrgId, actorAuthMethod: _, ...r
 
 type TGenerateInput = Parameters<ReturnType<typeof buildService>["service"]["generateSecretChangeRequest"]>[0];
 const generate = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
-  service.generateSecretChangeRequest(dto(overrides) as unknown as TGenerateInput);
+  service.generateSecretChangeRequest(withActorContext(dto(overrides)) as unknown as TGenerateInput);
 
 describe("secretChangeGlobalRequestBridge generateSecretChangeRequest", () => {
   beforeEach(() => {

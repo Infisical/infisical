@@ -1,7 +1,8 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { TCipherPair } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionSecretActions,
@@ -9,7 +10,6 @@ import {
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { conditionsMatcher } from "@app/lib/casl";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { SecretOperations } from "@app/services/secret/secret-types";
@@ -26,10 +26,9 @@ const FOLDER = { id: "folder-1", envId: "env-1" };
 const PROJECT = { id: "project-1", name: "Project", orgId: "org-1", secretDetectionIgnoreValues: [] };
 
 const allowSecrets = (...actions: ProjectPermissionSecretActions[]) =>
-  createMongoAbility<ProjectPermissionSet>(
-    actions.map((action) => ({ action, subject: ProjectPermissionSub.Secrets })),
-    { conditionsMatcher }
-  );
+  Permission.fromRules<ProjectPermissionSet>({
+    rules: actions.map((action) => ({ action, subject: ProjectPermissionSub.Secrets }))
+  });
 const allowAll = allowSecrets(
   ProjectPermissionSecretActions.Create,
   ProjectPermissionSecretActions.Edit,
@@ -58,10 +57,12 @@ const buildFns = ({
     Promise.resolve(stored.filter((secret) => keys.some((el) => el.key === secret.key)))
   );
   const deps = {
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({
-        permission,
-        hasProjectEnforcement: (flag: string) => Boolean(enforcement[flag])
+    secretsDomain: {
+      getSecretsPermission: vi.fn().mockResolvedValue({
+        permission: Object.assign(Object.create(permission) as typeof permission, {
+          hasProjectEnforcement: ({ name }: { name: string }) => Boolean(enforcement[name])
+        }),
+        folderGrants: []
       })
     },
     folderDAL: { findBySecretPath: vi.fn().mockResolvedValue(FOLDER) },
@@ -99,12 +100,12 @@ const buildFns = ({
 };
 
 type TBuildInput = Parameters<ReturnType<typeof buildFns>["fns"]["buildSecretApprovalCommits"]>[0];
+const actorOf = (type: ActorType) =>
+  ({ principal: { type, id: "user-1", authMethod: null }, org: { id: "org-1" } }) as TBuildInput["actor"];
+
 const input = (overrides: Partial<TBuildInput> = {}): TBuildInput =>
   ({
-    actor: ActorType.USER,
-    actorId: "user-1",
-    actorOrgId: "org-1",
-    actorAuthMethod: null,
+    actor: actorOf(ActorType.USER),
     projectId: "project-1",
     environment: "dev",
     secretPath: "/",
@@ -120,10 +121,10 @@ describe("buildSecretApprovalCommits", () => {
   test("rejects service tokens before touching the database", async () => {
     const { fns, deps } = buildFns();
 
-    await expect(fns.buildSecretApprovalCommits(input({ actor: ActorType.SERVICE }))).rejects.toBeInstanceOf(
+    await expect(fns.buildSecretApprovalCommits(input({ actor: actorOf(ActorType.SERVICE) }))).rejects.toBeInstanceOf(
       BadRequestError
     );
-    expect(deps.permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(deps.secretsDomain.getSecretsPermission).not.toHaveBeenCalled();
   });
 
   test("resolves the folder from the path unless one is provided", async () => {

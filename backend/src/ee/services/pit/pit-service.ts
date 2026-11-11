@@ -11,7 +11,6 @@ import { ActorType } from "@app/lib/auth/actor-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { toGenericPermission } from "@app/lib/types";
 import {
   isFolderCommitChange,
   isSecretCommitChange
@@ -764,7 +763,7 @@ export const pitServiceFactory = ({
             environment,
             commitMessage: message,
             projectId,
-            ...toGenericPermission(actor),
+            actor,
             data: {
               [SecretOperations.Create]:
                 changes.secrets?.create?.map((el) => ({

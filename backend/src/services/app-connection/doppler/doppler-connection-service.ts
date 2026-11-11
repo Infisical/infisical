@@ -1,5 +1,5 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
@@ -13,11 +13,11 @@ import { TDopplerConnection } from "./doppler-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TDopplerConnection>;
 
 export const dopplerConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Doppler, connectionId, actor);
     try {
       return await listDopplerProjects(appConnection);
@@ -27,7 +27,7 @@ export const dopplerConnectionService = (getAppConnection: TGetAppConnectionFunc
     }
   };
 
-  const listEnvironments = async (connectionId: string, projectSlug: string, actor: OrgServiceActor) => {
+  const listEnvironments = async (connectionId: string, projectSlug: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Doppler, connectionId, actor);
     try {
       return await listDopplerEnvironments(appConnection, projectSlug);
@@ -37,7 +37,7 @@ export const dopplerConnectionService = (getAppConnection: TGetAppConnectionFunc
     }
   };
 
-  const listConfigs = async (connectionId: string, projectSlug: string, actor: OrgServiceActor) => {
+  const listConfigs = async (connectionId: string, projectSlug: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Doppler, connectionId, actor);
     try {
       return await listDopplerConfigs(appConnection, projectSlug);
@@ -51,7 +51,7 @@ export const dopplerConnectionService = (getAppConnection: TGetAppConnectionFunc
     connectionId: string,
     projectSlug: string,
     environmentSlug: string,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.Doppler, connectionId, actor);
     return getDopplerSecrets(appConnection, projectSlug, environmentSlug);

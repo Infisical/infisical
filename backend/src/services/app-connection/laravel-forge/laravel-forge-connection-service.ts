@@ -1,5 +1,5 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import {
@@ -17,13 +17,13 @@ import {
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TLaravelForgeConnection>;
 
 export const laravelForgeConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
   const listOrganizations = async (
     connectionId: string,
-    actor: OrgServiceActor
+    actor: TActorContext
   ): Promise<TLaravelForgeOrganization[]> => {
     const appConnection = await getAppConnection(AppConnection.LaravelForge, connectionId, actor);
     try {
@@ -37,7 +37,7 @@ export const laravelForgeConnectionService = (getAppConnection: TGetAppConnectio
 
   const listServers = async (
     connectionId: string,
-    actor: OrgServiceActor,
+    actor: TActorContext,
     organizationSlug: string
   ): Promise<TLaravelForgeServer[]> => {
     const appConnection = await getAppConnection(AppConnection.LaravelForge, connectionId, actor);
@@ -52,7 +52,7 @@ export const laravelForgeConnectionService = (getAppConnection: TGetAppConnectio
 
   const listSites = async (
     connectionId: string,
-    actor: OrgServiceActor,
+    actor: TActorContext,
     organizationSlug: string,
     serverId: string
   ): Promise<TLaravelForgeSite[]> => {

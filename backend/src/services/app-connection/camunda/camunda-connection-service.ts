@@ -1,6 +1,6 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { request } from "@app/lib/config/request";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -11,7 +11,7 @@ import { TCamundaConnection, TCamundaListClustersResponse } from "./camunda-conn
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TCamundaConnection>;
 
 const listCamundaClusters = async (
@@ -36,7 +36,7 @@ export const camundaConnectionService = (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsCoreDomain: TKmsCoreDomain
 ) => {
-  const listClusters = async (connectionId: string, actor: OrgServiceActor) => {
+  const listClusters = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Camunda, connectionId, actor);
 
     const clusters = await listCamundaClusters(appConnection, appConnectionDAL, kmsCoreDomain);

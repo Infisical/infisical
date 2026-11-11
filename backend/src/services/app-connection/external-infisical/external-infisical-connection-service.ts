@@ -1,4 +1,4 @@
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorContext } from "@app/domains/lib/actor-context";
 
 import { AppConnection } from "../app-connection-enums";
 import {
@@ -12,11 +12,11 @@ import { TExternalInfisicalConnection } from "./external-infisical-connection-ty
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TExternalInfisicalConnection>;
 
 export const externalInfisicalConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor): Promise<TRemoteProject[]> => {
+  const listProjects = async (connectionId: string, actor: TActorContext): Promise<TRemoteProject[]> => {
     const appConnection = await getAppConnection(AppConnection.ExternalInfisical, connectionId, actor);
     return listRemoteProjects(appConnection);
   };
@@ -24,7 +24,7 @@ export const externalInfisicalConnectionService = (getAppConnection: TGetAppConn
   const getEnvironmentFolderTree = async (
     connectionId: string,
     projectId: string,
-    actor: OrgServiceActor
+    actor: TActorContext
   ): Promise<TRemoteEnvironmentFolderTree> => {
     const appConnection = await getAppConnection(AppConnection.ExternalInfisical, connectionId, actor);
     return getRemoteEnvironmentFolderTree(appConnection, projectId);

@@ -167,7 +167,6 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const approval = await server.services.secretAccessApprovalGlobalPolicyBridge.createAccessApprovalPolicy({
         actor: req.permission,
-        orgActor: req.permission,
         ...req.body,
         approvers: req.body.approvers ?? [],
         projectSlug: req.body.projectSlug,
@@ -356,7 +355,6 @@ export const registerAccessApprovalPolicyRouter = async (server: FastifyZodProvi
       const approval = await server.services.accessApprovalPolicy.updateAccessApprovalPolicy({
         policyId: req.params.policyId,
         actor: req.permission,
-        orgActor: req.permission,
         ...req.body,
         approvers: req.body.approvers ?? []
       });

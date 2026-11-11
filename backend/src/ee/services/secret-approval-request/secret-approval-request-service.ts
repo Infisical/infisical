@@ -2,7 +2,6 @@
 import { Knex } from "knex";
 
 import {
-  ActionProjectType,
   ProjectMembershipRole,
   SecretEncryptionAlgo,
   SecretKeyEncoding,
@@ -71,7 +70,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { ChangeRequestWebhookAction, TWebhookActor, WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { throwIfMissingSecretReadValueOrDescribePermission } from "../permission/permission-fns";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectEvents, TProjectEventPayload } from "../project-events/project-events-types";
 import { TSecretApprovalPolicyDALFactory } from "../secret-approval-policy/secret-approval-policy-dal";
 import { getCommitterIds } from "../secret-approval-policy/secret-approval-policy-fns";
@@ -104,7 +102,6 @@ import {
 } from "./secret-approval-request-types";
 
 type TSecretApprovalRequestServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   secretApprovalRequestDAL: TSecretApprovalRequestDALFactory;
@@ -190,7 +187,6 @@ export const secretApprovalRequestServiceFactory = ({
   secretApprovalRequestSecretDAL,
   secretBlindIndexDAL,
   projectDAL,
-  permissionService,
   secretsDomain,
   secretVersionDAL,
   secretQueueService,
@@ -218,7 +214,7 @@ export const secretApprovalRequestServiceFactory = ({
   secretChangeGlobalRequestBridgeService
 }: TSecretApprovalRequestServiceFactoryDep) => {
   const { buildSecretApprovalCommits, validateSecrets } = secretApprovalRequestCommitFnsFactory({
-    permissionService,
+    secretsDomain,
     folderDAL,
     projectDAL,
     kmsCoreDomain,
@@ -1243,16 +1239,13 @@ export const secretApprovalRequestServiceFactory = ({
   // this will keep a copy to do merge later when accepting
   const generateSecretApprovalRequest = async ({
     data,
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     policy,
     projectId,
     secretPath,
     environment
   }: TGenerateSecretApprovalRequestDTO) => {
-    if (actor === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
+    if (actor.principal.type === ActorType.SERVICE) throw new BadRequestError({ message: "Cannot use service token" });
 
     if (await secretChangeGlobalPolicyBridgeService.findSecretChangePolicy(policy.id)) {
       throw new BadRequestError({
@@ -1260,19 +1253,16 @@ export const secretApprovalRequestServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
-      environment,
-      secretPath
-    });
+    throwIfMissingSecretReadValueOrDescribePermission(
+      permission.toAbility(),
+      ProjectPermissionSecretActions.ReadValue,
+      {
+        environment,
+        secretPath
+      }
+    );
 
     await projectDAL.checkProjectUpgradeStatus(projectId);
 
@@ -1423,7 +1413,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          ...getCommitterIds(actor, actorId)
+          ...getCommitterIds(actor.principal.type, actor.principal.id)
         },
         tx
       );
@@ -1501,11 +1491,13 @@ export const secretApprovalRequestServiceFactory = ({
 
     const env = await projectEnvDAL.findOne({ slug: environment, projectId });
     const user =
-      actor === ActorType.IDENTITY
+      actor.principal.type === ActorType.IDENTITY
         ? undefined
-        : await requestMemoize(requestMemoKeys.userFindById(actorId), () => userDAL.findById(actorId));
+        : await requestMemoize(requestMemoKeys.userFindById(actor.principal.id), () =>
+            userDAL.findById(actor.principal.id)
+          );
 
-    const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
+    const projectPath = `/organizations/${actor.org.id}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}${approvalPath}?requestId=${secretApprovalRequest.id}`;
@@ -1520,7 +1512,7 @@ export const secretApprovalRequestServiceFactory = ({
           type: TriggerFeature.SECRET_APPROVAL,
           payload: {
             userEmail: user?.email ?? undefined,
-            machineIdentityId: actor === ActorType.IDENTITY ? actorId : undefined,
+            machineIdentityId: actor.principal.type === ActorType.IDENTITY ? actor.principal.id : undefined,
             environment: env.name,
             secretPath,
             projectId,
@@ -1577,8 +1569,8 @@ export const secretApprovalRequestServiceFactory = ({
     void telemetryService
       .sendPostHogEvents({
         event: PostHogEventTypes.SecretApprovalRequestSubmitted,
-        distinctId: user?.username ?? user?.email ?? actorId,
-        organizationId: actorOrgId,
+        distinctId: user?.username ?? user?.email ?? actor.principal.id,
+        organizationId: actor.org.id,
         properties: {
           requestId: secretApprovalRequest.id,
           policyId: policy.id,
@@ -1586,7 +1578,7 @@ export const secretApprovalRequestServiceFactory = ({
           environment,
           secretPath,
           numberOfCommits: commits.length,
-          actorType: actor as string
+          actorType: actor.principal.type as string
         }
       })
       .catch(() => {});
@@ -1707,9 +1699,7 @@ export const secretApprovalRequestServiceFactory = ({
     }
 
     const {
-      actorId,
       actor,
-      actorOrgId,
       policy,
       projectId,
       secretPath,
@@ -1729,7 +1719,7 @@ export const secretApprovalRequestServiceFactory = ({
           policyId: policy.id,
           status: "open",
           hasMerged: false,
-          ...getCommitterIds(actor, actorId),
+          ...getCommitterIds(actor.principal.type, actor.principal.id),
           commitMessage
         },
         tx
@@ -1768,9 +1758,9 @@ export const secretApprovalRequestServiceFactory = ({
         environment,
         secretPath,
         secretKeys,
-        actor,
-        actorId,
-        actorOrgId,
+        actor: actor.principal.type,
+        actorId: actor.principal.id,
+        actorOrgId: actor.org.id,
         tx: providedTx
       });
     }

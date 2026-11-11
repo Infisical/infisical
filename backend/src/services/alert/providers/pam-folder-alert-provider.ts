@@ -1,14 +1,14 @@
-import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
+import { TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import {
   PAM_FOLDER_RESOURCE_TYPE,
   PamAccessRequestEvent
 } from "@app/ee/services/pam-access-request/pam-access-request-events";
 import { PamAccessType } from "@app/ee/services/pam/pam-enums";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
   ResourcePermissionSub
@@ -115,13 +115,15 @@ const describeTarget = (eventType: PamAccessRequestEvent, target: TPamAccessRequ
 
 export type TPamFolderAlertProviderDep = {
   pamFolderAlertDAL: TPamFolderAlertDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  pamDomain: Pick<TPamDomain, "getPamPermission">;
   licenseDomain: TLicenseDomain;
 };
 
 export const pamFolderAlertProviderFactory = ({
   pamFolderAlertDAL,
-  permissionService,
+  projectsDomain,
+  pamDomain,
   licenseDomain
 }: TPamFolderAlertProviderDep): IEventAlertProvider<TPamAccessRequestTarget> => {
   // The folder's Approvals tab lists every request, while the approval inbox only shows the visitor's own queue.
@@ -269,25 +271,23 @@ export const pamFolderAlertProviderFactory = ({
       throw new BadRequestError({ message: "PAM folder alerts require a folder ID" });
     }
 
-    await permissionService.getProjectPermission({ ...actor, projectId, actionProjectType: ActionProjectType.PAM });
+    await projectsDomain.getProjectPermission({ actor, projectId, type: ProjectType.PAM });
     await assertResourceInScope({ orgId, projectId, resourceId });
 
-    const { permission } = await permissionService.getResourcePermission({
-      ...actor,
-      projectId,
-      resourceType: ResourceType.PamFolder,
-      resourceId
-    });
+    const permission = await pamDomain.getPamPermission({ actor, projectId, folderId: resourceId });
     if (
       action === AlertPermissionAction.Read &&
-      permission.can(ResourcePermissionPamResourceActions.ViewAuditLogs, ResourcePermissionSub.PamResource)
+      permission.can({
+        action: ResourcePermissionPamResourceActions.ViewAuditLogs,
+        subject: ResourcePermissionSub.PamResource
+      })
     ) {
       return;
     }
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionPamResourceActions.ManagePolicies,
-      ResourcePermissionSub.PamResource
-    );
+    permission.assert({
+      action: ResourcePermissionPamResourceActions.ManagePolicies,
+      subject: ResourcePermissionSub.PamResource
+    });
   };
 
   const resolveProjectId = async ({ orgId, resourceId }: { orgId: string; resourceId?: string | null }) => {

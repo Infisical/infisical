@@ -1,7 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import {
   emitIdentityAuthMethodChanged,
@@ -129,18 +129,19 @@ const buildProvider = (opts?: {
     isIdentityInProject: async () => opts?.inProject ?? true,
     getProjectType: async () => opts?.projectType ?? null
   };
-  const ability = () => createMongoAbility(opts?.abilityRules ?? [{ action: "read", subject: "identity" }]);
-  const permissionService = {
-    getOrgPermission: async () => ({ permission: ability() }),
-    getProjectPermission: async () => ({ permission: ability() })
-  };
+  const permission = () =>
+    Permission.fromRules({ rules: (opts?.abilityRules ?? [{ action: "read", subject: "identity" }]) as never });
   return identityCredentialAlertProviderFactory({
     identityCredentialAlertDAL: dal,
-    permissionService
+    organizationsDomain: { getOrgPermission: async () => permission() },
+    projectsDomain: { getProjectPermission: async () => permission() }
   } as unknown as TIdentityCredentialAlertProviderDep);
 };
 
-const actor = { actor: "user", actorId: "u1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
+const actor = {
+  principal: { type: "user", id: "u1", authMethod: null },
+  org: { id: "org-1" }
+} as never;
 
 const eventSchema = (provider: ReturnType<typeof buildProvider>, key: string) =>
   provider.events.find((event) => event.key === key)!.conditionSchema;

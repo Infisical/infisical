@@ -12,7 +12,7 @@ import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { extractObjectFieldPaths, takeDistinctKeyScanWindow } from "@app/lib/fn";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
-import { OrderByDirection, toOrgServiceActor } from "@app/lib/types";
+import { OrderByDirection } from "@app/lib/types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
@@ -168,7 +168,7 @@ export const dynamicSecretServiceFactory = ({
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.org.id,
-        actor: toOrgServiceActor(actor)
+        actor
       });
       selectedGatewayPoolId = gatewayPoolId;
     } else if (inputs && typeof inputs === "object" && "gatewayId" in inputs && inputs.gatewayId) {
@@ -388,7 +388,7 @@ export const dynamicSecretServiceFactory = ({
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.org.id,
-        actor: toOrgServiceActor(actor)
+        actor
       });
       selectedGatewayPoolId = gatewayPoolId;
     } else if (

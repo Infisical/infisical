@@ -1,6 +1,5 @@
 import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { BadRequestError } from "@app/lib/errors";
-import { toOrgServiceActor } from "@app/lib/types";
 
 import { honeyTokenAwsConfigServiceFactory } from "../honey-token/aws/honey-token-aws-config-service";
 import { HoneyTokenType } from "../honey-token/honey-token-enums";
@@ -57,7 +56,7 @@ export const honeyTokenConfigServiceFactory = (deps: THoneyTokenConfigServiceFac
     const appConnection = await deps.appConnectionService.validateAppConnectionUsageById(
       providerDefinition.connectionApp,
       { connectionId, projectId: actor.org.id },
-      toOrgServiceActor(actor)
+      actor
     );
 
     if (appConnection.projectId) {

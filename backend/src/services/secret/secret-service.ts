@@ -39,7 +39,6 @@ import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
-import { toGenericPermission } from "@app/lib/types";
 import {
   SecretUpdateMode,
   TDuplicateSecretDTO,
@@ -1665,7 +1664,7 @@ export const secretServiceFactory = ({
           secretPath,
           environment,
           projectId,
-          ...toGenericPermission(actor),
+          actor,
           data: {
             [SecretOperations.Create]: [
               {
@@ -1733,7 +1732,7 @@ export const secretServiceFactory = ({
         secretPath,
         environment,
         projectId,
-        ...toGenericPermission(actor),
+        actor,
         data: {
           [SecretOperations.Create]: [
             {
@@ -1832,7 +1831,7 @@ export const secretServiceFactory = ({
           secretPath,
           environment,
           projectId,
-          ...toGenericPermission(actor),
+          actor,
           data: {
             [SecretOperations.Update]: [
               {
@@ -1908,7 +1907,7 @@ export const secretServiceFactory = ({
         secretPath,
         environment,
         projectId,
-        ...toGenericPermission(actor),
+        actor,
         data: {
           [SecretOperations.Update]: [
             {
@@ -1982,7 +1981,7 @@ export const secretServiceFactory = ({
       if (shouldApplyPolicy(policy, actor.principal.type)) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
-          ...toGenericPermission(actor),
+          actor,
           projectId,
           environment,
           secretPath,
@@ -2014,7 +2013,7 @@ export const secretServiceFactory = ({
     if (shouldApplyPolicy(policy, actor.principal.type)) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
-        ...toGenericPermission(actor),
+        actor,
         projectId,
         environment,
         secretPath,
@@ -2105,7 +2104,7 @@ export const secretServiceFactory = ({
           secretPath,
           environment,
           projectId,
-          ...toGenericPermission(actor),
+          actor,
           folder,
           ...((tx && ciphers ? { trx: tx, cipher: ciphers.secretManager } : {}) as TSecretApprovalCommitTransaction),
           skipPostProcessing,
@@ -2189,7 +2188,7 @@ export const secretServiceFactory = ({
         secretPath,
         environment,
         projectId,
-        ...toGenericPermission(actor),
+        actor,
         data: {
           [SecretOperations.Create]: sanitizedSecrets
         }
@@ -2273,7 +2272,7 @@ export const secretServiceFactory = ({
             secretPath,
             environment,
             projectId,
-            ...toGenericPermission(actor),
+            actor,
             updateMode: mode,
             data: {
               [SecretOperations.Update]: inputSecrets.map((el) => ({
@@ -2396,7 +2395,7 @@ export const secretServiceFactory = ({
         secretPath,
         environment,
         projectId,
-        ...toGenericPermission(actor),
+        actor,
         data: {
           [SecretOperations.Update]: sanitizedSecrets
         }
@@ -2449,7 +2448,7 @@ export const secretServiceFactory = ({
       if (shouldApplyPolicy(policy, actor.principal.type)) {
         const approval = await secretApprovalRequestService.generateSecretApprovalRequestV2Bridge({
           policy,
-          ...toGenericPermission(actor),
+          actor,
           projectId,
           environment,
           secretPath,
@@ -2478,7 +2477,7 @@ export const secretServiceFactory = ({
     if (shouldApplyPolicy(policy, actor.principal.type)) {
       const approval = await secretApprovalRequestService.generateSecretApprovalRequest({
         policy,
-        ...toGenericPermission(actor),
+        actor,
         projectId,
         environment,
         secretPath,
@@ -3396,7 +3395,7 @@ export const secretServiceFactory = ({
           [SecretOperations.Create]: sourcesToCreate.map(buildSecretPayload),
           [SecretOperations.Update]: sourcesToUpdate.map(buildSecretPayload)
         },
-        ...toGenericPermission(actor)
+        actor
       });
 
       return {

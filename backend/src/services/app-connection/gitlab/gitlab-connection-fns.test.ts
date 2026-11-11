@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { RateLimitError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
 import { gitlabConnectionService } from "./gitlab-connection-service";
@@ -48,7 +48,7 @@ describe("GitLab list retry handling", () => {
     it("propagates persistent HTTP 429s through the SDK and service as a rate-limit error", async () => {
       fetchMock.mockImplementation(async () => new Response(null, { status: 429 }));
 
-      const result = list("connection-id", {} as OrgServiceActor);
+      const result = list("connection-id", {} as TActorContext);
       const assertion = expect(result).rejects.toMatchObject({
         name: new RateLimitError({}).name,
         message: `GitLab rate limit reached while loading ${resource}. Wait a moment and try again.`
@@ -61,7 +61,7 @@ describe("GitLab list retry handling", () => {
     it("does not classify exhausted HTTP 502 retries as rate limiting", async () => {
       fetchMock.mockImplementation(async () => new Response(null, { status: 502 }));
 
-      const result = list("connection-id", {} as OrgServiceActor);
+      const result = list("connection-id", {} as TActorContext);
       await vi.runAllTimersAsync();
       await expect(result).resolves.toEqual([]);
       expect(fetchMock).toHaveBeenCalledTimes(10);
@@ -76,7 +76,7 @@ describe("GitLab list retry handling", () => {
         .mockImplementationOnce(async () => new Response(null, { status: 429 }))
         .mockImplementation(async () => Response.json([response]));
 
-      const result = list("connection-id", {} as OrgServiceActor);
+      const result = list("connection-id", {} as TActorContext);
       await vi.runAllTimersAsync();
       await expect(result).resolves.toEqual([
         resource === "groups"
@@ -89,7 +89,7 @@ describe("GitLab list retry handling", () => {
     it("preserves genuinely empty lists", async () => {
       fetchMock.mockImplementation(async () => Response.json([]));
 
-      const result = list("connection-id", {} as OrgServiceActor);
+      const result = list("connection-id", {} as TActorContext);
       await vi.runAllTimersAsync();
       await expect(result).resolves.toEqual([]);
       expect(fetchMock).toHaveBeenCalledTimes(1);

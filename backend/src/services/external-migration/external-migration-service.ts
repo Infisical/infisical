@@ -26,7 +26,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
-import { OrgServiceActor, toGenericPermission, toOrgServiceActor } from "@app/lib/types";
+import { toGenericPermission } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
@@ -307,7 +307,7 @@ export const externalMigrationServiceFactory = ({
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actorOrgId,
-        actor: toOrgServiceActor(actor)
+        actor
       });
       const picked = await gatewayPoolService.pickHealthyGateway(gatewayPoolId);
       effectiveGatewayId = picked.id;
@@ -362,7 +362,7 @@ export const externalMigrationServiceFactory = ({
     return actor.org.id in vaultMigrationTransformMappings;
   };
 
-  const getVaultNamespaces = async ({ actor, connectionId }: { actor: OrgServiceActor; connectionId: string }) => {
+  const getVaultNamespaces = async ({ actor, connectionId }: { actor: TActorContext; connectionId: string }) => {
     const connection = await appConnectionService.connectAppConnectionById<THCVaultConnection>(
       AppConnection.HCVault,
       connectionId,
@@ -376,7 +376,7 @@ export const externalMigrationServiceFactory = ({
     namespace,
     connectionId
   }: {
-    actor: OrgServiceActor;
+    actor: TActorContext;
     namespace: string;
     connectionId: string;
   }) => {
@@ -396,7 +396,7 @@ export const externalMigrationServiceFactory = ({
     namespace,
     connectionId
   }: {
-    actor: OrgServiceActor;
+    actor: TActorContext;
     namespace: string;
     connectionId: string;
   }) => {
@@ -417,7 +417,7 @@ export const externalMigrationServiceFactory = ({
     mountPath,
     connectionId
   }: {
-    actor: OrgServiceActor;
+    actor: TActorContext;
     namespace: string;
     mountPath: string;
     connectionId: string;
@@ -647,7 +647,7 @@ export const externalMigrationServiceFactory = ({
     const connection = (await appConnectionService.validateAppConnectionUsageById(
       AppConnection.HCVault,
       { connectionId, projectId },
-      toOrgServiceActor(actor)
+      actor
     )) as THCVaultConnection;
 
     if (!vaultSecretPaths.length) {
@@ -768,7 +768,7 @@ export const externalMigrationServiceFactory = ({
     authType,
     connectionId
   }: {
-    actor: OrgServiceActor;
+    actor: TActorContext;
     namespace: string;
     authType?: string;
     connectionId: string;
@@ -787,7 +787,7 @@ export const externalMigrationServiceFactory = ({
     mountPath,
     connectionId
   }: {
-    actor: OrgServiceActor;
+    actor: TActorContext;
     namespace: string;
     mountPath: string;
     connectionId: string;
@@ -806,7 +806,7 @@ export const externalMigrationServiceFactory = ({
     mountPath,
     connectionId
   }: {
-    actor: OrgServiceActor;
+    actor: TActorContext;
     namespace: string;
     mountPath: string;
     connectionId: string;
@@ -825,7 +825,7 @@ export const externalMigrationServiceFactory = ({
     mountPath,
     connectionId
   }: {
-    actor: OrgServiceActor;
+    actor: TActorContext;
     namespace: string;
     mountPath: string;
     connectionId: string;
@@ -844,7 +844,7 @@ export const externalMigrationServiceFactory = ({
     mountPath,
     connectionId
   }: {
-    actor: OrgServiceActor;
+    actor: TActorContext;
     namespace: string;
     mountPath: string;
     connectionId: string;
@@ -860,17 +860,17 @@ export const externalMigrationServiceFactory = ({
   // ─── Doppler In-Platform Migration ──────────────────────────────────────────
 
   // CASL is enforced inside connectAppConnectionById for project- or org-scoped connections.
-  const getDopplerConnection = (connectionId: string, actor: OrgServiceActor) =>
+  const getDopplerConnection = (connectionId: string, actor: TActorContext) =>
     appConnectionService.connectAppConnectionById<TDopplerConnection>(AppConnection.Doppler, connectionId, actor);
 
-  const getDopplerConnectionForImport = (connectionId: string, projectId: string, actor: OrgServiceActor) =>
+  const getDopplerConnectionForImport = (connectionId: string, projectId: string, actor: TActorContext) =>
     appConnectionService.validateAppConnectionUsageById(
       AppConnection.Doppler,
       { connectionId, projectId },
       actor
     ) as Promise<TDopplerConnection>;
 
-  const getDopplerProjects = async ({ connectionId, actor }: { connectionId: string; actor: OrgServiceActor }) => {
+  const getDopplerProjects = async ({ connectionId, actor }: { connectionId: string; actor: TActorContext }) => {
     const appConnection = await getDopplerConnection(connectionId, actor);
     return listDopplerProjects(appConnection);
   };
@@ -882,7 +882,7 @@ export const externalMigrationServiceFactory = ({
   }: {
     connectionId: string;
     projectSlug: string;
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const appConnection = await getDopplerConnection(connectionId, actor);
     return listDopplerEnvironments(appConnection, projectSlug);
@@ -895,7 +895,7 @@ export const externalMigrationServiceFactory = ({
   }: {
     connectionId: string;
     projectSlug: string;
-    actor: OrgServiceActor;
+    actor: TActorContext;
   }) => {
     const appConnection = await getDopplerConnection(connectionId, actor);
     return listDopplerConfigs(appConnection, projectSlug);
@@ -911,7 +911,7 @@ export const externalMigrationServiceFactory = ({
     actor,
     auditLogInfo
   }: TImportDopplerSecretsDTO) => {
-    const appConnection = await getDopplerConnectionForImport(connectionId, targetProjectId, toOrgServiceActor(actor));
+    const appConnection = await getDopplerConnectionForImport(connectionId, targetProjectId, actor);
 
     const dopplerSecrets = await getDopplerSecrets(appConnection, dopplerProject, dopplerEnvironment);
 

@@ -59,7 +59,6 @@ import { ChangeRequestWebhookAction } from "@app/services/webhook/webhook-types"
 
 import { BypasserType } from "../access-approval-policy/access-approval-policy-types";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   pickApprovalCommitColumns,
   secretApprovalRequestCommitFnsFactory
@@ -133,7 +132,6 @@ type TSecretChangeGlobalRequestBridgeServiceFactoryDep = {
     TSecretChangeGlobalPolicyBridgeServiceFactory,
     "findSecretChangePolicyById"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   licenseDomain: TLicenseDomain;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg" | "find">;
@@ -193,7 +191,6 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   secretApprovalRequestSecretDAL,
   membershipUserDAL,
   secretChangeGlobalPolicyBridgeService,
-  permissionService,
   secretsDomain,
   licenseDomain,
   userGroupMembershipDAL,
@@ -221,7 +218,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   telemetryService
 }: TSecretChangeGlobalRequestBridgeServiceFactoryDep) => {
   const { buildSecretApprovalCommits, validateSecrets } = secretApprovalRequestCommitFnsFactory({
-    permissionService,
+    secretsDomain,
     folderDAL,
     projectDAL,
     kmsCoreDomain,
@@ -484,8 +481,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   const generateSecretChangeRequest: TSecretChangeGlobalRequestBridgeMethods["generateSecretChangeRequest"] = async (
     dto
   ) => {
-    const { actor, actorId, actorOrgId, projectId, environment, secretPath, commitMessage, trx, skipPostProcessing } =
-      dto;
+    const { actor, projectId, environment, secretPath, commitMessage, trx, skipPostProcessing } = dto;
     const { folderId, project, commits, commitTagIds, secretKeys } = await buildSecretApprovalCommits(dto);
 
     const write = (tx: Knex) =>
@@ -495,8 +491,8 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
           folderId,
           projectId,
           orgId: project.orgId,
-          actor,
-          actorId,
+          actor: actor.principal.type,
+          actorId: actor.principal.id,
           commitMessage,
           commits: commits.map((commit) => pickApprovalCommitColumns(commit)),
           commitTags: commitTagIds
@@ -514,9 +510,9 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
         environment,
         secretPath,
         secretKeys,
-        actor,
-        actorId,
-        actorOrgId,
+        actor: actor.principal.type,
+        actorId: actor.principal.id,
+        actorOrgId: actor.org.id,
         tx: trx
       });
     }

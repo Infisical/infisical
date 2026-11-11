@@ -14,19 +14,8 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
-
-// The flat actor that services outside Certificate Manager (app connections, external CA functions) still take.
-export const toOrgServiceActor = (actor: TActorContext): OrgServiceActor => ({
-  type: actor.principal.type,
-  id: actor.principal.id,
-  authMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
-  orgId: actor.org.id,
-  rootOrgId: actor.org.rootOrgId,
-  parentOrgId: actor.org.parentOrgId
-});
 
 // ACME, EST and SCEP clients enroll through a profile and hold no project permissions, so they are checked against
 // that profile instead of through the permission functions.

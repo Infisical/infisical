@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { DatabaseError } from "@app/lib/errors";
+import { TActorInput } from "@app/lib/types";
 
 import { TAlertChannelInput } from "./alert-channel-service-types";
 import { AlertChannelType, TAlertPayload } from "./alert-channel-types";
@@ -274,11 +275,8 @@ const buildService = (opts?: {
 };
 
 const actor = {
-  actor: "user" as never,
-  actorId: "user-1",
-  actorAuthMethod: null as never,
-  actorOrgId: "org-1"
-};
+  actor: { principal: { type: "user", id: "user-1", authMethod: null }, org: { id: "org-1" } }
+} as unknown as TActorInput;
 
 const emailChannel: TAlertChannelInput = {
   name: "email-ch",

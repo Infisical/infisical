@@ -15,7 +15,6 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TActorInput } from "@app/lib/types";
-import { toOrgServiceActor } from "@app/services/certificate-common/certificate-permission-fns";
 import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 
@@ -406,7 +405,7 @@ export const certificateAuthorityServiceFactory = ({
         projectId,
         configuration: configuration as TCreateAcmeCertificateAuthorityDTO["configuration"],
         status,
-        actor: toOrgServiceActor(actor)
+        actor
       });
     }
 
@@ -416,7 +415,7 @@ export const certificateAuthorityServiceFactory = ({
         projectId,
         configuration: configuration as TCreateAzureAdCsCertificateAuthorityDTO["configuration"],
         status,
-        actor: toOrgServiceActor(actor)
+        actor
       });
     }
 
@@ -426,7 +425,7 @@ export const certificateAuthorityServiceFactory = ({
         projectId,
         configuration: configuration as TCreateADCSCertificateAuthorityDTO["configuration"],
         status,
-        actor: toOrgServiceActor(actor)
+        actor
       });
     }
 
@@ -436,7 +435,7 @@ export const certificateAuthorityServiceFactory = ({
         projectId,
         configuration: configuration as TCreateAwsPcaCertificateAuthorityDTO["configuration"],
         status,
-        actor: toOrgServiceActor(actor)
+        actor
       });
     }
 
@@ -446,7 +445,7 @@ export const certificateAuthorityServiceFactory = ({
         projectId,
         configuration: configuration as TCreateDigiCertCertificateAuthorityDTO["configuration"],
         status,
-        actor: toOrgServiceActor(actor)
+        actor
       });
     }
     if (type === CaType.GODADDY) {
@@ -455,7 +454,7 @@ export const certificateAuthorityServiceFactory = ({
         projectId,
         configuration: configuration as TCreateGoDaddyCertificateAuthorityDTO["configuration"],
         status,
-        actor: toOrgServiceActor(actor)
+        actor
       });
     }
     if (type === CaType.AWS_ACM_PUBLIC_CA) {
@@ -464,7 +463,7 @@ export const certificateAuthorityServiceFactory = ({
         projectId,
         configuration: configuration as TCreateAwsAcmPublicCaCertificateAuthorityDTO["configuration"],
         status,
-        actor: toOrgServiceActor(actor)
+        actor
       });
     }
     if (type === CaType.VENAFI_TPP) {
@@ -473,7 +472,7 @@ export const certificateAuthorityServiceFactory = ({
         projectId,
         configuration: configuration as TCreateVenafiTppCertificateAuthorityDTO["configuration"],
         status,
-        actor: toOrgServiceActor(actor)
+        actor
       });
     }
 
@@ -823,7 +822,7 @@ export const certificateAuthorityServiceFactory = ({
       return acmeFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAcmeCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -833,7 +832,7 @@ export const certificateAuthorityServiceFactory = ({
       return azureAdCsFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAzureAdCsCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -843,7 +842,7 @@ export const certificateAuthorityServiceFactory = ({
       return adcsFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateADCSCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -853,7 +852,7 @@ export const certificateAuthorityServiceFactory = ({
       return awsPcaFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAwsPcaCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -863,7 +862,7 @@ export const certificateAuthorityServiceFactory = ({
       return digicertFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateDigiCertCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -873,7 +872,7 @@ export const certificateAuthorityServiceFactory = ({
       return godaddyFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateGoDaddyCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -883,7 +882,7 @@ export const certificateAuthorityServiceFactory = ({
       return awsAcmPublicCaFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAwsAcmPublicCaCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -893,7 +892,7 @@ export const certificateAuthorityServiceFactory = ({
       return venafiTppFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateVenafiTppCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -1052,7 +1051,7 @@ export const certificateAuthorityServiceFactory = ({
       return acmeFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAcmeCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -1062,7 +1061,7 @@ export const certificateAuthorityServiceFactory = ({
       return azureAdCsFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAzureAdCsCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -1072,7 +1071,7 @@ export const certificateAuthorityServiceFactory = ({
       return adcsFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateADCSCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -1082,7 +1081,7 @@ export const certificateAuthorityServiceFactory = ({
       return awsPcaFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAwsPcaCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -1092,7 +1091,7 @@ export const certificateAuthorityServiceFactory = ({
       return digicertFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateDigiCertCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -1102,7 +1101,7 @@ export const certificateAuthorityServiceFactory = ({
       return godaddyFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateGoDaddyCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -1112,7 +1111,7 @@ export const certificateAuthorityServiceFactory = ({
       return awsAcmPublicCaFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAwsAcmPublicCaCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });
@@ -1122,7 +1121,7 @@ export const certificateAuthorityServiceFactory = ({
       return venafiTppFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateVenafiTppCertificateAuthorityDTO["configuration"],
-        actor: toOrgServiceActor(actor),
+        actor,
         status,
         name
       });

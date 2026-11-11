@@ -2,6 +2,7 @@ import { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { TSecretApprovalPolicies } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
@@ -26,7 +27,7 @@ vi.mock("./secret-approval-request-fns", async (importOriginal) => ({
 const POLICY_ID = "policy-1";
 
 const build = () => {
-  const permissionService = { getProjectPermission: vi.fn() };
+  const secretsDomain = { getSecretsPermission: vi.fn() };
   const secretApprovalRequestDAL = { create: vi.fn(), findById: vi.fn().mockResolvedValue(null) };
   const secretChangeGlobalPolicyBridgeService = {
     findSecretChangePolicy: vi.fn().mockResolvedValue({ id: POLICY_ID })
@@ -42,7 +43,7 @@ const build = () => {
   const telemetryService = { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) };
 
   const service = secretApprovalRequestServiceFactory({
-    permissionService,
+    secretsDomain,
     secretApprovalRequestDAL,
     secretChangeGlobalPolicyBridgeService,
     secretChangeGlobalRequestBridgeService,
@@ -55,7 +56,7 @@ const build = () => {
 
   return {
     service,
-    permissionService,
+    secretsDomain,
     secretApprovalRequestDAL,
     secretChangeGlobalPolicyBridgeService,
     secretChangeGlobalRequestBridgeService,
@@ -66,16 +67,16 @@ const build = () => {
 
 describe("generateSecretApprovalRequest", () => {
   test("refuses a policy from the approval system before checking permission or writing a request", async () => {
-    const { service, permissionService, secretApprovalRequestDAL, secretChangeGlobalPolicyBridgeService } = build();
+    const { service, secretsDomain, secretApprovalRequestDAL, secretChangeGlobalPolicyBridgeService } = build();
 
     await expect(
       service.generateSecretApprovalRequest({
         policy: { id: POLICY_ID } as TSecretApprovalPolicies,
         data: {},
-        actor: ActorType.USER,
-        actorId: "user-1",
-        actorOrgId: "org-1",
-        actorAuthMethod: null,
+        actor: {
+          principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+          org: { id: "org-1" }
+        } as TActorContext,
         projectId: "project-1",
         environment: "dev",
         secretPath: "/"
@@ -87,7 +88,7 @@ describe("generateSecretApprovalRequest", () => {
     );
 
     expect(secretChangeGlobalPolicyBridgeService.findSecretChangePolicy).toHaveBeenCalledWith(POLICY_ID);
-    expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(secretsDomain.getSecretsPermission).not.toHaveBeenCalled();
     expect(secretApprovalRequestDAL.create).not.toHaveBeenCalled();
   });
 });

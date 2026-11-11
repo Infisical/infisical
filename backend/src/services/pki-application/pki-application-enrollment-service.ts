@@ -28,7 +28,6 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CERTIFICATE_AUTHORITIES_TYPE_MAP } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
-import { toOrgServiceActor } from "@app/services/certificate-common/certificate-permission-fns";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
   generateAndEncryptAcmeEabSecret,
@@ -541,7 +540,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       const connection = await appConnectionService.validateAppConnectionUsageById(
         AppConnection.MicrosoftIntune,
         { connectionId: config.validationConnectionId, projectId },
-        toOrgServiceActor(actor)
+        actor
       );
       validationConnectionId = connection.id;
       validationConnectionName = connection.name;

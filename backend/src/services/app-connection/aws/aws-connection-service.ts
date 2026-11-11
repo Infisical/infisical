@@ -12,7 +12,7 @@ import {
   ListAliasesCommand
 } from "@aws-sdk/client-kms";
 
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import {
   TListAwsConnectionIamUsers,
@@ -28,7 +28,7 @@ import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TAwsConnection>;
 
 const listAwsKmsKeys = async (
@@ -228,7 +228,7 @@ const listAwsListeners = async (
 export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
   const listKmsKeys = async (
     { connectionId, region, destination }: TListAwsConnectionKmsKeys,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
 
@@ -237,7 +237,7 @@ export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
     return kmsKeys;
   };
 
-  const listIamUsers = async ({ connectionId }: TListAwsConnectionIamUsers, actor: OrgServiceActor) => {
+  const listIamUsers = async ({ connectionId }: TListAwsConnectionIamUsers, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
 
     const iamUsers = await listAwsIamUsers(appConnection);
@@ -245,10 +245,7 @@ export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
     return iamUsers;
   };
 
-  const listLoadBalancers = async (
-    { connectionId, region }: TListAwsConnectionLoadBalancers,
-    actor: OrgServiceActor
-  ) => {
+  const listLoadBalancers = async ({ connectionId, region }: TListAwsConnectionLoadBalancers, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
 
     const loadBalancers = await listAwsLoadBalancers(appConnection, { region });
@@ -258,7 +255,7 @@ export const awsConnectionService = (getAppConnection: TGetAppConnectionFunc) =>
 
   const listListeners = async (
     { connectionId, region, loadBalancerArn }: TListAwsConnectionListeners,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
     const appConnection = await getAppConnection(AppConnection.AWS, connectionId, actor);
 

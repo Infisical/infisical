@@ -9,7 +9,6 @@ import {
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { toOrgServiceActor } from "@app/services/certificate-common/certificate-permission-fns";
 
 import { TCaAutoRenewalQueueFactory } from "../ca-auto-renewal-queue";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
@@ -83,11 +82,7 @@ export const caSigningConfigServiceFactory = ({
     const app = CA_SIGNING_CONFIG_CONNECTION_MAP[type];
     if (!app || connectionId === undefined) return;
 
-    await appConnectionService.validateAppConnectionUsageById(
-      app,
-      { connectionId, projectId },
-      toOrgServiceActor(actor)
-    );
+    await appConnectionService.validateAppConnectionUsageById(app, { connectionId, projectId }, actor);
   };
 
   const createSigningConfig = async ({

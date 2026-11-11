@@ -1,5 +1,5 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { listOnaProjects } from "./ona-connection-fns";
@@ -8,11 +8,11 @@ import { TOnaConnection } from "./ona-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TOnaConnection>;
 
 export const onaConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Ona, connectionId, actor);
     try {
       return await listOnaProjects(appConnection);

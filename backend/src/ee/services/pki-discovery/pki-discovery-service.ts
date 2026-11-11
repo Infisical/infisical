@@ -23,7 +23,6 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { toOrgServiceActor } from "@app/services/certificate-common/certificate-permission-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
@@ -153,11 +152,7 @@ export const pkiDiscoveryServiceFactory = ({
     const connections = await Promise.all(
       newConnectionIds.map((connectionId) =>
         limit(() =>
-          appConnectionService.validateAppConnectionUsageById(
-            hostType.app,
-            { connectionId, projectId },
-            toOrgServiceActor(actor)
-          )
+          appConnectionService.validateAppConnectionUsageById(hostType.app, { connectionId, projectId }, actor)
         )
       )
     );
@@ -289,7 +284,7 @@ export const pkiDiscoveryServiceFactory = ({
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.org.id,
-        actor: toOrgServiceActor(actor)
+        actor
       });
     }
 
@@ -404,7 +399,7 @@ export const pkiDiscoveryServiceFactory = ({
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.org.id,
-        actor: toOrgServiceActor(actor)
+        actor
       });
     }
 

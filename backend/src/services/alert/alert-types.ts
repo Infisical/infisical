@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TGenericPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TPostHogEvent } from "@app/services/telemetry/telemetry-types";
 
 import { TAlertPayload } from "./alert-channel-types";
@@ -45,15 +45,8 @@ export type TAlertPermissionInput = {
   orgId: string;
   projectId?: string | null;
   resourceId?: string | null;
-  actor: TGenericPermission;
+  actor: TActorContext;
 };
-
-export const toAlertActor = (dto: TGenericPermission): TGenericPermission => ({
-  actor: dto.actor,
-  actorId: dto.actorId,
-  actorAuthMethod: dto.actorAuthMethod,
-  actorOrgId: dto.actorOrgId
-});
 
 type TAlertRecipientPolicy = {
   atOrgScope?: boolean;
