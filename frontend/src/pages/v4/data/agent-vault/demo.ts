@@ -79,6 +79,7 @@ const bundles: TAgentVaultAccessBundleListItem[] = bundleSeeds.map(
     serviceCount: hostPatterns.length + 1,
     memberCount: 3 + index,
     hostPatterns,
+    nativeServices: [],
     servicesRequiringSetup: []
   })
 );
@@ -92,8 +93,6 @@ const inline = (
   name,
   description: null,
   type: AgentVaultServiceType.Http,
-  serverUrl: null,
-  transport: null,
   hostPattern,
   allowedMethods: [AgentVaultHttpMethod.Get],
   allowedPathPrefixes: null,
