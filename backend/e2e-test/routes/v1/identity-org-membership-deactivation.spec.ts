@@ -1,5 +1,6 @@
 import { AccessScope, OrgMembershipRole, ProjectMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import type { TActorContexts } from "@app/domains/lib/actor-context";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 
 // The route that updates an identity's org membership takes no isActive, so the service is driven
@@ -9,24 +10,27 @@ import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
 import { createProjectGroup, deleteGroups } from "e2e-test/testUtils/groups";
 import { createIdentityActor } from "e2e-test/testUtils/identities";
 
-type TMembershipIdentityService = {
-  updateMembership: (dto: unknown) => Promise<unknown>;
+type TTestServices = {
+  membershipIdentity: { updateMembership: (dto: unknown) => Promise<unknown> };
+  actorContexts: TActorContexts;
 };
 
-const membershipIdentity = () =>
-  (globalThis as unknown as { testServices: { membershipIdentity: TMembershipIdentityService } }).testServices
-    .membershipIdentity;
+const testServices = () => (globalThis as unknown as { testServices: TTestServices }).testServices;
 
 const setActive = async (orgId: string, identityId: string, isActive: boolean) => {
-  await membershipIdentity().updateMembership({
-    permission: {
+  const actor = await testServices().actorContexts.forPrincipal(
+    {
       type: ActorType.USER,
       id: seedData1.id,
+      username: seedData1.username,
+      email: seedData1.email,
       authMethod: AuthMethod.EMAIL,
-      orgId,
-      rootOrgId: orgId,
-      parentOrgId: orgId
+      isSuperAdmin: false
     },
+    orgId
+  );
+  await testServices().membershipIdentity.updateMembership({
+    actor,
     scopeData: { scope: AccessScope.Organization, orgId },
     selector: { identityId },
     data: { isActive, roles: [{ role: OrgMembershipRole.Member, isTemporary: false }] }
