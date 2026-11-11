@@ -33,7 +33,14 @@ import { TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-servi
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { getRequiredMfaMethod } from "../auth/auth-fns";
-import { ActorType, AuthMethod, AuthModeSignUpTokenPayload, AuthTokenType, MfaMethod } from "../auth/auth-type";
+import {
+  ActorAuthMethod,
+  ActorType,
+  AuthMethod,
+  AuthModeSignUpTokenPayload,
+  AuthTokenType,
+  MfaMethod
+} from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TMfaRecoveryCodeServiceFactory } from "../mfa-recovery-code/mfa-recovery-code-service";
@@ -86,6 +93,7 @@ type TUserServiceFactoryDep = {
     | "findEffectiveOrgMemberships"
     | "findActiveEffectiveOrgMembershipsByUserId"
     | "findOrgsWhereUserIsLastMember"
+    | "lockOrgTreeAccessForDeletion"
   >;
   orgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization">;
   membershipUserDAL: Pick<
@@ -777,7 +785,10 @@ export const userServiceFactory = ({
 
   const deleteUser = async (
     userId: string,
-    { lastMemberOrganizationIds }: { lastMemberOrganizationIds?: string[] } = {}
+    {
+      actorAuthMethod,
+      lastMemberOrganizationIds
+    }: { actorAuthMethod: ActorAuthMethod; lastMemberOrganizationIds?: string[] }
   ) => {
     const {
       isOnlyServerAdmin,
@@ -821,9 +832,35 @@ export const userServiceFactory = ({
       });
     }
 
+    for await (const org of lastMemberOrgs) {
+      try {
+        await permissionService.getOrgPermission({
+          actor: ActorType.USER,
+          actorId: userId,
+          orgId: org.id,
+          actorOrgId: org.id,
+          actorAuthMethod,
+          scope: OrganizationActionScope.Any
+        });
+      } catch (error) {
+        if (!(error instanceof ForbiddenRequestError)) throw error;
+        throw new ForbiddenRequestError({
+          message: `Your current login cannot delete the organization '${org.name}': ${error.message} Log in to that organization and delete it, or delete your account from there; nothing was deleted.`
+        });
+      }
+    }
+
     // Orgs first, one tx each. If one fails the account sticks around so a retry can finish the job.
     for await (const org of lastMemberOrgs) {
-      await orgDeletionService.deleteOrganization(org.id);
+      await orgDeletionService.deleteOrganization(org.id, undefined, async (tx) => {
+        if (tx) await orgDAL.lockOrgTreeAccessForDeletion(org.id, tx);
+        const lastMemberOrgsNow = await orgDAL.findOrgsWhereUserIsLastMember(userId, tx);
+        if (!lastMemberOrgsNow.some((orgNow) => orgNow.id === org.id)) {
+          throw new BadRequestError({
+            message: `Another member joined the organization '${org.name}' while your account was being deleted, so the organization and your account were kept. Review your account deletion and try again.`
+          });
+        }
+      });
     }
 
     // Capture the user's org memberships before deletion; the delete cascades them away.
