@@ -7,6 +7,7 @@ import type { AdminAdapter } from "./admin/contract";
 import type { AgentVaultSettingsAdapter } from "./agent-vault-settings/contract";
 import type { AgentVaultAdapter } from "./agent-vault/contract";
 import type { ApprovalPoliciesAdapter } from "./approval-policies/contract";
+import type { ApprovalRequestsAdapter } from "./approval-requests/contract";
 import type { AuditLogsAdapter } from "./audit-logs/contract";
 import type { BillingAdapter } from "./billing/contract";
 import type { CertManagerSettingsAdapter } from "./cert-manager-settings/contract";
@@ -55,6 +56,7 @@ export type V4Adapters = {
   agentVaultSettings: AgentVaultSettingsAdapter;
   billing: BillingAdapter;
   sso: SsoAdapter;
+  approvalRequests: ApprovalRequestsAdapter;
 };
 
 type V4RouteContext = { v4Mode?: V4Mode; adapters?: V4Adapters };

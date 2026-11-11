@@ -154,6 +154,12 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       "/cert-manager/certificates/$certificateId",
       "v4/cert-manager/CertificateDetailsByIDPage/route.tsx"
     ),
+    route("/cert-manager/requests", "v4/cert-manager/RequestsPage/route.tsx"),
+    route("/cert-manager/approvals/", "v4/cert-manager/ApprovalsPage/route.tsx"),
+    route(
+      "/cert-manager/approvals/$approvalRequestId",
+      "v4/cert-manager/ApprovalRequestDetailPage/route.tsx"
+    ),
     route("/cert-manager/audit-logs", "v4/project/AuditLogsPage/cert-manager/route.tsx"),
     route("/cert-manager/settings", "v4/cert-manager/SettingsPage/route.tsx"),
     route("/pam/accounts/", "v4/pam/PamAccountsPage/route.tsx"),
