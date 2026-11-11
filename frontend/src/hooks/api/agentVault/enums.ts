@@ -20,17 +20,26 @@ export enum AgentVaultServiceType {
   Mcp = "mcp",
   Postgres = "postgres",
   Mysql = "mysql",
-  Ssh = "ssh"
+  Ssh = "ssh",
+  Redis = "redis",
+  Cockroachdb = "cockroachdb",
+  Clickhouse = "clickhouse"
 }
 
 export type TAgentVaultNativeServiceType =
   | AgentVaultServiceType.Postgres
   | AgentVaultServiceType.Mysql
-  | AgentVaultServiceType.Ssh;
+  | AgentVaultServiceType.Ssh
+  | AgentVaultServiceType.Redis
+  | AgentVaultServiceType.Cockroachdb
+  | AgentVaultServiceType.Clickhouse;
 
 export const AGENT_VAULT_NATIVE_SERVICE_TYPES: readonly TAgentVaultNativeServiceType[] = [
   AgentVaultServiceType.Postgres,
   AgentVaultServiceType.Mysql,
+  AgentVaultServiceType.Cockroachdb,
+  AgentVaultServiceType.Clickhouse,
+  AgentVaultServiceType.Redis,
   AgentVaultServiceType.Ssh
 ];
 
@@ -44,7 +53,10 @@ export const isNativeServiceType = (
 export const AGENT_VAULT_NATIVE_DEFAULT_PORTS: Record<TAgentVaultNativeServiceType, number> = {
   [AgentVaultServiceType.Postgres]: 5432,
   [AgentVaultServiceType.Mysql]: 3306,
-  [AgentVaultServiceType.Ssh]: 22
+  [AgentVaultServiceType.Ssh]: 22,
+  [AgentVaultServiceType.Redis]: 6379,
+  [AgentVaultServiceType.Cockroachdb]: 26257,
+  [AgentVaultServiceType.Clickhouse]: 8123
 };
 
 export enum AgentVaultMcpTransport {

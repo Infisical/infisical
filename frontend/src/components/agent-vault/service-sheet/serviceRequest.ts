@@ -21,6 +21,7 @@ import {
 
 import {
   hasDatabase,
+  hasTls,
   hostOf,
   isAllMethods,
   isCredentialMemberProvided,
@@ -255,11 +256,15 @@ const buildNativeTls = (data: TServiceForm) => {
   return { enabled: true, verify: true, ca: data.tlsCa.trim() || null };
 };
 
+const nativePortOf = (data: TServiceForm) =>
+  data.nativePort.trim() ? Number(data.nativePort.trim()) : null;
+
 const buildNativeConnection = (data: TServiceForm, serviceType: TAgentVaultNativeServiceType) => ({
   name: data.name,
   host: data.host.trim(),
   port: Number(data.port.trim()),
-  ...(hasDatabase(serviceType) ? { database: data.database.trim(), tls: buildNativeTls(data) } : {})
+  ...(hasDatabase(serviceType) ? { database: data.database.trim() } : {}),
+  ...(hasTls(serviceType) ? { tls: buildNativeTls(data) } : {})
 });
 
 const buildNativeCreateRequest = (
@@ -277,6 +282,25 @@ const buildNativeCreateRequest = (
         data.credentialType === AgentVaultCredentialType.SshKey
           ? buildSshKeyCredential(data)
           : buildBasicCredential(data)
+    };
+  }
+  if (serviceType === AgentVaultServiceType.Redis) {
+    return {
+      accessBundleId,
+      type: serviceType,
+      ...connection,
+      credential: buildBasicCredential(data)
+    };
+  }
+  if (serviceType === AgentVaultServiceType.Clickhouse) {
+    const nativePort = nativePortOf(data);
+    return {
+      accessBundleId,
+      type: serviceType,
+      ...connection,
+      ...(nativePort ? { nativePort } : {}),
+      database: data.database.trim(),
+      credential: buildBasicCredential(data)
     };
   }
   return {
@@ -333,6 +357,10 @@ export const buildUpdateServiceRequest = (
       serviceId: service.id,
       type: data.serviceType,
       ...buildNativeConnection(data, data.serviceType),
+      // null clears a stored native port.
+      ...(data.serviceType === AgentVaultServiceType.Clickhouse
+        ? { nativePort: nativePortOf(data) }
+        : {}),
       description,
       credential: buildNativeCredentialPatch(data)
     };

@@ -50,7 +50,6 @@ import {
 import { findVariableReferences, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 import { useDebounce, useDiscardChangesGuard, useWizardSteps } from "@app/hooks";
 import {
-  AGENT_VAULT_NATIVE_DEFAULT_PORTS,
   AgentVaultCredentialType,
   AgentVaultMcpTransport,
   AgentVaultServiceType,
@@ -90,6 +89,7 @@ import {
 } from "./serviceRequest";
 import {
   buildServiceSchema,
+  defaultNativePorts,
   displayHostPattern,
   HTTP_METHODS,
   isCredentialMemberProvided,
@@ -120,6 +120,7 @@ import { serverMessage } from "./useOAuthAuthorize";
 const NATIVE_FIELD_OF_CONFIG_ERROR: [string, keyof TServiceForm][] = [
   ["'host'", "host"],
   ["'port'", "port"],
+  ["'nativePort'", "nativePort"],
   ["'database'", "database"],
   ["'tls.ca'", "tlsCa"]
 ];
@@ -133,6 +134,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   hosts: [],
   host: "",
   port: "",
+  nativePort: "",
   database: "",
   tlsEnabled: true,
   tlsVerify: true,
@@ -178,8 +180,12 @@ const STEP_FIELDS_OF_KIND: Record<TServiceKind, Record<ServiceStep, string[]>> =
 const blankNativeForm = (serviceType: TAgentVaultNativeServiceType): TServiceForm => ({
   ...BLANK_SERVICE_FORM,
   serviceType,
-  port: String(AGENT_VAULT_NATIVE_DEFAULT_PORTS[serviceType]),
-  credentialType: AgentVaultCredentialType.Basic
+  ...defaultNativePorts(serviceType, BLANK_SERVICE_FORM.tlsEnabled),
+  credentialType: AgentVaultCredentialType.Basic,
+  username:
+    serviceType === AgentVaultServiceType.Redis || serviceType === AgentVaultServiceType.Clickhouse
+      ? "default"
+      : ""
 });
 
 const mcpFormFromTemplate = (picked: AgentVaultMcpTemplate | null): TServiceForm => {
@@ -540,7 +546,11 @@ export const ServiceSheet = ({
 
     if (isNativeService(service)) {
       const { credential } = service;
-      const databaseService = service.type === AgentVaultServiceType.Ssh ? null : service;
+      const tlsService = service.type === AgentVaultServiceType.Ssh ? null : service;
+      const databaseService =
+        service.type === AgentVaultServiceType.Ssh || service.type === AgentVaultServiceType.Redis
+          ? null
+          : service;
       const memberProvidedFields = storedMemberFields(service);
       const storedValue = (field: TAgentVaultMemberProvidedField) =>
         memberProvidedFields.includes(field) ? "" : UNCHANGED_SECRET;
@@ -551,10 +561,14 @@ export const ServiceSheet = ({
         description: service.description ?? "",
         host: service.host,
         port: String(service.port),
+        nativePort:
+          service.type === AgentVaultServiceType.Clickhouse && service.nativePort
+            ? String(service.nativePort)
+            : "",
         database: databaseService?.database ?? "",
-        tlsEnabled: databaseService?.tls.enabled ?? true,
-        tlsVerify: databaseService?.tls.verify ?? true,
-        tlsCa: databaseService?.tls.ca ?? "",
+        tlsEnabled: tlsService?.tls.enabled ?? true,
+        tlsVerify: tlsService?.tls.verify ?? true,
+        tlsCa: tlsService?.tls.ca ?? "",
         credentialType: credential.type,
         username:
           credential.type === AgentVaultCredentialType.Basic

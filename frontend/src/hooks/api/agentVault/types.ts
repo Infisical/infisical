@@ -172,10 +172,29 @@ export type TAgentVaultServiceConfig =
       allowedTools: string[] | null;
     }
   | {
-      type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql;
+      type:
+        | AgentVaultServiceType.Postgres
+        | AgentVaultServiceType.Mysql
+        | AgentVaultServiceType.Cockroachdb;
       host: string;
       port: number;
       database: string;
+      tls: TAgentVaultNativeTls;
+    }
+  | {
+      type: AgentVaultServiceType.Clickhouse;
+      host: string;
+      // The HTTP port.
+      port: number;
+      // null when unset, which leaves clickhouse-client without a port to connect to.
+      nativePort: number | null;
+      database: string;
+      tls: TAgentVaultNativeTls;
+    }
+  | {
+      type: AgentVaultServiceType.Redis;
+      host: string;
+      port: number;
       tls: TAgentVaultNativeTls;
     }
   | {
@@ -183,6 +202,13 @@ export type TAgentVaultServiceConfig =
       host: string;
       port: number;
     };
+
+type TAgentVaultBasicOnlyNativeServiceType =
+  | AgentVaultServiceType.Postgres
+  | AgentVaultServiceType.Mysql
+  | AgentVaultServiceType.Cockroachdb
+  | AgentVaultServiceType.Clickhouse
+  | AgentVaultServiceType.Redis;
 
 type TAgentVaultServiceConfigOf<T extends AgentVaultServiceType> = Extract<
   TAgentVaultServiceConfig,
@@ -212,7 +238,7 @@ export type TAgentVaultService = (
       >;
       customHeaders: TAgentVaultCustomHeaderSummary[];
     })
-  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql> & {
+  | (TAgentVaultServiceConfigOf<TAgentVaultBasicOnlyNativeServiceType> & {
       credential: TAgentVaultCredentialSummaryOf<AgentVaultCredentialType.Basic>;
     })
   | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Ssh> & {
@@ -385,7 +411,7 @@ export type TAgentVaultSessionInlineService = (
       credential: TAgentVaultInlineCredentialSummaryOf<AgentVaultCredentialType.Bearer>;
       customHeaders: TAgentVaultInlineCustomHeaderSummary[];
     })
-  | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql> & {
+  | (TAgentVaultServiceConfigOf<TAgentVaultBasicOnlyNativeServiceType> & {
       credential: TAgentVaultInlineCredentialSummaryOf<AgentVaultCredentialType.Basic>;
     })
   | (TAgentVaultServiceConfigOf<AgentVaultServiceType.Ssh> & {
@@ -553,12 +579,37 @@ export type TCreateAgentVaultServiceDTO =
     }
   | {
       accessBundleId: string;
-      type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql;
+      type:
+        | AgentVaultServiceType.Postgres
+        | AgentVaultServiceType.Mysql
+        | AgentVaultServiceType.Cockroachdb;
       name: string;
       description?: string;
       host: string;
       port?: number;
       database: string;
+      tls?: TAgentVaultNativeTlsInput;
+      credential: TAgentVaultBasicCredentialInput;
+    }
+  | {
+      accessBundleId: string;
+      type: AgentVaultServiceType.Clickhouse;
+      name: string;
+      description?: string;
+      host: string;
+      port?: number;
+      nativePort?: number;
+      database: string;
+      tls?: TAgentVaultNativeTlsInput;
+      credential: TAgentVaultBasicCredentialInput;
+    }
+  | {
+      accessBundleId: string;
+      type: AgentVaultServiceType.Redis;
+      name: string;
+      description?: string;
+      host: string;
+      port?: number;
       tls?: TAgentVaultNativeTlsInput;
       credential: TAgentVaultBasicCredentialInput;
     }
@@ -587,6 +638,8 @@ export type TUpdateAgentVaultServiceDTO = {
   allowedTools?: string[] | null;
   host?: string;
   port?: number;
+  // ClickHouse only; null clears it.
+  nativePort?: number | null;
   database?: string;
   tls?: TAgentVaultNativeTlsInput;
   credential?: TAgentVaultCredentialUpdate | TAgentVaultSshKeyCredentialUpdate;

@@ -22,6 +22,27 @@ export const NATIVE_SERVICE_META: Record<
     description: "Run SQL against a MySQL database.",
     aliases: ["database", "db", "sql"]
   },
+  [AgentVaultServiceType.Cockroachdb]: {
+    label: "CockroachDB",
+    image: "CockroachDB.png",
+    icon: DatabaseIcon,
+    description: "Run SQL against a CockroachDB database.",
+    aliases: ["database", "db", "sql", "cockroach", "crdb", "postgres"]
+  },
+  [AgentVaultServiceType.Clickhouse]: {
+    label: "ClickHouse",
+    image: "ClickHouse.png",
+    icon: DatabaseIcon,
+    description: "Run SQL against a ClickHouse database.",
+    aliases: ["database", "db", "sql", "olap", "analytics"]
+  },
+  [AgentVaultServiceType.Redis]: {
+    label: "Redis",
+    image: "Redis.png",
+    icon: DatabaseIcon,
+    description: "Run commands against a Redis server.",
+    aliases: ["database", "db", "cache", "key-value", "valkey"]
+  },
   [AgentVaultServiceType.Ssh]: {
     label: "SSH",
     image: "SSH.png",

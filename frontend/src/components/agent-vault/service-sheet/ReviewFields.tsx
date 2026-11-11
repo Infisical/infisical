@@ -21,6 +21,7 @@ import { ExpandableValueList } from "./ExpandableValueList";
 import {
   credentialLabel,
   hasDatabase,
+  hasTls,
   isAllMethods,
   McpToolScope,
   oauthStatusLabel,
@@ -149,16 +150,24 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
               <DetailValue className="break-all">{form.host.trim()}</DetailValue>
             </Detail>
             <Detail>
-              <DetailLabel>Port</DetailLabel>
+              <DetailLabel>
+                {form.serviceType === AgentVaultServiceType.Clickhouse ? "HTTP Port" : "Port"}
+              </DetailLabel>
               <DetailValue>{form.port.trim()}</DetailValue>
             </Detail>
+            {form.serviceType === AgentVaultServiceType.Clickhouse && form.nativePort.trim() && (
+              <Detail>
+                <DetailLabel>Native Port</DetailLabel>
+                <DetailValue>{form.nativePort.trim()}</DetailValue>
+              </Detail>
+            )}
             {hasDatabase(form.serviceType) && (
               <Detail>
                 <DetailLabel>Database</DetailLabel>
                 <DetailValue className="break-all">{form.database.trim()}</DetailValue>
               </Detail>
             )}
-            {hasDatabase(form.serviceType) && (
+            {hasTls(form.serviceType) && (
               <Detail>
                 <DetailLabel>TLS</DetailLabel>
                 <DetailValue>{tlsSummary()}</DetailValue>
