@@ -1,5 +1,6 @@
 import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 
@@ -68,11 +69,25 @@ export const detectInstanceAwsAccountId = async (
   }
 };
 
-// Not awaited at boot: off AWS the credential chain spends time probing instance metadata, and /api/status only
-// needs the value once it is known. detectInstanceAwsAccountId bounds the time spent.
-export const startInstanceAwsAccountDetection = () => {
+let checkedCredentials: string | undefined;
+
+// Subscribed to onEnvConfigOverride, so it runs each time Server Console overrides are applied (boot, every few
+// minutes, and after an admin saves them) and sees App Connection keys saved there. The account only changes with
+// the credentials, so it checks again only when they change. Not awaited: off AWS the credential chain spends time
+// probing instance metadata.
+export const refreshInstanceAwsAccountId = () => {
+  // The e2e test server runs the env config sync too, and must not call AWS.
+  if (getConfig().isTestMode) return;
+
+  const credentials = getInfisicalAwsCredentials();
+  const current = credentials ? `${credentials.accessKeyId}:${credentials.secretAccessKey}` : "default-chain";
+  if (current === checkedCredentials) return;
+
+  checkedCredentials = current;
   void detectInstanceAwsAccountId()
     .then((accountId) => {
+      // A check for older credentials can finish after a newer one started; only the newest result counts.
+      if (checkedCredentials !== current) return;
       instanceAwsAccountId = accountId;
       if (accountId) logger.info(`AWS account detection: Infisical runs as AWS account ${accountId}`);
     })

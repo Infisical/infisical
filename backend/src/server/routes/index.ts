@@ -243,8 +243,8 @@ import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ApiDocsTags, INSTANCE_STATUS } from "@app/lib/api-docs";
-import { getInstanceAwsAccountId } from "@app/lib/aws/instance-aws-account";
-import { getConfig, TEnvConfig } from "@app/lib/config/env";
+import { getInstanceAwsAccountId, refreshInstanceAwsAccountId } from "@app/lib/aws/instance-aws-account";
+import { getConfig, onEnvConfigOverride, TEnvConfig } from "@app/lib/config/env";
 import { cronJobFactory } from "@app/lib/cron/cron-job";
 import { TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -5176,6 +5176,7 @@ export const registerRoutes = async (
     }
   }
 
+  onEnvConfigOverride(refreshInstanceAwsAccountId);
   const configSyncJob = await superAdminService.initializeEnvConfigSync();
   if (configSyncJob) {
     cronJobs.push(configSyncJob);

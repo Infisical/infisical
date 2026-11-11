@@ -14,7 +14,6 @@ import { runMigrations } from "./auto-start-migrations";
 import { initAuditLogDbConnection, initDbConnection } from "./db";
 import { hsmServiceFactory } from "./ee/services/hsm/hsm-service";
 import { keyStoreFactory } from "./keystore/keystore";
-import { startInstanceAwsAccountDetection } from "./lib/aws/instance-aws-account";
 import { buildClickHouseFromConfig } from "./lib/config/clickhouse";
 import { formatSmtpConfig, getDatabaseCredentials, getHsmConfig, initEnvConfig } from "./lib/config/env";
 import { buildRedisFromConfig } from "./lib/config/redis";
@@ -69,7 +68,6 @@ const run = async () => {
   const superAdminDAL = superAdminDALFactory(db);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
   const envConfig = await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
-  startInstanceAwsAccountDetection();
 
   logger.info(
     `Running Infisical ${envConfig.INFISICAL_PLATFORM_VERSION ? `v${envConfig.INFISICAL_PLATFORM_VERSION}` : "Development Mode"}`
