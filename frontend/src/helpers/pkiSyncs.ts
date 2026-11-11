@@ -1,13 +1,14 @@
 import { AppConnection } from "@app/hooks/api/appConnections";
 import {
-  CLOUDFLARE_BUNDLE_METHOD_LABELS,
   HostCommandVariable,
   isKeystoreExportFormat,
-  PKI_SYNC_EXPORT_FORMAT_LABELS,
   PkiSync,
   PkiSyncExportFormat,
   PkiSyncStatus
 } from "@app/hooks/api/pkiSyncs";
+// Imported from their defining modules: the pkiSyncs barrel imports this file through queries.
+import { PKI_SYNC_EXPORT_FORMAT_LABELS } from "@app/hooks/api/pkiSyncs/enums";
+import { CLOUDFLARE_BUNDLE_METHOD_LABELS } from "@app/hooks/api/pkiSyncs/types/cloudflare-custom-certificate-sync";
 
 export const PKI_SYNC_MAP: Record<
   PkiSync,

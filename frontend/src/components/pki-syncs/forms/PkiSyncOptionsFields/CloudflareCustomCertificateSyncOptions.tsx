@@ -33,7 +33,7 @@ export const CloudflareCustomCertificateSyncOptions = () => {
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <Field className="mb-4">
           <FieldLabel>
-            Bundle method
+            Bundle Method
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info />
