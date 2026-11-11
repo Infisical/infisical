@@ -58,12 +58,9 @@ export const ServiceNowAccessResponseRecordSchema = z.object({
     permissions: ServiceNowNullableText,
     state: z.string().max(100).nullable().optional(),
     decision: ServiceNowNullableText,
-    // Audit only, so an unexpected shape must never fail the parse that the decision depends on. A list
-    // column reads as comma-separated display names; a route may also return them as an array.
-    approvals: z
-      .union([z.string().max(SERVICENOW_PERMISSIONS_MAX_CHARS), z.string().max(255).array().max(100)])
-      .nullish()
-      .catch(undefined),
+    // One display name per approver. An array rather than the list column's comma-joined display value,
+    // because a name can itself contain a comma. Audit only, so a bad value must never fail the parse.
+    approvals: z.string().max(255).array().max(100).nullish().catch(undefined),
     decision_date: ServiceNowNullableText,
     decision_notes: ServiceNowNullableText
   })

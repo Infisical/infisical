@@ -290,7 +290,7 @@ describe("parseServiceNowDecision", () => {
     permissions: "secrets:        create, read\nsecret-folders: edit",
     state: "callback_pending",
     decision: "approved",
-    approvals: "",
+    approvals: [],
     decision_date: "2026-10-20 10:15:00",
     decision_notes: null,
     ...overrides
@@ -328,17 +328,15 @@ describe("parseServiceNowDecision", () => {
     });
   });
 
-  test.each([
-    ["comma-separated display names", "Abel Tuter, Beth Anglin ,, "],
-    ["an array of names", ["Abel Tuter", " Beth Anglin", ""]]
-  ])("reads every approver from %s", (_, approvals) => {
-    expect(parseServiceNowDecision({ result: { success: true, data: record({ approvals }) } })).toMatchObject({
-      status: "decided",
-      approvedBy: ["Abel Tuter", "Beth Anglin"]
-    });
+  test("reads every approver, keeping a comma inside a name", () => {
+    expect(
+      parseServiceNowDecision({
+        result: { success: true, data: record({ approvals: ["Abel Tuter", " Hopper, Grace ", ""] }) }
+      })
+    ).toMatchObject({ status: "decided", approvedBy: ["Abel Tuter", "Hopper, Grace"] });
   });
 
-  test.each([null, undefined, 42, { name: "Abel Tuter" }])(
+  test.each([null, undefined, 42, "Abel Tuter, Beth Anglin", { name: "Abel Tuter" }])(
     "still reads the decision when approvals is %j",
     (approvals) => {
       expect(parseServiceNowDecision({ result: { success: true, data: record({ approvals }) } })).toMatchObject({
