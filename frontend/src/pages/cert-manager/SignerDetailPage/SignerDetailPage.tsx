@@ -106,7 +106,8 @@ export const SignerDetailPage = () => {
 
   const { data: signer, isLoading } = useGetSigner(signerId);
   const cas = useListCasByProjectId();
-  const signerCaType = (cas.data ?? []).find((ca) => ca.id === signer?.caId)?.type;
+  const signerCaId = signer?.certificateCaId ?? signer?.caId;
+  const signerCaType = (cas.data ?? []).find((ca) => ca.id === signerCaId)?.type;
   const isDigicertSigner = signerCaType === CaType.DIGICERT;
   const { permission } = useSignerPermission();
   const can = (action: SignerPermissionActions) =>
@@ -381,13 +382,17 @@ export const SignerDetailPage = () => {
         signerId={signer.id}
         signerName={signer.name}
       />
-      <AlertDialog open={isRenewOpen} onOpenChange={setIsRenewOpen}>
+      <AlertDialog
+        open={isRenewOpen}
+        onOpenChange={setIsRenewOpen}
+        isPending={renewSigner.isPending}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia>
               <RefreshCwIcon />
             </AlertDialogMedia>
-            <AlertDialogTitle>Renew certificate for &apos;{signer.name}&apos;?</AlertDialogTitle>
+            <AlertDialogTitle>Renew Certificate for &apos;{signer.name}&apos;?</AlertDialogTitle>
             <AlertDialogDescription>
               A new certificate is requested from the signer&apos;s certificate authority. The
               signer switches to it once it&apos;s issued.
@@ -401,8 +406,9 @@ export const SignerDetailPage = () => {
           <AlertDialogFooter>
             <AlertDialogCancel isDisabled={renewSigner.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              isDisabled={renewSigner.isPending}
-              onClick={async () => {
+              isPending={renewSigner.isPending}
+              onClick={async (event) => {
+                event.preventDefault();
                 await renewSigner.mutateAsync(signer.id);
                 setIsRenewOpen(false);
               }}

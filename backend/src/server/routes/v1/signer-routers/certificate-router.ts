@@ -123,7 +123,14 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
         projectId: signer.projectId,
         event: {
           type: EventType.RENEW_PKI_SIGNER_CERTIFICATE,
-          metadata: { signerId: signer.id, name: signer.name, caId, caName, previousSerialNumber }
+          metadata: {
+            signerId: signer.id,
+            name: signer.name,
+            status: signer.status,
+            caId,
+            caName,
+            previousSerialNumber
+          }
         }
       });
 

@@ -5255,6 +5255,7 @@ interface RenewPkiSignerCertificateEvent {
   metadata: {
     signerId: string;
     name: string;
+    status: string;
     caId: string;
     caName: string;
     previousSerialNumber: string | null;

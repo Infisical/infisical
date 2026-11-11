@@ -61,9 +61,7 @@ export const RevokeSignerCertificateDialog = ({
             revocation may stop validating.
             {isDigicertSigner && (
               <span className="mt-2 block font-medium text-warning">
-                {signer.externalOrder
-                  ? `This also revokes every other certificate on DigiCert order #${signer.externalOrder.orderId}.`
-                  : "This also revokes every other certificate on the DigiCert order."}
+                DigiCert may hold the revocation until an administrator approves it in CertCentral.
               </span>
             )}
           </DialogDescription>

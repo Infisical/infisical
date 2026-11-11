@@ -179,10 +179,10 @@ const computeEffectiveStatus = (signer: {
   certificateNotAfter?: Date | string | null;
   certificateStatus?: string | null;
 }): SignerStatus => {
-  if (signer.status === SignerStatus.Revoked || signer.certificateStatus === CertStatus.REVOKED) {
-    return SignerStatus.Revoked;
-  }
   const dbStatus = signer.status as SignerStatus;
+  if (dbStatus === SignerStatus.Revoked) return SignerStatus.Revoked;
+  if (dbStatus === SignerStatus.Pending) return dbStatus;
+  if (signer.certificateStatus === CertStatus.REVOKED) return SignerStatus.Revoked;
   if (dbStatus !== SignerStatus.Active) return dbStatus;
   if (signer.certificateNotAfter && new Date(signer.certificateNotAfter) < new Date()) {
     return SignerStatus.Expired;

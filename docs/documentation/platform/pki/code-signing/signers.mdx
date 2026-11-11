@@ -170,12 +170,12 @@ Open the Signer and choose **Options → Edit Settings**. The edit sheet walks y
 
 ## Renew or revoke the certificate
 
-Open the Signer and choose an action from the **Options** menu, or call the [renew](/api-reference/endpoints/code-signing/signers/renew-certificate) or [revoke](/api-reference/endpoints/code-signing/signers/revoke-certificate) endpoint.
+Open the Signer and choose an action from the **Options** menu, or call the [Renew certificate](/api-reference/endpoints/code-signing/signers/renew-certificate) or [Revoke certificate](/api-reference/endpoints/code-signing/signers/revoke-certificate) endpoint.
 
 | Action | What happens |
 |--------|--------------|
 | **Renew Certificate** | Requests a new certificate from the same CA with the same Common Name, Validity, and key source. On DigiCert, this places a renewal order, or reissues into the current order if your account has no unused code signing subscription. Not available while the Signer is disabled or has a request in progress. |
-| **Revoke Certificate** | Revokes the certificate at the CA. This can't be undone, so create a new Signer to keep signing. On DigiCert, this revokes every certificate on the order, and DigiCert may hold the revocation until an administrator approves it in CertCentral unless the connection's API key has administrator access. Not available for Azure AD CS. |
+| **Revoke Certificate** | Revokes the certificate at the CA. This can't be undone, so create a new Signer to keep signing. On DigiCert, only this certificate is revoked, not the rest of its order, and DigiCert may hold the revocation until an administrator approves it in CertCentral unless the connection's API key has administrator access. Not available for Azure AD CS. |
 
 ## Signing with a signer
 

@@ -204,6 +204,7 @@ export type TSigner = {
   certificateHsmConnectorId?: string | null;
   certificateHsmKeyLabel?: string | null;
   certificateStatus?: string | null;
+  certificateCaId?: string | null;
   approvalPolicyName?: string | null;
   certificateFailureReason?: string | null;
   externalOrder?: {
