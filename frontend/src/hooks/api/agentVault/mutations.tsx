@@ -178,8 +178,11 @@ export const useUpdateAgentVaultAccessBundle = (projectId: string) => {
       queryClient.invalidateQueries({
         queryKey: agentVaultKeys.variables(currentOrg.id, projectId)
       });
-      // A skill lists the bundles it is in by name.
+      // A skill lists the bundles it is in by name, and so does a service.
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.skills(currentOrg.id, projectId) });
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.services(currentOrg.id, projectId)
+      });
     }
   });
 };
@@ -205,6 +208,10 @@ export const useDeleteAgentVaultAccessBundle = (projectId: string) => {
         queryKey: agentVaultKeys.variables(currentOrg.id, projectId)
       });
       queryClient.invalidateQueries({ queryKey: agentVaultKeys.skills(currentOrg.id, projectId) });
+      // The services it held list it, and the sidebar's setup count covers it.
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.services(currentOrg.id, projectId)
+      });
     }
   });
 };
@@ -334,6 +341,10 @@ export const useAddAgentVaultAccessBundleMembers = (projectId: string) => {
       queryClient.invalidateQueries({
         queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
       });
+      // A grant changes which services the caller reaches and the bundles listed beside each one.
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.services(currentOrg.id, projectId)
+      });
     }
   });
 };
@@ -355,6 +366,10 @@ export const useRevokeAgentVaultAccessBundleMembers = (projectId: string) => {
       });
       queryClient.invalidateQueries({
         queryKey: agentVaultKeys.accessBundles(currentOrg.id, projectId)
+      });
+      // A grant changes which services the caller reaches and the bundles listed beside each one.
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.services(currentOrg.id, projectId)
       });
     }
   });

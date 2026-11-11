@@ -15,6 +15,7 @@ import {
   Field,
   FieldContent,
   FieldDescription,
+  FieldError,
   FieldLabel
 } from "@app/components/v3";
 import { useProject } from "@app/context";
@@ -27,6 +28,8 @@ import { TAgentVaultProjectService } from "@app/hooks/api/agentVault/types";
 
 const CREATE_LABEL = "Create New Service";
 const PICKER_LIMIT = 100;
+// The most services one add request takes.
+const MAX_SERVICES_PER_ADD = 25;
 
 type Props = {
   accessBundleId: string;
@@ -61,6 +64,7 @@ export const AddBundleServiceDialog = ({
   }, [data, bundleServiceIds]);
 
   const isListTruncated = (data?.totalCount ?? 0) > (data?.services.length ?? 0);
+  const isOverLimit = services.length > MAX_SERVICES_PER_ADD;
 
   const handleClose = () => {
     setServices([]);
@@ -143,6 +147,7 @@ export const AddBundleServiceDialog = ({
               searchAriaLabel="Search services"
               emptyMessage={search ? "No services match your search" : "No services to add"}
               modal
+              isError={isOverLimit}
               onValueChange={setServices}
               creation={{
                 mode: "action",
@@ -154,10 +159,17 @@ export const AddBundleServiceDialog = ({
                 }
               }}
             />
-            {isListTruncated && (
-              <FieldDescription>
-                Search by name to find services that are not listed.
-              </FieldDescription>
+            {isOverLimit ? (
+              <FieldError>
+                You can add up to {MAX_SERVICES_PER_ADD} services at a time. Remove{" "}
+                {services.length - MAX_SERVICES_PER_ADD} to continue.
+              </FieldError>
+            ) : (
+              isListTruncated && (
+                <FieldDescription>
+                  Search by name to find services that are not listed.
+                </FieldDescription>
+              )
             )}
           </FieldContent>
         </Field>
@@ -169,7 +181,7 @@ export const AddBundleServiceDialog = ({
           <Button
             variant="av"
             isPending={addService.isPending}
-            isDisabled={services.length === 0}
+            isDisabled={services.length === 0 || isOverLimit}
             onClick={handleAdd}
           >
             {services.length > 1 ? `Add ${services.length} Services` : "Add Service"}

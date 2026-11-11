@@ -44,7 +44,7 @@ export const AgentVaultServicesPage = () => {
     getUserTablePreference("agentVaultServicesTable", PreferenceKey.PerPage, 20)
   );
 
-  const { data } = useListAgentVaultServices(projectId, {
+  const { data, isPending, isError, refetch } = useListAgentVaultServices(projectId, {
     search: debouncedSearch.trim() || undefined,
     requiresSetup: onlyRequiringSetup || undefined,
     orderBy: ORDER_BY[sortColumn],
@@ -106,6 +106,8 @@ export const AgentVaultServicesPage = () => {
       <ServicesCard
         services={data?.services ?? []}
         canManage={isAdmin}
+        isPending={isPending}
+        onRetryLoad={isError && !data ? () => refetch() : undefined}
         emptyDescription={
           isAdmin
             ? undefined

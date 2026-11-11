@@ -50,6 +50,7 @@ import {
   InputGroupInput,
   OverflowBadgeList,
   Pagination,
+  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -129,6 +130,10 @@ type Props = {
   // Set when the page lists one page of a server-side search and sort, rather than every service at once.
   serverPaging?: TServicesServerPaging;
   emptyDescription?: string;
+  // The first load hasn't finished, so an empty list doesn't mean there are no services yet.
+  isPending?: boolean;
+  // Set when the list couldn't be read, so a failure never looks like an empty project.
+  onRetryLoad?: () => void;
 };
 
 // Two hosts is what the column fits comfortably; the rest go behind the count so the table keeps its
@@ -221,7 +226,9 @@ export const ServicesCard = ({
   onEdit,
   onSetUp,
   serverPaging,
-  emptyDescription: emptyDescriptionOverride
+  emptyDescription: emptyDescriptionOverride,
+  isPending = false,
+  onRetryLoad
 }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
@@ -357,7 +364,20 @@ export const ServicesCard = ({
         </CardContent>
       )}
 
-      {displayed.length === 0 ? (
+      {onRetryLoad && (
+        <CardContent>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>Couldn&apos;t load services</EmptyTitle>
+              <EmptyDescription>Check your connection and try again.</EmptyDescription>
+            </EmptyHeader>
+            <Button variant="outline" onClick={onRetryLoad}>
+              Try Again
+            </Button>
+          </Empty>
+        </CardContent>
+      )}
+      {!onRetryLoad && !isPending && displayed.length === 0 && (
         <CardContent>
           <Empty className="border">
             <EmptyHeader>
@@ -374,7 +394,8 @@ export const ServicesCard = ({
             )}
           </Empty>
         </CardContent>
-      ) : (
+      )}
+      {!onRetryLoad && (isPending || displayed.length > 0) && (
         <Table>
           <TableHeader>
             <TableRow>
@@ -418,114 +439,131 @@ export const ServicesCard = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {displayed.map((service) => (
-              <TableRow key={service.id}>
-                <TableCell isTruncatable className="min-w-64">
-                  <div className="flex items-center gap-2">
-                    <ServiceIcon hostPattern={hostPatternOf(service)} serviceType={service.type} />
-                    <span className="truncate" title={service.name}>
-                      {service.name}
-                    </span>
-                    {service.credential.type === AgentVaultCredentialType.OAuth &&
-                      service.credential.status &&
-                      service.credential.status !== AgentVaultOauthStatus.Connected && (
-                        <OAuthStatusBadge status={service.credential.status} />
-                      )}
-                    {service.description && (
-                      <span
-                        className="min-w-0 flex-1 truncate text-sm text-muted"
-                        title={service.description}
-                      >
-                        {service.description}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span className="text-sm">{SERVICE_TYPE_LABELS[service.type]}</span>
-                </TableCell>
-                <TableCell>
-                  <TargetCell service={service} />
-                </TableCell>
-                {!isBundle && (
-                  <TableCell>
-                    {service.accessBundles?.length ? (
-                      <OverflowBadgeList
-                        items={service.accessBundles}
-                        getKey={(bundle) => bundle.id}
-                        getLabel={(bundle) => bundle.name}
-                        getLinkProps={(bundle) =>
-                          linkOptions({
-                            to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
-                            params: { orgId: currentOrg.id, projectId, accessBundleId: bundle.id }
-                          })
-                        }
+            {isPending &&
+              Array.from({ length: 3 }).map((_, index) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <TableRow key={`service-skeleton-${index}`}>
+                  {Array.from({ length: isBundle ? 5 : 6 }).map((__, cell) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <TableCell key={`service-skeleton-${index}-${cell}`}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                  <TableCell variant="action" />
+                </TableRow>
+              ))}
+            {!isPending &&
+              displayed.map((service) => (
+                <TableRow key={service.id}>
+                  <TableCell isTruncatable className="min-w-64">
+                    <div className="flex items-center gap-2">
+                      <ServiceIcon
+                        hostPattern={hostPatternOf(service)}
+                        serviceType={service.type}
                       />
-                    ) : (
-                      <span className="text-sm text-muted">&mdash;</span>
+                      <span className="truncate" title={service.name}>
+                        {service.name}
+                      </span>
+                      {service.credential.type === AgentVaultCredentialType.OAuth &&
+                        service.credential.status &&
+                        service.credential.status !== AgentVaultOauthStatus.Connected && (
+                          <OAuthStatusBadge status={service.credential.status} />
+                        )}
+                      {service.description && (
+                        <span
+                          className="min-w-0 flex-1 truncate text-sm text-muted"
+                          title={service.description}
+                        >
+                          {service.description}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{SERVICE_TYPE_LABELS[service.type]}</span>
+                  </TableCell>
+                  <TableCell>
+                    <TargetCell service={service} />
+                  </TableCell>
+                  {!isBundle && (
+                    <TableCell>
+                      {service.accessBundles?.length ? (
+                        <OverflowBadgeList
+                          items={service.accessBundles}
+                          getKey={(bundle) => bundle.id}
+                          getLabel={(bundle) => bundle.name}
+                          getLinkProps={(bundle) =>
+                            linkOptions({
+                              to: "/organizations/$orgId/projects/agent-vault/$projectId/access-bundles/$accessBundleId",
+                              params: { orgId: currentOrg.id, projectId, accessBundleId: bundle.id }
+                            })
+                          }
+                        />
+                      ) : (
+                        <span className="text-sm text-muted">&mdash;</span>
+                      )}
+                    </TableCell>
+                  )}
+                  <TableCell>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="text-sm">
+                          {format(new Date(service.createdAt), "MMM d, yyyy")}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {format(new Date(service.createdAt), "MMM d, yyyy h:mm a")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-center">
+                      {service.personalValues && (
+                        <PersonalSetupBadge
+                          personalValues={service.personalValues}
+                          onClick={() => onSetUp(service)}
+                        />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell variant="action">
+                    {(canManage || service.personalValues) && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton variant="ghost" size="xs" aria-label="Open service actions">
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={2} align="end">
+                          {service.personalValues && (
+                            <DropdownMenuItem onClick={() => onSetUp(service)}>
+                              <KeyIcon />
+                              {service.personalValues.isConfigured
+                                ? "Update My Personal Values"
+                                : "Set Up My Personal Values"}
+                            </DropdownMenuItem>
+                          )}
+                          {canManage && (
+                            <>
+                              <DropdownMenuItem onClick={() => onEdit(service)}>
+                                <PencilIcon />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => setServiceToDelete(service)}
+                              >
+                                {isBundle ? <UnlinkIcon /> : <TrashIcon />}
+                                {isBundle ? "Remove from Bundle" : "Delete"}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </TableCell>
-                )}
-                <TableCell>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="text-sm">
-                        {format(new Date(service.createdAt), "MMM d, yyyy")}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {format(new Date(service.createdAt), "MMM d, yyyy h:mm a")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TableCell>
-                <TableCell>
-                  <div className="flex justify-center">
-                    {service.personalValues && (
-                      <PersonalSetupBadge
-                        personalValues={service.personalValues}
-                        onClick={() => onSetUp(service)}
-                      />
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell variant="action">
-                  {(canManage || service.personalValues) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <IconButton variant="ghost" size="xs" aria-label="Open service actions">
-                          <MoreHorizontalIcon />
-                        </IconButton>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent sideOffset={2} align="end">
-                        {service.personalValues && (
-                          <DropdownMenuItem onClick={() => onSetUp(service)}>
-                            <KeyIcon />
-                            {service.personalValues.isConfigured
-                              ? "Update My Personal Values"
-                              : "Set Up My Personal Values"}
-                          </DropdownMenuItem>
-                        )}
-                        {canManage && (
-                          <>
-                            <DropdownMenuItem onClick={() => onEdit(service)}>
-                              <PencilIcon />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setServiceToDelete(service)}
-                            >
-                              {isBundle ? <UnlinkIcon /> : <TrashIcon />}
-                              {isBundle ? "Remove from Bundle" : "Delete"}
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       )}
