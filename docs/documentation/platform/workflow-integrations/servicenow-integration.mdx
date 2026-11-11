@@ -43,6 +43,7 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
     - **Access Requests**: every request Infisical has sent
     - **Pending Requests**: requests waiting for a decision
     - **Admin Console** (admins only): every request, with a [**Resend to Infisical**](#resend-to-infisical) button for a decision that didn't reach Infisical
+    - **Allowed Callback Hosts**: the Infisical URLs that the application is allowed to send decisions to
 
     You can't approve or reject a request from these modules. Your approvers decide in the approval flow you set up in [Step 3](#step-3-set-up-the-approval-flow).
 
@@ -56,6 +57,30 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
     | `x_infis_approvals.approver` | Every approver in a flow you build. Members of the **Infisical Approvers** group, which you set up in [Step 3](#step-3-set-up-the-approval-flow), get the role from the group. |
     | `x_infis_approvals.viewer` | People who only need to read requests and their audit trail. |
     | `x_infis_approvals.secret-manager-integration` | Only the integration user that Infisical signs in as, which you create in [Step 2](#step-2-connect-infisical-to-servicenow). |
+
+  </Step>
+  <Step>
+    Allow the application to send decisions to your Infisical URL. The application only notifies Infisical at a URL on this list.
+
+    In the navigator, go to **Infisical** > **Administration** > **Allowed Callback Hosts**.
+
+    ![Allowed Callback Hosts in the ServiceNow Navigator](/images/platform/workflow-integrations/servicenow-integration/allowed-callback-hosts-menu.png)
+
+  </Step>
+  <Step>
+    Select **New**.
+
+    ![New Callback Host](/images/platform/workflow-integrations/servicenow-integration/allowed-callback-hosts-new.png)
+
+  </Step>
+  <Step>
+    In **Infisical URL**, enter the URL of your Infisical instance, then select **Submit**:
+
+    - Infisical Cloud (US): `https://app.infisical.com/`
+    - Infisical Cloud (EU): `https://eu.infisical.com/`
+    - Self-hosted Infisical: your [`SITE_URL`](/self-hosting/configuration/envars)
+
+    ![Add the Infisical URL](/images/platform/workflow-integrations/servicenow-integration/allowed-callback-hosts-create.png)
 
   </Step>
 </Steps>
