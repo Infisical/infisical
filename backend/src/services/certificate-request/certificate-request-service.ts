@@ -1,8 +1,7 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { ActionProjectType, ProjectType, TCertificateRequests } from "@app/db/schemas";
+import { ProjectType, TCertificateRequests } from "@app/db/schemas";
 import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
@@ -12,7 +11,6 @@ import {
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub
@@ -59,7 +57,6 @@ type TCertificateRequestServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   certManagerDomain: Pick<TCertManagerDomain, "getApplicationPermission">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
@@ -163,7 +160,6 @@ export const certificateRequestServiceFactory = ({
   certificateDAL,
   pkiApplicationDAL,
   certificateService,
-  permissionService,
   projectsDomain,
   certManagerDomain,
   resourceMetadataDAL,
@@ -184,35 +180,24 @@ export const certificateRequestServiceFactory = ({
   const createCertificateRequest = async ({
     acmeOrderId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
+    enrollment,
     projectId,
     tx,
     status,
     internal = false,
     ...requestData
   }: TCreateCertificateRequestDTO & { tx?: Knex }) => {
-    if (
-      !internal &&
-      actor !== ActorType.ACME_ACCOUNT &&
-      actor !== ActorType.PLATFORM &&
-      actor !== ActorType.EST_ACCOUNT &&
-      actor !== ActorType.SCEP_ACCOUNT
-    ) {
-      const { permission } = await permissionService.getProjectPermission({
+    if (!internal && actor) {
+      const permission = await projectsDomain.getProjectPermission({
         actor,
-        actorId,
         projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.IssueCert,
-        ProjectPermissionSub.CertificateProfiles
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateProfileActions.IssueCert,
+        subject: ProjectPermissionSub.CertificateProfiles
+      });
     }
 
     // Validate input data before creating the request

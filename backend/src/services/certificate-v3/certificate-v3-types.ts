@@ -1,6 +1,6 @@
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { TActorInput, TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import {
   CertExtendedKeyUsageType,
@@ -12,6 +12,7 @@ import {
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
 import { TRequestCustomExtension } from "../certificate-common/certificate-extension-fns";
+import { TCertificateIssuanceCaller } from "../certificate-common/certificate-permission-fns";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 
 export type TIssueCertificateFromProfileDTO = {
@@ -47,7 +48,7 @@ export type TIssueCertificateFromProfileDTO = {
   removeRootsFromChain?: boolean;
   applicationId?: string;
   auditLogInfo?: AuditLogInfo;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TSignCertificateFromProfileDTO = {
   profileId: string;
@@ -69,7 +70,7 @@ export type TSignCertificateFromProfileDTO = {
   auditLogInfo?: AuditLogInfo;
   issuanceOperation?: CertificateIssuanceOperation;
   originalCertificateId?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TCertificateIssuanceCaller;
 
 export type TOrderCertificateFromProfileDTO = {
   profileId: string;
@@ -105,7 +106,7 @@ export type TOrderCertificateFromProfileDTO = {
   removeRootsFromChain?: boolean;
   applicationId?: string;
   auditLogInfo?: AuditLogInfo;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCertificateIssuanceResponse = {
   status: CertificateRequestStatus;

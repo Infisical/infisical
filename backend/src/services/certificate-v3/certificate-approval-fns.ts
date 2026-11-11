@@ -1,20 +1,12 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
-import { ActionProjectType, TCertificates } from "@app/db/schemas";
+import { TCertificates } from "@app/db/schemas";
 import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import {
-  ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
@@ -39,7 +31,7 @@ import {
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateRequest } from "@app/services/certificate-policy/certificate-policy-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
-import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 import {
   CertificateApplicationAlertEvent,
   TCertificateAlertEventEmitter,
@@ -94,8 +86,6 @@ import { TAltNameEntry, TCertificateIssuanceResponse } from "./certificate-v3-ty
 export type TIssueCertificateFromApprovedRequestDeps = {
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "updateById" | "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
-  acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
   certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById" | "transaction" | "create">;
@@ -211,8 +201,6 @@ export const certificateApprovalServiceFactory = (
   const {
     certificateRequestDAL,
     certificateProfileDAL,
-    acmeAccountDAL,
-    permissionService,
     certificateAuthorityDAL,
     internalCaService,
     certificateDAL,
@@ -252,69 +240,12 @@ export const certificateApprovalServiceFactory = (
     }
   };
 
-  const $validateProfileAndPermissions = async ({
-    profileId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    requiredEnrollmentType,
-    isInternal = false
-  }: {
-    profileId: string;
-    actor?: ActorType;
-    actorId?: string;
-    actorAuthMethod?: ActorAuthMethod;
-    actorOrgId?: string;
-    requiredEnrollmentType: EnrollmentType;
-    isInternal?: boolean;
-  }) => {
+  // Approval requests were authorized when they were created, so the profile is only loaded here.
+  const $getProfile = async (profileId: string) => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
-
-    if (isInternal) {
-      return profile;
-    }
-
-    if (profile.enrollmentType !== requiredEnrollmentType) {
-      throw new ForbiddenRequestError({
-        message: `Profile is not configured for ${requiredEnrollmentType} enrollment`
-      });
-    }
-
-    if (
-      (actor === ActorType.ACME_ACCOUNT && requiredEnrollmentType === EnrollmentType.ACME) ||
-      (actor === ActorType.EST_ACCOUNT && requiredEnrollmentType === EnrollmentType.EST)
-    ) {
-      const account = await acmeAccountDAL.findById(actorId!);
-      if (!account) {
-        throw new NotFoundError({ message: "ACME account not found" });
-      }
-      if (account.profileId !== profile.id) {
-        throw new ForbiddenRequestError({
-          message: "ACME account is not associated with this profile"
-        });
-      }
-      return profile;
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor!,
-      actorId: actorId!,
-      projectId: profile.projectId,
-      actorAuthMethod: actorAuthMethod!,
-      actorOrgId: actorOrgId!,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.IssueCert,
-      subject(ProjectPermissionSub.CertificateProfiles, {
-        slug: profile.slug
-      })
-    );
 
     return profile;
   };
@@ -392,11 +323,7 @@ export const certificateApprovalServiceFactory = (
   ): Promise<TCertificateIssuanceResponse> => {
     const { csr } = certRequest;
 
-    const profile = await $validateProfileAndPermissions({
-      profileId,
-      requiredEnrollmentType: (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API,
-      isInternal: true
-    });
+    const profile = await $getProfile(profileId);
 
     if (!profile.caId) {
       throw new BadRequestError({
@@ -1078,11 +1005,7 @@ export const certificateApprovalServiceFactory = (
     });
 
     try {
-      const targetProfile = await $validateProfileAndPermissions({
-        profileId,
-        requiredEnrollmentType: (certRequest.enrollmentType as EnrollmentType) || EnrollmentType.API,
-        isInternal: true
-      });
+      const targetProfile = await $getProfile(profileId);
 
       const externalCaResult = await $processExternalCARequest(
         certRequest,

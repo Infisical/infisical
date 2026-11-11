@@ -134,10 +134,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       const mappedCertificateRequest = mapEnumsForValidation(certificateRequestForService);
 
       const data = await server.services.certificateV3.issueCertificateFromProfile({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateRequest: mappedCertificateRequest,
@@ -154,10 +151,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
 
       const certificateRequest = await server.services.certificateRequest.createCertificateRequest({
         status: CertificateRequestStatus.ISSUED,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: certificateData.projectId,
         profileId: req.body.profileId,
         commonName: req.body.commonName,
@@ -251,10 +245,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const data = await server.services.certificateV3.signCertificateFromProfile({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         csr: req.body.csr,
@@ -278,11 +269,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       const certificateRequestData = extractCertificateRequestFromCSR(req.body.csr);
 
       const certificateRequest = await server.services.certificateRequest.createCertificateRequest({
-        actor: req.permission.type,
+        actor: req.permission,
         status: CertificateRequestStatus.ISSUED,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         projectId: certificateData.projectId,
         profileId: req.body.profileId,
         csr: req.body.csr,
@@ -400,10 +388,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       };
 
       const data = await server.services.certificateV3.orderCertificate({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         auditLogInfo: req.auditLogInfo,
         profileId: req.body.profileId,
         certificateOrder: certificateOrderObject,
@@ -412,10 +397,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
 
       const certificateRequest = await server.services.certificateRequest.createCertificateRequest({
         status: CertificateRequestStatus.PENDING,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: data.projectId,
         profileId: req.body.profileId,
         commonName: req.body.commonName,
