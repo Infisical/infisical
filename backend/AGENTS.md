@@ -298,7 +298,7 @@ Auth extraction happens in `src/server/plugins/auth/`:
 
 - `inject-identity.ts` — detects auth mode from request headers and attaches identity to request
 - `verify-auth.ts` — middleware that checks if the request's auth mode is in the route's allowed strategies
-- `inject-permission.ts` — attaches permission context
+- `inject-permission.ts`: builds `req.permission`, the actor context (`TActorContext`: principal, org, plan) every permission function takes, and refuses a session the org's SSO policy does not allow
 - `inject-assume-privilege.ts` — privilege escalation support
 - `superAdmin.ts` — super admin flag injection
 
@@ -323,24 +323,23 @@ Token detection logic in `inject-identity.ts` checks `x-api-key` header first, t
 #### SSO session binding
 
 A session minted by a SAML, OIDC or LDAP login carries `issuingRootOrgId`, the root org whose IdP
-issued it (`processProviderCallback` sets it; own-credential sessions never have it). An org that
-enforces SSO admits only sessions its own IdP issued: `validateOrgSSO` compares the claim with the
-org's root org on every user permission check, reading it from `userAuthInfo` in the request context
-(only when the check is for the requester), so it covers `selectOrganization`, OAuth consent, and a
-session that was already open when enforcement was turned on. Members who can bypass SSO are let
-through, and a token with no claim (issued before it existed) is taken at its auth method. Enforcement
-is org policy, not a permission: the permission service reads `authEnforced`, `googleSsoAuthEnforced`
-and `bypassOrgAuthEnabled` per request from the root org (`getOrgSsoPolicy`, through the same
-`orgFindById` request memo the auth layer fills), never from `permissionDAL.getPermission` or the
-cached project permission, so a change applies on the next request. A sub-org has no enforcement of its
-own and follows its root, and only a root org role can bypass it, so a sub-org admin role exempts no
-one. The project permission cache holds only that role-derived bypass answer.
+issued it (`processProviderCallback` sets it; own-credential sessions never have it); the principal
+carries it as `sessionRootOrgId`. SSO enforcement is a property of the session, not a permission, so it
+is checked once per request where the actor context is built (`actorContexts.forRequest` calls
+Organizations' `assertSessionAllowed`): a user session the root org's current policy refuses gets 401,
+like an expired token, and the frontend signs out. One rule decides, `ssoSessionRefusal`
+(`domains/platform/organizations`): Google enforcement needs a Google session, SAML/OIDC enforcement a
+SAML or OIDC session issued by this root org's own IdP; a token with no claim (issued before it existed)
+is taken at its auth method. The bypass (`bypassOrgAuthEnabled` plus the user's root org
+`BypassSsoEnforcement`) is looked up only when the rule refuses and never cached. A sub-org follows its
+root's policy, and only a root org role can bypass it. Never check SSO inside a permission function.
+Flows that check a session against an org other than the request's (`selectOrganization`, OAuth consent,
+token exchange) call `organizationsDomain.findSsoSessionRefusal` and answer 403;
+`selectOrganization` audits a foreign-session refusal (`SELECT_ORGANIZATION_REFUSED`).
 
 **Every path that issues or re-issues a user token must carry the claim forward** (MFA, refresh,
 signup, org deletion, delegated OAuth codes and tokens). A dropped claim reads as a pre-claim token
-and passes every org's enforcement. `selectOrganization` audits the refusal
-(`SELECT_ORGANIZATION_REFUSED`) by catching the `FOREIGN_SSO_SESSION_ERROR_NAME` error
-`getOrgPermission` throws.
+and passes every org's enforcement.
 
 #### MFA for SSO logins
 

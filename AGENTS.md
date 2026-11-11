@@ -108,7 +108,7 @@ Run `make lint-docs-branch` after any change under `docs/`. It runs [Vale](https
 
 ### Auth & Permissions
 
-Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN) are extracted in `backend/src/server/plugins/auth/`. Authorization uses CASL (`@casl/ability`) with project-level and org-level permission checks — see `backend/AGENTS.md` for backend details and `frontend/AGENTS.md` for frontend permission hooks/HOCs. Note: `API_KEY` and `SERVICE_TOKEN` auth modes are deprecated — do not use them in new code.
+Auth modes (JWT, IDENTITY_ACCESS_TOKEN, SCIM_TOKEN, OAUTH) are extracted in `backend/src/server/plugins/auth/`, which also builds `req.permission`: the actor context (`TActorContext`: the principal, the org, the plan) that services take as `actor`. Authorization is owned by the scope owner, never by a shared service: `organizationsDomain.getOrgPermission`, `projectsDomain.getProjectPermission` for checks every project type shares, and each product's own function for its checks (`getSecretsPermission`, `getPamPermission`, `getKmsPermission`, `getApplicationPermission`, `getSignerPermission`, `getAccessBundlePermission`, `getSecretScanningPermission`). They return permission objects (`permission.assert({ action, subject, fields })`) built from grants Access Control holds; see `backend/src/domains/platform/access-control/AGENTS.md` before composing rules. SSO enforcement is checked on the session, once per request, not in permission functions (see `backend/AGENTS.md`). Frontend permission hooks/HOCs are in `frontend/AGENTS.md`. Note: `API_KEY` and `SERVICE_TOKEN` auth modes are deprecated; do not use them in new code.
 
 ### Org-Scoped Products
 
