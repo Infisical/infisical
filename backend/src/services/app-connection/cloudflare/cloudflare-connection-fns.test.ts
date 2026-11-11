@@ -136,19 +136,17 @@ describe("validateCloudflareConnectionCredentials", () => {
       }
     });
 
-    // 3. Scoped account check fails (wrong account ID)
+    // 3. Account check fails (wrong account ID)
     const accountError = new AxiosError("Not Found", "404", undefined, undefined, {
       status: 404,
       data: { errors: [{ message: "Account not found" }] }
     } as AxiosResponse);
     safeRequestGetMock.mockRejectedValueOnce(accountError);
 
-    // 4. Fallback account check also fails
-    safeRequestGetMock.mockRejectedValueOnce(accountError);
-
     await expect(validateCloudflareConnectionCredentials(config)).rejects.toThrow(
       "Failed to validate credentials: Account not found"
     );
+    expect(safeRequestGetMock).toHaveBeenCalledTimes(3);
   });
 
   it("falls back to account details endpoint if token verify endpoints are not accessible", async () => {

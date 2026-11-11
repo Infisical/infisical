@@ -293,15 +293,6 @@ export const validateCloudflareConnectionCredentials = async (config: TCloudflar
         message: `Unable to validate connection: Cloudflare API token is ${data.result.status}.`
       });
     }
-
-    // Active user-owned token verified; ensure it has access to the specified accountId
-    const resp = await safeRequest.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}`, {
-      headers: getCloudflareAuthHeaders(apiToken)
-    });
-
-    if (resp.data !== null) {
-      return config.credentials;
-    }
   } catch (error: unknown) {
     if (error instanceof BadRequestError) throw error;
     lastError = error;
