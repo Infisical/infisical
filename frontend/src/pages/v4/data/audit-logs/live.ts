@@ -4,6 +4,15 @@ import { isInfisicalCloud } from "@app/helpers/platform";
 import { useGetAuditLogPostgresStorageStatus } from "@app/hooks/api/auditLogs/queries";
 import { useUpdateProjectAuditLogSettings } from "@app/hooks/api/auditLogSettings/mutations";
 import { useGetProjectAuditLogSettings } from "@app/hooks/api/auditLogSettings/queries";
+import {
+  useCreateAuditLogStream,
+  useDeleteAuditLogStream,
+  useUpdateAuditLogStream
+} from "@app/hooks/api/auditLogStreams/mutations";
+import {
+  useGetAuditLogStreamOptions,
+  useListAuditLogStreams
+} from "@app/hooks/api/auditLogStreams/queries";
 import { organizationKeys, useGetOrganizationById } from "@app/hooks/api/organization/queries";
 import type { Organization } from "@app/hooks/api/organization/types";
 import { fetchPamProjectId } from "@app/hooks/api/pam/queries";
@@ -20,7 +29,11 @@ export const auditLogsLive: AuditLogsAdapter = {
     const { data, isPending, error } = useGetOrgSubscription({ orgID: orgId });
     return {
       data: data
-        ? { auditLogs: data.auditLogs, auditLogsRetentionDays: data.auditLogsRetentionDays }
+        ? {
+            auditLogs: data.auditLogs,
+            auditLogsRetentionDays: data.auditLogsRetentionDays,
+            auditLogStreams: data.auditLogStreams
+          }
         : undefined,
       isPending,
       error
@@ -71,5 +84,10 @@ export const auditLogsLive: AuditLogsAdapter = {
   },
   useProjectSettings: useGetProjectAuditLogSettings,
   useUpdateProjectSettings: useUpdateProjectAuditLogSettings,
-  useUpdateProjectRetention: useUpdateWorkspaceAuditLogsRetention
+  useUpdateProjectRetention: useUpdateWorkspaceAuditLogsRetention,
+  useStreams: () => useListAuditLogStreams(),
+  useStreamOptions: () => useGetAuditLogStreamOptions(),
+  useCreateStream: useCreateAuditLogStream,
+  useUpdateStream: useUpdateAuditLogStream,
+  useDeleteStream: useDeleteAuditLogStream
 };
