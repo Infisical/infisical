@@ -5,8 +5,11 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import type { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import type { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import type { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -85,10 +88,10 @@ describe("CertificateProfileService", () => {
   } as unknown as TCertificatePolicyDALFactory;
 
   const mockActor = {
-    actor: ActorType.USER,
-    actorId: "user-123",
-    actorAuthMethod: AuthMethod.EMAIL,
-    actorOrgId: "org-123"
+    actor: {
+      principal: { type: ActorType.USER, id: "user-123", authMethod: AuthMethod.EMAIL },
+      org: { id: "org-123" }
+    } as unknown as TActorContext
   };
 
   const sampleProfile: TCertificateProfile = {
@@ -180,22 +183,13 @@ describe("CertificateProfileService", () => {
     delete: vi.fn()
   } as unknown as TScepEnrollmentConfigDALFactory;
 
-  const mockPermissionService = {
-    getProjectPermission: vi.fn().mockResolvedValue({
-      permission: {
-        can: vi.fn().mockReturnValue(true),
-        throwUnlessCan: vi.fn(),
-        rules: []
-      }
-    }),
-    getResourcePermission: vi.fn().mockResolvedValue({
-      permission: {
-        can: vi.fn().mockReturnValue(true),
-        throwUnlessCan: vi.fn(),
-        rules: []
-      }
-    })
-  } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  const allowAll = Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] });
+  const mockProjectsDomain = {
+    getProjectPermission: vi.fn().mockResolvedValue(allowAll)
+  } as unknown as Pick<TProjectsDomain, "getProjectPermission">;
+  const mockCertManagerDomain = {
+    getApplicationPermission: vi.fn().mockResolvedValue(allowAll)
+  } as unknown as Pick<TCertManagerDomain, "getApplicationPermission">;
 
   const mockKmsService = {
     getProjectCertificateKmsKeyId: vi.fn().mockResolvedValue("kms-key-123"),
@@ -296,7 +290,8 @@ describe("CertificateProfileService", () => {
       certificateAuthorityCertDAL: { find: vi.fn() } as never,
       caKeySourceService: {} as never,
       externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
-      permissionService: mockPermissionService,
+      projectsDomain: mockProjectsDomain,
+      certManagerDomain: mockCertManagerDomain,
       kmsCoreDomain: mockKmsService,
       projectDAL: mockProjectDAL,
       resourceMetadataDAL: mockResourceMetadataDAL

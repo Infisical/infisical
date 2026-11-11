@@ -1,12 +1,15 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import { z } from "zod";
 
-import { ActionProjectType, ResourceType, TCertificateRequests } from "@app/db/schemas";
+import { ActionProjectType, ProjectType, TCertificateRequests } from "@app/db/schemas";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -14,7 +17,7 @@ import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -56,7 +59,9 @@ type TCertificateRequestServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateService: Pick<TCertificateServiceFactory, "getCertBody" | "getCertPrivateKey">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  certManagerDomain: Pick<TCertManagerDomain, "getApplicationPermission">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   queueService: Pick<TQueueServiceFactory, "stopJobById" | "cancelActiveJob">;
   userDAL: Pick<TUserDALFactory, "findById">;
@@ -159,6 +164,8 @@ export const certificateRequestServiceFactory = ({
   pkiApplicationDAL,
   certificateService,
   permissionService,
+  projectsDomain,
+  certManagerDomain,
   resourceMetadataDAL,
   queueService,
   userDAL,
@@ -240,14 +247,7 @@ export const certificateRequestServiceFactory = ({
     return certificateRequest;
   };
 
-  const getCertificateRequest = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId,
-    certificateRequestId
-  }: TGetCertificateRequestDTO) => {
+  const getCertificateRequest = async ({ actor, projectId, certificateRequestId }: TGetCertificateRequestDTO) => {
     const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
     if (!certificateRequest) {
       throw new NotFoundError({ message: "Certificate request not found" });
@@ -257,105 +257,102 @@ export const certificateRequestServiceFactory = ({
       throw new NotFoundError({ message: "Certificate request not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const metadataRows = await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id });
     const requestMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    const certSubject = subject(ProjectPermissionSub.Certificates, {
+    const certSubject = {
       commonName: certificateRequest.commonName ?? undefined,
       altNames: Array.isArray(certificateRequest.altNames)
         ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
         : undefined,
       metadata: requestMetadata
-    });
+    };
 
-    if (!permission.can(ProjectPermissionCertificateActions.Read, certSubject)) {
+    if (
+      !permission.can({
+        action: ProjectPermissionCertificateActions.Read,
+        subject: ProjectPermissionSub.Certificates,
+        fields: certSubject
+      })
+    ) {
       let allowedByResource = false;
       if (certificateRequest.applicationId) {
-        const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        const resourcePermission = await certManagerDomain.getApplicationPermission({
           actor,
-          actorId,
           projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: certificateRequest.applicationId,
-          actorAuthMethod,
-          actorOrgId
+          applicationId: certificateRequest.applicationId
         });
-        allowedByResource = resourcePermission.can(
-          ResourcePermissionCertificateActions.Read,
-          ResourcePermissionSub.Certificates
-        );
+        allowedByResource = resourcePermission.can({
+          action: ResourcePermissionCertificateActions.Read,
+          subject: ResourcePermissionSub.Certificates
+        });
       }
       if (!allowedByResource) {
-        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCertificateActions.Read, certSubject);
+        permission.assert({
+          action: ProjectPermissionCertificateActions.Read,
+          subject: ProjectPermissionSub.Certificates,
+          fields: certSubject
+        });
       }
     }
 
     return certificateRequest;
   };
 
-  const getCertificateFromRequest = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    certificateRequestId
-  }: TGetCertificateFromRequestDTO) => {
+  const getCertificateFromRequest = async ({ actor, certificateRequestId }: TGetCertificateFromRequestDTO) => {
     const certificateRequest = await certificateRequestDAL.findByIdWithCertificate(certificateRequestId);
     if (!certificateRequest) {
       throw new NotFoundError({ message: "Certificate request not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: certificateRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const metadataRows = await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id });
     const requestMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-    const certFromRequestSubject = subject(ProjectPermissionSub.Certificates, {
+    const certFromRequestSubject = {
       commonName: certificateRequest.commonName ?? undefined,
       altNames: Array.isArray(certificateRequest.altNames)
         ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
         : undefined,
       metadata: requestMetadata
-    });
+    };
 
-    if (!permission.can(ProjectPermissionCertificateActions.Read, certFromRequestSubject)) {
+    if (
+      !permission.can({
+        action: ProjectPermissionCertificateActions.Read,
+        subject: ProjectPermissionSub.Certificates,
+        fields: certFromRequestSubject
+      })
+    ) {
       let allowedByResource = false;
       if (certificateRequest.applicationId) {
-        const { permission: resourcePermission } = await permissionService.getResourcePermission({
+        const resourcePermission = await certManagerDomain.getApplicationPermission({
           actor,
-          actorId,
           projectId: certificateRequest.projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: certificateRequest.applicationId,
-          actorAuthMethod,
-          actorOrgId
+          applicationId: certificateRequest.applicationId
         });
-        allowedByResource = resourcePermission.can(
-          ResourcePermissionCertificateActions.Read,
-          ResourcePermissionSub.Certificates
-        );
+        allowedByResource = resourcePermission.can({
+          action: ResourcePermissionCertificateActions.Read,
+          subject: ResourcePermissionSub.Certificates
+        });
       }
       if (!allowedByResource) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateActions.Read,
-          certFromRequestSubject
-        );
+        permission.assert({
+          action: ProjectPermissionCertificateActions.Read,
+          subject: ProjectPermissionSub.Certificates,
+          fields: certFromRequestSubject
+        });
       }
     }
 
@@ -401,38 +398,32 @@ export const certificateRequestServiceFactory = ({
     // Get certificate body (PEM data)
     const certBody = await certificateService.getCertBody({
       id: certificateRequest.certificate.id,
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
+      actor
     });
 
     let canReadPrivateKey: boolean;
     if (certificateRequest.applicationId) {
-      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+      const resourcePermission = await certManagerDomain.getApplicationPermission({
         actor,
-        actorId,
         projectId: certificateRequest.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: certificateRequest.applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId: certificateRequest.applicationId
       });
-      canReadPrivateKey = resourcePermission.can(
-        ResourcePermissionCertificateActions.ReadPrivateKey,
-        ResourcePermissionSub.Certificates
-      );
+      canReadPrivateKey = resourcePermission.can({
+        action: ResourcePermissionCertificateActions.ReadPrivateKey,
+        subject: ResourcePermissionSub.Certificates
+      });
     } else {
-      canReadPrivateKey = permission.can(
-        ProjectPermissionCertificateActions.ReadPrivateKey,
-        subject(ProjectPermissionSub.Certificates, {
+      canReadPrivateKey = permission.can({
+        action: ProjectPermissionCertificateActions.ReadPrivateKey,
+        subject: ProjectPermissionSub.Certificates,
+        fields: {
           commonName: certificateRequest.commonName ?? undefined,
           altNames: Array.isArray(certificateRequest.altNames)
             ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
             : undefined,
           metadata: requestMetadata
-        })
-      );
+        }
+      });
     }
 
     let privateKey: string | null = null;
@@ -440,10 +431,7 @@ export const certificateRequestServiceFactory = ({
       try {
         const certPrivateKey = await certificateService.getCertPrivateKey({
           id: certificateRequest.certificate.id,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId
+          actor
         });
         privateKey = certPrivateKey.certPrivateKey;
       } catch (error) {
@@ -528,9 +516,6 @@ export const certificateRequestServiceFactory = ({
 
   const listCertificateRequests = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     offset = 0,
     limit = 20,
@@ -547,36 +532,30 @@ export const certificateRequestServiceFactory = ({
     let processedRules: ReturnType<typeof getProcessedPermissionRules> | undefined;
     let allowedByResource = false;
 
-    if (applicationId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
-      const { permission: resourcePermission } = await permissionService.getResourcePermission({
-        actor,
-        actorId,
-        projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: applicationId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      if (resourcePermission.can(ResourcePermissionCertificateActions.Read, ResourcePermissionSub.Certificates)) {
+    if (applicationId && (actor.principal.type === ActorType.USER || actor.principal.type === ActorType.IDENTITY)) {
+      const resourcePermission = await certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
+      if (
+        resourcePermission.can({
+          action: ResourcePermissionCertificateActions.Read,
+          subject: ResourcePermissionSub.Certificates
+        })
+      ) {
         allowedByResource = true;
       }
     }
 
     if (!allowedByResource) {
-      const { permission: projectPermission } = await permissionService.getProjectPermission({
+      const projectPermission = await projectsDomain.getProjectPermission({
         actor,
-        actorId,
         projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Read,
-        ProjectPermissionSub.Certificates
-      );
+      projectPermission.assert({
+        action: ProjectPermissionCertificateActions.Read,
+        subject: ProjectPermissionSub.Certificates
+      });
       processedRules = getProcessedPermissionRules(
-        projectPermission,
+        projectPermission.toAbility(),
         ProjectPermissionCertificateActions.Read,
         ProjectPermissionSub.Certificates
       );
@@ -616,15 +595,9 @@ export const certificateRequestServiceFactory = ({
 
   const cancelCertificateRequest = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     certificateRequestId
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     certificateRequestId: string;
   }) => {
     const certificateRequest = await certificateRequestDAL.findById(certificateRequestId);
@@ -632,13 +605,10 @@ export const certificateRequestServiceFactory = ({
       throw new NotFoundError({ message: "Certificate request not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: certificateRequest.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const requestMetadata = (await resourceMetadataDAL.find({ certificateRequestId: certificateRequest.id })).map(
@@ -647,31 +617,28 @@ export const certificateRequestServiceFactory = ({
 
     let allowedByResource = false;
     if (certificateRequest.applicationId) {
-      const { permission: resourcePermission } = await permissionService.getResourcePermission({
+      const resourcePermission = await certManagerDomain.getApplicationPermission({
         actor,
-        actorId,
         projectId: certificateRequest.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: certificateRequest.applicationId,
-        actorAuthMethod,
-        actorOrgId
+        applicationId: certificateRequest.applicationId
       });
-      allowedByResource = resourcePermission.can(
-        ResourcePermissionCertificateActions.Edit,
-        ResourcePermissionSub.Certificates
-      );
+      allowedByResource = resourcePermission.can({
+        action: ResourcePermissionCertificateActions.Edit,
+        subject: ResourcePermissionSub.Certificates
+      });
     }
     if (!allowedByResource) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Edit,
-        subject(ProjectPermissionSub.Certificates, {
+      permission.assert({
+        action: ProjectPermissionCertificateActions.Edit,
+        subject: ProjectPermissionSub.Certificates,
+        fields: {
           commonName: certificateRequest.commonName ?? undefined,
           altNames: Array.isArray(certificateRequest.altNames)
             ? (certificateRequest.altNames as { type: string; value: string }[]).map((san) => san.value)
             : undefined,
           metadata: requestMetadata
-        })
-      );
+        }
+      });
     }
 
     const previousStatus = certificateRequest.status as CertificateRequestStatus;
@@ -693,14 +660,14 @@ export const certificateRequestServiceFactory = ({
     }
 
     let actorLabel = "user";
-    if (actor === ActorType.USER) {
-      const user = await userDAL.findById(actorId);
+    if (actor.principal.type === ActorType.USER) {
+      const user = await userDAL.findById(actor.principal.id);
       const name = user
         ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username || user.email || ""
         : "";
       actorLabel = name ? `user ${name}` : "user";
-    } else if (actor === ActorType.IDENTITY) {
-      const identity = await identityDAL.findById(actorId);
+    } else if (actor.principal.type === ActorType.IDENTITY) {
+      const identity = await identityDAL.findById(actor.principal.id);
       actorLabel = identity?.name ? `identity ${identity.name}` : "identity";
     }
 

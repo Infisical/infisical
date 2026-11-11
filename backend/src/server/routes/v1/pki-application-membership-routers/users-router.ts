@@ -54,10 +54,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const memberships = await server.services.pkiApplicationMembership.listMembers({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         kind: ApplicationMemberKind.User
@@ -96,10 +93,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
       const { emails } = req.body;
 
       const result = await server.services.pkiApplicationMembership.addUserMembers({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId,
         applicationId: req.params.applicationId,
         userIds: req.body.userIds,
@@ -160,10 +154,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const membership = await server.services.pkiApplicationMembership.updateMemberRole({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         kind: ApplicationMemberKind.User,
@@ -220,10 +211,7 @@ export const registerPkiApplicationUserMembershipRouter = async (server: Fastify
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pkiApplicationMembership.removeMember({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         kind: ApplicationMemberKind.User,

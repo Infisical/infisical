@@ -1,5 +1,5 @@
 import { TCertificateAuthoritySecret } from "@app/db/schemas";
-import { OrgServiceActor } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
@@ -32,7 +32,7 @@ export type TCaKeyDetails = {
 export type TExternalCaKeyProvider = {
   displayName: string;
   supportedKeyAlgorithms: readonly CertKeyAlgorithm[];
-  assertCanUse: (args: { actor: OrgServiceActor; projectId: string; input: TExternalCaKeyInput }) => Promise<void>;
+  assertCanUse: (args: { actor: TActorContext; projectId: string; input: TExternalCaKeyInput }) => Promise<void>;
   createKey: (args: {
     projectId: string;
     caName: string;

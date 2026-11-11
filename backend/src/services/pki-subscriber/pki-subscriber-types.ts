@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import { CertExtendedKeyUsage, CertKeyUsage } from "../certificate/certificate-types";
 
@@ -19,11 +19,13 @@ export type TCreatePkiSubscriberDTO = {
   enableAutoRenewal?: boolean;
   autoRenewalPeriodInDays?: number;
   properties?: TPkiSubscriberProperties;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetPkiSubscriberDTO = {
   subscriberName: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdatePkiSubscriberDTO = {
   subscriberName: string;
@@ -38,34 +40,41 @@ export type TUpdatePkiSubscriberDTO = {
   enableAutoRenewal?: boolean;
   autoRenewalPeriodInDays?: number;
   properties?: TPkiSubscriberProperties;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TDeletePkiSubscriberDTO = {
   subscriberName: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TIssuePkiSubscriberCertDTO = {
   subscriberName: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TOrderPkiSubscriberCertDTO = {
   subscriberName: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TSignPkiSubscriberCertDTO = {
   subscriberName: string;
   csr: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TListPkiSubscriberCertsDTO = {
   subscriberName: string;
   offset: number;
   limit: number;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetSubscriberActiveCertBundleDTO = {
   subscriberName: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export enum SubscriberOperationStatus {
   SUCCESS = "success",

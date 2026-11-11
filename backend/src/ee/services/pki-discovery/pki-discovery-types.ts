@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import type { LinuxServerTargetConfigSchema, WindowsServerTargetConfigSchema } from "./pki-discovery-schemas";
 
@@ -147,8 +147,7 @@ export type TCreatePkiDiscoveryDTO = {
   scanIntervalDays?: number;
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
-  orgActor: OrgServiceActor;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdatePkiDiscoveryDTO = {
   discoveryId: string;
@@ -160,37 +159,36 @@ export type TUpdatePkiDiscoveryDTO = {
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
   isActive?: boolean;
-  orgActor: OrgServiceActor;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeletePkiDiscoveryDTO = {
   discoveryId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetPkiDiscoveryDTO = {
   discoveryId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListPkiDiscoveriesDTO = {
   projectId: string;
   offset?: number;
   limit?: number;
   search?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TTriggerPkiDiscoveryScanDTO = {
   discoveryId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetLatestScanDTO = {
   discoveryId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetScanHistoryDTO = {
   discoveryId: string;
   offset?: number;
   limit?: number;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListPkiInstallationsDTO = {
   projectId: string;
@@ -199,25 +197,25 @@ export type TListPkiInstallationsDTO = {
   offset?: number;
   limit?: number;
   search?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetPkiInstallationDTO = {
   installationId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdatePkiInstallationDTO = {
   installationId: string;
   name?: string;
   keystorePassword?: string | null;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeletePkiInstallationDTO = {
   installationId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetPkiInstallationsByCertificateIdDTO = {
   certificateId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TScanTarget = {
   host: string;

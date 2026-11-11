@@ -1,4 +1,4 @@
-import { OrgServiceActor } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 export type THsmConnectorCredentials = {
   slotLabel: string;
@@ -74,4 +74,4 @@ export type THsmConnectorKey = {
   keyAlgorithm: string;
 };
 
-export type THsmConnectorServiceActor = OrgServiceActor;
+export type THsmConnectorServiceActor = TActorContext;

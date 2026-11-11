@@ -106,7 +106,7 @@ type TRequestIssuanceInput = {
     hsmKeyLabel?: string;
     hsmKeyId?: string | null;
     hsmPublicKeySpki?: Buffer;
-    actor?: Pick<THsmConnectorServiceActor, "type" | "id" | "authMethod" | "orgId">;
+    actor?: THsmConnectorServiceActor;
   };
   // DigiCert code signing only; absent means a fresh order.
   digicertLifecycle?: { mode: "renew" | "reissue"; previousOrderId: number };

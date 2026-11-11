@@ -5,8 +5,7 @@ import { TCertificates } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
 import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
@@ -84,11 +83,11 @@ export type TCreateCaDTO =
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
       isOcspEnabled?: boolean;
-    } & Omit<TProjectPermission, "projectId">);
+    } & TActorInput);
 
 export type TGetCaDTO = {
   caId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateCaDTO =
   | {
@@ -108,18 +107,18 @@ export type TUpdateCaDTO =
       crlDistributionPointUrls?: string[];
       disableManagedCrlDistributionPointUrl?: boolean;
       isOcspEnabled?: boolean;
-    } & Omit<TProjectPermission, "projectId">);
+    } & TActorInput);
 
 export type TDeleteCaDTO = {
   caId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGenerateRootCaCertificateDTO = {
   caId: string;
   notBefore: string;
   notAfter: string;
   maxPathLength?: number | null;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetCaCsrDTO = {
   isInternal?: boolean;
@@ -128,15 +127,12 @@ export type TGetCaCsrDTO = {
   | {
       isInternal: true;
       caId: string;
-      actorId?: undefined;
-      actorAuthMethod?: undefined;
       actor?: undefined;
-      actorOrgId?: undefined;
     }
   | ({
       isInternal?: false;
       caId: string;
-    } & Omit<TProjectPermission, "projectId">)
+    } & TActorInput)
 );
 
 export type TRenewCaCertDTO =
@@ -145,30 +141,27 @@ export type TRenewCaCertDTO =
       caId: string;
       notAfter: string;
       type?: CaRenewalType;
-      actorId?: undefined;
-      actorAuthMethod?: undefined;
       actor?: undefined;
-      actorOrgId?: undefined;
     }
   | ({
       isInternal?: false;
       caId: string;
       notAfter: string;
       type: CaRenewalType;
-    } & Omit<TProjectPermission, "projectId">);
+    } & TActorInput);
 
 export type TGetCaCertsDTO = {
   caId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetCaCertDTO = {
   caId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetCaCertByIdDTO = {
   caId: string;
   certId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TSignIntermediateDTO = {
   isInternal?: boolean;
@@ -180,10 +173,7 @@ export type TSignIntermediateDTO = {
       notBefore?: string;
       notAfter: string;
       maxPathLength: number;
-      actorId?: undefined;
-      actorAuthMethod?: undefined;
       actor?: undefined;
-      actorOrgId?: undefined;
     }
   | ({
       isInternal?: false;
@@ -192,7 +182,7 @@ export type TSignIntermediateDTO = {
       notBefore?: string;
       notAfter: string;
       maxPathLength: number;
-    } & Omit<TProjectPermission, "projectId">)
+    } & TActorInput)
 );
 
 export type TImportCertToCaDTO = {
@@ -205,10 +195,7 @@ export type TImportCertToCaDTO = {
       certificate: string;
       certificateChain: string;
       parentCaId?: string | undefined;
-      actorId?: undefined;
-      actorAuthMethod?: undefined;
       actor?: undefined;
-      actorOrgId?: undefined;
     }
   | ({
       isInternal?: false;
@@ -216,7 +203,7 @@ export type TImportCertToCaDTO = {
       certificate: string;
       certificateChain: string;
       parentCaId?: string;
-    } & Omit<TProjectPermission, "projectId">)
+    } & TActorInput)
 );
 
 export type TBasicConstraints = {
@@ -257,14 +244,11 @@ type TIssueCertFromCaBaseDTO = {
 export type TIssueCertFromCaDTO =
   | (TIssueCertFromCaBaseDTO & {
       internal: true;
-      actor?: ActorType;
-      actorId?: string;
-      actorAuthMethod?: ActorAuthMethod;
-      actorOrgId?: string;
+      actor?: undefined;
     })
   | (TIssueCertFromCaBaseDTO & {
       internal?: false;
-    } & Omit<TProjectPermission, "projectId">);
+    } & TActorInput);
 
 export type TSignCertFromCaDTO =
   | {
@@ -322,11 +306,11 @@ export type TSignCertFromCaDTO =
       customExtensions?: TResolvedCustomExtension[];
       /** See the `onPersisted` note on the internal variant above. */
       onPersisted?: (cert: TCertificates, tx: Knex) => Promise<void>;
-    } & Omit<TProjectPermission, "projectId">);
+    } & TActorInput);
 
 export type TGetCaCertificateTemplatesDTO = {
   caId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDNParts = {
   commonName?: string;

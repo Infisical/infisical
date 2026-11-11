@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput, TProjectPermission } from "@app/lib/types";
 import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 
 import { CertificateIssuanceOperation, CertificateRequestStatus } from "../certificate-common/certificate-constants";
@@ -44,11 +44,12 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
   domainComponents?: string[];
 };
 
-export type TGetCertificateRequestDTO = TProjectPermission & {
+export type TGetCertificateRequestDTO = TActorInput & {
+  projectId: string;
   certificateRequestId: string;
 };
 
-export type TGetCertificateFromRequestDTO = Omit<TProjectPermission, "projectId"> & {
+export type TGetCertificateFromRequestDTO = TActorInput & {
   certificateRequestId: string;
 };
 
@@ -66,7 +67,8 @@ export type TAttachCertificateToRequestDTO = {
   certificateId: string;
 };
 
-export type TListCertificateRequestsDTO = TProjectPermission & {
+export type TListCertificateRequestsDTO = TActorInput & {
+  projectId: string;
   offset?: number;
   limit?: number;
   search?: string;

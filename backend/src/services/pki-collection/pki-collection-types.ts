@@ -1,23 +1,24 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TCreatePkiCollectionDTO = {
   name: string;
   description: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetPkiCollectionByIdDTO = {
   collectionId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdatePkiCollectionDTO = {
   collectionId: string;
   name?: string;
   description?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeletePkiCollectionDTO = {
   collectionId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export enum PkiItemType {
   CERTIFICATE = "certificate",
@@ -34,15 +35,15 @@ export type TGetPkiCollectionItems = {
   type?: PkiItemType;
   offset: number;
   limit: number;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TAddItemToPkiCollectionDTO = {
   collectionId: string;
   type: PkiItemType;
   itemId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRemoveItemFromPkiCollectionDTO = {
   collectionId: string;
   itemId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

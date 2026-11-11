@@ -671,6 +671,7 @@ export const registerRoutes = async (
   const kmsDomain = withProjectAuditContext.kms(domains.kms.service);
   const secretScanningDomain = withProjectAuditContext.secretScanning(domains.secretScanning.service);
   const agentVaultDomain = withProjectAuditContext.agentVault(domains.agentVault.service);
+  const codeSigningDomain = domains.codeSigning.service;
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
   // the fleet reports itself in Redis and every api pod complains when the reports stop.
@@ -1974,7 +1975,7 @@ export const registerRoutes = async (
     certificateAuthorityCrlDAL,
     projectDAL,
     kmsCoreDomain,
-    permissionService
+    projectsDomain
     // license
   });
 
@@ -1982,7 +1983,7 @@ export const registerRoutes = async (
     certificateTemplateDAL,
     certificateTemplateEstConfigDAL,
     certificateAuthorityDAL,
-    permissionService,
+    projectsDomain,
     kmsCoreDomain,
     projectDAL,
     licenseDomain
@@ -1990,7 +1991,8 @@ export const registerRoutes = async (
 
   const certificatePolicyService = certificatePolicyServiceFactory({
     certificatePolicyDAL,
-    permissionService
+    projectsDomain,
+    certManagerDomain
   });
 
   const pkiApplicationService = pkiApplicationServiceFactory({
@@ -2001,7 +2003,8 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     approvalRequestDAL,
     pkiSyncDAL,
-    permissionService,
+    projectsDomain,
+    certManagerDomain,
     alertService
   });
 
@@ -2010,7 +2013,7 @@ export const registerRoutes = async (
     orgDAL,
     membershipDAL,
     membershipRoleDAL,
-    permissionService,
+    certManagerDomain,
     userDAL,
     identityDAL,
     groupDAL,
@@ -2024,7 +2027,7 @@ export const registerRoutes = async (
     orgDAL,
     membershipDAL,
     membershipRoleDAL,
-    permissionService,
+    codeSigningDomain,
     userDAL,
     identityDAL,
     groupDAL,
@@ -2185,13 +2188,13 @@ export const registerRoutes = async (
     db,
     orgDAL,
     projectDAL,
-    permissionService
+    organizationsDomain
   });
 
   const pkiAlertService = pkiAlertServiceFactory({
     pkiAlertDAL,
     pkiCollectionDAL,
-    permissionService,
+    projectsDomain,
     smtpService
   });
 
@@ -2200,7 +2203,7 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     certificateAuthorityDAL,
     certificateDAL,
-    permissionService
+    projectsDomain
   });
 
   const projectTemplateService = projectTemplateServiceFactory({
@@ -3180,7 +3183,8 @@ export const registerRoutes = async (
     pkiAlertV2DAL,
     pkiAlertChannelDAL,
     pkiAlertHistoryDAL,
-    permissionService,
+    projectsDomain,
+    certManagerDomain,
     licenseDomain,
     smtpService,
     kmsCoreDomain,
@@ -3205,13 +3209,14 @@ export const registerRoutes = async (
 
   const certificateCleanupService = certificateCleanupServiceFactory({
     certificateCleanupConfigDAL,
-    permissionService
+    projectsDomain
   });
 
   const certificateInventoryViewService = certificateInventoryViewServiceFactory({
     certificateInventoryViewDAL,
     pkiApplicationDAL,
-    permissionService
+    projectsDomain,
+    certManagerDomain
   });
 
   const dynamicSecretService = dynamicSecretServiceFactory({
@@ -3615,7 +3620,7 @@ export const registerRoutes = async (
   const hsmConnectorService = hsmConnectorServiceFactory({
     orgDAL,
     hsmConnectorDAL,
-    permissionService,
+    projectsDomain,
     kmsCoreDomain,
     gatewayV2Service,
     gatewayPoolService,
@@ -3665,7 +3670,8 @@ export const registerRoutes = async (
     certificateAuthorityCertDAL,
     caKeySourceService,
     externalCertificateAuthorityDAL,
-    permissionService,
+    projectsDomain,
+    certManagerDomain,
     kmsCoreDomain,
     projectDAL,
     resourceMetadataDAL,
@@ -4019,7 +4025,7 @@ export const registerRoutes = async (
     projectDAL,
     internalCertificateAuthorityDAL,
     kmsCoreDomain,
-    permissionService,
+    projectsDomain,
     licenseDomain,
     caSigningConfigDAL,
     caKeySourceService
@@ -4031,7 +4037,7 @@ export const registerRoutes = async (
     certificateAuthorityCrossSignedCertDAL,
     projectDAL,
     kmsCoreDomain,
-    permissionService,
+    projectsDomain,
     licenseDomain
   });
 
@@ -4051,7 +4057,7 @@ export const registerRoutes = async (
     caSigningConfigDAL,
     certificateAuthorityDAL,
     internalCertificateAuthorityDAL,
-    permissionService,
+    projectsDomain,
     licenseDomain,
     appConnectionService,
     caAutoRenewalQueue
@@ -4060,7 +4066,7 @@ export const registerRoutes = async (
   const certificateAuthorityService = certificateAuthorityServiceFactory({
     pkiApplicationDAL,
     certificateAuthorityDAL,
-    permissionService,
+    projectsDomain,
     appConnectionDAL,
     appConnectionService,
     externalCertificateAuthorityDAL,
@@ -4110,7 +4116,7 @@ export const registerRoutes = async (
     projectDAL,
     orgDAL,
     kmsCoreDomain,
-    permissionService
+    organizationsDomain
   });
 
   const pkiSubscriberQueue = pkiSubscriberQueueServiceFactory({
@@ -4151,7 +4157,7 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     projectDAL,
     kmsCoreDomain,
-    permissionService,
+    projectsDomain,
     pkiCollectionDAL,
     pkiCollectionItemDAL,
     certificateSyncDAL,
@@ -4194,6 +4200,8 @@ export const registerRoutes = async (
     pkiApplicationDAL,
     certificateService,
     permissionService,
+    projectsDomain,
+    certManagerDomain,
     resourceMetadataDAL,
     queueService,
     userDAL,
@@ -4345,7 +4353,7 @@ export const registerRoutes = async (
     caKeySourceService,
     kmsCoreDomain,
     projectDAL,
-    permissionService
+    certManagerDomain
   });
 
   const pamAccessRequestService = pamAccessRequestServiceFactory({
@@ -4505,6 +4513,7 @@ export const registerRoutes = async (
     acmeAccountDAL,
     internalCaService: internalCertificateAuthorityService,
     permissionService,
+    projectsDomain,
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
@@ -4617,7 +4626,7 @@ export const registerRoutes = async (
     certificateRequestService,
     certificateIssuanceQueue,
     auditLogService,
-    permissionService,
+    projectsDomain,
     pkiApplicationProfileDAL
   });
 
@@ -4674,7 +4683,7 @@ export const registerRoutes = async (
     certificateSecretDAL,
     projectDAL,
     kmsCoreDomain,
-    permissionService,
+    projectsDomain,
     certificateAuthorityQueue,
     internalCaFns,
     pkiSyncDAL,
@@ -4687,7 +4696,8 @@ export const registerRoutes = async (
     certificateSyncDAL,
     pkiSubscriberDAL,
     appConnectionService,
-    permissionService,
+    projectsDomain,
+    certManagerDomain,
     licenseDomain,
     keyStore,
     pkiSyncQueue,
@@ -4722,7 +4732,8 @@ export const registerRoutes = async (
     orgDAL,
     pkiDiscoveryConfigDAL,
     pkiDiscoveryScanHistoryDAL,
-    permissionService,
+    projectsDomain,
+    organizationsDomain,
     licenseDomain,
     gatewayV2DAL,
     gatewayPoolDAL,
@@ -4734,7 +4745,7 @@ export const registerRoutes = async (
 
   const pkiInstallationService = pkiInstallationServiceFactory({
     pkiCertificateInstallationDAL,
-    permissionService,
+    projectsDomain,
     kmsCoreDomain,
     appConnectionDAL,
     queueInstallationRescan: pkiDiscoveryQueue.queueInstallationRescan
@@ -4765,7 +4776,8 @@ export const registerRoutes = async (
     digicertFns: digicertCaFns,
     projectDAL,
     kmsCoreDomain,
-    permissionService,
+    projectsDomain,
+    codeSigningDomain,
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
     approvalPolicyStepApproversDAL,
@@ -4801,7 +4813,7 @@ export const registerRoutes = async (
     identityGroupMembershipDAL,
     userDAL,
     identityDAL,
-    permissionService,
+    codeSigningDomain,
     notificationService,
     smtpService,
     slackIntegrationDAL,
@@ -4821,7 +4833,7 @@ export const registerRoutes = async (
     certificateSecretDAL,
     projectDAL,
     kmsCoreDomain,
-    permissionService,
+    projectsDomain,
     internalCaFns
   });
 

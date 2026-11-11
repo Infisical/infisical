@@ -1,5 +1,6 @@
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput, TProjectPermission } from "@app/lib/types";
 
 import {
   CertExtendedKeyUsageType,
@@ -188,16 +189,20 @@ export type TRenewCertificateDTO = {
     reissue?: boolean;
   };
   auditLogInfo?: AuditLogInfo;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
+
+// The renewal queue renews on nobody's behalf and skips authorization; every other caller passes its actor.
+export type TRenewCertificateInput = Omit<TRenewCertificateDTO, "certificateRequestId" | "actor"> &
+  ({ internal: true; actor?: undefined } | { internal?: false; actor: TActorContext });
 
 export type TUpdateRenewalConfigDTO = {
   certificateId: string;
   renewBeforeDays: number;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDisableRenewalConfigDTO = {
   certificateId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRenewalConfigResponse = {
   applicationId?: string | null;
@@ -217,7 +222,7 @@ export type TDisableRenewalResponse = {
 export type TUpdateCertificateDTO = {
   certificateId: string;
   metadata?: Array<{ key: string; value: string }>;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TAltNameEntry = {
   type: CertSubjectAlternativeNameType;

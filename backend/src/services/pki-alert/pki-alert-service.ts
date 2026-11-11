@@ -1,8 +1,9 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectType } from "@app/db/schemas";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
@@ -18,7 +19,7 @@ type TPkiAlertServiceFactoryDep = {
     "create" | "findById" | "updateById" | "deleteById" | "getExpiringPkiCollectionItemsForAlerting"
   >;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
 
@@ -27,7 +28,7 @@ export type TPkiAlertServiceFactory = ReturnType<typeof pkiAlertServiceFactory>;
 export const pkiAlertServiceFactory = ({
   pkiAlertDAL,
   pkiCollectionDAL,
-  permissionService,
+  projectsDomain,
   smtpService
 }: TPkiAlertServiceFactoryDep) => {
   const sendPkiItemExpiryNotices = async () => {
@@ -69,21 +70,15 @@ export const pkiAlertServiceFactory = ({
     pkiCollectionId,
     alertBeforeDays,
     emails,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    actor
   }: TCreateAlertDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.PkiAlerts);
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.PkiAlerts });
 
     const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
     if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${pkiCollectionId}' not found` });
@@ -100,20 +95,17 @@ export const pkiAlertServiceFactory = ({
     return alert;
   };
 
-  const getPkiAlertById = async ({ alertId, actorId, actorAuthMethod, actor, actorOrgId }: TGetAlertByIdDTO) => {
+  const getPkiAlertById = async ({ alertId, actor }: TGetAlertByIdDTO) => {
     const alert = await pkiAlertDAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: alert.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.PkiAlerts });
     return alert;
   };
 
@@ -123,24 +115,18 @@ export const pkiAlertServiceFactory = ({
     pkiCollectionId,
     alertBeforeDays,
     emails,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    actor
   }: TUpdateAlertDTO) => {
     let alert = await pkiAlertDAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: alert.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.PkiAlerts);
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.PkiAlerts });
 
     if (pkiCollectionId) {
       const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
@@ -160,20 +146,17 @@ export const pkiAlertServiceFactory = ({
     return alert;
   };
 
-  const deletePkiAlert = async ({ alertId, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteAlertDTO) => {
+  const deletePkiAlert = async ({ alertId, actor }: TDeleteAlertDTO) => {
     let alert = await pkiAlertDAL.findById(alertId);
     if (!alert) throw new NotFoundError({ message: `Alert with ID '${alertId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: alert.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.PkiAlerts);
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.PkiAlerts });
     alert = await pkiAlertDAL.deleteById(alertId);
     return alert;
   };

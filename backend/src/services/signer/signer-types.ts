@@ -2,7 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import {
   TCodeSigningRequestScopeInput,
@@ -12,7 +12,7 @@ import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { CertKeyAlgorithm } from "../certificate/certificate-types";
 import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
-type TActorPermission = Omit<TProjectPermission, "projectId">;
+type TActorPermission = TActorInput;
 
 export type TCreateSignerMemberInput = {
   kind: "user" | "identity" | "group";
@@ -69,7 +69,8 @@ export type TCreateSignerDTO = {
   approvalPolicy?: TCreateSignerApprovalPolicyInput;
   certificate?: TSignerCertificateInput;
   externalConfiguration?: TSignerExternalConfigurationInput;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateSignerDTO = {
   signerId: string;
@@ -90,7 +91,8 @@ export type TListSignersDTO = {
   offset?: number;
   limit?: number;
   search?: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TSignDataDTO = {
   signerId: string;

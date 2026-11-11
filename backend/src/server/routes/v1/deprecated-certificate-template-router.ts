@@ -43,10 +43,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.getCertTemplate({
         id: req.params.certificateTemplateId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       return certificateTemplate;
@@ -97,10 +94,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.createCertTemplate({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -152,10 +146,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
       const certificateTemplate = await server.services.certificateTemplate.updateCertTemplate({
         ...req.body,
         id: req.params.certificateTemplateId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       return certificateTemplate;
@@ -185,10 +176,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     handler: async (req) => {
       const certificateTemplate = await server.services.certificateTemplate.deleteCertTemplate({
         id: req.params.certificateTemplateId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       return certificateTemplate;
@@ -230,10 +218,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     handler: async (req) => {
       const estConfig = await server.services.certificateTemplate.createEstConfiguration({
         certificateTemplateId: req.params.certificateTemplateId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -282,10 +267,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
     handler: async (req) => {
       const estConfig = await server.services.certificateTemplate.updateEstConfiguration({
         certificateTemplateId: req.params.certificateTemplateId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -331,10 +313,7 @@ export const registerDeprecatedCertificateTemplateRouter = async (server: Fastif
       const estConfig = await server.services.certificateTemplate.getEstConfiguration({
         isInternal: false,
         certificateTemplateId: req.params.certificateTemplateId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

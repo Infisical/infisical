@@ -485,10 +485,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const originalCertificate = await server.services.certificate.getCert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.params.certificateId
       });
       if (!originalCertificate) {
@@ -496,10 +493,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       }
 
       const data = await server.services.certificateV3.renewCertificate({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         auditLogInfo: req.auditLogInfo,
         certificateId: req.params.certificateId,
         removeRootsFromChain: req.body?.removeRootsFromChain
@@ -568,10 +562,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     handler: async (req) => {
       if (req.body.enableAutoRenewal === false) {
         const data = await server.services.certificateV3.disableRenewalConfig({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           certificateId: req.params.certificateId
         });
 
@@ -596,10 +587,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
 
       if (req.body.renewBeforeDays !== undefined) {
         const data = await server.services.certificateV3.updateRenewalConfig({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           certificateId: req.params.certificateId,
           renewBeforeDays: req.body.renewBeforeDays
         });

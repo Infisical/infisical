@@ -46,10 +46,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const result = await server.services.pkiAlertV2.listAlerts({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         applicationId: req.params.applicationId,
         search: req.query.search,
@@ -81,10 +78,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.createAlert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         applicationId: req.params.applicationId,
         projectId: req.internalCertManagerProjectId,
         ...req.body
@@ -144,10 +138,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.updateAlert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         applicationId: req.params.applicationId,
         alertId: req.params.alertId,
         ...req.body
@@ -205,10 +196,7 @@ export const registerPkiApplicationAlertRoutes = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.deleteAlert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         applicationId: req.params.applicationId,
         alertId: req.params.alertId
       });

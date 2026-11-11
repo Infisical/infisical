@@ -1,4 +1,3 @@
-import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import * as x509 from "@peculiar/x509";
 import { KeyObject } from "crypto";
@@ -6,16 +5,21 @@ import { Knex } from "knex";
 
 import {
   AccessScope,
-  ActionProjectType,
   ProjectMembershipRole,
+  ProjectType,
   RESOURCE_SCOPE,
   ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
+import { TCodeSigningDomain } from "@app/domains/certificates/code-signing/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { ProjectPermissionCodeSigningActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ProjectPermissionCodeSigningActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
@@ -189,7 +193,8 @@ type TSignerServiceFactoryDep = {
   >;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsCoreDomain: TKmsCoreDomain;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  codeSigningDomain: Pick<TCodeSigningDomain, "getSignerPermission">;
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "create">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "create">;
@@ -364,7 +369,8 @@ export const signerServiceFactory = ({
   digicertFns,
   projectDAL,
   kmsCoreDomain,
-  permissionService,
+  projectsDomain,
+  codeSigningDomain,
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
   approvalPolicyStepApproversDAL,
@@ -389,23 +395,8 @@ export const signerServiceFactory = ({
     kmsCoreDomain
   };
 
-  const $loadSignerResourcePermission = async (
-    signerId: string,
-    projectId: string,
-    actor: TGetSignerDTO["actor"],
-    actorId: string,
-    actorAuthMethod: TGetSignerDTO["actorAuthMethod"],
-    actorOrgId?: string
-  ) =>
-    permissionService.getResourcePermission({
-      actor,
-      actorId,
-      projectId,
-      resourceType: ResourceType.Signer,
-      resourceId: signerId,
-      actorAuthMethod,
-      actorOrgId
-    });
+  const $loadSignerResourcePermission = async (signerId: string, projectId: string, actor: TActorContext) =>
+    codeSigningDomain.getSignerPermission({ actor, projectId, signerId });
 
   const $issueInternalCaCertificate = async (input: {
     caId: string;
@@ -529,18 +520,15 @@ export const signerServiceFactory = ({
   };
 
   const checkCertificateImport = async (dto: TCheckCertificateImportDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor: dto.actor,
-      actorId: dto.actorId,
       projectId: dto.projectId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCodeSigningActions.Create,
-      ProjectPermissionSub.CodeSigners
-    );
+    permission.assert({
+      action: ProjectPermissionCodeSigningActions.Create,
+      subject: ProjectPermissionSub.CodeSigners
+    });
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
     if (!ca || ca.projectId !== dto.projectId) {
       throw new NotFoundError({ message: `Certificate authority '${dto.caId}' not found in this organization.` });
@@ -552,7 +540,7 @@ export const signerServiceFactory = ({
       projectId: dto.projectId,
       orderId,
       certificate: { keySource: CertKeySource.Hsm, ...dto.certificate },
-      actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
+      actor: dto.actor
     });
     return {
       hsmKeyId: verified.hsm.hsmKeyId,
@@ -617,21 +605,18 @@ export const signerServiceFactory = ({
   };
 
   const create = async (dto: TCreateSignerDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor: dto.actor,
-      actorId: dto.actorId,
       projectId: dto.projectId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCodeSigningActions.Create,
-      ProjectPermissionSub.CodeSigners
-    );
+    permission.assert({
+      action: ProjectPermissionCodeSigningActions.Create,
+      subject: ProjectPermissionSub.CodeSigners
+    });
 
-    const plan = await licenseDomain.getPlan(dto.actorOrgId);
+    const plan = await licenseDomain.getPlan(dto.actor.org.id);
     if (!plan.pkiCodeSigning) {
       throw new BadRequestError({
         message: "Failed to create code signer due to plan restriction. Upgrade plan to access PKI code signing."
@@ -753,7 +738,7 @@ export const signerServiceFactory = ({
             projectId: dto.projectId,
             orderId: importOrderId,
             certificate: dto.certificate,
-            actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
+            actor: dto.actor
           })
         : null;
 
@@ -779,7 +764,7 @@ export const signerServiceFactory = ({
         certificateTtlDays: dto.certificateTtlDays,
         keyAlgorithm,
         certificate: dto.certificate,
-        actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
+        actor: dto.actor
       });
     }
 
@@ -848,13 +833,13 @@ export const signerServiceFactory = ({
           tx
         );
 
-        if (dto.actor === ActorType.USER && dto.actorOrgId) {
+        if (dto.actor.principal.type === ActorType.USER && dto.actor.org.id) {
           const newMembership = await membershipDAL.create(
             {
               scope: RESOURCE_SCOPE,
-              scopeOrgId: dto.actorOrgId,
+              scopeOrgId: dto.actor.org.id,
               scopeProjectId: dto.projectId,
-              actorUserId: dto.actorId,
+              actorUserId: dto.actor.principal.id,
               scopeResourceType: ResourceType.Signer,
               scopeResourceId: signer.id,
               isActive: true
@@ -865,9 +850,9 @@ export const signerServiceFactory = ({
         }
 
         const pendingMembers = (dto.members ?? []).filter(
-          (m) => !(m.kind === "user" && dto.actor === ActorType.USER && m.id === dto.actorId)
+          (m) => !(m.kind === "user" && dto.actor.principal.type === ActorType.USER && m.id === dto.actor.principal.id)
         );
-        if (pendingMembers.length > 0 && !dto.actorOrgId) {
+        if (pendingMembers.length > 0 && !dto.actor.org.id) {
           throw new BadRequestError({
             message: "Cannot add members during signer creation without an organization context."
           });
@@ -930,7 +915,7 @@ export const signerServiceFactory = ({
           }
 
           await lockAndAssertActiveOrgAccess(
-            { orgDAL, orgId: dto.actorOrgId, userIds: pendingUserIds, identityIds: pendingIdentityIds },
+            { orgDAL, orgId: dto.actor.org.id, userIds: pendingUserIds, identityIds: pendingIdentityIds },
             tx
           );
         }
@@ -941,7 +926,7 @@ export const signerServiceFactory = ({
           }
           const membershipFields = {
             scope: RESOURCE_SCOPE,
-            scopeOrgId: dto.actorOrgId,
+            scopeOrgId: dto.actor.org.id,
             scopeProjectId: dto.projectId,
             scopeResourceType: ResourceType.Signer,
             scopeResourceId: signer.id,
@@ -961,7 +946,7 @@ export const signerServiceFactory = ({
           const effectiveConstraints = approvalPolicy.constraints ?? {};
 
           const allowedApproverIds = new Set<string>();
-          if (dto.actor === ActorType.USER) allowedApproverIds.add(dto.actorId);
+          if (dto.actor.principal.type === ActorType.USER) allowedApproverIds.add(dto.actor.principal.id);
           const allowedGroupApproverIds = new Set<string>();
           for (const m of pendingMembers) {
             if (m.role !== ResourceMembershipRole.Auditor) {
@@ -1056,12 +1041,7 @@ export const signerServiceFactory = ({
                 ? {
                     hsmConnectorId: certificateInput.hsmConnectorId,
                     hsmKeyAlgorithm: mapCertKeyAlgorithmToHsmKeyAlgorithm(keyAlgorithm),
-                    actor: {
-                      type: dto.actor,
-                      id: dto.actorId,
-                      authMethod: dto.actorAuthMethod,
-                      orgId: dto.actorOrgId
-                    }
+                    actor: dto.actor
                   }
                 : undefined
           });
@@ -1094,27 +1074,21 @@ export const signerServiceFactory = ({
   };
 
   const list = async (dto: TListSignersDTO) => {
-    const { permission, hasRole } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor: dto.actor,
-      actorId: dto.actorId,
       projectId: dto.projectId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCodeSigningActions.Read,
-      ProjectPermissionSub.CodeSigners
-    );
+    permission.assert({ action: ProjectPermissionCodeSigningActions.Read, subject: ProjectPermissionSub.CodeSigners });
 
     let signerIds: string[] | undefined;
-    if (!hasRole(ProjectMembershipRole.Admin)) {
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       const memberships = await membershipDAL.findResourceMembershipsForActor({
         projectId: dto.projectId,
         resourceType: ResourceType.Signer,
-        actorType: dto.actor === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
-        actorId: dto.actorId
+        actorType: dto.actor.principal.type === ActorType.IDENTITY ? ActorType.IDENTITY : ActorType.USER,
+        actorId: dto.actor.principal.id
       });
       signerIds = Array.from(
         new Set(memberships.map((m) => m.scopeResourceId).filter((id): id is string => Boolean(id)))
@@ -1145,16 +1119,9 @@ export const signerServiceFactory = ({
       throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
     }
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
+    const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
 
     let externalOrder: { provider: string; orderId: number; status: string | null } | null = null;
     if (!signer.certificateId) {
@@ -1176,19 +1143,12 @@ export const signerServiceFactory = ({
       throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
     }
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
+    const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ReissueCertificate,
-      ResourcePermissionSub.Signer
-    );
+    permission.assert({
+      action: ResourcePermissionSignerActions.ReissueCertificate,
+      subject: ResourcePermissionSub.Signer
+    });
 
     await signerIssuanceService.runPendingJobNow(signer.id);
     return getById(dto);
@@ -1200,18 +1160,11 @@ export const signerServiceFactory = ({
       throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
     }
 
-    const { permission, memberships } = await $loadSignerResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
+    const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
 
     return {
       permissions: packRules(permission.rules),
-      memberships
+      memberships: permission.memberships.map((membership) => membership.toJSON())
     };
   };
 
@@ -1223,16 +1176,9 @@ export const signerServiceFactory = ({
 
     const { projectId } = existingSigner;
 
-    const { permission } = await $loadSignerResourcePermission(
-      existingSigner.id,
-      projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
+    const permission = await $loadSignerResourcePermission(existingSigner.id, projectId, dto.actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Edit, ResourcePermissionSub.Signer);
+    permission.assert({ action: ResourcePermissionSignerActions.Edit, subject: ResourcePermissionSub.Signer });
 
     const patch: Record<string, unknown> = {};
     if (dto.name !== undefined) patch.name = dto.name;
@@ -1269,19 +1215,9 @@ export const signerServiceFactory = ({
       throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
     }
 
-    const { permission } = await $loadSignerResourcePermission(
-      existingSigner.id,
-      existingSigner.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
+    const permission = await $loadSignerResourcePermission(existingSigner.id, existingSigner.projectId, dto.actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.Delete,
-      ResourcePermissionSub.Signer
-    );
+    permission.assert({ action: ResourcePermissionSignerActions.Delete, subject: ResourcePermissionSub.Signer });
 
     // Revoke the DigiCert order so a deleted signer can't leave a live publicly-trusted cert behind.
     // Best-effort and outside the deletion transaction so a DigiCert outage can't block the delete.
@@ -1338,18 +1274,8 @@ export const signerServiceFactory = ({
     const signer = await signerDAL.findById(dto.signerId);
     if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ManageStatus,
-      ResourcePermissionSub.Signer
-    );
+    const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
+    permission.assert({ action: ResourcePermissionSignerActions.ManageStatus, subject: ResourcePermissionSub.Signer });
 
     if (signer.status !== SignerStatus.Disabled) {
       throw new BadRequestError({
@@ -1368,18 +1294,8 @@ export const signerServiceFactory = ({
     const signer = await signerDAL.findById(dto.signerId);
     if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ManageStatus,
-      ResourcePermissionSub.Signer
-    );
+    const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
+    permission.assert({ action: ResourcePermissionSignerActions.ManageStatus, subject: ResourcePermissionSub.Signer });
 
     if (signer.status === SignerStatus.Disabled) return signer;
     return signerDAL.updateById(dto.signerId, { status: SignerStatus.Disabled });
@@ -1411,7 +1327,7 @@ export const signerServiceFactory = ({
           hsmPublicKeySpki: target.switchingKeySource
             ? undefined
             : (currentCert?.hsmPublicKeySpki ?? recoveredKeyConfig?.hsmPublicKeySpki ?? undefined),
-          actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
+          actor: dto.actor
         }
       : undefined;
 
@@ -1509,18 +1425,11 @@ export const signerServiceFactory = ({
     const signer = await signerDAL.findById(dto.signerId);
     if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ReissueCertificate,
-      ResourcePermissionSub.Signer
-    );
+    const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
+    permission.assert({
+      action: ResourcePermissionSignerActions.ReissueCertificate,
+      subject: ResourcePermissionSub.Signer
+    });
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
     if (!ca || ca.projectId !== signer.projectId) {
@@ -1537,7 +1446,7 @@ export const signerServiceFactory = ({
       projectId: signer.projectId,
       orderId: importOrderId,
       certificate: { keySource: CertKeySource.Hsm, ...dto.certificate },
-      actor: { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId }
+      actor: dto.actor
     });
     const assertRenewBeforeFitsImport = (renewBeforeDays?: number | null) => {
       if (renewBeforeDays != null && renewBeforeDays >= imported.certificateTtlDays) {
@@ -1587,18 +1496,11 @@ export const signerServiceFactory = ({
     const signer = await signerDAL.findById(dto.signerId);
     if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ReissueCertificate,
-      ResourcePermissionSub.Signer
-    );
+    const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
+    permission.assert({
+      action: ResourcePermissionSignerActions.ReissueCertificate,
+      subject: ResourcePermissionSub.Signer
+    });
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
     if (!ca || ca.projectId !== signer.projectId) {
@@ -1695,11 +1597,7 @@ export const signerServiceFactory = ({
     }
 
     if (target.isHsm) {
-      await hsmConnectorService.assertAttachPermission(
-        { type: dto.actor, id: dto.actorId, authMethod: dto.actorAuthMethod, orgId: dto.actorOrgId },
-        target.hsmConnectorId,
-        signer.projectId
-      );
+      await hsmConnectorService.assertAttachPermission(dto.actor, target.hsmConnectorId, signer.projectId);
     }
 
     await signerDAL.updateById(dto.signerId, {
@@ -1733,18 +1631,11 @@ export const signerServiceFactory = ({
     const signer = await signerDAL.findByIdWithCertificate(dto.signerId);
     if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ExportCertificate,
-      ResourcePermissionSub.Signer
-    );
+    const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
+    permission.assert({
+      action: ResourcePermissionSignerActions.ExportCertificate,
+      subject: ResourcePermissionSub.Signer
+    });
 
     if (!signer.certificateId) {
       throw new BadRequestError({ message: `Signer '${signer.name}' has no certificate attached yet.` });
@@ -1798,7 +1689,7 @@ export const signerServiceFactory = ({
       const [userGrants, identityGrants] = await Promise.all([
         approvalRequestGrantsDAL.find(
           {
-            granteeUserId: dto.actorId,
+            granteeUserId: dto.actor.principal.id,
             type: ApprovalPolicyType.CertCodeSigning,
             status: ApprovalRequestGrantStatus.Active,
             projectId,
@@ -1808,7 +1699,7 @@ export const signerServiceFactory = ({
         ),
         approvalRequestGrantsDAL.find(
           {
-            granteeMachineIdentityId: dto.actorId,
+            granteeMachineIdentityId: dto.actor.principal.id,
             type: ApprovalPolicyType.CertCodeSigning,
             status: ApprovalRequestGrantStatus.Active,
             projectId,
@@ -1901,8 +1792,8 @@ export const signerServiceFactory = ({
           status: SigningOperationStatus.Pending,
           signingAlgorithm: dto.signingAlgorithm,
           dataHash,
-          actorType: dto.actor,
-          actorId: dto.actorId,
+          actorType: dto.actor.principal.type,
+          actorId: dto.actor.principal.id,
           actorName: dto.actorName ?? null,
           approvalGrantId: matchingGrant.id,
           clientMetadata: operationClientMetadata
@@ -1931,15 +1822,8 @@ export const signerServiceFactory = ({
 
     const { projectId } = signer;
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Sign, ResourcePermissionSub.Signer);
+    const permission = await $loadSignerResourcePermission(signer.id, projectId, dto.actor);
+    permission.assert({ action: ResourcePermissionSignerActions.Sign, subject: ResourcePermissionSub.Signer });
 
     if (signer.status !== SignerStatus.Active) {
       throw new BadRequestError({ message: `Signer '${signer.name}' is not active (status: ${signer.status})` });
@@ -2043,7 +1927,9 @@ export const signerServiceFactory = ({
           scopeType: ApprovalPolicyScope.Signer,
           scopeId: signer.id,
           status: ApprovalRequestStatus.Pending,
-          ...(dto.actor === ActorType.USER ? { requesterId: dto.actorId } : { machineIdentityId: dto.actorId })
+          ...(dto.actor.principal.type === ActorType.USER
+            ? { requesterId: dto.actor.principal.id }
+            : { machineIdentityId: dto.actor.principal.id })
         });
         const hasPendingRequest = pendingRequests.some((request) => {
           const pendingScope = (request.requestData as { requestData?: TCodeSigningRequestData } | null)?.requestData
@@ -2106,8 +1992,8 @@ export const signerServiceFactory = ({
             status: SigningOperationStatus.Failed,
             signingAlgorithm: dto.signingAlgorithm,
             dataHash,
-            actorType: dto.actor,
-            actorId: dto.actorId,
+            actorType: dto.actor.principal.type,
+            actorId: dto.actor.principal.id,
             actorName: dto.actorName ?? null,
             approvalGrantId: grantId,
             clientMetadata: operationClientMetadata,
@@ -2131,8 +2017,8 @@ export const signerServiceFactory = ({
             status: SigningOperationStatus.Success,
             signingAlgorithm: dto.signingAlgorithm,
             dataHash,
-            actorType: dto.actor,
-            actorId: dto.actorId,
+            actorType: dto.actor.principal.type,
+            actorId: dto.actor.principal.id,
             actorName: dto.actorName ?? null,
             approvalGrantId: grantId,
             clientMetadata: operationClientMetadata
@@ -2168,15 +2054,8 @@ export const signerServiceFactory = ({
 
     const { projectId } = signer;
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+    const permission = await $loadSignerResourcePermission(signer.id, projectId, dto.actor);
+    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
 
     if (!signer.certificateId) {
       throw new BadRequestError({ message: `Signer '${signer.name}' has no certificate attached yet.` });
@@ -2243,15 +2122,8 @@ export const signerServiceFactory = ({
       throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
     }
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+    const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
+    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
 
     const operations = await signingOperationDAL.findBySignerId(dto.signerId, {
       offset: dto.offset,
@@ -2270,15 +2142,8 @@ export const signerServiceFactory = ({
       throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
     }
 
-    const { permission } = await $loadSignerResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId
-    );
-    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+    const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
+    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
 
     const operation = await signingOperationDAL.findByIdWithActor(dto.operationId);
     if (!operation || operation.signerId !== signer.id) {

@@ -29,6 +29,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
+import { toOrgServiceActor } from "@app/services/certificate-common/certificate-permission-fns";
 import { ECDSA_SIGNATURE_ALGORITHMS } from "@app/services/certificate/certificate-fns";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -119,7 +120,7 @@ export const awsKmsCaKeySourceFactory = ({
       await appConnectionService.validateAppConnectionUsageById(
         AppConnection.AWS,
         { connectionId: appConnectionId, projectId },
-        actor
+        toOrgServiceActor(actor)
       );
     },
 

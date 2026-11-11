@@ -31,10 +31,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     },
     handler: async (req) => {
       const pkiCollection = await server.services.pkiCollection.createPkiCollection({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -76,10 +73,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const pkiCollection = await server.services.pkiCollection.getPkiCollectionById({
         collectionId: req.params.collectionId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -123,10 +117,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const pkiCollection = await server.services.pkiCollection.updatePkiCollection({
         collectionId: req.params.collectionId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -168,10 +159,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const pkiCollection = await server.services.pkiCollection.deletePkiCollection({
         collectionId: req.params.collectionId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -228,10 +216,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
       const { pkiCollection, pkiCollectionItems, totalCount } =
         await server.services.pkiCollection.getPkiCollectionItems({
           collectionId: req.params.collectionId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           ...req.query
         });
 
@@ -282,10 +267,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { pkiCollection, pkiCollectionItem } = await server.services.pkiCollection.addItemToPkiCollection({
         collectionId: req.params.collectionId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -334,10 +316,7 @@ export const registerPkiCollectionRouter = async (server: FastifyZodProvider) =>
       const { pkiCollection, pkiCollectionItem } = await server.services.pkiCollection.removeItemFromPkiCollection({
         collectionId: req.params.collectionId,
         itemId: req.params.collectionItemId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

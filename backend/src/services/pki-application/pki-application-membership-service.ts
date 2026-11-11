@@ -1,12 +1,12 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, RESOURCE_SCOPE, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ProjectPermissionMemberActions } from "@app/domains/platform/projects/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
   ResourcePermissionSub
@@ -38,7 +38,7 @@ type TPkiApplicationMembershipServiceFactoryDep = {
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById" | "find">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
-  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
+  certManagerDomain: Pick<TCertManagerDomain, "getApplicationPermission">;
   userDAL: Pick<TUserDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
@@ -66,7 +66,7 @@ export const pkiApplicationMembershipServiceFactory = ({
   pkiApplicationDAL,
   membershipDAL,
   membershipRoleDAL,
-  permissionService,
+  certManagerDomain,
   userDAL,
   identityDAL,
   groupDAL,
@@ -190,25 +190,8 @@ export const pkiApplicationMembershipServiceFactory = ({
     });
   };
 
-  const $loadResourcePermission = (
-    applicationId: string,
-    projectId: string,
-    ctx: {
-      actor: TAddApplicationMemberDTO["actor"];
-      actorId: string;
-      actorAuthMethod: TAddApplicationMemberDTO["actorAuthMethod"];
-      actorOrgId?: string;
-    }
-  ) =>
-    permissionService.getResourcePermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      resourceType: ResourceType.CertificateApplication,
-      resourceId: applicationId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId
-    });
+  const $loadResourcePermission = (applicationId: string, projectId: string, actor: TActorContext) =>
+    certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
 
   const addMember = async ({
     applicationId,
@@ -217,21 +200,13 @@ export const pkiApplicationMembershipServiceFactory = ({
     groupId,
     role,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TAddApplicationMemberDTO): Promise<TApplicationMember> => {
     const application = await $loadApplicationOrThrow(applicationId, projectId);
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ResourcePermissionSub.Member);
+    permission.assert({ action: ProjectPermissionMemberActions.Create, subject: ResourcePermissionSub.Member });
 
     if (!isBuiltInApplicationRole(role)) {
       throw new BadRequestError({
@@ -239,7 +214,7 @@ export const pkiApplicationMembershipServiceFactory = ({
       });
     }
 
-    await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
+    await $assertActorPresentInOrg(actor.org.id, { userId, identityId, groupId });
 
     const membership = await membershipDAL.transaction(async (tx) => {
       const existingAppMembershipFilter: Record<string, unknown> = {
@@ -288,14 +263,14 @@ export const pkiApplicationMembershipServiceFactory = ({
       }
 
       await lockAndAssertActiveOrgAccess(
-        { orgDAL, orgId: actorOrgId, userIds: userId ? [userId] : [], identityIds: identityId ? [identityId] : [] },
+        { orgDAL, orgId: actor.org.id, userIds: userId ? [userId] : [], identityIds: identityId ? [identityId] : [] },
         tx
       );
 
       const newMembership = await membershipDAL.create(
         {
           scope: RESOURCE_SCOPE,
-          scopeOrgId: actorOrgId,
+          scopeOrgId: actor.org.id,
           scopeProjectId: projectId,
           actorUserId: userId ?? null,
           actorIdentityId: identityId ?? null,
@@ -336,24 +311,16 @@ export const pkiApplicationMembershipServiceFactory = ({
     applicationId,
     kind,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TListApplicationMembersDTO): Promise<TApplicationMember[]> => {
     await $loadApplicationOrThrow(applicationId, projectId);
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.Read,
-      ResourcePermissionSub.Application
-    );
+    permission.assert({
+      action: ResourcePermissionApplicationActions.Read,
+      subject: ResourcePermissionSub.Application
+    });
 
     const memberships = await membershipDAL.find({
       scope: RESOURCE_SCOPE,
@@ -465,21 +432,13 @@ export const pkiApplicationMembershipServiceFactory = ({
     memberId,
     role,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TUpdateApplicationMemberRoleDTO): Promise<TApplicationMember> => {
     const application = await $loadApplicationOrThrow(applicationId, projectId);
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Edit, ResourcePermissionSub.Member);
+    permission.assert({ action: ProjectPermissionMemberActions.Edit, subject: ResourcePermissionSub.Member });
 
     if (!isBuiltInApplicationRole(role)) {
       throw new BadRequestError({
@@ -532,10 +491,7 @@ export const pkiApplicationMembershipServiceFactory = ({
     kind,
     memberId,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TRemoveApplicationMemberDTO): Promise<{
     membershipId: string;
     applicationId: string;
@@ -547,14 +503,9 @@ export const pkiApplicationMembershipServiceFactory = ({
   }> => {
     const application = await $loadApplicationOrThrow(applicationId, projectId);
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Delete, ResourcePermissionSub.Member);
+    permission.assert({ action: ProjectPermissionMemberActions.Delete, subject: ResourcePermissionSub.Member });
 
     const membership = await $findMembershipByMember(applicationId, projectId, kind, memberId);
     const details = await $buildMemberDetails(membership);
@@ -591,9 +542,6 @@ export const pkiApplicationMembershipServiceFactory = ({
     applicationId,
     projectId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     userIds,
     emails,
     role
@@ -610,14 +558,9 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     await $loadApplicationOrThrow(applicationId, projectId);
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionMemberActions.Create, ResourcePermissionSub.Member);
+    permission.assert({ action: ProjectPermissionMemberActions.Create, subject: ResourcePermissionSub.Member });
 
     const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
     const userByEmail = new Map<string, (typeof usersByEmail)[number]>();
@@ -680,10 +623,7 @@ export const pkiApplicationMembershipServiceFactory = ({
           userId: t.userId,
           role,
           projectId,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId
+          actor
         });
         memberships.push(m);
         alreadyAttached.add(t.userId);

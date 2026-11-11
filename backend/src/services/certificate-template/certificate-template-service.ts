@@ -1,11 +1,13 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
+import { ProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { ProjectPermissionPkiTemplateActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ProjectPermissionPkiTemplateActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -32,7 +34,7 @@ type TCertificateTemplateServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   kmsCoreDomain: TKmsCoreDomain;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   licenseDomain: TLicenseDomain;
 };
 
@@ -42,7 +44,7 @@ export const certificateTemplateServiceFactory = ({
   certificateTemplateDAL,
   certificateTemplateEstConfigDAL,
   certificateAuthorityDAL,
-  permissionService,
+  projectsDomain,
   kmsCoreDomain,
   licenseDomain
 }: TCertificateTemplateServiceFactoryDep) => {
@@ -53,10 +55,7 @@ export const certificateTemplateServiceFactory = ({
     commonName,
     subjectAlternativeName,
     ttl,
-    actorId,
-    actorAuthMethod,
     actor,
-    actorOrgId,
     keyUsages,
     extendedKeyUsages
   }: TCreateCertTemplateDTO) => {
@@ -66,19 +65,17 @@ export const certificateTemplateServiceFactory = ({
         message: `CA with ID ${caId} not found`
       });
     }
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Create,
-      subject(ProjectPermissionSub.CertificateTemplates, { name })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.Create,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name }
+    });
 
     return certificateTemplateDAL.transaction(async (tx) => {
       const { id } = await certificateTemplateDAL.create(
@@ -114,10 +111,7 @@ export const certificateTemplateServiceFactory = ({
     commonName,
     subjectAlternativeName,
     ttl,
-    actorId,
-    actorAuthMethod,
     actor,
-    actorOrgId,
     keyUsages,
     extendedKeyUsages
   }: TUpdateCertTemplateDTO) => {
@@ -128,19 +122,17 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: certTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Edit,
-      subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.Edit,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name: certTemplate.name }
+    });
 
     if (caId) {
       const ca = await certificateAuthorityDAL.findById(caId);
@@ -152,10 +144,11 @@ export const certificateTemplateServiceFactory = ({
     }
 
     if (name) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionPkiTemplateActions.Create,
-        subject(ProjectPermissionSub.CertificateTemplates, { name })
-      );
+      permission.assert({
+        action: ProjectPermissionPkiTemplateActions.Create,
+        subject: ProjectPermissionSub.CertificateTemplates,
+        fields: { name }
+      });
     }
 
     return certificateTemplateDAL.transaction(async (tx) => {
@@ -185,7 +178,7 @@ export const certificateTemplateServiceFactory = ({
     });
   };
 
-  const deleteCertTemplate = async ({ id, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertTemplateDTO) => {
+  const deleteCertTemplate = async ({ id, actor }: TDeleteCertTemplateDTO) => {
     const certTemplate = await certificateTemplateDAL.getById(id);
     if (!certTemplate) {
       throw new NotFoundError({
@@ -193,26 +186,24 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: certTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Delete,
-      subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.Delete,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name: certTemplate.name }
+    });
 
     await certificateTemplateDAL.deleteById(certTemplate.id);
 
     return certTemplate;
   };
 
-  const getCertTemplate = async ({ id, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertTemplateDTO) => {
+  const getCertTemplate = async ({ id, actor }: TGetCertTemplateDTO) => {
     const certTemplate = await certificateTemplateDAL.getById(id);
     if (!certTemplate) {
       throw new NotFoundError({
@@ -220,19 +211,17 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: certTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Read,
-      subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.Read,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name: certTemplate.name }
+    });
 
     return certTemplate;
   };
@@ -242,13 +231,10 @@ export const certificateTemplateServiceFactory = ({
     caChain,
     passphrase,
     isEnabled,
-    actorId,
-    actorAuthMethod,
     actor,
-    actorOrgId,
     disableBootstrapCertValidation
   }: TCreateEstConfigurationDTO) => {
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to create EST configuration due to plan restriction. Upgrade to the Enterprise plan."
@@ -262,19 +248,17 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: certTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Edit,
-      subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.Edit,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name: certTemplate.name }
+    });
 
     const appCfg = getConfig();
 
@@ -321,13 +305,10 @@ export const certificateTemplateServiceFactory = ({
     caChain,
     passphrase,
     isEnabled,
-    actorId,
-    actorAuthMethod,
     actor,
-    actorOrgId,
     disableBootstrapCertValidation
   }: TUpdateEstConfigurationDTO) => {
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to update EST configuration due to plan restriction. Upgrade to the Enterprise plan."
@@ -341,19 +322,17 @@ export const certificateTemplateServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: certTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Edit,
-      subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
-    );
+    permission.assert({
+      action: ProjectPermissionPkiTemplateActions.Edit,
+      subject: ProjectPermissionSub.CertificateTemplates,
+      fields: { name: certTemplate.name }
+    });
 
     const originalCaEstConfig = await certificateTemplateEstConfigDAL.findOne({
       certificateTemplateId
@@ -417,19 +396,17 @@ export const certificateTemplateServiceFactory = ({
     }
 
     if (!isInternal) {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectsDomain.getProjectPermission({
         actor: dto.actor,
-        actorId: dto.actorId,
         projectId: certTemplate.projectId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionPkiTemplateActions.Read,
-        subject(ProjectPermissionSub.CertificateTemplates, { name: certTemplate.name })
-      );
+      permission.assert({
+        action: ProjectPermissionPkiTemplateActions.Read,
+        subject: ProjectPermissionSub.CertificateTemplates,
+        fields: { name: certTemplate.name }
+      });
     }
 
     const estConfig = await certificateTemplateEstConfigDAL.findOne({

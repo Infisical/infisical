@@ -1,20 +1,17 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionHsmConnectorActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { Pkcs11Mechanism } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";
@@ -45,7 +42,7 @@ import type {
 
 export type THsmConnectorServiceFactoryDep = {
   hsmConnectorDAL: THsmConnectorDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   kmsCoreDomain: TKmsCoreDomain;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "listHealthyGateways" | "selectGatewayFromPool">;
@@ -67,7 +64,7 @@ const ML_DSA_HSM_KEY_ALGORITHMS = new Set<HsmKeyAlgorithm>([
 
 export const hsmConnectorServiceFactory = ({
   hsmConnectorDAL,
-  permissionService,
+  projectsDomain,
   kmsCoreDomain,
   gatewayV2Service,
   gatewayPoolService,
@@ -113,16 +110,9 @@ export const hsmConnectorServiceFactory = ({
     projectId: string,
     action: ProjectPermissionHsmConnectorActions
   ) => {
-    await assertLicense(actor.orgId);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.HsmConnectors);
+    await assertLicense(actor.org.id);
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+    permission.assert({ action, subject: ProjectPermissionSub.HsmConnectors });
   };
 
   const createHsmConnector = async (
@@ -137,7 +127,7 @@ export const hsmConnectorServiceFactory = ({
       });
     }
 
-    await assertGatewayBelongsToOrg(actor.orgId, dto.gatewayId, dto.gatewayPoolId);
+    await assertGatewayBelongsToOrg(actor.org.id, dto.gatewayId, dto.gatewayPoolId);
 
     const parsedCreds = HsmConnectorCredentialsSchema.safeParse(dto.credentials);
     if (!parsedCreds.success) {
@@ -264,7 +254,7 @@ export const hsmConnectorServiceFactory = ({
     }
 
     if (routingChanged) {
-      await assertGatewayBelongsToOrg(actor.orgId, nextGatewayId, nextGatewayPoolId, row.gatewayId);
+      await assertGatewayBelongsToOrg(actor.org.id, nextGatewayId, nextGatewayPoolId, row.gatewayId);
     }
 
     const effectiveRoutingChanged =
@@ -379,23 +369,13 @@ export const hsmConnectorServiceFactory = ({
     if (!row) throw new NotFoundError({ message: `HSM Connector ${dto.connectorId} not found.` });
 
     await assertProjectPermission(actor, row.projectId, ProjectPermissionHsmConnectorActions.Read);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId: row.projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId: row.projectId });
+    permission.assert({ action: ProjectPermissionCertificateActions.Read, subject: ProjectPermissionSub.Certificates });
 
-    const includeCertificateAuthorities = permission.can(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
-    );
+    const includeCertificateAuthorities = permission.can({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities
+    });
 
     return hsmConnectorDAL.listLinkedResources(row.id, {
       offset: dto.offset,
@@ -582,16 +562,8 @@ export const hsmConnectorServiceFactory = ({
     return { keys: result.keys };
   };
 
-  const assertAttachPermission = async (
-    actor: Pick<THsmConnectorServiceActor, "type" | "id" | "authMethod" | "orgId">,
-    connectorId: string,
-    projectId: string
-  ) => {
-    await assertProjectPermission(
-      actor as THsmConnectorServiceActor,
-      projectId,
-      ProjectPermissionHsmConnectorActions.Attach
-    );
+  const assertAttachPermission = async (actor: THsmConnectorServiceActor, connectorId: string, projectId: string) => {
+    await assertProjectPermission(actor, projectId, ProjectPermissionHsmConnectorActions.Attach);
     const row = await hsmConnectorDAL.findById(connectorId);
     if (!row || row.projectId !== projectId) {
       throw new NotFoundError({ message: `HSM Connector ${connectorId} not found.` });

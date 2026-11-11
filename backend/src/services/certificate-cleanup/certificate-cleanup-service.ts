@@ -1,5 +1,5 @@
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { ForbiddenRequestError } from "@app/lib/errors";
 
 import { TCertificateCleanupConfigDALFactory } from "./certificate-cleanup-dal";
@@ -7,32 +7,23 @@ import { TGetCertificateCleanupConfigDTO, TUpdateCertificateCleanupConfigDTO } f
 
 type TCertificateCleanupServiceFactoryDep = {
   certificateCleanupConfigDAL: TCertificateCleanupConfigDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
 };
 
 export type TCertificateCleanupServiceFactory = ReturnType<typeof certificateCleanupServiceFactory>;
 
 export const certificateCleanupServiceFactory = ({
   certificateCleanupConfigDAL,
-  permissionService
+  projectsDomain
 }: TCertificateCleanupServiceFactoryDep) => {
-  const getConfig = async ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetCertificateCleanupConfigDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission({
+  const getConfig = async ({ projectId, actor }: TGetCertificateCleanupConfigDTO) => {
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    if (!hasRole(ProjectMembershipRole.Admin)) {
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       throw new ForbiddenRequestError({ message: "Only admins can access certificate cleanup configuration" });
     }
 
@@ -44,23 +35,17 @@ export const certificateCleanupServiceFactory = ({
   const updateConfig = async ({
     projectId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     isEnabled,
     postExpiryRetentionDays,
     skipCertsWithActiveSyncs
   }: TUpdateCertificateCleanupConfigDTO) => {
-    const { hasRole } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    if (!hasRole(ProjectMembershipRole.Admin)) {
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       throw new ForbiddenRequestError({ message: "Only admins can modify certificate cleanup configuration" });
     }
 

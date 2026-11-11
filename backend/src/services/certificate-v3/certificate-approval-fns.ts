@@ -415,9 +415,6 @@ export const certificateApprovalServiceFactory = (
 
     const certPolicy = await certificatePolicyService.getPolicyById({
       actor: undefined,
-      actorId: undefined,
-      actorAuthMethod: undefined,
-      actorOrgId: undefined,
       policyId: profile.certificatePolicyId,
       internal: true
     });
@@ -1014,9 +1011,6 @@ export const certificateApprovalServiceFactory = (
         keyAlgorithm: effectiveKeyAlgorithm,
         customExtensions,
         actor: undefined,
-        actorId: undefined,
-        actorAuthMethod: undefined,
-        actorOrgId: undefined,
         isFromProfile: true,
         internal: true,
         organization: certificateRequestInput.organization,
@@ -1138,9 +1132,6 @@ export const certificateApprovalServiceFactory = (
 
       const certPolicy = await certificatePolicyService.getPolicyById({
         actor: undefined,
-        actorId: undefined,
-        actorAuthMethod: undefined,
-        actorOrgId: undefined,
         policyId: targetProfile.certificatePolicyId,
         internal: true
       });

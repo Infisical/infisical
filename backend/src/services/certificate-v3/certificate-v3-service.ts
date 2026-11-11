@@ -9,7 +9,8 @@ import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -133,6 +134,7 @@ import {
   TIssueCertificateFromProfileDTO,
   TOrderCertificateFromProfileDTO,
   TSignCertificateFromProfileDTO,
+  TRenewCertificateInput,
   TUpdateCertificateDTO
 } from "./certificate-v3-types";
 
@@ -165,6 +167,7 @@ type TCertificateV3ServiceFactoryDep = {
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "resolveCsrSignatureAlgorithm">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   certificateSyncDAL: Pick<
     TCertificateSyncDALFactory,
     | "findPkiSyncIdsByCertificateId"
@@ -347,6 +350,7 @@ export const certificateV3ServiceFactory = ({
   internalCaService,
   caKeySourceService,
   permissionService,
+  projectsDomain,
   certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -674,10 +678,6 @@ export const certificateV3ServiceFactory = ({
       });
 
       const policy = await certificatePolicyService.getPolicyById({
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
         policyId: profile.certificatePolicyId,
         internal: true
       });
@@ -849,10 +849,6 @@ export const certificateV3ServiceFactory = ({
     });
 
     const policy = await certificatePolicyService.getPolicyById({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       policyId: profile.certificatePolicyId,
       internal: true
     });
@@ -1401,10 +1397,6 @@ export const certificateV3ServiceFactory = ({
     validateCaSupport(ca, "CSR signing");
 
     const policy = await certificatePolicyService.getPolicyById({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       policyId: profile.certificatePolicyId,
       internal: true
     });
@@ -2300,14 +2292,7 @@ export const certificateV3ServiceFactory = ({
     });
   };
 
-  const updateCertificate = async ({
-    certificateId,
-    metadata,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TUpdateCertificateDTO) => {
+  const updateCertificate = async ({ certificateId, metadata, actor }: TUpdateCertificateDTO) => {
     const certificate = await certificateDAL.findById(certificateId);
     if (!certificate) {
       throw new NotFoundError({ message: "Certificate not found" });
@@ -2316,10 +2301,8 @@ export const certificateV3ServiceFactory = ({
     const { projectPermission } = await assertCanEditCertificate({
       certificate,
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      permissionService,
+      projectsDomain,
+      certManagerDomain,
       resourceMetadataDAL
     });
 
@@ -2348,7 +2331,7 @@ export const certificateV3ServiceFactory = ({
         await insertMetadataForCertificate(resourceMetadataDAL, {
           metadata,
           certificateId,
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           tx
         });
       });
@@ -2378,7 +2361,8 @@ export const certificateV3ServiceFactory = ({
     certificateProfileDAL,
     certificatePolicyService,
     internalCaService,
-    permissionService,
+    projectsDomain,
+    certManagerDomain,
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
@@ -2461,7 +2445,7 @@ export const certificateV3ServiceFactory = ({
     }
   };
 
-  const renewCertificate = async (dto: Parameters<typeof renewalService.renewCertificate>[0]) => {
+  const renewCertificate = async (dto: TRenewCertificateInput) => {
     try {
       return await renewalService.renewCertificate(dto);
     } catch (error) {
@@ -2471,7 +2455,7 @@ export const certificateV3ServiceFactory = ({
       if (certificate) {
         await $recordIssuanceFailure({
           auditLogInfo: dto.auditLogInfo,
-          actorOrgId: dto.actorOrgId,
+          actorOrgId: dto.actor?.org.id ?? "",
           projectId: certificate.projectId,
           profileId: certificate.profileId,
           error,

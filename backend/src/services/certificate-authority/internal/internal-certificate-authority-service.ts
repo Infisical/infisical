@@ -1,11 +1,11 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable no-bitwise */
-import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
-import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { ProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
@@ -13,12 +13,11 @@ import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionPkiTemplateActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -158,7 +157,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   pkiCollectionItemDAL: Pick<TPkiCollectionItemDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "findById" | "transaction" | "findProjectBySlug">;
   kmsCoreDomain: TKmsCoreDomain;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   licenseDomain: TLicenseDomain;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
   caKeySourceService: Pick<
@@ -185,7 +184,7 @@ export const internalCertificateAuthorityServiceFactory = ({
   internalCertificateAuthorityDAL,
   projectDAL,
   kmsCoreDomain,
-  permissionService,
+  projectsDomain,
   licenseDomain,
   caSigningConfigDAL,
   caKeySourceService
@@ -357,26 +356,24 @@ export const internalCertificateAuthorityServiceFactory = ({
     } else if (dto.projectId) {
       projectId = dto.projectId;
     } else if (dto.projectSlug) {
-      const project = await projectDAL.findProjectBySlug(dto.projectSlug, dto.actorOrgId);
+      const project = await projectDAL.findProjectBySlug(dto.projectSlug, dto.actor.org.id);
       if (!project) throw new NotFoundError({ message: `Project with slug '${dto.projectSlug}' not found` });
       projectId = project.id;
     } else {
       throw new BadRequestError({ message: "Either projectId or projectSlug is required" });
     }
     if (!dto.isInternal) {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectsDomain.getProjectPermission({
         actor: dto.actor,
-        actorId: dto.actorId,
         projectId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateAuthorityActions.Create,
-        subject(ProjectPermissionSub.CertificateAuthorities, { name: commonName })
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateAuthorityActions.Create,
+        subject: ProjectPermissionSub.CertificateAuthorities,
+        fields: { name: commonName }
+      });
     }
 
     if (keyAlgorithm.startsWith("SLH-DSA")) {
@@ -646,22 +643,20 @@ export const internalCertificateAuthorityServiceFactory = ({
   /**
    * Return CA with id [caId]
    */
-  const getCaById = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaDTO) => {
+  const getCaById = async ({ caId, actor }: TGetCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     return expandInternalCa(ca);
   };
@@ -683,19 +678,17 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     if (!dto.isInternal) {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectsDomain.getProjectPermission({
         actor: dto.actor,
-        actorId: dto.actorId,
         projectId: ca.projectId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateAuthorityActions.Edit,
-        subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateAuthorityActions.Edit,
+        subject: ProjectPermissionSub.CertificateAuthorities,
+        fields: { name: ca.name }
+      });
     }
 
     // Gating creation alone would let an org create a CA with no distribution points and patch them in.
@@ -747,23 +740,21 @@ export const internalCertificateAuthorityServiceFactory = ({
   /**
    * Delete CA with id [caId]
    */
-  const deleteCaById = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCaDTO) => {
+  const deleteCaById = async ({ caId, actor }: TDeleteCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Delete,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Delete,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     await assertNoCertificateProfilesUsingCa(certificateProfileDAL, ca.id, ca.name);
 
@@ -787,20 +778,18 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     if (!isInternal) {
-      const { actor, actorId, actorAuthMethod, actorOrgId } = params;
-      const { permission } = await permissionService.getProjectPermission({
+      const { actor } = params;
+      const permission = await projectsDomain.getProjectPermission({
         actor,
-        actorId,
         projectId: ca.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateAuthorityActions.Create,
-        subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateAuthorityActions.Create,
+        subject: ProjectPermissionSub.CertificateAuthorities,
+        fields: { name: ca.name }
+      });
     }
 
     await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
@@ -844,15 +833,7 @@ export const internalCertificateAuthorityServiceFactory = ({
    * Note 1: This CA renewal method is only applicable to CAs with internal parent CAs
    * Note 2: Currently implements CA renewal with same key-pair only
    */
-  const renewCaCert = async ({
-    caId,
-    notAfter,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId,
-    ...rest
-  }: TRenewCaCertDTO) => {
+  const renewCaCert = async ({ caId, notAfter, actor, ...rest }: TRenewCaCertDTO) => {
     const isInternal = "isInternal" in rest && rest.isInternal === true;
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
@@ -862,19 +843,17 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
     if (!isInternal) {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectsDomain.getProjectPermission({
         actor: actor!,
-        actorId: actorId!,
         projectId: ca.projectId,
-        actorAuthMethod: actorAuthMethod!,
-        actorOrgId: actorOrgId!,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
-        subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
+        subject: ProjectPermissionSub.CertificateAuthorities,
+        fields: { name: ca.name }
+      });
     }
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
@@ -1119,23 +1098,21 @@ export const internalCertificateAuthorityServiceFactory = ({
     };
   };
 
-  const getCaCerts = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCertsDTO) => {
+  const getCaCerts = async ({ caId, actor }: TGetCaCertsDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const caCertChains = await getCaCertChains({
       caId,
@@ -1176,25 +1153,23 @@ export const internalCertificateAuthorityServiceFactory = ({
   /**
    * Return current certificate and certificate chain for CA
    */
-  const getCaCert = async ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCertDTO) => {
+  const getCaCert = async ({ caId, actor }: TGetCaCertDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const { caCert, caCertChain, serialNumber } = await getCaCertChain({
       caCertId: ca.internalCa.activeCaCertId,
@@ -1269,30 +1244,21 @@ export const internalCertificateAuthorityServiceFactory = ({
     return caCertObj;
   };
 
-  const getCaCertByIdWithAuth = async ({
-    caId,
-    certId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TGetCaCertByIdDTO) => {
+  const getCaCertByIdWithAuth = async ({ caId, certId, actor }: TGetCaCertByIdDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.Read,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     const caCert = await certificateAuthorityCertDAL.findOne({
       caId,
@@ -1411,20 +1377,18 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (!ca.internalCa) throw new NotFoundError({ message: "CA not found" });
 
     if (!isInternal) {
-      const { actor, actorId, actorAuthMethod, actorOrgId } = params;
-      const { permission } = await permissionService.getProjectPermission({
+      const { actor } = params;
+      const permission = await projectsDomain.getProjectPermission({
         actor,
-        actorId,
         projectId: ca.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateAuthorityActions.SignIntermediate,
-        subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateAuthorityActions.SignIntermediate,
+        subject: ProjectPermissionSub.CertificateAuthorities,
+        fields: { name: ca.name }
+      });
     }
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
@@ -1549,20 +1513,18 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
     if (!isInternal) {
-      const { actor, actorId, actorAuthMethod, actorOrgId } = params;
-      const { permission } = await permissionService.getProjectPermission({
+      const { actor } = params;
+      const permission = await projectsDomain.getProjectPermission({
         actor,
-        actorId,
         projectId: ca.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateAuthorityActions.Create,
-        subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-      );
+      permission.assert({
+        action: ProjectPermissionCertificateAuthorityActions.Create,
+        subject: ProjectPermissionSub.CertificateAuthorities,
+        fields: { name: ca.name }
+      });
     }
 
     if (ca.internalCa.type === InternalCaType.ROOT) {
@@ -1764,20 +1726,14 @@ export const internalCertificateAuthorityServiceFactory = ({
     notBefore,
     notAfter,
     maxPathLength,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    actor
   }: {
     caId: string;
     parentCaId: string;
     notBefore: string;
     notAfter: string;
     maxPathLength?: number;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actor: ActorType;
-    actorOrgId: string;
+    actor: TActorContext;
   }) => {
     const intermediateCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!intermediateCa.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
@@ -1789,24 +1745,23 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Intermediate and Parent CA must belong to the same project" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: intermediateCa.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: intermediateCa.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: intermediateCa.name }
+    });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.SignIntermediate,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: parentCa.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.SignIntermediate,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: parentCa.name }
+    });
 
     await $validatePqcLicense(intermediateCa.internalCa.keyAlgorithm, intermediateCa.projectId);
     await $validatePqcLicense(parentCa.internalCa.keyAlgorithm, parentCa.projectId);
@@ -1901,10 +1856,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     ttl,
     notBefore,
     notAfter,
-    actorId,
-    actorAuthMethod,
     actor,
-    actorOrgId,
     keyUsages,
     extendedKeyUsages,
     signatureAlgorithm,
@@ -1951,32 +1903,29 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     if (!internal) {
-      if (!actor || !actorId || !actorOrgId) {
+      if (!actor) {
         throw new BadRequestError({ message: "Actor is required" });
       }
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectsDomain.getProjectPermission({
         actor,
-        actorId,
         projectId: ca.projectId,
-        actorAuthMethod: actorAuthMethod || null,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
       if (isFromProfile) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateProfileActions.IssueCert,
-          ProjectPermissionSub.CertificateProfiles
-        );
+        permission.assert({
+          action: ProjectPermissionCertificateProfileActions.IssueCert,
+          subject: ProjectPermissionSub.CertificateProfiles
+        });
       } else {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateActions.Create,
-          ProjectPermissionSub.Certificates
-        );
+        permission.assert({
+          action: ProjectPermissionCertificateActions.Create,
+          subject: ProjectPermissionSub.Certificates
+        });
       }
     }
 
-    const projectOrgId = !internal && actorOrgId ? actorOrgId : await $getProjectOrgId(ca.projectId);
+    const projectOrgId = !internal && actor ? actor.org.id : await $getProjectOrgId(ca.projectId);
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
@@ -2398,29 +2347,26 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     if (!dto.isInternal) {
-      const { permission } = await permissionService.getProjectPermission({
+      const permission = await projectsDomain.getProjectPermission({
         actor: dto.actor,
-        actorId: dto.actorId,
         projectId: ca.projectId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
+        type: ProjectType.CertificateManager
       });
 
       if (dto.isFromProfile && dto.profileId) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateProfileActions.IssueCert,
-          ProjectPermissionSub.CertificateProfiles
-        );
+        permission.assert({
+          action: ProjectPermissionCertificateProfileActions.IssueCert,
+          subject: ProjectPermissionSub.CertificateProfiles
+        });
       } else {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateActions.Create,
-          ProjectPermissionSub.Certificates
-        );
+        permission.assert({
+          action: ProjectPermissionCertificateActions.Create,
+          subject: ProjectPermissionSub.Certificates
+        });
       }
     }
 
-    const projectOrgId = dto.isInternal ? await $getProjectOrgId(ca.projectId) : dto.actorOrgId;
+    const projectOrgId = dto.isInternal ? await $getProjectOrgId(ca.projectId) : dto.actor.org.id;
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
@@ -2833,33 +2779,25 @@ export const internalCertificateAuthorityServiceFactory = ({
   /**
    * Return list of certificate templates for CA with id [caId].
    */
-  const getCaCertificateTemplates = async ({
-    caId,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
-  }: TGetCaCertificateTemplatesDTO) => {
+  const getCaCertificateTemplates = async ({ caId, actor }: TGetCaCertificateTemplatesDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const certificateTemplates = await certificateTemplateDAL.find({ caId });
 
     return {
       certificateTemplates: certificateTemplates.filter((el) =>
-        permission.can(
-          ProjectPermissionPkiTemplateActions.Read,
-          subject(ProjectPermissionSub.CertificateTemplates, { name: el.name })
-        )
+        permission.can({
+          action: ProjectPermissionPkiTemplateActions.Read,
+          subject: ProjectPermissionSub.CertificateTemplates,
+          fields: { name: el.name }
+        })
       ),
       ca: expandInternalCa(ca)
     };
@@ -2870,10 +2808,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     notBefore,
     notAfter,
     maxPathLength,
-    actorId,
-    actorAuthMethod,
-    actor,
-    actorOrgId
+    actor
   }: TGenerateRootCaCertificateDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
@@ -2881,18 +2816,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "Certificate generation is only available for root CAs" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
-    );
+    permission.assert({
+      action: ProjectPermissionCertificateAuthorityActions.IssueCACertificate,
+      subject: ProjectPermissionSub.CertificateAuthorities,
+      fields: { name: ca.name }
+    });
 
     await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
 

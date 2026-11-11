@@ -1,10 +1,9 @@
-import { ForbiddenError } from "@casl/ability";
-
 import { AccessScope, RESOURCE_SCOPE, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
+import { TCodeSigningDomain } from "@app/domains/certificates/code-signing/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
@@ -39,7 +38,7 @@ type TSignerMembershipServiceFactoryDep = {
   signerDAL: Pick<TSignerDALFactory, "findById" | "find">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
-  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
+  codeSigningDomain: Pick<TCodeSigningDomain, "getSignerPermission">;
   userDAL: Pick<TUserDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
@@ -79,7 +78,7 @@ export const signerMembershipServiceFactory = ({
   signerDAL,
   membershipDAL,
   membershipRoleDAL,
-  permissionService,
+  codeSigningDomain,
   userDAL,
   identityDAL,
   groupDAL,
@@ -161,25 +160,8 @@ export const signerMembershipServiceFactory = ({
     });
   };
 
-  const $loadResourcePermission = (
-    signerId: string,
-    projectId: string,
-    ctx: {
-      actor: TAddSignerMemberDTO["actor"];
-      actorId: string;
-      actorAuthMethod: TAddSignerMemberDTO["actorAuthMethod"];
-      actorOrgId?: string;
-    }
-  ) =>
-    permissionService.getResourcePermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      resourceType: ResourceType.Signer,
-      resourceId: signerId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId
-    });
+  const $loadResourcePermission = (signerId: string, projectId: string, actor: TActorContext) =>
+    codeSigningDomain.getSignerPermission({ actor, projectId, signerId });
 
   const addMember = async ({
     signerId,
@@ -188,30 +170,19 @@ export const signerMembershipServiceFactory = ({
     groupId,
     role,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TAddSignerMemberDTO): Promise<TSignerMember> => {
     const signer = await $loadSignerOrThrow(signerId, projectId);
 
-    const { permission } = await $loadResourcePermission(signerId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(signerId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ManageMembers,
-      ResourcePermissionSub.Signer
-    );
+    permission.assert({ action: ResourcePermissionSignerActions.ManageMembers, subject: ResourcePermissionSub.Signer });
 
     if (!isBuiltInSignerRole(role)) {
       throw new BadRequestError({ message: unknownSignerRoleMessage(role) });
     }
 
-    await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
+    await $assertActorPresentInOrg(actor.org.id, { userId, identityId, groupId });
 
     const membership = await membershipDAL.transaction(async (tx) => {
       const existingSignerMembershipFilter: Record<string, unknown> = {
@@ -250,14 +221,14 @@ export const signerMembershipServiceFactory = ({
       }
 
       await lockAndAssertActiveOrgAccess(
-        { orgDAL, orgId: actorOrgId, userIds: userId ? [userId] : [], identityIds: identityId ? [identityId] : [] },
+        { orgDAL, orgId: actor.org.id, userIds: userId ? [userId] : [], identityIds: identityId ? [identityId] : [] },
         tx
       );
 
       const newMembership = await membershipDAL.create(
         {
           scope: RESOURCE_SCOPE,
-          scopeOrgId: actorOrgId,
+          scopeOrgId: actor.org.id,
           scopeProjectId: projectId,
           actorUserId: userId ?? null,
           actorIdentityId: identityId ?? null,
@@ -294,24 +265,11 @@ export const signerMembershipServiceFactory = ({
     return { ...membership, signerName: signer.name, details };
   };
 
-  const listMembers = async ({
-    signerId,
-    kind,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TListSignerMembersDTO): Promise<TSignerMember[]> => {
+  const listMembers = async ({ signerId, kind, projectId, actor }: TListSignerMembersDTO): Promise<TSignerMember[]> => {
     await $loadSignerOrThrow(signerId, projectId);
 
-    const { permission } = await $loadResourcePermission(signerId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+    const permission = await $loadResourcePermission(signerId, projectId, actor);
+    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
 
     const memberships = await membershipDAL.find({
       scope: RESOURCE_SCOPE,
@@ -395,19 +353,11 @@ export const signerMembershipServiceFactory = ({
     signerId,
     kind,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TListEffectiveSignerMembersDTO): Promise<TEffectiveSignerMember[]> => {
     await $loadSignerOrThrow(signerId, projectId);
-    const { permission } = await $loadResourcePermission(signerId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ResourcePermissionSignerActions.Read, ResourcePermissionSub.Signer);
+    const permission = await $loadResourcePermission(signerId, projectId, actor);
+    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
 
     const allMemberships = await membershipDAL.find({
       scope: RESOURCE_SCOPE,
@@ -534,24 +484,13 @@ export const signerMembershipServiceFactory = ({
     memberId,
     role,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TUpdateSignerMemberRoleDTO): Promise<TSignerMember> => {
     const signer = await $loadSignerOrThrow(signerId, projectId);
 
-    const { permission } = await $loadResourcePermission(signerId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(signerId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ManageMembers,
-      ResourcePermissionSub.Signer
-    );
+    permission.assert({ action: ResourcePermissionSignerActions.ManageMembers, subject: ResourcePermissionSub.Signer });
 
     if (!isBuiltInSignerRole(role)) {
       throw new BadRequestError({ message: unknownSignerRoleMessage(role) });
@@ -602,10 +541,7 @@ export const signerMembershipServiceFactory = ({
     kind,
     memberId,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TRemoveSignerMemberDTO): Promise<{
     membershipId: string;
     signerId: string;
@@ -617,17 +553,9 @@ export const signerMembershipServiceFactory = ({
   }> => {
     const signer = await $loadSignerOrThrow(signerId, projectId);
 
-    const { permission } = await $loadResourcePermission(signerId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(signerId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ManageMembers,
-      ResourcePermissionSub.Signer
-    );
+    permission.assert({ action: ResourcePermissionSignerActions.ManageMembers, subject: ResourcePermissionSub.Signer });
 
     const membership = await $findMembershipByMember(signerId, projectId, kind, memberId);
     const details = await $buildMemberDetails(membership);
@@ -664,9 +592,6 @@ export const signerMembershipServiceFactory = ({
     signerId,
     projectId,
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     userIds,
     emails,
     role
@@ -681,17 +606,9 @@ export const signerMembershipServiceFactory = ({
 
     await $loadSignerOrThrow(signerId, projectId);
 
-    const { permission } = await $loadResourcePermission(signerId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(signerId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionSignerActions.ManageMembers,
-      ResourcePermissionSub.Signer
-    );
+    permission.assert({ action: ResourcePermissionSignerActions.ManageMembers, subject: ResourcePermissionSub.Signer });
 
     const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
     const userByEmail = new Map<string, (typeof usersByEmail)[number]>();
@@ -751,10 +668,7 @@ export const signerMembershipServiceFactory = ({
           userId: t.userId,
           role,
           projectId,
-          actor,
-          actorId,
-          actorAuthMethod,
-          actorOrgId
+          actor
         });
         memberships.push(m);
         alreadyAttached.add(t.userId);
