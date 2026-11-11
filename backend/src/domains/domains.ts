@@ -162,7 +162,7 @@ export const createDomains = (deps: TDomainDeps) => {
   });
 
   // Organizations is the top container; Projects sits below it and holds every product's projects.
-  const organizations = new OrganizationsModule({ db });
+  const organizations = new OrganizationsModule({ db, accessControlDomain: accessControl.service });
   const projects = new ProjectsModule({
     db,
     organizationsDomain: organizations.service,

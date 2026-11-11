@@ -2,13 +2,18 @@ import { randomUUID } from "node:crypto";
 
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
+import { buildAccessControlForTests } from "@app/domains/platform/access-control/ce/testing/build-access-control";
 
 import { OrganizationsModule } from "../module";
 
 describe("OrganizationsModule.findActorOrg", () => {
   const h = setupIntegration();
 
-  const build = () => new OrganizationsModule({ db: DataAccessDb.fromClient(h.db) }).service;
+  const build = () =>
+    new OrganizationsModule({
+      db: DataAccessDb.fromClient(h.db),
+      accessControlDomain: buildAccessControlForTests({ db: DataAccessDb.fromClient(h.db) }).service
+    }).service;
 
   test("should give a sub-org its root org's sign-in policy and the root and parent ids", async () => {
     // Setup

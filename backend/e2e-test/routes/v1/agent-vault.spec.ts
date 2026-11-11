@@ -7,6 +7,7 @@ import { seedData1 } from "@app/db/seed-data";
 import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { startStandaloneKmsCore } from "@app/domains/domains";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
+import { buildAccessControlForTests } from "@app/domains/platform/access-control/ce/testing/build-access-control";
 import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter } from "@app/domains/platform/license/ce/module";
@@ -70,7 +71,10 @@ import { addUserMembership, createUser, createUserAccessToken, deleteUsers } fro
 const countAgentVaultSeats = (orgId: string) => {
   const licenseRegistry = new FakeLicenseRegistry();
   const db = DataAccessDb.fromClient(testDb);
-  const organizationsDomain = new OrganizationsModule({ db }).service;
+  const organizationsDomain = new OrganizationsModule({
+    db,
+    accessControlDomain: buildAccessControlForTests({ db }).service
+  }).service;
   const projectsDomain = new ProjectsModule({ db, organizationsDomain, licenseRegistry }).service;
   // eslint-disable-next-line no-new
   new AgentVaultModule({ projectsDomain, licenseRegistry });
