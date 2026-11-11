@@ -257,6 +257,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
           // Every field comes off the body, so an absent one means the PATCH did not touch it.
           metadata: {
             serviceId: service.id,
+            serviceName: service.name,
             name: req.body.name,
             description: req.body.description,
             serviceType: service.type,

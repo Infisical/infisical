@@ -26,9 +26,14 @@ const withSuffix = (base: string, suffix: string, max: number) => {
  * Service names were unique per access bundle and are now unique per project. In each project the oldest service keeps
  * a shared name and every later one takes `<name>-<bundle name>`, or the first free `<name>-<bundle name>-1`, `-2` ...
  * when that is taken too. A new name never takes one any service already holds, so no service that keeps its name is
- * ever touched.
+ * ever touched. Nor does it take a name in `reservedNames`, the names of inline services in the project's live
+ * sessions: a session holds its bundle's services beside its own, and an agent connects to a database or SSH service
+ * by name, so a renamed service sharing one would be reached instead of, or through, the inline one.
  */
-export const findServiceNameRenames = (rows: TServiceNameRow[]): Map<string, string> => {
+export const findServiceNameRenames = (
+  rows: TServiceNameRow[],
+  reservedNames: Map<string, Set<string>> = new Map()
+): Map<string, string> => {
   const renames = new Map<string, string>();
 
   const byProject = new Map<string, TServiceNameRow[]>();
@@ -38,8 +43,8 @@ export const findServiceNameRenames = (rows: TServiceNameRow[]): Map<string, str
     byProject.set(row.projectId, projectRows);
   });
 
-  byProject.forEach((projectRows) => {
-    const taken = new Set(projectRows.map((row) => row.name));
+  byProject.forEach((projectRows, projectId) => {
+    const taken = new Set([...projectRows.map((row) => row.name), ...(reservedNames.get(projectId) ?? [])]);
     const seen = new Set<string>();
 
     [...projectRows]

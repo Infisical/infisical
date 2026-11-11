@@ -67,8 +67,9 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
     {
       projectId,
       accessBundleIds,
-      serviceId
-    }: { projectId: string; accessBundleIds: string[] | null; serviceId?: string },
+      serviceId,
+      includeUnlinked
+    }: { projectId: string; accessBundleIds: string[] | null; serviceId?: string; includeUnlinked?: boolean },
     tx?: Knex
   ): Promise<TAgentVaultPersonalValueServiceRow[]> => {
     if (accessBundleIds?.length === 0) return [];
@@ -107,7 +108,7 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
       if (accessBundleIds) void query.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
       if (serviceId) void query.where(`${TableName.AgentVaultService}.id`, serviceId);
 
-      return (await query
+      const linked = (await query
         .select(
           db.ref("id").withSchema(TableName.AgentVaultService).as("serviceId"),
           db.ref("name").withSchema(TableName.AgentVaultService).as("serviceName"),
@@ -121,6 +122,35 @@ export const agentVaultPersonalValueDALFactory = (db: TDbClient) => {
           { column: "accessBundleName", order: "asc" },
           { column: "serviceName", order: "asc" }
         ])) as TAgentVaultPersonalValueServiceRow[];
+      // Only a caller who reaches every service (an admin) sees one that no bundle holds yet, so they can set it up early.
+      if (!includeUnlinked || accessBundleIds) return linked;
+      const unlinked = (await (tx || db)(TableName.AgentVaultService)
+        .where({ projectId })
+        .whereNull("sessionId")
+        .whereNotNull("memberProvidedFields")
+        .whereNotExists((sub) => {
+          void sub
+            .select(db.raw("1"))
+            .from(TableName.AgentVaultAccessBundleService)
+            .whereRaw("?? = ??", [
+              `${TableName.AgentVaultAccessBundleService}.serviceId`,
+              `${TableName.AgentVaultService}.id`
+            ]);
+        })
+        .modify((q) => {
+          if (serviceId) void q.where({ id: serviceId });
+        })
+        .select(
+          db.ref("id").as("serviceId"),
+          db.ref("name").as("serviceName"),
+          "hostPattern",
+          "credentialType",
+          "memberProvidedFields",
+          db.raw("NULL::uuid AS ??", ["accessBundleId"]),
+          db.raw("NULL::text AS ??", ["accessBundleName"])
+        )
+        .orderBy("name", "asc")) as TAgentVaultPersonalValueServiceRow[];
+      return [...linked, ...unlinked];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault services needing personal values" });
     }

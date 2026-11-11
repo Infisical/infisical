@@ -4630,6 +4630,25 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("an admin can set up a service before any bundle holds it", async () => {
+      const loose = await createService([], {
+        name: "ps-unlinked-setup",
+        hostPattern: "unlinked-setup.example.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      const pending = await inject("GET", `${servicesUrl}?search=ps-unlinked-setup&requiresSetup=true`);
+      expect(pending.statusCode, pending.payload).toBe(200);
+      expect(pending.json().services).toEqual([
+        expect.objectContaining({ id: loose.id, accessBundles: [], personalValues: expect.objectContaining({ isConfigured: false }) })
+      ]);
+      // A granted-only count covers bundles the caller holds, so a service in none never adds to it.
+      expect((await inject("GET", `${servicesUrl}?search=ps-unlinked-setup&requiresSetup=true&granted=true`)).json().totalCount).toBe(0);
+
+      await saveToken(inject, loose.id, "sk-early");
+      expect((await inject("GET", `${servicesUrl}?search=ps-unlinked-setup&requiresSetup=true`)).json().totalCount).toBe(0);
+      expect((await inject("GET", `${servicesUrl}/${loose.id}`)).json().service.personalValues.isConfigured).toBe(true);
+    });
+
     test("the service list filters by setup and grant, and sorts and pages on the server", async () => {
       const granted = await createAccessBundle("ps-setup-granted");
       const other = await createAccessBundle("ps-setup-other");

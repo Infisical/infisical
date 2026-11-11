@@ -30,6 +30,19 @@ describe("findServiceNameRenames", () => {
     ).toBe(0);
   });
 
+  test("a new name skips the names of live sessions' inline services in the project", () => {
+    const older = row({ name: "db", accessBundleName: "a" });
+    const newer = row({ name: "db", accessBundleName: "b" });
+    const elsewhere = row({ name: "db", accessBundleName: "b", projectId: "project-2" });
+    const later = row({ name: "db", accessBundleName: "b", projectId: "project-2" });
+    const renames = findServiceNameRenames(
+      [older, newer, elsewhere, later],
+      new Map([["project-1", new Set(["db-b"])]])
+    );
+    expect(renames.get(newer.id)).toBe("db-b-1");
+    expect(renames.get(later.id)).toBe("db-b");
+  });
+
   test("the oldest keeps a shared name and later ones take their bundle's name", () => {
     const older = row({ accessBundleName: "engineering" });
     const newer = row({ accessBundleName: "sales" });

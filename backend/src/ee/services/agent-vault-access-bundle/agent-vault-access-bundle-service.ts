@@ -2330,7 +2330,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       loadTransformations(serviceIds, undefined, { withVariableReferences: canReadVariables }),
       agentVaultServiceDAL.findBundlesForServices(serviceIds, accessBundleIds),
       owner && serviceIds.length
-        ? agentVaultPersonalValueService.findStatusesForOwner({ projectId, owner, accessBundleIds })
+        ? agentVaultPersonalValueService.findStatusesForOwner({
+            projectId,
+            owner,
+            accessBundleIds,
+            includeUnlinked: true
+          })
         : []
     ]);
     return services.map((service) => ({
@@ -2376,6 +2381,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             projectId,
             owner,
             accessBundleIds: scopeBundleIds,
+            includeUnlinked: true,
             withVariableReferences: false
           })
         : [];

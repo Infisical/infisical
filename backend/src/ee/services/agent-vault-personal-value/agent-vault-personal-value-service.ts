@@ -167,6 +167,7 @@ export const agentVaultPersonalValueServiceFactory = ({
       owner: TAgentVaultOwner;
       accessBundleIds: string[] | null;
       serviceId?: string;
+      includeUnlinked?: boolean;
       withVariableReferences?: boolean;
     },
     tx?: Knex
@@ -188,12 +189,14 @@ export const agentVaultPersonalValueServiceFactory = ({
   /**
    * The caller's status for every service in these bundles that takes values from members. No permission check: the
    * access bundle service calls it for bundles it has already resolved the caller's reach to. Without variable
-   * references, each field's list is empty.
+   * references, each field's list is empty. `includeUnlinked` adds the services no bundle holds, for a caller who
+   * reaches every service (null `accessBundleIds`).
    */
   const findStatusesForOwner = (args: {
     projectId: string;
     owner: TAgentVaultOwner;
     accessBundleIds: string[] | null;
+    includeUnlinked?: boolean;
     withVariableReferences?: boolean;
   }) => loadServices(args);
 
@@ -218,17 +221,28 @@ export const agentVaultPersonalValueServiceFactory = ({
   // Under the service lock, after the reach check: the caller's grants on the bundles the service is in, or for an
   // admin without one, their admin role rows. A revoke, a removal, a demotion or taking the service out of a bundle
   // clears what the caller saved for services they lose, so none of those can land between the reach check and the
-  // write and leave values behind.
+  // write and leave values behind. The bundles are read again here, under the lock that taking the service out of a
+  // bundle also takes: the list read before the transaction can still name a bundle that has since let it go.
   const lockReach = async (
     {
       projectId,
-      accessBundleIds,
+      callerAccessBundleIds,
       owner,
       isAdmin,
       serviceId
-    }: { projectId: string; accessBundleIds: string[]; owner: TAgentVaultOwner; isAdmin: boolean; serviceId: string },
+    }: {
+      projectId: string;
+      callerAccessBundleIds: string[] | null;
+      owner: TAgentVaultOwner;
+      isAdmin: boolean;
+      serviceId: string;
+    },
     tx: Knex
   ) => {
+    const linked = (
+      (await agentVaultServiceDAL.findBundlesForServices([serviceId], null, tx)).get(serviceId) ?? []
+    ).map((bundle) => bundle.id);
+    const accessBundleIds = callerAccessBundleIds ? linked.filter((id) => callerAccessBundleIds.includes(id)) : linked;
     const grants = accessBundleIds.length
       ? await agentVaultPersonalValueDAL.lockGrantsForOwner({ projectId, accessBundleIds, owner }, tx)
       : [];
@@ -247,7 +261,7 @@ export const agentVaultPersonalValueServiceFactory = ({
    * is single use and only its creator can do it, so a link sent to someone else can't attach their account.
    */
   const connectOauth = async ({ authorizationId, credentialType, ...dto }: TConnectPersonalOauthDTO) => {
-    const { owner, service, isAdmin, reachingBundleIds } = await findReachableService(dto);
+    const { owner, service, isAdmin, accessBundleIds } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
     }
@@ -291,7 +305,7 @@ export const agentVaultPersonalValueServiceFactory = ({
         await lockReach(
           {
             projectId: dto.projectId,
-            accessBundleIds: reachingBundleIds,
+            callerAccessBundleIds: accessBundleIds,
             owner,
             isAdmin,
             serviceId: dto.serviceId
@@ -349,7 +363,7 @@ export const agentVaultPersonalValueServiceFactory = ({
   const setPersonalValues = async (input: TSetPersonalValuesDTO) => {
     const { values, credentialType, ...dto } = input;
 
-    const { owner, service, isAdmin, reachingBundleIds } = await findReachableService(dto);
+    const { owner, service, isAdmin, accessBundleIds } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
     }
@@ -427,7 +441,7 @@ export const agentVaultPersonalValueServiceFactory = ({
         await lockReach(
           {
             projectId: dto.projectId,
-            accessBundleIds: reachingBundleIds,
+            callerAccessBundleIds: accessBundleIds,
             owner,
             isAdmin,
             serviceId: dto.serviceId

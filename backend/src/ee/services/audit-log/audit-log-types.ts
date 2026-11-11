@@ -6722,6 +6722,8 @@ interface AgentVaultServiceUpdateEvent {
     accessBundleId?: string;
     accessBundleName?: string;
     serviceId: string;
+    // The service's name after the update. Absent on events recorded before it was added; `name` is set only by a rename.
+    serviceName?: string;
     name?: string;
     // Null when the update removed it.
     description?: string | null;

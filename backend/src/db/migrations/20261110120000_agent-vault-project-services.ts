@@ -167,7 +167,26 @@ export async function up(knex: Knex): Promise<void> {
       `${SERVICE}.createdAt`,
       knex.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName")
     )) as TServiceNameRow[];
-  const renames = [...findServiceNameRenames(nameRows)];
+  // Live sessions' inline services: a renamed service can't take one of their names (see findServiceNameRenames).
+  const liveInlineNames = new Map<string, Set<string>>();
+  if (await knex.schema.hasTable(INLINE)) {
+    const liveInline = (await knex(INLINE)
+      .join(TableName.AgentVaultSession, `${INLINE}.sessionId`, `${TableName.AgentVaultSession}.id`)
+      .whereNotNull(`${INLINE}.name`)
+      .whereNull(`${TableName.AgentVaultSession}.revokedAt`)
+      .where((query) => {
+        void query
+          .whereNull(`${TableName.AgentVaultSession}.expiresAt`)
+          .orWhere(`${TableName.AgentVaultSession}.expiresAt`, ">", knex.fn.now());
+      })
+      .distinct(`${TableName.AgentVaultSession}.projectId`, `${INLINE}.name`)) as { projectId: string; name: string }[];
+    liveInline.forEach(({ projectId, name }) => {
+      const names = liveInlineNames.get(projectId) ?? new Set<string>();
+      names.add(name);
+      liveInlineNames.set(projectId, names);
+    });
+  }
+  const renames = [...findServiceNameRenames(nameRows, liveInlineNames)];
   for (let i = 0; i < renames.length; i += RENAME_BATCH_SIZE) {
     const batch = renames.slice(i, i + RENAME_BATCH_SIZE);
     await knex.raw(
