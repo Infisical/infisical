@@ -95,6 +95,8 @@ export type TAccessControlDeps = (
   keyStore: TDomainKeyStore;
   // Its only dependency: removals write their events on the same transaction as the delete.
   eventEmitter: TDomainEventEmitter;
+  // Seconds a cached permission is served without revalidating its fingerprint; 0 revalidates every read (tests).
+  cacheMarkerTtlSeconds?: number;
 };
 
 export const buildAccessControlDataAccessDeps = (db: DataAccessDb): TAccessControlDataAccessDeps => ({
@@ -112,7 +114,10 @@ export class AccessControlModule {
 
   constructor(deps: TAccessControlDeps) {
     const { dataAccess } = "db" in deps ? buildAccessControlDataAccessDeps(deps.db) : deps;
-    const grants = new GrantService({ dataAccess, cache: new PermissionCache(deps.keyStore) });
+    const grants = new GrantService({
+      dataAccess,
+      cache: new PermissionCache(deps.keyStore, deps.cacheMarkerTtlSeconds)
+    });
 
     this.service = {
       fetchGrants: ({ actor, scope, readFrom }) => grants.fetchGrants(actor, scope, { readFrom }),

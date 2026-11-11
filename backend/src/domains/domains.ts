@@ -51,6 +51,7 @@ export type TDomainDeps = {
     | "INTERNAL_REGION"
     | "isCloud"
     | "isProductionMode"
+    | "isTestMode"
     | "ENCRYPTION_KEY"
     | "ROOT_ENCRYPTION_KEY"
     | "KMS_ROOT_KEY_RETENTION_DAYS"
@@ -161,7 +162,9 @@ export const createDomains = (deps: TDomainDeps) => {
   const accessControl = new AccessControlModule({
     db,
     keyStore: deps.keyStore,
-    eventEmitter: domainEventEmitter(deps.eventEmitter)
+    eventEmitter: domainEventEmitter(deps.eventEmitter),
+    // Tests see every change on the next request; production serves a validated permission for ten seconds.
+    cacheMarkerTtlSeconds: deps.envConfig.isTestMode ? 0 : undefined
   });
 
   // Organizations is the top container; Projects sits below it and holds every product's projects.

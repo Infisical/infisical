@@ -6,3 +6,4 @@ Holds only usage counting for now: the `internal_cas`, `active_certs` and `wildc
   domain exists, these reads move behind that domain's service.
 - **No in-memory twin:** the counters are SQL whose whole job is the query, so they are tested against
   Postgres only (`*.integration.spec.ts`). The License domain tests its side with `FakeUsageCounter`.
+- Every application check calls `getApplicationPermission`, built by Projects' `getProjectResourcePermission`; a built-in project admin falls back to `projectAdminApplicationFallbackPermissions`.

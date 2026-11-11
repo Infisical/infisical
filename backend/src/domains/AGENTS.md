@@ -36,9 +36,11 @@ src/domains/
 
 Read a domain's own `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
 [kms-core](platform/kms-core/AGENTS.md), [instance-config-core](platform/instance-config-core/AGENTS.md),
-[organizations](platform/organizations/AGENTS.md), [projects](platform/projects/AGENTS.md),
-[secrets](secrets-manager/secrets/AGENTS.md), [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
-[cert-manager](certificates/cert-manager/AGENTS.md). The projects and cert-manager domains are a
+[access-control](platform/access-control/AGENTS.md), [organizations](platform/organizations/AGENTS.md),
+[projects](platform/projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
+[secret-scanning](secrets-manager/secret-scanning/AGENTS.md), [pam](pam/pam/AGENTS.md),
+[agent-vault](agent-vault/agent-vault/AGENTS.md), [kms](kms/kms/AGENTS.md),
+[cert-manager](certificates/cert-manager/AGENTS.md), [code-signing](certificates/code-signing/AGENTS.md). The projects and cert-manager domains are a
 declared exception to "a table belongs to one data access class": they hold only usage counters that read
 tables no domain owns yet, tested against Postgres without an in-memory twin.
 

@@ -29,14 +29,18 @@ export type TPermissionCache = {
 };
 
 export class PermissionCache implements TPermissionCache {
-  constructor(private readonly keyStore: TDomainKeyStore) {}
+  constructor(
+    private readonly keyStore: TDomainKeyStore,
+    // 0 revalidates every read against the fingerprint: what tests use, so a change shows on the next request.
+    private readonly markerTtlSeconds: number = MARKER_TTL_SECONDS
+  ) {}
 
   getOrCompute<T>({ key, fingerprint, compute, revive }: TPermissionCacheEntry<T>): Promise<T> {
     return withCacheFingerprint<T>({
       keyStore: this.keyStore,
       dataKey: dataKey(key),
       markerKey: markerKey(key),
-      markerTtlSeconds: MARKER_TTL_SECONDS,
+      markerTtlSeconds: this.markerTtlSeconds,
       dataTtlSeconds: DATA_TTL_SECONDS,
       fingerprintFetcher: fingerprint,
       dataFetcher: compute,

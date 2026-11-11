@@ -6,3 +6,14 @@ The container every product's projects live in, below Organizations. Holds what 
   domain exists, these reads move behind that domain's service.
 - **No in-memory twin:** the counters are SQL whose whole job is the query, so they are tested against
   Postgres only (`*.integration.spec.ts`). The License domain tests its side with `FakeUsageCounter`.
+- **Project permissions:** `getProjectPermission` resolves the actor's roles through `productAccessRegistry`: a
+  product's registered default roles (or the generic ones) and its override for custom roles (or the customer's
+  rules as written). A product with its own layers (Secrets folder grants) builds on `getProjectRules` and passes
+  its composed rules to `ProjectPermission.build`, the only constructor, which fills `{{identity.*}}` placeholders
+  and narrows a delegated OAuth token last. Never build a project ability any other way.
+- **Product checks call the product's function** (`getSecretsPermission`, `getPamPermission`, `getKmsPermission`,
+  ...); `getProjectPermission` is for checks every project type shares.
+- **Resource permissions** (PAM folders and accounts, certificate applications, signers, Agent Vault bundles) go
+  through `getProjectResourcePermission` with the product's `TResourceRoles`, so delegated tokens, non-members and
+  project admins are treated the same everywhere.
+

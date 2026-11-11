@@ -243,8 +243,8 @@ describe("Auth SSO session binding", () => {
 
       await setAuthEnforced(ORG_A_ID, true);
       // The project permission is still cached; enforcement must apply on the very next request.
-      const markerKeys = await testRedis.keys(`*project-permission-marker:${projectId}:*`);
-      expect(markerKeys.length).toBeGreaterThan(0);
+      const cachedKeys = await testRedis.keys(`*access-control:permission:data:${projectId}:*`);
+      expect(cachedKeys.length).toBeGreaterThan(0);
       const refused = await readProject();
 
       expect(refused.statusCode).toBe(401);

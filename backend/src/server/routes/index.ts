@@ -895,7 +895,8 @@ export const registerRoutes = async (
           permissionDAL,
           serviceTokenDAL,
           projectDAL,
-          keyStore,
+          // No cache, so the comparison is between what each engine computes from the database now.
+          keyStore: { ...keyStore, getItem: async () => null, setItemWithExpiry: async () => "OK" as const },
           roleDAL,
           userDAL,
           identityDAL,

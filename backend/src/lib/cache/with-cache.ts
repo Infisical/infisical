@@ -132,8 +132,10 @@ export const withCacheFingerprint = async <T>({
   dataFetcher,
   reviver
 }: TWithCacheFingerprintOpts<T>): Promise<T> => {
+  // A marker TTL of 0 turns the marker off, so every read checks the fingerprint.
+  const usesMarker = markerTtlSeconds > 0;
   const [markerValue, cachedDataStr] = await Promise.all([
-    cacheGet(keyStore, markerKey, "withCacheFingerprint: marker read failed"),
+    usesMarker ? cacheGet(keyStore, markerKey, "withCacheFingerprint: marker read failed") : null,
     cacheGet(keyStore, dataKey, "withCacheFingerprint: data read failed")
   ]);
 
@@ -170,7 +172,9 @@ export const withCacheFingerprint = async <T>({
     try {
       const cachedData = JSON.parse(cachedDataStr) as TCachedData<T>;
       if (cachedData.fingerprint === currentFingerprint) {
-        await cacheSet(keyStore, markerKey, markerTtlSeconds, "1", "withCacheFingerprint: marker reset failed");
+        if (usesMarker) {
+          await cacheSet(keyStore, markerKey, markerTtlSeconds, "1", "withCacheFingerprint: marker reset failed");
+        }
         const revived = applyReviver(cachedData.payload, reviver);
         permissionCacheLookupCounter.add(1, { "cache.result": "fingerprint_match" });
         return revived;
@@ -194,7 +198,9 @@ export const withCacheFingerprint = async <T>({
     JSON.stringify({ fingerprint: currentFingerprint, payload: result }),
     "withCacheFingerprint: data write failed"
   );
-  await cacheSet(keyStore, markerKey, markerTtlSeconds, "1", "withCacheFingerprint: marker write failed");
+  if (usesMarker) {
+    await cacheSet(keyStore, markerKey, markerTtlSeconds, "1", "withCacheFingerprint: marker write failed");
+  }
 
   return result;
 };
