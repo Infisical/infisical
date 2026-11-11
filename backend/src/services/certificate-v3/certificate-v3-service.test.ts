@@ -9,6 +9,8 @@ import { join } from "node:path";
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { InstanceType, TPlanProps } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
@@ -259,6 +261,16 @@ describe("CertificateV3Service", () => {
     actorOrgId: "org-123"
   };
 
+  const mockActorContext = {
+    actor: {
+      principal: { type: ActorType.USER, id: "user-123", authMethod: AuthMethod.EMAIL },
+      org: { id: "org-123", rootOrgId: "org-123", parentOrgId: "org-123" }
+    } as unknown as TActorContext
+  };
+
+  const allowAll = Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] });
+  const mockProjectsDomain = { getProjectPermission: vi.fn() };
+
   beforeEach(() => {
     // Reset all mocks before each test
     vi.resetAllMocks();
@@ -318,6 +330,9 @@ describe("CertificateV3Service", () => {
       throwUnlessCan: vi.fn()
     } as any);
 
+    mockProjectsDomain.getProjectPermission.mockResolvedValue(allowAll);
+    mockUsageCounterDAL.getApplicationPermission.mockResolvedValue(allowAll);
+
     // Ensure the permission service mock is properly set up
     (mockPermissionService.getProjectPermission as any).mockResolvedValue({
       permission: {
@@ -356,6 +371,7 @@ describe("CertificateV3Service", () => {
         )
       },
       permissionService: mockPermissionService,
+      projectsDomain: mockProjectsDomain as never,
       certificateSyncDAL: {
         findPkiSyncIdsByCertificateId: vi.fn().mockResolvedValue([]),
         addCertificates: vi.fn().mockResolvedValue([]),
@@ -2585,7 +2601,7 @@ describe("CertificateV3Service", () => {
         await expect(
           service.renewCertificate({
             certificateId: "cert-123",
-            ...mockActor,
+            ...mockActorContext,
             attributes: {
               altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "brand-new.example.com" }]
             }
@@ -2599,7 +2615,7 @@ describe("CertificateV3Service", () => {
         await expect(
           service.renewCertificate({
             certificateId: "cert-123",
-            ...mockActor,
+            ...mockActorContext,
             attributes: { commonName: "brand-new.example.com" }
           })
         ).rejects.toThrow(/plan limit/i);
@@ -2611,7 +2627,7 @@ describe("CertificateV3Service", () => {
         await expect(
           service.renewCertificate({
             certificateId: "cert-123",
-            ...mockActor,
+            ...mockActorContext,
             attributes: { altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "*.example.com" }] }
           })
         ).rejects.toThrow(/wildcard/i);
@@ -2621,7 +2637,7 @@ describe("CertificateV3Service", () => {
         atCap();
 
         // Fails later for want of the issuance mocks; the point is that it gets past the quota gate.
-        await service.renewCertificate({ certificateId: "cert-123", ...mockActor }).catch(() => undefined);
+        await service.renewCertificate({ certificateId: "cert-123", ...mockActorContext }).catch(() => undefined);
 
         expect(mockUsageCounterDAL.countActiveCertificateQuota).not.toHaveBeenCalled();
       });
@@ -2648,7 +2664,7 @@ describe("CertificateV3Service", () => {
           service.renewCertificate({
             certificateId: "cert-123",
             externalConfiguration: { reissue: true },
-            ...mockActor
+            ...mockActorContext
           })
         ).rejects.toThrow("Reissue is only available for certificates issued by these CAs: DigiCert.");
         expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
@@ -2666,7 +2682,7 @@ describe("CertificateV3Service", () => {
             certificateId: "cert-123",
             externalConfiguration: { reissue: true },
             attributes: { ttl: "30d" },
-            ...mockActor
+            ...mockActorContext
           })
         ).rejects.toThrow("Remove the TTL. It can't be set on a reissue.");
         expect(mockCertificateIssuanceQueue.queueCertificateIssuance).not.toHaveBeenCalled();
@@ -2715,7 +2731,7 @@ describe("CertificateV3Service", () => {
 
       const result = await service.renewCertificate({
         certificateId: "cert-123",
-        ...mockActor
+        ...mockActorContext
       });
 
       expect(result).toHaveProperty("certificate", "renewed-cert");
@@ -2775,7 +2791,7 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(newCert);
 
-      await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+      await service.renewCertificate({ certificateId: "cert-123", ...mockActorContext });
 
       expect(mockInternalCaService.issueCertFromCa).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -2859,19 +2875,19 @@ describe("CertificateV3Service", () => {
       });
 
       it("uses it for a manual renewal", async () => {
-        await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+        await service.renewCertificate({ certificateId: "cert-123", ...mockActorContext });
 
         expect(mockCertificateRequestService.createCertificateRequest).toHaveBeenCalledWith(expectedRequest);
       });
 
       it("uses it for a scheduled renewal", async () => {
-        await service.renewCertificate({ certificateId: "cert-123", internal: true, ...mockActor });
+        await service.renewCertificate({ certificateId: "cert-123", internal: true });
 
         expect(mockCertificateRequestService.createCertificateRequest).toHaveBeenCalledWith(expectedRequest);
       });
 
       it("still runs the certificate policy over what it replays", async () => {
-        await service.renewCertificate({ certificateId: "cert-123", ...mockActor });
+        await service.renewCertificate({ certificateId: "cert-123", ...mockActorContext });
 
         expect(mockCertificatePolicyService.validateRequestAgainstPolicy).toHaveBeenCalledWith(
           mockPolicy,
@@ -2896,7 +2912,7 @@ describe("CertificateV3Service", () => {
         warnings: []
       } as any);
 
-      await expect(service.renewCertificate({ certificateId: "cert-123", ...mockActor })).rejects.toThrow(
+      await expect(service.renewCertificate({ certificateId: "cert-123", ...mockActorContext })).rejects.toThrow(
         "exceeds maximum allowed by policy"
       );
 
@@ -2932,14 +2948,14 @@ describe("CertificateV3Service", () => {
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(BadRequestError);
 
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("Certificate renewal failed. Errors: Subject alternative name not allowed");
 
@@ -2961,14 +2977,14 @@ describe("CertificateV3Service", () => {
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(ForbiddenRequestError);
 
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("This certificate is not linked to a certificate profile, so it cannot be renewed");
     });
@@ -2991,7 +3007,7 @@ describe("CertificateV3Service", () => {
           subject: ProjectPermissionSub.CertificateProfiles
         }
       ]);
-      (mockPermissionService.getProjectPermission as any).mockResolvedValue({ permission: cnScoped });
+      mockProjectsDomain.getProjectPermission.mockResolvedValue(Permission.fromRules({ rules: cnScoped.rules }));
 
       const scopedCert = { ...mockOriginalCert, commonName: "allowed.example.com" };
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(scopedCert);
@@ -3018,7 +3034,7 @@ describe("CertificateV3Service", () => {
         service.renewCertificate({
           certificateId: "cert-123",
           attributes: { commonName: "out-of-scope.example.com" },
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(ForbiddenError);
     });
@@ -3055,7 +3071,7 @@ describe("CertificateV3Service", () => {
         service.renewCertificate({
           certificateId: "cert-123",
           renewalKeySource: CertificateRenewalKeySource.Reuse,
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("cannot be reused");
     });
@@ -3086,14 +3102,14 @@ describe("CertificateV3Service", () => {
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(ForbiddenRequestError);
 
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("Certificate is not eligible for renewal: ACME certificates cannot be renewed");
     });
@@ -3117,14 +3133,14 @@ describe("CertificateV3Service", () => {
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(BadRequestError);
 
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("Certificate has already been renewed");
     });
@@ -3151,14 +3167,14 @@ describe("CertificateV3Service", () => {
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(BadRequestError);
 
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("Certificate is already expired");
     });
@@ -3185,14 +3201,14 @@ describe("CertificateV3Service", () => {
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(BadRequestError);
 
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("Certificate is revoked and cannot be renewed");
     });
@@ -3214,7 +3230,7 @@ describe("CertificateV3Service", () => {
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("was deleted on 2026-10-20T14:38:27.000Z. It can no longer be renewed or changed");
     });
@@ -3238,14 +3254,14 @@ describe("CertificateV3Service", () => {
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(BadRequestError);
 
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow("Certificate is not eligible for renewal: Certificate Authority is disabled, must be active");
     });
@@ -3275,14 +3291,14 @@ describe("CertificateV3Service", () => {
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(BadRequestError);
 
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
-          ...mockActor
+          ...mockActorContext
         })
       ).rejects.toThrow(/New certificate would expire \(.+\) after its issuing CA \(.+\)/);
     });
@@ -3326,7 +3342,7 @@ describe("CertificateV3Service", () => {
 
       const result = await service.renewCertificate({
         certificateId: "cert-123",
-        ...mockActor
+        ...mockActorContext
       });
 
       expect(result).toHaveProperty("certificate", "renewed-cert");
@@ -3360,10 +3376,7 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCert as any);
 
       const result = await service.updateRenewalConfig({
-        actor: ActorType.USER,
-        actorId: "user-123",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "org-123",
+        actor: mockActorContext.actor,
         certificateId: "cert-123",
         renewBeforeDays: 7
       });
@@ -3391,10 +3404,7 @@ describe("CertificateV3Service", () => {
 
       await expect(
         service.updateRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           certificateId: "cert-123",
           renewBeforeDays: 7
         })
@@ -3402,10 +3412,7 @@ describe("CertificateV3Service", () => {
 
       await expect(
         service.updateRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           certificateId: "cert-123",
           renewBeforeDays: 7
         })
@@ -3437,10 +3444,7 @@ describe("CertificateV3Service", () => {
 
       await expect(
         service.updateRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           certificateId: "cert-123",
           renewBeforeDays: 7
         })
@@ -3448,10 +3452,7 @@ describe("CertificateV3Service", () => {
 
       await expect(
         service.updateRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           certificateId: "cert-123",
           renewBeforeDays: 7
         })
@@ -3485,10 +3486,7 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCert as any);
 
       const result = await service.updateRenewalConfig({
-        actor: ActorType.USER,
-        actorId: "user-123",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "org-123",
+        actor: mockActorContext.actor,
         certificateId: "cert-123",
         renewBeforeDays: 7
       });
@@ -3529,10 +3527,7 @@ describe("CertificateV3Service", () => {
 
       await expect(
         service.updateRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           certificateId: "cert-123",
           renewBeforeDays: 7
         })
@@ -3564,10 +3559,7 @@ describe("CertificateV3Service", () => {
 
       await expect(
         service.updateRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           certificateId: "cert-123",
           renewBeforeDays: 8 // Greater than 7-day TTL
         })
@@ -3575,10 +3567,7 @@ describe("CertificateV3Service", () => {
 
       await expect(
         service.updateRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           certificateId: "cert-123",
           renewBeforeDays: 8
         })
@@ -3607,10 +3596,7 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCert as any);
 
       const result = await service.disableRenewalConfig({
-        actor: ActorType.USER,
-        actorId: "user-123",
-        actorAuthMethod: AuthMethod.EMAIL,
-        actorOrgId: "org-123",
+        actor: mockActorContext.actor,
         certificateId: "cert-123"
       });
 
@@ -3635,20 +3621,14 @@ describe("CertificateV3Service", () => {
 
       await expect(
         service.disableRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           certificateId: "cert-123"
         })
       ).rejects.toThrow(BadRequestError);
 
       await expect(
         service.disableRenewalConfig({
-          actor: ActorType.USER,
-          actorId: "user-123",
-          actorAuthMethod: AuthMethod.EMAIL,
-          actorOrgId: "org-123",
+          actor: mockActorContext.actor,
           certificateId: "cert-123"
         })
       ).rejects.toThrow("Certificate is not eligible for auto-renewal: certificate was not issued from a profile");
@@ -3812,10 +3792,7 @@ describe("CertificateV3Service", () => {
 
     const renewDto = {
       certificateId: "cert-123",
-      actor: ActorType.USER,
-      actorId: "user-123",
-      actorAuthMethod: AuthMethod.EMAIL,
-      actorOrgId: "org-123",
+      ...mockActorContext,
       auditLogInfo
     };
 

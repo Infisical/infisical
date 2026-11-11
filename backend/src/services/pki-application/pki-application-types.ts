@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TPkiApplicationListItem = {
   id: string;
@@ -29,46 +29,55 @@ export type TCreatePkiApplicationDTO = {
   name: string;
   description?: string;
   profileIds?: string[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdatePkiApplicationDTO = {
   applicationId: string;
   name?: string;
   description?: string | null;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetPkiApplicationDTO = {
   applicationId: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetPkiApplicationByNameDTO = {
   name: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TListPkiApplicationsDTO = {
   search?: string;
   limit?: number;
   offset?: number;
   applicationIds?: string[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TDeletePkiApplicationDTO = {
   applicationId: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TAttachProfilesDTO = {
   applicationId: string;
   profileIds: string[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TDetachProfileDTO = {
   applicationId: string;
   profileId: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TListApplicationProfilesDTO = {
   applicationId: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TApplicationMember = {
   membershipId: string;
@@ -96,7 +105,8 @@ export type TAddApplicationMemberDTO = {
   identityId?: string;
   groupId?: string;
   role: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export enum ApplicationMemberKind {
   User = "user",
@@ -109,24 +119,28 @@ export type TApplicationMemberKind = `${ApplicationMemberKind}`;
 export type TListApplicationMembersDTO = {
   applicationId: string;
   kind?: TApplicationMemberKind;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateApplicationMemberRoleDTO = {
   applicationId: string;
   kind: TApplicationMemberKind;
   memberId: string;
   role: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TRemoveApplicationMemberDTO = {
   applicationId: string;
   kind: TApplicationMemberKind;
   memberId: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TAddApplicationUserMembersDTO = {
   applicationId: string;
   userIds: string[];
   emails: string[];
   role: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;

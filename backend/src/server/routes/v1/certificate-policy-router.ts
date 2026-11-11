@@ -208,10 +208,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.createPolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         data: req.body
       });
@@ -273,10 +270,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const projectId = req.internalCertManagerProjectId;
       const { policies, totalCount } = await server.services.certificatePolicy.listPolicies({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.query,
         projectId
       });
@@ -321,10 +315,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.getPolicyById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         policyId: req.params.id,
         applicationId: req.query.applicationId
       });
@@ -368,10 +359,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.updatePolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         policyId: req.params.id,
         data: req.body
       });
@@ -427,10 +415,7 @@ export const registerCertificatePolicyRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const certificatePolicy = await server.services.certificatePolicy.deletePolicy({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod!,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         policyId: req.params.id
       });
 

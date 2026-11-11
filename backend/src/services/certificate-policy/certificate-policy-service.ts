@@ -1,18 +1,19 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   ProjectPermissionCertificatePolicyActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -50,12 +51,14 @@ import {
 
 type TCertificatePolicyServiceFactoryDep = {
   certificatePolicyDAL: TCertificatePolicyDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  certManagerDomain: Pick<TCertManagerDomain, "getApplicationPermission">;
 };
 
 export const certificatePolicyServiceFactory = ({
   certificatePolicyDAL,
-  permissionService
+  projectsDomain,
+  certManagerDomain
 }: TCertificatePolicyServiceFactoryDep) => {
   const consolidateAttributeArray = <T extends { type: string }>(attributes: T[]): T[] => {
     const consolidated = new Map<string, T>();
@@ -728,34 +731,26 @@ export const certificatePolicyServiceFactory = ({
 
   const createPolicy = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     data
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     data: Omit<TCertificatePolicyInsert, "projectId">;
   }): Promise<TCertificatePolicy> => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Create,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Create,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: data.name
-      })
-    );
+      }
+    });
 
     if (!data) {
       throw new Error("Template data is required");
@@ -806,16 +801,10 @@ export const certificatePolicyServiceFactory = ({
 
   const updatePolicy = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     policyId,
     data
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     policyId: string;
     data: TCertificatePolicyUpdate;
   }): Promise<TCertificatePolicy> => {
@@ -824,21 +813,19 @@ export const certificatePolicyServiceFactory = ({
       throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: existingTemplate.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Edit,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Edit,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: existingTemplate.name
-      })
-    );
+      }
+    });
 
     const consolidatedData = {
       ...data,
@@ -901,17 +888,11 @@ export const certificatePolicyServiceFactory = ({
 
   const getPolicyById = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     policyId,
     applicationId,
     internal = false
   }: {
-    actor?: ActorType;
-    actorId?: string;
-    actorAuthMethod?: ActorAuthMethod;
-    actorOrgId?: string;
+    actor?: TActorContext;
     policyId: string;
     applicationId?: string;
     internal?: boolean;
@@ -922,41 +903,35 @@ export const certificatePolicyServiceFactory = ({
     }
 
     if (!internal) {
-      if (!actor || !actorId || !actorOrgId) {
+      if (!actor) {
         throw new BadRequestError({ message: "Actor is required" });
       }
 
-      if (applicationId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
-        const { permission } = await permissionService.getResourcePermission({
+      if (applicationId && (actor.principal.type === ActorType.USER || actor.principal.type === ActorType.IDENTITY)) {
+        const permission = await certManagerDomain.getApplicationPermission({
           actor,
-          actorId,
           projectId: template.projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: applicationId,
-          actorAuthMethod: actorAuthMethod || null,
-          actorOrgId
+          applicationId
         });
 
-        ForbiddenError.from(permission).throwUnlessCan(
-          ResourcePermissionApplicationActions.Read,
-          ResourcePermissionSub.Application
-        );
+        permission.assert({
+          action: ResourcePermissionApplicationActions.Read,
+          subject: ResourcePermissionSub.Application
+        });
       } else {
-        const { permission } = await permissionService.getProjectPermission({
+        const permission = await projectsDomain.getProjectPermission({
           actor,
-          actorId,
           projectId: template.projectId,
-          actorAuthMethod: actorAuthMethod || null,
-          actorOrgId,
-          actionProjectType: ActionProjectType.CertificateManager
+          type: ProjectType.CertificateManager
         });
 
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificatePolicyActions.Read,
-          subject(ProjectPermissionSub.CertificatePolicies, {
+        permission.assert({
+          action: ProjectPermissionCertificatePolicyActions.Read,
+          subject: ProjectPermissionSub.CertificatePolicies,
+          fields: {
             name: template.name
-          })
-        );
+          }
+        });
       }
     }
 
@@ -965,26 +940,17 @@ export const certificatePolicyServiceFactory = ({
 
   const getPolicyBySlug = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     slug
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     slug: string;
   }): Promise<TCertificatePolicy> => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
     const template = await certificatePolicyDAL.findByNameAndProjectId(slug, projectId);
@@ -992,29 +958,24 @@ export const certificatePolicyServiceFactory = ({
       throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Read,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Read,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: template.name
-      })
-    );
+      }
+    });
     return template;
   };
 
   const listPolicies = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId,
     offset = 0,
     limit = 20,
     search
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     projectId: string;
     offset?: number;
     limit?: number;
@@ -1023,22 +984,19 @@ export const certificatePolicyServiceFactory = ({
     policies: TCertificatePolicy[];
     totalCount: number;
   }> => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Read,
-      ProjectPermissionSub.CertificatePolicies
-    );
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Read,
+      subject: ProjectPermissionSub.CertificatePolicies
+    });
 
     const processedRules = getProcessedPermissionRules(
-      permission,
+      permission.toAbility(),
       ProjectPermissionCertificatePolicyActions.Read,
       ProjectPermissionSub.CertificatePolicies
     );
@@ -1054,15 +1012,9 @@ export const certificatePolicyServiceFactory = ({
 
   const deletePolicy = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     policyId
   }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
+    actor: TActorContext;
     policyId: string;
   }): Promise<TCertificatePolicy> => {
     const template = await certificatePolicyDAL.findById(policyId);
@@ -1070,21 +1022,19 @@ export const certificatePolicyServiceFactory = ({
       throw new NotFoundError({ message: "Certificate policy not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: template.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificatePolicyActions.Delete,
-      subject(ProjectPermissionSub.CertificatePolicies, {
+    permission.assert({
+      action: ProjectPermissionCertificatePolicyActions.Delete,
+      subject: ProjectPermissionSub.CertificatePolicies,
+      fields: {
         name: template.name
-      })
-    );
+      }
+    });
 
     const isInUse = await certificatePolicyDAL.isPolicyInUse(policyId);
     if (isInUse) {

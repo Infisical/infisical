@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 
 export type TCreateCertTemplateDTO = {
@@ -10,7 +10,7 @@ export type TCreateCertTemplateDTO = {
   ttl: string;
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateCertTemplateDTO = {
   id: string;
@@ -22,15 +22,15 @@ export type TUpdateCertTemplateDTO = {
   ttl?: string;
   keyUsages?: CertKeyUsage[];
   extendedKeyUsages?: CertExtendedKeyUsage[];
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetCertTemplateDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteCertTemplateDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCreateEstConfigurationDTO = {
   certificateTemplateId: string;
@@ -38,7 +38,7 @@ export type TCreateEstConfigurationDTO = {
   passphrase: string;
   isEnabled: boolean;
   disableBootstrapCertValidation: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateEstConfigurationDTO = {
   certificateTemplateId: string;
@@ -46,7 +46,7 @@ export type TUpdateEstConfigurationDTO = {
   passphrase?: string;
   isEnabled?: boolean;
   disableBootstrapCertValidation?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetEstConfigurationDTO =
   | {
@@ -56,4 +56,4 @@ export type TGetEstConfigurationDTO =
   | ({
       isInternal: false;
       certificateTemplateId: string;
-    } & Omit<TProjectPermission, "projectId">);
+    } & TActorInput);

@@ -1,16 +1,32 @@
-import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { ProjectPermissionCertificateActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectType } from "@app/db/schemas";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import {
+  ProjectPermission,
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import {
   ResourcePermissionCertificateActions,
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ActorType } from "@app/lib/auth/actor-types";
+import { OrgServiceActor } from "@app/lib/types";
 
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
+
+// The flat actor that services outside Certificate Manager (app connections, external CA functions) still take.
+export const toOrgServiceActor = (actor: TActorContext): OrgServiceActor => ({
+  type: actor.principal.type,
+  id: actor.principal.id,
+  authMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
+  orgId: actor.org.id,
+  rootOrgId: actor.org.rootOrgId,
+  parentOrgId: actor.org.parentOrgId
+});
 
 type TCertificateSubjectFields = {
   id: string;
@@ -23,11 +39,9 @@ type TCertificateSubjectFields = {
 
 type TAssertCanEditCertificateDTO = {
   certificate: TCertificateSubjectFields;
-  actor: ActorType;
-  actorId: string;
-  actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  actor: TActorContext;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  certManagerDomain: Pick<TCertManagerDomain, "getApplicationPermission">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find">;
   tx?: Knex;
 };
@@ -35,10 +49,8 @@ type TAssertCanEditCertificateDTO = {
 const assertCertificatePermission = async ({
   certificate,
   actor,
-  actorId,
-  actorAuthMethod,
-  actorOrgId,
-  permissionService,
+  projectsDomain,
+  certManagerDomain,
   resourceMetadataDAL,
   tx,
   resourceAction,
@@ -50,19 +62,15 @@ const assertCertificatePermission = async ({
   extraSubjectFields?: Record<string, string | undefined>;
 }): Promise<{
   certMetadata: { key: string; value: string }[];
-  projectPermission?: MongoAbility;
+  projectPermission?: ProjectPermission;
 }> => {
   if (certificate.applicationId) {
-    const { permission } = await permissionService.getResourcePermission({
+    const permission = await certManagerDomain.getApplicationPermission({
       actor,
-      actorId,
       projectId: certificate.projectId,
-      resourceType: ResourceType.CertificateApplication,
-      resourceId: certificate.applicationId,
-      actorAuthMethod,
-      actorOrgId
+      applicationId: certificate.applicationId
     });
-    ForbiddenError.from(permission).throwUnlessCan(resourceAction, ResourcePermissionSub.Certificates);
+    permission.assert({ action: resourceAction, subject: ResourcePermissionSub.Certificates });
 
     return { certMetadata: [] };
   }
@@ -70,25 +78,23 @@ const assertCertificatePermission = async ({
   const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id }, { tx });
   const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
 
-  const { permission } = await permissionService.getProjectPermission({
+  const permission = await projectsDomain.getProjectPermission({
     actor,
-    actorId,
     projectId: certificate.projectId,
-    actorAuthMethod,
-    actorOrgId,
-    actionProjectType: ActionProjectType.CertificateManager
+    type: ProjectType.CertificateManager
   });
 
-  ForbiddenError.from(permission).throwUnlessCan(
-    projectAction,
-    subject(ProjectPermissionSub.Certificates, {
+  permission.assert({
+    action: projectAction,
+    subject: ProjectPermissionSub.Certificates,
+    fields: {
       commonName: certificate.commonName ?? undefined,
       altNames: certificate.altNames?.split(",").map((s) => s.trim()),
       serialNumber: certificate.serialNumber ?? undefined,
       ...extraSubjectFields,
       metadata: certMetadata
-    })
-  );
+    }
+  });
 
   return { certMetadata, projectPermission: permission };
 };
@@ -125,19 +131,20 @@ export const assertCanEditCertificateResult = ({
   serialNumber,
   metadata
 }: {
-  projectPermission: MongoAbility;
+  projectPermission: ProjectPermission;
   commonName?: string | null;
   altNames?: string[];
   serialNumber?: string | null;
   metadata: { key: string; value: string }[];
 }) => {
-  ForbiddenError.from(projectPermission).throwUnlessCan(
-    ProjectPermissionCertificateActions.Edit,
-    subject(ProjectPermissionSub.Certificates, {
+  projectPermission.assert({
+    action: ProjectPermissionCertificateActions.Edit,
+    subject: ProjectPermissionSub.Certificates,
+    fields: {
       commonName: commonName ?? undefined,
       altNames,
       serialNumber: serialNumber ?? undefined,
       metadata
-    })
-  );
+    }
+  });
 };

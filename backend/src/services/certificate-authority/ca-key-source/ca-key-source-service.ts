@@ -1,7 +1,7 @@
 import { TCertificateAuthoritySecret } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
@@ -39,7 +39,7 @@ export const caKeySourceServiceFactory = (deps: TCaKeySourceServiceFactoryDep) =
 
   const assertCanUse = (args: {
     keySource: TExternalCaKeySource;
-    actor: OrgServiceActor;
+    actor: TActorContext;
     projectId: string;
     input: TExternalCaKeyInput;
   }) => $getProvider(args.keySource).assertCanUse(args);

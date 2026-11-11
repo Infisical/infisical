@@ -2,7 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { PAGERDUTY_INTEGRATION_KEY_ERROR, pagerDutyIntegrationKeyRegex } from "@app/lib/pagerduty/integration-key";
-import { TGenericPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 const createSecureNameValidator = () => {
   // Validates name format: lowercase alphanumeric characters with optional hyphens
@@ -274,27 +274,27 @@ export const PkiAlertV2ResponseSchema = z.object({
   updatedAt: z.date()
 });
 
-export type TCreateAlertV2DTO = TGenericPermission & {
+export type TCreateAlertV2DTO = TActorInput & {
   projectId: string;
   applicationId?: string;
 } & TCreatePkiAlertV2;
 
-export type TUpdateAlertV2DTO = TGenericPermission & {
+export type TUpdateAlertV2DTO = TActorInput & {
   alertId: string;
   applicationId?: string;
 } & TUpdatePkiAlertV2;
 
-export type TGetAlertV2DTO = TGenericPermission & {
+export type TGetAlertV2DTO = TActorInput & {
   alertId: string;
   applicationId?: string;
 };
 
-export type TDeleteAlertV2DTO = TGenericPermission & {
+export type TDeleteAlertV2DTO = TActorInput & {
   alertId: string;
   applicationId?: string;
 };
 
-export type TListAlertsV2DTO = TGenericPermission & {
+export type TListAlertsV2DTO = TActorInput & {
   projectId: string;
   search?: string;
   eventType?: PkiAlertEventType;
@@ -304,13 +304,13 @@ export type TListAlertsV2DTO = TGenericPermission & {
   applicationId?: string | null;
 };
 
-export type TListMatchingCertificatesDTO = TGenericPermission & {
+export type TListMatchingCertificatesDTO = TActorInput & {
   alertId: string;
   limit?: number;
   offset?: number;
 };
 
-export type TListCurrentMatchingCertificatesDTO = TGenericPermission & {
+export type TListCurrentMatchingCertificatesDTO = TActorInput & {
   projectId: string;
   filters: TPkiFilters;
   alertBefore?: string;
@@ -380,7 +380,7 @@ export type TListMatchingCertificatesResponse = {
   total: number;
 };
 
-export type TTestWebhookConfigDTO = TGenericPermission & {
+export type TTestWebhookConfigDTO = TActorInput & {
   projectId: string;
   applicationId?: string;
   url: string;

@@ -35,10 +35,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
     handler: async (req) => {
       const config = await server.services.certificateCleanup.getConfig({
         projectId: req.internalCertManagerProjectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
       return { config };
     }
@@ -80,10 +77,7 @@ export const registerCertificateCleanupRouter = async (server: FastifyZodProvide
         isEnabled: req.body.isEnabled,
         postExpiryRetentionDays: req.body.postExpiryRetentionDays,
         skipCertsWithActiveSyncs: req.body.skipCertsWithActiveSyncs,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

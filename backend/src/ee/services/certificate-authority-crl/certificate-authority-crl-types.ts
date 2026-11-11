@@ -1,10 +1,10 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TGetCrlById = string;
 
 export type TGetCaCrlsDTO = {
   caId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCertificateAuthorityCrlServiceFactory = {
   getCrlById: (crlId: TGetCrlById) => Promise<{
@@ -75,7 +75,7 @@ export type TCertificateAuthorityCrlServiceFactory = {
     };
     crl: ArrayBuffer;
   }>;
-  getCaCrls: ({ caId, actorId, actorAuthMethod, actor, actorOrgId }: TGetCaCrlsDTO) => Promise<{
+  getCaCrls: ({ caId, actor }: TGetCaCrlsDTO) => Promise<{
     ca: {
       readonly requireTemplateForIssuance: boolean;
       readonly internalCa:

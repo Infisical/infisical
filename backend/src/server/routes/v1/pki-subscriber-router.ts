@@ -47,10 +47,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       const subscriber = await server.services.pkiSubscriber.getSubscriber({
         subscriberName: req.params.subscriberName,
         projectId: req.query.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -211,10 +208,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.createSubscriber({
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -381,10 +375,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const subscriber = await server.services.pkiSubscriber.updateSubscriber({
         subscriberName: req.params.subscriberName,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -437,10 +428,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       const subscriber = await server.services.pkiSubscriber.deleteSubscriber({
         subscriberName: req.params.subscriberName,
         projectId: req.body.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -489,10 +477,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       const subscriber = await server.services.pkiSubscriber.orderSubscriberCert({
         subscriberName: req.params.subscriberName,
         projectId: req.body.projectId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -559,10 +544,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
         await server.services.pkiSubscriber.issueSubscriberCert({
           subscriberName: req.params.subscriberName,
           projectId: req.body.projectId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+          actor: req.permission
         });
 
       await server.services.auditLog.createAuditLog({
@@ -635,10 +617,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
           subscriberName: req.params.subscriberName,
           projectId: req.body.projectId,
           csr: req.body.csr,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+          actor: req.permission
         });
 
       await server.services.auditLog.createAuditLog({
@@ -711,10 +690,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
       const { certificate, certificateChain, serialNumber, cert, privateKey, subscriber } =
         await server.services.pkiSubscriber.getSubscriberActiveCertBundle({
           subscriberName: req.params.subscriberName,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           ...req.query
         });
 
@@ -775,10 +751,7 @@ export const registerPkiSubscriberRouter = async (server: FastifyZodProvider) =>
     handler: async (req) => {
       const { totalCount, certificates } = await server.services.pkiSubscriber.listSubscriberCerts({
         subscriberName: req.params.subscriberName,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.query
       });
 

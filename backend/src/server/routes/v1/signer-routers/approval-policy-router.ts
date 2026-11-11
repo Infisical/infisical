@@ -36,10 +36,7 @@ export const registerSignerApprovalPolicyRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       return server.services.signerPolicy.getPolicy({
         signerId: req.params.signerId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
     }
   });
@@ -61,10 +58,7 @@ export const registerSignerApprovalPolicyRouter = async (server: FastifyZodProvi
       const policy = await server.services.signerPolicy.updatePolicy({
         signerId: req.params.signerId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       const signer = await server.services.pkiSigner.getSignerAuditContext(req.params.signerId);

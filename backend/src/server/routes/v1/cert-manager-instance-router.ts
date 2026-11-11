@@ -42,10 +42,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const state = await server.services.certManagerInstance.getInstanceState({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -85,10 +82,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       return server.services.certManagerInstance.listLegacyInstances({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
     }
   });
@@ -116,10 +110,7 @@ export const registerCertManagerInstanceRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const result = await server.services.certManagerInstance.setActiveProject(
         {
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+          actor: req.permission
         },
         req.body.projectId
       );

@@ -1,6 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { TPlanProps } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
@@ -29,11 +30,10 @@ const permissionActor = {
 };
 
 const actorFields = {
-  actor: ActorType.USER,
-  actorId: "user-1",
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: ACTOR_ORG_ID,
-  permissionActor
+  actor: {
+    principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+    org: { id: ACTOR_ORG_ID, rootOrgId: ACTOR_ORG_ID, parentOrgId: ACTOR_ORG_ID }
+  } as unknown as TActorContext
 };
 
 const DESTINATION: Record<string, Record<string, unknown>> = {
@@ -92,15 +92,17 @@ const buildService = ({
       findOne: vi.fn(async () => ({ id: "internal-ca-1", type: InternalCaType.INTERMEDIATE })),
       updateById: vi.fn()
     },
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([
-          {
-            action: ProjectPermissionCertificateAuthorityActions.Edit,
-            subject: ProjectPermissionSub.CertificateAuthorities
-          }
-        ])
-      }))
+    projectsDomain: {
+      getProjectPermission: vi.fn(async () =>
+        Permission.fromRules({
+          rules: [
+            {
+              action: ProjectPermissionCertificateAuthorityActions.Edit,
+              subject: ProjectPermissionSub.CertificateAuthorities
+            }
+          ]
+        })
+      )
     },
     licenseDomain,
     appConnectionService,

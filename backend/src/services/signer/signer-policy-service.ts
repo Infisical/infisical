@@ -1,10 +1,9 @@
-import { ForbiddenError } from "@casl/ability";
-
 import { RESOURCE_SCOPE, ResourceMembershipRole, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
+import { TCodeSigningDomain } from "@app/domains/certificates/code-signing/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionSignerActions,
   ResourcePermissionSub
@@ -86,7 +85,7 @@ type TSignerPolicyServiceFactoryDep = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission">;
+  codeSigningDomain: Pick<TCodeSigningDomain, "getSignerPermission">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
@@ -124,7 +123,7 @@ const $loadSignerOrThrow = async (signerDAL: TSignerPolicyServiceFactoryDep["sig
 
 const $resolveRequestedScope = (
   scope: TCodeSigningRequestScopeInput | undefined,
-  actor: ActorType,
+  actor: TActorContext,
   requestIpAddress: string | undefined
 ): TCodeSigningScope | undefined => {
   if (!scope) return undefined;
@@ -132,7 +131,7 @@ const $resolveRequestedScope = (
   const { [CodeSigningScopeField.IpAddress]: declaredIpAddress, ...rest } = scope;
   if (declaredIpAddress === null) return rest;
   if (declaredIpAddress !== undefined) return { ...rest, [CodeSigningScopeField.IpAddress]: declaredIpAddress };
-  if (actor === ActorType.IDENTITY && requestIpAddress) {
+  if (actor.principal.type === ActorType.IDENTITY && requestIpAddress) {
     return { ...rest, [CodeSigningScopeField.IpAddress]: requestIpAddress };
   }
   return rest;
@@ -157,29 +156,18 @@ export const signerPolicyServiceFactory = ({
   identityGroupMembershipDAL,
   userDAL,
   identityDAL,
-  permissionService,
+  codeSigningDomain,
   notificationService,
   smtpService
 }: TSignerPolicyServiceFactoryDep) => {
   const $assertResourcePermission = async (
     signerId: string,
     projectId: string,
-    actor: TGetSignerPolicyDTO["actor"],
-    actorId: string,
-    actorAuthMethod: TGetSignerPolicyDTO["actorAuthMethod"],
-    actorOrgId: string | undefined,
+    actor: TActorContext,
     action: ResourcePermissionSignerActions
   ) => {
-    const { permission } = await permissionService.getResourcePermission({
-      actor,
-      actorId,
-      projectId,
-      resourceType: ResourceType.Signer,
-      resourceId: signerId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(action, ResourcePermissionSub.Signer);
+    const permission = await codeSigningDomain.getSignerPermission({ actor, projectId, signerId });
+    permission.assert({ action, subject: ResourcePermissionSub.Signer });
   };
 
   const $resolveActorDisplay = async ({
@@ -255,26 +243,24 @@ export const signerPolicyServiceFactory = ({
     policyId,
     signerId,
     actor,
-    actorId,
     scope,
     effectiveSignings,
     effectiveWindowDuration
   }: {
     policyId: string;
     signerId: string;
-    actor: TRequestToSignDTO["actor"];
-    actorId: string;
+    actor: TActorContext;
     scope: TCodeSigningScope;
     effectiveSignings?: number;
     effectiveWindowDuration?: string;
   }) => {
-    const isHumanRequester = actor === ActorType.USER;
+    const isHumanRequester = actor.principal.type === ActorType.USER;
     const pendingRequests = await approvalRequestDAL.find({
       policyId,
       status: ApprovalRequestStatus.Pending,
       scopeType: ApprovalPolicyScope.Signer,
       scopeId: signerId,
-      ...(isHumanRequester ? { requesterId: actorId } : { machineIdentityId: actorId })
+      ...(isHumanRequester ? { requesterId: actor.principal.id } : { machineIdentityId: actor.principal.id })
     });
 
     return pendingRequests.find((request) => {
@@ -337,15 +323,7 @@ export const signerPolicyServiceFactory = ({
 
   const getPolicy = async (dto: TGetSignerPolicyDTO) => {
     const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
-    await $assertResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId,
-      ResourcePermissionSignerActions.Read
-    );
+    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, ResourcePermissionSignerActions.Read);
 
     if (!signer.approvalPolicyId) {
       throw new NotFoundError({ message: `Signer '${signer.name}' has no approval policy.` });
@@ -445,9 +423,6 @@ export const signerPolicyServiceFactory = ({
       signer.id,
       signer.projectId,
       dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId,
       ResourcePermissionSignerActions.ManagePolicy
     );
 
@@ -533,24 +508,13 @@ export const signerPolicyServiceFactory = ({
 
     return getPolicy({
       signerId: dto.signerId,
-      actor: dto.actor,
-      actorId: dto.actorId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId
+      actor: dto.actor
     });
   };
 
   const listRequests = async (dto: TListSignerRequestsDTO) => {
     const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
-    await $assertResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId,
-      ResourcePermissionSignerActions.Read
-    );
+    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, ResourcePermissionSignerActions.Read);
 
     const UI_TO_DB_STATUS: Record<Exclude<TSignerRequestStatusFilter, "revoked">, ApprovalRequestStatus> = {
       pending: ApprovalRequestStatus.Pending,
@@ -597,9 +561,6 @@ export const signerPolicyServiceFactory = ({
       signer.id,
       signer.projectId,
       dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId,
       ResourcePermissionSignerActions.RequestSign
     );
 
@@ -635,7 +596,6 @@ export const signerPolicyServiceFactory = ({
         policyId: policy.id,
         signerId: signer.id,
         actor: dto.actor,
-        actorId: dto.actorId,
         scope,
         effectiveSignings,
         effectiveWindowDuration
@@ -646,11 +606,11 @@ export const signerPolicyServiceFactory = ({
     }
 
     const requester = await $resolveActorDisplay({
-      userId: dto.actor === ActorType.USER ? dto.actorId : null,
-      identityId: dto.actor === ActorType.IDENTITY ? dto.actorId : null
+      userId: dto.actor.principal.type === ActorType.USER ? dto.actor.principal.id : null,
+      identityId: dto.actor.principal.type === ActorType.IDENTITY ? dto.actor.principal.id : null
     });
 
-    const orgId = dto.actorOrgId;
+    const orgId = dto.actor.org.id;
     const requestWithSteps = await createApprovalRequestWithSteps(
       {
         projectId: signer.projectId,
@@ -669,8 +629,8 @@ export const signerPolicyServiceFactory = ({
           scope
         },
         justification: dto.justification,
-        requesterUserId: dto.actor === ActorType.USER ? dto.actorId : null,
-        machineIdentityId: dto.actor === ActorType.IDENTITY ? dto.actorId : null,
+        requesterUserId: dto.actor.principal.type === ActorType.USER ? dto.actor.principal.id : null,
+        machineIdentityId: dto.actor.principal.type === ActorType.IDENTITY ? dto.actor.principal.id : null,
         requesterName: requester.name,
         requesterEmail: requester.email,
         scopeType: ApprovalPolicyScope.Signer,
@@ -698,15 +658,7 @@ export const signerPolicyServiceFactory = ({
 
   const preApproveSigning = async (dto: TPreApproveSigningDTO) => {
     const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
-    await $assertResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId,
-      ResourcePermissionSignerActions.PreApprove
-    );
+    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, ResourcePermissionSignerActions.PreApprove);
 
     if (!dto.granteeUserId && !dto.granteeIdentityId) {
       throw new BadRequestError({ message: "granteeUserId or granteeIdentityId is required." });
@@ -749,7 +701,7 @@ export const signerPolicyServiceFactory = ({
       identityId: dto.granteeIdentityId
     });
 
-    const orgId = dto.actorOrgId;
+    const orgId = dto.actor.org.id;
     const windowStart = new Date();
     const windowDurationMs = effectiveWindowDuration ? $parseDurationMs(effectiveWindowDuration) : null;
     const result = await membershipDAL.transaction(async (tx) => {
@@ -816,9 +768,6 @@ export const signerPolicyServiceFactory = ({
       signer.id,
       signer.projectId,
       dto.actor,
-      dto.actorId,
-      dto.actorAuthMethod,
-      dto.actorOrgId,
       ResourcePermissionSignerActions.RevokeRequest
     );
 
@@ -856,7 +805,7 @@ export const signerPolicyServiceFactory = ({
           {
             status: ApprovalRequestGrantStatus.Revoked,
             revokedAt: new Date(),
-            revokedByUserId: dto.actor === ActorType.USER ? dto.actorId : null
+            revokedByUserId: dto.actor.principal.type === ActorType.USER ? dto.actor.principal.id : null
           },
           tx
         );

@@ -1,6 +1,6 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
-type TActorPermission = Omit<TProjectPermission, "projectId"> & { projectId: string };
+type TActorPermission = TActorInput & { projectId: string };
 
 export type TSignerMember = {
   membershipId: string;

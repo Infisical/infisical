@@ -1,5 +1,5 @@
-import { createMongoAbility } from "@casl/ability";
-
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -12,11 +12,8 @@ const APPLICATION_ID = "application-1";
 const ALERT_ID = "alert-1";
 
 const actor = {
-  actor: "user",
-  actorId: "actor-1",
-  actorAuthMethod: undefined,
-  actorOrgId: "org-1"
-} as unknown as { actor: never; actorId: string; actorAuthMethod: never; actorOrgId: string };
+  actor: { principal: { type: "user", id: "actor-1" }, org: { id: "org-1" } } as unknown as TActorContext
+};
 
 const legacyApplicationAlert: TAlertWithChannels = {
   id: ALERT_ID,
@@ -46,7 +43,7 @@ const legacyApplicationAlert: TAlertWithChannels = {
 } as unknown as TAlertWithChannels;
 
 const buildService = () => {
-  const allowAll = createMongoAbility([{ action: "manage", subject: "all" }]);
+  const allowAll = Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] });
   const pkiAlertV2DAL = {
     findById: vi.fn(async () => legacyApplicationAlert),
     findByIdWithChannels: vi.fn(async () => legacyApplicationAlert),
@@ -55,15 +52,14 @@ const buildService = () => {
     deleteById: vi.fn(async () => legacyApplicationAlert),
     transaction: vi.fn()
   };
-  const permissionService = {
-    getProjectPermission: vi.fn(async () => ({ permission: allowAll })),
-    getResourcePermission: vi.fn(async () => ({ permission: allowAll }))
-  };
+  const projectsDomain = { getProjectPermission: vi.fn(async () => allowAll) };
+  const certManagerDomain = { getApplicationPermission: vi.fn(async () => allowAll) };
   const service = pkiAlertV2ServiceFactory({
     pkiAlertV2DAL,
     pkiAlertChannelDAL: {},
     pkiAlertHistoryDAL: {},
-    permissionService,
+    projectsDomain,
+    certManagerDomain,
     licenseDomain: new FakeLicenseDomain(),
     smtpService: {},
     kmsCoreDomain: {
@@ -78,12 +74,12 @@ const buildService = () => {
     pkiApplicationDAL: {}
   } as unknown as Parameters<typeof pkiAlertV2ServiceFactory>[0]);
 
-  return { service, pkiAlertV2DAL, permissionService };
+  return { service, pkiAlertV2DAL, certManagerDomain };
 };
 
 describe("pkiAlertV2Service legacy alerts", () => {
   test("rejects creating a legacy alert and points to the alerts API", async () => {
-    const { service, pkiAlertV2DAL, permissionService } = buildService();
+    const { service, pkiAlertV2DAL, certManagerDomain } = buildService();
 
     const error = await service
       .createAlert({
@@ -100,7 +96,7 @@ describe("pkiAlertV2Service legacy alerts", () => {
 
     expect(error).toBeInstanceOf(BadRequestError);
     expect((error as BadRequestError).message).toContain("/api/v1/alerts");
-    expect(permissionService.getResourcePermission).not.toHaveBeenCalled();
+    expect(certManagerDomain.getApplicationPermission).not.toHaveBeenCalled();
     expect(pkiAlertV2DAL.create).not.toHaveBeenCalled();
   });
 
@@ -115,14 +111,14 @@ describe("pkiAlertV2Service legacy alerts", () => {
   });
 
   test("reads an application-scoped legacy alert with the application's permissions", async () => {
-    const { service, permissionService } = buildService();
+    const { service, certManagerDomain } = buildService();
 
     const alert = await service.getAlertById({ ...actor, alertId: ALERT_ID, applicationId: APPLICATION_ID });
 
     expect(alert.applicationId).toBe(APPLICATION_ID);
     expect(alert.channels).toHaveLength(1);
-    expect(permissionService.getResourcePermission).toHaveBeenCalledWith(
-      expect.objectContaining({ resourceId: APPLICATION_ID, projectId: PROJECT_ID })
+    expect(certManagerDomain.getApplicationPermission).toHaveBeenCalledWith(
+      expect.objectContaining({ applicationId: APPLICATION_ID, projectId: PROJECT_ID })
     );
   });
 

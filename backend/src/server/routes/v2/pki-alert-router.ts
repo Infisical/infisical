@@ -66,10 +66,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.createAlert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         projectId: req.internalCertManagerProjectId
       });
@@ -154,10 +151,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const alerts = await server.services.pkiAlertV2.listAlerts({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId: req.internalCertManagerProjectId,
         ...req.query
       });
@@ -214,10 +208,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.getAlertById({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -284,10 +275,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.updateAlert({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -357,10 +345,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const alert = await server.services.pkiAlertV2.deleteAlert({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -418,10 +403,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.pkiAlertV2.listMatchingCertificates({
         alertId: req.params.alertId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.query
       });
 
@@ -472,10 +454,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const result = await server.services.pkiAlertV2.listCurrentMatchingCertificates({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         projectId: req.internalCertManagerProjectId
       });
@@ -518,10 +497,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         applicationId: req.body.applicationId,
         url: req.body.url,
         signingSecret: req.body.signingSecret,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       return result;

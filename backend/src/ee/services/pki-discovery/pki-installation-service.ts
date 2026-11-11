@@ -1,13 +1,11 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
+import { ProjectType } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionPkiDiscoveryActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 
@@ -33,7 +31,7 @@ type TPkiInstallationServiceFactoryDep = {
     TPkiCertificateInstallationDALFactory,
     "findById" | "findByProjectId" | "countByProjectId" | "findByIdWithCertificates" | "updateById" | "deleteById"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   kmsCoreDomain: TKmsCoreDomain;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   queueInstallationRescan: (installationId: string) => Promise<void>;
@@ -43,7 +41,7 @@ export type TPkiInstallationServiceFactory = ReturnType<typeof pkiInstallationSe
 
 export const pkiInstallationServiceFactory = ({
   pkiCertificateInstallationDAL,
-  permissionService,
+  projectsDomain,
   kmsCoreDomain,
   appConnectionDAL,
   queueInstallationRescan
@@ -55,24 +53,18 @@ export const pkiInstallationServiceFactory = ({
     offset,
     limit,
     search,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TListPkiInstallationsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiCertificateInstallationActions.Read,
-      ProjectPermissionSub.PkiCertificateInstallations
-    );
+    permission.assert({
+      action: ProjectPermissionPkiCertificateInstallationActions.Read,
+      subject: ProjectPermissionSub.PkiCertificateInstallations
+    });
 
     const installations = await pkiCertificateInstallationDAL.findByProjectId(projectId, {
       offset,
@@ -90,75 +82,55 @@ export const pkiInstallationServiceFactory = ({
     return { installations: installations.map(sanitizePkiInstallation), totalCount };
   };
 
-  const getInstallation = async ({
-    installationId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetPkiInstallationDTO) => {
+  const getInstallation = async ({ installationId, actor }: TGetPkiInstallationDTO) => {
     const installation = await pkiCertificateInstallationDAL.findByIdWithCertificates(installationId);
     if (!installation) {
       throw new NotFoundError({ message: `Installation with ID '${installationId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: installation.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiCertificateInstallationActions.Read,
-      ProjectPermissionSub.PkiCertificateInstallations
-    );
+    permission.assert({
+      action: ProjectPermissionPkiCertificateInstallationActions.Read,
+      subject: ProjectPermissionSub.PkiCertificateInstallations
+    });
 
     const { connectionId } = (installation.locationDetails as TPkiInstallationLocationDetails | null) ?? {};
     const connection = connectionId ? await appConnectionDAL.findById(connectionId) : undefined;
 
     return {
       ...sanitizePkiInstallation(installation),
-      connection: connection && connection.orgId === actorOrgId ? { id: connection.id, name: connection.name } : null
+      connection: connection && connection.orgId === actor.org.id ? { id: connection.id, name: connection.name } : null
     };
   };
 
-  const updateInstallation = async ({
-    installationId,
-    name,
-    keystorePassword,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TUpdatePkiInstallationDTO) => {
+  const updateInstallation = async ({ installationId, name, keystorePassword, actor }: TUpdatePkiInstallationDTO) => {
     const installation = await pkiCertificateInstallationDAL.findById(installationId);
     if (!installation) {
       throw new NotFoundError({ message: `Installation with ID '${installationId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: installation.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiCertificateInstallationActions.Edit,
-      ProjectPermissionSub.PkiCertificateInstallations
-    );
+    permission.assert({
+      action: ProjectPermissionPkiCertificateInstallationActions.Edit,
+      subject: ProjectPermissionSub.PkiCertificateInstallations
+    });
 
     const isSettingPassword = typeof keystorePassword === "string";
     if (isSettingPassword) {
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionPkiDiscoveryActions.RunScan,
-        ProjectPermissionSub.PkiDiscovery
-      );
+      permission.assert({
+        action: ProjectPermissionPkiDiscoveryActions.RunScan,
+        subject: ProjectPermissionSub.PkiDiscovery
+      });
     }
 
     if (keystorePassword !== undefined && installation.locationType !== PkiInstallationLocationType.Keystore) {
@@ -196,31 +168,22 @@ export const pkiInstallationServiceFactory = ({
     return sanitizePkiInstallation(updatedInstallation);
   };
 
-  const deleteInstallation = async ({
-    installationId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeletePkiInstallationDTO) => {
+  const deleteInstallation = async ({ installationId, actor }: TDeletePkiInstallationDTO) => {
     const installation = await pkiCertificateInstallationDAL.findById(installationId);
     if (!installation) {
       throw new NotFoundError({ message: `Installation with ID '${installationId}' not found` });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
+    const permission = await projectsDomain.getProjectPermission({
       actor,
-      actorId,
       projectId: installation.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      type: ProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiCertificateInstallationActions.Delete,
-      ProjectPermissionSub.PkiCertificateInstallations
-    );
+    permission.assert({
+      action: ProjectPermissionPkiCertificateInstallationActions.Delete,
+      subject: ProjectPermissionSub.PkiCertificateInstallations
+    });
 
     await pkiCertificateInstallationDAL.deleteById(installationId);
 

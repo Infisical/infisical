@@ -65,10 +65,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       const signer = await server.services.pkiSigner.reissueCertificate({
         signerId: req.params.signerId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -131,10 +128,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       const check = await server.services.pkiSigner.checkCertificateImport({
         projectId: req.internalCertManagerProjectId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
       return { check };
     }
@@ -177,10 +171,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       const { signer, caName, hsmConnectorName } = await server.services.pkiSigner.importCertificate({
         signerId: req.params.signerId,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -233,10 +224,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
       const { certificatePem, serialNumber, signerName, projectId } = await server.services.pkiSigner.exportCertificate(
         {
           signerId: req.params.signerId,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+          actor: req.permission
         }
       );
 

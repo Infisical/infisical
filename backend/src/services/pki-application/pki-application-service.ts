@@ -1,19 +1,20 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import {
-  ActionProjectType,
   ProjectMembershipRole,
+  ProjectType,
   RESOURCE_SCOPE,
   ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   ProjectPermissionApplicationActions,
   ProjectPermissionCertificateProfileActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
   ResourcePermissionSub
@@ -65,7 +66,8 @@ type TPkiApplicationServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "delete">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "delete">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  certManagerDomain: Pick<TCertManagerDomain, "getApplicationPermission">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
@@ -79,63 +81,23 @@ export const pkiApplicationServiceFactory = ({
   approvalPolicyDAL,
   approvalRequestDAL,
   pkiSyncDAL,
-  permissionService,
+  projectsDomain,
+  certManagerDomain,
   alertService
 }: TPkiApplicationServiceFactoryDep) => {
-  const $loadProjectPermission = (
-    projectId: string,
-    ctx: {
-      actor: TCreatePkiApplicationDTO["actor"];
-      actorId: string;
-      actorAuthMethod: TCreatePkiApplicationDTO["actorAuthMethod"];
-      actorOrgId?: string;
-    }
-  ) =>
-    permissionService.getProjectPermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+  const $loadProjectPermission = (projectId: string, actor: TActorContext) =>
+    projectsDomain.getProjectPermission({ actor, projectId, type: ProjectType.CertificateManager });
+
+  const $loadResourcePermission = (applicationId: string, projectId: string, actor: TActorContext) =>
+    certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
+
+  const createApplication = async ({ name, description, profileIds, projectId, actor }: TCreatePkiApplicationDTO) => {
+    const permission = await $loadProjectPermission(projectId, actor);
+
+    permission.assert({
+      action: ProjectPermissionApplicationActions.Create,
+      subject: ProjectPermissionSub.Application
     });
-
-  const $loadResourcePermission = (
-    applicationId: string,
-    projectId: string,
-    ctx: {
-      actor: TCreatePkiApplicationDTO["actor"];
-      actorId: string;
-      actorAuthMethod: TCreatePkiApplicationDTO["actorAuthMethod"];
-      actorOrgId?: string;
-    }
-  ) =>
-    permissionService.getResourcePermission({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
-      projectId,
-      resourceType: ResourceType.CertificateApplication,
-      resourceId: applicationId,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ctx.actorOrgId
-    });
-
-  const createApplication = async ({
-    name,
-    description,
-    profileIds,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TCreatePkiApplicationDTO) => {
-    const { permission } = await $loadProjectPermission(projectId, { actor, actorId, actorAuthMethod, actorOrgId });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionApplicationActions.Create,
-      ProjectPermissionSub.Application
-    );
 
     const existing = await pkiApplicationDAL.findByNameAndProjectId(name, projectId);
     if (existing) {
@@ -151,10 +113,11 @@ export const pkiApplicationServiceFactory = ({
       }
 
       for (const profile of profilesInProject) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
-          subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
-        );
+        permission.assert({
+          action: ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+          subject: ProjectPermissionSub.CertificateProfiles,
+          fields: { slug: profile.slug }
+        });
       }
     }
 
@@ -169,16 +132,16 @@ export const pkiApplicationServiceFactory = ({
           );
         }
 
-        if (actorOrgId && (actor === ActorType.USER || actor === ActorType.IDENTITY)) {
+        if (actor.org.id && (actor.principal.type === ActorType.USER || actor.principal.type === ActorType.IDENTITY)) {
           const newMembership = await membershipDAL.create(
             {
               scope: RESOURCE_SCOPE,
-              scopeOrgId: actorOrgId,
+              scopeOrgId: actor.org.id,
               scopeProjectId: projectId,
               scopeResourceType: ResourceType.CertificateApplication,
               scopeResourceId: application.id,
-              actorUserId: actor === ActorType.USER ? actorId : null,
-              actorIdentityId: actor === ActorType.IDENTITY ? actorId : null,
+              actorUserId: actor.principal.type === ActorType.USER ? actor.principal.id : null,
+              actorIdentityId: actor.principal.type === ActorType.IDENTITY ? actor.principal.id : null,
               actorGroupId: null,
               isActive: true
             },
@@ -199,58 +162,34 @@ export const pkiApplicationServiceFactory = ({
     }
   };
 
-  const getApplicationById = async ({
-    applicationId,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetPkiApplicationDTO) => {
+  const getApplicationById = async ({ applicationId, projectId, actor }: TGetPkiApplicationDTO) => {
     const application = await pkiApplicationDAL.findById(applicationId);
     if (!application || application.projectId !== projectId) {
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.Read,
-      ResourcePermissionSub.Application
-    );
+    permission.assert({
+      action: ResourcePermissionApplicationActions.Read,
+      subject: ResourcePermissionSub.Application
+    });
 
     return application;
   };
 
-  const getApplicationByName = async ({
-    name,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetPkiApplicationByNameDTO) => {
+  const getApplicationByName = async ({ name, projectId, actor }: TGetPkiApplicationByNameDTO) => {
     const application = await pkiApplicationDAL.findByNameAndProjectId(name, projectId);
     if (!application) {
       throw new NotFoundError({ message: `Application with name '${name}' not found in this organization.` });
     }
 
-    const { permission } = await $loadResourcePermission(application.id, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(application.id, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.Read,
-      ResourcePermissionSub.Application
-    );
+    permission.assert({
+      action: ResourcePermissionApplicationActions.Read,
+      subject: ResourcePermissionSub.Application
+    });
 
     return application;
   };
@@ -261,24 +200,13 @@ export const pkiApplicationServiceFactory = ({
     offset,
     applicationIds,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TListPkiApplicationsDTO) => {
-    const { permission, hasRole } = await $loadProjectPermission(projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadProjectPermission(projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionApplicationActions.List,
-      ProjectPermissionSub.Application
-    );
+    permission.assert({ action: ProjectPermissionApplicationActions.List, subject: ProjectPermissionSub.Application });
 
-    if (hasRole(ProjectMembershipRole.Admin)) {
+    if (permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       const [applications, total] = await Promise.all([
         pkiApplicationDAL.findByProjectId(projectId, { search, limit, offset, applicationIds }),
         pkiApplicationDAL.countByProjectId(projectId, search, undefined, applicationIds)
@@ -289,8 +217,8 @@ export const pkiApplicationServiceFactory = ({
     const memberships = await membershipDAL.findResourceMembershipsForActor({
       projectId,
       resourceType: ResourceType.CertificateApplication,
-      actorType: actor,
-      actorId
+      actorType: actor.principal.type,
+      actorId: actor.principal.id
     });
 
     const allowedIds = Array.from(
@@ -320,27 +248,19 @@ export const pkiApplicationServiceFactory = ({
     name,
     description,
     projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
+    actor
   }: TUpdatePkiApplicationDTO) => {
     const application = await pkiApplicationDAL.findById(applicationId);
     if (!application || application.projectId !== projectId) {
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.Edit,
-      ResourcePermissionSub.Application
-    );
+    permission.assert({
+      action: ResourcePermissionApplicationActions.Edit,
+      subject: ResourcePermissionSub.Application
+    });
 
     if (name && name !== application.name) {
       const collision = await pkiApplicationDAL.findByNameAndProjectId(name, projectId);
@@ -366,30 +286,18 @@ export const pkiApplicationServiceFactory = ({
     }
   };
 
-  const deleteApplication = async ({
-    applicationId,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeletePkiApplicationDTO) => {
+  const deleteApplication = async ({ applicationId, projectId, actor }: TDeletePkiApplicationDTO) => {
     const application = await pkiApplicationDAL.findById(applicationId);
     if (!application || application.projectId !== projectId) {
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.Delete,
-      ResourcePermissionSub.Application
-    );
+    permission.assert({
+      action: ResourcePermissionApplicationActions.Delete,
+      subject: ResourcePermissionSub.Application
+    });
 
     await pkiApplicationDAL.transaction(async (tx) => {
       const orphans = await membershipDAL.find(
@@ -417,77 +325,48 @@ export const pkiApplicationServiceFactory = ({
     return application;
   };
 
-  const listApplicationProfiles = async ({
-    applicationId,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TListApplicationProfilesDTO) => {
+  const listApplicationProfiles = async ({ applicationId, projectId, actor }: TListApplicationProfilesDTO) => {
     const application = await pkiApplicationDAL.findById(applicationId);
     if (!application || application.projectId !== projectId) {
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.Read,
-      ResourcePermissionSub.Application
-    );
+    permission.assert({
+      action: ResourcePermissionApplicationActions.Read,
+      subject: ResourcePermissionSub.Application
+    });
 
     const profiles = await pkiApplicationProfileDAL.findByApplicationId(applicationId);
     return profiles;
   };
 
-  const attachProfiles = async ({
-    applicationId,
-    profileIds,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TAttachProfilesDTO) => {
+  const attachProfiles = async ({ applicationId, profileIds, projectId, actor }: TAttachProfilesDTO) => {
     const application = await pkiApplicationDAL.findById(applicationId);
     if (!application || application.projectId !== projectId) {
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.ManageProfiles,
-      ResourcePermissionSub.Application
-    );
+    permission.assert({
+      action: ResourcePermissionApplicationActions.ManageProfiles,
+      subject: ResourcePermissionSub.Application
+    });
 
     const profilesInProject = await pkiApplicationProfileDAL.findProfilesInProject(profileIds, projectId);
     if (profilesInProject.length !== profileIds.length) {
       throw new BadRequestError({ message: "One or more profileIds do not belong to this organization." });
     }
 
-    const { permission: projectPermission } = await $loadProjectPermission(projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const projectPermission = await $loadProjectPermission(projectId, actor);
     for (const profile of profilesInProject) {
-      ForbiddenError.from(projectPermission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
-        subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
-      );
+      projectPermission.assert({
+        action: ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+        subject: ProjectPermissionSub.CertificateProfiles,
+        fields: { slug: profile.slug }
+      });
     }
 
     const profiles = await pkiApplicationDAL.transaction(async (tx) => {
@@ -508,31 +387,18 @@ export const pkiApplicationServiceFactory = ({
     return { profiles, applicationName: application.name };
   };
 
-  const detachProfile = async ({
-    applicationId,
-    profileId,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDetachProfileDTO) => {
+  const detachProfile = async ({ applicationId, profileId, projectId, actor }: TDetachProfileDTO) => {
     const application = await pkiApplicationDAL.findById(applicationId);
     if (!application || application.projectId !== projectId) {
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.ManageProfiles,
-      ResourcePermissionSub.Application
-    );
+    permission.assert({
+      action: ResourcePermissionApplicationActions.ManageProfiles,
+      subject: ResourcePermissionSub.Application
+    });
 
     const link = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
     if (!link) {
@@ -546,16 +412,12 @@ export const pkiApplicationServiceFactory = ({
       throw new NotFoundError({ message: `Profile '${profileId}' not found in this organization.` });
     }
 
-    const { permission: projectPermission } = await $loadProjectPermission(projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
+    const projectPermission = await $loadProjectPermission(projectId, actor);
+    projectPermission.assert({
+      action: ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+      subject: ProjectPermissionSub.CertificateProfiles,
+      fields: { slug: profile.slug }
     });
-    ForbiddenError.from(projectPermission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
-      subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
-    );
 
     const pkiSyncs = await pkiSyncDAL.find({ applicationId });
     const syncsFilteringOnProfile = pkiSyncs.filter((pkiSync) =>
@@ -580,34 +442,22 @@ export const pkiApplicationServiceFactory = ({
     return { applicationId, applicationName: application.name, profileId };
   };
 
-  const getApplicationPermissions = async ({
-    applicationId,
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetPkiApplicationDTO) => {
+  const getApplicationPermissions = async ({ applicationId, projectId, actor }: TGetPkiApplicationDTO) => {
     const application = await pkiApplicationDAL.findById(applicationId);
     if (!application || application.projectId !== projectId) {
       throw new NotFoundError({ message: `Application with id '${applicationId}' not found.` });
     }
 
-    const { permission, memberships } = await $loadResourcePermission(applicationId, projectId, {
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ResourcePermissionApplicationActions.Read,
-      ResourcePermissionSub.Application
-    );
+    permission.assert({
+      action: ResourcePermissionApplicationActions.Read,
+      subject: ResourcePermissionSub.Application
+    });
 
     return {
       permissions: packRules(permission.rules),
-      memberships
+      memberships: permission.memberships.map((membership) => membership.toJSON())
     };
   };
 

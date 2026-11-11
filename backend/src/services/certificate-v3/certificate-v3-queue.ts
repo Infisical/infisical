@@ -72,10 +72,6 @@ export const certificateV3QueueServiceFactory = ({
                 }
 
                 const renewed = await certificateV3Service.renewCertificate({
-                  actor: ActorType.PLATFORM,
-                  actorId: "",
-                  actorAuthMethod: null,
-                  actorOrgId: "",
                   certificateId: certificate.id,
                   internal: true
                 });

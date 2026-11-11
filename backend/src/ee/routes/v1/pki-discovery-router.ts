@@ -112,11 +112,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         scanIntervalDays: req.body.scanIntervalDays,
         gatewayId: req.body.gatewayId,
         gatewayPoolId: req.body.gatewayPoolId,
-        orgActor: req.permission,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -184,10 +180,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         offset: req.query.offset,
         limit: req.query.limit,
         search: req.query.search,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -232,10 +225,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     handler: async (req) => {
       const discovery = await server.services.pkiDiscovery.getDiscovery({
         discoveryId: req.params.discoveryId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -318,11 +308,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         gatewayId: req.body.gatewayId,
         gatewayPoolId: req.body.gatewayPoolId,
         isActive: req.body.isActive,
-        orgActor: req.permission,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -373,10 +359,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     handler: async (req) => {
       const discovery = await server.services.pkiDiscovery.deleteDiscovery({
         discoveryId: req.params.discoveryId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -429,10 +412,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     handler: async (req) => {
       const result = await server.services.pkiDiscovery.triggerScan({
         discoveryId: req.params.discoveryId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -483,10 +463,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
     handler: async (req) => {
       const latestScan = await server.services.pkiDiscovery.getLatestScan({
         discoveryId: req.params.discoveryId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
       return latestScan;
     }
@@ -523,10 +500,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         discoveryId: req.params.discoveryId,
         offset: req.query.offset,
         limit: req.query.limit,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
       return { scans, totalCount };
     }

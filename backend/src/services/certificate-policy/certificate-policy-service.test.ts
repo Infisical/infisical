@@ -8,6 +8,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -59,10 +60,10 @@ describe("CertificatePolicyService", () => {
   } as any;
 
   const mockActor = {
-    actor: ActorType.USER,
-    actorId: "user-123",
-    actorAuthMethod: AuthMethod.EMAIL,
-    actorOrgId: "org-123"
+    actor: {
+      principal: { type: ActorType.USER, id: "user-123", authMethod: AuthMethod.EMAIL },
+      org: { id: "org-123" }
+    } as unknown as TActorContext
   };
 
   const samplePolicy: TTemplateV2Policy = {
@@ -125,16 +126,17 @@ describe("CertificatePolicyService", () => {
     detectSubjectType: vi.fn().mockReturnValue("certificate-templates-v2"),
     modelName: "certificate-templates-v2",
     throwUnlessCan: vi.fn(),
-    unlessCan: vi.fn().mockReturnValue({ throwUnlessCan: vi.fn() })
+    unlessCan: vi.fn().mockReturnValue({ throwUnlessCan: vi.fn() }),
+    assert: vi.fn(),
+    toAbility: (): unknown => mockPermission
   };
 
-  const mockPermissionService = {
-    getProjectPermission: vi.fn().mockResolvedValue({
-      permission: mockPermission
-    }),
-    getResourcePermission: vi.fn().mockResolvedValue({
-      permission: mockPermission
-    })
+  const mockProjectsDomain = {
+    getProjectPermission: vi.fn().mockResolvedValue(mockPermission)
+  };
+
+  const mockCertManagerDomain = {
+    getApplicationPermission: vi.fn().mockResolvedValue(mockPermission)
   };
 
   beforeEach(() => {
@@ -144,16 +146,16 @@ describe("CertificatePolicyService", () => {
       throwUnlessCan: vi.fn()
     } as any);
 
-    mockPermissionService.getProjectPermission.mockResolvedValue({
-      permission: mockPermission
-    });
+    mockProjectsDomain.getProjectPermission.mockResolvedValue(mockPermission);
+    mockCertManagerDomain.getApplicationPermission.mockResolvedValue(mockPermission);
 
     mockCertificatePolicyDAL.findByNameAndProjectId.mockResolvedValue(null);
     mockCertificatePolicyDAL.findBySlugAndProjectId.mockResolvedValue(null);
 
     service = certificatePolicyServiceFactory({
       certificatePolicyDAL: mockCertificatePolicyDAL as TCertificatePolicyDALFactory,
-      permissionService: mockPermissionService
+      projectsDomain: mockProjectsDomain as never,
+      certManagerDomain: mockCertManagerDomain as never
     });
   });
 
