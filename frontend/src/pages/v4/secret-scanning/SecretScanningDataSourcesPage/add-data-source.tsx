@@ -28,6 +28,7 @@ import { useDebounced } from "../../access/org/use-debounced";
 import { failed, toast } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref } from "../../links";
+import { useConnectionCreation } from "../../secret-manager/OverviewPage/secrets/flows/connection-creation";
 
 type Draft = {
   type: SecretScanningDataSource;
@@ -91,7 +92,20 @@ const ConnectionFields = ({
   const [search, setSearch] = useState("");
   const debounced = useDebounced(search.trim());
   const connectionId = draft.connection?.id ?? "";
-  const { data: connections = [], isPending } = scanning.useAvailableConnections(app, projectId);
+  const { data: available = [], isPending } = scanning.useAvailableConnections(app, projectId);
+  const connections =
+    draft.connection && !available.some((entry) => entry.id === draft.connection?.id)
+      ? [...available, draft.connection]
+      : available;
+  const creation = useConnectionCreation(app, projectId, (connection) => {
+    setSearch("");
+    onChange({
+      connection: { id: connection.id, name: connection.name },
+      workspaceSlug: "",
+      group: undefined,
+      ...(draft.type === SecretScanningDataSource.GitLab && { isDiscoveryEnabled: false })
+    });
+  });
   const workspaces = scanning.useBitbucketWorkspaces(
     draft.type === SecretScanningDataSource.Bitbucket ? connectionId : "",
     debounced || undefined
@@ -113,10 +127,12 @@ const ConnectionFields = ({
         label={`${appName} connection`}
         error={errors.connection}
         description={
-          <>
-            Manage connections in{" "}
-            <a href={orgHref(orgId, "/secret-scanning/app-connections")}>App connections</a>.
-          </>
+          creation ? undefined : (
+            <>
+              Create {appName} connections in{" "}
+              <a href={orgHref(orgId, "/secret-scanning/app-connections")}>App connections</a>.
+            </>
+          )
         }
         wide
       >
@@ -131,12 +147,14 @@ const ConnectionFields = ({
           placeholder="Select connection..."
           emptyText={`No ${appName} connections yet.`}
           invalid={Boolean(errors.connection)}
+          creation={creation}
           onValueChange={(id) => {
             if (id === connectionId) return;
             const connection = connections.find((entry) => entry.id === id);
+            if (!connection) return;
             setSearch("");
             onChange({
-              connection: connection && { id: connection.id, name: connection.name },
+              connection: { id: connection.id, name: connection.name },
               workspaceSlug: "",
               group: undefined,
               ...(draft.type === SecretScanningDataSource.GitLab && { isDiscoveryEnabled: false })

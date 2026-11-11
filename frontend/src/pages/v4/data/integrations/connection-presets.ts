@@ -1,14 +1,22 @@
 import type { AppConnectionPreset } from "@app/components/v4/patterns/app-connection-form";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { GitLabAccessTokenType } from "@app/hooks/api/appConnections/gitlab/types";
 import { AwsConnectionMethod } from "@app/hooks/api/appConnections/types/aws-connection";
+import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
+import { GitLabConnectionMethod } from "@app/hooks/api/appConnections/types/gitlab-connection";
 import { PostgresConnectionMethod } from "@app/hooks/api/appConnections/types/postgres-connection";
 import {
   awsConnectionFormSchema,
   gitHubPatConnectionFormSchema,
   postgresConnectionFormSchema
 } from "@app/lib/schemas/app-connections";
+
+import {
+  bitbucketApiTokenConnectionFormSchema,
+  gitLabAccessTokenConnectionFormSchema
+} from "./connection-schemas";
 
 const methodLabel = (method: Parameters<typeof getAppConnectionMethodDetails>[0]) =>
   getAppConnectionMethodDetails(method).name;
@@ -84,6 +92,59 @@ export const CONNECTION_PRESETS: Partial<Record<AppConnection, AppConnectionPres
             label: "Personal access token",
             kind: "secret"
           }
+        ]
+      }
+    ]
+  },
+  [AppConnection.Bitbucket]: {
+    app: AppConnection.Bitbucket,
+    name: APP_CONNECTION_MAP[AppConnection.Bitbucket].name,
+    schema: bitbucketApiTokenConnectionFormSchema,
+    methods: [
+      {
+        value: BitbucketConnectionMethod.ApiToken,
+        label: methodLabel(BitbucketConnectionMethod.ApiToken),
+        credentials: { email: "", apiToken: "" },
+        fields: [
+          { name: "credentials.email", label: "Email", placeholder: "user@example.com" },
+          { name: "credentials.apiToken", label: "API token", kind: "secret" }
+        ]
+      }
+    ]
+  },
+  [AppConnection.GitLab]: {
+    app: AppConnection.GitLab,
+    name: APP_CONNECTION_MAP[AppConnection.GitLab].name,
+    schema: gitLabAccessTokenConnectionFormSchema,
+    methods: [
+      {
+        value: GitLabConnectionMethod.AccessToken,
+        label: methodLabel(GitLabConnectionMethod.AccessToken),
+        credentials: {
+          instanceUrl: "",
+          accessTokenType: GitLabAccessTokenType.Personal,
+          accessToken: ""
+        },
+        fields: [
+          {
+            name: "credentials.instanceUrl",
+            label: "Instance URL",
+            mono: true,
+            optional: true,
+            placeholder: "https://gitlab.com",
+            description: "Leave empty for gitlab.com."
+          },
+          {
+            name: "credentials.accessTokenType",
+            label: "Token type",
+            kind: "select",
+            options: [
+              { value: GitLabAccessTokenType.Personal, label: "Personal" },
+              { value: GitLabAccessTokenType.Group, label: "Group" },
+              { value: GitLabAccessTokenType.Project, label: "Project" }
+            ]
+          },
+          { name: "credentials.accessToken", label: "Access token", kind: "secret" }
         ]
       }
     ]
