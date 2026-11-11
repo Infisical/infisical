@@ -1,11 +1,5 @@
 import crypto from "node:crypto";
 
-import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
-import { FAKE_DEFAULT_STORAGE, fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
-import { fakeS3Bucket } from "e2e-test/fakes/s3";
-import { agentVaultRequester, createAgentVaultProject, deleteAgentVaultProject } from "e2e-test/testUtils/agent-vault";
-import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
-import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 import { v7 as uuidv7 } from "uuid";
 
 import { OrgMembershipRole, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
@@ -22,6 +16,13 @@ import { AgentVaultSessionLogErrorName } from "@app/ee/services/agent-vault-sess
 import { chunkIdTimeMs, toRev } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import { initLogger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+
+import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
+import { FAKE_DEFAULT_STORAGE, fakeDefaultStorage } from "e2e-test/fakes/object-storage-default-fns";
+import { fakeS3Bucket } from "e2e-test/fakes/s3";
+import { agentVaultRequester, createAgentVaultProject, deleteAgentVaultProject } from "e2e-test/testUtils/agent-vault";
+import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
+import { addUserMembership, createUser, createUserAccessToken, deleteUsers } from "e2e-test/testUtils/users";
 
 import {
   down as dropSessionLogStorageType,
@@ -616,6 +617,73 @@ describe("Agent Vault session logs", async () => {
       } finally {
         await testDb("organizations").where({ id: foreignOrg.id }).delete();
       }
+    });
+  });
+
+  describe("request counts", () => {
+    const sessionStats = async (sessionId: string) =>
+      (await inject("GET", `/api/v1/agent-vault/sessions/${sessionId}`)).json().session.stats as {
+        requests: number;
+        brokered: number | null;
+      } | null;
+
+    const counted = (recordCount: number, brokered?: number) =>
+      chunkBody({
+        recordCount,
+        ...(brokered !== undefined && {
+          decisionCounts: { brokered, passthrough: recordCount - brokered, blocked: 0, error: 0 }
+        })
+      });
+
+    const setUp = async (name: string) => {
+      await configure();
+      const bundle = await createAccessBundle(`session-logs-${name}-${Date.now()}`);
+      const session = await mintSession(bundle.name);
+      const proxy = await createProxy(`session-logs-${name}-${Date.now()}`);
+      return { session, proxy };
+    };
+
+    test("a session no chunk has reached has no counts", async () => {
+      const { session } = await setUp("no-counts");
+      expect(await sessionStats(session.id)).toBeNull();
+    });
+
+    test("each chunk's counts add up on the session, in the list too", async () => {
+      const { session, proxy } = await setUp("add-up");
+      await requestUploadUrl(proxy, session.id, counted(10, 7));
+      await requestUploadUrl(proxy, session.id, counted(5, 2));
+
+      expect(await sessionStats(session.id)).toEqual({ requests: 15, brokered: 9 });
+      const listed = (await inject("GET", "/api/v1/agent-vault/sessions?scope=all")).json().sessions as {
+        id: string;
+        stats: unknown;
+      }[];
+      expect(listed.find((row) => row.id === session.id)?.stats).toEqual({ requests: 15, brokered: 9 });
+    });
+
+    test("a chunk without the split leaves brokered unknown for good, whichever comes first", async () => {
+      const splitFirst = await setUp("split-first");
+      await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(10, 7));
+      await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(3));
+      await requestUploadUrl(splitFirst.proxy, splitFirst.session.id, counted(2, 2));
+      expect(await sessionStats(splitFirst.session.id)).toEqual({ requests: 15, brokered: null });
+
+      const unknownFirst = await setUp("unknown-first");
+      await requestUploadUrl(unknownFirst.proxy, unknownFirst.session.id, counted(3));
+      await requestUploadUrl(unknownFirst.proxy, unknownFirst.session.id, counted(10, 7));
+      expect(await sessionStats(unknownFirst.session.id)).toEqual({ requests: 13, brokered: null });
+    });
+
+    test("chunks that arrive at once are all counted", async () => {
+      const { session, proxy } = await setUp("concurrent");
+      await Promise.all(Array.from({ length: 8 }, () => requestUploadUrl(proxy, session.id, counted(4, 3))));
+      expect(await sessionStats(session.id)).toEqual({ requests: 32, brokered: 24 });
+    });
+
+    test("a chunk without a total counts nothing", async () => {
+      const { session, proxy } = await setUp("no-total");
+      await requestUploadUrl(proxy, session.id, chunkBody());
+      expect(await sessionStats(session.id)).toBeNull();
     });
   });
 
