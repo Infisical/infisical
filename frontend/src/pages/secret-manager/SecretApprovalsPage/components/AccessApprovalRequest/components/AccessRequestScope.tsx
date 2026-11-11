@@ -60,7 +60,7 @@ export const AccessRequestScope = ({
           ))}
         </div>
       )}
-      {isError && (
+      {isGlob && isError && (
         <p className="border-t border-border px-3 py-2 text-xs text-muted">
           Couldn&apos;t load the folders this path matches.
         </p>
