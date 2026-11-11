@@ -863,18 +863,17 @@ export const userServiceFactory = ({
       });
     }
 
-    // Capture the user's org memberships before deletion; the delete cascades them away.
-    const orgMemberships = await membershipUserDAL.find({
-      scope: AccessScope.Organization,
-      actorUserId: userId
-    });
-
+    let memberOrgIds: string[] = [];
     let sendPamCancellations = () => {};
 
     const user = await userDAL.transaction(async (tx) => {
+      const orgMemberships = await membershipUserDAL.find(
+        { scope: AccessScope.Organization, actorUserId: userId },
+        { tx }
+      );
       // Can't hold locks across the org deletes, so redo the check under the per-org lock admin demotions and
       // removals take too. Sorted so overlapping txs can't deadlock.
-      const memberOrgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId))].sort();
+      memberOrgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId))].sort();
       for await (const orgId of memberOrgIds) {
         await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.LastAdminGuard("org", orgId)]);
       }
@@ -887,7 +886,7 @@ export const userServiceFactory = ({
       }
 
       sendPamCancellations = await terminatePamSessionsForUsers({
-        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        orgIds: memberOrgIds,
         userIds: [userId],
         pamSessionDAL,
         gatewayV2Service,
@@ -910,8 +909,7 @@ export const userServiceFactory = ({
     sendPamCancellations();
 
     // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.
-    const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
-    orgIds.forEach((orgId) => {
+    memberOrgIds.forEach((orgId) => {
       usageMeteringService.emit(orgId, IdentitiesMeter.key);
       usageMeteringService.emit(orgId, UserIdentities.key);
       usageMeteringService.emit(orgId, SecretIdentities.key);
