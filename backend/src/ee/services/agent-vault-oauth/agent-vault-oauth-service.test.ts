@@ -107,8 +107,17 @@ const LINEAR_JSON: Record<string, unknown> = {
 const setup = ({
   metadata = LINEAR_JSON,
   canEditBundles = true,
-  challenge = `Bearer resource_metadata="https://mcp.linear.app/.well-known/oauth-protected-resource/mcp"`
-}: { metadata?: Record<string, unknown>; canEditBundles?: boolean; challenge?: string | null } = {}) => {
+  challenge = `Bearer resource_metadata="https://mcp.linear.app/.well-known/oauth-protected-resource/mcp"`,
+  isAdmin = true,
+  grantedBundleIds = [BUNDLE_ID]
+}: {
+  metadata?: Record<string, unknown>;
+  canEditBundles?: boolean;
+  challenge?: string | null;
+  // A member reaches only the bundles they hold a grant on; an admin reaches every one.
+  isAdmin?: boolean;
+  grantedBundleIds?: string[];
+} = {}) => {
   const store = new Map<string, string>();
   const ttls = new Map<string, number>();
   const rows = new Map<string, TRow>();
@@ -187,9 +196,14 @@ const setup = ({
     kmsService: kms as never,
     agentVaultServiceDAL: {
       findByIdInProject: async ({ id }: { id: string }) => rows.get(id) as never,
-      // Every service is in the one bundle these tests use.
-      findBundlesForServices: async (serviceIds: string[]) =>
-        new Map(serviceIds.map((id) => [id, [{ id: BUNDLE_ID, name: "bundle" }]])) as never,
+      // Every service is in the one bundle these tests use, and a filter narrows to the bundles it names, as the SQL does.
+      findBundlesForServices: async (serviceIds: string[], accessBundleIds: string[] | null) =>
+        new Map(
+          serviceIds.map((id) => [
+            id,
+            !accessBundleIds || accessBundleIds.includes(BUNDLE_ID) ? [{ id: BUNDLE_ID, name: "bundle" }] : []
+          ])
+        ) as never,
       findByIdPrimary: async (id: string) => {
         const row = rows.get(id);
         return (row ? { ...row, credentialConfig: structuredClone(row.credentialConfig) } : undefined) as never;
@@ -340,11 +354,14 @@ const setup = ({
                 ]
               : [])
           ]),
-          hasRole: () => true,
+          hasRole: () => isAdmin,
           memberships: []
         }) as never
     },
-    membershipDAL: { findResourceMembershipsForActor: async () => [] }
+    membershipDAL: {
+      findResourceMembershipsForActor: async () =>
+        grantedBundleIds.map((scopeResourceId) => ({ scopeResourceId, isActive: true, actorGroupId: null })) as never
+    }
   });
 
   return {
@@ -1720,6 +1737,19 @@ describe("a member's own sign-in", () => {
       serviceId: SERVICE_ID,
       personal: true
     });
+
+  test("a member reaches the service only through a bundle they hold", async () => {
+    const OTHER_BUNDLE_ID = "33333333-3333-4333-8333-333333333333";
+    const granted = setup({ canEditBundles: false, isAdmin: false });
+    granted.rows.set(SERVICE_ID, memberService());
+    const { authorization } = await startPersonal(granted);
+    expect(storedAuthorization(granted, authorization!.id)).toMatchObject({ personal: true, serviceId: SERVICE_ID });
+
+    const elsewhere = setup({ canEditBundles: false, isAdmin: false, grantedBundleIds: [OTHER_BUNDLE_ID] });
+    elsewhere.rows.set(SERVICE_ID, memberService());
+    await expect(startPersonal(elsewhere)).rejects.toThrow(`Service with ID '${SERVICE_ID}' not found`);
+    expect(elsewhere.registrations).toHaveLength(0);
+  });
 
   test("a member who can only read the bundle starts one, registering a client of their own", async () => {
     const env = setup({ canEditBundles: false });

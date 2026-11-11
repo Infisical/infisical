@@ -4806,7 +4806,7 @@ export const AGENT_VAULT = {
     updateUsername: `The username half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored username; send an empty string to remove it, which requires a password.`,
     updateValue: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored secret.`,
     updatePassword: `The password half of the basic credential. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored password; send an empty string to remove it, which requires a username.`,
-    createdAt: "When the service was added to the access bundle.",
+    createdAt: "When the service was created.",
     updatedAt: "When the service was last changed.",
     value: `The secret. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
     password: `The password half of the basic credential. May be empty if a username is set, for APIs that carry the whole key in the username. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
@@ -4905,7 +4905,6 @@ export const AGENT_VAULT = {
   OAUTH: {
     authorization: "The OAuth authorization, or null when an OAuth client must be registered first.",
     authorizationId: "The ID of the OAuth authorization.",
-    accessBundleId: "The access bundle the service is in, or will be created in.",
     serverUrl: "The MCP server's URL. Must match the server URL of the service the authorization is saved to.",
     serviceId:
       "The ID of the MCP service to reauthorize. Leave it out when connecting a new service. When set, the sign-in asks for the scopes the service already has, and can only be saved to that service.",
@@ -4915,7 +4914,7 @@ export const AGENT_VAULT = {
     registration:
       "Send `dynamic` to register a new client with the server, even when the service being reauthorized uses your own OAuth app.",
     personal:
-      "Send `true` to connect your own account to a service that leaves its OAuth sign-in to each member, then save the authorization as your personal value for the service. Needs only access to the service's access bundle. `serviceId` is required, and the client is the one the service's admin set up, so leave `clientId`, `clientSecret` and `registration` out.",
+      "Send `true` to connect your own account to a service that leaves its OAuth sign-in to each member, then save the authorization as your personal value for the service. Needs only access to an access bundle the service is in. `serviceId` is required, and the client is the one the service's admin set up, so leave `clientId`, `clientSecret` and `registration` out.",
     registrationRequired:
       "True when the server can't register Infisical as a client by itself, or refused to. Send `clientId` (and `clientSecret`) of your own OAuth app.",
     redirectUri:

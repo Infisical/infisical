@@ -6676,9 +6676,8 @@ interface AgentVaultServiceCreateEvent {
     // recorded before that.
     accessBundleId?: string;
     accessBundleName?: string;
-    // The access bundles the service was in, by id and in the same order by name.
-    accessBundleIds?: string[];
-    accessBundleNames?: string[];
+    // The access bundles the service was in. Absent on events recorded before services moved to the project.
+    accessBundles?: { id: string; name: string }[];
     serviceId: string;
     name: string;
     description?: string | null;
@@ -6770,9 +6769,8 @@ interface AgentVaultServiceDeleteEvent {
     // recorded before that.
     accessBundleId?: string;
     accessBundleName?: string;
-    // The access bundles the service was in, by id and in the same order by name.
-    accessBundleIds?: string[];
-    accessBundleNames?: string[];
+    // The access bundles the service was in. Absent on events recorded before services moved to the project.
+    accessBundles?: { id: string; name: string }[];
     serviceId: string;
     name: string;
   };

@@ -1144,8 +1144,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   const lockServiceNames = (projectId: string, tx: Knex) =>
     tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
 
-  const SERVICE_NAME_TAKEN = (name: string) =>
-    `A service named '${name}' already exists in this Agent Vault project. Choose another name, or add the existing service to the access bundle.`;
+  // `details.field` names the input at fault, so the service sheet can show it on the Name field.
+  const serviceNameTaken = (name: string) =>
+    new BadRequestError({
+      message: `A service named '${name}' already exists in this project. Choose another name.`,
+      details: { field: "name" }
+    });
 
   // The bundles a request names, all in the project, each once, in the order given.
   const findBundlesInProject = async (projectId: string, accessBundleIds: string[], tx?: Knex) => {
@@ -1218,7 +1222,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const hostPattern = resolveServiceHostPattern(serviceType, serviceConfig, requestedHostPattern);
 
     if (await agentVaultServiceDAL.findByNameInProject({ name, projectId: rest.projectId })) {
-      throw new BadRequestError({ message: SERVICE_NAME_TAKEN(name) });
+      throw serviceNameTaken(name);
     }
 
     await checkHostPatternConflicts({ accessBundles: bundles, hostPattern });
@@ -1378,7 +1382,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     } catch (err) {
       await oauth?.claim.restore();
       if (isUniqueViolation(err)) {
-        throw new BadRequestError({ message: SERVICE_NAME_TAKEN(name) });
+        throw serviceNameTaken(name);
       }
       if (
         hasPostgresConstraintViolation(
@@ -1522,7 +1526,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     if (name && name !== service.name) {
       if (await agentVaultServiceDAL.findByNameInProject({ name, projectId: rest.projectId })) {
-        throw new BadRequestError({ message: SERVICE_NAME_TAKEN(name) });
+        throw serviceNameTaken(name);
       }
     }
 
@@ -2045,7 +2049,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     } catch (err) {
       await oauth?.claim.restore();
       if (isUniqueViolation(err)) {
-        throw new BadRequestError({ message: SERVICE_NAME_TAKEN(name ?? service.name) });
+        throw serviceNameTaken(name ?? service.name);
       }
       if (
         hasPostgresConstraintViolation(

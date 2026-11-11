@@ -276,7 +276,7 @@ keyed by the service, so a member sets them once however many bundles give them 
 
 - **Names are unique per project** among the project's services (`agent_vault_services_project_name_unique`, partial on
   `sessionId IS NULL`). A bundle read still puts `accessBundleId` (the bundle read) on each service, hidden from the
-  API docs: Python SDK v1.4.0 and older require it, so keep it until those versions age out.
+  API docs: Python SDK v1.4.0 and older require it, so keep it until 2027-01-04.
 - **A bundle can't hold two services covering one host**, so a host change is checked against every bundle the service
   is in, and a create into bundles or a link against the bundle it joins (`checkHostPatternConflicts`). Under the
   bundle row locks, after the project's `AgentVaultServiceNames` advisory lock.
@@ -284,13 +284,16 @@ keyed by the service, so a member sets them once however many bundles give them 
   would hold two services called the same, and an agent finds a database or SSH service by name. A rename, a create
   into a bundle and a link all check (`assertNoLiveInlineNameClash`), and a mint with inline services and a bundle
   re-checks the bundle's names in its transaction, all under `AgentVaultServiceNames`, so neither can pass the other.
-  Links change only under that lock too, so `updateService` can read a service's bundles and lock them.
+  Adding and removing a link take that lock too, so `updateService` can read a service's bundles and lock them.
+  Deleting a bundle or a service drops its links by cascade without the lock, which only ever removes a link.
 - **Removing a service from a bundle keeps it in the project**, and clears the personal values of everyone who no longer
   reaches it through any bundle (`clearPersonalValuesAfterRevoke` with `everyActor`), admins excepted. Deleting a
   service cascades to its links and everyone's values.
-- `agent_vault_services.accessBundleId` and the `agent_vault_session_inline_services` table are dead for one release, so
-  pods on the previous release keep resolving while this one rolls out. Nothing reads or writes them; drop both in the
-  next release's migration.
+- `agent_vault_services.accessBundleId` and the `agent_vault_session_inline_services` table are kept for one release, so
+  pods on the previous release keep resolving while this one rolls out. Nothing in this release reads them. Two writes
+  keep an old pod from brokering a service a bundle no longer holds: removing a link clears a matching
+  `accessBundleId` (`clearLegacyAccessBundle`), and deleting a bundle sets it null through the foreign key. Keep both
+  until the next release's migration drops the column and the table.
 
 ## Inline services
 

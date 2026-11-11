@@ -196,7 +196,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           accessBundle: AccessBundleSchema.extend({
             services: agentVaultServiceResponseSchema(
               {
-                // Python SDK v1.4.0 and older require it on every service, so it stays until they age out.
+                // Python SDK v1.4.0 and older require it on every service. Keep until 2027-01-04.
                 accessBundleId: z.string().uuid().describe(openApiHidden()),
                 personalValues: AgentVaultPersonalValuesSchema.nullable()
               },

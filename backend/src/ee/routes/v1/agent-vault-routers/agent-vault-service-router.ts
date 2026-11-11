@@ -59,7 +59,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
       hide: false,
       operationId: "listAgentVaultServices",
       description:
-        "List the services in an Agent Vault project and the access bundles each is in, ordered by name. A member sees only the services in access bundles they have been granted.",
+        "List the services in an Agent Vault project and the access bundles each is in. A member sees only the services in access bundles they have been granted.",
       tags: [ApiDocsTags.AgentVaultServices],
       querystring: z.object({
         projectId: AgentVaultProjectIdSchema,
@@ -68,9 +68,10 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
           .transform((value) => value === "true")
           .optional()
           .describe(AGENT_VAULT.SERVICE.requiresSetup),
+        // Only true: false would read like "only the ones I reach as an admin", which the list doesn't do.
         granted: z
-          .enum(["true", "false"])
-          .transform((value) => value === "true")
+          .literal("true")
+          .transform(() => true)
           .optional()
           .describe(AGENT_VAULT.SERVICE.granted),
         orderBy: z.enum(["name", "type", "createdAt"]).default("name").describe(AGENT_VAULT.SERVICE.orderBy),
@@ -164,8 +165,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
         event: {
           type: EventType.AGENT_VAULT_SERVICE_CREATE,
           metadata: {
-            accessBundleIds: service.accessBundles.map((bundle) => bundle.id),
-            accessBundleNames: service.accessBundles.map((bundle) => bundle.name),
+            accessBundles: service.accessBundles.map(({ id, name }) => ({ id, name })),
             serviceId: service.id,
             name: service.name,
             description: service.description,
@@ -405,8 +405,7 @@ export const registerAgentVaultServiceRouter = async (server: FastifyZodProvider
           metadata: {
             serviceId: service.id,
             name: service.name,
-            accessBundleIds: service.accessBundles.map((bundle) => bundle.id),
-            accessBundleNames: service.accessBundles.map((bundle) => bundle.name)
+            accessBundles: service.accessBundles.map(({ id, name }) => ({ id, name }))
           }
         }
       });

@@ -4385,7 +4385,7 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(clash.statusCode).toBe(400);
       expect(clash.json().message).toBe(
-        "A service named 'ps-dup' already exists in this Agent Vault project. Choose another name, or add the existing service to the access bundle."
+        "A service named 'ps-dup' already exists in this project. Choose another name."
       );
     });
 
@@ -4702,6 +4702,175 @@ describe("Agent Vault V1 Router", async () => {
       const secondPage = await inject("GET", `${servicesUrl}?search=ps-setup&orderBy=name&limit=1&offset=1`);
       expect(secondPage.json()).toMatchObject({ totalCount: 3 });
       expect(names(secondPage)).toEqual([ready.name]);
+    });
+
+    test("adding and removing services write one readable audit event per service, and a skipped one writes none", async () => {
+      const { auditLog } = (
+        globalThis as unknown as {
+          testServices: {
+            auditLog: { createAuditLog: (dto: { actor: unknown; orgId?: string; event: unknown }) => Promise<void> };
+          };
+        }
+      ).testServices;
+      const bundle = await createAccessBundle("ps-audit-links");
+      const first = await createService([], {
+        name: "ps-audit-first",
+        hostPattern: "audit-first.example.com",
+        credential: { type: "passthrough" }
+      });
+      const second = await createService([], {
+        name: "ps-audit-second",
+        hostPattern: "audit-second.example.com",
+        credential: { type: "passthrough" }
+      });
+      const addEvent = (service: { id: string; name: string }) => ({
+        type: "agent-vault-access-bundle-service-add",
+        metadata: {
+          serviceId: service.id,
+          serviceName: service.name,
+          accessBundleId: bundle.id,
+          accessBundleName: bundle.name
+        }
+      });
+
+      const auditLogs = vi.spyOn(auditLog, "createAuditLog");
+      try {
+        expect(
+          (await inject("POST", bundleServicesUrl(bundle.id), { serviceIds: [first.id, second.id] })).statusCode
+        ).toBe(200);
+        expect(auditLogs).toHaveBeenCalledTimes(2);
+        expect(auditLogs).toHaveBeenCalledWith(expect.objectContaining({ event: addEvent(first) }));
+        expect(auditLogs).toHaveBeenCalledWith(expect.objectContaining({ event: addEvent(second) }));
+
+        auditLogs.mockClear();
+        expect((await inject("POST", bundleServicesUrl(bundle.id), { serviceIds: [first.id] })).statusCode).toBe(200);
+        expect(auditLogs).not.toHaveBeenCalled();
+
+        expect((await inject("DELETE", `${bundleServicesUrl(bundle.id)}/${first.id}`)).statusCode).toBe(200);
+        expect(auditLogs).toHaveBeenCalledTimes(1);
+        expect(auditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: { ...addEvent(first), type: "agent-vault-access-bundle-service-remove" }
+          })
+        );
+
+        auditLogs.mockClear();
+        expect((await inject("DELETE", `${servicesUrl}/${second.id}`)).statusCode).toBe(200);
+        expect(auditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: {
+              type: "agent-vault-service-delete",
+              metadata: {
+                serviceId: second.id,
+                name: "ps-audit-second",
+                accessBundles: [{ id: bundle.id, name: bundle.name }]
+              }
+            }
+          })
+        );
+      } finally {
+        auditLogs.mockRestore();
+      }
+    });
+
+    test("a session start re-checks its bundle's names under the name lock, so a link made after its first check can't slip in", async () => {
+      const bundle = await createAccessBundle("ps-mint-race");
+      const twin = await createService([], {
+        name: "ps-mint-race-twin",
+        hostPattern: "mint-race-twin.example.com",
+        credential: { type: "passthrough" }
+      });
+
+      // A link committed only after the session start has done its first check and is waiting on the name lock.
+      const trx = await testDb.transaction();
+      let pending: ReturnType<typeof inject> | undefined;
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(agentVaultProjectId)]);
+        await trx("agent_vault_access_bundle_services").insert({ accessBundleId: bundle.id, serviceId: twin.id });
+
+        pending = inject("POST", "/api/v1/agent-vault/sessions", {
+          accessBundle: bundle.name,
+          ttl: "1h",
+          services: [
+            {
+              type: "http",
+              name: "ps-mint-race-twin",
+              hostPattern: "mint-race-inline.example.com",
+              credential: { type: "bearer", value: "sk-race" }
+            }
+          ]
+        });
+        await waitUntilBlockedBy(rows[0].pid);
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode, refused.payload).toBe(400);
+        expect(refused.json().message).toContain(
+          `has the same name as a service in the access bundle '${bundle.name}'`
+        );
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        await pending?.catch(() => undefined);
+        throw err;
+      }
+      expect(
+        await testDb("agent_vault_services").where({ name: "ps-mint-race-twin" }).whereNotNull("sessionId")
+      ).toHaveLength(0);
+    });
+
+    test("an inline service's id reads like one that doesn't exist on every project service route", async () => {
+      const bundle = await createAccessBundle("ps-inline-hidden");
+      const other = await createAccessBundle("ps-inline-hidden-other");
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundle: bundle.name,
+        ttl: "1h",
+        services: [
+          {
+            type: "http",
+            name: "ps-inline-hidden",
+            hostPattern: "inline-hidden.example.com",
+            credential: { type: "bearer", value: "sk-inline-hidden" }
+          }
+        ]
+      });
+      expect(mint.statusCode, mint.payload).toBe(200);
+      const inline = await testDb("agent_vault_services").where({ sessionId: mint.json().session.id }).first();
+      expect(inline).toBeDefined();
+      const url = `${servicesUrl}/${inline.id}`;
+      const personalValues = { values: [{ field: "credential-value", value: "sk-mine" }] };
+
+      const member = await createMemberIdentity(`ps-inline-hidden-${Date.now()}`);
+      try {
+        await grant(bundle.id, member.id);
+        const calls: [string, Promise<{ statusCode: number }>][] = [
+          ["GET", inject("GET", url)],
+          ["PATCH", inject("PATCH", url, { type: "http", description: "renamed" })],
+          ["admin personal values", inject("PATCH", `${url}/personal-values`, personalValues)],
+          ["admin delete personal values", inject("DELETE", `${url}/personal-values`)],
+          ["member GET", member.as("GET", url)],
+          ["member personal values", member.as("PATCH", `${url}/personal-values`, personalValues)],
+          ["member delete personal values", member.as("DELETE", `${url}/personal-values`)],
+          ["add to bundle", inject("POST", bundleServicesUrl(other.id), { serviceIds: [inline.id] })],
+          ["remove from bundle", inject("DELETE", `${bundleServicesUrl(bundle.id)}/${inline.id}`)],
+          ["DELETE", inject("DELETE", url)]
+        ];
+        for (const [label, call] of calls) {
+          // eslint-disable-next-line no-await-in-loop
+          expect([label, (await call).statusCode]).toEqual([label, 404]);
+        }
+        expect(
+          ((await inject("GET", `${servicesUrl}?search=ps-inline-hidden`)).json().services as TProjectService[]).map(
+            (service) => service.id
+          )
+        ).not.toContain(inline.id);
+        expect(await testDb("agent_vault_services").where({ id: inline.id }).first()).toMatchObject({
+          name: "ps-inline-hidden",
+          description: null
+        });
+      } finally {
+        await member.cleanup();
+      }
     });
 
     test("a service can't take the name of an inline service in a live session on its bundle until that session ends", async () => {

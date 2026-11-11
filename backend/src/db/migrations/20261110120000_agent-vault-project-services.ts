@@ -268,8 +268,8 @@ export async function up(knex: Knex): Promise<void> {
     `ALTER TABLE ?? ADD CONSTRAINT ?? CHECK (("sessionId" IS NULL) = (position IS NULL) AND ("sessionId" IS NOT NULL OR "secretsDeletedAt" IS NULL))`,
     [SERVICE, INLINE_POSITION_CHECK]
   );
-  // The Go backend shares this table without the API's checks. An inline service has every value sent with its
-  // session, so nothing is left to members, nothing signs in, and no tool list narrows it.
+  // An inline service has every value sent with its session, so nothing is left to members, nothing signs in, and no
+  // tool list narrows it.
   await knex.raw(
     `ALTER TABLE ?? ADD CONSTRAINT ?? CHECK ("sessionId" IS NULL OR ("memberProvidedFields" IS NULL AND "credentialType" <> 'oauth' AND "allowedTools" IS NULL))`,
     [SERVICE, INLINE_ONLY_CHECK]
