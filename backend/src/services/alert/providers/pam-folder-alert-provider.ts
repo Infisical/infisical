@@ -1,13 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
+import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   PAM_FOLDER_RESOURCE_TYPE,
   PamAccessRequestEvent
 } from "@app/ee/services/pam-access-request/pam-access-request-events";
 import { PamAccessType } from "@app/ee/services/pam/pam-enums";
-import { checkFolderPermission, verifyProductMembership } from "@app/ee/services/pam/pam-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,
@@ -269,10 +269,15 @@ export const pamFolderAlertProviderFactory = ({
       throw new BadRequestError({ message: "PAM folder alerts require a folder ID" });
     }
 
-    await verifyProductMembership(permissionService, projectId, actor);
+    await permissionService.getProjectPermission({ ...actor, projectId, actionProjectType: ActionProjectType.PAM });
     await assertResourceInScope({ orgId, projectId, resourceId });
 
-    const { permission } = await checkFolderPermission(permissionService, resourceId, projectId, actor);
+    const { permission } = await permissionService.getResourcePermission({
+      ...actor,
+      projectId,
+      resourceType: ResourceType.PamFolder,
+      resourceId
+    });
     if (
       action === AlertPermissionAction.Read &&
       permission.can(ResourcePermissionPamResourceActions.ViewAuditLogs, ResourcePermissionSub.PamResource)

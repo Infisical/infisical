@@ -1,6 +1,7 @@
 import { requestContext } from "@fastify/request-context";
 
 import { TUsers } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionAuditLogsActions,
@@ -13,7 +14,7 @@ import {
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { BadRequestError } from "@app/lib/errors";
@@ -67,13 +68,7 @@ type TAuditLogServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<TUserDALFactory, "getUsersByFilter">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
-  resolvePamAuditScope?: (args: {
-    projectId: string;
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
-  }) => Promise<TPamAuditLogScope | null>;
+  resolvePamAuditScope?: (args: { projectId: string; actor: TActorContext }) => Promise<TPamAuditLogScope | null>;
 };
 
 export const auditLogServiceFactory = ({
@@ -97,15 +92,7 @@ export const auditLogServiceFactory = ({
 
     // Filter logs for specific project
     if (filter.projectId) {
-      pamScope = resolvePamAuditScope
-        ? await resolvePamAuditScope({
-            projectId: filter.projectId,
-            actor: actor.principal.type,
-            actorId: actor.principal.id,
-            actorAuthMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
-            actorOrgId: actor.org.id
-          })
-        : null;
+      pamScope = resolvePamAuditScope ? await resolvePamAuditScope({ projectId: filter.projectId, actor }) : null;
 
       if (!pamScope) {
         const permission = await projectsDomain.getProjectPermission({ actor, projectId: filter.projectId });

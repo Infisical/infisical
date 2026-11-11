@@ -1,8 +1,8 @@
 import type WebSocket from "ws";
 import { z } from "zod";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
-import { ProjectServiceActor } from "@app/lib/types";
 
 export enum SessionEndReason {
   SessionCompleted = "Session duration complete",
@@ -65,7 +65,7 @@ export type TIssueWebSocketTicketDTO = {
   accountId: string;
   projectId: string;
   orgId: string;
-  actor: ProjectServiceActor;
+  actor: TActorContext;
   actorEmail: string;
   actorName: string;
   tokenVersionId: string;

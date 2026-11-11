@@ -91,10 +91,7 @@ const registerPerTypeEndpoints = (
         schedule: req.body.schedule,
         configuration: req.body.configuration ?? {},
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -146,10 +143,7 @@ const registerPerTypeEndpoints = (
         discoveryType,
         ...req.body,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -192,10 +186,7 @@ const registerPerTypeEndpoints = (
         sourceId: req.params.sourceId,
         discoveryType,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { source };
     }
@@ -218,10 +209,7 @@ const registerPerTypeEndpoints = (
         sourceId: req.params.sourceId,
         discoveryType,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -264,10 +252,7 @@ const registerPerTypeEndpoints = (
         sourceId: req.params.sourceId,
         discoveryType,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -325,10 +310,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
       const sources = await server.services.pamDiscovery.list({
         projectId: req.internalPamProjectId,
         search: req.query.search,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { sources };
     }
@@ -356,10 +338,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         projectId: req.internalPamProjectId,
         offset: req.query.offset,
         limit: req.query.limit,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { runs };
     }
@@ -391,10 +370,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         search: req.query.search,
         offset: req.query.offset,
         limit: req.query.limit,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { discoveredAccounts, totalCount };
     }
@@ -439,10 +415,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         search: req.query.search,
         offset: req.query.offset,
         limit: req.query.limit,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
       return { accounts, totalCount };
     }
@@ -507,10 +480,7 @@ export const registerPamDiscoveryRouter = async (server: FastifyZodProvider) => 
         accounts: req.body.accounts,
         auditLogInfo: req.auditLogInfo,
         projectId: req.internalPamProjectId,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       const importedAccounts = results.flatMap((r) =>

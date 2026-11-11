@@ -1,9 +1,11 @@
 import RE2 from "re2";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { CliCapability, cliSupports } from "@app/lib/cli-version/cli-version-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -49,7 +51,6 @@ import {
   checkAccountAccess,
   getLaunchAccessRemainingMs,
   getResourceIdsWithActions,
-  TActorContext,
   verifyProductMembership
 } from "../pam/pam-permission";
 import {
@@ -100,7 +101,8 @@ type TPamSessionServiceFactoryDep = {
   pamFolderDAL: Pick<TPamFolderDALFactory, "findOne">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor" | "lockOrgMembershipForUser">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  pamDomain: Pick<TPamDomain, "getPamPermission">;
   kmsCoreDomain: TKmsCoreDomain;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "assertGatewayBindingInOrg">;
@@ -126,7 +128,8 @@ export const pamSessionServiceFactory = ({
   pamFolderDAL,
   membershipDAL,
   membershipRoleDAL,
-  permissionService,
+  projectsDomain,
+  pamDomain,
   kmsCoreDomain,
   gatewayV2Service,
   gatewayPoolService,
@@ -151,7 +154,7 @@ export const pamSessionServiceFactory = ({
     projectId: string,
     action: ResourcePermissionPamResourceActions,
     ctx: TActorContext
-  ) => checkAccountAccess(permissionService, accountId, folderId, projectId, action, ctx);
+  ) => checkAccountAccess(pamDomain, accountId, folderId, projectId, action, ctx);
 
   const checkSession = async (
     session: { accountId?: string | null; projectId: string },
@@ -164,8 +167,8 @@ export const pamSessionServiceFactory = ({
       return;
     }
 
-    const { hasRole } = await verifyProductMembership(permissionService, session.projectId, ctx);
-    if (!hasRole(PamProductRole.Admin)) {
+    const productPermission = await verifyProductMembership(projectsDomain, session.projectId, ctx);
+    if (!productPermission.hasRole({ slug: PamProductRole.Admin })) {
       throw new ForbiddenRequestError({
         message: "Only a project admin can access a session whose account has been deleted"
       });
@@ -186,7 +189,7 @@ export const pamSessionServiceFactory = ({
     ctx: TActorContext,
     pagination?: { offset?: number; limit?: number; search?: string; status?: string }
   ) => {
-    const { hasRole } = await verifyProductMembership(permissionService, projectId, ctx);
+    const productPermission = await verifyProductMembership(projectsDomain, projectId, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
@@ -199,7 +202,7 @@ export const pamSessionServiceFactory = ({
     return pamSessionDAL.findAccessibleByProjectId(projectId, {
       viewSessionsFolderIds: folderIds,
       viewSessionsAccountIds: accountIds,
-      includeOrphaned: hasRole(PamProductRole.Admin),
+      includeOrphaned: productPermission.hasRole({ slug: PamProductRole.Admin }),
       ...pagination
     });
   };
@@ -481,7 +484,7 @@ export const pamSessionServiceFactory = ({
 
     // Machine identities launch sessions via identity access tokens; human-only controls
     // (MFA, access-request approval) cannot be satisfied by them and are rejected explicitly below.
-    const isUserActor = actor.actor === ActorType.USER;
+    const isUserActor = actor.principal.type === ActorType.USER;
 
     const policy = resolveAccessControls(account.templatePolicies);
     const { requiresApproval } = policy;
@@ -508,8 +511,8 @@ export const pamSessionServiceFactory = ({
       await enforceMfa(
         { mfaSessionService, orgDAL, userDAL },
         {
-          userId: actor.actorId,
-          orgId: actor.actorOrgId,
+          userId: actor.principal.id,
+          orgId: actor.org.id,
           actorEmail,
           accountId: account.id,
           mfaSessionId,
@@ -537,7 +540,7 @@ export const pamSessionServiceFactory = ({
       membershipRoleDAL,
       projectId,
       account,
-      actor
+      { type: actor.principal.type, id: actor.principal.id }
     );
     if (launchAccessRemainingMs !== null) {
       if (launchAccessRemainingMs <= 0) {
@@ -551,8 +554,8 @@ export const pamSessionServiceFactory = ({
     // blocked on a launch reason for a session they cannot start yet.
     if (requiresApproval) {
       const grant = await pamAccessRequestService.checkGrant({
-        actorId: actor.actorId,
-        actor: actor.actor,
+        actorId: actor.principal.id,
+        actor: actor.principal.type,
         accountId: account.id,
         accountFolderId: account.folderId,
         projectId
@@ -562,7 +565,7 @@ export const pamSessionServiceFactory = ({
         // approvers", so the CLI can guide the user instead of prompting into a 400
         const [statusMap, foldersWithApprovalPolicy] = await Promise.all([
           pamAccessRequestService.getAccessStatusBatch(
-            { actorId: actor.actorId, actor: actor.actor },
+            { actorId: actor.principal.id, actor: actor.principal.type },
             [account.id],
             projectId
           ),
@@ -629,7 +632,7 @@ export const pamSessionServiceFactory = ({
         roleArn,
         // PAM is one project per org, so the actor's org owns this account. We use the org ID as the
         // STS External ID so the customer's role trust policy scopes assumption to this Infisical org.
-        externalId: actor.actorOrgId,
+        externalId: actor.org.id,
         roleSessionName,
         sessionDuration: stsDurationSeconds
       });
@@ -662,8 +665,8 @@ export const pamSessionServiceFactory = ({
       const session = await pamSessionDAL.transaction(async (tx) => {
         if (isUserActor) {
           await assertUserStillActiveInOrg({
-            orgId: actor.actorOrgId,
-            userId: actor.actorId,
+            orgId: actor.org.id,
+            userId: actor.principal.id,
             membershipDAL,
             orgDAL,
             tx
@@ -685,8 +688,8 @@ export const pamSessionServiceFactory = ({
             projectId,
             accountId: account.id,
             // userId FKs users and identityId FKs identities; exactly one is set based on the actor type
-            userId: isUserActor ? actor.actorId : null,
-            identityId: isUserActor ? null : actor.actorId,
+            userId: isUserActor ? actor.principal.id : null,
+            identityId: isUserActor ? null : actor.principal.id,
             reason: trimmedReason,
             folderName: account.folderName
           },
@@ -712,7 +715,7 @@ export const pamSessionServiceFactory = ({
     await gatewayPoolService.assertGatewayBindingInOrg({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
       gatewayPoolId: account.gatewayPoolId ?? account.templateGatewayPoolId,
-      orgId: actor.actorOrgId
+      orgId: actor.org.id
     });
     const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({
       gatewayId: account.gatewayId ?? account.templateGatewayId,
@@ -730,12 +733,18 @@ export const pamSessionServiceFactory = ({
       resolveSelectedHost(account.accountType as PamAccountType, rawConnectionDetails, targetHost) ??
       gatewayTarget.host;
 
-    const user = isUserActor ? await userDAL.findById(actor.actorId) : null;
+    const user = isUserActor ? await userDAL.findById(actor.principal.id) : null;
     const expiresAt = new Date(Date.now() + sessionDurationMs);
 
     const session = await pamSessionDAL.transaction(async (tx) => {
       if (isUserActor) {
-        await assertUserStillActiveInOrg({ orgId: actor.actorOrgId, userId: actor.actorId, membershipDAL, orgDAL, tx });
+        await assertUserStillActiveInOrg({
+          orgId: actor.org.id,
+          userId: actor.principal.id,
+          membershipDAL,
+          orgDAL,
+          tx
+        });
       }
 
       return pamSessionDAL.create(
@@ -752,8 +761,8 @@ export const pamSessionServiceFactory = ({
           projectId,
           accountId: account.id,
           // userId FKs users and identityId FKs identities; exactly one is set based on the actor type
-          userId: isUserActor ? actor.actorId : null,
-          identityId: isUserActor ? null : actor.actorId,
+          userId: isUserActor ? actor.principal.id : null,
+          identityId: isUserActor ? null : actor.principal.id,
           gatewayId: effectiveGatewayId,
           reason: trimmedReason,
           folderName: account.folderName,
@@ -774,8 +783,8 @@ export const pamSessionServiceFactory = ({
       port: gatewayTarget.port,
       duration: sessionDurationMs,
       actorMetadata: {
-        id: actor.actorId,
-        type: actor.actor,
+        id: actor.principal.id,
+        type: actor.principal.type,
         name: user?.email ?? actorName
       },
       // The platform dials for web sessions, so only a CLI caller is gated on its version.
@@ -864,12 +873,12 @@ export const pamSessionServiceFactory = ({
     }
 
     if (session.gatewayId) {
-      const user = await userDAL.findById(ctx.actorId);
+      const user = await userDAL.findById(ctx.principal.id);
       sendPamSessionCancellationSignal({
         sessionId,
         gatewayId: session.gatewayId,
         accountType: session.accountType,
-        actorId: ctx.actorId,
+        actorId: ctx.principal.id,
         actorEmail: user?.email ?? "",
         gatewayV2Service
       });

@@ -7,7 +7,6 @@ import {
 } from "@app/services/approval-policy/auto-approval/auto-approval-types";
 
 import { PamAccessType, PamNotificationEvent } from "../pam/pam-enums";
-import { TActorContext } from "../pam/pam-permission";
 
 export type TGetApprovalConfigurationDTO = {
   folderId: string;
@@ -61,23 +60,23 @@ export type TListAccessRequestsDTO = {
 export type TListPendingMyApprovalDTO = {
   projectId: string;
   folderId?: string;
-} & TActorContext;
+} & TActorInput;
 
 export type TGetAccessRequestCountDTO = {
   projectId: string;
-} & TActorContext;
+} & TActorInput;
 
 export type TReviewAccessRequestDTO = {
   requestId: string;
   projectId: string;
   status: ApprovalRequestApprovalDecision;
   comment?: string;
-} & TActorContext;
+} & TActorInput;
 
 export type TRevokeAccessRequestDTO = {
   requestId: string;
   projectId: string;
-} & TActorContext;
+} & TActorInput;
 
 // Requests and grants key their actor by user OR machine identity, never both
 export type TAccessRequestActor = {
@@ -104,4 +103,4 @@ export type TGetAccountApproversDTO = {
   accountId: string;
   projectId: string;
   accessType?: PamAccessType;
-} & TActorContext;
+} & TActorInput;

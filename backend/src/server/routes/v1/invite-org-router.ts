@@ -183,10 +183,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
           const pamProjectId = await server.services.pamProjectResolver.resolve(req.permission.orgId);
           const { memberships } = await server.services.pamMembership.addProductUserMembers({
             projectId: pamProjectId,
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorOrgId: req.permission.orgId,
-            actorAuthMethod: req.permission.authMethod,
+            actor: req.permission,
             userIds: [],
             emails: req.body.inviteeEmails,
             role: PamProductRole.Member

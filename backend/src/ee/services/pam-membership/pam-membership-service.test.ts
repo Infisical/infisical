@@ -1,8 +1,9 @@
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import knex, { Knex } from "knex";
 import { describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -15,10 +16,7 @@ const PROJECT_ID = "project-1";
 const IDENTIFIER = "m249913@one.example.com";
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: "actor-1",
-  actorOrgId: ORG_ID,
-  actorAuthMethod: undefined
+  actor: { principal: { type: ActorType.USER, id: "actor-1" }, org: { id: ORG_ID } }
 } as unknown as Parameters<ReturnType<typeof pamMembershipServiceFactory>["addProductUserMembers"]>[0];
 
 const user = (id: string, username: string) => ({ id, username, isGhost: false });
@@ -34,7 +32,7 @@ describe("pamMembership product admin retention", () => {
       { raw: vi.fn().mockResolvedValue(undefined) }
     ) as unknown as Knex;
     const deps = {
-      permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
+      projectsDomain: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
       membershipDAL: {
         find: vi.fn().mockResolvedValue([{ id: "membership-1" }]),
         transaction: vi.fn((cb: (trx: Knex) => unknown) => cb(tx)),
@@ -101,7 +99,7 @@ const buildService = ({
 } = {}) => {
   const created: { actorUserId: string; role: string }[] = [];
   const deps = {
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
+    projectsDomain: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
     userDAL: {
       find: vi.fn(({ $in }: { $in: { username?: string[]; id?: string[] } }) => {
         if ($in.username) return Promise.resolve(usersByUsername.filter((u) => $in.username!.includes(u.username)));
@@ -217,8 +215,8 @@ describe("pamMembership member lists", () => {
   const buildListService = (rules: { action: string; subject: string }[]) => {
     const createdAt = new Date();
     const deps = {
-      permissionService: {
-        getProjectPermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(rules) })
+      projectsDomain: {
+        getProjectPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: rules as never }))
       },
       membershipDAL: {
         find: vi.fn().mockResolvedValue([

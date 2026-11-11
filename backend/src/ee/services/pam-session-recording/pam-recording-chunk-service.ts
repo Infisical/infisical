@@ -1,8 +1,10 @@
 import RE2 from "re2";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -17,7 +19,7 @@ import {
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamProductRole, PamSessionStatus } from "../pam/pam-enums";
-import { checkAccountAccess, TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { checkAccountAccess, verifyProductMembership } from "../pam/pam-permission";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { resolveS3RecordingAccess } from "./aws-s3/aws-s3-provider-factory";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
@@ -31,7 +33,8 @@ type TPamSessionChunkServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;
   pamSessionEventChunkDAL: TPamSessionEventChunkDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails">;
-  permissionService: Pick<TPermissionServiceFactory, "getResourcePermission" | "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  pamDomain: Pick<TPamDomain, "getPamPermission">;
   kmsCoreDomain: TKmsCoreDomain;
   instanceConfigCoreDomain: Pick<TInstanceConfigCoreDomain, "getServerConfig">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -49,7 +52,8 @@ export const pamSessionChunkServiceFactory = ({
   pamSessionDAL,
   pamSessionEventChunkDAL,
   pamAccountDAL,
-  permissionService,
+  projectsDomain,
+  pamDomain,
   kmsCoreDomain,
   instanceConfigCoreDomain,
   appConnectionDAL
@@ -97,18 +101,11 @@ export const pamSessionChunkServiceFactory = ({
   };
   const checkSessionViewAccess = async (
     session: { accountId?: string | null; projectId: string },
-    actor: OrgServiceActor
+    ctx: TActorContext
   ) => {
-    const ctx: TActorContext = {
-      actorId: actor.id,
-      actor: actor.type,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod
-    };
-
     if (!session.accountId) {
-      const { hasRole } = await verifyProductMembership(permissionService, session.projectId, ctx);
-      if (!hasRole(PamProductRole.Admin)) {
+      const productPermission = await verifyProductMembership(projectsDomain, session.projectId, ctx);
+      if (!productPermission.hasRole({ slug: PamProductRole.Admin })) {
         throw new ForbiddenRequestError({
           message: "Only a project admin can access a session whose account has been deleted"
         });
@@ -122,7 +119,7 @@ export const pamSessionChunkServiceFactory = ({
     }
 
     await checkAccountAccess(
-      permissionService,
+      pamDomain,
       session.accountId,
       account.folderId,
       session.projectId,
@@ -303,7 +300,7 @@ export const pamSessionChunkServiceFactory = ({
     return { ok: true as const, projectId: session.projectId, accountId: session.accountId, storageBackend: backend };
   };
 
-  const getSessionPlayback = async (sessionId: string, actor: OrgServiceActor) => {
+  const getSessionPlayback = async (sessionId: string, actor: TActorContext) => {
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session ${sessionId} not found` });
 
@@ -363,7 +360,7 @@ export const pamSessionChunkServiceFactory = ({
     };
   };
 
-  const getChunkCiphertext = async (sessionId: string, chunkIndex: number, actor: OrgServiceActor) => {
+  const getChunkCiphertext = async (sessionId: string, chunkIndex: number, actor: TActorContext) => {
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) throw new NotFoundError({ message: `Session ${sessionId} not found` });
 

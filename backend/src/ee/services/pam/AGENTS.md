@@ -35,8 +35,10 @@ Two tiers: **product membership** (`PamProductRole`: Admin/Member) + **resource 
 folder or account (`PamResourceRole`: Admin/Operator/Connector/Auditor; Operator is Connector plus
 `ViewCredentials`, with no approval rights so credential approval can't be self-served). Shared helpers live in
 `pam/pam-permission.ts` (`verifyProductMembership`, `checkAccountAccess`, `getResourceIdsWithActions`, …) —
-use them instead of re-implementing. Every list/mutation endpoint checks an **action**, not just
-membership. There is **no org-admin fallback**: permission needs project-scoped membership. Instead, a user
+use them instead of re-implementing. They check through `pamDomain.getPamPermission` and
+`projectsDomain.getProjectPermission`, so PAM services take the request's actor context (`actor: req.permission`);
+never rebuild one from flat actor fields, which drops a delegated token's scope narrowing. Every list/mutation
+endpoint checks an **action**, not just membership. There is **no org-admin fallback**: permission needs project-scoped membership. Instead, a user
 (never a machine identity) holding the org Admin role (the role itself, checked with `hasRole`, not a
 permission) can list every folder
 (`includeNonMemberFolders`, which only the Accounts page sends, adds `callerAccess`) and join one explicitly

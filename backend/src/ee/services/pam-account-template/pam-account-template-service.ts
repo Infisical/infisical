@@ -1,6 +1,8 @@
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { TActorInput } from "@app/lib/types";
 
 import { isRotatableAccountType, ROTATABLE_ACCOUNT_TYPES } from "../pam-account-rotation/pam-rotation-fns";
 import { ORACLE_MAX_PASSWORD_LENGTH } from "../pam-account/pam-account-connection-test";
@@ -9,7 +11,7 @@ import { ACCOUNT_TYPE_CONFIGS } from "../pam-account/pam-account-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 import { TPamRecordingResolvedConfig } from "../pam-session-recording/pam-recording-storage-types";
 import { accountTypeSupportsSessionLogMasking, PamAccountType, PamProductRole } from "../pam/pam-enums";
-import { TActorContext, verifyProductMembership } from "../pam/pam-permission";
+import { verifyProductMembership } from "../pam/pam-permission";
 import { validatePolicyValues } from "../pam/pam-policies";
 import {
   mintCorsProbeUrl,
@@ -46,16 +48,16 @@ type TPamAccountTemplateServiceFactoryDep = TPamValidatorDeps & {
     TPamAccountDALFactory,
     "reconcileRotationScheduleForTemplate" | "reconcileHeartbeatScheduleForTemplate"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
 };
 
 export type TPamAccountTemplateServiceFactory = ReturnType<typeof pamAccountTemplateServiceFactory>;
 
 export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServiceFactoryDep) => {
-  const { pamAccountTemplateDAL, pamAccountDAL, permissionService } = deps;
+  const { pamAccountTemplateDAL, pamAccountDAL, projectsDomain } = deps;
 
   const verifyMembership = (projectId: string, ctx: TActorContext) =>
-    verifyProductMembership(permissionService, projectId, ctx);
+    verifyProductMembership(projectsDomain, projectId, ctx);
 
   const validateTemplatePolicies = (accountType: string, policies: unknown): Record<string, unknown> | undefined => {
     if (!policies || typeof policies !== "object") return undefined;
@@ -96,8 +98,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
   };
 
   const verifyProductAdmin = async (projectId: string, ctx: TActorContext) => {
-    const { hasRole } = await verifyMembership(projectId, ctx);
-    if (!hasRole(PamProductRole.Admin)) {
+    const productPermission = await verifyMembership(projectId, ctx);
+    if (!productPermission.hasRole({ slug: PamProductRole.Admin })) {
       throw new ForbiddenRequestError({ message: "Only PAM product admins can perform this action" });
     }
   };
@@ -127,13 +129,13 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     return resolvedS3Config;
   };
 
-  const list = async ({ projectId, search, type, ...ctx }: TListPamAccountTemplatesDTO & TActorContext) => {
+  const list = async ({ projectId, search, type, actor: ctx }: TListPamAccountTemplatesDTO & TActorInput) => {
     await verifyMembership(projectId, ctx);
     const templates = await pamAccountTemplateDAL.findByProjectId(projectId, { search, type });
     return templates.filter((template) => SUPPORTED_ACCOUNT_TYPES.has(template.type));
   };
 
-  const getById = async ({ templateId, projectId, ...ctx }: TGetPamAccountTemplateDTO & TActorContext) => {
+  const getById = async ({ templateId, projectId, actor: ctx }: TGetPamAccountTemplateDTO & TActorInput) => {
     await verifyMembership(projectId, ctx);
 
     const template = await pamAccountTemplateDAL.findById(templateId);
@@ -157,8 +159,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     gatewayId,
     gatewayPoolId,
     recordingConnectionId,
-    ...ctx
-  }: TCreatePamAccountTemplateDTO & TActorContext) => {
+    actor: ctx
+  }: TCreatePamAccountTemplateDTO & TActorInput) => {
     await verifyProductAdmin(projectId, ctx);
     await validateGatewayAttachment(deps, gatewayId, gatewayPoolId, ctx);
     await validateRecordingConnection(deps, recordingConnectionId, ctx);
@@ -213,8 +215,8 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     gatewayId,
     gatewayPoolId,
     recordingConnectionId,
-    ...ctx
-  }: TUpdatePamAccountTemplateDTO & TActorContext) => {
+    actor: ctx
+  }: TUpdatePamAccountTemplateDTO & TActorInput) => {
     await verifyProductAdmin(projectId, ctx);
 
     const existing = await pamAccountTemplateDAL.findById(templateId);
@@ -281,7 +283,7 @@ export const pamAccountTemplateServiceFactory = (deps: TPamAccountTemplateServic
     }
   };
 
-  const deleteTemplate = async ({ templateId, projectId, ...ctx }: TDeletePamAccountTemplateDTO & TActorContext) => {
+  const deleteTemplate = async ({ templateId, projectId, actor: ctx }: TDeletePamAccountTemplateDTO & TActorInput) => {
     await verifyProductAdmin(projectId, ctx);
 
     const existing = await pamAccountTemplateDAL.findById(templateId);
