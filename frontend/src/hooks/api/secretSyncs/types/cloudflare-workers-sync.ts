@@ -13,6 +13,7 @@ export type TCloudflareWorkersSync = TRootSecretSync & {
   destinationConfig: {
     scriptId: string;
     variableType?: CloudflareWorkersVariableType;
+    previewName?: string;
   };
   connection: {
     app: AppConnection.Cloudflare;

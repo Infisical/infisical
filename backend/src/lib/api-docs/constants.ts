@@ -3730,7 +3730,9 @@ export const SecretSyncs = {
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to.",
       variableType:
-        "The type of variable to sync secrets as: secret_text (default), plain_text or json. If a secret already exists on the Worker as a different type, the sync fails and nothing is changed, except that with syncNonSecretBindings on, a secret_text sync updates existing plaintext and JSON variables as they are. Syncs created before this option existed have no type and skip those secrets instead. Infisical only deletes variables of this type."
+        "The type of variable to sync secrets as: secret_text (default), plain_text or json. If a secret already exists on the Worker as a different type, the sync fails and nothing is changed, except that with syncNonSecretBindings on, a secret_text sync updates existing plaintext and JSON variables as they are. Syncs created before this option existed have no type and skip those secrets instead. Infisical only deletes variables of this type.",
+      previewName:
+        "The name of a Preview on the Worker to sync secrets to. Omit it to sync to production. The Preview must already have a deployment, and each sync creates a new deployment of it."
     },
     CLOUDFLARE_SECRETS_STORE: {
       storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",
