@@ -16,7 +16,7 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
 ## Prerequisites
 
 - The Certificate Management **Admin** role to create an organization-wide alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
-- An HTTPS endpoint that accepts POST requests
+- An HTTPS endpoint that accepts POST requests. If you self-host Infisical, an admin of your instance can [allow HTTP and internal endpoints](#http-and-internal-endpoints).
 
 ## Create the alert
 
@@ -28,7 +28,7 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
 
     <Steps>
       <Step>
-        Select **Add Channel** > **Webhook** and enter your endpoint's **URL**. The URL must use HTTPS.
+        Select **Add Channel** > **Webhook** and enter your endpoint's **URL**. The URL must use HTTPS, unless your instance [allows HTTP](#http-and-internal-endpoints).
       </Step>
       <Step>
         If your endpoint requires authentication, under **Authentication**, select **Bearer Token**, **Basic Auth**, or **API Key**, and enter the [credentials](#authentication) it expects.
@@ -56,7 +56,7 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
 
     | Field | Value |
     | --- | --- |
-    | `url` (required) | Your endpoint's HTTPS URL |
+    | `url` (required) | Your endpoint's URL, which must use HTTPS unless your instance [allows HTTP](#http-and-internal-endpoints) |
     | `authType` | `bearer` (**Bearer Token**), `basic` (**Basic Auth**), or `header` (**API Key**), for [authentication](#authentication) |
     | `authCredentials` | The token, if `authType` is `bearer` |
     | `basicUsername`, `basicPassword` | The username and password, if `authType` is `basic` |
@@ -142,6 +142,17 @@ Infisical sends custom headers with each request, such as an `X-Env` header your
 - Anyone who can view the alert can see header values, so put credentials, including any `Authorization` header, in [authentication](#authentication)
 - A channel can have up to 20 custom headers, and header names, values, and authentication credentials can total up to 4,096 characters
 - Infisical sets `Content-Type`, `Content-Length`, `Transfer-Encoding`, `Connection`, `Host`, and `x-infisical-signature` itself, so you can't add them
+
+## HTTP and internal endpoints
+
+By default, a webhook channel only sends requests to HTTPS URLs on public addresses. If you self-host Infisical, an admin of your instance can relax these rules for webhook channels with two [environment variables](/self-hosting/configuration/envars):
+
+- `ALERT_WEBHOOK_ALLOW_HTTP` lets a channel use an `http://` URL, such as a sidecar proxy that adds TLS before the request leaves your network
+- `ALERT_WEBHOOK_ALLOW_INTERNAL_IP` lets a channel reach a private IP address (including IPv6 unique local addresses), a carrier-grade NAT address in `100.64.0.0/10` (such as a Tailscale node), or `localhost`. Link-local addresses, such as a cloud provider's metadata endpoint, stay blocked.
+
+An HTTP sidecar proxy that you reach at `localhost` or another private address needs both variables set to `true`.
+
+If an admin turns `ALERT_WEBHOOK_ALLOW_HTTP` off later, a channel with an `http://` URL fails each time its alert fires until you change the URL to HTTPS.
 
 ## Webhook event types
 

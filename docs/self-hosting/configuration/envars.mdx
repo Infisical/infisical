@@ -88,7 +88,7 @@ Example values:
   which tunnels traffic through an agent inside your network and doesn't require
   opening any internal IP range on the Infisical instance. Use this flag (or the
   more targeted `DYNAMIC_SECRET_ALLOW_INTERNAL_IP` / `AUDIT_LOG_STREAM_ALLOW_INTERNAL_IP` /
-  `S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP` flags) only for the features that egress directly,
+  `S3_COMPATIBLE_STORAGE_ALLOW_INTERNAL_IP` / `ALERT_WEBHOOK_ALLOW_INTERNAL_IP` flags) only for the features that egress directly,
   without a Gateway.
 
   <Warning>
@@ -114,6 +114,24 @@ Example values:
     Relaxes the SSRF protection for the Dynamic Secrets path, including disabling
     DNS-rebinding pin protection for that path. Prefer the [Gateway](/documentation/platform/gateways/overview)
     for private resources.
+  </Warning>
+</ParamField>
+
+<ParamField query="ALERT_WEBHOOK_ALLOW_HTTP" type="bool" default="false" optional>
+  Lets [webhook alert channels](/documentation/platform/pki/applications/alerting/webhook-alerts) use an `http://` URL. Use it when your instance can only send plain HTTP to a proxy, such as a sidecar that adds TLS before the request leaves your network. If the proxy runs on the same host or another private address, also set `ALERT_WEBHOOK_ALLOW_INTERNAL_IP`.
+
+  If you turn it off later, a channel that still has an `http://` URL fails each time its alert fires, until someone changes the URL to HTTPS.
+
+  <Warning>
+    Alert payloads, authentication credentials, and request signatures travel unencrypted to an `http://` URL. Only enable it if that hop stays inside your network.
+  </Warning>
+</ParamField>
+
+<ParamField query="ALERT_WEBHOOK_ALLOW_INTERNAL_IP" type="bool" default="false" optional>
+  Lets [webhook alert channels](/documentation/platform/pki/applications/alerting/webhook-alerts) send requests to private IP addresses (including IPv6 unique local addresses), carrier-grade NAT addresses in `100.64.0.0/10`, and `localhost`, such as a proxy on the same host. Infisical still refuses link-local addresses, such as a cloud provider's metadata endpoint, and addresses used by its own database and Redis.
+
+  <Warning>
+    Relaxes the SSRF protection for webhook alert channels. Only enable it if you trust the users who can configure alerts.
   </Warning>
 </ParamField>
 

@@ -16,11 +16,15 @@ import { recordSafeRequestAgentEvictionMetric } from "@app/lib/telemetry/metrics
 import { getTlsServerNameOptions } from "@app/lib/tls";
 
 import { BadRequestError } from "../errors";
-import { isPrivateIp } from "../ip/ipRange";
+import { getIpRange, isPrivateIp } from "../ip/ipRange";
 import { AGENT_CACHE_MAX, agentCache } from "./agent-pool";
 
 // Exported so a caller can tell this refusal, which retrying never fixes, from a failure that might pass.
 export const PRIVATE_ADDRESS_REFUSED_MESSAGE = "Local IPs not allowed as URL";
+
+// allowInternalAddresses opens only these ranges. Link-local covers the cloud metadata endpoint, and
+// IPv4-mapped IPv6 would slip past the string match on Infisical's own database and Redis IPs.
+const INTERNAL_ADDRESS_RANGES = new Set(["private", "loopback", "uniqueLocal", "carrierGradeNat"]);
 
 const formatEntries = (entries: LookupAddress[]) => entries.map((e) => `${e.family}:${e.address}`).join(",");
 
@@ -31,6 +35,8 @@ export type TValidatedHost = {
 
 type SafeRequestSharedOptions = {
   allowPrivateIps?: boolean;
+  // Unlike allowPrivateIps, keeps DNS pinning and the block on Infisical's own infrastructure.
+  allowInternalAddresses?: boolean;
 };
 
 // Validates the URL and resolves its IPs in a single DNS lookup. Returning the
@@ -41,6 +47,7 @@ export const validateAndPinUrl = async (
   options?: SafeRequestSharedOptions
 ): Promise<TValidatedHost | undefined> => {
   const appCfg = getConfig();
+  const allowInternal = appCfg.ALLOW_INTERNAL_IP_CONNECTIONS || Boolean(options?.allowInternalAddresses);
 
   if (options?.allowPrivateIps) return undefined;
   if (appCfg.isDevelopmentMode) return undefined;
@@ -67,7 +74,7 @@ export const validateAndPinUrl = async (
   if (isIP(rawHost)) {
     entries = [{ address: rawHost, family: isIP(rawHost) }];
   } else {
-    if (!appCfg.ALLOW_INTERNAL_IP_CONNECTIONS && (rawHost === "localhost" || rawHost === "host.docker.internal")) {
+    if (!allowInternal && (rawHost === "localhost" || rawHost === "host.docker.internal")) {
       logger.warn(`safeRequest: rejecting literal local hostname [hostname=${rawHost}]`);
       throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
     }
@@ -81,9 +88,24 @@ export const validateAndPinUrl = async (
   }
 
   const isInternalIp = entries.some((e) => isPrivateIp(e.address));
-  if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
+  if (isInternalIp && !allowInternal) {
     logger.warn(`safeRequest: rejecting private/internal IP [hostname=${rawHost}] [entries=${formatEntries(entries)}]`);
     throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
+  }
+
+  if (!appCfg.ALLOW_INTERNAL_IP_CONNECTIONS && options?.allowInternalAddresses) {
+    const refused = entries.find((e) => {
+      const range = getIpRange(e.address);
+      return range !== "unicast" && !INTERNAL_ADDRESS_RANGES.has(range);
+    });
+    if (refused) {
+      logger.warn(
+        `safeRequest: rejecting non-private internal IP [hostname=${rawHost}] [entries=${formatEntries(entries)}]`
+      );
+      throw new BadRequestError({
+        message: `The address ${refused.address} is not allowed. Use a URL that resolves to a public, private, or loopback address. Link-local (such as a cloud metadata endpoint), multicast, reserved, and IPv4-mapped IPv6 addresses are never allowed.`
+      });
+    }
   }
 
   // Block Infisical's own infrastructure (DB, Redis, etc.).
@@ -369,8 +391,7 @@ type TSharedHttpsAgentOptions = {
 export const getSharedHttpsAgent = (options: TSharedHttpsAgentOptions): https.Agent =>
   buildPinnedAgent(undefined, "https:", options) as https.Agent;
 
-type TSafeRequestExtras = {
-  allowPrivateIps?: boolean;
+type TSafeRequestExtras = SafeRequestSharedOptions & {
   addressFamily?: 4 | 6;
   ca?: string | string[];
   rejectUnauthorized?: boolean;
@@ -414,10 +435,11 @@ const dispatch = async <T>(
   data: unknown,
   options: TSafeRequestConfig & TSafeRequestExtras = {}
 ) => {
-  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, ...axiosOpts } = options;
+  const { allowPrivateIps, allowInternalAddresses, addressFamily, ca, rejectUnauthorized, servername, ...axiosOpts } =
+    options;
   const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
-  const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
+  const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps, allowInternalAddresses });
   const { protocol } = new URL(effectiveUrl);
   const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
   logDispatch(method, effectiveUrl, validated);
@@ -437,10 +459,19 @@ const dispatch = async <T>(
 };
 
 const dispatchFull = async <T>(config: TSafeRequestFullConfig) => {
-  const { allowPrivateIps, addressFamily, ca, rejectUnauthorized, servername, url, ...axiosOpts } = config;
+  const {
+    allowPrivateIps,
+    allowInternalAddresses,
+    addressFamily,
+    ca,
+    rejectUnauthorized,
+    servername,
+    url,
+    ...axiosOpts
+  } = config;
   const appCfg = getConfig();
   const effectiveUrl = resolveBaseUrl(url, axiosOpts.baseURL);
-  const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps });
+  const validated = await validateAndPinUrl(effectiveUrl, { allowPrivateIps, allowInternalAddresses });
   const { protocol } = new URL(effectiveUrl);
   const agent = buildPinnedAgent(validated, protocol, { addressFamily, ca, rejectUnauthorized, servername });
   logDispatch(axiosOpts.method ?? "GET", effectiveUrl, validated);

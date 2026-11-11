@@ -169,6 +169,56 @@ describe("safe-request SSRF helpers", () => {
       });
     });
 
+    it("allows local and private addresses with allowInternalAddresses, still pinned", async () => {
+      setLookup([{ address: LOOPBACK_IP_V4, family: 4 }]);
+      await expect(validateAndPinUrl("http://localhost:9000", { allowInternalAddresses: true })).resolves.toEqual({
+        hostname: "localhost",
+        entries: [{ address: LOOPBACK_IP_V4, family: 4 }]
+      });
+
+      setLookup([{ address: PRIVATE_IP_V4, family: 4 }]);
+      await expect(validateAndPinUrl("https://internal.example", { allowInternalAddresses: true })).resolves.toEqual({
+        hostname: "internal.example",
+        entries: [{ address: PRIVATE_IP_V4, family: 4 }]
+      });
+    });
+
+    it("still blocks Infisical's own infrastructure with allowInternalAddresses", async () => {
+      setLookup([{ address: PRIVATE_IP_V4, family: 4 }]);
+      verifyHostInputValidityMock.mockRejectedValueOnce(new Error("blocked: internal infra"));
+      await expect(validateAndPinUrl("http://redis.internal:6379", { allowInternalAddresses: true })).rejects.toThrow(
+        /internal infra/i
+      );
+      expect(verifyHostInputValidityMock).toHaveBeenCalledWith(
+        expect.objectContaining({ preResolvedIps: [PRIVATE_IP_V4] })
+      );
+    });
+
+    it("still rejects link-local and IPv4-mapped addresses with allowInternalAddresses", async () => {
+      await expect(
+        validateAndPinUrl("http://169.254.169.254/latest/meta-data", { allowInternalAddresses: true })
+      ).rejects.toThrow(/169\.254\.169\.254 is not allowed\. Use a URL that resolves to a public/);
+
+      await expect(
+        validateAndPinUrl("http://[::ffff:127.0.0.1]:6379/", { allowInternalAddresses: true })
+      ).rejects.toThrow(/::ffff:7f00:1 is not allowed/);
+
+      setLookup([
+        { address: PRIVATE_IP_V4, family: 4 },
+        { address: "fe80::1", family: 6 }
+      ]);
+      await expect(validateAndPinUrl("http://internal.example", { allowInternalAddresses: true })).rejects.toThrow(
+        /fe80::1 is not allowed/
+      );
+      expect(verifyHostInputValidityMock).not.toHaveBeenCalled();
+    });
+
+    it("still rejects embedded credentials with allowInternalAddresses", async () => {
+      await expect(
+        validateAndPinUrl("http://user:pass@localhost:9000", { allowInternalAddresses: true })
+      ).rejects.toThrow(/user credentials/i);
+    });
+
     it("invokes verifyHostInputValidity to block Infisical-internal hosts (DB/Redis)", async () => {
       verifyHostInputValidityMock.mockRejectedValueOnce(new Error("blocked: internal infra"));
       await expect(validateAndPinUrl("https://internal-db.example")).rejects.toThrow(/internal infra/i);
@@ -498,6 +548,17 @@ describe("safe-request SSRF helpers", () => {
       const args = lastRequestArgs();
       expect(args.httpsAgent).toBeUndefined();
       expect(args.httpAgent).toBeDefined();
+    });
+
+    it("passes allowInternalAddresses through to validation", async () => {
+      setLookup([{ address: PRIVATE_IP_V4, family: 4 }]);
+      requestRequestMock.mockResolvedValueOnce({ data: undefined, status: 200, headers: {} });
+      await safeRequest.post("http://internal.example/hook", {}, { allowInternalAddresses: true });
+      expect(lastRequestArgs().httpAgent).toBeDefined();
+      expect(lastRequestArgs()).not.toHaveProperty("allowInternalAddresses");
+
+      setLookup([{ address: PRIVATE_IP_V4, family: 4 }]);
+      await expect(safeRequest.post("http://internal.example/hook", {})).rejects.toThrow(/Local IPs not allowed/i);
     });
 
     it("plumbs validateStatus through dispatch", async () => {
