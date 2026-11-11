@@ -91,7 +91,7 @@ import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogReadAccessAlert";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
-import { CreateSessionSheet } from "./components/CreateSessionSheet";
+import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
 import { InlineServicesList } from "./components/InlineServicesHoverCard";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
@@ -144,7 +144,7 @@ export const AgentVaultSessionsPage = () => {
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
   const [sessionToLabel, setSessionToLabel] = useState<TAgentVaultSession | null>(null);
-  const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
   const { id: openSessionId, openSheet } = useAgentVaultSheetState();
 
@@ -184,7 +184,7 @@ export const AgentVaultSessionsPage = () => {
   // off the live input would caption a stale result set.
   const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
-  useAgentVaultCreateIntent(() => setIsCreateSheetOpen(true), hasReachableBundles);
+  useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
 
   const setupProgress = useAgentVaultSetupProgress();
   const openSetupStep = useOpenAgentVaultSetupStep(setupProgress);
@@ -347,7 +347,7 @@ export const AgentVaultSessionsPage = () => {
               <Button
                 variant="av"
                 isDisabled={!hasReachableBundles}
-                onClick={() => setIsCreateSheetOpen(true)}
+                onClick={() => setIsCreateDialogOpen(true)}
               >
                 <PlusIcon />
                 Create Session
@@ -607,7 +607,7 @@ export const AgentVaultSessionsPage = () => {
         </Card>
       </div>
 
-      <CreateSessionSheet isOpen={isCreateSheetOpen} onOpenChange={setIsCreateSheetOpen} />
+      <CreateSessionDialog isOpen={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} />
 
       <RevokeSessionDialog
         session={sessionToRevoke}

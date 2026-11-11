@@ -33,7 +33,8 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { CreateProjectIdentityForm } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/CreateProjectIdentity/CreateProjectIdentityForm";
 
-export type TSnippetIdentity = { id: string; name: string };
+// The role travels with the pick, because the search results it came from change as the user types.
+export type TSnippetIdentity = { id: string; name: string; role?: string };
 
 type Props = {
   identity: TSnippetIdentity | null;
@@ -88,8 +89,7 @@ export const SessionMachineIdentityField = ({
     search: debouncedSearch.trim() || undefined,
     limit: 50
   });
-  const selectedMember = identities?.members.find((member) => member.id === identity?.id);
-  const isAdminIdentity = selectedMember?.role === ProjectMembershipRole.Admin;
+  const isAdminIdentity = identity?.role === ProjectMembershipRole.Admin;
 
   const snippet = useSnippetClientId(identity);
 
@@ -181,7 +181,9 @@ export const SessionMachineIdentityField = ({
               </span>
             )}
             onValueChange={(option) =>
-              onIdentityChange(option ? { id: option.id, name: option.name } : null)
+              onIdentityChange(
+                option ? { id: option.id, name: option.name, role: option.role } : null
+              )
             }
             onClear={() => onIdentityChange(null)}
             creation={
@@ -234,6 +236,8 @@ export const SessionMachineIdentityField = ({
               size="xs"
               className="mt-2"
               isPending={grantAccess.isPending}
+              // While the next identity's grants load, the warning still names the previous one.
+              isDisabled={grant.identity?.id !== identity?.id}
               onClick={onGrant}
             >
               Grant Access
@@ -245,11 +249,11 @@ export const SessionMachineIdentityField = ({
       {/* Holds two lines before and after the pick, so the snippets below don't jump when it fills in. */}
       {!snippet.hasNoUniversalAuth && (
         <p className="min-h-8 text-xs text-accent">
-          {identity ? (
+          {snippet.identity ? (
             <>
-              The snippets below have {identity.name}&apos;s client ID. Replace{" "}
+              The snippets below have {snippet.identity.name}&apos;s client ID. Replace{" "}
               <span className="font-mono">&lt;client-secret&gt;</span> with one of its{" "}
-              {renderIdentityPageLink(identity, "client secrets")}.
+              {renderIdentityPageLink(snippet.identity, "client secrets")}.
             </>
           ) : (
             "Your code creates sessions as a machine identity. Pick one to fill in its client ID below."

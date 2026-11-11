@@ -16,7 +16,7 @@ export const AgentVaultDocsUrls = {
   daytonaGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/daytona`,
   e2bGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/e2b`,
   dockerGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/docker`,
-  kubernetesGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/kubernetes`,
+  kubernetesSetupGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/kubernetes-setup`,
   cursorGuide: `${AGENT_VAULT_DOCS_BASE_URL}/guides/cursor`,
   sessionLogs: `${AGENT_VAULT_DOCS_BASE_URL}/session-logs`
 } as const;

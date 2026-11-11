@@ -13,7 +13,7 @@ export type SnippetValues = {
 };
 
 export const INSTALL_COMMANDS: Record<SnippetLanguage, string> = {
-  [SnippetLanguage.Python]: "pip install infisicalsdk",
+  [SnippetLanguage.Python]: "pip install 'infisicalsdk>=1.3.0'",
   [SnippetLanguage.TypeScript]: "npm install @infisical/sdk",
   [SnippetLanguage.Cli]: "npm install -g @infisical/cli"
 };
@@ -64,12 +64,14 @@ try {
 }`;
   }
 
-  return `export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=${clientId}
-export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=${clientSecret}
-
-export INFISICAL_AGENT_VAULT_SESSION_TOKEN=$(infisical agent-vault sessions create \\
-  --domain ${siteUrl} \\
-  --project-id ${projectId} \\
-  --access-bundle ${accessBundle} \\
-  --ttl 1h)`;
+  // The credentials go on the create command alone, so the agent that inherits this shell's
+  // environment gets only the session token, never a secret it could mint more sessions with.
+  return `export INFISICAL_AGENT_VAULT_SESSION_TOKEN=$( \\
+  INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=${clientId} \\
+  INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=${clientSecret} \\
+  infisical agent-vault sessions create \\
+    --domain ${siteUrl} \\
+    --project-id ${projectId} \\
+    --access-bundle ${accessBundle} \\
+    --ttl 1h)`;
 };
