@@ -272,7 +272,8 @@ const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt } = {
     },
     projectEnvDAL: { findOne: vi.fn().mockResolvedValue({ id: "env-1", slug: "dev", name: "Development" }) },
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission: canEditPolicies }) },
-    queueService: { queue: vi.fn().mockResolvedValue(undefined) }
+    queueService: { queue: vi.fn().mockResolvedValue(undefined) },
+    licenseService: { getPlan: vi.fn().mockResolvedValue({ secretApproval: true }) }
   } as never);
 
   return { service, findByIdForShare, create, createRequest };

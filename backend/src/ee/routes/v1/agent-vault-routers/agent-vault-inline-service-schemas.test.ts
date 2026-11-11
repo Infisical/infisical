@@ -99,3 +99,52 @@ describe("inline services request schema", () => {
     ).toEqual([]);
   });
 });
+
+describe("database and SSH services in the inline request schema", () => {
+  const postgres = (extra: Record<string, unknown> = {}) => ({
+    type: "postgres",
+    name: "analytics",
+    host: "db.internal",
+    database: "app",
+    credential: { type: "basic", username: "agent", password: "p" },
+    ...extra
+  });
+
+  test("take a name of at most 63 characters, the longest DNS label the agent can connect by", () => {
+    expect(issuesOf([postgres({ name: "a".repeat(63) })])).toEqual([]);
+    expect(issuesOf([postgres({ name: "a".repeat(64) })]).map((issue) => issue.path)).toEqual([[0, "name"]]);
+  });
+
+  test("need a name", () => {
+    expect(issuesOf([postgres({ name: undefined })]).map((issue) => issue.path)).toEqual([[0, "name"]]);
+  });
+
+  test("refuse a variable reference in an SSH key", () => {
+    const issues = issuesOf([
+      {
+        type: "ssh",
+        name: "bastion",
+        host: "bastion.internal",
+        credential: { type: "ssh-key", username: "agent", privateKey: "{{KEY}}" }
+      }
+    ]);
+    expect(issues.map((issue) => issue.path)).toEqual([[0, "credential", "privateKey"]]);
+  });
+
+  test("take a multi-line SSH key", () => {
+    expect(
+      issuesOf([
+        {
+          type: "ssh",
+          name: "bastion",
+          host: "bastion.internal",
+          credential: {
+            type: "ssh-key",
+            username: "agent",
+            privateKey: "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----"
+          }
+        }
+      ])
+    ).toEqual([]);
+  });
+});

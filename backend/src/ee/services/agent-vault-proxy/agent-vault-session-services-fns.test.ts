@@ -223,6 +223,37 @@ describe("describing one service", () => {
     expect(described.howToUse).toContain("The proxy also sets X-Org, X-Team.");
     expect(described.howToUse).toContain("Only paths starting with /repos, /user are allowed.");
   });
+
+  test("a database or SSH service keeps its type, names no host, and says to reach it with connect", () => {
+    const described = describeSessionService(
+      facts({
+        name: "orders-db",
+        type: AgentVaultServiceType.Postgres,
+        hostPattern: null,
+        credential: { type: "basic" }
+      })
+    );
+    expect(described).toMatchObject({
+      type: "postgres",
+      hosts: [],
+      url: null,
+      credential: { type: "login", addedByProxy: true, memberProvided: false }
+    });
+    expect(described.howToUse).toBe(
+      "PostgreSQL database, not reachable over HTTP. Run infisical agent-vault connect orders-db and leave it running: it prints a local address on 127.0.0.1 and an example command. Point your client at that address with any username and no password: the proxy logs in with the service's account."
+    );
+    expect(
+      describeSessionService(facts({ name: "bastion", type: AgentVaultServiceType.Ssh, hostPattern: null })).howToUse
+    ).toMatch(/^SSH server, not reachable over HTTP\. Run infisical agent-vault connect bastion /);
+  });
+
+  test("a database login that is partly the session owner's own says they fix a failed login", () => {
+    const described = describeSessionService(
+      facts({ name: "orders-db", type: AgentVaultServiceType.Mysql, hostPattern: null, memberProvided: true })
+    );
+    expect(described.credential).toEqual({ type: "login", addedByProxy: true, memberProvided: true });
+    expect(described.howToUse).toContain("If the proxy can't log in, they have to update their personal value");
+  });
 });
 
 describe("the whole list", () => {
@@ -282,6 +313,19 @@ describe("the whole list", () => {
     const note = list(many).find((text) => text.startsWith("This proxy refuses"))!;
     expect(note).toContain("host24.example.com and 5 more.");
     expect(note).not.toContain("host25.example.com");
+  });
+
+  test("names the database and SSH services as the exception to HTTP only when the session has one", () => {
+    const notesFor = (services: TSessionServiceFacts[]) =>
+      buildSessionServicesDocument({
+        proxy: null,
+        session: { expiresAt: null, accessBundle: "engineering", onBehalfOfUser: false },
+        services
+      }).notes.find((note) => note.startsWith("Not supported through the proxy"));
+    expect(notesFor([facts()])).not.toContain("agent-vault connect");
+    expect(notesFor([facts(), facts({ type: AgentVaultServiceType.Ssh, hostPattern: null })])).toContain(
+      "except the database and SSH services listed here, which you reach through infisical agent-vault connect."
+    );
   });
 
   test("without a proxy, leaves the traffic policy out instead of guessing it", () => {

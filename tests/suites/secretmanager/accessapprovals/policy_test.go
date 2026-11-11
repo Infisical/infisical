@@ -186,10 +186,10 @@ func TestAccessApprovalPolicy_Create(t *testing.T) {
 		require.Empty(t, policyIDs(t, g.proj))
 	})
 
-	t.Run("should accept a policy when the plan does not include secret approvals", func(t *testing.T) {
+	t.Run("should refuse a policy when the plan does not include secret approvals", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `[LICENSE] Today access approval policies have no entitlement check at all, unlike secret
-			change policies. A later license clean-up changes this claim.`)
+		spec.Why(t, `[LICENSE] Access approval policies are gated on the secretApproval entitlement, the same
+			as secret change policies.`)
 
 		// Setup
 		tn := harness.From(t).NewTenant(t, harness.WithPlan(license.Enterprise().Without(license.SecretApproval)))
@@ -200,8 +200,11 @@ func TestAccessApprovalPolicy_Create(t *testing.T) {
 		res := createPolicyAs(t, tn.Admin, policyFor(proj, "/", userApprover(approver)))
 
 		// Assert
-		require.Equalf(t, http.StatusOK, res.status, "creating returned %s", apierr.Body(res.body))
-		require.Len(t, policyIDs(t, proj), 1)
+		require.Equalf(t, http.StatusBadRequest, res.status, "creating returned %s", apierr.Body(res.body))
+		require.Equal(t,
+			"Failed to create access approval policy due to plan restriction. Upgrade plan to create access approval policy.",
+			res.message(t))
+		require.Empty(t, policyIDs(t, proj))
 	})
 }
 
