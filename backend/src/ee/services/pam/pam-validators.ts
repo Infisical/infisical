@@ -11,7 +11,6 @@ import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/ga
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { toOrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -77,7 +76,7 @@ export const validateGatewayAttachment = async (
     await gatewayPoolService.resolveAttachableGatewayFromPool({
       poolId,
       orgId: ctx.org.id,
-      actor: toOrgServiceActor(ctx)
+      actor: ctx
     });
   }
 };

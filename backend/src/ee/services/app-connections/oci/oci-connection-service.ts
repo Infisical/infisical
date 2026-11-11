@@ -1,7 +1,7 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../../../../services/app-connection/app-connection-enums";
 import { listOCICompartments, listOCIVaultKeys, listOCIVaults } from "./oci-connection-fns";
@@ -10,7 +10,7 @@ import { TOCIConnection } from "./oci-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TOCIConnection>;
 
 type TListOCIVaultsDTO = {
@@ -35,8 +35,8 @@ export const checkPlan = async (licenseDomain: TLicenseDomain, orgId: string) =>
 };
 
 export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, licenseDomain: TLicenseDomain) => {
-  const listCompartments = async (connectionId: string, actor: OrgServiceActor) => {
-    await checkPlan(licenseDomain, actor.orgId);
+  const listCompartments = async (connectionId: string, actor: TActorContext) => {
+    await checkPlan(licenseDomain, actor.org.id);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -49,8 +49,8 @@ export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, li
     }
   };
 
-  const listVaults = async ({ connectionId, compartmentOcid }: TListOCIVaultsDTO, actor: OrgServiceActor) => {
-    await checkPlan(licenseDomain, actor.orgId);
+  const listVaults = async ({ connectionId, compartmentOcid }: TListOCIVaultsDTO, actor: TActorContext) => {
+    await checkPlan(licenseDomain, actor.org.id);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -65,9 +65,9 @@ export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, li
 
   const listVaultKeys = async (
     { connectionId, compartmentOcid, vaultOcid }: TListOCIVaultKeysDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    await checkPlan(licenseDomain, actor.orgId);
+    await checkPlan(licenseDomain, actor.org.id);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 

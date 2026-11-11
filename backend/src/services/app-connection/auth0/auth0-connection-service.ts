@@ -1,5 +1,5 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses, safeRequest } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -10,7 +10,7 @@ import { TAuth0Connection, TAuth0ListClient, TAuth0ListClientsResponse } from ".
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TAuth0Connection>;
 
 const listAuth0Clients = async (
@@ -56,7 +56,7 @@ export const auth0ConnectionService = (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsCoreDomain: TKmsCoreDomain
 ) => {
-  const listClients = async (connectionId: string, actor: OrgServiceActor) => {
+  const listClients = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Auth0, connectionId, actor);
 
     const clients = await listAuth0Clients(appConnection, appConnectionDAL, kmsCoreDomain);

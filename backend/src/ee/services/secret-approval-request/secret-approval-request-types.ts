@@ -75,7 +75,8 @@ export type TGenerateSecretApprovalRequestDTO = {
     [SecretOperations.Update]?: TApprovalUpdateSecret[];
     [SecretOperations.Delete]?: { secretName: string }[];
   };
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 // A caller that builds the request inside its own transaction fetches the project cipher before opening it:
 // KMS Core is never called inside a transaction.
@@ -95,7 +96,8 @@ export type TGenerateSecretApprovalRequestV2BridgeDTO = {
     [SecretOperations.Update]?: TApprovalUpdateSecretV2Bridge[];
     [SecretOperations.Delete]?: { secretKey: string }[];
   };
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TSecretApprovalRequestCommitV2 = Omit<
   TSecretApprovalRequestsSecretsV2Insert,

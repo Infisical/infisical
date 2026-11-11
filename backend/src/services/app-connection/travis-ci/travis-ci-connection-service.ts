@@ -1,5 +1,5 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { listTravisCIBranches, listTravisCIRepositories } from "./travis-ci-connection-fns";
@@ -8,11 +8,11 @@ import { TTravisCIConnection } from "./travis-ci-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TTravisCIConnection>;
 
 export const travisCIConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listRepositories = async (connectionId: string, actor: OrgServiceActor) => {
+  const listRepositories = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.TravisCI, connectionId, actor);
     try {
       return await listTravisCIRepositories(appConnection);
@@ -22,7 +22,7 @@ export const travisCIConnectionService = (getAppConnection: TGetAppConnectionFun
     }
   };
 
-  const listBranches = async (connectionId: string, repositoryId: string, actor: OrgServiceActor) => {
+  const listBranches = async (connectionId: string, repositoryId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.TravisCI, connectionId, actor);
     try {
       return await listTravisCIBranches(appConnection, repositoryId);

@@ -1,7 +1,7 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { RateLimitError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -11,7 +11,7 @@ import { TGitLabConnection } from "./gitlab-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TGitLabConnection>;
 
 export const gitlabConnectionService = (
@@ -19,7 +19,7 @@ export const gitlabConnectionService = (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsCoreDomain: TKmsCoreDomain
 ) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor, search?: string, limit?: number) => {
+  const listProjects = async (connectionId: string, actor: TActorContext, search?: string, limit?: number) => {
     try {
       const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
       const projects = await listGitLabProjects({
@@ -37,7 +37,7 @@ export const gitlabConnectionService = (
     }
   };
 
-  const listGroups = async (connectionId: string, actor: OrgServiceActor, search?: string, limit?: number) => {
+  const listGroups = async (connectionId: string, actor: TActorContext, search?: string, limit?: number) => {
     try {
       const appConnection = await getAppConnection(AppConnection.GitLab, connectionId, actor);
       const groups = await listGitLabGroups({

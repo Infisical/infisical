@@ -1,6 +1,3 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { OrganizationActionScope } from "@app/db/schemas";
 import { TActorContext } from "@app/domains/lib/actor-context";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
@@ -14,7 +11,6 @@ import { runGatewayAttempt } from "@app/lib/gateway-v2/gateway-attempt-context";
 import { getGatewayLoadTracker } from "@app/lib/gateway-v2/gateway-load-tracker";
 import { isAttemptRetryable } from "@app/lib/gateway-v2/gateway-retry";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TIdentityKubernetesAuthDALFactory } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-dal";
 
@@ -22,7 +18,6 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TGatewayV2ConnectionDetails } from "../gateway-v2/gateway-v2-types";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TPkiDiscoveryConfigDALFactory } from "../pki-discovery/pki-discovery-config-dal";
 import { TGatewayPoolDALFactory } from "./gateway-pool-dal";
 import { TGatewayPoolMembershipDALFactory } from "./gateway-pool-membership-dal";
@@ -46,7 +41,6 @@ type TGatewayPoolServiceFactoryDep = {
   gatewayPoolMembershipDAL: TGatewayPoolMembershipDALFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   licenseDomain: TLicenseDomain;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
@@ -62,7 +56,6 @@ export const gatewayPoolServiceFactory = ({
   gatewayPoolMembershipDAL,
   gatewayV2DAL,
   gatewayV2Service,
-  permissionService,
   organizationsDomain,
   licenseDomain,
   identityKubernetesAuthDAL,
@@ -424,22 +417,15 @@ export const gatewayPoolServiceFactory = ({
   }: {
     poolId: string;
     orgId: string;
-    actor: Pick<OrgServiceActor, "type" | "id" | "authMethod" | "orgId">;
+    actor: TActorContext;
   }) => {
     await $checkLicense(orgId);
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
+    permission.assert({
+      action: OrgPermissionGatewayPoolActions.AttachGatewayPools,
+      subject: OrgPermissionSubjects.GatewayPool
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionGatewayPoolActions.AttachGatewayPools,
-      OrgPermissionSubjects.GatewayPool
-    );
 
     const pool = await gatewayPoolDAL.findById(poolId);
     if (!pool || pool.orgId !== orgId) {

@@ -1,5 +1,5 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { listOnePassVaults } from "./1password-connection-fns";
@@ -8,11 +8,11 @@ import { TOnePassConnection } from "./1password-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TOnePassConnection>;
 
 export const onePassConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listVaults = async (connectionId: string, actor: OrgServiceActor) => {
+  const listVaults = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.OnePass, connectionId, actor);
 
     try {

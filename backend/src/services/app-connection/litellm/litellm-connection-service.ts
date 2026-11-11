@@ -1,4 +1,4 @@
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorContext } from "@app/domains/lib/actor-context";
 
 import { AppConnection } from "../app-connection-enums";
 import { listLiteLLMModels, listLiteLLMTeams, listLiteLLMUsers } from "./litellm-connection-fns";
@@ -7,21 +7,21 @@ import { TLiteLLMConnection } from "./litellm-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TLiteLLMConnection>;
 
 export const liteLLMConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listUsers = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
+  const listUsers = async (connectionId: string, actor: TActorContext, search?: string) => {
     const appConnection = await getAppConnection(AppConnection.LiteLLM, connectionId, actor);
     return listLiteLLMUsers(appConnection, search);
   };
 
-  const listTeams = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
+  const listTeams = async (connectionId: string, actor: TActorContext, search?: string) => {
     const appConnection = await getAppConnection(AppConnection.LiteLLM, connectionId, actor);
     return listLiteLLMTeams(appConnection, search);
   };
 
-  const listModels = async (connectionId: string, actor: OrgServiceActor) => {
+  const listModels = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.LiteLLM, connectionId, actor);
     return listLiteLLMModels(appConnection);
   };

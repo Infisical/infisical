@@ -1,11 +1,17 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import RE2 from "re2";
 import { z } from "zod";
 
-import { ActionProjectType, IdentityAuthMethod, OrganizationActionScope, ProjectType } from "@app/db/schemas";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { IdentityAuthMethod, ProjectType } from "@app/db/schemas";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -182,7 +188,8 @@ const credentialName = (target: TExpiringCredentialTarget): string =>
 
 export type TIdentityCredentialAlertProviderDep = {
   identityCredentialAlertDAL: TIdentityCredentialAlertDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
 };
 
 const targetId = (target: TIdentityCredentialTarget): string =>
@@ -198,7 +205,8 @@ const targetId = (target: TIdentityCredentialTarget): string =>
 
 export const identityCredentialAlertProviderFactory = ({
   identityCredentialAlertDAL,
-  permissionService
+  organizationsDomain,
+  projectsDomain
 }: TIdentityCredentialAlertProviderDep): IScheduledAlertProvider<TIdentityCredentialTarget> &
   IEventAlertProvider<TIdentityCredentialTarget> => {
   const projectBaseUrl = (
@@ -446,24 +454,19 @@ export const identityCredentialAlertProviderFactory = ({
     })();
 
     if (input.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: input.actor.actor,
-        actorId: input.actor.actorId,
-        projectId: input.projectId,
-        actorAuthMethod: input.actor.actorAuthMethod,
-        actorOrgId: input.actor.actorOrgId,
-        actionProjectType: ActionProjectType.Any
-      });
+      const permission = await projectsDomain.getProjectPermission({ actor: input.actor, projectId: input.projectId });
 
       for (const action of projectActions) {
         if (input.resourceId) {
-          ForbiddenError.from(permission).throwUnlessCan(
+          permission.assert({
             action,
-            subject(ProjectPermissionSub.Identity, { identityId: input.resourceId })
-          );
+            subject: ProjectPermissionSub.Identity,
+            fields: { identityId: input.resourceId }
+          });
         } else {
-          ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.Identity);
+          permission.assert({ action, subject: ProjectPermissionSub.Identity });
           const hasProjectWideGrant = permission
+            .toAbility()
             .rulesFor(action, ProjectPermissionSub.Identity)
             .some((rule) => !rule.inverted && !rule.conditions);
           if (!hasProjectWideGrant) {
@@ -477,21 +480,14 @@ export const identityCredentialAlertProviderFactory = ({
       return;
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: input.actor.actor,
-      actorId: input.actor.actorId,
-      orgId: input.orgId,
-      actorAuthMethod: input.actor.actorAuthMethod,
-      actorOrgId: input.actor.actorOrgId
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor: input.actor, orgId: input.orgId });
     const orgActions = (() => {
       if (isRead) return [OrgPermissionIdentityActions.Read];
       if (isDelete) return [OrgPermissionIdentityActions.Edit];
       return [OrgPermissionIdentityActions.Edit, OrgPermissionIdentityActions.Read];
     })();
     for (const action of orgActions) {
-      ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.Identity);
+      permission.assert({ action, subject: OrgPermissionSubjects.Identity });
     }
   };
 

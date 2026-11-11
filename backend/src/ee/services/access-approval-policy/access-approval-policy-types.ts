@@ -1,5 +1,5 @@
 import { ActorAuthMethod } from "@app/lib/auth/actor-types";
-import { EnforcementLevel, OrgServiceActor, TActorInput } from "@app/lib/types";
+import { EnforcementLevel, TActorInput } from "@app/lib/types";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -47,7 +47,6 @@ export type TCreateAccessApprovalPolicy = {
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
-  orgActor: OrgServiceActor;
 } & TActorInput;
 
 export type TUpdateAccessApprovalPolicy = {
@@ -70,7 +69,6 @@ export type TUpdateAccessApprovalPolicy = {
   maxTimePeriod?: string | null;
   requestExpirationTime?: string | null;
   delegatedApproval?: TDelegatedApprovalPolicyInput | null;
-  orgActor: OrgServiceActor;
 } & TActorInput;
 
 export type TDeleteAccessApprovalPolicy = {

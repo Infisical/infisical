@@ -7,7 +7,6 @@ import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { toGenericPermission } from "@app/lib/types";
 
 import { TChannelRecipientInput } from "../alert/alert-channel-service-types";
 import { AlertChannelType } from "../alert/alert-channel-types";
@@ -192,7 +191,7 @@ export const reminderServiceFactory = ({
               })
             }
           },
-      ...toGenericPermission(actor)
+      actor
     });
 
     return {

@@ -1,5 +1,5 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { listTriggerDevEnvironments, listTriggerDevProjects } from "./trigger-dev-connection-fns";
@@ -8,11 +8,11 @@ import { TTriggerDevConnection } from "./trigger-dev-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TTriggerDevConnection>;
 
 export const triggerDevConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+  const listProjects = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.TriggerDev, connectionId, actor);
 
     try {
@@ -24,7 +24,7 @@ export const triggerDevConnectionService = (getAppConnection: TGetAppConnectionF
     }
   };
 
-  const listEnvironments = async (connectionId: string, projectRef: string, actor: OrgServiceActor) => {
+  const listEnvironments = async (connectionId: string, projectRef: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.TriggerDev, connectionId, actor);
 
     try {

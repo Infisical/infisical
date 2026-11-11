@@ -203,7 +203,6 @@ const record = (
 ) => service.createChunkUploadUrl({ proxyId: PROXY_ID, sessionId: SESSION_ID, chunk });
 
 const ctx = { principal: { type: "user", id: "user-1" }, org: { id: "org-1" } } as never;
-const actor = { type: "user", id: "user-1", orgId: "org-1", authMethod: null } as never;
 const scope = { projectId: PROJECT_ID, ctx, sessionId: SESSION_ID };
 
 // The route's schema already shapes the body, so tests pass plain objects.
@@ -211,7 +210,6 @@ const save = (service: ReturnType<typeof build>["service"], patch: Record<string
   service.updateSessionLogSettings({
     projectId: PROJECT_ID,
     ctx,
-    actor,
     ...patch
   } as unknown as TUpdateSessionLogSettingsDTO);
 

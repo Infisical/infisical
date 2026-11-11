@@ -1095,33 +1095,34 @@ export const registerRoutes = async (
   alertProviderRegistry.register(
     identityCredentialAlertProviderFactory({
       identityCredentialAlertDAL: identityCredentialAlertDALFactory(db),
-      permissionService
+      organizationsDomain,
+      projectsDomain
     })
   );
   alertProviderRegistry.register(
     auditLogStreamAlertProviderFactory({
       auditLogStreamAlertDAL: auditLogStreamAlertDALFactory(db),
-      permissionService
+      organizationsDomain
     })
   );
   alertProviderRegistry.register(
     secretReminderAlertProviderFactory({
       secretReminderAlertDAL: secretReminderAlertDALFactory(db),
       folderDAL,
-      permissionService
+      secretsDomain
     })
   );
   alertProviderRegistry.register(
     certManagerApplicationAlertProviderFactory({
       certManagerCertificateAlertDAL,
-      permissionService,
+      certManagerDomain,
       licenseDomain
     })
   );
   alertProviderRegistry.register(
     certManagerAlertProviderFactory({
       certManagerCertificateAlertDAL,
-      permissionService,
+      projectsDomain,
       licenseDomain,
       certManagerProjectResolver
     })
@@ -1129,7 +1130,7 @@ export const registerRoutes = async (
   alertProviderRegistry.register(
     certManagerSignerAlertProviderFactory({
       certManagerSignerAlertDAL: certManagerSignerAlertDALFactory(db),
-      permissionService,
+      projectsDomain,
       licenseDomain,
       certManagerProjectResolver
     })
@@ -1137,7 +1138,8 @@ export const registerRoutes = async (
   alertProviderRegistry.register(
     pamFolderAlertProviderFactory({
       pamFolderAlertDAL: pamFolderAlertDALFactory(db),
-      permissionService,
+      projectsDomain,
+      pamDomain,
       licenseDomain
     })
   );
@@ -2320,7 +2322,6 @@ export const registerRoutes = async (
     gatewayPoolMembershipDAL,
     gatewayV2DAL,
     gatewayV2Service,
-    permissionService,
     licenseDomain,
     identityKubernetesAuthDAL,
     pkiDiscoveryConfigDAL,
@@ -2639,7 +2640,6 @@ export const registerRoutes = async (
     secretChangeGlobalRequestBridgeDAL,
     secretApprovalRequestSecretDAL,
     secretChangeGlobalPolicyBridgeService,
-    permissionService,
     secretsDomain,
     licenseDomain,
     userGroupMembershipDAL,
@@ -2699,7 +2699,6 @@ export const registerRoutes = async (
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
     eventEmitter: eventOutboxService,
-    permissionService,
     secretsDomain,
     projectBotService,
     folderDAL,
@@ -3449,7 +3448,6 @@ export const registerRoutes = async (
     instanceConfigCoreDomain,
     orgDAL,
     appConnectionDAL,
-    permissionService,
     organizationsDomain,
     projectsDomain,
     kmsCoreDomain,

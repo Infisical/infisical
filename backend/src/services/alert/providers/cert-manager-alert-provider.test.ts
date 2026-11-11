@@ -1,6 +1,6 @@
-import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -93,29 +93,32 @@ const buildProvider = (opts?: {
     findProfileNamesByIds: async (_projectId: string, ids: string[]) =>
       ids.filter((id) => id === PROFILE_ID).map((id) => ({ id, name: "tls-server" }))
   };
-  const ability = () =>
-    createMongoAbility((opts?.abilityRules ?? [{ action: "read", subject: "pki-alerts" }]) as never);
-  const permissionService = {
-    getProjectPermission: vi.fn(async () => ({
-      permission: ability(),
-      hasRole: (role: string) => (opts?.projectRoles ?? []).includes(role)
-    }))
+  const projectsDomain = {
+    getProjectPermission: vi.fn(async () =>
+      Object.assign(
+        Permission.fromRules({ rules: (opts?.abilityRules ?? [{ action: "read", subject: "pki-alerts" }]) as never }),
+        { hasRole: ({ slug }: { slug: string }) => (opts?.projectRoles ?? []).includes(slug) }
+      )
+    )
   };
   const licenseDomain = new FakeLicenseDomain().setPlan("org-1", {
     pkiEnterpriseAlerting: (opts?.pkiEnterpriseAlerting ?? false) as false
   });
   const provider = certManagerAlertProviderFactory({
     certManagerCertificateAlertDAL: dal,
-    permissionService,
+    projectsDomain,
     licenseDomain,
     certManagerProjectResolver: {
       getActiveProjectId: async (orgId: string) => (orgId === "org-1" ? "proj-1" : null)
     }
   } as unknown as TCertManagerAlertProviderDep);
-  return { provider, permissionService };
+  return { provider, projectsDomain };
 };
 
-const actor = { actor: "user", actorId: "u1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
+const actor = {
+  principal: { type: "user", id: "u1", authMethod: null },
+  org: { id: "org-1" }
+} as never;
 
 const expiryConditionSchema = (provider: ReturnType<typeof buildProvider>["provider"]) =>
   provider.events.find((event) => event.key === EXPIRY_EVENT)!.conditionSchema;

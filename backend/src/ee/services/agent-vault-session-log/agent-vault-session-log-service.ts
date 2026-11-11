@@ -542,7 +542,7 @@ export const agentVaultSessionLogServiceFactory = ({
     }
   };
 
-  const updateSessionLogSettings = async ({ projectId, ctx, actor, ...body }: TUpdateSessionLogSettingsDTO) => {
+  const updateSessionLogSettings = async ({ projectId, ctx, ...body }: TUpdateSessionLogSettingsDTO) => {
     await $requireAdmin({ projectId, ctx });
 
     const current = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, projectId, {
@@ -604,7 +604,7 @@ export const agentVaultSessionLogServiceFactory = ({
         validatedConnection = await appConnectionService.validateAppConnectionUsageById(
           AppConnection.AWS,
           { connectionId: nextStorage.appConnectionId, projectId },
-          actor
+          ctx
         );
 
         try {

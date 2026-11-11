@@ -28,7 +28,6 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator/safe-request";
-import { orgServiceActorOf } from "@app/services/app-connection/app-connection-fns";
 import {
   assertPlatformGitHubHostAllowed,
   buildGitHubAppJwtHeaders,
@@ -144,7 +143,7 @@ export const gitHubAppServiceFactory = ({
       await gatewayPoolService.resolveAttachableGatewayFromPool({
         poolId: gatewayPoolId,
         orgId: actor.org.id,
-        actor: orgServiceActorOf(actor)
+        actor
       });
     }
   };

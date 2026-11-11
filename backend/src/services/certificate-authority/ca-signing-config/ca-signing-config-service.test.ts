@@ -20,15 +20,6 @@ const CA_PROJECT_ID = "ca-project";
 const ACTOR_ORG_ID = "org-1";
 const CONNECTION_ID = "conn-1";
 
-const permissionActor = {
-  type: ActorType.USER,
-  id: "user-1",
-  authMethod: AuthMethod.EMAIL,
-  orgId: ACTOR_ORG_ID,
-  rootOrgId: ACTOR_ORG_ID,
-  parentOrgId: ACTOR_ORG_ID
-};
-
 const actorFields = {
   actor: {
     principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
@@ -135,7 +126,7 @@ describe("createSigningConfig connection checks", () => {
     expect(appConnectionService.validateAppConnectionUsageById).toHaveBeenCalledWith(
       EXPECTED_APP[type],
       { connectionId: CONNECTION_ID, projectId: CA_PROJECT_ID },
-      permissionActor
+      actorFields.actor
     );
     expect(caSigningConfigDAL.create).toHaveBeenCalledWith(
       expect.objectContaining({ type, appConnectionId: CONNECTION_ID, destinationConfig: DESTINATION[type] }),
@@ -232,7 +223,7 @@ describe("updateSigningConfig connection checks", () => {
     expect(appConnectionService.validateAppConnectionUsageById).toHaveBeenCalledWith(
       EXPECTED_APP[type],
       { connectionId: CONNECTION_ID, projectId: CA_PROJECT_ID },
-      permissionActor
+      actorFields.actor
     );
     expect(caSigningConfigDAL.updateById).toHaveBeenCalledWith(
       "cfg-1",

@@ -17,7 +17,6 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { toOrgServiceActor } from "@app/lib/types";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
@@ -657,7 +656,7 @@ export const secretSyncServiceFactory = ({
     await appConnectionService.validateAppConnectionUsageById(
       destinationApp,
       { connectionId: params.connectionId, projectId },
-      toOrgServiceActor(actor)
+      actor
     );
 
     const resolvedSyncOptions = await preSaveTransformSyncOptions(
@@ -786,7 +785,7 @@ export const secretSyncServiceFactory = ({
       await appConnectionService.validateAppConnectionUsageById(
         destinationApp,
         { connectionId: params.connectionId, projectId: secretSync.projectId },
-        toOrgServiceActor(actor)
+        actor
       );
 
       // If changing connectionId, verify user has Edit permission for syncs with the NEW connectionId

@@ -284,7 +284,6 @@ const buildWriteService = (opts: { projectUserIds?: string[]; alertRefusal?: Err
 };
 
 const caller = { actor: { principal: { type: "user", id: "user-1", authMethod: null }, org: { id: "org-1" } } };
-const alertActor = { actor: "user", actorId: "user-1", actorOrgId: "org-1", actorAuthMethod: null };
 
 const saveReminder = (
   service: ReturnType<typeof buildWriteService>["service"],
@@ -307,7 +306,7 @@ describe("reminder alert sync", () => {
         resourceId: "secret-1",
         eventType: SECRET_REMINDER_DUE_EVENT,
         projectId: "proj-1",
-        ...alertActor,
+        actor: caller.actor,
         channels: {
           replaceRecipients: {
             channelType: "email",

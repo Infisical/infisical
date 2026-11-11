@@ -1,6 +1,6 @@
-import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { PkiAlertScope, PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -50,7 +50,10 @@ const signerAlert: TAlertContext = {
 
 const alreadyAlerted = { alertId: "alert-1", channelIds: ["channel-1"], since: new Date() };
 
-const actor = { actor: "user", actorId: "u1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
+const actor = {
+  principal: { type: "user", id: "u1", authMethod: null },
+  org: { id: "org-1" }
+} as never;
 
 const alertRules = [
   { action: "create", subject: "pki-alerts" },
@@ -79,11 +82,11 @@ const buildProvider = (opts?: {
       findSignerNamesByIds: async (_projectId: string, ids: string[]) =>
         ids.includes(SIGNER_ID) ? [{ id: SIGNER_ID, name: "release-signer" }] : []
     },
-    permissionService: {
-      getProjectPermission: async () => ({
-        permission: createMongoAbility((opts?.abilityRules ?? alertRules) as never),
-        hasRole: (role: string) => (opts?.projectRoles ?? []).includes(role)
-      })
+    projectsDomain: {
+      getProjectPermission: async () =>
+        Object.assign(Permission.fromRules({ rules: (opts?.abilityRules ?? alertRules) as never }), {
+          hasRole: ({ slug }: { slug: string }) => (opts?.projectRoles ?? []).includes(slug)
+        })
     },
     licenseDomain: new FakeLicenseDomain().setPlan("org-1", {
       pkiEnterpriseAlerting: (opts?.pkiEnterpriseAlerting ?? false) as false

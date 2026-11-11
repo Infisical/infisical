@@ -60,14 +60,6 @@ export const registerAgentVaultSettingsRouter = async (server: FastifyZodProvide
         await server.services.agentVaultSessionLog.updateSessionLogSettings({
           projectId,
           ctx: actorContext(req),
-          actor: {
-            type: req.permission.type,
-            id: req.permission.id,
-            authMethod: req.permission.authMethod,
-            orgId: req.permission.orgId,
-            rootOrgId: req.permission.rootOrgId,
-            parentOrgId: req.permission.parentOrgId
-          },
           ...req.body
         });
 

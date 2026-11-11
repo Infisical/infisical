@@ -62,7 +62,7 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
-import { decryptAppConnection, orgServiceActorOf } from "@app/services/app-connection/app-connection-fns";
+import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 
@@ -337,7 +337,7 @@ export const secretScanningV2ServiceFactory = ({
       connection = await appConnectionService.validateAppConnectionUsageById(
         SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[payload.type],
         { connectionId: payload.connectionId, projectId: payload.projectId },
-        orgServiceActorOf(actor)
+        actor
       );
 
       const existingDataSource = await secretScanningV2DAL.dataSources.findOne({ connectionId: payload.connectionId });
@@ -468,7 +468,7 @@ export const secretScanningV2ServiceFactory = ({
       connection = await appConnectionService.validateAppConnectionUsageById(
         SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
         { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
-        orgServiceActorOf(actor)
+        actor
       );
     }
 
@@ -771,7 +771,7 @@ export const secretScanningV2ServiceFactory = ({
       connection = await appConnectionService.validateAppConnectionUsageById(
         SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
         { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
-        orgServiceActorOf(actor)
+        actor
       );
     }
 
@@ -1023,7 +1023,7 @@ export const secretScanningV2ServiceFactory = ({
       connection = await appConnectionService.validateAppConnectionUsageById(
         SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSource.type],
         { connectionId: dataSource.connectionId, projectId: dataSource.projectId },
-        orgServiceActorOf(actor)
+        actor
       );
     }
 

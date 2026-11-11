@@ -1,10 +1,10 @@
-import { TGenericPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 import { TAlertChannelEmbedded, TAlertChannelInput, TChannelRecipientInput } from "./alert-channel-service-types";
 import { AlertChannelType } from "./alert-channel-types";
 import { AlertRunStatus, TAlertFilters } from "./alert-types";
 
-export type TCreateAlertDTO = TGenericPermission & {
+export type TCreateAlertDTO = TActorInput & {
   name: string;
   description?: string | null;
   resourceType: string;
@@ -16,7 +16,7 @@ export type TCreateAlertDTO = TGenericPermission & {
   channels: TAlertChannelInput[];
 };
 
-export type TUpdateAlertDTO = TGenericPermission & {
+export type TUpdateAlertDTO = TActorInput & {
   alertId: string;
   name?: string;
   description?: string | null;
@@ -25,11 +25,11 @@ export type TUpdateAlertDTO = TGenericPermission & {
   channels?: TAlertChannelInput[];
 };
 
-export type TGetAlertDTO = TGenericPermission & { alertId: string };
+export type TGetAlertDTO = TActorInput & { alertId: string };
 
-export type TDeleteAlertDTO = TGenericPermission & { alertId: string };
+export type TDeleteAlertDTO = TActorInput & { alertId: string };
 
-export type TListAlertsDTO = TGenericPermission & {
+export type TListAlertsDTO = TActorInput & {
   resourceType: string;
   resourceId?: string | null;
   projectId?: string | null;
@@ -38,7 +38,7 @@ export type TListAlertsDTO = TGenericPermission & {
 
 // A test runs against a channel the caller is still authoring, so it carries the config inline rather
 // than an alert id. `channelId` is optional and only names a saved channel to inherit secrets from.
-export type TTestAlertChannelDTO = TGenericPermission & {
+export type TTestAlertChannelDTO = TActorInput & {
   resourceType: string;
   resourceId?: string | null;
   projectId?: string | null;
@@ -88,7 +88,7 @@ export type TAlertLastRun = {
 // The alert a domain service keeps on one of its own resources, set in full each time. `channels` is either
 // the alert's complete channel list, or the recipients of its channels of one type, which leaves every other
 // channel (eg a Slack or webhook channel added through the alert API) as it is.
-export type TPrepareAlertForResourceDTO = TGenericPermission & {
+export type TPrepareAlertForResourceDTO = TActorInput & {
   resourceType: string;
   resourceId: string;
   projectId: string;

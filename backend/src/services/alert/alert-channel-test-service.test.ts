@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { TActorInput } from "@app/lib/types";
+
 import { alertChannelTestServiceFactory, TAlertChannelTestServiceFactoryDep } from "./alert-channel-test-service";
 import { TAlertChannelSendContext, TAlertPayload, TChannelResult } from "./alert-channel-types";
 import { alertProviderRegistryFactory } from "./alert-provider-registry";
@@ -23,11 +25,8 @@ const ORG_ID = "org-1";
 const ACTOR_ID = "actor-1";
 
 const actor = {
-  actor: "user",
-  actorId: ACTOR_ID,
-  actorAuthMethod: undefined,
-  actorOrgId: ORG_ID
-} as unknown as { actor: never; actorId: string; actorAuthMethod: never; actorOrgId: string };
+  actor: { principal: { type: "user", id: ACTOR_ID, authMethod: null }, org: { id: ORG_ID } }
+} as unknown as TActorInput;
 
 const buildProvider = (opts?: {
   assertPermission?: (input: TAlertPermissionInput) => Promise<void>;

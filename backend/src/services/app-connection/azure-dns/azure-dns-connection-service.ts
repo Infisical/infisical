@@ -1,6 +1,6 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { listAzureDnsZones } from "./azure-dns-connection-fns";
@@ -9,11 +9,11 @@ import { TAzureDnsConnection } from "./azure-dns-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TAzureDnsConnection>;
 
 export const azureDnsConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listZones = async (connectionId: string, actor: OrgServiceActor) => {
+  const listZones = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.AzureDNS, connectionId, actor);
     try {
       const zones = await listAzureDnsZones(appConnection);

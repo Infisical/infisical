@@ -1,7 +1,7 @@
 import RE2 from "re2";
 
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
@@ -11,7 +11,7 @@ import { getAzureEntraIdConnectionAccessToken, graphApiRequest } from "./azure-e
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TAppConnection>;
 
 type TAzureSyncJob = {
@@ -43,7 +43,7 @@ export const azureEntraIdConnectionService = (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">,
   kmsCoreDomain: TKmsCoreDomain
 ) => {
-  const listScimServicePrincipals = async (connectionId: string, actor: OrgServiceActor, search?: string) => {
+  const listScimServicePrincipals = async (connectionId: string, actor: TActorContext, search?: string) => {
     const appConnection = await getAppConnection(AppConnection.AzureEntraId, connectionId, actor);
     const accessToken = await getAzureEntraIdConnectionAccessToken(appConnection.id, appConnectionDAL, kmsCoreDomain);
 

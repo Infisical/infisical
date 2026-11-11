@@ -24,7 +24,6 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { deepEqual } from "@app/lib/fn/object";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { toOrgServiceActor } from "@app/services/certificate-common/certificate-permission-fns";
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TPkiApplicationProfileDALFactory } from "@app/services/pki-application/pki-application-profile-dal";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
@@ -694,7 +693,7 @@ export const pkiSyncServiceFactory = ({
     const connection = await appConnectionService.validateAppConnectionUsageById(
       destinationApps,
       { connectionId, projectId },
-      toOrgServiceActor(actor)
+      actor
     );
 
     assertTargetHostMatchesConnection({ destination, connection, destinationConfig });
@@ -892,7 +891,7 @@ export const pkiSyncServiceFactory = ({
       resolvedConnection ??= await appConnectionService.validateAppConnectionUsageById(
         getPkiSyncConnectionApps(pkiSync.destination),
         { connectionId: connectionId ?? pkiSync.connectionId, projectId: pkiSync.projectId },
-        toOrgServiceActor(actor)
+        actor
       );
       return resolvedConnection;
     };
@@ -1345,7 +1344,7 @@ export const pkiSyncServiceFactory = ({
     const connection = await appConnectionService.validateAppConnectionUsageById(
       getPkiSyncConnectionApps(args.destination),
       { connectionId: args.connectionId, projectId: args.projectId },
-      toOrgServiceActor(actor)
+      actor
     );
 
     assertTargetHostMatchesConnection({

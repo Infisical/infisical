@@ -443,8 +443,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     approvalsRequired,
     maxTimePeriod,
     requestExpirationTime,
-    delegatedApproval,
-    orgActor
+    delegatedApproval
   }: TCreateSecretAccessApprovalGlobalPolicyDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -480,7 +479,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       { projectId: project.id, orgId: project.orgId }
     );
     if (delegatedApproval) {
-      await delegatedApprovalService.validateConnection({ ...delegatedApproval, projectId: project.id }, orgActor);
+      await delegatedApprovalService.validateConnection({ ...delegatedApproval, projectId: project.id }, actor);
     }
 
     await $assertNoConflictingPolicy({ envs, secretPath });
@@ -558,8 +557,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     environments,
     maxTimePeriod,
     requestExpirationTime,
-    delegatedApproval,
-    orgActor
+    delegatedApproval
   }: TUpdateSecretAccessApprovalGlobalPolicyDTO) => {
     const policy = await $findPolicyById(
       policyId,
@@ -596,7 +594,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       if (isDelegatedApprovalChanged(policy.delegatedApproval, nextDelegatedApproval)) {
         await delegatedApprovalService.validateConnection(
           { ...nextDelegatedApproval, projectId: policy.projectId },
-          orgActor
+          actor
         );
       }
     }

@@ -1,6 +1,6 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { listCloud66Stacks } from "./cloud-66-connection-fns";
@@ -9,11 +9,11 @@ import { TCloud66Connection } from "./cloud-66-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TCloud66Connection>;
 
 export const cloud66ConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listStacks = async (connectionId: string, actor: OrgServiceActor) => {
+  const listStacks = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Cloud66, connectionId, actor);
 
     try {

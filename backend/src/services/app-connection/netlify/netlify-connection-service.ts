@@ -1,5 +1,5 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
 import { NetlifyPublicAPI } from "./netlify-connection-public-client";
@@ -8,12 +8,12 @@ import { TNetlifyConnection } from "./netlify-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<TNetlifyConnection>;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const netlifyConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listAccounts = async (connectionId: string, actor: OrgServiceActor) => {
+  const listAccounts = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Netlify, connectionId, actor);
     try {
       const accounts = await NetlifyPublicAPI.getNetlifyAccounts(appConnection);
@@ -24,7 +24,7 @@ export const netlifyConnectionService = (getAppConnection: TGetAppConnectionFunc
     }
   };
 
-  const listSites = async (connectionId: string, actor: OrgServiceActor, accountId: string) => {
+  const listSites = async (connectionId: string, actor: TActorContext, accountId: string) => {
     const appConnection = await getAppConnection(AppConnection.Netlify, connectionId, actor);
     try {
       const sites = await NetlifyPublicAPI.getSites(appConnection, accountId);

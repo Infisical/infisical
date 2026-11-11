@@ -1,6 +1,6 @@
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { logger } from "@app/lib/logger";
-import { OrgServiceActor } from "@app/lib/types";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -10,7 +10,7 @@ import { THerokuConnection } from "./heroku-connection-types";
 type TGetAppConnectionFunc = (
   app: AppConnection,
   connectionId: string,
-  actor: OrgServiceActor
+  actor: TActorContext
 ) => Promise<THerokuConnection>;
 
 export const herokuConnectionService = (
@@ -18,7 +18,7 @@ export const herokuConnectionService = (
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">,
   kmsCoreDomain: TKmsCoreDomain
 ) => {
-  const listApps = async (connectionId: string, actor: OrgServiceActor) => {
+  const listApps = async (connectionId: string, actor: TActorContext) => {
     const appConnection = await getAppConnection(AppConnection.Heroku, connectionId, actor);
     try {
       const apps = await getHerokuApps({ appConnection, appConnectionDAL, kmsCoreDomain });

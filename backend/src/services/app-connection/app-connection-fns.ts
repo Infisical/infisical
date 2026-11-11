@@ -1,5 +1,4 @@
 import { ProjectType, TAppConnections } from "@app/db/schemas";
-import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
@@ -19,10 +18,8 @@ import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotat
 import { getSecretRotationConnectionApps } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 import { APP_CONNECTION_NAME_MAP, APP_CONNECTION_PLAN_MAP } from "@app/services/app-connection/app-connection-maps";
 import {
   transferSqlConnectionCredentialsToPlatform,
@@ -1206,14 +1203,3 @@ export const transformUsageToProjects = (data: UsageData): ProjectWithResources[
 
   return Array.from(projectMap.values());
 };
-
-// The flat actor that connectAppConnectionById and validateAppConnectionUsageById still take, for callers holding an
-// actor context.
-export const orgServiceActorOf = (actor: TActorContext): OrgServiceActor => ({
-  type: actor.principal.type,
-  id: actor.principal.id,
-  authMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
-  orgId: actor.org.id,
-  rootOrgId: actor.org.rootOrgId,
-  parentOrgId: actor.org.parentOrgId
-});

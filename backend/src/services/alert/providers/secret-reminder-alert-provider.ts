@@ -1,10 +1,9 @@
-import { ForbiddenError, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { ActionProjectType, SecretType } from "@app/db/schemas";
+import { SecretType } from "@app/db/schemas";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
@@ -37,7 +36,7 @@ export type TSecretReminderTarget = TSecretWithLocation & {
 export type TSecretReminderAlertProviderDep = {
   secretReminderAlertDAL: Pick<TSecretReminderAlertDALFactory, "findSecretsByIds" | "findSecretKeysByIds">;
   folderDAL: Pick<TSecretFolderDALFactory, "findSecretPathByFolderIds">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
 };
 
 const describeSchedule = (repeatDays: number | null): string => {
@@ -56,7 +55,7 @@ const formatDate = (isoDate: string): string =>
 export const secretReminderAlertProviderFactory = ({
   secretReminderAlertDAL,
   folderDAL,
-  permissionService
+  secretsDomain
 }: TSecretReminderAlertProviderDep): IEventAlertProvider<TSecretReminderTarget> => {
   const $loadSecretsWithPath = async (secretIds: string[]) => {
     const secrets = await secretReminderAlertDAL.findSecretsByIds(secretIds);
@@ -193,13 +192,9 @@ export const secretReminderAlertProviderFactory = ({
 
   const assertPermission = async (input: TAlertPermissionInput): Promise<void> => {
     const secret = await $loadInScopeSecret(input);
-    const { permission } = await permissionService.getProjectPermission({
-      actor: input.actor.actor,
-      actorId: input.actor.actorId,
-      projectId: secret.projectId,
-      actorAuthMethod: input.actor.actorAuthMethod,
-      actorOrgId: input.actor.actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
+    const { permission } = await secretsDomain.getSecretsPermission({
+      actor: input.actor,
+      projectId: secret.projectId
     });
     const subjectFields = {
       environment: secret.envSlug,
@@ -210,17 +205,18 @@ export const secretReminderAlertProviderFactory = ({
 
     if (input.action === AlertPermissionAction.Read) {
       throwIfMissingSecretReadValueOrDescribePermission(
-        permission,
+        permission.toAbility(),
         ProjectPermissionSecretActions.DescribeSecret,
         subjectFields
       );
       return;
     }
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretActions.Edit,
-      subject(ProjectPermissionSub.Secrets, subjectFields)
-    );
+    permission.assert({
+      action: ProjectPermissionSecretActions.Edit,
+      subject: ProjectPermissionSub.Secrets,
+      fields: subjectFields
+    });
   };
 
   return {

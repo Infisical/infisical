@@ -1,6 +1,6 @@
-import { createMongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   emitSecretReminderDue,
   SECRET_REMINDER_DUE_EVENT,
@@ -51,16 +51,17 @@ const buildProvider = (
         return opts.unresolvedPath ? [] : [{ id: "folder-1", path: "/payments" }];
       }
     } as never,
-    permissionService: {
-      getProjectPermission: async (input: unknown) => {
+    secretsDomain: {
+      getSecretsPermission: async (input: unknown) => {
         permissionCalls.push(input);
         return {
-          permission: createMongoAbility(
-            (opts.rules ?? [
+          permission: Permission.fromRules({
+            rules: (opts.rules ?? [
               { action: "edit", subject: "secrets" },
               { action: "describeSecret", subject: "secrets" }
             ]) as never
-          )
+          }),
+          folderGrants: []
         };
       }
     } as never
@@ -89,7 +90,10 @@ const dueEvent = (payload: Record<string, unknown> = {}) => ({
   payload: { note: "rotate it", repeatDays: 30, occurrenceDate: "2026-10-10", ...payload }
 });
 
-const actor = { actor: "user", actorId: "user-1", actorAuthMethod: null, actorOrgId: "org-1" } as never;
+const actor = {
+  principal: { type: "user", id: "user-1", authMethod: null },
+  org: { id: "org-1" }
+} as never;
 
 describe("secret reminder alert provider", () => {
   test("getResourceNames returns secret keys only from the caller's org", async () => {
