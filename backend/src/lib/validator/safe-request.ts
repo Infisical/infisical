@@ -2,6 +2,7 @@ import { lookup as dnsLookup, LookupAddress } from "node:dns";
 import http from "node:http";
 import https from "node:https";
 import { LookupFunction } from "node:net";
+import tls from "node:tls";
 
 import { AxiosRequestConfig } from "axios";
 import { isIP } from "net";
@@ -159,6 +160,52 @@ const makePinnedLookup = ({ hostname: validatedHostname, entries }: TValidatedHo
       (maybeCb as TLookupOneCallback)(null, first.address, first.family);
     }
   }) as LookupFunction;
+
+// dns.lookup replacement that refuses internal addresses, for clients that make their own HTTP requests and
+// take a lookup function but no agent we could build ahead of time (openid-client). The addresses it checks are
+// the ones the socket connects to, so DNS cannot answer differently between the check and the connection.
+// Node does not call lookup for an IP literal host, so validate those URLs (validateSsrfUrl) before the request.
+export const ssrfSafeLookup = ((hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
+  const callback = (typeof optionsOrCb === "function" ? optionsOrCb : maybeCb) as TLookupOneCallback &
+    TLookupAllCallback;
+  const opts = (typeof optionsOrCb === "function" ? {} : (optionsOrCb ?? {})) as { all?: boolean; family?: number };
+
+  dnsLookup(hostname, { ...opts, all: true }, (err, entries) => {
+    if (err) {
+      callback(err, null as never, 0 as never);
+      return;
+    }
+
+    const appCfg = getConfig();
+    const check = async () => {
+      if (appCfg.isDevelopmentMode) return;
+      if (!appCfg.ALLOW_INTERNAL_IP_CONNECTIONS && entries.some((e) => isPrivateIp(e.address))) {
+        logger.warn(
+          `ssrfSafeLookup: rejecting private/internal IP [hostname=${hostname}] [entries=${formatEntries(entries)}]`
+        );
+        throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
+      }
+      await verifyHostInputValidity({
+        host: hostname,
+        isGateway: false,
+        isDynamicSecret: false,
+        preResolvedIps: entries.map((e) => e.address)
+      });
+    };
+
+    check().then(
+      () => {
+        if (opts.all) {
+          callback(null, sortV4First(entries));
+          return;
+        }
+        const first = pickPreferredEntry(entries);
+        callback(null, first.address, first.family);
+      },
+      (checkErr: NodeJS.ErrnoException) => callback(checkErr, null as never, 0 as never)
+    );
+  });
+}) as LookupFunction;
 
 type TBuildAgentOptions = {
   addressFamily?: 4 | 6;
@@ -352,6 +399,30 @@ export const buildUncachedSsrfSafeAgent = async (
   const { allowPrivateIps, ...agentOptions } = options;
   const validated = await validateAndPinUrl(url, { allowPrivateIps });
   return constructAgent(validated, new URL(url).protocol, agentOptions);
+};
+
+export type TSsrfSafeUrl = {
+  url: string;
+  checkServerIdentity?: NonNullable<tls.ConnectionOptions["checkServerIdentity"]>;
+};
+
+// For clients that resolve the URL's host themselves when they connect and accept no lookup function or agent
+// (ldapjs): put one of the validated IPs in the URL, so a second DNS answer cannot redirect the connection.
+// The certificate is still checked against the original name through checkServerIdentity. servername is left
+// alone on purpose: setting it would start sending SNI on connections that send none today.
+export const buildSsrfSafeUrl = async (url: string, options?: SafeRequestSharedOptions): Promise<TSsrfSafeUrl> => {
+  const validated = await validateAndPinUrl(url, options);
+  if (!validated || isIP(validated.hostname)) return { url };
+
+  const entry = pickPreferredEntry(validated.entries);
+  const pinnedUrl = new URL(url);
+  pinnedUrl.hostname = entry.family === 6 ? `[${entry.address}]` : entry.address;
+
+  const { hostname } = validated;
+  return {
+    url: pinnedUrl.toString(),
+    checkServerIdentity: (_host, cert) => tls.checkServerIdentity(hostname, cert)
+  };
 };
 
 type TSharedHttpsAgentOptions = {

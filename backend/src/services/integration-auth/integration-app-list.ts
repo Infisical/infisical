@@ -1,7 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
-import { Client as OctopusDeployClient, ProjectRepository as OctopusDeployRepository } from "@octopusdeploy/api-client";
 
 import { TIntegrationAuths } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
@@ -1151,17 +1150,21 @@ const getAppsOctopusDeploy = async ({
   instanceURL: string;
   spaceName?: string;
 }) => {
-  const client = await OctopusDeployClient.create({
-    instanceURL,
-    apiKey,
-    userAgentApp: "Infisical Integration"
-  });
+  // The Octopus SDK makes its requests with its own axios instance, which follows redirects and resolves the
+  // host again on every call, so the API is called through safeRequest instead
+  const headers = { "X-Octopus-ApiKey": apiKey, Accept: "application/json" };
 
-  const repository = new OctopusDeployRepository(client, spaceName);
+  const { data: spaces } = await safeRequest.get<{ Items: { Id: string; Name: string }[] }>(
+    `${instanceURL}/api/spaces`,
+    { params: { partialName: spaceName, skip: 0, take: 2147483647 }, headers }
+  );
+  const space = spaces.Items.find((item) => item.Name === spaceName);
+  if (!space) throw new NotFoundError({ message: `Octopus Deploy space '${spaceName}' not found` });
 
-  const projects = await repository.list({
-    take: 1000
-  });
+  const { data: projects } = await safeRequest.get<{ Items: { Id: string; Name: string }[] }>(
+    `${instanceURL}/api/${space.Id}/projects`,
+    { params: { take: 1000 }, headers }
+  );
 
   return projects.Items.map((project) => ({
     name: project.Name,

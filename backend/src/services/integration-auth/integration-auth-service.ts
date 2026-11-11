@@ -2,7 +2,7 @@ import { KMSClient, ListAliasesCommand } from "@aws-sdk/client-kms";
 import { ForbiddenError } from "@casl/ability";
 import { createAppAuth } from "@octokit/auth-app";
 import { Octokit } from "@octokit/rest";
-import { Client as OctopusClient, SpaceRepository as OctopusSpaceRepository } from "@octopusdeploy/api-client";
+import type { Space as OctopusSpace } from "@octopusdeploy/api-client";
 
 import {
   ActionProjectType,
@@ -1969,17 +1969,11 @@ export const integrationAuthServiceFactory = ({
     const { shouldUseSecretV2Bridge, botKey } = await projectBotService.getBotKey(integrationAuth.projectId);
     const { accessToken } = await getIntegrationAccessToken(integrationAuth, shouldUseSecretV2Bridge, botKey);
 
-    const client = await OctopusClient.create({
-      apiKey: accessToken,
-      instanceURL: integrationAuth.url!,
-      userAgentApp: "Infisical Integration"
-    });
-
-    const spaceRepository = new OctopusSpaceRepository(client);
-
-    const spaces = await spaceRepository.list({
-      partialName: "", // throws error if no string is present...
-      take: 1000
+    // The Octopus SDK makes its requests with its own axios instance, which follows redirects and resolves the
+    // host again on every call, so the API is called through safeRequest instead
+    const { data: spaces } = await safeRequest.get<{ Items: OctopusSpace[] }>(`${integrationAuth.url}/api/spaces`, {
+      params: { partialName: "", take: 1000 },
+      headers: { "X-Octopus-ApiKey": accessToken, Accept: "application/json" }
     });
 
     return spaces.Items;

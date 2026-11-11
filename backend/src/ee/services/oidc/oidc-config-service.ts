@@ -38,7 +38,8 @@ import {
   blockLocalAndPrivateIpAddresses,
   matchesAllowedEmailDomain,
   sanitizeEmail,
-  validateEmail
+  validateEmail,
+  validateSsrfUrl
 } from "@app/lib/validator";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
@@ -90,6 +91,7 @@ import {
   TOidcLoginDTO,
   TUpdateOidcCfgDTO
 } from "./oidc-config-types";
+import { createSsrfSafeOidcClient, secureOidcIssuer, SsrfSafeIssuer } from "./oidc-ssrf-fns";
 
 type TOidcConfigServiceFactoryDep = {
   userDAL: Pick<
@@ -911,8 +913,8 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.discoveryURL);
-      issuer = await Issuer.discover(oidcCfg.discoveryURL);
+      await validateSsrfUrl(oidcCfg.discoveryURL);
+      issuer = await SsrfSafeIssuer.discover(oidcCfg.discoveryURL);
     } else {
       if (
         !oidcCfg.issuer ||
@@ -925,9 +927,6 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await blockLocalAndPrivateIpAddresses(oidcCfg.jwksUri);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.tokenEndpoint);
-      await blockLocalAndPrivateIpAddresses(oidcCfg.userinfoEndpoint);
       issuer = new OpenIdIssuer({
         issuer: oidcCfg.issuer,
         authorization_endpoint: oidcCfg.authorizationEndpoint,
@@ -937,7 +936,9 @@ export const oidcConfigServiceFactory = ({
       });
     }
 
-    const client = new issuer.Client({
+    await secureOidcIssuer(issuer);
+
+    const client = createSsrfSafeOidcClient(issuer, {
       client_id: oidcCfg.clientId,
       client_secret: oidcCfg.clientSecret,
       redirect_uris: [`${appCfg.SITE_URL}/api/v1/sso/oidc/callback`],

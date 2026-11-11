@@ -6,6 +6,7 @@ import ldapjs from "@infisical/ldapjs";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { stripIpv6Brackets } from "@app/lib/tls";
+import { buildSsrfSafeUrl } from "@app/lib/validator";
 
 import { TLDAPConfig, TTestLDAPConfigDTO } from "./ldap-config-types";
 
@@ -74,16 +75,27 @@ export const buildLdapTlsOptions = (cfg: TLdapTlsConfigInput) => {
   return tlsOptions;
 };
 
+// ldapjs resolves the URL's host itself when it connects, so validating the URL beforehand does not stop a
+// DNS answer that changes in between from sending the connection to an internal address. Connect to the
+// validated IP instead.
+export const pinLdapTarget = async <T extends object>(url: string, tlsOptions: T | undefined) => {
+  const { url: pinnedUrl, checkServerIdentity } = await buildSsrfSafeUrl(url);
+  return {
+    url: pinnedUrl,
+    tlsOptions: checkServerIdentity ? { ...tlsOptions, checkServerIdentity } : tlsOptions
+  };
+};
+
 /**
  * Test the LDAP configuration by attempting to bind to the LDAP server
  * @param ldapConfig - The LDAP configuration to test
  * @returns {Boolean} isConnected - Whether or not the connection was successful
  */
 export const testLDAPConfig = async (ldapConfig: TTestLDAPConfigDTO): Promise<boolean> => {
+  const { url, tlsOptions } = await pinLdapTarget(ldapConfig.url, buildLdapTlsOptions(ldapConfig));
   return new Promise((resolve) => {
-    const tlsOptions = buildLdapTlsOptions(ldapConfig);
     const ldapClient = ldapjs.createClient({
-      url: ldapConfig.url,
+      url,
       bindDN: ldapConfig.bindDN,
       bindCredentials: ldapConfig.bindPass,
       ...(tlsOptions ? { tlsOptions } : {})
@@ -139,10 +151,10 @@ export const searchGroups = async (
   filter: string,
   base: string
 ): Promise<{ dn: string; cn: string }[]> => {
+  const { url, tlsOptions } = await pinLdapTarget(ldapConfig.url, buildLdapTlsOptions(ldapConfig));
   return new Promise((resolve, reject) => {
-    const tlsOptions = buildLdapTlsOptions(ldapConfig);
     const ldapClient = ldapjs.createClient({
-      url: ldapConfig.url,
+      url,
       bindDN: ldapConfig.bindDN,
       bindCredentials: ldapConfig.bindPass,
       ...(tlsOptions ? { tlsOptions } : {})

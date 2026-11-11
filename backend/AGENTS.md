@@ -862,6 +862,15 @@ logger.error({ sessionId, err }, "Failed to get connection details");
 
 Note that `logger.ts` also has a `redactedKeys` list applied to structured-object fields up to depth three. It only matches by key name, so it does **not** help with a secret embedded in a `url` field.
 
+### Outbound requests to user-configured URLs
+
+**Fetch a URL a user configured through `safeRequest` (`src/lib/validator/safe-request.ts`), never `blockLocalAndPrivateIpAddresses` followed by `request` or another client.** The check and the connection each resolve DNS, so a name that answers a public address to the check and an internal one to the connection gets through. `safeRequest` connects to the IPs it validated. For a client that does not go through axios, pick by what it accepts:
+- an agent: `buildSsrfSafeAgent`.
+- a lookup function (openid-client): `ssrfSafeLookup`, with `validateSsrfUrl` on each URL first because Node skips the lookup for an IP literal host, and a dedicated agent without keep-alive because a pooled socket skips it too (see `ee/services/oidc/oidc-ssrf-fns.ts`).
+- neither (ldapjs): `buildSsrfSafeUrl`, which puts a validated IP in the URL and keeps the certificate check on the original name.
+
+Do not hand such a URL to a vendor SDK that makes its own requests; it follows redirects and resolves the host again, so call the API through `safeRequest`. To prove a client is pinned, use `src/lib/validator/dns-rebinding.test-utils.ts`, whose DNS answers differently at validation and at connect.
+
 ### Certificate soft delete
 
 **Before changing certificate deletion, the expiry cleanup job, renewal or certificate syncs, read
