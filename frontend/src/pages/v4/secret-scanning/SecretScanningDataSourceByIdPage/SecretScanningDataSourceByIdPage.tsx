@@ -12,7 +12,6 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { Stack } from "@app/components/v4/ui/layout";
 import { Loader } from "@app/components/v4/ui/loader";
 import { PageHeader } from "@app/components/v4/ui/page-header";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { TooltipProvider } from "@app/components/v4/ui/tooltip";
 import {
@@ -97,7 +96,6 @@ const DataSource = ({ dataSource }: { dataSource: TSecretScanningDataSource }) =
     if (!canReadFindings) return <AccessRestricted requirement="Read findings" />;
     return (
       <FindingsTable
-        key={search.resourceId ?? ""}
         projectId={dataSource.projectId}
         scope={dataSource}
         filters={{
@@ -119,9 +117,6 @@ const DataSource = ({ dataSource }: { dataSource: TSecretScanningDataSource }) =
             { label: "Data sources", href: orgHref(orgId, "/secret-scanning/data-sources") }
           ]}
           title={dataSource.name}
-          media={
-            <ProviderIcon icon={platform.image} alt={`${platform.name} data source`} size="lg" />
-          }
           badges={<DataSourceStatus dataSource={dataSource} />}
           description={
             dataSource.connection

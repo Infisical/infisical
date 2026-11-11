@@ -626,15 +626,17 @@ export const FindingsTable = ({
           });
         }}
         actions={
-          <Select
-            label="Status"
-            options={[
-              ...statuses.map((item) => ({ value: item.value, label: item.label })),
-              { value: "all", label: "All" }
-            ]}
-            value={status}
-            onChange={(value) => refilter({ status: value as FindingsStatusFilter })}
-          />
+          <div style={{ width: 200 }}>
+            <Select
+              label="Status"
+              options={[
+                ...statuses.map((item) => ({ value: item.value, label: item.label })),
+                { value: "all", label: "All" }
+              ]}
+              value={status}
+              onChange={(value) => refilter({ status: value as FindingsStatusFilter })}
+            />
+          </div>
         }
       />
       <DataTable

@@ -12,6 +12,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
+import { Card } from "@app/components/v4/ui/card";
 import { Field } from "@app/components/v4/ui/field";
 import { Input } from "@app/components/v4/ui/input";
 import { Stack } from "@app/components/v4/ui/layout";
@@ -177,7 +178,7 @@ const Scanning = ({
   ];
 
   return (
-    <SettingsCard title="Scanning" locked={canEdit ? undefined : RESTRICTED}>
+    <Card variant="framed" title="Scanning">
       <Stack gap={16}>
         {items.length > 0 && <DataList variant="props" items={items} />}
         {toggles.map(({ name, label, description, blocked }) => (
@@ -208,7 +209,7 @@ const Scanning = ({
           />
         ))}
       </Stack>
-    </SettingsCard>
+    </Card>
   );
 };
 
