@@ -422,5 +422,66 @@ export const describeGrantDataAccessContract = (name: string, harness: () => TGr
       // Assert
       await vi.waitFor(async () => expect(await after()).not.toBe(before), { timeout: 5000, interval: 200 });
     });
+
+    test("should list every project member with its roles, and only its members' project privileges and attributes", async () => {
+      // Setup
+      const { h, deps, orgId, projectId, userId } = await setup();
+      const identityId = await h.newIdentity(orgId);
+      const outsiderId = await h.newUser();
+      const group = await write(deps, (dataAccess) =>
+        dataAccess.groups.create({ orgId, name: "g", slug: `g-${projectId}` })
+      );
+      await projectMembership(deps, { orgId, projectId, actor: { actorUserId: userId } });
+      await projectMembership(deps, {
+        orgId,
+        projectId,
+        actor: { actorIdentityId: identityId },
+        role: ProjectMembershipRole.Viewer
+      });
+      await projectMembership(deps, { orgId, projectId, actor: { actorGroupId: group.id } });
+      const privilege = await write(deps, (dataAccess) =>
+        dataAccess.privileges.create({ name: "p", actorUserId: userId, projectId, permissions: [] })
+      );
+      await write(deps, (dataAccess) =>
+        dataAccess.attributes.replace({ userId, orgId }, [{ key: "team", value: "a" }])
+      );
+      await write(deps, (dataAccess) =>
+        dataAccess.attributes.replace({ userId: outsiderId, orgId }, [{ key: "team", value: "b" }])
+      );
+
+      // Action
+      const members = await deps.dataAccess.grants.findProjectMemberGrants({ orgId, projectId });
+
+      // Assert
+      expect(
+        members
+          .directMembers()
+          .map(({ actor }) => actor.id)
+          .sort()
+      ).toEqual([identityId, userId].sort());
+      expect(members.groupMembers().map(({ groupId }) => groupId)).toEqual([group.id]);
+      const userGrants = members.grantsFor({ actor: { type: ActorType.USER, id: userId }, groupIds: [group.id] });
+      expect(userGrants.memberships).toHaveLength(2);
+      expect(userGrants.privileges.map(({ id }) => id)).toEqual([privilege.id]);
+      expect(userGrants.attributeMap()).toEqual({ team: "a" });
+    });
+
+    test("should find custom roles by slug for their own project only", async () => {
+      // Setup
+      const { h, deps, orgId, projectId } = await setup();
+      const otherProjectId = await h.newProject(orgId);
+      const kept = await write(deps, (dataAccess) =>
+        dataAccess.roles.create({ projectId, name: "Biller", slug: "biller", permissions: [] })
+      );
+      await write(deps, (dataAccess) =>
+        dataAccess.roles.create({ projectId: otherProjectId, name: "Auditor", slug: "auditor", permissions: [] })
+      );
+
+      // Action
+      const roles = await deps.dataAccess.roles.findBySlugs({ owner: { projectId }, slugs: ["biller", "auditor"] });
+
+      // Assert
+      expect(roles.map(({ id }) => id)).toEqual([kept.id]);
+    });
   });
 };

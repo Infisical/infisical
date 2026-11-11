@@ -5,6 +5,7 @@ import { generateCacheKeyFromData } from "@app/lib/crypto/cache";
 import { TGrantActor, TGrantDataAccess, TGrantScope } from "../data-access/grant-data-access";
 import { ActorGrants } from "../model/actor-grants";
 import { TMembershipProps } from "../model/membership";
+import { ProjectMemberGrants } from "../model/project-member-grants";
 import { InMemoryAccessControlState } from "./in-memory-access-control-state";
 
 const isExpired = (row: { isTemporary?: boolean | null; temporaryAccessEndTime?: Date | null }, now: Date) =>
@@ -126,5 +127,32 @@ export class InMemoryGrantDataAccess implements TGrantDataAccess {
       value
     }));
     return generateCacheKeyFromData({ memberships, privileges, attributes });
+  }
+
+  async findProjectMemberGrants(scope: { orgId: string; projectId: string }): Promise<ProjectMemberGrants> {
+    const memberships = [...this.state.tables.memberships.values()]
+      .filter(
+        (membership) =>
+          membership.scopeOrgId === scope.orgId &&
+          membership.scope === AccessScope.Project &&
+          membership.scopeProjectId === scope.projectId
+      )
+      .map((membership) => this.withRoles(membership))
+      .filter((membership) => membership.roles.length > 0)
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const userIds = new Set(memberships.flatMap((membership) => membership.actorUserId ?? []));
+    const identityIds = new Set(memberships.flatMap((membership) => membership.actorIdentityId ?? []));
+    const privileges = [...this.state.tables.privileges.values()]
+      .filter((privilege) => privilege.projectId === scope.projectId && !privilege.folderId)
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const attributes = [...this.state.tables.attributes.values()]
+      .filter(
+        (attribute) =>
+          (attribute.userId && userIds.has(attribute.userId) && attribute.orgId === scope.orgId) ||
+          (attribute.identityId && identityIds.has(attribute.identityId))
+      )
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map(({ id, key, value, userId, identityId }) => ({ id, key, value, userId, identityId }));
+    return ProjectMemberGrants.restore({ memberships, privileges, attributes });
   }
 }

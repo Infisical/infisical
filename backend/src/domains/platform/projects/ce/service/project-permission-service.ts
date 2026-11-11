@@ -1,29 +1,23 @@
-import { MongoAbility } from "@casl/ability";
-
 import { AccessScope, ProjectMembershipRole, ProjectType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorMemo } from "@app/domains/lib/actor-memo";
 import {
   ActorGrants,
   escapeHandlebarsMissingDict,
-  mergeRoles,
   reviveActorGrants,
   TAccessControlDomain,
   TActorGrantsProps,
-  TGrantActor,
-  unpackCustomRules
+  TGrantActor
 } from "@app/domains/platform/access-control/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { effectiveActorForProject, TPrincipal } from "@app/lib/auth/principal";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 
 import { ProjectDataAccess } from "../data-access/project-data-access";
 import { Project, TProjectProps } from "../model/project";
-import { expandLegacyForbidActions } from "./permission/legacy-forbid-expansion";
-import { ProjectPermissionSet } from "./permission/project-permission";
-import { ProductAccessRegistry, TProjectRule } from "./product-access-registry";
+import { TProjectRule } from "./product-access-registry";
 import { ProjectPermission, TProjectIdentityContext } from "./project-access";
+import { ProjectRoleRules } from "./project-role-rules";
 
 export type TGetProjectPermissionInput = {
   actor: TActorContext;
@@ -47,7 +41,7 @@ export type TProjectRules = {
 export type TProjectPermissionServiceDeps = {
   accessControlDomain: Pick<TAccessControlDomain, "fetchGrants" | "withCache">;
   projects: Pick<ProjectDataAccess, "findById" | "findDeletionState">;
-  registry: ProductAccessRegistry;
+  roleRules: ProjectRoleRules;
   memo: ActorMemo<{ project: Project; grants: ActorGrants }>;
 };
 
@@ -124,26 +118,12 @@ export class ProjectPermissionService {
     return { project: Project.restore(cached.project), grants: reviveActorGrants(cached.grants) };
   }
 
-  // Each active role resolved through what the project's product registered: its default roles (or the generic
-  // ones), and its override for custom roles (or the customer's rules as written).
   private resolveRoles({ project, grants }: { project: Project; grants: ActorGrants }): TProjectRule[] {
-    const defaults = this.deps.registry.defaultRolesFor(project.type);
-    const resolveCustom = this.deps.registry.customRoleResolverFor(project.type);
-    const rules = grants.activeEntries(ProjectMembershipRole.Custom).flatMap(({ role, permissions }) => {
-      if (role === ProjectMembershipRole.Custom) {
-        const customRules = unpackCustomRules<MongoAbility<ProjectPermissionSet>>(permissions);
-        return resolveCustom ? resolveCustom({ customRules, project, grants }) : customRules;
-      }
-      const roleRules = defaults[role];
-      if (roleRules) return roleRules;
-      // A slug whose product was removed (ssh-host-bootstrapper) grants nothing, so the actor's other roles keep
-      // working. The logger is only initialised by the server; tests and scripts run without it.
-      logger?.warn(
-        `Projects: unknown project role slug, granting no rules [role=${role}] [projectType=${project.type}]`
-      );
-      return [];
+    return this.deps.roleRules.resolve({
+      entries: grants.activeEntries(ProjectMembershipRole.Custom),
+      project,
+      grants
     });
-    return mergeRoles({ layers: [expandLegacyForbidActions(rules)] });
   }
 
   private static identityContext({

@@ -12,6 +12,22 @@ export class InMemoryRoleDataAccess implements TRoleDataAccess {
     return row ? Role.restore(row) : undefined;
   }
 
+  async findBySlugs({
+    owner,
+    slugs
+  }: {
+    owner: { orgId: string } | { projectId: string };
+    slugs: string[];
+  }): Promise<Role[]> {
+    return [...this.state.tables.roles.values()]
+      .filter(
+        (row) =>
+          slugs.includes(row.slug) && ("orgId" in owner ? row.orgId === owner.orgId : row.projectId === owner.projectId)
+      )
+      .sort((a, b) => a.slug.localeCompare(b.slug))
+      .map((row) => Role.restore(row));
+  }
+
   async create(role: Omit<TRolesInsert, "id" | "createdAt" | "updatedAt">): Promise<Role> {
     const now = new Date();
     const row = { ...role, id: InMemoryAccessControlState.newId(), createdAt: now, updatedAt: now };

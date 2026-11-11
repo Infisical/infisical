@@ -7,14 +7,20 @@ import { buildAccessControlDataAccess, TAccessControlDataAccess } from "./data-a
 import { TGrantActor, TGrantScope } from "./data-access/grant-data-access";
 import { PermissionCache } from "./data-access/permission-cache";
 import { ActorGrants } from "./model/actor-grants";
+import { Group } from "./model/group";
 import { Membership } from "./model/membership";
 import { Privilege } from "./model/privilege";
+import { ProjectMemberGrants } from "./model/project-member-grants";
+import { Role } from "./model/role";
 import { GrantService, TCachedPermissionInput } from "./service/grant-service";
 
 export * from "./model/actor-grants";
+export * from "./model/group";
 export * from "./model/identity-attribute";
 export * from "./model/membership";
 export * from "./model/privilege";
+export * from "./model/project-member-grants";
+export * from "./model/role";
 export * from "./model/role-assignment";
 export type { TGrantActor, TGrantScope } from "./data-access/grant-data-access";
 export * from "./service/ability-builder";
@@ -43,9 +49,25 @@ export type TAccessControlDomain = {
   invalidate: (input: { name: string }) => Promise<void>;
   version: (input: { name: string }) => Promise<number>;
   findMembershipsByIds: (input: { ids: string[]; readFrom?: ReadFrom }) => Promise<Membership[]>;
-  // The actor's memberships on resources of one type in a project, directly or through its groups, active or not.
   // The actor's own folder grants in a project (privileges on one secret folder), active or not.
   findFolderGrants: (input: { actor: TGrantActor; projectId: string; readFrom?: ReadFrom }) => Promise<Privilege[]>;
+  // Every folder grant in a project, of every user and identity, active or not.
+  findProjectFolderGrants: (input: { projectId: string; readFrom?: ReadFrom }) => Promise<Privilege[]>;
+  // Everyone's grants in a project: every membership with its roles, and its members' project-wide privileges and
+  // attributes. For listings over all members; a single actor's check uses fetchGrants.
+  findProjectMemberGrants: (input: {
+    orgId: string;
+    projectId: string;
+    readFrom?: ReadFrom;
+  }) => Promise<ProjectMemberGrants>;
+  // The org's or project's custom roles with these slugs; slugs with no role are left out.
+  findRolesBySlugs: (input: {
+    owner: { orgId: string } | { projectId: string };
+    slugs: string[];
+    readFrom?: ReadFrom;
+  }) => Promise<Role[]>;
+  findGroupsByIds: (input: { ids: string[]; readFrom?: ReadFrom }) => Promise<Group[]>;
+  // The actor's memberships on resources of one type in a project, directly or through its groups, active or not.
   findResourceMembershipsForActor: (input: {
     actor: TGrantActor;
     projectId: string;
@@ -96,6 +118,12 @@ export class AccessControlModule {
       version: ({ name }) => grants.version(name),
       findMembershipsByIds: ({ ids, readFrom }) => dataAccess.memberships.findByIds(ids, { readFrom }),
       findFolderGrants: ({ readFrom, ...input }) => dataAccess.privileges.findFolderGrants(input, { readFrom }),
+      findProjectFolderGrants: ({ readFrom, ...input }) =>
+        dataAccess.privileges.findProjectFolderGrants(input, { readFrom }),
+      findProjectMemberGrants: ({ readFrom, ...scope }) =>
+        dataAccess.grants.findProjectMemberGrants(scope, { readFrom }),
+      findRolesBySlugs: ({ readFrom, ...input }) => dataAccess.roles.findBySlugs(input, { readFrom }),
+      findGroupsByIds: ({ ids, readFrom }) => dataAccess.groups.findByIds(ids, { readFrom }),
       findResourceMembershipsForActor: ({ readFrom, ...input }) =>
         dataAccess.memberships.findResourceMembershipsForActor(input, { readFrom })
     };

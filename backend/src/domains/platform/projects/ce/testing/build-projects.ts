@@ -8,6 +8,7 @@ import { TProjectsDomain } from "../module";
 import { ProductAccessRegistry } from "../service/product-access-registry";
 import { ProjectPermissionService } from "../service/project-permission-service";
 import { ProjectResourceAccess } from "../service/project-resource-access";
+import { ProjectRoleRules } from "../service/project-role-rules";
 
 // Projects' permission functions over a fixed set of projects, for another domain's tests. Built on the Access
 // Control the test gives it, so the grants are real.
@@ -35,7 +36,7 @@ export const buildProjectsForTests = ({
   const registry = new ProductAccessRegistry();
   const permissions = new ProjectPermissionService({
     accessControlDomain,
-    registry,
+    roleRules: new ProjectRoleRules(registry),
     projects: { findById: async (id) => byId.get(id), findDeletionState: async () => "" },
     memo: new ActorMemo<{ project: Project; grants: ActorGrants }>()
   });

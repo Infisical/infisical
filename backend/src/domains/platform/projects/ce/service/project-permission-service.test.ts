@@ -19,6 +19,7 @@ import {
 import { genericProjectRoles } from "./permission/project-roles";
 import { ProductAccessRegistry, TProjectRule } from "./product-access-registry";
 import { ProjectPermissionService } from "./project-permission-service";
+import { ProjectRoleRules } from "./project-role-rules";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
@@ -43,7 +44,7 @@ const setup = ({ type = ProjectType.SecretManager }: { type?: ProjectType } = {}
   const project = Project.restore({ id: projectId, name: "payments", slug: "payments", orgId, type });
   const service = new ProjectPermissionService({
     accessControlDomain,
-    registry,
+    roleRules: new ProjectRoleRules(registry),
     projects: {
       findById: async (id) => (id === projectId ? project : undefined),
       findDeletionState: async () => ""

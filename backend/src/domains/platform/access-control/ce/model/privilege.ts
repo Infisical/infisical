@@ -30,6 +30,22 @@ export class Privilege {
     return this.props.permissions;
   }
 
+  get isTemporary(): boolean {
+    return Boolean(this.props.isTemporary);
+  }
+
+  get temporaryAccessStartTime(): Date | null {
+    return this.props.temporaryAccessStartTime ?? null;
+  }
+
+  get temporaryAccessEndTime(): Date | null {
+    return this.props.temporaryAccessEndTime ?? null;
+  }
+
+  get role(): string | null {
+    return this.props.role ?? null;
+  }
+
   get folderId(): string | null {
     return this.props.folderId ?? null;
   }

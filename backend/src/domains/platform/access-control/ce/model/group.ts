@@ -18,6 +18,10 @@ export class Group {
     return this.props.orgId;
   }
 
+  get name(): string {
+    return this.props.name;
+  }
+
   get slug(): string {
     return this.props.slug;
   }

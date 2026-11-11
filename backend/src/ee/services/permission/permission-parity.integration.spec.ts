@@ -741,4 +741,289 @@ describe("Permission parity: legacy permissionService and the domain functions",
       });
     });
   });
+
+  describe("permissions built from roles and grants", () => {
+    const sortSources = <T extends { id: string }>(sources: T[]) =>
+      [...sources].sort((a, b) => a.id.localeCompare(b.id));
+
+    test("should match by-roles permissions for built-in and custom org and project roles", async () => {
+      // Setup
+      const tenant = await h.newTenant();
+      const orgRole = await insertCustomRole({
+        orgId: tenant.org.id,
+        rules: [{ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Member }]
+      });
+      const projectRole = await insertCustomRole({
+        projectId: tenant.project.id,
+        rules: [{ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Tags }]
+      });
+      const { legacy, domains } = build();
+
+      // Action
+      const [legacyOrg, currentOrg, legacyProject, currentProject] = await Promise.all([
+        legacy.getOrgPermissionByRoles([OrgMembershipRole.Member, orgRole.slug], tenant.org.id),
+        domains.organizations.service.getOrgPermissionByRoles({
+          orgId: tenant.org.id,
+          roles: [OrgMembershipRole.Member, orgRole.slug]
+        }),
+        legacy.getProjectPermissionByRoles([ProjectMembershipRole.Viewer, projectRole.slug], tenant.project.id),
+        domains.projects.service.getProjectPermissionByRoles({
+          projectId: tenant.project.id,
+          roles: [ProjectMembershipRole.Viewer, projectRole.slug]
+        })
+      ]);
+
+      // Assert
+      expect(currentOrg.map(({ permission }) => decisionShape(permission.rules))).toEqual(
+        legacyOrg.map(({ permission }) => decisionShape(permission.rules))
+      );
+      expect(currentProject.map(({ permission }) => decisionShape(permission.rules))).toEqual(
+        legacyProject.map(({ permission }) => decisionShape(permission.rules))
+      );
+      expect(currentProject.map(({ role }) => role.slug)).toEqual(legacyProject.map(({ role }) => role?.slug));
+    });
+
+    test("should match an identity's grant abilities at the project and the org", async () => {
+      // Setup
+      const tenant = await h.newTenant();
+      const identity = await insertIdentity(tenant.org.id);
+      const role = await insertCustomRole({
+        projectId: tenant.project.id,
+        rules: [
+          {
+            action: ProjectPermissionSecretActions.ReadValue,
+            subject: ProjectPermissionSub.Secrets,
+            conditions: { secretPath: "/{{identity.username}}" }
+          }
+        ]
+      });
+      await insertMembership({
+        scope: AccessScope.Project,
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        actor: { identityId: identity.id },
+        roles: [{ role: ProjectMembershipRole.Viewer }, { role: ProjectMembershipRole.Custom, customRoleId: role.id }]
+      });
+      const prod = tenant.environments.find((env) => env.slug === "prod")!;
+      const [root] = await h.db(TableName.SecretFolder).insert({ name: "root", envId: prod.id }).returning("*");
+      await h.db(TableName.AdditionalPrivilege).insert({
+        name: `grant-${randomId()}`,
+        actorIdentityId: identity.id,
+        projectId: tenant.project.id,
+        folderId: root.id,
+        role: SecretFolderRole.Edit
+      });
+      const { legacy, domains } = build();
+      const actor = { type: ActorType.IDENTITY as const, id: identity.id, name: identity.name };
+
+      // Action
+      const legacyProject = await legacy.getActorGrantAbilities({
+        scopeData: { scope: AccessScope.Project, orgId: tenant.org.id, projectId: tenant.project.id },
+        actorId: identity.id,
+        actorType: ActorType.IDENTITY
+      });
+      const grants = await domains.projects.service.getPermissionAuditSources({
+        target: actor,
+        orgId: tenant.org.id,
+        projectId: tenant.project.id
+      });
+      const currentProject = [
+        ...(await domains.projects.service.getGrantPermissions({
+          actor,
+          orgId: tenant.org.id,
+          projectId: tenant.project.id
+        })),
+        ...(await domains.secrets.service.getFolderGrantPermissions({
+          target: actor,
+          projectId: tenant.project.id,
+          grants: grants.grants
+        }))
+      ];
+      const legacyOrg = await legacy.getActorGrantAbilities({
+        scopeData: { scope: AccessScope.Organization, orgId: tenant.org.id },
+        actorId: identity.id,
+        actorType: ActorType.IDENTITY
+      });
+      const currentOrg = await domains.organizations.service.getGrantPermissions({ actor, orgId: tenant.org.id });
+
+      // Assert
+      // A role set boundary checks each grant on its own, so their order carries no meaning.
+      const asSet = (shapes: unknown[]) => shapes.map((shape) => JSON.stringify(shape)).sort();
+      expect(asSet(currentProject.map((permission) => decisionShape(permission.rules)))).toEqual(
+        asSet(legacyProject.map(({ permission }) => decisionShape(permission.rules)))
+      );
+      expect(currentOrg.map((permission) => decisionShape(permission.rules))).toEqual(
+        legacyOrg.map(({ permission }) => decisionShape(permission.rules))
+      );
+    });
+
+    test("should match a member's permission audit, folder grants included", async () => {
+      // Setup
+      const tenant = await h.newTenant();
+      const user = await newUserInOrg(tenant.org.id);
+      const [group] = await h
+        .db(TableName.Groups)
+        .insert({ orgId: tenant.org.id, name: `group-${randomId()}`, slug: `group-${randomId()}` })
+        .returning("*");
+      await h.db(TableName.UserGroupMembership).insert({ userId: user.id, groupId: group.id, isPending: false });
+      await insertMembership({
+        scope: AccessScope.Project,
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        actor: { groupId: group.id },
+        roles: [{ role: ProjectMembershipRole.Member }]
+      });
+      await h.factories.projectMembership({
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        userId: user.id,
+        role: ProjectMembershipRole.Viewer
+      });
+      await h.db(TableName.AdditionalPrivilege).insert({
+        name: `privilege-${randomId()}`,
+        actorUserId: user.id,
+        projectId: tenant.project.id,
+        permissions: JSON.stringify(
+          packRules<TRule>([{ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Tags }])
+        )
+      });
+      const prod = tenant.environments.find((env) => env.slug === "prod")!;
+      const [root] = await h.db(TableName.SecretFolder).insert({ name: "root", envId: prod.id }).returning("*");
+      await h.db(TableName.AdditionalPrivilege).insert({
+        name: `grant-${randomId()}`,
+        actorUserId: user.id,
+        projectId: tenant.project.id,
+        folderId: root.id,
+        role: SecretFolderRole.Edit
+      });
+      const { legacy, domains } = build();
+      const target = { type: ActorType.USER as const, id: user.id };
+
+      // Action
+      const legacyAudit = await legacy.getMembershipPermissionAudit({
+        actor: ActorType.USER,
+        actorId: tenant.admin.id,
+        actorAuthMethod: AuthMethod.EMAIL,
+        actorOrgId: tenant.org.id,
+        projectId: tenant.project.id,
+        targetUserId: user.id,
+        includeFolderPermissions: true
+      });
+      const current = await domains.projects.service.getPermissionAuditSources({
+        target,
+        orgId: tenant.org.id,
+        projectId: tenant.project.id
+      });
+      const folderSources = await domains.secrets.service.getFolderGrantAuditSources({
+        target,
+        projectId: tenant.project.id,
+        grants: current.grants
+      });
+
+      // Assert
+      expect(sortSources([...current.sources, ...folderSources])).toEqual(sortSources(legacyAudit.sources));
+    });
+
+    test("should match the project member listing, merged and per-source permissions included", async () => {
+      // Setup
+      const tenant = await h.newTenant();
+      const user = await newUserInOrg(tenant.org.id);
+      const identity = await insertIdentity(tenant.org.id);
+      const groupOnlyUser = await newUserInOrg(tenant.org.id);
+      const role = await insertCustomRole({
+        projectId: tenant.project.id,
+        rules: [
+          {
+            action: ProjectPermissionSecretActions.ReadValue,
+            subject: ProjectPermissionSub.Secrets,
+            conditions: { secretPath: "/{{identity.username}}" }
+          }
+        ]
+      });
+      const [group] = await h
+        .db(TableName.Groups)
+        .insert({ orgId: tenant.org.id, name: `group-${randomId()}`, slug: `group-${randomId()}` })
+        .returning("*");
+      await h.db(TableName.UserGroupMembership).insert([
+        { userId: user.id, groupId: group.id, isPending: false },
+        { userId: groupOnlyUser.id, groupId: group.id, isPending: false }
+      ]);
+      await insertMembership({
+        scope: AccessScope.Project,
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        actor: { groupId: group.id },
+        roles: [{ role: ProjectMembershipRole.Custom, customRoleId: role.id }]
+      });
+      await h.factories.projectMembership({
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        userId: user.id,
+        role: ProjectMembershipRole.Viewer
+      });
+      await insertMembership({
+        scope: AccessScope.Project,
+        orgId: tenant.org.id,
+        projectId: tenant.project.id,
+        actor: { identityId: identity.id },
+        roles: [{ role: ProjectMembershipRole.Member }]
+      });
+      const prod = tenant.environments.find((env) => env.slug === "prod")!;
+      const [root] = await h.db(TableName.SecretFolder).insert({ name: "root", envId: prod.id }).returning("*");
+      await h.db(TableName.AdditionalPrivilege).insert({
+        name: `grant-${randomId()}`,
+        actorUserId: user.id,
+        projectId: tenant.project.id,
+        folderId: root.id,
+        role: SecretFolderRole.Edit
+      });
+      const { legacy, domains } = build();
+
+      // Action
+      const legacyList = await legacy.getProjectPermissions(tenant.project.id, tenant.org.id);
+      const current = await domains.secrets.service.getProjectMemberPermissions({
+        orgId: tenant.org.id,
+        projectId: tenant.project.id
+      });
+
+      // Assert
+      const summarize = (
+        members: {
+          id: string;
+          name: string;
+          roles: unknown[];
+          permission: { rules: object[] };
+          additionalPrivileges?: unknown[];
+          accessSources?: () => { key: string; permission: { rules: object[] } }[];
+        }[]
+      ) =>
+        [...members]
+          .sort((a, b) => a.id.localeCompare(b.id))
+          .map(({ id, name, roles, permission, additionalPrivileges, accessSources }) => ({
+            id,
+            name,
+            roles,
+            additionalPrivileges,
+            rules: decisionShape(permission.rules),
+            sources: accessSources?.().map(({ key, permission: source }) => ({
+              key,
+              rules: decisionShape(source.rules)
+            }))
+          }));
+      expect(summarize(current.userPermissions)).toEqual(summarize(legacyList.userPermissions));
+      expect(summarize(current.identityPermissions)).toEqual(summarize(legacyList.identityPermissions));
+      expect(summarize(current.groupPermissions)).toEqual(summarize(legacyList.groupPermissions));
+      expect(current.folderAccessByActorId).toEqual(legacyList.folderAccessByActorId);
+      expect(current.groupRulesHavePlaceholders).toBe(legacyList.groupRulesHavePlaceholders);
+      for (const input of [
+        { actorId: user.id, groupIds: [group.id] },
+        { actorId: user.id, groupIds: [group.id], groupsOnly: true },
+        { actorId: groupOnlyUser.id, groupIds: [group.id], username: groupOnlyUser.username }
+      ]) {
+        expect(decisionShape(current.permissionForActor(input).rules)).toEqual(
+          decisionShape(legacyList.permissionForActor(input).rules)
+        );
+      }
+    });
+  });
 });

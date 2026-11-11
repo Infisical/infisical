@@ -7,17 +7,31 @@ import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 
 import { FolderPathDataAccess } from "./data-access/folder-path-data-access";
+import { MemberNameDataAccess } from "./data-access/member-name-data-access";
 import { ServiceTokenDataAccess } from "./data-access/service-token-data-access";
+import { SecretsMemberAccess } from "./service/secrets-member-access";
 import { SecretsPermissionService, TSecretsPermission } from "./service/secrets-permission";
 
 export * from "./service/folder-grant-rules";
 export * from "./service/folder-roles";
+export type {
+  TDirectMemberPermission,
+  TGroupMemberPermission,
+  TProjectMemberPermissions
+} from "./service/secrets-member-access";
 export type { TSecretsPermission } from "./service/secrets-permission";
 
 export type TSecretsDomain = {
   // What the actor may do in a Secret Manager project: its project roles, with its folder grants overriding them at
   // their folders. A service token gets the scopes it was issued with.
   getSecretsPermission: (input: { actor: TActorContext; projectId: string }) => Promise<TSecretsPermission>;
+  // Every member's permission in the project (users, identities and groups), folder grants included, for listings
+  // of who can reach a secret. The caller checks the request may see them.
+  getProjectMemberPermissions: SecretsMemberAccess["getProjectMemberPermissions"];
+  // A member's active folder grants as permission audit sources; none outside Secret Manager or for an admin.
+  getFolderGrantAuditSources: SecretsMemberAccess["getFolderGrantAuditSources"];
+  // Each of a member's active folder grants as a permission of its own (allow rules only).
+  getFolderGrantPermissions: SecretsMemberAccess["getFolderGrantPermissions"];
 };
 
 export type TSecretsDeps = {
@@ -28,21 +42,33 @@ export type TSecretsDeps = {
   licenseRegistry: TLicenseRegistry;
 };
 
-// Holds its usage counter and its permission for now; it grows as Secret Manager moves into a domain.
+// Holds its usage counter and its permissions for now; it grows as Secret Manager moves into a domain.
 export class SecretsModule {
   readonly name = "secrets";
 
   readonly service: TSecretsDomain;
 
   constructor({ db, keyStore, projectsDomain, accessControlDomain, licenseRegistry }: TSecretsDeps) {
+    const folderPaths = new FolderPathDataAccess(db);
     const permissions = new SecretsPermissionService({
       projectsDomain,
       accessControlDomain,
       keyStore,
-      folderPaths: new FolderPathDataAccess(db),
+      folderPaths,
       serviceTokens: new ServiceTokenDataAccess(db)
     });
-    this.service = { getSecretsPermission: (input) => permissions.getSecretsPermission(input) };
+    const memberAccess = new SecretsMemberAccess({
+      projectsDomain,
+      accessControlDomain,
+      folderPaths,
+      memberNames: new MemberNameDataAccess(db)
+    });
+    this.service = {
+      getSecretsPermission: (input) => permissions.getSecretsPermission(input),
+      getProjectMemberPermissions: (input) => memberAccess.getProjectMemberPermissions(input),
+      getFolderGrantAuditSources: (input) => memberAccess.getFolderGrantAuditSources(input),
+      getFolderGrantPermissions: (input) => memberAccess.getFolderGrantPermissions(input)
+    };
 
     licenseRegistry.registerUsageCounter({
       meter: Meter.SecretIdentities,

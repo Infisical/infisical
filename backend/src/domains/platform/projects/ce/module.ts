@@ -12,6 +12,7 @@ import { BillableActorDataAccess, TIdentityOwnershipRow } from "./data-access/us
 import { Project } from "./model/project";
 import { ProductAccessRegistry, TProductAccessRegistry } from "./service/product-access-registry";
 import { ProjectPermission } from "./service/project-access";
+import { ProjectMemberAccess } from "./service/project-member-access";
 import {
   ProjectPermissionService,
   TGetProjectPermissionInput,
@@ -19,6 +20,7 @@ import {
 } from "./service/project-permission-service";
 import { ProjectResourceAccess, TGetProjectResourcePermissionInput } from "./service/project-resource-access";
 import { ProjectResourcePermission } from "./service/project-resource-permission";
+import { ProjectRoleRules } from "./service/project-role-rules";
 
 export type { TIdentityOwnershipRow };
 export { Project } from "./model/project";
@@ -34,6 +36,7 @@ export type {
   TResourceRoles
 } from "./service/project-resource-access";
 export { ProjectResourcePermission } from "./service/project-resource-permission";
+export type { TProjectPermissionAuditSource, TProjectRolePermission } from "./service/project-member-access";
 export * from "./service/permission/project-permission";
 export * from "./service/permission/project-roles";
 
@@ -64,6 +67,16 @@ export type TProjectsDomain = {
   getProjectResourcePermission: <TSet extends AbilityTuple>(
     input: TGetProjectResourcePermissionInput<TSet>
   ) => Promise<ProjectResourcePermission<TSet>>;
+  // Each role slug as a permission of its own, resolved for the project's product: what a role change is measured
+  // against. Refuses a custom slug the project does not have unless ignoreUnresolvedRoles.
+  getProjectPermissionByRoles: ProjectMemberAccess["getProjectPermissionByRoles"];
+  // Each active role and project-wide privilege another member holds, as a permission of its own.
+  getGrantPermissions: ProjectMemberAccess["getGrantPermissions"];
+  // A member's roles and project-wide privileges for its permission audit, and its grants. Not found for a non-member.
+  getPermissionAuditSources: ProjectMemberAccess["getPermissionAuditSources"];
+  // Role and privilege entries resolved for the project's product, cannot rules last. For listings that build many
+  // members' permissions from grants they already read.
+  resolveRoleRules: ProjectRoleRules["resolve"];
 };
 
 export type TProjectsDeps = {
@@ -87,10 +100,12 @@ export class ProjectsModule {
     const projects = new ProjectDataAccess(db);
     const registry = new ProductAccessRegistry();
     this.productAccessRegistry = registry;
+    const roleRules = new ProjectRoleRules(registry);
+    const memberAccess = new ProjectMemberAccess({ accessControlDomain, projects, roleRules });
     const permissions = new ProjectPermissionService({
       accessControlDomain,
       projects,
-      registry,
+      roleRules,
       memo: new ActorMemo<{ project: Project; grants: ActorGrants }>()
     });
     const resourceAccess = new ProjectResourceAccess({
@@ -109,7 +124,11 @@ export class ProjectsModule {
       getProjectPermission: (input) => permissions.getProjectPermission(input),
       getProjectRules: (input) => permissions.getProjectRules(input),
       findProject: ({ projectId }) => projects.findById(projectId),
-      getProjectResourcePermission: (input) => resourceAccess.getProjectResourcePermission(input)
+      getProjectResourcePermission: (input) => resourceAccess.getProjectResourcePermission(input),
+      getProjectPermissionByRoles: (input) => memberAccess.getProjectPermissionByRoles(input),
+      getGrantPermissions: (input) => memberAccess.getGrantPermissions(input),
+      getPermissionAuditSources: (input) => memberAccess.getPermissionAuditSources(input),
+      resolveRoleRules: (input) => roleRules.resolve(input)
     };
 
     licenseRegistry.registerOrganizations({

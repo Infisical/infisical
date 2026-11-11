@@ -7,6 +7,11 @@ import { serializePermissions } from "./serialize-permissions";
 
 export type TRoleDataAccess = {
   findById(id: string, options?: TReadOptions): Promise<Role | undefined>;
+  // The org's or project's custom roles with these slugs; slugs with no role are left out.
+  findBySlugs(
+    input: { owner: { orgId: string } | { projectId: string }; slugs: string[] },
+    options?: TReadOptions
+  ): Promise<Role[]>;
   create(role: Omit<TRolesInsert, "id" | "createdAt" | "updatedAt">): Promise<Role>;
   deleteById(id: string): Promise<Role | undefined>;
 };
@@ -21,6 +26,24 @@ export class RoleDataAccess implements TRoleDataAccess {
       return row ? Role.restore(row) : undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find role" });
+    }
+  }
+
+  async findBySlugs(
+    { owner, slugs }: { owner: { orgId: string } | { projectId: string }; slugs: string[] },
+    options?: TReadOptions
+  ): Promise<Role[]> {
+    if (!slugs.length) return [];
+    try {
+      const rows = await this.db
+        .reader(options)(TableName.Role)
+        .where(owner)
+        .whereIn("slug", slugs)
+        .select("*")
+        .orderBy("slug");
+      return rows.map((row) => Role.restore(row));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find roles by slug" });
     }
   }
 

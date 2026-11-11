@@ -12,6 +12,13 @@ export class InMemoryGroupDataAccess implements TGroupDataAccess {
     return row ? Group.restore(row) : undefined;
   }
 
+  async findByIds(ids: string[]): Promise<Group[]> {
+    return ids
+      .flatMap((id) => this.state.tables.groups.get(id) ?? [])
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((row) => Group.restore(row));
+  }
+
   async create(group: Omit<TGroupsInsert, "id" | "createdAt" | "updatedAt">): Promise<Group> {
     const now = new Date();
     const row = { ...group, id: InMemoryAccessControlState.newId(), createdAt: now, updatedAt: now };

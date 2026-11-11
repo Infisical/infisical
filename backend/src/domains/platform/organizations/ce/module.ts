@@ -7,11 +7,13 @@ import { NotFoundError } from "@app/lib/errors";
 
 import { OrganizationDataAccess } from "./data-access/organization-data-access";
 import { OrgPermission } from "./service/org-access";
+import { OrgMemberAccess } from "./service/org-member-access";
 import { OrgPermissionService, TGetOrgPermissionInput } from "./service/org-permission-service";
 import { SsoSessionCheck, TSsoSessionUser } from "./service/sso-session-check";
 import { TSsoSessionRefusal } from "./service/sso-session-policy";
 
 export { OrgPermission } from "./service/org-access";
+export type { TOrgRolePermission } from "./service/org-member-access";
 export type { TGetOrgPermissionInput } from "./service/org-permission-service";
 export * from "./service/permission/org-permission";
 export type { TSsoSessionUser } from "./service/sso-session-check";
@@ -34,6 +36,11 @@ export type TOrganizationsDomain = {
   // session against an org other than the request's (selecting an org, OAuth consent, token exchange); they decide
   // the response themselves. Throws NotFound when the org does not exist.
   findSsoSessionRefusal: (input: { user: TSsoSessionUser; orgId: string }) => Promise<TSsoSessionRefusal | undefined>;
+  // Each role slug as a permission of its own: what a role change is measured against. Refuses a custom slug the
+  // org does not have unless ignoreUnresolvedRoles.
+  getOrgPermissionByRoles: OrgMemberAccess["getOrgPermissionByRoles"];
+  // Each active org role and org privilege another member holds, as a permission of its own.
+  getGrantPermissions: OrgMemberAccess["getGrantPermissions"];
 };
 
 export type TOrganizationsDeps = {
@@ -50,6 +57,7 @@ export class OrganizationsModule {
   constructor({ db, accessControlDomain }: TOrganizationsDeps) {
     const organizations = new OrganizationDataAccess(db);
     const permissions = new OrgPermissionService({ accessControlDomain, memo: new ActorMemo<OrgPermission>() });
+    const memberAccess = new OrgMemberAccess({ accessControlDomain });
     const ssoSessions = new SsoSessionCheck({ canBypassSso: (input) => permissions.canBypassSso(input) });
     this.service = {
       findActorOrg: async ({ orgId }) => {
@@ -60,6 +68,8 @@ export class OrganizationsModule {
       resolveRootOrgId: (orgId) => organizations.resolveRootOrgId(orgId),
       getOrgPermission: (input) => permissions.getOrgPermission(input),
       assertSessionAllowed: (input) => ssoSessions.assertSessionAllowed(input),
+      getOrgPermissionByRoles: (input) => memberAccess.getOrgPermissionByRoles(input),
+      getGrantPermissions: (input) => memberAccess.getGrantPermissions(input),
       findSsoSessionRefusal: async ({ user, orgId }) => {
         const organization = await organizations.findActorOrganization(orgId);
         if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });

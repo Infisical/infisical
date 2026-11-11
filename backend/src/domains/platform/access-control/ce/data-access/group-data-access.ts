@@ -8,6 +8,7 @@ export type TGroupMemberRef = { userId: string } | { identityId: string };
 
 export type TGroupDataAccess = {
   findById(id: string, options?: TReadOptions): Promise<Group | undefined>;
+  findByIds(ids: string[], options?: TReadOptions): Promise<Group[]>;
   create(group: Omit<TGroupsInsert, "id" | "createdAt" | "updatedAt">): Promise<Group>;
   deleteById(id: string): Promise<Group | undefined>;
   addMembers(groupId: string, members: TGroupMemberRef[], options?: { isPending?: boolean }): Promise<void>;
@@ -24,6 +25,16 @@ export class GroupDataAccess implements TGroupDataAccess {
       return row ? Group.restore(row) : undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find group" });
+    }
+  }
+
+  async findByIds(ids: string[], options?: TReadOptions): Promise<Group[]> {
+    if (!ids.length) return [];
+    try {
+      const rows = await this.db.reader(options)(TableName.Groups).whereIn("id", ids).select("*").orderBy("id");
+      return rows.map((row) => Group.restore(row));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find groups" });
     }
   }
 

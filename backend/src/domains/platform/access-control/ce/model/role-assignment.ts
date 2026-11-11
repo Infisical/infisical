@@ -44,6 +44,22 @@ export class RoleAssignment {
     return this.props.customRoleSlug ?? null;
   }
 
+  get customRoleName(): string | null {
+    return this.props.customRoleName ?? null;
+  }
+
+  get isTemporary(): boolean {
+    return Boolean(this.props.isTemporary);
+  }
+
+  get temporaryAccessStartTime(): Date | null {
+    return this.props.temporaryAccessStartTime ?? null;
+  }
+
+  get temporaryAccessEndTime(): Date | null {
+    return this.props.temporaryAccessEndTime ?? null;
+  }
+
   get customRolePermissions(): unknown {
     return this.props.customRolePermissions;
   }

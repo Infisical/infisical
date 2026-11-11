@@ -23,6 +23,10 @@ export class Role {
     return this.props.slug;
   }
 
+  get name(): string {
+    return this.props.name;
+  }
+
   get permissions(): unknown {
     return this.props.permissions;
   }

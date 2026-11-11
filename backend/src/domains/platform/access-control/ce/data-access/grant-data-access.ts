@@ -10,6 +10,7 @@ import { ActorGrants } from "../model/actor-grants";
 import { TIdentityAttributeProps } from "../model/identity-attribute";
 import { TMembershipProps } from "../model/membership";
 import { TPrivilegeProps } from "../model/privilege";
+import { ProjectMemberGrants, TOwnedAttributeProps } from "../model/project-member-grants";
 import { TRoleAssignmentProps } from "../model/role-assignment";
 
 export type TGrantActor = { type: ActorType.USER | ActorType.IDENTITY; id: string };
@@ -27,6 +28,12 @@ export type TGrantDataAccess = {
   // A hash of everything findActorGrants reads for the actor in one project, its resources and its org. It changes
   // when a membership, role assignment, custom role, privilege or attribute changes, or when a temporary grant ends.
   fingerprint(actor: TGrantActor, scope: { orgId: string; projectId: string }): Promise<string>;
+  // Every membership in the project (users, identities and groups) with its roles, and the project-wide privileges
+  // and the attributes of its direct user and identity members. Active or not; callers filter by time.
+  findProjectMemberGrants(
+    scope: { orgId: string; projectId: string },
+    options?: TReadOptions
+  ): Promise<ProjectMemberGrants>;
 };
 
 type TMembershipRoleRow = Record<string, unknown> & { membershipId: string; membershipRoleId: string };
@@ -106,6 +113,49 @@ export class GrantDataAccess implements TGrantDataAccess {
     }
   }
 
+  async findProjectMemberGrants(
+    scope: { orgId: string; projectId: string },
+    options?: TReadOptions
+  ): Promise<ProjectMemberGrants> {
+    try {
+      const knex = this.db.reader(options);
+      const rows: TMembershipRoleRow[] = await GrantDataAccess.selectMembershipRoles(
+        knex,
+        knex(TableName.Membership)
+          .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+          .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+          .where(`${TableName.Membership}.scopeOrgId`, scope.orgId)
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .where(`${TableName.Membership}.scopeProjectId`, scope.projectId)
+      );
+      const memberships = GrantDataAccess.nestRoles(rows);
+      const userIds = memberships.flatMap((membership) => (membership.actorUserId ? [membership.actorUserId] : []));
+      const identityIds = memberships.flatMap((membership) =>
+        membership.actorIdentityId ? [membership.actorIdentityId] : []
+      );
+      const [privileges, attributes] = await Promise.all([
+        knex(TableName.AdditionalPrivilege)
+          .where(`${TableName.AdditionalPrivilege}.projectId`, scope.projectId)
+          .whereNull(`${TableName.AdditionalPrivilege}.folderId`)
+          .select("*")
+          .orderBy("id") as Promise<TPrivilegeProps[]>,
+        knex(TableName.IdentityMetadata)
+          .where((qb) => {
+            void qb
+              .where((users) => {
+                void users.whereIn("userId", userIds).where("orgId", scope.orgId);
+              })
+              .orWhereIn("identityId", identityIds);
+          })
+          .select("id", "key", "value", "userId", "identityId")
+          .orderBy("id") as Promise<TOwnedAttributeProps[]>
+      ]);
+      return ProjectMemberGrants.restore({ memberships, privileges, attributes });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project member grants" });
+    }
+  }
+
   private static whereActorOrItsGroups(knex: Knex, qb: Knex.QueryBuilder, actor: TGrantActor) {
     const groupSubquery: Knex.QueryBuilder =
       actor.type === ActorType.USER
@@ -146,7 +196,13 @@ export class GrantDataAccess implements TGrantDataAccess {
         .where(`${TableName.Membership}.isActive`, true);
     }
 
-    const rows: TMembershipRoleRow[] = await query
+    const rows = await GrantDataAccess.selectMembershipRoles(knex, query);
+
+    return GrantDataAccess.nestRoles(rows);
+  }
+
+  private static selectMembershipRoles(knex: Knex, query: Knex.QueryBuilder): Promise<TMembershipRoleRow[]> {
+    return query
       .select(knex.ref("*").withSchema(TableName.Membership))
       .select(
         knex.ref("id").withSchema(TableName.Membership).as("membershipId"),
@@ -165,8 +221,6 @@ export class GrantDataAccess implements TGrantDataAccess {
         knex.ref("permissions").withSchema(TableName.Role).as("customRolePermissions")
       )
       .orderBy([{ column: `${TableName.Membership}.id` }, { column: `${TableName.MembershipRole}.id` }]);
-
-    return GrantDataAccess.nestRoles(rows);
   }
 
   private static nestRoles(rows: TMembershipRoleRow[]): TMembershipProps[] {

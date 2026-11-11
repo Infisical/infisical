@@ -13,6 +13,7 @@ import { Project } from "../model/project";
 import { ProductAccessRegistry } from "./product-access-registry";
 import { ProjectPermissionService } from "./project-permission-service";
 import { ProjectResourceAccess, TResourceRoles } from "./project-resource-access";
+import { ProjectRoleRules } from "./project-role-rules";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
@@ -37,7 +38,7 @@ const setup = () => {
   const project = Project.restore({ id: projectId, name: "p", slug: "p", orgId, type: ProjectType.PAM });
   const projectPermissions = new ProjectPermissionService({
     accessControlDomain,
-    registry: new ProductAccessRegistry(),
+    roleRules: new ProjectRoleRules(new ProductAccessRegistry()),
     projects: { findById: async (id) => (id === projectId ? project : undefined), findDeletionState: async () => "" },
     memo: new ActorMemo<{ project: Project; grants: ActorGrants }>()
   });

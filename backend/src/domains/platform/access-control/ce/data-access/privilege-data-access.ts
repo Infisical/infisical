@@ -15,6 +15,8 @@ export type TPrivilegeDataAccess = {
     input: { actor: { type: ActorType.USER | ActorType.IDENTITY; id: string }; projectId: string },
     options?: TReadOptions
   ): Promise<Privilege[]>;
+  // Every folder grant in a project, of every user and identity, active or not.
+  findProjectFolderGrants(input: { projectId: string }, options?: TReadOptions): Promise<Privilege[]>;
 };
 
 // Owns additional_privileges, folder grants included.
@@ -57,6 +59,20 @@ export class PrivilegeDataAccess implements TPrivilegeDataAccess {
       return rows.map((row) => Privilege.restore(row));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find folder grants" });
+    }
+  }
+
+  async findProjectFolderGrants({ projectId }: { projectId: string }, options?: TReadOptions): Promise<Privilege[]> {
+    try {
+      const rows = await this.db
+        .reader(options)(TableName.AdditionalPrivilege)
+        .where({ projectId })
+        .whereNotNull("folderId")
+        .select("*")
+        .orderBy("id");
+      return rows.map((row) => Privilege.restore(row));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find project folder grants" });
     }
   }
 

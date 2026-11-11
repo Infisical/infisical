@@ -45,6 +45,13 @@ export class InMemoryPrivilegeDataAccess implements TPrivilegeDataAccess {
       .map((row) => Privilege.restore(row));
   }
 
+  async findProjectFolderGrants({ projectId }: { projectId: string }): Promise<Privilege[]> {
+    return [...this.state.tables.privileges.values()]
+      .filter((row) => row.projectId === projectId && row.folderId)
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((row) => Privilege.restore(row));
+  }
+
   async deleteByIds(ids: string[]): Promise<Privilege[]> {
     return ids.flatMap((id) => {
       const row = this.state.tables.privileges.get(id);

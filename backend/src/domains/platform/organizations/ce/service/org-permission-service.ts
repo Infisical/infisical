@@ -15,14 +15,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 
 import { OrgPermission } from "./org-access";
 import { orgOauthAllowlist } from "./org-oauth-scopes";
-import {
-  orgAdminPermissions,
-  orgMemberPermissions,
-  orgNoAccessPermissions,
-  OrgPermissionSet,
-  OrgPermissionSsoActions,
-  OrgPermissionSubjects
-} from "./permission/org-permission";
+import { ORG_ROLES } from "./org-roles";
+import { OrgPermissionSet, OrgPermissionSsoActions, OrgPermissionSubjects } from "./permission/org-permission";
 
 export type TGetOrgPermissionInput = {
   actor: TActorContext;
@@ -35,12 +29,6 @@ export type TGetOrgPermissionInput = {
 export type TOrgPermissionServiceDeps = {
   accessControlDomain: Pick<TAccessControlDomain, "fetchGrants">;
   memo: ActorMemo<OrgPermission>;
-};
-
-const ORG_ROLES: Record<string, TPermissionRule<OrgPermissionSet>[]> = {
-  [OrgMembershipRole.Admin]: orgAdminPermissions,
-  [OrgMembershipRole.Member]: orgMemberPermissions,
-  [OrgMembershipRole.NoAccess]: orgNoAccessPermissions
 };
 
 export class OrgPermissionService {
