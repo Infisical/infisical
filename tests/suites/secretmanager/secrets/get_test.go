@@ -92,6 +92,7 @@ func TestSecret_Get(t *testing.T) {
 		require.NotNilf(t, res.JSON200, "reading by id returned %d: %s", res.StatusCode(), res.Body)
 		require.Equal(t, "DB_URL", res.JSON200.Secret.SecretKey)
 		require.Equal(t, "postgres://app", res.JSON200.Secret.SecretValue)
+		require.False(t, res.JSON200.Secret.SecretValueHidden)
 		require.Equal(t, "/app", res.JSON200.Secret.SecretPath)
 	})
 
