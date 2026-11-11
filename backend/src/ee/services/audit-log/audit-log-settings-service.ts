@@ -1,19 +1,24 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType, OrganizationActionScope, TAuditLogSettings } from "@app/db/schemas";
+import { TAuditLogSettings } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import {
+  OrgPermissionAuditLogsActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  ProjectPermissionAuditLogsActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { OrgServiceActor } from "@app/lib/types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   AUDIT_LOG_EVENT_CLASS_DEFAULTS,
   AUDIT_LOG_EVENT_CLASSES,
@@ -39,7 +44,8 @@ type TAuditLogSettingsServiceFactoryDep = {
   auditLogSettingsDAL: Pick<TAuditLogSettingsDALFactory, "find" | "transaction" | "delete" | "insertMany">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   licenseDomain: TLicenseDomain;
   keyStore: Pick<TKeyStoreFactory, "getItems" | "setItemWithExpiry" | "deleteItem">;
 };
@@ -120,7 +126,8 @@ export const auditLogSettingsServiceFactory = ({
   auditLogSettingsDAL,
   orgDAL,
   projectDAL,
-  permissionService,
+  organizationsDomain,
+  projectsDomain,
   licenseDomain,
   keyStore
 }: TAuditLogSettingsServiceFactoryDep) => {
@@ -134,27 +141,13 @@ export const auditLogSettingsServiceFactory = ({
     }
   };
 
-  const findOrgOrThrow = async (orgId: string) => {
-    const org = await orgDAL.findById(orgId);
-    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
-    return org;
-  };
-
   const findProjectOrThrow = async (projectId: string) => {
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
     return project;
   };
 
-  const getOrgPermission = (actor: OrgServiceActor) =>
-    permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
+  const getOrgPermission = (actor: TActorContext) => organizationsDomain.getOrgPermission({ actor });
 
   const toResponse = (
     overrides: TAuditLogEventClassOverrides,
@@ -272,66 +265,40 @@ export const auditLogSettingsServiceFactory = ({
   };
 
   const getOrgSettings = async ({ actor }: TGetOrgAuditLogSettingsDTO) => {
-    const { permission } = await getOrgPermission(actor);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionAuditLogsActions.Read, OrgPermissionSubjects.AuditLogs);
-    const org = await findOrgOrThrow(actor.orgId);
+    const permission = await getOrgPermission(actor);
+    permission.assert({ action: OrgPermissionAuditLogsActions.Read, subject: OrgPermissionSubjects.AuditLogs });
+    const { org } = actor;
     const rows = await auditLogSettingsDAL.find({ orgId: org.id, projectId: null });
     return toResponse(toOverrides(rows), org);
   };
 
   const updateOrgSettings = async ({ actor, eventClasses }: TUpdateOrgAuditLogSettingsDTO) => {
-    const { permission } = await getOrgPermission(actor);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionAuditLogsActions.Edit, OrgPermissionSubjects.AuditLogs);
-    await assertPlanAllowsAuditLogs(actor.orgId);
-    const org = await findOrgOrThrow(actor.orgId);
+    const permission = await getOrgPermission(actor);
+    permission.assert({ action: OrgPermissionAuditLogsActions.Edit, subject: OrgPermissionSubjects.AuditLogs });
+    await assertPlanAllowsAuditLogs(actor.org.id);
+    const { org } = actor;
     const overrides = toFullOverrides(eventClasses);
     assertAuthorizationClassAllowed(org, overrides);
     await writeScopeSettings({ orgId: org.id, projectId: null }, overrides);
     return toResponse(overrides, org);
   };
 
-  const getProjectSettings = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    projectId
-  }: TGetProjectAuditLogSettingsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAuditLogsActions.Read,
-      ProjectPermissionSub.AuditLogs
-    );
+  const getProjectSettings = async ({ actor, projectId }: TGetProjectAuditLogSettingsDTO) => {
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionAuditLogsActions.Read, subject: ProjectPermissionSub.AuditLogs });
 
-    const project = await findProjectOrThrow(projectId);
-    const org = await findOrgOrThrow(project.orgId);
+    await findProjectOrThrow(projectId);
+    const { org } = actor;
     const rows = await auditLogSettingsDAL.find({ orgId: org.id, projectId });
     return toResponse(toOverrides(rows), org);
   };
 
-  const updateProjectSettings = async ({ eventClasses, ...dto }: TUpdateProjectAuditLogSettingsDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: dto.actor,
-      actorId: dto.actorId,
-      projectId: dto.projectId,
-      actorAuthMethod: dto.actorAuthMethod,
-      actorOrgId: dto.actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAuditLogsActions.Edit,
-      ProjectPermissionSub.AuditLogs
-    );
+  const updateProjectSettings = async ({ eventClasses, actor, projectId }: TUpdateProjectAuditLogSettingsDTO) => {
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionAuditLogsActions.Edit, subject: ProjectPermissionSub.AuditLogs });
 
-    const project = await findProjectOrThrow(dto.projectId);
-    const org = await findOrgOrThrow(project.orgId);
+    const project = await findProjectOrThrow(projectId);
+    const { org } = actor;
     await assertPlanAllowsAuditLogs(org.id);
     const overrides = toFullOverrides(eventClasses);
     assertAuthorizationClassAllowed(org, overrides);

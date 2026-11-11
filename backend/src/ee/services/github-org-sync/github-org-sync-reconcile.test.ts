@@ -1,8 +1,8 @@
-import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
@@ -112,10 +112,10 @@ const createService = () => {
     githubOrgSyncDAL: {
       findOne: vi.fn().mockResolvedValue({ isActive: true, githubOrgName: "acme", encryptedGithubOrgAccessToken: "x" })
     } as never,
-    permissionService: {
+    organizationsDomain: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }))
     } as never,
     kmsCoreDomain: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({ decryptor: () => Buffer.from("token") })
@@ -270,7 +270,7 @@ describe("GitHub org sync and org access reconcile", () => {
     ]);
 
     await service.syncAllTeams({
-      orgPermission: { type: ActorType.USER, id: "actor-1", orgId: ORG_ID, authMethod: null },
+      orgPermission: { principal: { type: ActorType.USER, id: "actor-1", authMethod: null }, org: { id: ORG_ID } },
       auditLogInfo
     } as never);
 

@@ -85,12 +85,7 @@ export const registerRelayV2Router = async (server: FastifyZodProvider) => {
       const relay = await server.services.relay.createRelay({
         ...rest,
         authMethod: authMethodArg,
-        actor: {
-          type: req.permission.type,
-          id: req.permission.id,
-          orgId: req.permission.orgId,
-          authMethod: req.permission.authMethod
-        }
+        actor: req.permission
       });
 
       const view = await server.services.resourceAuthMethod.loadView({ type: "relay", id: relay.id });

@@ -1,6 +1,8 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { vi } from "vitest";
 
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   OrgPermissionSecretsManagementInsightsActions,
@@ -15,10 +17,10 @@ import { insightsServiceFactory, TInsightsServiceFactoryDep } from "./insights-s
 const dto = {
   secretValue: "value",
   orgId: "org",
-  actor: ActorType.USER,
-  actorId: "user",
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: "org"
+  actor: {
+    principal: { type: ActorType.USER, id: "user", authMethod: AuthMethod.EMAIL },
+    org: { id: "org", rootOrgId: "org", parentOrgId: "org" }
+  } as unknown as TActorContext
 };
 
 const buildService = ({
@@ -40,16 +42,16 @@ const buildService = ({
       }))
     },
     licenseDomain: new FakeLicenseDomain().setPlan("org", { secretAccessInsights: hasInsightsPlan as false }),
-    permissionService: {
-      getOrgPermission: vi.fn(async () => ({
-        permission: createMongoAbility<OrgPermissionSet>(
-          insightsActions.map((action) => ({ action, subject: OrgPermissionSubjects.SecretsManagementInsights }))
-        ),
-        memberships: [],
-        hasRole: () => false
-      })),
-      getProjectPermission: vi.fn()
-    }
+    organizationsDomain: {
+      getOrgPermission: vi.fn(async () =>
+        Permission.fromRules({
+          rules: createMongoAbility<OrgPermissionSet>(
+            insightsActions.map((action) => ({ action, subject: OrgPermissionSubjects.SecretsManagementInsights }))
+          ).rules
+        })
+      )
+    },
+    secretsDomain: { getSecretsPermission: vi.fn() }
   } as unknown as TInsightsServiceFactoryDep);
 
   return { service, orgDAL, secretV2BridgeDAL };

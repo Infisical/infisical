@@ -1,9 +1,13 @@
-import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
+import { TActorContext, TActorContexts } from "@app/domains/lib/actor-context";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionSubjects, OrgPermissionSubOrgActions } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionSubjects,
+  OrgPermissionSubOrgActions,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { ActorType } from "@app/lib/auth/actor-types";
@@ -15,7 +19,6 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TCreateSubOrgDTO, TDeleteSubOrgDTO, TJoinSubOrgDTO, TListSubOrgDTO, TUpdateSubOrgDTO } from "./sub-org-types";
 
 type TSubOrgServiceFactoryDep = {
@@ -23,7 +26,8 @@ type TSubOrgServiceFactoryDep = {
     TOrgDALFactory,
     "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById" | "deleteById"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
+  actorContexts: Pick<TActorContexts, "forPrincipal">;
   licenseDomain: TLicenseDomain;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
@@ -35,29 +39,27 @@ export type TSubOrgServiceFactory = ReturnType<typeof subOrgServiceFactory>;
 
 export const subOrgServiceFactory = ({
   orgDAL,
-  permissionService,
+  organizationsDomain,
+  actorContexts,
   licenseDomain,
   membershipDAL,
   membershipRoleDAL,
   projectDAL,
   certificatePolicyDAL
 }: TSubOrgServiceFactoryDep) => {
-  const createSubOrg = async ({ name, slug, permission }: TCreateSubOrgDTO) => {
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      actorId: permission.id,
-      actor: permission.type,
-      orgId: permission.orgId,
-      actorOrgId: permission.orgId,
-      actorAuthMethod: permission.authMethod,
+  // Sub-organizations are listed and managed in the root org, so a request scoped to a sub-org is checked there.
+  const $rootOrgActor = async (actor: TActorContext) =>
+    actor.org.id === actor.org.rootOrgId ? actor : actorContexts.forPrincipal(actor.principal, actor.org.rootOrgId);
+
+  const createSubOrg = async ({ name, slug, actor }: TCreateSubOrgDTO) => {
+    const orgPermission = await organizationsDomain.getOrgPermission({
+      actor,
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionSubOrgActions.Create,
-      OrgPermissionSubjects.SubOrganization
-    );
+    orgPermission.assert({ action: OrgPermissionSubOrgActions.Create, subject: OrgPermissionSubjects.SubOrganization });
 
-    const orgLicensePlan = await licenseDomain.getPlan(permission.rootOrgId);
+    const orgLicensePlan = await licenseDomain.getPlan(actor.org.rootOrgId);
     if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message: "Sub-organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
@@ -68,7 +70,7 @@ export const subOrgServiceFactory = ({
     const generatedSlug = slug ?? slugify(name, { lowercase: true });
 
     const existingSubOrg = await orgDAL.findOne({
-      parentOrgId: permission.orgId,
+      parentOrgId: actor.org.id,
       slug: generatedSlug
     });
     if (existingSubOrg) {
@@ -77,13 +79,13 @@ export const subOrgServiceFactory = ({
 
     const organization = await orgDAL.transaction(async (tx) => {
       const org = await orgDAL.create(
-        { name, slug: generatedSlug, rootOrgId: permission.rootOrgId, parentOrgId: permission.orgId },
+        { name, slug: generatedSlug, rootOrgId: actor.org.rootOrgId, parentOrgId: actor.org.id },
         tx
       );
       const membership = await membershipDAL.create(
         {
           scope: AccessScope.Organization,
-          [permission.type === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"]: permission.id,
+          [actor.principal.type === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId"]: actor.principal.id,
           scopeOrgId: org.id,
           status: OrgMembershipStatus.Accepted,
           isActive: true
@@ -101,8 +103,8 @@ export const subOrgServiceFactory = ({
       await bootstrapCertManagerProject(
         {
           orgId: org.id,
-          adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
-          adminIdentityIds: permission.type === ActorType.IDENTITY ? [permission.id] : []
+          adminUserIds: actor.principal.type === ActorType.USER ? [actor.principal.id] : [],
+          adminIdentityIds: actor.principal.type === ActorType.IDENTITY ? [actor.principal.id] : []
         },
         { projectDAL, membershipDAL, membershipRoleDAL, certificatePolicyDAL },
         tx
@@ -111,8 +113,8 @@ export const subOrgServiceFactory = ({
       await bootstrapPamProject(
         {
           orgId: org.id,
-          adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
-          adminIdentityIds: permission.type === ActorType.IDENTITY ? [permission.id] : []
+          adminUserIds: actor.principal.type === ActorType.USER ? [actor.principal.id] : [],
+          adminIdentityIds: actor.principal.type === ActorType.IDENTITY ? [actor.principal.id] : []
         },
         { projectDAL, membershipDAL, membershipRoleDAL },
         tx
@@ -121,8 +123,8 @@ export const subOrgServiceFactory = ({
       await bootstrapSecretScanningProject(
         {
           orgId: org.id,
-          adminUserIds: permission.type === ActorType.USER ? [permission.id] : [],
-          adminIdentityIds: permission.type === ActorType.IDENTITY ? [permission.id] : []
+          adminUserIds: actor.principal.type === ActorType.USER ? [actor.principal.id] : [],
+          adminIdentityIds: actor.principal.type === ActorType.IDENTITY ? [actor.principal.id] : []
         },
         { projectDAL, membershipDAL, membershipRoleDAL },
         tx
@@ -138,20 +140,13 @@ export const subOrgServiceFactory = ({
     };
   };
 
-  const listSubOrgs = async ({ permission, data }: TListSubOrgDTO) => {
-    await permissionService.getOrgPermission({
-      actorId: permission.id,
-      actor: permission.type,
-      orgId: permission.rootOrgId,
-      actorOrgId: permission.rootOrgId,
-      actorAuthMethod: permission.authMethod,
-      scope: OrganizationActionScope.Any
-    });
+  const listSubOrgs = async ({ actor, data }: TListSubOrgDTO) => {
+    await organizationsDomain.getOrgPermission({ actor: await $rootOrgActor(actor) });
 
     const { orgs: organizations, totalCount } = await orgDAL.listSubOrganizations({
-      actorId: permission.id,
-      actorType: permission.type,
-      orgId: permission.rootOrgId,
+      actorId: actor.principal.id,
+      actorType: actor.principal.type,
+      orgId: actor.org.rootOrgId,
       isAccessible: data?.isAccessible,
       search: data?.search,
       orderBy: data?.orderBy,
@@ -166,28 +161,21 @@ export const subOrgServiceFactory = ({
     };
   };
 
-  const updateSubOrg = async ({ subOrgId, name, slug, permission }: TUpdateSubOrgDTO) => {
+  const updateSubOrg = async ({ subOrgId, name, slug, actor }: TUpdateSubOrgDTO) => {
     const subOrg = await orgDAL.findOne({
-      rootOrgId: permission.rootOrgId,
+      rootOrgId: actor.org.rootOrgId,
       id: subOrgId
     });
     if (!subOrg) {
       throw new BadRequestError({ message: "Sub-organization not found" });
     }
 
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      actorId: permission.id,
-      actor: permission.type,
-      orgId: permission.rootOrgId,
-      actorOrgId: permission.rootOrgId,
-      actorAuthMethod: permission.authMethod,
+    const orgPermission = await organizationsDomain.getOrgPermission({
+      actor: await $rootOrgActor(actor),
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionSubOrgActions.Edit,
-      OrgPermissionSubjects.SubOrganization
-    );
+    orgPermission.assert({ action: OrgPermissionSubOrgActions.Edit, subject: OrgPermissionSubjects.SubOrganization });
 
     const updateData: { name?: string; slug?: string } = {};
 
@@ -238,8 +226,8 @@ export const subOrgServiceFactory = ({
     };
   };
 
-  const joinSubOrg = async ({ subOrgId, permission }: TJoinSubOrgDTO) => {
-    const orgLicensePlan = await licenseDomain.getPlan(permission.rootOrgId);
+  const joinSubOrg = async ({ subOrgId, actor }: TJoinSubOrgDTO) => {
+    const orgLicensePlan = await licenseDomain.getPlan(actor.org.rootOrgId);
     if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
         message:
@@ -248,31 +236,27 @@ export const subOrgServiceFactory = ({
     }
 
     const subOrg = await orgDAL.findOne({
-      rootOrgId: permission.rootOrgId,
+      rootOrgId: actor.org.rootOrgId,
       id: subOrgId
     });
     if (!subOrg) {
       throw new BadRequestError({ message: "Sub-organization not found" });
     }
 
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      actorId: permission.id,
-      actor: permission.type,
-      orgId: permission.rootOrgId,
-      actorOrgId: permission.rootOrgId,
-      actorAuthMethod: permission.authMethod,
+    const orgPermission = await organizationsDomain.getOrgPermission({
+      actor: await $rootOrgActor(actor),
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionSubOrgActions.DirectAccess,
-      OrgPermissionSubjects.SubOrganization
-    );
+    orgPermission.assert({
+      action: OrgPermissionSubOrgActions.DirectAccess,
+      subject: OrgPermissionSubjects.SubOrganization
+    });
 
-    const actorField = permission.type === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
+    const actorField = actor.principal.type === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
     const existingMembership = await membershipDAL.findOne({
       scope: AccessScope.Organization,
-      [actorField]: permission.id,
+      [actorField]: actor.principal.id,
       scopeOrgId: subOrgId
     });
 
@@ -284,7 +268,7 @@ export const subOrgServiceFactory = ({
       const membership = await membershipDAL.create(
         {
           scope: AccessScope.Organization,
-          [actorField]: permission.id,
+          [actorField]: actor.principal.id,
           scopeOrgId: subOrgId,
           status: OrgMembershipStatus.Accepted,
           isActive: true
@@ -303,28 +287,21 @@ export const subOrgServiceFactory = ({
     return { organization: subOrg };
   };
 
-  const deleteSubOrg = async ({ subOrgId, permission }: TDeleteSubOrgDTO) => {
+  const deleteSubOrg = async ({ subOrgId, actor }: TDeleteSubOrgDTO) => {
     const subOrg = await orgDAL.findOne({
-      rootOrgId: permission.rootOrgId,
+      rootOrgId: actor.org.rootOrgId,
       id: subOrgId
     });
     if (!subOrg) {
       throw new BadRequestError({ message: "Sub-organization not found" });
     }
 
-    const { permission: orgPermission } = await permissionService.getOrgPermission({
-      actorId: permission.id,
-      actor: permission.type,
-      orgId: permission.rootOrgId,
-      actorOrgId: permission.rootOrgId,
-      actorAuthMethod: permission.authMethod,
+    const orgPermission = await organizationsDomain.getOrgPermission({
+      actor: await $rootOrgActor(actor),
       scope: OrganizationActionScope.ParentOrganization
     });
 
-    ForbiddenError.from(orgPermission).throwUnlessCan(
-      OrgPermissionSubOrgActions.Delete,
-      OrgPermissionSubjects.SubOrganization
-    );
+    orgPermission.assert({ action: OrgPermissionSubOrgActions.Delete, subject: OrgPermissionSubjects.SubOrganization });
 
     await orgDAL.deleteById(subOrgId);
 

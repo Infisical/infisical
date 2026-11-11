@@ -27,11 +27,15 @@ import { dynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-le
 import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory } from "@app/ee/services/insights/insights-service";
 import { TOrgInsightsDTO } from "@app/ee/services/insights/insights-types";
-import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 
-import { buildOrgInsightsGateStubs, passThroughKeyStore, projectScopedInsightsDepStubs } from "./testUtils/insights";
+import {
+  buildOrgInsightsGateStubs,
+  insightsActor,
+  passThroughKeyStore,
+  projectScopedInsightsDepStubs
+} from "./testUtils/insights";
 
 declare const testDb: Knex;
 
@@ -102,11 +106,13 @@ const scopes = {
 
 const scopeList = Object.values(scopes);
 
-const { permissionService, licenseDomain, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
+const { organizationsDomain, secretsDomain, licenseDomain, setCanReadInsights, setPlanHasInsights } =
+  buildOrgInsightsGateStubs();
 
 const insightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
-  permissionService,
+  organizationsDomain,
+  secretsDomain,
   licenseDomain,
   orgDAL: orgDALFactory(testDb),
   identityOrgMembershipDAL: identityOrgDALFactory(testDb),
@@ -116,10 +122,7 @@ const insightsService = insightsServiceFactory({
 });
 
 const actor = (orgId: string): TOrgInsightsDTO => ({
-  actor: ActorType.USER,
-  actorId: ids.uDirect,
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: orgId,
+  actor: insightsActor(ids.uDirect, orgId),
   orgId
 });
 

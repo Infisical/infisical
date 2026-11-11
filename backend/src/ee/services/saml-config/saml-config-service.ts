@@ -1,5 +1,4 @@
 /* eslint-disable no-await-in-loop */
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 import RE2 from "re2";
 
@@ -17,7 +16,11 @@ import {
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionSsoActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { AuthMethod } from "@app/lib/auth/actor-types";
@@ -69,7 +72,6 @@ import { TIdentityGroupMembershipDALFactory } from "../group/identity-group-memb
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { getSamlAssertionReplayDetails, getSamlAssertionReplayWindow } from "./saml-assertion-fns";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
 import { SamlProviders, TSamlConfigServiceFactory } from "./saml-config-types";
@@ -106,7 +108,7 @@ type TSamlConfigServiceFactoryDep = {
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseDomain: TLicenseDomain;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
@@ -149,7 +151,7 @@ export const samlConfigServiceFactory = ({
   alertChannelRecipientDAL,
   eventEmitter,
   additionalPrivilegeDAL,
-  permissionService,
+  organizationsDomain,
   licenseDomain,
   tokenService,
   smtpService,
@@ -340,11 +342,8 @@ export const samlConfigServiceFactory = ({
   const createSamlCfg: TSamlConfigServiceFactory["createSamlCfg"] = async ({
     idpCert,
     actor,
-    actorAuthMethod,
-    actorOrgId,
     orgId,
     issuer,
-    actorId,
     isActive,
     entryPoint,
     authProvider,
@@ -352,15 +351,12 @@ export const samlConfigServiceFactory = ({
     mfaSignalAttribute,
     mfaAuthnContexts
   }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await organizationsDomain.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
+    permission.assert({ action: OrgPermissionSsoActions.Create, subject: OrgPermissionSubjects.Sso });
 
     const plan = await licenseDomain.getPlan(orgId);
     if (!plan.samlSSO)
@@ -419,10 +415,7 @@ export const samlConfigServiceFactory = ({
   const updateSamlCfg: TSamlConfigServiceFactory["updateSamlCfg"] = async ({
     orgId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     idpCert,
-    actorId,
     issuer,
     isActive,
     entryPoint,
@@ -431,15 +424,12 @@ export const samlConfigServiceFactory = ({
     mfaSignalAttribute,
     mfaAuthnContexts
   }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.ParentOrganization,
+    const permission = await organizationsDomain.getOrgPermission({
       actor,
-      actorId,
       orgId,
-      actorAuthMethod,
-      actorOrgId
+      scope: OrganizationActionScope.ParentOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
+    permission.assert({ action: OrgPermissionSsoActions.Edit, subject: OrgPermissionSubjects.Sso });
     const plan = await licenseDomain.getPlan(orgId);
     if (!plan.samlSSO)
       throw new BadRequestError({
@@ -563,15 +553,12 @@ export const samlConfigServiceFactory = ({
 
     // when dto is type id means it's internally used
     if (dto.type === "org") {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.ParentOrganization,
+      const permission = await organizationsDomain.getOrgPermission({
         actor: dto.actor,
-        actorId: dto.actorId,
         orgId: samlConfig.orgId,
-        actorAuthMethod: dto.actorAuthMethod,
-        actorOrgId: dto.actorOrgId
+        scope: OrganizationActionScope.ParentOrganization
       });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Read, OrgPermissionSubjects.Sso);
+      permission.assert({ action: OrgPermissionSsoActions.Read, subject: OrgPermissionSubjects.Sso });
     }
     const { decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,

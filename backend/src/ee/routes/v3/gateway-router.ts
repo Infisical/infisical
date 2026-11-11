@@ -251,10 +251,7 @@ export const registerGatewayV3Router = async (server: FastifyZodProvider) => {
       const authMethodArg = toCreateAuthMethodArg(req.body.authMethod);
 
       const gateway = await server.services.gatewayV2.createGateway({
-        orgId: req.permission.orgId,
-        actorId: req.permission.id,
-        actorType: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         name: req.body.name,
         authMethod: authMethodArg
       });

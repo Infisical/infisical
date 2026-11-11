@@ -1,9 +1,11 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { OrganizationActionScope } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,
@@ -11,9 +13,7 @@ import {
   listProviderOptions
 } from "@app/ee/services/audit-log-stream/audit-log-stream-fns";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { OrgServiceActor } from "@app/lib/types";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TAuditLogStreamDALFactory } from "./audit-log-stream-dal";
 import { LogProvider, REDACTED_CREDENTIAL_VALUE, StreamMode } from "./audit-log-stream-enums";
 import { LOG_STREAM_FACTORY_MAP } from "./audit-log-stream-factory";
@@ -24,7 +24,7 @@ import { TSumoLogicProviderCredentials } from "./sumo-logic/sumo-logic-provider-
 
 export type TAuditLogStreamServiceFactoryDep = {
   auditLogStreamDAL: TAuditLogStreamDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   licenseDomain: TLicenseDomain;
   kmsCoreDomain: TKmsCoreDomain;
 };
@@ -33,30 +33,23 @@ export type TAuditLogStreamServiceFactory = ReturnType<typeof auditLogStreamServ
 
 export const auditLogStreamServiceFactory = ({
   auditLogStreamDAL,
-  permissionService,
+  organizationsDomain,
   licenseDomain,
   kmsCoreDomain
 }: TAuditLogStreamServiceFactoryDep) => {
-  const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: OrgServiceActor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+  const create = async ({ provider, credentials, filters }: TCreateAuditLogStreamDTO, actor: TActorContext) => {
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.auditLogStreams) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan restriction. Upgrade plan to continue."
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Settings });
 
-    const totalStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
+    const totalStreams = await auditLogStreamDAL.find({ orgId: actor.org.id });
     if (plan.auditLogStreamLimit !== null && totalStreams.length >= plan.auditLogStreamLimit) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan limit reached. Contact Infisical to increase quota."
@@ -68,12 +61,12 @@ export const auditLogStreamServiceFactory = ({
 
     const encryptedCredentials = await encryptLogStreamCredentials({
       credentials: validatedCredentials,
-      orgId: actor.orgId,
+      orgId: actor.org.id,
       kmsCoreDomain
     });
 
     const logStream = await auditLogStreamDAL.create({
-      orgId: actor.orgId,
+      orgId: actor.org.id,
       provider,
       encryptedCredentials,
       // All new streams use batch delivery. "single" is reachable only by existing
@@ -88,9 +81,9 @@ export const auditLogStreamServiceFactory = ({
 
   const updateById = async (
     { logStreamId, provider, credentials, streamMode, filters }: TUpdateAuditLogStreamDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.auditLogStreams) {
       throw new BadRequestError({
         message: "Failed to update Audit Log Stream: Plan restriction. Upgrade plan to continue."
@@ -100,16 +93,9 @@ export const auditLogStreamServiceFactory = ({
     const logStream = await auditLogStreamDAL.findById(logStreamId);
     if (!logStream) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: logStream.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId: logStream.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Settings });
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -212,20 +198,13 @@ export const auditLogStreamServiceFactory = ({
     return { ...updatedLogStream, credentials: validatedCredentials } as TAuditLogStream;
   };
 
-  const deleteById = async (logStreamId: string, provider: LogProvider, actor: OrgServiceActor) => {
+  const deleteById = async (logStreamId: string, provider: LogProvider, actor: TActorContext) => {
     const logStream = await auditLogStreamDAL.findById(logStreamId);
     if (!logStream) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: logStream.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId: logStream.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Delete, subject: OrgPermissionSubjects.Settings });
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -238,20 +217,13 @@ export const auditLogStreamServiceFactory = ({
     return decryptLogStream(deletedLogStream, kmsCoreDomain);
   };
 
-  const getById = async (logStreamId: string, provider: LogProvider, actor: OrgServiceActor) => {
+  const getById = async (logStreamId: string, provider: LogProvider, actor: TActorContext) => {
     const logStream = await auditLogStreamDAL.findById(logStreamId);
 
     if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${logStreamId}' not found` });
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: logStream.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId: logStream.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings });
 
     if (logStream.provider !== provider) {
       throw new BadRequestError({
@@ -262,19 +234,12 @@ export const auditLogStreamServiceFactory = ({
     return decryptLogStream(logStream, kmsCoreDomain);
   };
 
-  const list = async (actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
+  const list = async (actor: TActorContext) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings });
 
-    const logStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
+    const logStreams = await auditLogStreamDAL.find({ orgId: actor.org.id });
 
     return Promise.all(logStreams.map((stream) => decryptLogStream(stream, kmsCoreDomain)));
   };

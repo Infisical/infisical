@@ -1,5 +1,5 @@
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import type { TMeterKey } from "@app/domains/platform/license/ce/module";
-import { OrgServiceActor } from "@app/lib/types";
 
 export type BillingV2SubState = "active" | "trialing" | "past-due" | "suspended" | "no-subscription";
 
@@ -264,7 +264,7 @@ export type BillingV2Overview = {
 
 export type TGetBillingV2OverviewDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   // Lets a self-hosted instance admin read an organization their token is not scoped to, because one
   // licence covers every org on the instance. Never honoured on cloud.
   isInstanceAdmin?: boolean;
@@ -278,19 +278,19 @@ export type TListBillableOrganizationsDTO = TGetBillingV2OverviewDTO & {
 
 export type TGetBillingV2CatalogDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   isInstanceAdmin?: boolean;
 };
 
 export type TCreateBillingV2PortalSessionDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   returnPath?: string;
 };
 
 export type TBuyBillingV2ProductDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   productId: string;
   // Which plan tier of the product to purchase; defaults to the first paid self-serve plan.
   plan?: string;
@@ -302,7 +302,7 @@ export type TBuyBillingV2ProductDTO = {
 
 export type TAddBillingV2PaymentMethodDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   returnPath?: string;
 };
 
@@ -332,7 +332,7 @@ export type BillingV2CommitmentChange = {
 
 export type TPreviewBillingV2ChangeDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   addProductId?: string;
   // Plan tier of the product being added; defaults to the first paid self-serve plan.
   plan?: string;
@@ -347,7 +347,7 @@ export type TPreviewBillingV2ChangeDTO = {
 
 export type TUpgradeBillingV2ProductDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   productId: string;
   plan: string;
   expectedPlanVersionId: string;
@@ -356,7 +356,7 @@ export type TUpgradeBillingV2ProductDTO = {
 
 export type TRemoveBillingV2ProductDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   productId: string;
 };
 
@@ -368,14 +368,14 @@ export type TRemoveBillingV2ProductDTO = {
 // Checkout also happens when the card on file needs the customer to approve the charge.
 export type TChangeBillingV2CommitmentDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   changes: BillingV2CommitmentChange[];
   productId: string;
 };
 
 export type TStartBillingV2TrialDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   productId: string;
   plan: string;
   // Billing email for the trial; a trial has no Stripe customer yet, so the server needs it up front.
@@ -385,19 +385,19 @@ export type TStartBillingV2TrialDTO = {
 
 export type TCancelBillingV2TrialDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   productId: string;
 };
 
 export type TConfirmBillingV2TrialPaymentDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   returnPath?: string;
 };
 
 export type TBillingV2SubscriptionLifecycleDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
 };
 
 // The metered dimensions the usage breakdown can explain. Values are License Server dimension keys and
@@ -455,7 +455,7 @@ export enum BillingV2BreakdownScopeKind {
 
 export type TGetBillingV2UsageBreakdownDTO = {
   orgId: string;
-  actor: OrgServiceActor;
+  actor: TActorContext;
   dimensionKey: TBillingV2BreakdownDimension;
   isInstanceAdmin?: boolean;
   scope?: BillingV2BreakdownScopeKind;

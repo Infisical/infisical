@@ -1,47 +1,34 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TTrustedIpDALFactory } from "./trusted-ip-dal";
 import { TTrustedIpServiceFactory } from "./trusted-ip-types";
 
 type TTrustedIpServiceFactoryDep = {
   trustedIpDAL: TTrustedIpDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   licenseDomain: TLicenseDomain;
   projectDAL: Pick<TProjectDALFactory, "findById">;
 };
 
 export const trustedIpServiceFactory = ({
   trustedIpDAL,
-  permissionService,
+  projectsDomain,
   licenseDomain,
   projectDAL
 }: TTrustedIpServiceFactoryDep): TTrustedIpServiceFactory => {
-  const listIpsByProjectId: TTrustedIpServiceFactory["listIpsByProjectId"] = async ({
-    projectId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
+  const listIpsByProjectId: TTrustedIpServiceFactory["listIpsByProjectId"] = async ({ projectId, actor }) => {
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.IpAllowList });
     const trustedIps = await trustedIpDAL.find({
       projectId
     });
@@ -50,23 +37,13 @@ export const trustedIpServiceFactory = ({
 
   const addProjectIp: TTrustedIpServiceFactory["addProjectIp"] = async ({
     projectId,
-    actorId,
-    actorAuthMethod,
     actor,
-    actorOrgId,
     ipAddress: ip,
     comment,
     isActive
   }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.IpAllowList });
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
@@ -98,23 +75,13 @@ export const trustedIpServiceFactory = ({
 
   const updateProjectIp: TTrustedIpServiceFactory["updateProjectIp"] = async ({
     projectId,
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     ipAddress: ip,
     comment,
     trustedIpId
   }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.IpAllowList });
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)
@@ -146,23 +113,9 @@ export const trustedIpServiceFactory = ({
     return { trustedIp, project }; // for audit log
   };
 
-  const deleteProjectIp: TTrustedIpServiceFactory["deleteProjectIp"] = async ({
-    projectId,
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    trustedIpId
-  }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.IpAllowList);
+  const deleteProjectIp: TTrustedIpServiceFactory["deleteProjectIp"] = async ({ projectId, actor, trustedIpId }) => {
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.IpAllowList });
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(projectId), () =>
       projectDAL.findById(projectId)

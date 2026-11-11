@@ -42,6 +42,8 @@ export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
 
 export type TProxyByIdDTO = TAgentVaultProxyScoped & { proxyId: string };
 
+export type TRevokeProxyAccessDTO = TProxyByIdDTO;
+
 export type TBootstrapProxyDTO = {
   proxyId: string;
   tokenVersion: number;

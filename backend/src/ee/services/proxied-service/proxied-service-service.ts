@@ -1,17 +1,17 @@
-import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionProxiedServiceActions,
-  ProjectPermissionSet,
+  ProjectPermission,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
-import { OrgServiceActor, TDynamicSecretWithMetadata } from "@app/lib/types";
+import { TDynamicSecretWithMetadata } from "@app/lib/types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretV2BridgeServiceFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-service";
@@ -19,7 +19,6 @@ import { PersonalOverridesBehavior, SecretImportReferencesBehavior } from "@app/
 
 import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders } from "../dynamic-secret/providers/models";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { BROKERABLE_DYNAMIC_SECRETS } from "./proxied-service-brokerable-outputs";
 import { TProxiedServiceCredentialDALFactory } from "./proxied-service-credential-dal";
 import { TProxiedServiceDALFactory } from "./proxied-service-dal";
@@ -45,7 +44,7 @@ type TProxiedServiceServiceFactoryDep = {
     "findBySecretPath" | "findBySecretPathMultiEnv" | "findSecretPathByFolderIds" | "findByManySecretPath"
   >;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "getSecrets">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   licenseDomain: TLicenseDomain;
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findWithMetadata">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -79,7 +78,7 @@ export const proxiedServiceServiceFactory = ({
   proxiedServiceCredentialDAL,
   folderDAL,
   secretV2BridgeService,
-  permissionService,
+  secretsDomain,
   licenseDomain,
   dynamicSecretDAL,
   projectDAL,
@@ -97,7 +96,7 @@ export const proxiedServiceServiceFactory = ({
   // Requires ReadValue (not just DescribeSecret) on each referenced secret: the proxy brokers the value on
   // the caller's behalf, so attaching a secret they can't read would let them exfiltrate it on the wire.
   const $assertReferencedSecretsReadable = async (
-    actor: OrgServiceActor,
+    actor: TActorContext,
     projectId: string,
     environment: string,
     secretPath: string,
@@ -112,10 +111,10 @@ export const proxiedServiceServiceFactory = ({
     // another secret (${OTHER}). Expanding here under the caller's permissions makes getSecrets throw if they
     // can't read a transitively-referenced secret, blocking them from attaching a value they can't fully read.
     const { secrets, imports } = await secretV2BridgeService.getSecrets({
-      actor: actor.type,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
+      actor: actor.principal.type,
+      actorId: actor.principal.id,
+      actorOrgId: actor.org.id,
+      actorAuthMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
       projectId,
       environment,
       path: secretPath,
@@ -171,7 +170,7 @@ export const proxiedServiceServiceFactory = ({
   };
 
   const $assertReferencedDynamicSecretsLeasable = async (
-    permission: MongoAbility<ProjectPermissionSet>,
+    permission: ProjectPermission,
     orgId: string,
     projectId: string,
     environment: string,
@@ -201,14 +200,15 @@ export const proxiedServiceServiceFactory = ({
     dynamicCreds.forEach((cred) => {
       const ds = byName.get(cred.dynamicSecretName as string) as TDynamicSecretWithMetadata;
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionDynamicSecretActions.Lease,
-        subject(ProjectPermissionSub.DynamicSecrets, {
+      permission.assert({
+        action: ProjectPermissionDynamicSecretActions.Lease,
+        subject: ProjectPermissionSub.DynamicSecrets,
+        fields: {
           environment,
           secretPath,
           metadata: ds.metadata
-        })
-      );
+        }
+      });
 
       const brokerable = BROKERABLE_DYNAMIC_SECRETS[ds.type as DynamicSecretProviders];
       if (!brokerable) {
@@ -225,7 +225,7 @@ export const proxiedServiceServiceFactory = ({
   };
 
   const $decorateCredentialsWithLeaseAccess = async <T extends TCredentialRef>(
-    permission: MongoAbility<ProjectPermissionSet>,
+    permission: ProjectPermission,
     environment: string,
     secretPath: string,
     folderId: string,
@@ -238,14 +238,15 @@ export const proxiedServiceServiceFactory = ({
     return credentials.map((cred) => {
       if (!cred.dynamicSecretName) return cred;
       const metadata = byName.get(cred.dynamicSecretName)?.metadata ?? [];
-      const callerCanLease = permission.can(
-        ProjectPermissionDynamicSecretActions.Lease,
-        subject(ProjectPermissionSub.DynamicSecrets, {
+      const callerCanLease = permission.can({
+        action: ProjectPermissionDynamicSecretActions.Lease,
+        subject: ProjectPermissionSub.DynamicSecrets,
+        fields: {
           environment,
           secretPath,
           metadata
-        })
-      );
+        }
+      });
       return { ...cred, callerCanLease };
     });
   };
@@ -267,25 +268,26 @@ export const proxiedServiceServiceFactory = ({
     });
   };
 
-  const list = async ({ projectId, environment, secretPath }: TListProxiedServicesDTO, actor: OrgServiceActor) => {
-    await $checkLicense(actor.orgId);
+  const list = async ({ projectId, environment, secretPath }: TListProxiedServicesDTO, actor: TActorContext) => {
+    await $checkLicense(actor.org.id);
     const canonicalPath = prefixWithSlash(removeTrailingSlash(secretPath));
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    const scopedSubject = subject(ProjectPermissionSub.ProxiedServices, {
+    const scopedFields = {
       environment,
       secretPath: canonicalPath
+    };
+    const canRead = permission.can({
+      action: ProjectPermissionProxiedServiceActions.Read,
+      subject: ProjectPermissionSub.ProxiedServices,
+      fields: scopedFields
     });
-    const canRead = permission.can(ProjectPermissionProxiedServiceActions.Read, scopedSubject);
-    const canProxy = permission.can(ProjectPermissionProxiedServiceActions.Proxy, scopedSubject);
+    const canProxy = permission.can({
+      action: ProjectPermissionProxiedServiceActions.Proxy,
+      subject: ProjectPermissionSub.ProxiedServices,
+      fields: scopedFields
+    });
     if (!canRead && !canProxy) {
       throw new ForbiddenRequestError({
         message: "You do not have permission to access proxied services in this folder"
@@ -327,8 +329,8 @@ export const proxiedServiceServiceFactory = ({
     };
   };
 
-  const getById = async ({ serviceId }: TGetProxiedServiceByIdDTO, actor: OrgServiceActor) => {
-    await $checkLicense(actor.orgId);
+  const getById = async ({ serviceId }: TGetProxiedServiceByIdDTO, actor: TActorContext) => {
+    await $checkLicense(actor.org.id);
     const service = await proxiedServiceDAL.findByIdWithScope(serviceId);
     if (!service) {
       throw new NotFoundError({
@@ -336,22 +338,23 @@ export const proxiedServiceServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId: service.projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: service.projectId });
 
     const resolvedSecretPath = await $resolveSecretPath(service.projectId, service.folderId);
-    const scopedSubject = subject(ProjectPermissionSub.ProxiedServices, {
+    const scopedFields = {
       environment: service.environmentSlug,
       secretPath: resolvedSecretPath
+    };
+    const canRead = permission.can({
+      action: ProjectPermissionProxiedServiceActions.Read,
+      subject: ProjectPermissionSub.ProxiedServices,
+      fields: scopedFields
     });
-    const canRead = permission.can(ProjectPermissionProxiedServiceActions.Read, scopedSubject);
-    const canProxy = permission.can(ProjectPermissionProxiedServiceActions.Proxy, scopedSubject);
+    const canProxy = permission.can({
+      action: ProjectPermissionProxiedServiceActions.Proxy,
+      subject: ProjectPermissionSub.ProxiedServices,
+      fields: scopedFields
+    });
     if (!canRead && !canProxy) {
       throw new ForbiddenRequestError({
         message: "You do not have permission to access this proxied service"
@@ -371,26 +374,27 @@ export const proxiedServiceServiceFactory = ({
 
   const getByName = async (
     { projectId, environment, secretPath, name }: TGetProxiedServiceByNameDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    await $checkLicense(actor.orgId);
+    await $checkLicense(actor.org.id);
     const canonicalPath = prefixWithSlash(removeTrailingSlash(secretPath));
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
-    const scopedSubject = subject(ProjectPermissionSub.ProxiedServices, {
+    const scopedFields = {
       environment,
       secretPath: canonicalPath
+    };
+    const canRead = permission.can({
+      action: ProjectPermissionProxiedServiceActions.Read,
+      subject: ProjectPermissionSub.ProxiedServices,
+      fields: scopedFields
     });
-    const canRead = permission.can(ProjectPermissionProxiedServiceActions.Read, scopedSubject);
-    const canProxy = permission.can(ProjectPermissionProxiedServiceActions.Proxy, scopedSubject);
+    const canProxy = permission.can({
+      action: ProjectPermissionProxiedServiceActions.Proxy,
+      subject: ProjectPermissionSub.ProxiedServices,
+      fields: scopedFields
+    });
     if (!canRead && !canProxy) {
       throw new ForbiddenRequestError({
         message: "You do not have permission to access this proxied service"
@@ -427,9 +431,9 @@ export const proxiedServiceServiceFactory = ({
 
   const updateById = async (
     { serviceId, name, hostPattern, isEnabled, credentials }: TUpdateProxiedServiceDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    await $checkLicense(actor.orgId);
+    await $checkLicense(actor.org.id);
     const service = await proxiedServiceDAL.findByIdWithScope(serviceId);
     if (!service) {
       throw new NotFoundError({
@@ -437,22 +441,16 @@ export const proxiedServiceServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId: service.projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: service.projectId });
     const resolvedSecretPath = await $resolveSecretPath(service.projectId, service.folderId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionProxiedServiceActions.Edit,
-      subject(ProjectPermissionSub.ProxiedServices, {
+    permission.assert({
+      action: ProjectPermissionProxiedServiceActions.Edit,
+      subject: ProjectPermissionSub.ProxiedServices,
+      fields: {
         environment: service.environmentSlug,
         secretPath: resolvedSecretPath
-      })
-    );
+      }
+    });
 
     if (name && name !== service.name) {
       const conflicting = await proxiedServiceDAL.findOne({
@@ -479,7 +477,7 @@ export const proxiedServiceServiceFactory = ({
     );
     await $assertReferencedDynamicSecretsLeasable(
       permission,
-      actor.orgId,
+      actor.org.id,
       service.projectId,
       service.environmentSlug,
       resolvedSecretPath,
@@ -522,8 +520,8 @@ export const proxiedServiceServiceFactory = ({
     });
   };
 
-  const deleteById = async ({ serviceId }: TDeleteProxiedServiceDTO, actor: OrgServiceActor) => {
-    await $checkLicense(actor.orgId);
+  const deleteById = async ({ serviceId }: TDeleteProxiedServiceDTO, actor: TActorContext) => {
+    await $checkLicense(actor.org.id);
     const service = await proxiedServiceDAL.findByIdWithScope(serviceId);
     if (!service) {
       throw new NotFoundError({
@@ -531,22 +529,16 @@ export const proxiedServiceServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId: service.projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: service.projectId });
     const resolvedSecretPath = await $resolveSecretPath(service.projectId, service.folderId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionProxiedServiceActions.Delete,
-      subject(ProjectPermissionSub.ProxiedServices, {
+    permission.assert({
+      action: ProjectPermissionProxiedServiceActions.Delete,
+      subject: ProjectPermissionSub.ProxiedServices,
+      fields: {
         environment: service.environmentSlug,
         secretPath: resolvedSecretPath
-      })
-    );
+      }
+    });
 
     await proxiedServiceDAL.deleteById(serviceId);
     const { environmentSlug, ...rest } = service;
@@ -559,32 +551,26 @@ export const proxiedServiceServiceFactory = ({
 
   const getDashboardProxiedServiceCount = async (
     { projectId, environments, secretPath, search }: TProxiedServiceDashboardCountDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.secretsBrokering) return 0;
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     const canonicalSecretPath = prefixWithSlash(removeTrailingSlash(secretPath));
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return 0;
 
     const allowedFolders = folders.filter((f) =>
-      permission.can(
-        ProjectPermissionProxiedServiceActions.Read,
-        subject(ProjectPermissionSub.ProxiedServices, {
+      permission.can({
+        action: ProjectPermissionProxiedServiceActions.Read,
+        subject: ProjectPermissionSub.ProxiedServices,
+        fields: {
           environment: f.environment.slug,
           secretPath: canonicalSecretPath
-        })
-      )
+        }
+      })
     );
     if (!allowedFolders.length) return 0;
 
@@ -596,32 +582,26 @@ export const proxiedServiceServiceFactory = ({
 
   const getDashboardProxiedServices = async (
     { projectId, environments, secretPath, search, orderDirection, limit, offset }: TProxiedServiceDashboardListDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.secretsBrokering) return [];
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
 
     const canonicalSecretPath = prefixWithSlash(removeTrailingSlash(secretPath));
     const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, secretPath);
     if (!folders.length) return [];
 
     const allowedFolders = folders.filter((f) =>
-      permission.can(
-        ProjectPermissionProxiedServiceActions.Read,
-        subject(ProjectPermissionSub.ProxiedServices, {
+      permission.can({
+        action: ProjectPermissionProxiedServiceActions.Read,
+        subject: ProjectPermissionSub.ProxiedServices,
+        fields: {
           environment: f.environment.slug,
           secretPath: canonicalSecretPath
-        })
-      )
+        }
+      })
     );
     if (!allowedFolders.length) return [];
 
@@ -647,8 +627,8 @@ export const proxiedServiceServiceFactory = ({
     }));
   };
 
-  const reportUsage = async ({ serviceId }: TReportProxiedServiceUsageDTO, actor: OrgServiceActor) => {
-    await $checkLicense(actor.orgId);
+  const reportUsage = async ({ serviceId }: TReportProxiedServiceUsageDTO, actor: TActorContext) => {
+    await $checkLicense(actor.org.id);
     const service = await proxiedServiceDAL.findByIdWithScope(serviceId);
     if (!service) {
       throw new NotFoundError({
@@ -656,22 +636,16 @@ export const proxiedServiceServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId: service.projectId
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: service.projectId });
     const resolvedSecretPath = await $resolveSecretPath(service.projectId, service.folderId);
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionProxiedServiceActions.ReportUsage,
-      subject(ProjectPermissionSub.ProxiedServices, {
+    permission.assert({
+      action: ProjectPermissionProxiedServiceActions.ReportUsage,
+      subject: ProjectPermissionSub.ProxiedServices,
+      fields: {
         environment: service.environmentSlug,
         secretPath: resolvedSecretPath
-      })
-    );
+      }
+    });
 
     // Only the report that claims the key writes; the rest within the window are dropped.
     const claimed = await keyStore.setItemWithExpiryNX(

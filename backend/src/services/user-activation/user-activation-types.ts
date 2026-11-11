@@ -1,11 +1,6 @@
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { TActorInput } from "@app/lib/types";
 
-export type TGetSecretsActivationStatusDTO = {
-  actor: ActorType;
-  actorId: string;
-  actorOrgId: string;
-  actorAuthMethod: ActorAuthMethod;
-};
+export type TGetSecretsActivationStatusDTO = TActorInput;
 
 export type TActivationRecord = {
   firstSecretCreatedAt?: Date | null;

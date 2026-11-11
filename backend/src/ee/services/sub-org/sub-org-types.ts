@@ -1,4 +1,5 @@
-import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
+import { TActorContext } from "@app/domains/lib/actor-context";
+import { OrderByDirection } from "@app/lib/types";
 
 export enum SubOrgOrderBy {
   Name = "name"
@@ -7,11 +8,11 @@ export enum SubOrgOrderBy {
 export type TCreateSubOrgDTO = {
   name: string;
   slug?: string;
-  permission: OrgServiceActor;
+  actor: TActorContext;
 };
 
 export type TListSubOrgDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   data: Partial<{
     limit?: number;
     offset?: number;
@@ -26,15 +27,15 @@ export type TUpdateSubOrgDTO = {
   subOrgId: string;
   name?: string;
   slug?: string;
-  permission: OrgServiceActor;
+  actor: TActorContext;
 };
 
 export type TDeleteSubOrgDTO = {
   subOrgId: string;
-  permission: OrgServiceActor;
+  actor: TActorContext;
 };
 
 export type TJoinSubOrgDTO = {
   subOrgId: string;
-  permission: OrgServiceActor;
+  actor: TActorContext;
 };

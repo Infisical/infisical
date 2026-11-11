@@ -35,7 +35,7 @@ import { ActorType } from "@app/lib/auth/actor-types";
 import { SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { HmacAlgorithm } from "@app/lib/crypto/hmac";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
-import { TOrgPermission, TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/app-connection/app-connection-types";
 import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
@@ -105,7 +105,7 @@ export type TListProjectAuditLogDTO = {
     secretKey?: string;
     eventMetadata?: Record<string, string>;
   };
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TCreateAuditLogDTO = {
   event: Event;
@@ -201,7 +201,7 @@ export type TAuditLogServiceFactory = {
       projectName?: string | null | undefined;
     }[]
   >;
-  getAuditLogPostgresStorageStatus: (arg: TOrgPermission) => Promise<{
+  getAuditLogPostgresStorageStatus: (arg: TActorInput) => Promise<{
     clickHouseConfigured: boolean;
     auditLogGenerationDisabled: boolean;
     auditLogStorageDisabled: boolean;

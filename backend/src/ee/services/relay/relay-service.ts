@@ -1,13 +1,17 @@
 import { isIP } from "node:net";
 
-import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import { OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { OrgPermissionRelayActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionRelayActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -15,6 +19,7 @@ import { groupBy } from "@app/lib/fn";
 import { createRelayConnection } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
+import { TActorInput } from "@app/lib/types";
 import {
   createSerialNumber,
   getNotAfterWithClockSkew,
@@ -31,7 +36,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { verifyHostInputValidity } from "../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { TInstanceRelayConfigDALFactory } from "./instance-relay-config-dal";
 import { TOrgRelayConfigDALFactory } from "./org-relay-config-dal";
@@ -47,7 +51,7 @@ export const relayServiceFactory = ({
   orgRelayConfigDAL,
   relayDAL,
   kmsCoreDomain,
-  permissionService,
+  organizationsDomain,
   orgDAL,
   notificationService,
   smtpService,
@@ -59,7 +63,7 @@ export const relayServiceFactory = ({
   orgRelayConfigDAL: TOrgRelayConfigDALFactory;
   relayDAL: TRelayDALFactory;
   kmsCoreDomain: TKmsCoreDomain;
-  permissionService: TPermissionServiceFactory;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findOrgMembersByRole">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -960,18 +964,17 @@ export const relayServiceFactory = ({
   const registerRelay = async ({
     host,
     name,
-    identityId,
-    actorAuthMethod,
-    orgId
+    actor
   }: {
     host: string;
     name: string;
-    identityId?: string;
-    actorAuthMethod?: ActorAuthMethod;
-    orgId?: string;
+    // The org relay's identity; absent for an instance relay, which authenticates with the relay auth secret.
+    actor?: TActorContext;
   }) => {
     let relay: TRelays;
-    const isOrgRelay = identityId && orgId;
+    const identityId = actor?.principal.id;
+    const orgId = actor?.org.id;
+    const isOrgRelay = actor && identityId && orgId;
 
     await verifyHostInputValidity({
       host,
@@ -979,19 +982,9 @@ export const relayServiceFactory = ({
     });
 
     if (isOrgRelay) {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor: ActorType.IDENTITY,
-        actorId: identityId,
-        orgId,
-        actorAuthMethod: actorAuthMethod!,
-        actorOrgId: orgId
-      });
+      const permission = await organizationsDomain.getOrgPermission({ actor });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionRelayActions.CreateRelays,
-        OrgPermissionSubjects.Relay
-      );
+      permission.assert({ action: OrgPermissionRelayActions.CreateRelays, subject: OrgPermissionSubjects.Relay });
 
       relay = await relayDAL.transaction(async (tx) => {
         const existingRelay = await relayDAL.findOne(
@@ -1084,15 +1077,14 @@ export const relayServiceFactory = ({
 
   const heartbeat = async ({
     name,
-    identityId,
-    actorAuthMethod,
-    orgId
+    actor
   }: {
     name: string;
-    identityId?: string;
-    actorAuthMethod?: ActorAuthMethod;
-    orgId?: string;
+    // The org relay's identity; absent for an instance relay, which authenticates with the relay auth secret.
+    actor?: TActorContext;
   }) => {
+    const identityId = actor?.principal.id;
+    const orgId = actor?.org.id;
     const relay = await relayDAL.findOne({
       name,
       orgId: orgId ?? null
@@ -1106,24 +1098,14 @@ export const relayServiceFactory = ({
     let clientOrgName: string;
 
     if (relay.orgId) {
-      if (!identityId || !orgId || relay.orgId !== orgId) {
+      if (!actor || !identityId || !orgId || relay.orgId !== orgId) {
         throw new ForbiddenRequestError({
           message: "You do not have permission to perform this action on this relay."
         });
       }
 
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor: ActorType.IDENTITY,
-        actorId: identityId,
-        orgId,
-        actorAuthMethod: actorAuthMethod!,
-        actorOrgId: orgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionRelayActions.CreateRelays,
-        OrgPermissionSubjects.Relay
-      );
+      const permission = await organizationsDomain.getOrgPermission({ actor });
+      permission.assert({ action: OrgPermissionRelayActions.CreateRelays, subject: OrgPermissionSubjects.Relay });
       clientOrgId = orgId;
       clientOrgName = orgId;
     } else {
@@ -1156,28 +1138,11 @@ export const relayServiceFactory = ({
     }
   };
 
-  const getRelays = async ({
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId
-  }: {
-    actorId: string;
-    actor: ActorType;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
-  }) => {
-    if (actor !== ActorType.GATEWAY) {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: actorOrgId,
-        actorAuthMethod: actorAuthMethod!,
-        actorOrgId
-      });
+  const getRelays = async ({ actor }: TActorInput) => {
+    if (actor.principal.type !== ActorType.GATEWAY) {
+      const permission = await organizationsDomain.getOrgPermission({ actor });
 
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
+      permission.assert({ action: OrgPermissionRelayActions.ListRelays, subject: OrgPermissionSubjects.Relay });
     }
 
     const instanceRelays = await relayDAL.find({
@@ -1185,38 +1150,19 @@ export const relayServiceFactory = ({
     });
 
     const orgRelays = await relayDAL.find({
-      orgId: actorOrgId
+      orgId: actor.org.id
     });
 
     return [...instanceRelays, ...orgRelays];
   };
 
-  const deleteRelay = async ({
-    id,
-    actorId,
-    actor,
-    actorAuthMethod,
-    actorOrgId
-  }: {
-    id: string;
-    actorId: string;
-    actor: ActorType;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
-  }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+  const deleteRelay = async ({ id, actor }: { id: string } & TActorInput) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
+    permission.assert({ action: OrgPermissionRelayActions.DeleteRelays, subject: OrgPermissionSubjects.Relay });
 
     const relay = await relayDAL.findById(id);
-    if (!relay || relay.orgId !== actorOrgId || relay.orgId === null) {
+    if (!relay || relay.orgId !== actor.org.id || relay.orgId === null) {
       throw new NotFoundError({ message: "Relay not found" });
     }
 
@@ -1313,29 +1259,17 @@ export const relayServiceFactory = ({
     authMethod:
       | { method: "aws"; config: { allowedPrincipalArns: string; allowedAccountIds: string } }
       | { method: "token" };
-    actor: {
-      type: ActorType;
-      id: string;
-      orgId: string;
-      authMethod: ActorAuthMethod;
-    };
+    actor: TActorContext;
   }) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.CreateRelays, OrgPermissionSubjects.Relay);
+    const permission = await organizationsDomain.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionRelayActions.CreateRelays, subject: OrgPermissionSubjects.Relay });
 
     await verifyHostInputValidity({ host, isDynamicSecret: false });
 
     let relay;
     try {
       relay = await relayDAL.transaction(async (tx) => {
-        const created = await relayDAL.create({ name, host, orgId: actor.orgId }, tx);
+        const created = await relayDAL.create({ name, host, orgId: actor.org.id }, tx);
         await resourceAuthMethodService.initAtCreate({ resource: { type: "relay", id: created.id }, authMethod }, tx);
         return created;
       });
@@ -1399,34 +1333,14 @@ export const relayServiceFactory = ({
     }
   };
 
-  const updateRelay = async ({
-    relayId,
-    host,
-    actor
-  }: {
-    relayId: string;
-    host: string;
-    actor: {
-      type: ActorType;
-      id: string;
-      orgId: string;
-      authMethod: ActorAuthMethod;
-    };
-  }) => {
-    const relay = await relayDAL.findOne({ id: relayId, orgId: actor.orgId });
+  const updateRelay = async ({ relayId, host, actor }: { relayId: string; host: string; actor: TActorContext }) => {
+    const relay = await relayDAL.findOne({ id: relayId, orgId: actor.org.id });
     if (!relay) {
       throw new NotFoundError({ message: `Relay ${relayId} not found` });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.EditRelays, OrgPermissionSubjects.Relay);
+    const permission = await organizationsDomain.getOrgPermission({ actor });
+    permission.assert({ action: OrgPermissionRelayActions.EditRelays, subject: OrgPermissionSubjects.Relay });
 
     await verifyHostInputValidity({ host, isDynamicSecret: false });
 
@@ -1454,23 +1368,16 @@ export const relayServiceFactory = ({
     orgPermission
   }: {
     relayId: string;
-    orgPermission: { type: ActorType; id: string; orgId: string; authMethod: ActorAuthMethod };
+    orgPermission: TActorContext;
   }) => {
-    const relay = await relayDAL.findOne({ id: relayId, orgId: orgPermission.orgId });
+    const relay = await relayDAL.findOne({ id: relayId, orgId: orgPermission.org.id });
     if (!relay) {
       throw new NotFoundError({ message: `Relay ${relayId} not found` });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: orgPermission.type,
-      actorId: orgPermission.id,
-      orgId: relay.orgId!,
-      actorAuthMethod: orgPermission.authMethod,
-      actorOrgId: orgPermission.orgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor: orgPermission, orgId: relay.orgId! });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
+    permission.assert({ action: OrgPermissionRelayActions.ListRelays, subject: OrgPermissionSubjects.Relay });
 
     const gateways = await gatewayV2DAL.find({ relayId });
     return gateways.map((g) => ({

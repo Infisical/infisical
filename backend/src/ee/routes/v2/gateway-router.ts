@@ -65,11 +65,8 @@ export const registerGatewayV2Router = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.GATEWAY_ACCESS_TOKEN]),
     handler: async (req) => {
       const registered = await server.services.gatewayV2.registerGateway({
-        orgId: req.permission.orgId,
+        actor: req.permission,
         relayName: req.body.relayName,
-        actorId: req.permission.id,
-        actorType: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
         directAddress: req.body.directAddress,
         name: req.body.name,
         tokenVersion: req.auth.authMode === AuthMode.GATEWAY_ACCESS_TOKEN ? req.auth.token.tokenVersion : undefined

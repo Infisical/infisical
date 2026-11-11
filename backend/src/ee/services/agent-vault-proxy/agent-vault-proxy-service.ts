@@ -87,6 +87,7 @@ import {
   THeartbeatDTO,
   TListProxiesDTO,
   TProxyByIdDTO,
+  TRevokeProxyAccessDTO,
   TProxyRootCa,
   TRefreshCredentialDTO,
   TReportMissingScopesDTO,
@@ -355,15 +356,6 @@ export const agentVaultProxyServiceFactory = ({
     return { ca: { certificate: proxy.rootCaCertificate, fingerprint: held.fingerprint, expiresAt: held.expiresAt } };
   };
 
-  const $resourceActor = (ctx: TCreateProxyDTO["ctx"]) => ({
-    type: ctx.principal.type,
-    id: ctx.principal.id,
-    orgId: ctx.org.id,
-    rootOrgId: ctx.org.id,
-    parentOrgId: ctx.org.id,
-    authMethod: ctx.principal.type === ActorType.USER ? ctx.principal.authMethod : null
-  });
-
   const $signProxyToken = (proxyId: string, orgId: string, tokenVersion: number) =>
     mintAgentVaultProxyJwt({ agentVaultProxyId: proxyId, orgId, tokenVersion, accessTokenTTL: 0 });
 
@@ -490,12 +482,12 @@ export const agentVaultProxyServiceFactory = ({
     return { id: proxy.id, name: proxy.name };
   };
 
-  const revokeProxyAccess = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
+  const revokeProxyAccess = async ({ projectId, ctx, proxyId }: TRevokeProxyAccessDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Revoke);
     const proxy = await $findProxyOr404({ projectId, proxyId });
     await resourceAuthMethodService.revokeAccess({
       resource: { type: RESOURCE_TYPE_AGENT_VAULT_PROXY, id: proxy.id },
-      actor: $resourceActor(ctx)
+      actor: ctx
     });
     return toAdminView({ ...proxy, heartbeat: null });
   };

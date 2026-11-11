@@ -1,4 +1,4 @@
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorContext } from "@app/domains/lib/actor-context";
 
 import {
   ResourceAuthMethodType,
@@ -66,12 +66,12 @@ export type TSetAuthMethodInput =
 export type TSetAuthMethodDTO = {
   resource: ResourceRef;
   authMethod: TSetAuthMethodInput;
-  actor: OrgServiceActor;
+  actor: TActorContext;
 };
 
 export type TGetAuthMethodDTO = {
   resource: ResourceRef;
-  actor: OrgServiceActor;
+  actor: TActorContext;
 };
 
 // Minting happens both when a resource is created and when its token is replaced later. Those are

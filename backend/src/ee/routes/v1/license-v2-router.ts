@@ -1,4 +1,3 @@
-import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
 import { BillingV2BreakdownDimension, BillingV2BreakdownScopeKind } from "@app/ee/services/license-v2/license-v2-types";
@@ -314,15 +313,6 @@ const BillingV2CommitmentChangeSchema = z.object({
 });
 
 export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
-  const buildActor = (permission: FastifyRequest["permission"]) => ({
-    type: permission.type,
-    id: permission.id,
-    authMethod: permission.authMethod,
-    orgId: permission.orgId,
-    rootOrgId: permission.rootOrgId,
-    parentOrgId: permission.parentOrgId
-  });
-
   server.route({
     method: "GET",
     url: "/:organizationId/billing/v2/overview",
@@ -339,7 +329,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.getOverview({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         isInstanceAdmin: isSuperAdmin(req.auth)
       });
     }
@@ -383,7 +373,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.getBillableOrganizations({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         isInstanceAdmin: isSuperAdmin(req.auth),
         search: req.query.search,
         limit: req.query.limit,
@@ -423,7 +413,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       return server.services.licenseV2.getUsageBreakdown({
         orgId: req.params.organizationId,
         dimensionKey: req.params.dimensionKey,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         isInstanceAdmin: isSuperAdmin(req.auth),
         scope: req.query.scope
       });
@@ -446,7 +436,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.refreshEntitlements({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission)
+        actor: req.permission
       });
     }
   });
@@ -467,7 +457,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.getCatalog({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         isInstanceAdmin: isSuperAdmin(req.auth)
       });
     }
@@ -490,7 +480,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.portalSession({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         returnPath: req.body.returnPath
       });
     }
@@ -513,7 +503,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.addPaymentMethod({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         returnPath: req.body.returnPath
       });
     }
@@ -557,7 +547,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.previewChange({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         addProductId: req.body.addProductId,
         plan: req.body.plan,
         cadence: req.body.cadence,
@@ -601,7 +591,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
       const result = await server.services.licenseV2.buyProduct({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         productId: req.body.productId,
         plan: req.body.plan,
         cadence: req.body.cadence,
@@ -665,7 +655,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const result = await server.services.licenseV2.upgradeProduct({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         productId: req.body.productId,
         plan: req.body.plan,
         expectedPlanVersionId: req.body.expectedPlanVersionId,
@@ -711,7 +701,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.removeProduct({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         productId: req.params.productId
       });
     }
@@ -744,7 +734,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.changeCommitments({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         changes: req.body.changes,
         productId: req.body.productId
       });
@@ -778,7 +768,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
       const email = isUserSessionAuth(req.auth) ? (req.auth.user.email ?? undefined) : undefined;
       const result = await server.services.licenseV2.startTrial({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         productId: req.body.productId,
         plan: req.body.plan,
         returnPath: req.body.returnPath,
@@ -827,7 +817,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.cancelTrial({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         productId: req.body.productId
       });
     }
@@ -856,7 +846,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.confirmTrialPayment({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission),
+        actor: req.permission,
         returnPath: req.body.returnPath
       });
     }
@@ -878,7 +868,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.cancelSubscription({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission)
+        actor: req.permission
       });
     }
   });
@@ -899,7 +889,7 @@ export const registerLicenseV2Router = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.licenseV2.resumeSubscription({
         orgId: req.params.organizationId,
-        actor: buildActor(req.permission)
+        actor: req.permission
       });
     }
   });

@@ -1,24 +1,26 @@
 import { TProjects, TTrustedIps } from "@app/db/schemas";
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
-export type TCreateIpDTO = TProjectPermission & {
+type TTrustedIpProjectDTO = { projectId: string } & TActorInput;
+
+export type TCreateIpDTO = TTrustedIpProjectDTO & {
   comment: string;
   isActive?: boolean;
   ipAddress: string;
 };
 
-export type TUpdateIpDTO = TProjectPermission & {
+export type TUpdateIpDTO = TTrustedIpProjectDTO & {
   trustedIpId: string;
   ipAddress: string;
   comment: string;
 };
 
-export type TDeleteIpDTO = TProjectPermission & {
+export type TDeleteIpDTO = TTrustedIpProjectDTO & {
   trustedIpId: string;
 };
 
 export type TTrustedIpServiceFactory = {
-  listIpsByProjectId: (arg: TProjectPermission) => Promise<TTrustedIps[]>;
+  listIpsByProjectId: (arg: TTrustedIpProjectDTO) => Promise<TTrustedIps[]>;
   addProjectIp: (arg: TCreateIpDTO) => Promise<{
     trustedIp: TTrustedIps;
     project: TProjects;

@@ -18,11 +18,9 @@ const ROOT_ORG = "11111111-1111-1111-1111-111111111111";
 const OTHER_ORG = "22222222-2222-2222-2222-222222222222";
 
 const actor = {
-  id: "user-1",
-  type: "user",
-  orgId: ROOT_ORG,
-  authMethod: "email"
-} as Parameters<ReturnType<typeof licenseV2ServiceFactory>["getBillableOrganizations"]>[0]["actor"];
+  principal: { type: "user", id: "user-1", authMethod: "email" },
+  org: { id: ROOT_ORG, rootOrgId: ROOT_ORG }
+} as unknown as Parameters<ReturnType<typeof licenseV2ServiceFactory>["getBillableOrganizations"]>[0]["actor"];
 
 const buildService = () => {
   const getOrgPermission = vi.fn(async () => {
@@ -34,8 +32,7 @@ const buildService = () => {
   const service = licenseV2ServiceFactory({
     envConfig: { isCloud: false, SITE_URL: "http://localhost" },
     orgDAL: { findById: vi.fn(async () => ({ id: OTHER_ORG, name: "Other", slug: "other" })) },
-    permissionService: { getOrgPermission },
-    organizationsDomain: { resolveRootOrgId: vi.fn(async (id: string) => id) },
+    organizationsDomain: { resolveRootOrgId: vi.fn(async (id: string) => id), getOrgPermission },
     projectsDomain: {
       countBillableOrgActors: vi.fn(async () => ({ users: 0, identities: 0 })),
       getBillableIdentityOwnershipBreakdown: vi.fn(async () => []),

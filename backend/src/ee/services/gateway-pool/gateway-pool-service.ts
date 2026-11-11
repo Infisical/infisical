@@ -1,8 +1,13 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionGatewayPoolActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionGatewayPoolActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
 import { runGatewayAttempt } from "@app/lib/gateway-v2/gateway-attempt-context";
@@ -41,7 +46,8 @@ type TGatewayPoolServiceFactoryDep = {
   gatewayPoolMembershipDAL: TGatewayPoolMembershipDALFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
-  permissionService: TPermissionServiceFactory;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   licenseDomain: TLicenseDomain;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
@@ -57,22 +63,16 @@ export const gatewayPoolServiceFactory = ({
   gatewayV2DAL,
   gatewayV2Service,
   permissionService,
+  organizationsDomain,
   licenseDomain,
   identityKubernetesAuthDAL,
   pkiDiscoveryConfigDAL,
   appConnectionDAL,
   dynamicSecretDAL
 }: TGatewayPoolServiceFactoryDep) => {
-  const $checkPermission = async (actor: OrgServiceActor, action: OrgPermissionGatewayPoolActions) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.GatewayPool);
+  const $checkPermission = async (actor: TActorContext, action: OrgPermissionGatewayPoolActions) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor });
+    permission.assert({ action, subject: OrgPermissionSubjects.GatewayPool });
   };
 
   const $checkLicense = async (orgId: string) => {
@@ -84,13 +84,13 @@ export const gatewayPoolServiceFactory = ({
     }
   };
 
-  const createGatewayPool = async ({ name, ...actor }: TCreateGatewayPoolDTO) => {
+  const createGatewayPool = async ({ name, actor }: TCreateGatewayPoolDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.CreateGatewayPools);
-    await $checkLicense(actor.orgId);
+    await $checkLicense(actor.org.id);
 
     try {
       const pool = await gatewayPoolDAL.create({
-        orgId: actor.orgId,
+        orgId: actor.org.id,
         name
       });
       return pool;
@@ -110,7 +110,7 @@ export const gatewayPoolServiceFactory = ({
   const listGatewayPools = async (actor: TListGatewayPoolsDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.ListGatewayPools);
 
-    const pools = await gatewayPoolDAL.findByOrgIdWithDetails(actor.orgId);
+    const pools = await gatewayPoolDAL.findByOrgIdWithDetails(actor.org.id);
 
     if (pools.length === 0) return [];
 
@@ -150,10 +150,10 @@ export const gatewayPoolServiceFactory = ({
     }));
   };
 
-  const getGatewayPoolById = async ({ poolId, ...actor }: TGetGatewayPoolByIdDTO) => {
+  const getGatewayPoolById = async ({ poolId, actor }: TGetGatewayPoolByIdDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.ListGatewayPools);
 
-    const pool = await gatewayPoolDAL.findByIdWithMembers(poolId, actor.orgId);
+    const pool = await gatewayPoolDAL.findByIdWithMembers(poolId, actor.org.id);
     if (!pool) {
       throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
     }
@@ -161,12 +161,12 @@ export const gatewayPoolServiceFactory = ({
     return pool;
   };
 
-  const updateGatewayPool = async ({ poolId, name, ...actor }: TUpdateGatewayPoolDTO) => {
+  const updateGatewayPool = async ({ poolId, name, actor }: TUpdateGatewayPoolDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.EditGatewayPools);
-    await $checkLicense(actor.orgId);
+    await $checkLicense(actor.org.id);
 
     const existingPool = await gatewayPoolDAL.findById(poolId);
-    if (!existingPool || existingPool.orgId !== actor.orgId) {
+    if (!existingPool || existingPool.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
     }
 
@@ -186,11 +186,11 @@ export const gatewayPoolServiceFactory = ({
     }
   };
 
-  const deleteGatewayPool = async ({ poolId, ...actor }: TDeleteGatewayPoolDTO) => {
+  const deleteGatewayPool = async ({ poolId, actor }: TDeleteGatewayPoolDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.DeleteGatewayPools);
 
     const existingPool = await gatewayPoolDAL.findById(poolId);
-    if (!existingPool || existingPool.orgId !== actor.orgId) {
+    if (!existingPool || existingPool.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
     }
 
@@ -211,17 +211,17 @@ export const gatewayPoolServiceFactory = ({
     return existingPool;
   };
 
-  const addGatewayToPool = async ({ poolId, gatewayId, ...actor }: TAddGatewayToPoolDTO) => {
+  const addGatewayToPool = async ({ poolId, gatewayId, actor }: TAddGatewayToPoolDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.EditGatewayPools);
-    await $checkLicense(actor.orgId);
+    await $checkLicense(actor.org.id);
 
     const pool = await gatewayPoolDAL.findById(poolId);
-    if (!pool || pool.orgId !== actor.orgId) {
+    if (!pool || pool.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
     }
 
     const gateway = await gatewayV2DAL.findById(gatewayId);
-    if (!gateway || gateway.orgId !== actor.orgId) {
+    if (!gateway || gateway.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found` });
     }
 
@@ -239,16 +239,16 @@ export const gatewayPoolServiceFactory = ({
     }
   };
 
-  const removeGatewayFromPool = async ({ poolId, gatewayId, ...actor }: TRemoveGatewayFromPoolDTO) => {
+  const removeGatewayFromPool = async ({ poolId, gatewayId, actor }: TRemoveGatewayFromPoolDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.EditGatewayPools);
 
     const pool = await gatewayPoolDAL.findById(poolId);
-    if (!pool || pool.orgId !== actor.orgId) {
+    if (!pool || pool.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
     }
 
     const gateway = await gatewayV2DAL.findById(gatewayId);
-    if (!gateway || gateway.orgId !== actor.orgId) {
+    if (!gateway || gateway.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Gateway with ID ${gatewayId} not found` });
     }
 
@@ -486,11 +486,11 @@ export const gatewayPoolServiceFactory = ({
     return null;
   };
 
-  const getConnectedResources = async ({ poolId, ...actor }: TGetGatewayPoolByIdDTO) => {
+  const getConnectedResources = async ({ poolId, actor }: TGetGatewayPoolByIdDTO) => {
     await $checkPermission(actor, OrgPermissionGatewayPoolActions.ListGatewayPools);
 
     const pool = await gatewayPoolDAL.findById(poolId);
-    if (!pool || pool.orgId !== actor.orgId) {
+    if (!pool || pool.orgId !== actor.org.id) {
       throw new NotFoundError({ message: `Gateway pool with ID ${poolId} not found` });
     }
 

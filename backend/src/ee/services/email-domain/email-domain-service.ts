@@ -1,10 +1,11 @@
-import { ForbiddenError } from "@casl/ability";
 import dns from "node:dns/promises";
 
-import { OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  OrgPermissionEmailDomainActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -25,7 +26,7 @@ type TEmailDomainServiceFactoryDep = {
     TEmailDomainDALFactory,
     "create" | "find" | "findOne" | "findById" | "deleteById" | "updateById" | "transaction"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   licenseDomain: TLicenseDomain;
 };
 
@@ -37,29 +38,12 @@ const DNS_TXT_VALUE_PREFIX = "infisical-domain-verification";
 
 export const emailDomainServiceFactory = ({
   emailDomainDAL,
-  permissionService,
+  organizationsDomain,
   licenseDomain
 }: TEmailDomainServiceFactoryDep) => {
-  const createEmailDomain = async ({
-    domain,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    orgId
-  }: TCreateEmailDomainDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionEmailDomainActions.Create,
-      OrgPermissionSubjects.EmailDomains
-    );
+  const createEmailDomain = async ({ domain, actor, orgId }: TCreateEmailDomainDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionEmailDomainActions.Create, subject: OrgPermissionSubjects.EmailDomains });
 
     const plan = await licenseDomain.getPlan(orgId);
     const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
@@ -121,26 +105,12 @@ export const emailDomainServiceFactory = ({
     return emailDomain.data;
   };
 
-  const verifyEmailDomain = async ({
-    emailDomainId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    orgId
-  }: TVerifyEmailDomainDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
+  const verifyEmailDomain = async ({ emailDomainId, actor, orgId }: TVerifyEmailDomainDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
+    permission.assert({
+      action: OrgPermissionEmailDomainActions.VerifyDomain,
+      subject: OrgPermissionSubjects.EmailDomains
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionEmailDomainActions.VerifyDomain,
-      OrgPermissionSubjects.EmailDomains
-    );
 
     const plan = await licenseDomain.getPlan(orgId);
     const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
@@ -221,44 +191,17 @@ export const emailDomainServiceFactory = ({
     return { emailDomain: updatedEmailDomain.data };
   };
 
-  const listEmailDomains = async ({ actor, actorId, actorAuthMethod, actorOrgId, orgId }: TListEmailDomainsDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionEmailDomainActions.Read,
-      OrgPermissionSubjects.EmailDomains
-    );
+  const listEmailDomains = async ({ actor, orgId }: TListEmailDomainsDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionEmailDomainActions.Read, subject: OrgPermissionSubjects.EmailDomains });
 
     const emailDomains = await emailDomainDAL.find({ orgId });
     return emailDomains;
   };
 
-  const deleteEmailDomain = async ({
-    emailDomainId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    orgId
-  }: TDeleteEmailDomainDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionEmailDomainActions.Delete,
-      OrgPermissionSubjects.EmailDomains
-    );
+  const deleteEmailDomain = async ({ emailDomainId, actor, orgId }: TDeleteEmailDomainDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId });
+    permission.assert({ action: OrgPermissionEmailDomainActions.Delete, subject: OrgPermissionSubjects.EmailDomains });
 
     const emailDomainRecord = await emailDomainDAL.findOne({ id: emailDomainId, orgId });
     if (!emailDomainRecord) {

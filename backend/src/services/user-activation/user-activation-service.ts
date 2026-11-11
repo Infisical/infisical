@@ -1,6 +1,8 @@
-import { OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  OrgPermissionMemberActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { ms } from "@app/lib/ms";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -15,7 +17,7 @@ const SECOND_NUDGE_DELAY = ms("7d");
 
 type TUserActivationServiceFactoryDep = {
   userActivationDAL: TUserActivationDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "countAllOrgMembers">;
 };
 
@@ -23,7 +25,7 @@ export type TUserActivationServiceFactory = ReturnType<typeof userActivationServ
 
 export const userActivationServiceFactory = ({
   userActivationDAL,
-  permissionService,
+  organizationsDomain,
   orgDAL
 }: TUserActivationServiceFactoryDep) => {
   const toActivation = (record: TActivationRecord) => ({
@@ -35,24 +37,18 @@ export const userActivationServiceFactory = ({
   // Decides whether the UI should surface the member-invite activation banner and, if so, which
   // message. Gated on the org being young, small, and the caller being able to invite members.
   const getSecretsActivationStatus = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
+    actor
   }: TGetSecretsActivationStatusDTO): Promise<TSecretsActivationStatus> => {
     const noActivation: TSecretsActivationStatus = { shouldShowActivation: false, stage: null, activation: null };
     const appCfg = getConfig();
 
     // 1. The caller must be able to invite other members to the org.
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.Any
-    });
-    if (!permission.can(OrgPermissionMemberActions.Create, OrgPermissionSubjects.Member)) return noActivation;
+    const permission = await organizationsDomain.getOrgPermission({ actor });
+    if (!permission.can({ action: OrgPermissionMemberActions.Create, subject: OrgPermissionSubjects.Member }))
+      return noActivation;
+
+    const actorId = actor.principal.id;
+    const actorOrgId = actor.org.id;
 
     // 2. The org must be young enough (SECRETS_ACTIVATION_ORG_MAX_AGE_MONTHS) or has less than 5 u
     const org = await orgDAL.findById(actorOrgId);

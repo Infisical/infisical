@@ -201,11 +201,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldap = await server.services.ldap.getLdapCfgWithPermissionCheck({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        orgId: req.query.organizationId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission,
+        orgId: req.query.organizationId
       });
       return ldap;
     }
@@ -253,11 +250,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldap = await server.services.ldap.createLdapCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.permission,
         orgId: req.body.organizationId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         ...req.body
       });
 
@@ -318,11 +312,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldap = await server.services.ldap.updateLdapCfg({
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.permission,
         orgId: req.body.organizationId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         ...req.body
       });
 
@@ -372,11 +363,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldapGroupMaps = await server.services.ldap.getLdapGroupMaps({
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.permission,
         orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         ldapConfigId: req.params.configId
       });
       return ldapGroupMaps;
@@ -405,11 +393,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldapGroupMap = await server.services.ldap.createLdapGroupMap({
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.permission,
         orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         ldapConfigId: req.params.configId,
         ...req.body
       });
@@ -436,11 +421,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const ldapGroupMap = await server.services.ldap.deleteLdapGroupMap({
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.permission,
         orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         ldapConfigId: req.params.configId,
         ldapGroupMapId: req.params.groupMapId
       });
@@ -471,11 +453,8 @@ export const registerLdapRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const result = await server.services.ldap.testLDAPConnection({
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.permission,
         orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         ...req.body
       });
 

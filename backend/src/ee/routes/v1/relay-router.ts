@@ -96,9 +96,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.relay.registerRelay({
         ...req.body,
-        identityId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
     }
   });
@@ -124,10 +122,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     ]),
     handler: async (req) => {
       return server.services.relay.getRelays({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
     }
   });
@@ -151,10 +146,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const relay = await server.services.relay.deleteRelay({
         id: req.params.id,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -245,9 +237,7 @@ export const registerRelayRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await server.services.relay.heartbeat({
         name: req.body.name,
-        identityId: req.permission.id,
-        orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       return { message: "Successfully triggered heartbeat" };
