@@ -518,10 +518,6 @@ export const RequestAccessForm = ({
   const resources = form.watch("resources");
 
   const [isPathFocused, setIsPathFocused] = useState(false);
-  const { data: environmentFolders } = useListProjectEnvironmentsFolders(currentProject.id, {
-    environment: selectedEnvironment,
-    enabled: Boolean(selectedEnvironment)
-  });
 
   const environmentPolicies = useMemo(
     () =>
@@ -534,6 +530,10 @@ export const RequestAccessForm = ({
     () => [...new Set(environmentPolicies.map((policy) => policy.secretPath))],
     [environmentPolicies]
   );
+  const { data: environmentFolders } = useListProjectEnvironmentsFolders(currentProject.id, {
+    environment: selectedEnvironment,
+    enabled: policyPaths.length > 0
+  });
   const folderPaths = useMemo(
     () => environmentFolders?.[selectedEnvironment]?.folders.map((folder) => folder.path) ?? [],
     [environmentFolders, selectedEnvironment]

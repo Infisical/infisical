@@ -507,7 +507,8 @@ export const secretAccessApprovalRequestServiceFactory = ({
           project,
           requestedByUser,
           data: requestData,
-          environment: { slug: envSlug }
+          environment: { slug: envSlug },
+          secretPath
         },
         {
           userDAL,
@@ -738,7 +739,7 @@ export const secretAccessApprovalRequestServiceFactory = ({
             policy,
             actingUser,
             environmentName: policy.environment.name,
-            data,
+            secretPath: verifyRequestedPermissions({ permissions: data.permissions }).secretPath,
             bypassReason: trimmedBypassReason
           },
           { userDAL, userGroupMembershipDAL, notificationService, smtpService }
@@ -857,7 +858,8 @@ export const secretAccessApprovalRequestServiceFactory = ({
             project,
             requestedByUser,
             data,
-            environment: policy.environment
+            environment: policy.environment,
+            secretPath: verifyRequestedPermissions({ permissions: data.permissions }).secretPath
           },
           {
             userDAL,

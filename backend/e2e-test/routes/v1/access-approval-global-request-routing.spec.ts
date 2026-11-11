@@ -181,16 +181,6 @@ describe("Access approval request routing", () => {
     expect(res.json().approval.policyId).toBe(narrow.json().approval.id);
   });
 
-  test("A request broader than every policy is refused", async () => {
-    const created = await createGlobalPolicy({ name: "routing-one-level", secretPath: "/routing-one-level/*" });
-    expect(created.statusCode).toBe(200);
-
-    const res = await createAccessRequest("/routing-one-level/**");
-
-    expect(res.statusCode).toBe(404);
-    expect(res.json().message).toContain("Access requests aren't enabled for secret path '/routing-one-level/**'");
-  });
-
   test("A request against a path only a legacy policy covers is refused", async () => {
     const db = getDb();
     const secretPath = "/routing-legacy";

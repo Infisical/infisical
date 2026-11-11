@@ -142,7 +142,8 @@ export const notifySecretAccessStepApprovers = async (
     project,
     requestedByUser,
     data,
-    environment
+    environment,
+    secretPath
   }: {
     step: ApprovalPolicyStep;
     request: TSecretAccessRequestRow;
@@ -150,6 +151,7 @@ export const notifySecretAccessStepApprovers = async (
     requestedByUser: { firstName?: string | null; lastName?: string | null; email?: string | null };
     data: TSecretAccessRequestData;
     environment: { slug: string };
+    secretPath: string;
   },
   {
     userDAL,
@@ -176,8 +178,6 @@ export const notifySecretAccessStepApprovers = async (
     : [];
 
   try {
-    const { secretPath } = verifyRequestedPermissions({ permissions: data.permissions });
-
     await triggerWorkflowIntegrationNotification({
       input: {
         notification: {
@@ -254,7 +254,7 @@ export const notifySecretAccessBypass = async (
     policy,
     actingUser,
     environmentName,
-    data,
+    secretPath,
     bypassReason
   }: {
     request: Pick<TSecretAccessRequestRow, "id" | "organizationId">;
@@ -262,13 +262,12 @@ export const notifySecretAccessBypass = async (
     policy: { approvers: { type: ApproverType; id?: string | null }[] };
     actingUser: Pick<TUsers, "id" | "firstName" | "lastName" | "email">;
     environmentName: string;
-    data: TSecretAccessRequestData;
+    secretPath: string;
     bypassReason: string;
   },
   { userDAL, userGroupMembershipDAL, notificationService, smtpService }: TNotifySecretAccessBypassDep
 ) => {
   try {
-    const { secretPath } = verifyRequestedPermissions({ permissions: data.permissions });
     const approverUserIds = await resolveStepApproverUserIds(
       {
         requiredApprovals: 1,

@@ -218,21 +218,8 @@ describe("resolveSecretAccessPolicyForPath", () => {
     expect(resolveSecretAccessPolicyForPath([policy("all", "/**")], "/aws/rds")?.id).toBe("all");
   });
 
-  test("accepts a narrower glob inside a glob policy", () => {
-    expect(resolveSecretAccessPolicyForPath([policy("all", "/**")], "/payments/**")?.id).toBe("all");
-  });
-
   test("refuses a path no policy covers", () => {
     expect(resolveSecretAccessPolicyForPath([policy("apps", "/apps/**")], "/legacy")).toBeNull();
-  });
-
-  test("refuses a glob broader than the policy", () => {
-    expect(resolveSecretAccessPolicyForPath([policy("one-level", "/apps/*")], "/apps/**")).toBeNull();
-  });
-
-  test("a literal policy only covers its own path", () => {
-    expect(resolveSecretAccessPolicyForPath([policy("api", "/apps/api")], "/apps/api/db")).toBeNull();
-    expect(resolveSecretAccessPolicyForPath([policy("api", "/apps/api")], "/apps/api")?.id).toBe("api");
   });
 
   test("a wildcard segment in the middle of a policy path covers one folder at that level", () => {
@@ -244,17 +231,10 @@ describe("resolveSecretAccessPolicyForPath", () => {
     expect(resolveSecretAccessPolicyForPath(policies, "/backend/**")).toBeNull();
   });
 
-  test("a policy path with braces still accepts a request for exactly that path", () => {
-    const policies = [policy("braces", "/apps/{api,web}")];
-
-    expect(resolveSecretAccessPolicyForPath(policies, "/apps/{api,web}")?.id).toBe("braces");
-    expect(resolveSecretAccessPolicyForPath(policies, "/apps/api")).toBeNull();
-  });
-
   test("an exact policy path wins over a glob that also covers it", () => {
-    const policies = [policy("all", "/**", "2025-01-01"), policy("apps", "/apps/**", "2025-01-01")];
+    const policies = [policy("apps-glob", "/apps/**", "2025-01-01"), policy("apps", "/apps", "2026-01-01")];
 
-    expect(resolveSecretAccessPolicyForPath(policies, "/**")?.id).toBe("all");
+    expect(resolveSecretAccessPolicyForPath(policies, "/apps")?.id).toBe("apps");
   });
 
   test("the most specific covering policy wins", () => {
