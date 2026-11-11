@@ -6,7 +6,7 @@ import { KmsDataKey, TCipherPair, TKmsCoreDomain } from "@app/domains/platform/k
 import {
   ProjectPermissionSecretValidationRuleActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectTemplatesSchema, ProjectType } from "@app/db/schemas";
-import { ProjectPermissionV2Schema } from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionV2Schema } from "@app/domains/platform/projects/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { isInfisicalProjectTemplate } from "@app/ee/services/project-template/project-template-fns";
 import { ApiDocsTags, ProjectTemplates } from "@app/lib/api-docs";

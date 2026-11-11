@@ -6,7 +6,7 @@ import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { NotFoundError } from "@app/lib/errors";

@@ -6,11 +6,13 @@ import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/mo
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionSecretsManagementInsightsActions,
-  OrgPermissionSubjects,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import {
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionInsightsActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { TClickHouseAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-clickhouse-dal";
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";

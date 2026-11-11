@@ -20,19 +20,25 @@ src/domains/
 │   ├── license/
 │   ├── kms-core/
 │   ├── instance-config-core/
-│   └── organizations-projects/
+│   ├── access-control/
+│   ├── organizations/          # The top container: orgs and sub-orgs
+│   └── projects/               # The container every product's projects live in
 ├── secrets-manager/            # A product area
-│   └── secrets/                # A domain inside it
+│   ├── secrets/                # A domain inside it
+│   └── secret-scanning/
 ├── pam/pam/
 ├── agent-vault/agent-vault/
-└── certificates/cert-manager/
+├── kms/kms/
+└── certificates/
+    ├── cert-manager/
+    └── code-signing/
 ```
 
 Read a domain's own `AGENTS.md` before changing it: [license](platform/license/AGENTS.md),
 [kms-core](platform/kms-core/AGENTS.md), [instance-config-core](platform/instance-config-core/AGENTS.md),
-[organizations-projects](platform/organizations-projects/AGENTS.md), [secrets](secrets-manager/secrets/AGENTS.md),
-[pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
-[cert-manager](certificates/cert-manager/AGENTS.md). The organizations-projects and cert-manager domains are a
+[organizations](platform/organizations/AGENTS.md), [projects](platform/projects/AGENTS.md),
+[secrets](secrets-manager/secrets/AGENTS.md), [pam](pam/pam/AGENTS.md), [agent-vault](agent-vault/agent-vault/AGENTS.md),
+[cert-manager](certificates/cert-manager/AGENTS.md). The projects and cert-manager domains are a
 declared exception to "a table belongs to one data access class": they hold only usage counters that read
 tables no domain owns yet, tested against Postgres without an in-memory twin.
 

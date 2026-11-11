@@ -5,7 +5,7 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 import { crypto } from "@app/lib/crypto/cryptography";

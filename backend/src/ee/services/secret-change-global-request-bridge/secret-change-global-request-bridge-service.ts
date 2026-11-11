@@ -6,7 +6,7 @@ import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionSecretApprovalRequestActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";

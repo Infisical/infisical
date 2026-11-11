@@ -4,10 +4,9 @@ import { ActionProjectType, OrganizationActionScope, ProjectType } from "@app/db
 import {
   OrgPermissionActions,
   OrgPermissionSecretsManagementInsightsActions,
-  OrgPermissionSubjects,
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor, TProjectPermission } from "@app/lib/types";

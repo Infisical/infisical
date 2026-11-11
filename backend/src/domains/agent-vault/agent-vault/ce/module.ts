@@ -1,11 +1,11 @@
 import { ProjectType } from "@app/db/schemas";
 import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 
 export * from "./service/agent-vault-roles";
 
 export type TAgentVaultDeps = {
-  organizationsProjectsDomain: TOrganizationsProjectsDomain;
+  projectsDomain: TProjectsDomain;
   licenseRegistry: TLicenseRegistry;
 };
 
@@ -13,10 +13,10 @@ export type TAgentVaultDeps = {
 export class AgentVaultModule {
   readonly name = "agent-vault";
 
-  constructor({ organizationsProjectsDomain, licenseRegistry }: TAgentVaultDeps) {
+  constructor({ projectsDomain, licenseRegistry }: TAgentVaultDeps) {
     licenseRegistry.registerUsageCounter({
       meter: Meter.AgentVaultIdentities,
-      count: (orgId) => organizationsProjectsDomain.countProjectIdentities(ProjectType.AgentVault, orgId ?? undefined)
+      count: (orgId) => projectsDomain.countProjectIdentities(ProjectType.AgentVault, orgId ?? undefined)
     });
   }
 }

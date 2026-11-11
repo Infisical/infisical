@@ -1,6 +1,7 @@
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsDomain } from "@app/domains/platform/organizations/ce/module";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 
 import {
   CertificateUsageDataAccess,
@@ -27,7 +28,8 @@ export type TCertManagerDomain = {
 
 export type TCertManagerDeps = {
   db: DataAccessDb;
-  organizationsProjectsDomain: TOrganizationsProjectsDomain;
+  organizationsDomain: TOrganizationsDomain;
+  projectsDomain: TProjectsDomain;
   licenseRegistry: TLicenseRegistry;
 };
 
@@ -37,7 +39,7 @@ export class CertManagerModule {
 
   readonly service: TCertManagerDomain;
 
-  constructor({ db, organizationsProjectsDomain, licenseRegistry }: TCertManagerDeps) {
+  constructor({ db, organizationsDomain, licenseRegistry }: TCertManagerDeps) {
     const usage = new CertificateUsageDataAccess(db);
     this.service = {
       countActiveCertificateQuota: (orgId) => usage.countActiveCertificateQuotaKeys(orgId),
@@ -45,7 +47,7 @@ export class CertManagerModule {
       getInternalCaOrgBreakdown: (orgId) => usage.getInternalCaOrgBreakdown(orgId),
       getActiveCertificateOrgBreakdown: (orgId) => usage.getActiveCertificateOrgBreakdown(orgId),
       getPkiUsageByRootOrg: () => usage.getPkiUsageByRootOrg(),
-      resolveRootOrgId: (orgId) => organizationsProjectsDomain.resolveRootOrgId(orgId)
+      resolveRootOrgId: (orgId) => organizationsDomain.resolveRootOrgId(orgId)
     };
 
     // Each counts the whole org tree, so it is reported once, at the root.

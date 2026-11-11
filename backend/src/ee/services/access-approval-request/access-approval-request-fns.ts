@@ -3,14 +3,16 @@ import { z } from "zod";
 
 import {
   CASL_ACTION_SCHEMA_NATIVE_ENUM,
-  PermissionConditionSchema,
+  PermissionConditionSchema
+} from "@app/domains/platform/access-control/ce/module";
+import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionHoneyTokenActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { PermissionConditionOperators } from "@app/lib/casl";
 import { BadRequestError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";

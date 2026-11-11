@@ -4,7 +4,7 @@ import {
   ProjectPermissionSecretFolderActions,
   ProjectPermissionSub,
   ProjectPermissionV2Schema
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 
 import { projectAdminPermissions, projectMemberPermissions, projectViewerPermission } from "./default-roles";

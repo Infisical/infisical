@@ -24,7 +24,7 @@ import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/organizations/ce/module";
 import { DynamicSecretLeaseStatus } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-types";
 import { insightsDALFactory } from "@app/ee/services/insights/insights-dal";
 import { insightsServiceFactory, TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";

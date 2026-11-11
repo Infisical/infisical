@@ -4,10 +4,9 @@ import { describe, expect, test, vi } from "vitest";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   OrgPermissionAppConnectionActions,
-  OrgPermissionSubjects,
-  ProjectPermissionAppConnectionActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionAppConnectionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 

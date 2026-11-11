@@ -2,10 +2,7 @@
 import { packRules, unpackRules } from "@casl/ability/extra";
 import { Knex } from "knex";
 
-import {
-  backfillPermissionV1SchemaToV2Schema,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { backfillPermissionV1SchemaToV2Schema, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 
 import { TableName } from "../schemas";
 

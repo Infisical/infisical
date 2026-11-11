@@ -28,7 +28,8 @@ import { KmsCoreModule, TKmsCoreDomain } from "./platform/kms-core/ce/module";
 import { KmsCoreEeModule } from "./platform/kms-core/ee/module";
 import { LicenseModule } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
-import { OrganizationsProjectsModule } from "./platform/organizations-projects/ce/module";
+import { OrganizationsModule } from "./platform/organizations/ce/module";
+import { ProjectsModule } from "./platform/projects/ce/module";
 import { SecretsModule } from "./secrets-manager/secrets/ce/module";
 
 export type TDomainDeps = {
@@ -160,19 +161,25 @@ export const createDomains = (deps: TDomainDeps) => {
     eventEmitter: domainEventEmitter(deps.eventEmitter)
   });
 
-  const organizationsProjects = new OrganizationsProjectsModule({ db, licenseRegistry: license.registry });
+  // Organizations is the top container; Projects sits below it and holds every product's projects.
+  const organizations = new OrganizationsModule({ db });
+  const projects = new ProjectsModule({
+    db,
+    organizationsDomain: organizations.service,
+    licenseRegistry: license.registry
+  });
   const productDeps = {
-    organizationsProjectsDomain: organizationsProjects.service,
+    projectsDomain: projects.service,
     licenseRegistry: license.registry
   };
   const secrets = new SecretsModule(productDeps);
   const pam = new PamModule(productDeps);
   const agentVault = new AgentVaultModule(productDeps);
-  const certManager = new CertManagerModule({ db, ...productDeps });
+  const certManager = new CertManagerModule({ db, organizationsDomain: organizations.service, ...productDeps });
 
   // Built once per request by the auth middleware, and by background jobs acting in an org.
   const actorContextBuilder = actorContexts({
-    findActorOrg: (orgId) => organizationsProjects.service.findActorOrg(orgId),
+    findActorOrg: (orgId) => organizations.service.findActorOrg({ orgId }),
     getPlan: (orgId) => license.service.getPlan(orgId)
   });
 
@@ -183,7 +190,8 @@ export const createDomains = (deps: TDomainDeps) => {
     kmsCore,
     instanceConfigCore,
     accessControl,
-    organizationsProjects,
+    organizations,
+    projects,
     secrets,
     pam,
     agentVault,

@@ -7,12 +7,8 @@ import RE2 from "re2";
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import {
-  OrgPermissionIdentityActions,
-  OrgPermissionSubjects,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";

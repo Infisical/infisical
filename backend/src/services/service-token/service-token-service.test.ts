@@ -6,7 +6,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
 import { crypto } from "@app/lib/crypto";
 

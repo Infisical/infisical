@@ -3,10 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import {
-  OrgPermissionMemberActions,
-  OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";

@@ -14,11 +14,13 @@ import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/mo
 import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionIdentityActions,
-  OrgPermissionSubjects,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import {
   isCustomProjectRole,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation

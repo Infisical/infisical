@@ -11,7 +11,8 @@ import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
-import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
+import { OrganizationsModule } from "@app/domains/platform/organizations/ce/module";
+import { ProjectsModule } from "@app/domains/platform/projects/ce/module";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
@@ -68,12 +69,11 @@ import { addUserMembership, createUser, createUserAccessToken, deleteUsers } fro
 // The Agent Vault seat meter, as the License domain counts it.
 const countAgentVaultSeats = (orgId: string) => {
   const licenseRegistry = new FakeLicenseRegistry();
-  const organizationsProjectsDomain = new OrganizationsProjectsModule({
-    db: DataAccessDb.fromClient(testDb),
-    licenseRegistry
-  }).service;
+  const db = DataAccessDb.fromClient(testDb);
+  const organizationsDomain = new OrganizationsModule({ db }).service;
+  const projectsDomain = new ProjectsModule({ db, organizationsDomain, licenseRegistry }).service;
   // eslint-disable-next-line no-new
-  new AgentVaultModule({ organizationsProjectsDomain, licenseRegistry });
+  new AgentVaultModule({ projectsDomain, licenseRegistry });
   return licenseRegistry.counter(Meter.AgentVaultIdentities.key).count(orgId);
 };
 

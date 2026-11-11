@@ -1,10 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import {
-  OrgPermissionKmipServerActions,
-  OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionKmipServerActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";

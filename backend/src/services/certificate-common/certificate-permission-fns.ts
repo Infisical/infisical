@@ -2,10 +2,7 @@ import { ForbiddenError, MongoAbility, subject } from "@casl/ability";
 import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import {
-  ProjectPermissionCertificateActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionCertificateActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionCertificateActions,

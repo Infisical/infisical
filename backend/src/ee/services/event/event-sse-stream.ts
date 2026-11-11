@@ -7,7 +7,7 @@ import { Cluster, Redis } from "ioredis";
 import { nanoid } from "nanoid";
 
 import { ProjectType } from "@app/db/schemas";
-import { ProjectPermissionSet } from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { conditionsMatcher } from "@app/lib/casl";
 import { logger } from "@app/lib/logger";

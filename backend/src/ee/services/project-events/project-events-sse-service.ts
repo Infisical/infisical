@@ -6,10 +6,7 @@ import picomatch from "picomatch";
 
 import { ProjectType } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import {
-  ProjectPermissionSecretEventActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionSecretEventActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, RateLimitError } from "@app/lib/errors";

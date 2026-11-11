@@ -8,7 +8,7 @@ import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { TClearPersonalValuesInProjectsDeps } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-fns";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";

@@ -2,7 +2,7 @@ import { packRules } from "@casl/ability/extra";
 import { z } from "zod";
 
 import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/schemas";
-import { ProjectPermissionV2Schema } from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionV2Schema } from "@app/domains/platform/projects/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
 import { ApiDocsTags, PROJECT_ROLE } from "@app/lib/api-docs";

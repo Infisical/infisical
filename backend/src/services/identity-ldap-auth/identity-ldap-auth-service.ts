@@ -10,10 +10,9 @@ import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
-  OrgPermissionSubjects,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
 import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";

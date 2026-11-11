@@ -5,7 +5,7 @@ import { AccessScope, ProjectMembershipRole, ProjectRolesSchema } from "@app/db/
 import {
   backfillPermissionV1SchemaToV2Schema,
   ProjectPermissionV1Schema
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PROJECT_ROLE } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";

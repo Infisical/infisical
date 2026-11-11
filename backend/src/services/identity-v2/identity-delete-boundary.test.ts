@@ -6,10 +6,9 @@ import {
   orgAdminPermissions,
   orgNoAccessPermissions,
   OrgPermissionIdentityActions,
-  OrgPermissionSubjects,
-  ProjectPermissionIdentityActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { projectAdminPermissions, projectNoAccessPermissions } from "@app/ee/services/permission/default-roles";
 import { PermissionBoundaryError } from "@app/lib/errors";
 

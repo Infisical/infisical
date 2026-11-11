@@ -12,10 +12,7 @@ import {
   TSecretVersionsV2
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import {
-  ProjectPermissionCommitsActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";

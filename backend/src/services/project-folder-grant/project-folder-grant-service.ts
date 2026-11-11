@@ -5,7 +5,7 @@ import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionProjectFolderGrantActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash } from "@app/lib/fn";

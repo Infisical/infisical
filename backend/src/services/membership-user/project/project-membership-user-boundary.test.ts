@@ -2,10 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
-import {
-  ProjectPermissionMemberActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import {
   projectAdminPermissions,
   projectMemberPermissions,

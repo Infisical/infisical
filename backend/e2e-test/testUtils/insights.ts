@@ -6,7 +6,7 @@ import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
   OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/organizations/ce/module";
 import { TInsightsServiceFactoryDep } from "@app/ee/services/insights/insights-service";
 
 // The insights service covers both the per-project dashboard and the org-wide aggregates, so its factory

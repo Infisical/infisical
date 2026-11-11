@@ -3,11 +3,11 @@ import picomatch from "picomatch";
 import { z } from "zod";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
-import { UnpackedPermissionSchema } from "@app/domains/platform/access-control/ce/module";
+import { UnpackedPermissionSchema,
+  CASL_ACTION_SCHEMA_ENUM,
+  CASL_ACTION_SCHEMA_NATIVE_ENUM,
+  PermissionConditionSchema } from "@app/domains/platform/access-control/ce/module";
 import { conditionsMatcher, PermissionConditionOperators } from "@app/lib/casl";
-
-import { CASL_ACTION_SCHEMA_ENUM, CASL_ACTION_SCHEMA_NATIVE_ENUM } from "./permission-schemas";
-import { PermissionConditionSchema } from "./permission-types";
 
 export enum ProjectPermissionActions {
   Read = "read",

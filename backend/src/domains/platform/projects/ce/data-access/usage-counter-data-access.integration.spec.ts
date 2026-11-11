@@ -5,17 +5,22 @@ import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { Meter } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
+import { OrganizationsModule } from "@app/domains/platform/organizations/ce/module";
 
-import { OrganizationsProjectsModule } from "../module";
+import { ProjectsModule } from "../module";
 import { seedBillableActors } from "../testing/billable-actor-fixture";
 
-describe("OrganizationsProjectsModule usage counters", () => {
+describe("ProjectsModule usage counters", () => {
   const h = setupIntegration();
 
   const build = () => {
     const licenseRegistry = new FakeLicenseRegistry();
     return {
-      module: new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(h.db), licenseRegistry }),
+      module: new ProjectsModule({
+        db: DataAccessDb.fromClient(h.db),
+        organizationsDomain: new OrganizationsModule({ db: DataAccessDb.fromClient(h.db) }).service,
+        licenseRegistry
+      }),
       licenseRegistry
     };
   };
@@ -101,20 +106,5 @@ describe("OrganizationsProjectsModule usage counters", () => {
     // Assert
     expect(rows.reduce((sum, r) => sum + r.count, 0)).toBe(4);
     expect(rows.find((r) => r.orgId === subOrgId)?.count).toBe(1);
-  });
-
-  test("should resolve a sub-org to its root, and a root to itself", async () => {
-    // Setup
-    const { rootOrgId, subOrgId } = await seedBillableActors(h.db);
-    const { module } = build();
-
-    // Action
-    const roots = await Promise.all([
-      module.service.resolveRootOrgId(subOrgId),
-      module.service.resolveRootOrgId(rootOrgId)
-    ]);
-
-    // Assert
-    expect(roots).toEqual([rootOrgId, rootOrgId]);
   });
 });

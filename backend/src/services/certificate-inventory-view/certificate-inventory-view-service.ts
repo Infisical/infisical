@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 

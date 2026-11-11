@@ -9,10 +9,12 @@ import {
   OrgPermissionGatewayPoolActions,
   OrgPermissionKmipServerActions,
   OrgPermissionRelayActions,
-  OrgPermissionSubjects,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import {
   ProjectPermissionAgentVaultProxyActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";

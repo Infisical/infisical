@@ -7,7 +7,7 @@ import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
   OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/organizations/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";

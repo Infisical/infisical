@@ -1,11 +1,11 @@
 import { ProjectType } from "@app/db/schemas";
 import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 
 export * from "./service/folder-roles";
 
 export type TSecretsDeps = {
-  organizationsProjectsDomain: TOrganizationsProjectsDomain;
+  projectsDomain: TProjectsDomain;
   licenseRegistry: TLicenseRegistry;
 };
 
@@ -13,11 +13,10 @@ export type TSecretsDeps = {
 export class SecretsModule {
   readonly name = "secrets";
 
-  constructor({ organizationsProjectsDomain, licenseRegistry }: TSecretsDeps) {
+  constructor({ projectsDomain, licenseRegistry }: TSecretsDeps) {
     licenseRegistry.registerUsageCounter({
       meter: Meter.SecretIdentities,
-      count: (orgId) =>
-        organizationsProjectsDomain.countProjectIdentities(ProjectType.SecretManager, orgId ?? undefined)
+      count: (orgId) => projectsDomain.countProjectIdentities(ProjectType.SecretManager, orgId ?? undefined)
     });
   }
 }

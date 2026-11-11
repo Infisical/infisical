@@ -6,7 +6,7 @@ import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/mo
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, TKeyStoreFactory, TKeyStoreLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";

@@ -20,13 +20,15 @@ import {
   orgNoAccessPermissions,
   OrgPermissionSet,
   OrgPermissionSsoActions,
-  OrgPermissionSubjects,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import {
   buildServiceTokenProjectPermission,
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { AgentVaultResourceRole } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { PamResourceRole } from "@app/ee/services/pam/pam-enums";

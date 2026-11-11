@@ -16,7 +16,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub,
   ProjectPermissionV2Schema
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { FOLDER_SCOPED_DENY_RULES } from "@app/domains/secrets-manager/secrets/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";

@@ -5,7 +5,7 @@ import {
   OrgPermissionActions,
   OrgPermissionSsoActions,
   OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/organizations/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";

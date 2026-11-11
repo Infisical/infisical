@@ -3,12 +3,8 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import {
-  ProjectPermissionDynamicSecretActions,
-  ProjectPermissionSub,
-  OrgPermissionGatewayActions,
-  OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto";

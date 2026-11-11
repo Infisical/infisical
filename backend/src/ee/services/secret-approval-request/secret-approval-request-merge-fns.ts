@@ -3,7 +3,7 @@ import { Knex } from "knex";
 
 import { SecretType } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { ProjectPermissionSet } from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
 import { Actor, Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";

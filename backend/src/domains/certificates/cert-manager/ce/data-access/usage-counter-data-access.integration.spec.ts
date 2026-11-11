@@ -4,7 +4,8 @@ import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { Meter } from "@app/domains/platform/license/ce/module";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
-import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
+import { OrganizationsModule } from "@app/domains/platform/organizations/ce/module";
+import { ProjectsModule } from "@app/domains/platform/projects/ce/module";
 
 import { CertManagerModule } from "../module";
 import { seedPkiOrgs } from "../testing/pki-fixture";
@@ -14,16 +15,11 @@ describe("CertManagerModule usage counters", () => {
 
   const build = () => {
     const licenseRegistry = new FakeLicenseRegistry();
-    const organizationsProjectsDomain = new OrganizationsProjectsModule({
-      db: DataAccessDb.fromClient(h.db),
-      licenseRegistry
-    }).service;
+    const db = DataAccessDb.fromClient(h.db);
+    const organizationsDomain = new OrganizationsModule({ db }).service;
+    const projectsDomain = new ProjectsModule({ db, organizationsDomain, licenseRegistry }).service;
     return {
-      module: new CertManagerModule({
-        db: DataAccessDb.fromClient(h.db),
-        organizationsProjectsDomain,
-        licenseRegistry
-      }),
+      module: new CertManagerModule({ db, organizationsDomain, projectsDomain, licenseRegistry }),
       licenseRegistry
     };
   };

@@ -7,7 +7,7 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 
 // The roles a certificate application membership holds, and what a project admin gets on an application without one.
 export enum ApplicationPermissionSub {

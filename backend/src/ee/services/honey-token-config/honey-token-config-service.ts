@@ -1,10 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import {
-  OrgPermissionHoneyTokenActions,
-  OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionHoneyTokenActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 
 import { honeyTokenAwsConfigServiceFactory } from "../honey-token/aws/honey-token-aws-config-service";

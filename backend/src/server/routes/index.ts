@@ -660,7 +660,8 @@ export const registerRoutes = async (
   const licenseDomain = domains.license.service;
   const kmsCoreDomain = domains.kmsCore.service;
   const instanceConfigCoreDomain = domains.instanceConfigCore.service;
-  const organizationsProjectsDomain = domains.organizationsProjects.service;
+  const organizationsDomain = domains.organizations.service;
+  const projectsDomain = domains.projects.service;
   const certManagerDomain = domains.certManager.service;
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
@@ -903,7 +904,8 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     licenseDomain,
-    organizationsProjectsDomain,
+    organizationsDomain,
+    projectsDomain,
     certManagerDomain,
     breakdownDAL: licenseV2BreakdownDAL
   });
@@ -2472,7 +2474,7 @@ export const registerRoutes = async (
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
-    organizationsProjectsDomain,
+    projectsDomain,
     projectQueue: projectQueueService,
     secretValueTrackingService,
     userDAL,

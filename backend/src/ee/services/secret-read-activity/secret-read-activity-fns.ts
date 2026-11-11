@@ -1,5 +1,5 @@
 import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
-import { ProjectPermissionSecretActions } from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { groupBy, prefixWithSlash, removeTrailingSlash, unique } from "@app/lib/fn";

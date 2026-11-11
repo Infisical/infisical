@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { ProjectPermissionSecretActions } from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-fns";
 
 import {

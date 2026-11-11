@@ -5,7 +5,7 @@ import {
   OrgPermissionGroupActions,
   OrgPermissionSubjects,
   OrgPermissionSubOrgActions
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/organizations/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
   assertRoleSetBoundary,

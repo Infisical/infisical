@@ -4,16 +4,18 @@ import { ProjectType } from "@app/db/schemas";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
+import { OrganizationsModule } from "@app/domains/platform/organizations/ce/module";
 
-import { OrganizationsProjectsModule } from "../module";
+import { ProjectsModule } from "../module";
 
-describe("OrganizationsProjectsModule organizations for License", () => {
+describe("ProjectsModule organizations for License", () => {
   const h = setupIntegration();
 
   const build = () => {
     const licenseRegistry = new FakeLicenseRegistry();
+    const db = DataAccessDb.fromClient(h.db);
     // eslint-disable-next-line no-new
-    new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(h.db), licenseRegistry });
+    new ProjectsModule({ db, organizationsDomain: new OrganizationsModule({ db }).service, licenseRegistry });
     return { organizations: licenseRegistry.organizations! };
   };
 
@@ -64,48 +66,5 @@ describe("OrganizationsProjectsModule organizations for License", () => {
 
     // Assert
     expect(used).toBe(2);
-  });
-});
-
-describe("OrganizationsProjectsModule.findActorOrg", () => {
-  const h = setupIntegration();
-
-  const build = () =>
-    new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(h.db), licenseRegistry: new FakeLicenseRegistry() })
-      .service;
-
-  test("should give a sub-org its root org's sign-in policy and the root and parent ids", async () => {
-    // Setup
-    const root = await h.factories.organization({ authEnforced: true, bypassOrgAuthEnabled: true });
-    const sub = await h.factories.organization({ rootOrgId: root.id, parentOrgId: root.id });
-
-    // Action
-    const org = await build().findActorOrg(sub.id);
-
-    // Assert
-    expect(org).toMatchObject({ id: sub.id, rootOrgId: root.id, parentOrgId: root.id });
-    expect(org?.ssoPolicy).toEqual({ authEnforced: true, googleSsoAuthEnforced: false, bypassOrgAuthEnabled: true });
-  });
-
-  test("should give a root org itself as root and parent", async () => {
-    // Setup
-    const root = await h.factories.organization({ shouldUseNewPrivilegeSystem: false });
-
-    // Action
-    const org = await build().findActorOrg(root.id);
-
-    // Assert
-    expect(org).toMatchObject({ rootOrgId: root.id, parentOrgId: root.id, shouldUseNewPrivilegeSystem: false });
-  });
-
-  test("should find nothing for an org that does not exist", async () => {
-    // Setup
-    const service = build();
-
-    // Action
-    const org = await service.findActorOrg(randomUUID());
-
-    // Assert
-    expect(org).toBeUndefined();
   });
 });

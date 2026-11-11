@@ -16,7 +16,7 @@ import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { AgentVaultResourceRole } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
 import { NotFoundError } from "@app/lib/errors";

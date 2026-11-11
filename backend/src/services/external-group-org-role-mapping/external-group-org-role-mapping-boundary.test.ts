@@ -10,7 +10,7 @@ import {
   OrgPermissionActions,
   OrgPermissionMemberActions,
   OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/organizations/ce/module";
 import { BadRequestError, PermissionBoundaryError } from "@app/lib/errors";
 
 import { externalGroupOrgRoleMappingServiceFactory } from "./external-group-org-role-mapping-service";

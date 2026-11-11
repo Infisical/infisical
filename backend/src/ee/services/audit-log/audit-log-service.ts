@@ -3,12 +3,8 @@ import { requestContext } from "@fastify/request-context";
 
 import { ActionProjectType, OrganizationActionScope, TUsers } from "@app/db/schemas";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import {
-  OrgPermissionAuditLogsActions,
-  OrgPermissionSubjects,
-  ProjectPermissionAuditLogsActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionAuditLogsActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionAuditLogsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";

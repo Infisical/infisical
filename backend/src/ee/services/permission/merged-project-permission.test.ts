@@ -7,7 +7,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
 
 import { hasSecretReadValueOrDescribePermission } from "./permission-fns";

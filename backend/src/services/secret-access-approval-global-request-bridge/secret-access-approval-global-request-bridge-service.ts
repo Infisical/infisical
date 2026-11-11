@@ -6,7 +6,7 @@ import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { verifyRequestedPermissions } from "@app/ee/services/access-approval-request/access-approval-request-fns";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";

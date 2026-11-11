@@ -20,12 +20,14 @@ import {
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
-  TOrganizationsProjectsDomain,
   OrgPermissionActions,
   OrgPermissionAdminConsoleAction,
   OrgPermissionMemberActions,
   OrgPermissionProjectActions,
-  OrgPermissionSubjects,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import {
+  TProjectsDomain,
   ProjectPermissionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
@@ -36,7 +38,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
@@ -147,7 +149,7 @@ export const DEFAULT_PROJECT_ENVS = [
 
 type TProjectServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
-  organizationsProjectsDomain: TOrganizationsProjectsDomain;
+  projectsDomain: TProjectsDomain;
   projectQueue: TProjectQueueFactory;
   secretValueTrackingService: Pick<TSecretValueTrackingServiceFactory, "enableForProject" | "getProjectStatus">;
   userDAL: TUserDALFactory;
@@ -228,7 +230,7 @@ const PROJECT_ACCESS_REQUEST_PRODUCT_LABELS: Partial<Record<ProjectType, string>
 
 export const projectServiceFactory = ({
   projectDAL,
-  organizationsProjectsDomain,
+  projectsDomain,
   projectQueue,
   secretValueTrackingService,
   permissionService,
@@ -330,7 +332,7 @@ export const projectServiceFactory = ({
     // live rather than the plan's cached workspacesUsed.
     const plan = await licenseDomain.getPlan(organization.id);
     if (plan.workspaceLimit !== null && type === ProjectType.SecretManager) {
-      const currentProjectCount = await organizationsProjectsDomain.countWorkspaces(organization.id);
+      const currentProjectCount = await projectsDomain.countWorkspaces(organization.id);
       if (currentProjectCount >= plan.workspaceLimit) {
         throw new BadRequestError({
           message: "Failed to create workspace due to plan limit reached. Upgrade plan to add more workspaces."
@@ -1053,7 +1055,7 @@ export const projectServiceFactory = ({
         }
 
         if (plan.workspaceLimit !== null && project.type === ProjectType.SecretManager) {
-          const currentProjectCount = await organizationsProjectsDomain.countWorkspaces(project.orgId);
+          const currentProjectCount = await projectsDomain.countWorkspaces(project.orgId);
           if (currentProjectCount >= plan.workspaceLimit) {
             throw new BadRequestError({
               message:

@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,

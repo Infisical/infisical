@@ -6,7 +6,7 @@ import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { ConflictError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 

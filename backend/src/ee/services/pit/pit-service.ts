@@ -3,10 +3,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TSecretFolders } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import {
-  ProjectPermissionCommitsActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionCommitsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";

@@ -11,10 +11,7 @@ import {
   TRelays
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import {
-  OrgPermissionGatewayActions,
-  OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { assertHostNotInfisicalInfrastructure } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";

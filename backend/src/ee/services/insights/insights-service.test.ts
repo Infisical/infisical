@@ -6,10 +6,9 @@ import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake
 import {
   OrgPermissionSecretsManagementInsightsActions,
   OrgPermissionSet,
-  OrgPermissionSubjects,
-  ProjectPermissionInsightsActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionInsightsActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { OrgServiceActor } from "@app/lib/types";
 

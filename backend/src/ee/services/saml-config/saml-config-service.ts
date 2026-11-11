@@ -17,7 +17,7 @@ import {
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { AuthMethod } from "@app/lib/auth/actor-types";

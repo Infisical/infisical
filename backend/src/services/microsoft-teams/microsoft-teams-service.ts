@@ -11,7 +11,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { OrganizationActionScope } from "@app/db/schemas";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";

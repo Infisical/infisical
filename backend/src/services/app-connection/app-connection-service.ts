@@ -7,10 +7,9 @@ import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
-  OrgPermissionSubjects,
-  ProjectPermissionAppConnectionActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionAppConnectionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
 import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";

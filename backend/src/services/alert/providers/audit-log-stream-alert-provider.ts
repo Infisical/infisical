@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import {
   AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT,
   AUDIT_LOG_STREAM_RESOURCE_TYPE,

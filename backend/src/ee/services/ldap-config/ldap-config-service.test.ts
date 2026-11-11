@@ -3,7 +3,7 @@ import dns from "node:dns/promises";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 
 import { ldapConfigServiceFactory } from "./ldap-config-service";

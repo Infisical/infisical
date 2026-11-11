@@ -13,7 +13,7 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 
 // Agent Vault project roles.
 // The admin set is written out rather than aliased to projectAdminPermissions: an Agent Vault admin has

@@ -10,8 +10,8 @@ import {
   interpolateStoredIdentityRules,
   isActiveRole
 } from "@app/domains/platform/access-control/ce/module";
+import { OrgPermissionSet } from "@app/domains/platform/organizations/ce/module";
 import {
-  OrgPermissionSet,
   ActionAllowedConditions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
@@ -21,7 +21,7 @@ import {
   ProjectPermissionSub,
   ProjectPermissionV2Schema,
   SecretSubjectFields
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import {
   FOLDER_SCOPED_DENY_RULES,
   SECRET_FOLDER_ROLE_PERMISSIONS

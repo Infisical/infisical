@@ -40,7 +40,7 @@ may edit into a paid one.
   else is thrown so the delete stops.
 - **License is built first and knows no product.** Products plug in through `LicenseModule.registry`
   while `domains.ts` builds them: `registerUsageCounter` (one `TUsageCounter` per `Meter`, from the domain that
-  owns the data) and `registerOrganizations` (root org ids, workspace counts and seat counts, from organizations-projects,
+  owns the data) and `registerOrganizations` (root org ids, workspace counts and seat counts, from projects,
   exactly once). A meter's `scope` decides the report identity: `org-tree` reports at the root, `org` at the
   org that changed. Self-hosted reports everything once, as `self-hosted`, counting the whole instance
   (`count(null)`).

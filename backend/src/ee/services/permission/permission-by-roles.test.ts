@@ -1,12 +1,8 @@
 import { packRules } from "@casl/ability/extra";
 import { vi } from "vitest";
 
-import {
-  OrgPermissionMemberActions,
-  OrgPermissionSubjects,
-  ProjectPermissionActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { NotFoundError } from "@app/lib/errors";
 
 import { permissionServiceFactory } from "./permission-service";

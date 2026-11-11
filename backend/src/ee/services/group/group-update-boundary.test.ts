@@ -9,7 +9,7 @@ import {
   orgNoAccessPermissions,
   OrgPermissionGroupActions,
   OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/organizations/ce/module";
 import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { groupServiceFactory } from "./group-service";

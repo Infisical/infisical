@@ -4,7 +4,7 @@ import {
   ProjectPermissionCmekActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 
 // KMS project roles on top of the generic ones.
 const buildCryptographicOperatorPermissionRules = () => {

@@ -4,10 +4,7 @@ import { ActionProjectType, OrgMembershipRole, SecretType, TableName } from "@ap
 import { THoneyTokens } from "@app/db/schemas/honey-tokens";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import {
-  ProjectPermissionHoneyTokenActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionHoneyTokenActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig as getAppConfig } from "@app/lib/config/env";

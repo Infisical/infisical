@@ -11,10 +11,7 @@ import {
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
-import {
-  ProjectPermissionSecretActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";

@@ -7,11 +7,13 @@ import {
   orgMemberPermissions,
   OrgPermissionActions,
   OrgPermissionAuditLogsActions,
-  OrgPermissionSubjects,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import {
   ProjectPermissionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 

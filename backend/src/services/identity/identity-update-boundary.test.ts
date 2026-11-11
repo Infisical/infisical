@@ -9,7 +9,7 @@ import {
   orgNoAccessPermissions,
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/organizations/ce/module";
 import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { identityServiceFactory } from "./identity-service";

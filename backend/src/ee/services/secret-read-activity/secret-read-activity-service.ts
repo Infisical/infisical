@@ -4,10 +4,7 @@ import { setImmediate } from "node:timers/promises";
 import { SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import {
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";

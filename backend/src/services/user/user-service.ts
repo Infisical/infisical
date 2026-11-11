@@ -3,10 +3,7 @@ import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import {
-  OrgPermissionMemberActions,
-  OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";

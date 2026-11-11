@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { ProjectPermissionSecretActions } from "@app/domains/platform/organizations-projects/ce/module";
+import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
 import { RAW_SECRETS } from "@app/lib/api-docs";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { removeTrailingSlash } from "@app/lib/fn";

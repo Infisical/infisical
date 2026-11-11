@@ -7,7 +7,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub,
   projectAdminPermissions
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 
 // PAM project roles and the roles a PAM folder or account membership holds.
 export enum PamResourcePermissionSub {

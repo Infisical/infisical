@@ -1,10 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
-import {
-  OrgPermissionIdentityActions,
-  OrgPermissionSubjects
-} from "@app/domains/platform/organizations-projects/ce/module";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
 import {
   assertRoleSetBoundary,
   constructPermissionErrorMessage,

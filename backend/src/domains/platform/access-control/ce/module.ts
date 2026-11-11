@@ -20,6 +20,8 @@ export * from "./service/ability-builder";
 export * from "./service/access-control-events";
 export type { TCachedPermissionInput } from "./service/grant-service";
 export { reviveActorGrants } from "./service/grant-service";
+export * from "./service/permission-schemas";
+export * from "./service/permission-types";
 export * from "./service/rule-interpolation";
 export * from "./service/unpacked-permission";
 

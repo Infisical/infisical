@@ -7,10 +7,9 @@ import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionGatewayActions,
-  OrgPermissionSubjects,
-  ProjectPermissionAppConnectionActions,
-  ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import { ProjectPermissionAppConnectionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";

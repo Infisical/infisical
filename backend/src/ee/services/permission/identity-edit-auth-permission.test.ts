@@ -5,11 +5,13 @@ import {
   orgMemberPermissions,
   OrgPermissionIdentityActions,
   OrgPermissionSet,
-  OrgPermissionSubjects,
+  OrgPermissionSubjects
+} from "@app/domains/platform/organizations/ce/module";
+import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSet,
   ProjectPermissionSub
-} from "@app/domains/platform/organizations-projects/ce/module";
+} from "@app/domains/platform/projects/ce/module";
 
 import { projectAdminPermissions, projectMemberPermissions } from "./default-roles";
 
