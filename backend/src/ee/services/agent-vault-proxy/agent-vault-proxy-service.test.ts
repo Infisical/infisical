@@ -69,6 +69,7 @@ const setup = (
   {
     inlineRows = [],
     isOwnerAdmin = true,
+    revokedAt = null,
     label = null,
     onlyOnPrimary = false,
     personalRows = [],
@@ -82,6 +83,7 @@ const setup = (
   }: {
     inlineRows?: TAgentVaultSessionInlineServices[];
     isOwnerAdmin?: boolean;
+    revokedAt?: Date | null;
     label?: string | null;
     // The session was minted a moment ago and hasn't reached the replica.
     onlyOnPrimary?: boolean;
@@ -96,6 +98,11 @@ const setup = (
     };
   } = {}
 ) => {
+  const findCaFingerprintsByProjectId = vi.fn(async () => ["SHA256:AA:BB"]);
+  // The stored token version is 1; the DAL's update matches no row for any other.
+  const recordHeartbeat = vi.fn(async (_proxyId: string, tokenVersion: number) =>
+    tokenVersion === 1 ? { id: "proxy-1", pollInterval: 60, heartbeatTTL: 60 } : undefined
+  );
   const refreshServiceToken = vi.fn(refresh);
   const reportMissingScopes = vi.fn(async () => {});
   const findInlineServices = vi.fn(async () => inlineRows);
@@ -105,16 +112,20 @@ const setup = (
     id: "session-1",
     projectId: PROJECT_ID,
     userId: "user-1",
-    revokedAt: null,
+    revokedAt,
     expiresAt: null,
     label
   };
+  const findSession = async () => (onlyOnPrimary ? undefined : sessionRow) as never;
+  const findSessionOnPrimary = vi.fn(async () => sessionRow as never);
   const createCipherPairWithDataKey = vi.fn(
     async () => ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
   );
   const service = agentVaultProxyServiceFactory({
     agentVaultProxyDAL: {
-      findByIdWithOrg: async () => proxy
+      findByIdWithOrg: async () => proxy,
+      findCaFingerprintsByProjectId,
+      recordHeartbeat
     } as never,
     agentVaultResolveDAL: { findResolvableServices, findSessionSkills: async () => [], findReachableBundles },
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
@@ -122,8 +133,8 @@ const setup = (
     agentVaultVariableDAL: { findValuesForResolve: async () => variables },
     agentVaultPersonalValueDAL: { findForResolve: async () => personalRows },
     agentVaultSessionDAL: {
-      findByTokenHash: async () => (onlyOnPrimary ? undefined : sessionRow) as never,
-      findByTokenHashOnPrimary: async () => sessionRow as never
+      findByTokenHash: findSession,
+      findByTokenHashOnPrimary: findSessionOnPrimary
     } as never,
     agentVaultSessionInlineServiceDAL: {
       findBySessionId: findInlineServices,
@@ -161,12 +172,15 @@ const setup = (
   });
   return {
     service,
+    findSessionOnPrimary,
+    recordHeartbeat,
     refreshServiceToken,
     reportMissingScopes,
     findInlineServices,
     findResolvableServices,
     findReachableBundles,
-    createCipherPairWithDataKey
+    createCipherPairWithDataKey,
+    findCaFingerprintsByProjectId
   };
 };
 
@@ -744,6 +758,95 @@ describe("resolve with inline services", () => {
     const sealed = setup(noRefresh, [passthroughBundleRow], [], { inlineRows: [inlineRow()] });
     await resolve(sealed.service);
     expect(sealed.createCipherPairWithDataKey).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("database and SSH services on resolve", () => {
+  const resolve = (service: ReturnType<typeof setup>["service"]) =>
+    service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
+
+  test("carry their server in native and no host pattern", async () => {
+    const { service } = setup(
+      async () => refreshed,
+      [
+        serviceRow({
+          type: AgentVaultServiceType.Postgres,
+          hostPattern: null,
+          config: { host: "db.internal", port: 5432, database: "app", tls: { enabled: true, verify: false } },
+          credentialType: AgentVaultCredentialType.Basic,
+          credentialConfig: { type: AgentVaultCredentialType.Basic },
+          encryptedCredential: Buffer.from(JSON.stringify({ username: "agent", password: "p" }))
+        })
+      ]
+    );
+    const { services } = await resolve(service);
+    expect(services[0]).toMatchObject({
+      hostPattern: null,
+      native: { host: "db.internal", port: 5432, database: "app", tls: { enabled: true, verify: false, ca: null } },
+      credential: { type: AgentVaultCredentialType.Basic, username: "agent", password: "p" }
+    });
+  });
+
+  test("send an SSH key with its certificate, and HTTP and MCP services send no native target", async () => {
+    const { service } = setup(
+      async () => refreshed,
+      [
+        serviceRow({
+          type: AgentVaultServiceType.Ssh,
+          hostPattern: null,
+          config: { host: "bastion.internal", port: 22 },
+          credentialType: AgentVaultCredentialType.SshKey,
+          credentialConfig: { type: AgentVaultCredentialType.SshKey, hasCertificate: true },
+          encryptedCredential: Buffer.from(
+            JSON.stringify({ username: "agent", privateKey: "key", certificate: "cert" })
+          )
+        }),
+        serviceRow({ id: "55555555-5555-4555-8555-555555555555" })
+      ]
+    );
+    const { services } = await resolve(service);
+    expect(services[0].credential).toEqual({
+      type: AgentVaultCredentialType.SshKey,
+      username: "agent",
+      privateKey: "key",
+      certificate: "cert"
+    });
+    expect(services[1].native).toBeNull();
+  });
+});
+
+describe("a proxy heartbeat", () => {
+  test("is recorded for the token version the request was authenticated with", async () => {
+    const { service, recordHeartbeat } = setup(async () => refreshed);
+    await expect(service.heartbeat({ proxyId: "proxy-1", tokenVersion: 1 })).resolves.toHaveProperty("config");
+    expect(recordHeartbeat).toHaveBeenCalledWith("proxy-1", 1);
+  });
+
+  test("whose token was revoked after the auth check is a 401", async () => {
+    const { service } = setup(async () => refreshed);
+    await expect(service.heartbeat({ proxyId: "proxy-1", tokenVersion: 0 })).rejects.toBeInstanceOf(UnauthorizedError);
+  });
+});
+
+describe("proxy CA fingerprints for a session", () => {
+  test("lists the fingerprints of the proxies in the session's project", async () => {
+    const { service, findCaFingerprintsByProjectId, findSessionOnPrimary } = setup(async () => refreshed);
+    await expect(service.getSessionProxyCaFingerprints({ sessionToken: "token" })).resolves.toEqual({
+      fingerprints: ["SHA256:AA:BB"]
+    });
+    expect(findCaFingerprintsByProjectId).toHaveBeenCalledWith(PROJECT_ID);
+    // A connect straight after the mint would otherwise miss the session on a replica.
+    expect(findSessionOnPrimary).toHaveBeenCalled();
+  });
+
+  test("a revoked session's token is a 401", async () => {
+    const { service, findCaFingerprintsByProjectId } = setup(async () => refreshed, [serviceRow()], [], {
+      revokedAt: new Date()
+    });
+    await expect(service.getSessionProxyCaFingerprints({ sessionToken: "token" })).rejects.toBeInstanceOf(
+      UnauthorizedError
+    );
+    expect(findCaFingerprintsByProjectId).not.toHaveBeenCalled();
   });
 });
 

@@ -52,7 +52,7 @@ import { TAgentVaultService, TAgentVaultVariable } from "@app/hooks/api/agentVau
 
 import { PersonalOAuthConnection } from "./PersonalOAuthConnection";
 import { SecretInput } from "./service-sheet/CredentialFields";
-import { hostOf, TServiceForm } from "./service-sheet/serviceSchema";
+import { hostOf, hostPatternOf, serverUrlOf, TServiceForm } from "./service-sheet/serviceSchema";
 import {
   NO_MISSING_KEYS,
   NO_STORED_KEYS,
@@ -238,12 +238,13 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     [missingKeys, variables, requestVariable]
   );
 
-  const template = service ? findTemplateForHostPattern(service.hostPattern) : undefined;
+  const hostPattern = service ? hostPatternOf(service) : null;
+  const template = hostPattern ? findTemplateForHostPattern(hostPattern) : undefined;
   const providerName = template?.name ?? service?.name;
   // A service that leaves its OAuth sign-in to each member takes the caller's account rather than typed values.
   const isOAuth = service?.credential.type === AgentVaultCredentialType.OAuth;
   const oauthConnection = personalValues?.fields.find((entry) => entry.oauth)?.oauth ?? null;
-  const host = hostOf(service?.serverUrl ?? "");
+  const host = hostOf(serverUrlOf(service) ?? "");
   const hasSavedValues = savedFields.size > 0 || Boolean(oauthConnection);
 
   const storedKeysOf = (field: TAgentVaultMemberProvidedField) =>

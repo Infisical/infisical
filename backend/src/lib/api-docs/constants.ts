@@ -2837,14 +2837,18 @@ export const KMS = {
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
       "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation.",
-    hasDeleteProtection: "Prevents deletion of the key when enabled."
+    hasDeleteProtection: "Prevents deletion of the key when enabled.",
+    isPublicKeyPublished:
+      "Publish the key's public key as a JWKS at an unauthenticated URL, so third parties can verify its signatures. Only sign-verify keys using RSA, ECC or ED25519 can be published. Requires the publish-public-key permission."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
     name: "The updated name of this key. Must be slug-friendly.",
     description: "The updated description of this key.",
     isDisabled: "The flag to enable or disable this key.",
-    hasDeleteProtection: "Enable or disable delete protection for this key."
+    hasDeleteProtection: "Enable or disable delete protection for this key.",
+    isPublicKeyPublished:
+      "Publish this key's public key as a JWKS at an unauthenticated URL, so third parties can verify its signatures. Only sign-verify keys using RSA, ECC or ED25519 can be published."
   },
   ROTATE_KEY: {
     keyId: "The ID of the key to be rotated."
@@ -2882,6 +2886,26 @@ export const KMS = {
 
   GET_PUBLIC_KEY: {
     keyId: "The ID of the key to get the public key for. The key must be for signing and verifying."
+  },
+
+  GET_JWKS: {
+    keyId: "The ID of the key whose published public key to return.",
+    keys: "The key's public key as a JWK, the only entry in the set.",
+    kty: "The key type: RSA for RSA keys, EC for ECC keys, and OKP for ED25519 keys.",
+    use: "Always sig, because the key verifies signatures.",
+    kid: "The key's identifier in the set: the KMS key ID followed by the key version, such as <key-id>:v1. Put it in the kid header of tokens signed with this key, so verifiers can find the key.",
+    alg: "The algorithm the key signs with: ES256, ES384, or ES512 for ECC keys, and EdDSA for ED25519 keys. Left out for RSA keys, which can sign with RS256, RS384, RS512, PS256, PS384, or PS512.",
+    n: "The RSA modulus, base64url encoded.",
+    e: "The RSA public exponent, base64url encoded.",
+    crv: "The curve: P-256, P-384, or P-521 for ECC keys, and Ed25519 for ED25519 keys.",
+    x: "The x coordinate of an ECC public key, or the ED25519 public key itself, base64url encoded.",
+    y: "The y coordinate of an ECC public key, base64url encoded."
+  },
+
+  PUBLIC_JWKS: {
+    kid: "The kid of this key in its published JWKS. Put it in the header of tokens signed with this key. Null for keys that can't publish their public key.",
+    jwksUrl:
+      "The unauthenticated URL serving this key's public key as a JWKS. Null unless the key's public key is published, or when the instance's SITE_URL is unset."
   },
 
   GET_PRIVATE_KEY: {
@@ -3438,6 +3462,7 @@ export const SecretSyncs = {
       projectId: "The ID of the project to create the sync in.",
       environment: `The slug of the project environment to sync secrets from.`,
       secretPath: `The folder path to sync secrets from.`,
+      includeAllSubFolders: `Whether to sync secrets from folders beneath the source path as well. Defaults to false.`,
       connectionId: `The ID of the ${
         APP_CONNECTION_NAME_MAP[SECRET_SYNC_CONNECTION_MAP[destination]]
       } Connection to use for syncing.`,
@@ -3455,6 +3480,7 @@ export const SecretSyncs = {
       name: `The updated name of the ${destinationName} Sync. Must be slug-friendly.`,
       environment: `The updated slug of the project environment to sync secrets from.`,
       secretPath: `The updated folder path to sync secrets from.`,
+      includeAllSubFolders: `Whether to sync secrets from folders beneath the source path as well. Leave it out to keep the current setting.`,
       description: `The updated description of the ${destinationName} Sync.`,
       isAutoSyncEnabled: `Whether secrets should be automatically synced when changes occur at the source location or not.`,
       syncOptions: "Optional parameters to modify how secrets are synced."
@@ -3480,7 +3506,7 @@ export const SecretSyncs = {
       initialSyncBehavior: `Specify how Infisical should resolve the initial sync to the ${destinationName} destination.`,
       keySchema: `Specify the format to use for structuring secret keys in the ${destinationName} destination.`,
       disableSecretDeletion: `Enable this flag to prevent removal of secrets from the ${destinationName} destination when syncing.`,
-      includeAllSubFolders: `Whether to sync secrets from folders beneath the source path as well.`
+      includeAllSubFolders: `Deprecated: use the top-level includeAllSubFolders field instead. Still accepted; if both are set, the top-level value is used.`
     };
   },
   ADDITIONAL_SYNC_OPTIONS: {
@@ -4683,6 +4709,10 @@ export const AGENT_VAULT = {
     limit: "The maximum number of access bundles to return.",
     offset: "How many access bundles to skip.",
     hostPatterns: "Every host pattern the access bundle's services cover.",
+    nativeServices:
+      "The access bundle's database and SSH services, by name. They cover no host pattern, so `hostPatterns` leaves them out.",
+    nativeServiceName: "The name of the service.",
+    nativeServiceType: "The type of the service: `postgres`, `mysql`, or `ssh`.",
     requiresSetup:
       "true lists only the access bundles you can reach that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
     granted:
@@ -4703,11 +4733,50 @@ export const AGENT_VAULT = {
     updateDescription:
       "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it. Send null or an empty string to remove it.",
     descriptionRead: "What the service is for, or null if it has no description. Agents in a session can read it.",
-    type: "The service type: `http` for an HTTP API, or `mcp` for a remote MCP server. Can't be changed after the service is created.",
-    updateType: "The service's type, `http` or `mcp`. Must match the type the service was created with.",
-    serverUrlRead: "The MCP server's full URL. Null for an `http` service.",
+    type: "The service type: `http` for an HTTP API, `mcp` for a remote MCP server, or `postgres`, `mysql` or `ssh` for a database or SSH server the agent reaches with `infisical agent-vault connect`. Can't be changed after the service is created.",
+    updateType:
+      "The service's type, `http`, `mcp`, `postgres`, `mysql` or `ssh`. Must match the type the service was created with.",
+    nativeName:
+      "The name of the service. The agent connects to it by this name with `infisical agent-vault connect`, so it can be at most 63 characters.",
+    host: "The server's host name or IP address, as the Agent Vault proxy reaches it. No scheme, port or path.",
+    hostRead: "The server's host name or IP address.",
+    postgresPort: "The PostgreSQL server's port. Defaults to 5432.",
+    mysqlPort: "The MySQL server's port. Defaults to 3306.",
+    sshPort: "The SSH server's port. Defaults to 22.",
+    portRead: "The server's port.",
+    postgresDatabase: "The database the proxy logs in to. The agent can only use this database.",
+    mysqlDatabase:
+      "The database the proxy logs in to. It is the agent's default database, and the account's grants decide which others the agent can switch to.",
+    databaseRead: "The database the proxy logs in to.",
+    tls: "How the proxy connects to the database. `enabled` (default true) uses TLS, `verify` (default true) checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's.",
+    updateTls:
+      "How the proxy connects to the database. `enabled` uses TLS, `verify` checks the server's certificate, and `ca` is a PEM certificate authority to check it against instead of the system's. A field you leave out keeps its saved value. Send `ca: null` to remove a stored one.",
+    tlsRead: "How the proxy connects to the database.",
+    tlsEnabled: "Whether the proxy connects to the database over TLS. Defaults to true.",
+    tlsVerify: "Whether the proxy checks the database's certificate. Defaults to true.",
+    tlsCa:
+      "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on.",
+    updateTlsCa:
+      "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Send null to remove a stored one.",
+    tlsCaRead:
+      "PEM certificate(s) of the authority that signed the database's certificate, used only while `verify` is on. Null when none is stored.",
+    databaseCredential: "The account the proxy logs in to the database as, a username and password.",
+    sshCredential: "The account the proxy logs in to the SSH server as, a username with a password or an SSH key.",
+    nativeUsername: `The user the proxy logs in as. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    nativePassword: `The password the proxy logs in with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
+    updateNativeUsername: `The user the proxy logs in as. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored username.`,
+    updateNativePassword: `The password the proxy logs in with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the stored password; send an empty string to remove it.`,
+    sshUsername: "The user the proxy logs in to the SSH server as.",
+    sshPrivateKey: "The SSH private key, in OpenSSH or PEM format and without a passphrase. Never returned once saved.",
+    updateSshPrivateKey:
+      "The SSH private key, in OpenSSH or PEM format and without a passphrase. Never returned once saved. Omit to keep the stored key.",
+    sshCertificate: "An SSH certificate for the key: the contents of its `-cert.pub` file. Never returned once saved.",
+    updateSshCertificate:
+      "An SSH certificate for the key: the contents of its `-cert.pub` file. Never returned once saved. Omit to keep the stored certificate; send null to remove it.",
+    sshHasCertificate: "Whether an SSH certificate is stored with the key.",
+    serverUrlRead: "The MCP server's full URL.",
     transportRead:
-      "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport. Null for an `http` service.",
+      "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
     serverUrl:
       "The MCP server's URL, such as `https://mcp.example.com/mcp`. Must use `https`, with no username, password, query string or fragment.",
     transport: "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
@@ -4730,6 +4799,9 @@ export const AGENT_VAULT = {
     oauthLastError: "The last refresh failure, if any. Never contains a token. Not returned to Agent Vault members.",
     hostPattern:
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
+    hostPatternRead:
+      "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`).",
+    mcpHostPatternRead: "The host of the MCP server's URL, with its port if the URL has one.",
     headerName: "The header the credential is written to. Defaults to `Authorization`.",
     headerPrefix:
       "Written before the credential value, separated by one space. Leave empty for a header that carries the value alone, such as DD-API-KEY. Can't contain `{{` or `}}`. On update a field left out keeps its stored value, so send an empty string to clear the prefix when changing the header.",
@@ -4751,6 +4823,8 @@ export const AGENT_VAULT = {
     mcpToolDescription: "The server's description of the tool, or null if it gave none.",
     customHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Send the full list. A header you leave out is deleted. Send a header's `id` to change it in place and keep its stored value. Without an `id`, a header is matched by name.",
+    customHeadersRead:
+      "Additional headers the proxy attaches to every request to this service, on top of the credential, without their values. HTTP and MCP services only.",
     customHeaderId: "The ID of the custom header. Send it to change that header in place. Omit it to match by name.",
     customHeaderName: "The name of the header, which must not be the credential's own header.",
     customHeaderPrefix:
@@ -4761,6 +4835,8 @@ export const AGENT_VAULT = {
     updateCustomHeaderValue: `The header value. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored for this header.`,
     substitutions:
       "Placeholders the proxy swaps for a real secret before forwarding. Send the full list. A substitution you leave out is deleted. Send a substitution's `id` to change it in place and keep its stored value. Without an `id`, it is matched by its placeholder.",
+    substitutionsRead:
+      "Placeholders the proxy swaps for a real secret before forwarding, without their values. HTTP services only.",
     substitutionId:
       "The ID of the substitution. Send it to change that substitution in place. Omit it to match by placeholder.",
     placeholder:
@@ -4770,16 +4846,28 @@ export const AGENT_VAULT = {
     updateSubstitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored.`,
     variableReferences:
       "The global variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+    mcpVariableReferences:
+      "The global variables this service's credential and custom header values use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+    databaseVariableReferences:
+      "The global variables this service's username and password use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
+    sshVariableReferences:
+      "The global variables this service's username and password use. An SSH key uses none. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
     referenceField:
       "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
+    mcpReferenceField: "Which value uses the variable: credential-value (the bearer token) or custom-header.",
+    nativeReferenceField: "Which value uses the variable: credential-username or credential-value (the password).",
     referenceCustomHeaderId: "The custom header whose value uses the variable.",
     referenceSubstitutionId: "The substitution whose value uses the variable.",
     bearerMemberProvidedFields:
       "Leave the token to each member: send `credential-value` here and no `value`. Every member sets their own, and a session uses the token of the member who started it. A session a machine identity started on behalf of a user uses that user's token instead. Omit on update to keep the current setting; send an empty list to set the token yourself again, which then needs a `value`. Changing this clears every member's saved values for the service.",
     basicMemberProvidedFields:
       "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of the member who started it. A session a machine identity started on behalf of a user uses that user's values instead. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
-    memberProvidedFields:
-      "The credential fields each member sets for themselves: credential-value (a bearer token, a basic password, or an OAuth sign-in) and credential-username. Empty when the admin sets the whole credential.",
+    bearerMemberProvidedFieldsRead:
+      "The credential fields each member sets for themselves: credential-value (the token). Empty when the admin sets the whole credential.",
+    basicMemberProvidedFieldsRead:
+      "The credential fields each member sets for themselves: credential-username and credential-value (the password). Empty when the admin sets the whole credential.",
+    oauthMemberProvidedFieldsRead:
+      "The credential fields each member sets for themselves: credential-value (the OAuth sign-in). Empty when the admin sets the whole credential.",
     oauthMemberProvidedFields:
       "Leave the OAuth sign-in to each member: send `credential-value` here and no `authorizationId`. Each member connects their own account, and a session uses the account of the member who started it, or of the user a machine identity started it on behalf of. When you save, Infisical checks that the server supports OAuth, and refuses the save if the server doesn't let Infisical register as an OAuth client and you didn't send `clientId`. To go back to one account for every session, send an empty list and an `authorizationId`. Turning this on removes the stored connection, and turning it off removes every member's connection.",
     oauthClientId:
@@ -4879,7 +4967,8 @@ export const AGENT_VAULT = {
       "The services that use this variable, across every access bundle, ordered by access bundle name and then service name. For a personal variable, the services whose personal values, as you set them, use it. A variable in use can't be deleted.",
     usedByServiceId: "The ID of a service that uses this variable.",
     usedByServiceName: "The name of the service.",
-    usedByServiceHostPattern: "The host pattern of the service.",
+    usedByServiceType: "The service's type: `http`, `mcp`, `postgres`, `mysql` or `ssh`.",
+    usedByServiceHostPattern: "The host pattern of the service. Null for a `postgres`, `mysql` or `ssh` service.",
     usedByServiceAccessBundleId: "The ID of the access bundle the service belongs to.",
     usedByServiceAccessBundleName: "The name of the access bundle the service belongs to.",
     createdAt: "When the variable was added.",
@@ -5081,6 +5170,8 @@ export const AGENT_VAULT = {
   },
 
   SESSION: {
+    proxyCaFingerprints:
+      "The SHA-256 fingerprints of the certificate authorities the Agent Vault proxies in the session's project serve, as `SHA256:AA:BB:...`.",
     sessionId: "The ID of the session.",
     revokedAt: "When the session was revoked.",
     accessBundle:
@@ -5096,12 +5187,18 @@ export const AGENT_VAULT = {
       "The username half of the basic credential, sent exactly as given. May be empty if a password is set. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
     inlineServicePassword:
       "The password half of the basic credential, sent exactly as given. May be empty if a username is set. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
+    inlineNativeUsername:
+      "The user the proxy logs in as, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
+    inlineNativePassword:
+      "The password the proxy logs in with, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
     inlineMcpCredential: "The credential the proxy attaches to requests to the MCP server, a bearer token.",
     inlineCustomHeaders:
       "Additional headers the proxy attaches to every request to this service, on top of the credential. Up to 20.",
     inlineSubstitutions: "Placeholders the proxy swaps for a real secret before forwarding. Up to 20.",
-    inlineCustomHeadersRead: "The headers the proxy attaches besides the credential, without their values.",
-    inlineSubstitutionsRead: "The placeholders the proxy swaps for a real secret, without their values.",
+    inlineCustomHeadersRead:
+      "The headers the proxy attaches besides the credential, without their values. HTTP and MCP services only.",
+    inlineSubstitutionsRead:
+      "The placeholders the proxy swaps for a real secret, without their values. HTTP services only.",
     inlineCustomHeaderValue:
       "The header value, sent exactly as given. Services sent with a session can't use variables, so it can't wrap text in double braces. Never returned.",
     inlineSubstitutionValue:
@@ -5150,7 +5247,7 @@ export const AGENT_VAULT = {
       "any-host if the proxy forwards requests to hosts no service covers, service-hosts if it refuses them, apart from the exception hosts the notes name.",
     session: "The session's expiry as an RFC 3339 time, and the name of its access bundle.",
     services: "The services the session can use, bundle services first, then the session's own.",
-    hosts: "The host patterns the service covers, as an admin wrote them.",
+    hosts: "The host patterns the service covers, as an admin wrote them. Empty for a database or SSH service.",
     url: "The URL to call: an MCP server's URL, or for an HTTP service with exactly one host that isn't a wildcard, that host's URL.",
     status:
       "ready, or needs-personal-values if the session's owner, or the user it was started on behalf of, hasn't set every personal value the service needs or connected their account. The proxy refuses requests to the service until they do.",
@@ -5166,9 +5263,11 @@ export const AGENT_VAULT = {
     sessionAccessBundle: "The name of the session's access bundle, or null if its owner can no longer reach one.",
     serviceName: "The service's name.",
     serviceDescription: "What the service is for, as an admin wrote it, or null if it has no description.",
-    serviceType: "http for an HTTP API, or mcp for a remote MCP server.",
+    serviceType:
+      "http for an HTTP API, mcp for a remote MCP server, or postgres, mysql or ssh for a database or SSH server the agent reaches with `infisical agent-vault connect`.",
     transport: "The MCP server's transport, streamable-http or sse. Only set for an MCP service.",
-    credentialType: "The kind of credential the proxy adds: bearer, oauth, basic, or none.",
+    credentialType:
+      "The kind of credential the proxy adds: bearer, oauth, basic, login (the account the proxy logs in to a database or SSH server as), or none.",
     credentialHeader: "The header the proxy sets the credential in.",
     credentialAddedByProxy: "Whether the proxy adds a credential to the service's requests.",
     credentialMemberProvided:

@@ -88,14 +88,20 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
   };
 
   // heartbeatTTL is copied from the row's own pollInterval in the same statement, so it records the
-  // interval the proxy is about to be handed back rather than whatever the settings said earlier.
-  const recordHeartbeat = async (id: string, tx?: Knex): Promise<TAgentVaultProxies | undefined> => {
+  // interval the proxy is about to be handed back rather than whatever the settings said earlier. Tied to the token
+  // version the caller was checked against, because revoke and rotate clear the heartbeat to mark the proxy
+  // untrusted, and a heartbeat landing after them must not set it again.
+  const recordHeartbeat = async (
+    id: string,
+    tokenVersion: number,
+    tx?: Knex
+  ): Promise<TAgentVaultProxies | undefined> => {
     try {
       // Raw because the typed update builder will not take a column reference as a value, and copying
       // pollInterval across in one statement is the point: two statements could straddle a settings save.
       const updated = await (tx || db).raw<{ rows: TAgentVaultProxies[] }>(
-        `UPDATE ?? SET "heartbeat" = ?, "heartbeatTTL" = "pollInterval" WHERE "id" = ? RETURNING *`,
-        [TableName.AgentVaultProxy, new Date(), id]
+        `UPDATE ?? SET "heartbeat" = ?, "heartbeatTTL" = "pollInterval" WHERE "id" = ? AND "tokenVersion" = ? RETURNING *`,
+        [TableName.AgentVaultProxy, new Date(), id, tokenVersion]
       );
       return updated.rows[0];
     } catch (error) {
@@ -135,8 +141,25 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Only the fingerprint: the row also holds the CA's sealed private key, which never leaves this module. Revoke and
+  // rotate clear the heartbeat and there is no revoked flag, so a proxy without one isn't trusted until it reports in.
+  // Read from the primary, since a replica that hasn't seen a revoke would still list the revoked proxy's CA.
+  const findCaFingerprintsByProjectId = async (projectId: string, tx?: Knex): Promise<string[]> => {
+    try {
+      const rows = (await (tx || db)(TableName.AgentVaultProxy)
+        .where({ projectId })
+        .whereNotNull("rootCaFingerprint")
+        .whereNotNull("heartbeat")
+        .select("rootCaFingerprint")) as { rootCaFingerprint: string }[];
+      return rows.map((row) => row.rootCaFingerprint);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault proxy CA fingerprints" });
+    }
+  };
+
   return {
     ...orm,
+    findCaFingerprintsByProjectId,
     findByIdWithOrg,
     findByIdInProject,
     findForList,

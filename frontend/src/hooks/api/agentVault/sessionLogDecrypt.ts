@@ -75,6 +75,20 @@ const SessionLogRecordsSchema = z.array(
         truncated: z.boolean().optional()
       })
       .optional()
+      .catch(undefined),
+    native: z
+      .object({
+        statement: z.string().optional(),
+        command: z.string().optional(),
+        stdin: z.string().optional(),
+        file: z.string().optional(),
+        result: z.string().optional(),
+        output: z.string().optional(),
+        shell: z.boolean().optional(),
+        note: z.string().optional(),
+        truncated: z.boolean().optional()
+      })
+      .optional()
       .catch(undefined)
   })
 );

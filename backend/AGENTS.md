@@ -943,6 +943,22 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   `addAppConnectionFederatedCredential` and never stored, so the UI and Terraform read them rather than rebuild them.
   The issuer is null when `SITE_URL` is unset, so reading a connection never fails on it.
 
+### KMS public key publishing (JWKS per key)
+
+A sign-verify CMEK can publish its public key as a JWKS at `/api/v1/kms/keys/<keyId>/jwks.json`, unauthenticated,
+for verifiers such as Okta `private_key_jwt`. `kms_keys.isPublicKeyPublished` turns it on through the key's `PATCH`.
+
+- **Publishing needs `publish-public-key` on top of `edit`.** Only admins get it by default, like `export-private-key`.
+- **Unpublished, disabled and missing keys all return the same 404**, as does a key in a project pending deletion,
+  so the URL never confirms that a key exists.
+- **The `kid` is `<keyId>:v<version>` and can never change**, because tokens already carry it. Sign-verify keys have
+  one version today; when they get versioning, the same URL serves the versions still being verified, and that is
+  how rotation is meant to work. RSA JWKs omit `alg`, since the key signs RS* and PS*. ML-DSA can't be published.
+- **The JWKS is cached in Redis for 60 seconds** and cleared by every update and delete in `cmek-service`. Changes
+  made elsewhere, such as KMIP, show within that TTL.
+- KMS ECDSA signatures are DER, so an ES* JWT signed through the sign API needs its signature re-encoded as raw R||S
+  before a JWKS verifier accepts it.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:

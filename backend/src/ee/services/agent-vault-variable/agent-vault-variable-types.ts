@@ -1,6 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { AgentVaultVariableScope } from "../agent-vault/agent-vault-enums";
+import { AgentVaultServiceType, AgentVaultVariableScope } from "../agent-vault/agent-vault-enums";
 import { TFindAgentVaultVariablesDTO } from "./agent-vault-variable-dal";
 
 export type TAgentVaultVariableScoped = { projectId: string; ctx: TGenericPermission };
@@ -25,7 +25,8 @@ export type TVariableByIdDTO = TAgentVaultVariableScoped & { variableId: string 
 export type TAgentVaultVariableUsedByService = {
   id: string;
   name: string;
-  hostPattern: string;
+  type: AgentVaultServiceType;
+  hostPattern: string | null;
   accessBundleId: string;
   accessBundleName: string;
 };

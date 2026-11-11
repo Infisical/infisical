@@ -6,7 +6,12 @@ import {
   AgentVaultSubstitutionSurface,
   AgentVaultTrafficPolicy
 } from "../agent-vault/agent-vault-enums";
-import { getServiceServerUrl, getServiceTransport } from "../agent-vault/agent-vault-service-type-fns";
+import { isNativeServiceType } from "../agent-vault/agent-vault-native-config-schemas";
+import {
+  getAgentVaultServiceType,
+  getServiceServerUrl,
+  getServiceTransport
+} from "../agent-vault/agent-vault-service-type-fns";
 import { TResolveServiceRow } from "./agent-vault-resolve-dal";
 
 // The list an agent reads to learn what its session can use. It is shown to the agent word for word, so the wording is
@@ -24,7 +29,8 @@ export type TSessionServiceFacts = {
   name: string;
   description: string | null;
   type: AgentVaultServiceType;
-  hostPattern: string;
+  // Null for a database or SSH service, which the agent reaches through `infisical agent-vault connect`.
+  hostPattern: string | null;
   serverUrl: string | null;
   transport: string | null;
   allowedMethods: string[] | null;
@@ -49,7 +55,7 @@ export type TSessionServiceDescription = {
   transport?: string;
   status: "ready" | "needs-personal-values";
   credential: {
-    type: "bearer" | "oauth" | "basic" | "none";
+    type: "bearer" | "oauth" | "basic" | "login" | "none";
     header?: string;
     addedByProxy: boolean;
     memberProvided: boolean;
@@ -87,8 +93,8 @@ const SURFACE_ORDER: string[] = [
 ];
 
 // As typed and in order, which is how admins wrote them and what an agent reads best.
-const splitHostPatterns = (raw: string) =>
-  raw
+const splitHostPatterns = (raw: string | null) =>
+  (raw ?? "")
     .split(",")
     .map((host) => host.trim())
     .filter(Boolean);
@@ -117,7 +123,7 @@ const parseHostPattern = (pattern: string) => {
 };
 
 // A URL only for a service with exactly one host that isn't a wildcard. A pattern without a port is 443, so https.
-const serviceBaseUrl = (hostPattern: string) => {
+const serviceBaseUrl = (hostPattern: string | null) => {
   const patterns = splitHostPatterns(hostPattern);
   if (patterns.length !== 1) return null;
   const { host, port } = parseHostPattern(patterns[0]);
@@ -133,6 +139,8 @@ const sortedUnique = (values: string[]) => [...new Set(values)].sort();
 const describeCredential = (service: TSessionServiceFacts): TSessionServiceDescription["credential"] => {
   const { memberProvided } = service;
   if (service.personalValuesMissing) return { type: "none", addedByProxy: false, memberProvided };
+  // A database or SSH service's credential is the account the proxy logs in as, not anything sent in a request.
+  if (isNativeServiceType(service.type)) return { type: "login", addedByProxy: true, memberProvided };
   switch (service.credential.type) {
     case "bearer":
       return {
@@ -159,6 +167,11 @@ const memberCredentialSentence = (
   name: string,
   onBehalfOfUser: boolean
 ) => {
+  if (credentialType === "login") {
+    return onBehalfOfUser
+      ? `The account is partly the personal value of the user this session is for. If the proxy can't log in, that user has to update their personal value for ${name} in Agent Vault, which an admin can't do for them.`
+      : `The account is partly the session owner's own personal value. If the proxy can't log in, they have to update their personal value for ${name} in Agent Vault, which an admin can't do for them.`;
+  }
   if (credentialType === "oauth") {
     return onBehalfOfUser
       ? `The credential is the sign-in of the user this session is for. If the server rejects it, that user has to reconnect their account for ${name} in Agent Vault, which an admin can't do for them.`
@@ -181,7 +194,13 @@ const howToUse = (
   }
   const parts: string[] = [];
   const target = description.url ?? "these hosts";
-  if (service.type === AgentVaultServiceType.Mcp) {
+  if (isNativeServiceType(service.type)) {
+    const { label } = getAgentVaultServiceType(service.type);
+    const kind = service.type === AgentVaultServiceType.Ssh ? `${label} server` : `${label} database`;
+    parts.push(
+      `${kind}, not reachable over HTTP. Run infisical agent-vault connect ${service.name} and leave it running: it prints a local address on 127.0.0.1 and an example command. Point your client at that address with any username and no password: the proxy logs in with the service's account.`
+    );
+  } else if (service.type === AgentVaultServiceType.Mcp) {
     const transport = description.transport ?? AgentVaultMcpTransport.StreamableHttp;
     const connect = `Remote MCP server (${transport} transport). Connect to ${target} with no credential and no OAuth sign-in: the proxy adds the credential. A client that only loads MCP servers at startup will not see a server added now, so in this session`;
     // An SSE server answers on the stream it opened, at a message URL it announces, not in the reply to a POST.
@@ -229,10 +248,12 @@ export const describeSessionService = (
   onBehalfOfUser = false
 ): TSessionServiceDescription => {
   const isMcp = service.type === AgentVaultServiceType.Mcp;
+  let type = isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http;
+  if (isNativeServiceType(service.type)) type = service.type;
   const description: Omit<TSessionServiceDescription, "howToUse"> = {
     name: service.name,
     description: service.description || null,
-    type: isMcp ? AgentVaultServiceType.Mcp : AgentVaultServiceType.Http,
+    type,
     hosts: splitHostPatterns(service.hostPattern),
     url: isMcp ? service.serverUrl || null : serviceBaseUrl(service.hostPattern),
     ...(isMcp && service.transport ? { transport: service.transport } : {}),
@@ -271,7 +292,8 @@ const sessionNotes = (
   trafficPolicy: TSessionServicesDocument["agentVault"]["trafficPolicy"],
   allowedHosts: string | null,
   expiresAt: string | null,
-  onBehalfOfUser: boolean
+  onBehalfOfUser: boolean,
+  hasNativeServices: boolean
 ) => {
   const notes = [
     "Requests to these services go through this proxy, which adds each service's credential on the way out. You never hold the real keys, so a missing key in your environment is expected.",
@@ -283,7 +305,9 @@ const sessionNotes = (
     notes.push("Hosts no service covers are reachable, but the proxy adds nothing to those requests.");
   }
   notes.push(
-    "Not supported through the proxy: WebSockets, HTTP/2-only clients such as gRPC, and connections that are not HTTP."
+    hasNativeServices
+      ? "Not supported through the proxy: WebSockets, HTTP/2-only clients such as gRPC, and connections that are not HTTP, except the database and SSH services listed here, which you reach through infisical agent-vault connect."
+      : "Not supported through the proxy: WebSockets, HTTP/2-only clients such as gRPC, and connections that are not HTTP."
   );
   if (expiresAt) notes.push(`The session expires at ${expiresAt}; after that the proxy refuses every request.`);
   return notes;
@@ -313,7 +337,13 @@ export const buildSessionServicesDocument = ({
     agentVault: { proxy: proxy?.name ?? null, version: proxy?.version ?? null, trafficPolicy },
     session: { expiresAt, accessBundle: session.accessBundle },
     services: services.map((service) => describeSessionService(service, session.onBehalfOfUser)),
-    notes: sessionNotes(trafficPolicy, proxy?.allowedHosts ?? null, expiresAt, session.onBehalfOfUser)
+    notes: sessionNotes(
+      trafficPolicy,
+      proxy?.allowedHosts ?? null,
+      expiresAt,
+      session.onBehalfOfUser,
+      services.some((service) => isNativeServiceType(service.type))
+    )
   };
 };
 

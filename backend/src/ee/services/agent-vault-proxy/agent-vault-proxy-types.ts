@@ -55,6 +55,7 @@ export type TProxyRootCa = {
 
 export type THeartbeatDTO = {
   proxyId: string;
+  tokenVersion: number;
 };
 
 export type TAuthorizeSessionDTO = {
@@ -64,6 +65,10 @@ export type TAuthorizeSessionDTO = {
 };
 
 export type TGetSessionSkillsDTO = {
+  sessionToken: string;
+};
+
+export type TGetSessionProxyCaFingerprintsDTO = {
   sessionToken: string;
 };
 
@@ -96,13 +101,22 @@ export type TReportMissingScopesDTO = TRefreshCredentialDTO & {
   requiredScopes: string[];
 };
 
+export type TResolvedNativeTarget = {
+  host: string;
+  port: number;
+  database: string | null;
+  tls: { enabled: boolean; verify: boolean; ca: string | null } | null;
+};
+
 export type TResolvedService = {
   id: string;
   name: string;
   // Null for a service sent inline with the session, which belongs to no bundle.
   accessBundleName: string | null;
   type: AgentVaultServiceType;
-  hostPattern: string;
+  // Null for a database or SSH service, whose server is in `native` instead.
+  hostPattern: string | null;
+  native: TResolvedNativeTarget | null;
   allowedMethods: string[] | null;
   allowedPathPrefixes: string[] | null;
   allowedTools: string[] | null;
@@ -117,6 +131,7 @@ export type TResolvedService = {
         expiresAt?: string | null;
       }
     | { type: AgentVaultCredentialType.Basic; username: string; password: string }
+    | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string }
     | { type: AgentVaultCredentialType.Passthrough };
   customHeaders: { name: string; prefix: string; value: string }[];
   substitutions: { placeholder: string; surfaces: string[]; value: string }[];

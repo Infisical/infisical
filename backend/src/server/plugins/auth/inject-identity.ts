@@ -303,7 +303,8 @@ export const injectIdentity = fp(
       if (
         pathname === "/api/v1/agent-vault/session/skills" ||
         pathname === "/api/v1/agent-vault/session/services" ||
-        pathname === "/api/v1/agent-vault/session/revoke"
+        pathname === "/api/v1/agent-vault/session/revoke" ||
+        pathname === "/api/v1/agent-vault/session/proxy-ca-fingerprints"
       ) {
         return;
       }

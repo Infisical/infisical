@@ -17,8 +17,35 @@ export enum AgentVaultSubstitutionSurface {
 
 export enum AgentVaultServiceType {
   Http = "http",
-  Mcp = "mcp"
+  Mcp = "mcp",
+  Postgres = "postgres",
+  Mysql = "mysql",
+  Ssh = "ssh"
 }
+
+export type TAgentVaultNativeServiceType =
+  | AgentVaultServiceType.Postgres
+  | AgentVaultServiceType.Mysql
+  | AgentVaultServiceType.Ssh;
+
+export const AGENT_VAULT_NATIVE_SERVICE_TYPES: readonly TAgentVaultNativeServiceType[] = [
+  AgentVaultServiceType.Postgres,
+  AgentVaultServiceType.Mysql,
+  AgentVaultServiceType.Ssh
+];
+
+export const isNativeServiceType = (
+  type: AgentVaultServiceType | null | undefined
+): type is TAgentVaultNativeServiceType =>
+  (
+    AGENT_VAULT_NATIVE_SERVICE_TYPES as readonly (AgentVaultServiceType | null | undefined)[]
+  ).includes(type);
+
+export const AGENT_VAULT_NATIVE_DEFAULT_PORTS: Record<TAgentVaultNativeServiceType, number> = {
+  [AgentVaultServiceType.Postgres]: 5432,
+  [AgentVaultServiceType.Mysql]: 3306,
+  [AgentVaultServiceType.Ssh]: 22
+};
 
 export enum AgentVaultMcpTransport {
   StreamableHttp = "streamable-http",
@@ -29,7 +56,8 @@ export enum AgentVaultCredentialType {
   Bearer = "bearer",
   Basic = "basic",
   Passthrough = "passthrough",
-  OAuth = "oauth"
+  OAuth = "oauth",
+  SshKey = "ssh-key"
 }
 
 export enum AgentVaultOauthStatus {

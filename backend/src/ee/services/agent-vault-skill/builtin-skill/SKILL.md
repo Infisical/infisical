@@ -3,8 +3,9 @@ name: infisical-agent-vault
 description: >-
   For when your web traffic may go through an Infisical Agent Vault proxy, which adds real credentials to
   requests for the services your session covers, so you hold no API keys and a missing key is expected.
-  Before you tell the user you lack access to an API, chat tool, issue tracker or MCP server, or ask them
-  for a key or token, and after any 401, 403 or 407, run exactly this on its own, with no pipe:
+  Before you tell the user you lack access to an API, chat tool, issue tracker, MCP server, database or SSH
+  server, or ask them for a key or token, and after any 401, 403 or 407, run exactly this on its own, with
+  no pipe:
   curl -sS --noproxy "" "$INFISICAL_AGENT_VAULT_URL/api/v1/agent-vault/session/services"
   If curl reports a URL error such as "No host part in the URL", INFISICAL_AGENT_VAULT_URL is not set:
   you are not behind Agent Vault and this skill does not apply. Otherwise the proxy answers: a JSON list of

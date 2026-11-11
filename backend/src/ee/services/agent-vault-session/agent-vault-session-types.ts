@@ -10,6 +10,7 @@ import {
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface
 } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultServiceTypeFields } from "../agent-vault/agent-vault-service-type-fns";
 
 /** Exactly one of the two names the user. */
 export type TOnBehalfOfUser = { userId?: string; userEmail?: string };
@@ -23,6 +24,10 @@ export type TAgentVaultInlineServiceInput = {
   hostPattern?: string;
   serverUrl?: string;
   transport?: AgentVaultMcpTransport;
+  host?: string;
+  port?: number;
+  database?: string;
+  tls?: { enabled?: boolean; verify?: boolean; ca?: string | null };
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   // Accepted only to be refused by name: an inline MCP server can't be limited to some of its tools.
@@ -42,10 +47,27 @@ export type TAgentVaultInlineServiceInput = {
         memberProvidedFields?: string[];
       }
     | { type: AgentVaultCredentialType.Passthrough }
-    | { type: AgentVaultCredentialType.OAuth; authorizationId?: string };
+    | { type: AgentVaultCredentialType.OAuth; authorizationId?: string }
+    | { type: AgentVaultCredentialType.SshKey; username: string; privateKey: string; certificate?: string };
   customHeaders?: { name: string; prefix?: string; value: string }[];
   substitutions?: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[]; value: string }[];
 };
+
+export type TAgentVaultInlineBearerCredentialSummary = {
+  type: AgentVaultCredentialType.Bearer;
+  headerName: string;
+  headerPrefix: string;
+};
+
+export type TAgentVaultInlineCredentialSummary =
+  | TAgentVaultInlineBearerCredentialSummary
+  | { type: AgentVaultCredentialType.Basic }
+  | { type: AgentVaultCredentialType.Passthrough }
+  | { type: AgentVaultCredentialType.SshKey; hasCertificate: boolean };
+
+export type TAgentVaultInlineCustomHeaderSummary = { name: string; prefix: string };
+
+export type TAgentVaultInlineSubstitutionSummary = { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] };
 
 /** An inline service as every read returns it: everything but its secrets. */
 export type TAgentVaultInlineServiceSummary = {
@@ -53,19 +75,26 @@ export type TAgentVaultInlineServiceSummary = {
   // The name it was sent with, or its first host when it was sent without one.
   name: string;
   description: string | null;
-  type: AgentVaultServiceType;
-  serverUrl: string | null;
-  transport: AgentVaultMcpTransport | null;
-  hostPattern: string;
-  allowedMethods: AgentVaultHttpMethod[] | null;
-  allowedPathPrefixes: string[] | null;
-  credential:
-    | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
-    | { type: AgentVaultCredentialType.Basic }
-    | { type: AgentVaultCredentialType.Passthrough };
-  customHeaders: { name: string; prefix: string }[];
-  substitutions: { placeholder: string; surfaces: AgentVaultSubstitutionSurface[] }[];
-};
+} & (
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Http }> & {
+      credential: Exclude<TAgentVaultInlineCredentialSummary, { type: AgentVaultCredentialType.SshKey }>;
+      customHeaders: TAgentVaultInlineCustomHeaderSummary[];
+      substitutions: TAgentVaultInlineSubstitutionSummary[];
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Mcp }> & {
+      credential: TAgentVaultInlineBearerCredentialSummary;
+      customHeaders: TAgentVaultInlineCustomHeaderSummary[];
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Postgres | AgentVaultServiceType.Mysql }> & {
+      credential: { type: AgentVaultCredentialType.Basic };
+    })
+  | (Extract<TAgentVaultServiceTypeFields, { type: AgentVaultServiceType.Ssh }> & {
+      credential: Extract<
+        TAgentVaultInlineCredentialSummary,
+        { type: AgentVaultCredentialType.Basic | AgentVaultCredentialType.SshKey }
+      >;
+    })
+);
 
 export type TMintSessionDTO = {
   projectId: string;

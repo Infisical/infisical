@@ -128,7 +128,8 @@ const ScopeRow = ({
   barClassName,
   isIdentity,
   projects,
-  orgLevelCount
+  orgLevelCount,
+  hasChevronSlot
 }: {
   name: string;
   tag?: string;
@@ -138,25 +139,28 @@ const ScopeRow = ({
   isIdentity: boolean;
   projects?: { id: string; name: string; count: number }[];
   orgLevelCount?: number;
+  hasChevronSlot: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const canExpand = Boolean(projects && (projects.length > 0 || (orgLevelCount ?? 0) > 0));
   return (
     <div className={cn("flex flex-col", isOpen && "bg-container-hover")}>
       <div className="flex items-center gap-2.5 px-2.5 py-2 text-sm">
-        <span className="flex w-4 shrink-0 justify-center">
-          {canExpand && (
-            <IconButton
-              size="2xs"
-              variant="ghost-muted"
-              aria-expanded={isOpen}
-              aria-label={`${isOpen ? "Hide" : "Show"} projects in ${name}`}
-              onClick={() => setIsOpen(!isOpen)}
-            >
-              {isOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-            </IconButton>
-          )}
-        </span>
+        {hasChevronSlot && (
+          <span className="flex w-4 shrink-0 justify-center">
+            {canExpand && (
+              <IconButton
+                size="2xs"
+                variant="ghost-muted"
+                aria-expanded={isOpen}
+                aria-label={`${isOpen ? "Hide" : "Show"} projects in ${name}`}
+                onClick={() => setIsOpen(!isOpen)}
+              >
+                {isOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
+              </IconButton>
+            )}
+          </span>
+        )}
         <span className={cn("size-2 shrink-0 rounded-xs", barClassName)} />
         <span className="flex w-44 min-w-0 items-baseline gap-1.5">
           <span className="truncate">{name}</span>
@@ -235,6 +239,9 @@ const BreakdownPanel = ({
     const rootCount = rootScopes.reduce((sum, scope) => sum + scope.count, 0);
     const subOrgCount = subOrgScopes.reduce((sum, scope) => sum + scope.count, 0);
     const orgCount = data.scopes.length;
+    const hasChevronSlot =
+      data.hasProjectDetail &&
+      data.scopes.some((scope) => scope.projects.length > 0 || scope.orgLevelCount > 0);
     return (
       <div className="flex flex-col gap-2.5">
         <div className="flex items-baseline justify-between gap-3">
@@ -262,10 +269,13 @@ const BreakdownPanel = ({
               isIdentity={isIdentity}
               projects={data.hasProjectDetail ? scope.projects : undefined}
               orgLevelCount={data.hasProjectDetail ? scope.orgLevelCount : undefined}
+              hasChevronSlot={hasChevronSlot}
             />
           ))}
           {subOrgScopes.length === 0 && (
-            <span className="px-2.5 py-2 pl-9 text-xs text-muted">No active sub-orgs</span>
+            <span className={cn("px-2.5 py-2 text-xs text-muted", hasChevronSlot && "pl-9")}>
+              No active sub-orgs
+            </span>
           )}
         </div>
       </div>

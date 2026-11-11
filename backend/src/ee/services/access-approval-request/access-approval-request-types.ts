@@ -1,4 +1,5 @@
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TProjectPermission } from "@app/lib/types";
 import { TQueueServiceFactory } from "@app/queue";
@@ -80,6 +81,7 @@ export type TNotifyDelegatedDecisionDTO = {
 };
 
 export type TSecretAccessApprovalRequestServiceFactoryDep = {
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectBySlug" | "checkProjectUpgradeStatus">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;

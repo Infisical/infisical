@@ -73,6 +73,7 @@ import {
   toStoredTrafficPolicy,
   toTrafficPolicyView
 } from "../agent-vault/agent-vault-enums";
+import { toResolvedNativeTarget } from "../agent-vault/agent-vault-native-config-schemas";
 import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import {
   findReachableAccessBundleIds,
@@ -94,6 +95,7 @@ import {
   TAuthorizeSessionDTO,
   TBootstrapProxyDTO,
   TCreateProxyDTO,
+  TGetSessionProxyCaFingerprintsDTO,
   TGetSessionServicesDTO,
   TGetSessionSkillsDTO,
   TRevokeSessionByTokenDTO,
@@ -548,9 +550,12 @@ export const agentVaultProxyServiceFactory = ({
     return { proxyId: proxy.id, name: proxy.name, config: toConfig(proxy), rootCa: infisicalCa?.rootCa };
   };
 
-  const heartbeat = async ({ proxyId }: THeartbeatDTO) => {
-    const proxy = await agentVaultProxyDAL.recordHeartbeat(proxyId);
-    if (!proxy) throw new UnauthorizedError({ message: "This proxy no longer exists" });
+  const heartbeat = async ({ proxyId, tokenVersion }: THeartbeatDTO) => {
+    // The auth check ran on an earlier read, so a revoke or rotation landing in between leaves no row to update.
+    const proxy = await agentVaultProxyDAL.recordHeartbeat(proxyId, tokenVersion);
+    if (!proxy) {
+      throw new UnauthorizedError({ name: "ProxyTokenRejected", message: "Agent Vault proxy token has been revoked" });
+    }
     return { config: toConfig(proxy) };
   };
 
@@ -590,6 +595,17 @@ export const agentVaultProxyServiceFactory = ({
     }
     if (row.credentialType === AgentVaultCredentialType.OAuth) {
       return toResolvedOauthCredential(row.credentialConfig as TAgentVaultOauthConfig, secret.accessToken);
+    }
+    if (row.credentialType === AgentVaultCredentialType.SshKey) {
+      return {
+        type: AgentVaultCredentialType.SshKey,
+        username: secret.username,
+        privateKey: secret.privateKey,
+        ...(secret.certificate ? { certificate: secret.certificate } : {})
+      };
+    }
+    if (row.credentialType !== AgentVaultCredentialType.Basic) {
+      throw new InternalServerError({ message: `Unknown credential type '${row.credentialType}'` });
     }
     return { type: AgentVaultCredentialType.Basic, username: secret.username ?? "", password: secret.password ?? "" };
   };
@@ -1129,7 +1145,8 @@ export const agentVaultProxyServiceFactory = ({
       name: row.name,
       accessBundleName: row.accessBundleName,
       type: row.type as AgentVaultServiceType,
-      hostPattern: row.hostPattern,
+      hostPattern: row.hostPattern ?? null,
+      native: toResolvedNativeTarget(row.type, row.config),
       allowedMethods: row.allowedMethods,
       allowedPathPrefixes: row.allowedPathPrefixes,
       allowedTools: row.allowedTools,
@@ -1339,6 +1356,19 @@ export const agentVaultProxyServiceFactory = ({
     return { skills, session, ownerUser, onBehalfOfUser, orgId: project.orgId };
   };
 
+  // Lets `infisical agent-vault connect` pin the proxy's CA without trusting the proxy for it. Only the fingerprint
+  // each proxy serves is returned: a stored certificate that differs from it is one no proxy serves.
+  const getSessionProxyCaFingerprints = async ({ sessionToken }: TGetSessionProxyCaFingerprintsDTO) => {
+    const session = await agentVaultSessionDAL.findByTokenHashOnPrimary(hashSessionToken(sessionToken));
+    const project = session ? await projectDAL.findById(session.projectId) : undefined;
+    if (!session || !project) {
+      throw new UnauthorizedError({ message: "This Agent Vault session token is not valid" });
+    }
+    await $authorizeSessionOwner(session, project.orgId);
+
+    return { fingerprints: await agentVaultProxyDAL.findCaFingerprintsByProjectId(session.projectId) };
+  };
+
   // What an agent reads to learn its session's services, through its proxy or, before an agent starts, straight from an
   // orchestrator. Built without decrypting anything, so it can never carry a credential or a value the proxy fills in.
   // Never audited, like resolve: an agent asks when it starts a task and again after any access error.
@@ -1478,6 +1508,7 @@ export const agentVaultProxyServiceFactory = ({
     refreshCredential,
     reportMissingScopes,
     getSessionSkills,
+    getSessionProxyCaFingerprints,
     getSessionServices,
     revokeSessionByToken
   };

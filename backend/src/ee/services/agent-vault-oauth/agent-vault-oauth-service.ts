@@ -125,7 +125,8 @@ type TLoadedOauthService = {
   config: TAgentVaultOauthConfig;
   secret: TAgentVaultOauthSecret;
   encryptedCredential: Buffer;
-  hostPattern: string;
+  // Null only for a database or SSH service, which never holds an OAuth credential.
+  hostPattern: string | null;
   serverUrl: string | null;
 };
 
@@ -823,7 +824,7 @@ export const agentVaultOauthServiceFactory = ({
         rowId: service.id,
         config: service.credentialConfig as TAgentVaultOauthConfig,
         encryptedCredential: service.encryptedCredential,
-        hostPattern: service.hostPattern,
+        hostPattern: service.hostPattern ?? null,
         serverUrl: getServiceServerUrl(service.config)
       };
     },
@@ -839,7 +840,7 @@ export const agentVaultOauthServiceFactory = ({
         ? {
             rowId: row.id,
             config: row.credentialConfig as TAgentVaultOauthConfig,
-            hostPattern: row.hostPattern,
+            hostPattern: row.hostPattern ?? null,
             serverUrl: getServiceServerUrl(row.config)
           }
         : undefined;
@@ -874,7 +875,7 @@ export const agentVaultOauthServiceFactory = ({
           rowId: row.id,
           config: row.oauthConfig as TAgentVaultOauthConfig,
           encryptedCredential: row.encryptedValue,
-          hostPattern: row.hostPattern,
+          hostPattern: row.hostPattern ?? null,
           serverUrl: getServiceServerUrl(row.config)
         };
       },
