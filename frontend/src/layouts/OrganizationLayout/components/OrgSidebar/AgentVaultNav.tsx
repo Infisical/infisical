@@ -5,7 +5,7 @@ import {
   IdCard,
   Info,
   ListChecks,
-  Network,
+  Plug,
   Package,
   Server,
   Settings,
@@ -56,7 +56,7 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
     { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
     {
       label: "Services",
-      icon: Network,
+      icon: Plug,
       pathSuffix: "services",
       alertVariant: needsSetup ? "warning" : undefined
     },

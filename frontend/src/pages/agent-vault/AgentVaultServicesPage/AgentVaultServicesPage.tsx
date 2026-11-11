@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { FilterIcon, NetworkIcon, TriangleAlertIcon } from "lucide-react";
+import { FilterIcon, PlugIcon, TriangleAlertIcon } from "lucide-react";
 
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
@@ -96,7 +96,7 @@ export const AgentVaultServicesPage = () => {
 
       <PageHeader
         scope={ProjectType.AgentVault}
-        icon={NetworkIcon}
+        icon={PlugIcon}
         title="Services"
         description={
           isAdmin
