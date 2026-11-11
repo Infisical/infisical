@@ -583,6 +583,8 @@ export const autoApprovalServiceFactory = ({
       [...resolved.values()].flatMap(({ inputId, stableId }) => (inputId && stableId ? [[inputId, stableId]] : []))
     );
 
+    const aiDeadline = Date.now() + AI_EVALUATION_BUDGET_MS;
+
     const runAiCondition = async (condition: TStoredAutoApproval["rules"][number]["conditions"][number]) => {
       const contextConnections = await Promise.all(condition.contextConnectionIds.map(loadConnection));
       if (contextConnections.some((connection) => !connection)) {
@@ -616,7 +618,6 @@ export const autoApprovalServiceFactory = ({
     };
 
     const deterministic = evaluateAutoApprovalRules(stored.rules, resolved, ctx);
-    const aiDeadline = Date.now() + AI_EVALUATION_BUDGET_MS;
     const aiResults = new Map<string, TAiConditionResult>();
     let isApproved = false;
     for await (const rule of stored.rules) {
