@@ -1305,6 +1305,7 @@ export const registerRoutes = async (
   const oauthClientService = oauthClientServiceFactory({
     oauthClientDAL,
     permissionService,
+    organizationsDomain,
     keyStore,
     tokenService,
     orgDAL,
@@ -1570,6 +1571,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     permissionService,
+    organizationsDomain,
     mfaLockoutService
   });
 

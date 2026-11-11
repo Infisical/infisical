@@ -3,15 +3,18 @@ import { ActorMemo } from "@app/domains/lib/actor-memo";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { TAccessControlDomain } from "@app/domains/platform/access-control/ce/module";
 import type { TPrincipal } from "@app/lib/auth/principal";
+import { NotFoundError } from "@app/lib/errors";
 
 import { OrganizationDataAccess } from "./data-access/organization-data-access";
 import { OrgPermission } from "./service/org-access";
 import { OrgPermissionService, TGetOrgPermissionInput } from "./service/org-permission-service";
-import { SsoSessionCheck } from "./service/sso-session-check";
+import { SsoSessionCheck, TSsoSessionUser } from "./service/sso-session-check";
+import { TSsoSessionRefusal } from "./service/sso-session-policy";
 
 export { OrgPermission } from "./service/org-access";
 export type { TGetOrgPermissionInput } from "./service/org-permission-service";
 export * from "./service/permission/org-permission";
+export type { TSsoSessionUser } from "./service/sso-session-check";
 export * from "./service/sso-session-policy";
 
 export type TOrganizationsDomain = {
@@ -27,6 +30,10 @@ export type TOrganizationsDomain = {
   // Refuses (401) a user session the org's sign-in policy does not allow, unless the user may bypass it. Run once per
   // request, when its actor context is built.
   assertSessionAllowed: (input: { principal: TPrincipal; org: TActorOrg }) => Promise<void>;
+  // Why the org's sign-in policy refuses a user's session, after the bypass, or undefined. For flows that check a
+  // session against an org other than the request's (selecting an org, OAuth consent, token exchange); they decide
+  // the response themselves. Throws NotFound when the org does not exist.
+  findSsoSessionRefusal: (input: { user: TSsoSessionUser; orgId: string }) => Promise<TSsoSessionRefusal | undefined>;
 };
 
 export type TOrganizationsDeps = {
@@ -52,7 +59,12 @@ export class OrganizationsModule {
       findRootOrgId: (orgId) => organizations.findRootOrgId(orgId),
       resolveRootOrgId: (orgId) => organizations.resolveRootOrgId(orgId),
       getOrgPermission: (input) => permissions.getOrgPermission(input),
-      assertSessionAllowed: (input) => ssoSessions.assertSessionAllowed(input)
+      assertSessionAllowed: (input) => ssoSessions.assertSessionAllowed(input),
+      findSsoSessionRefusal: async ({ user, orgId }) => {
+        const organization = await organizations.findActorOrganization(orgId);
+        if (!organization) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+        return ssoSessions.findRefusal({ user, org: organization.toActorOrg() });
+      }
     };
   }
 }

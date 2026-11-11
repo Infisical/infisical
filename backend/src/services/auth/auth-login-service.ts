@@ -12,7 +12,8 @@ import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config
 import {
   FOREIGN_SSO_SESSION_ERROR_NAME,
   OrgPermissionSsoActions,
-  OrgPermissionSubjects
+  OrgPermissionSubjects,
+  TOrganizationsDomain
 } from "@app/domains/platform/organizations/ce/module";
 import { EventType, TAuditLogServiceFactory, TMfaSatisfiedBy } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -93,6 +94,7 @@ type TAuthLoginServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "findSsoSessionRefusal">;
   mfaLockoutService: Pick<
     TMfaLockoutServiceFactory,
     "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth" | "clearRecentMfaAuth"
@@ -114,6 +116,7 @@ export const authLoginServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   permissionService,
+  organizationsDomain,
   mfaLockoutService
 }: TAuthLoginServiceFactoryDep) => {
   /*
@@ -1295,43 +1298,51 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    const { permission } = await permissionService
-      .getOrgPermission({
-        actor: ActorType.USER,
-        actorId: user.id,
-        orgId: rootOrg.id,
-        actorAuthMethod: userAuthMethod,
-        actorOrgId: rootOrg.id,
-        scope: OrganizationActionScope.Any
-      })
-      .catch(async (error: unknown) => {
-        // getOrgPermission enforces SSO, so it is what refuses a session another org's IdP issued.
-        if (error instanceof ForbiddenRequestError && error.name === FOREIGN_SSO_SESSION_ERROR_NAME) {
-          await auditLogService.createAuditLog({
-            orgId: organizationId,
-            ipAddress,
-            userAgent,
-            userAgentType: getUserAgentType(userAgent),
-            actor: {
-              type: ActorType.USER,
-              metadata: {
-                email: user.email,
-                userId: user.id,
-                username: user.username,
-                authMethod: userAuthMethod as string
-              }
-            },
-            event: {
-              type: EventType.SELECT_ORGANIZATION_REFUSED,
-              metadata: {
-                organizationId,
-                organizationName: selectedOrg.name
-              }
+    // A session the root org's sign-in policy refuses never gets a token for it.
+    const ssoRefusal = await organizationsDomain.findSsoSessionRefusal({
+      user: { id: user.id, authMethod: userAuthMethod, sessionRootOrgId: issuingRootOrgId },
+      orgId: rootOrg.id
+    });
+    if (ssoRefusal) {
+      const isForeignSession = ssoRefusal.name === FOREIGN_SSO_SESSION_ERROR_NAME;
+      if (isForeignSession) {
+        await auditLogService.createAuditLog({
+          orgId: organizationId,
+          ipAddress,
+          userAgent,
+          userAgentType: getUserAgentType(userAgent),
+          actor: {
+            type: ActorType.USER,
+            metadata: {
+              email: user.email,
+              userId: user.id,
+              username: user.username,
+              authMethod: userAuthMethod as string
             }
-          });
-        }
-        throw error;
+          },
+          event: {
+            type: EventType.SELECT_ORGANIZATION_REFUSED,
+            metadata: {
+              organizationId,
+              organizationName: selectedOrg.name
+            }
+          }
+        });
+      }
+      throw new ForbiddenRequestError({
+        message: ssoRefusal.message,
+        ...(isForeignSession ? { name: FOREIGN_SSO_SESSION_ERROR_NAME } : {})
       });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actor: ActorType.USER,
+      actorId: user.id,
+      orgId: rootOrg.id,
+      actorAuthMethod: userAuthMethod,
+      actorOrgId: rootOrg.id,
+      scope: OrganizationActionScope.Any
+    });
     const canBypassSso =
       rootOrg.bypassOrgAuthEnabled &&
       permission.can(OrgPermissionSsoActions.BypassSsoEnforcement, OrgPermissionSubjects.Sso);

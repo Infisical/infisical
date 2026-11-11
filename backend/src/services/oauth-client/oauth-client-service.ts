@@ -2,9 +2,11 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, OrgMembershipStatus, TOauthClients, TOrganizations } from "@app/db/schemas";
 import {
+  FOREIGN_SSO_SESSION_ERROR_NAME,
   OrgPermissionActions,
   OrgPermissionSsoActions,
-  OrgPermissionSubjects
+  OrgPermissionSubjects,
+  TOrganizationsDomain
 } from "@app/domains/platform/organizations/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
@@ -55,6 +57,7 @@ import { verifySubjectToken } from "./oauth-token-exchange-fns";
 type TOauthClientServiceFactoryDep = {
   oauthClientDAL: TOauthClientDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "findSsoSessionRefusal">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   tokenService: Pick<
     TAuthTokenServiceFactory,
@@ -152,6 +155,7 @@ const signOauthToken = (
 export const oauthClientServiceFactory = ({
   oauthClientDAL,
   permissionService,
+  organizationsDomain,
   keyStore,
   tokenService,
   orgDAL,
@@ -505,6 +509,16 @@ export const oauthClientServiceFactory = ({
     };
   };
 
+  const assertSsoSessionAllowed = async (input: Parameters<TOrganizationsDomain["findSsoSessionRefusal"]>[0]) => {
+    const refusal = await organizationsDomain.findSsoSessionRefusal(input);
+    if (refusal) {
+      throw new ForbiddenRequestError({
+        message: refusal.message,
+        ...(refusal.name === FOREIGN_SSO_SESSION_ERROR_NAME ? { name: FOREIGN_SSO_SESSION_ERROR_NAME } : {})
+      });
+    }
+  };
+
   const authorizeConsent = async (dto: TOauthConsentDTO) => {
     const client = await oauthClientDAL.findOne({ clientId: dto.clientId });
     if (!client) throw new UnauthorizedError({ message: "OAuth client not found" });
@@ -526,8 +540,15 @@ export const oauthClientServiceFactory = ({
       throw new BadRequestError({ message: `Unsupported OAuth scope(s): ${invalidScopes.join(", ")}` });
     }
 
+    // A session the client org's sign-in policy refuses (enforced SSO, or a session another org's IdP issued)
+    // never consents for it.
+    await assertSsoSessionAllowed({
+      user: { id: dto.userId, authMethod: dto.authMethod, sessionRootOrgId: dto.issuingRootOrgId },
+      orgId: client.orgId
+    });
+
     // Called only for its side effects: it throws if the consenting user is not a member of the
-    // client's org or fails org SSO enforcement. This blocks issuing a delegation code to a user
+    // client's org. This blocks issuing a delegation code to a user
     // who has no standing in the org the client belongs to. The returned ability is intentionally
     // unused here; scope narrowing happens later when the delegated token builds its permission.
     await permissionService.getOrgPermission({
@@ -720,6 +741,7 @@ export const oauthClientServiceFactory = ({
       });
     }
 
+    await assertSsoSessionAllowed({ user: { id: user.id, authMethod: AuthMethod.OIDC }, orgId: client.orgId });
     await permissionService.getOrgPermission({
       actor: ActorType.USER,
       actorId: user.id,
