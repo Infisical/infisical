@@ -5,6 +5,7 @@ import type { AccessAdapter } from "./access/contract";
 import type { AdminAdapter } from "./admin/contract";
 import type { AgentVaultSettingsAdapter } from "./agent-vault-settings/contract";
 import type { AgentVaultAdapter } from "./agent-vault/contract";
+import type { ApprovalPoliciesAdapter } from "./approval-policies/contract";
 import type { AuditLogsAdapter } from "./audit-logs/contract";
 import type { BillingAdapter } from "./billing/contract";
 import type { CertManagerSettingsAdapter } from "./cert-manager-settings/contract";
@@ -45,6 +46,7 @@ export type V4Adapters = {
   projectTags: ProjectTagsAdapter;
   pam: PamAdapter;
   secretPolicies: SecretPoliciesAdapter;
+  approvalPolicies: ApprovalPoliciesAdapter;
   agentVault: AgentVaultAdapter;
   auditLogs: AuditLogsAdapter;
   admin: AdminAdapter;

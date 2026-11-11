@@ -9,6 +9,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { withoutDefaults } from "../search-defaults";
 import { ChangeRequests, RequestDetail } from "./change-requests/ChangeRequests";
+import { ApprovalPolicies } from "./policies/ApprovalPolicies";
 import { TabSection } from "./tabs";
 
 const ROUTE = v4Path("/organizations/$orgId/projects/secret-management/$projectId/approval");
@@ -81,7 +82,8 @@ export const SecretApprovalsPage = () => {
           }
         />
       ) : (
-        notPorted
+        (tab === TabSection.Policies && project && <ApprovalPolicies project={project} />) ||
+        (tab !== TabSection.Policies && notPorted)
       )}
     </Stack>
   );
