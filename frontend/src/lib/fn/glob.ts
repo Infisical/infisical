@@ -3,7 +3,7 @@
 
 type Segment = { type: "literal"; value: string } | { type: "star" } | { type: "globstar" };
 
-const SEGMENT_METACHARACTER = /[*?[\]{}!()]/;
+const SEGMENT_METACHARACTER = /[*?[\]{}!()|\\]/;
 
 const parseSegments = (glob: string): Segment[] | null => {
   const segments: Segment[] = [];
@@ -41,6 +41,7 @@ const segmentMatch = (parent: Segment[], subset: Segment[], pi: number, si: numb
 
   if (pSeg.type === "star") {
     if (sSeg.type === "globstar") return false;
+    if (sSeg.type === "literal" && sSeg.value === "") return false;
     return segmentMatch(parent, subset, pi + 1, si + 1);
   }
 

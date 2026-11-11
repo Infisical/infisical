@@ -124,10 +124,7 @@ export const AccessRequestPathInput = ({
       }}
     >
       <PopoverAnchor asChild>
-        <InputGroup
-          ref={anchorRef}
-          className={cn(isEntireScope && !isError && "border-warning/50")}
-        >
+        <InputGroup ref={anchorRef}>
           <InputGroupAddon>
             <InputGroupText>
               {isEntireScope ? (
@@ -169,7 +166,6 @@ export const AccessRequestPathInput = ({
         onInteractOutside={(e) => {
           if (anchorRef.current?.contains(e.target as Node)) e.preventDefault();
         }}
-        className="p-1"
         style={{
           width: "var(--radix-popover-trigger-width)",
           maxHeight: "var(--radix-popover-content-available-height)"

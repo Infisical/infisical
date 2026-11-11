@@ -28,7 +28,10 @@ describe("isGlobSubsetOfGlob", () => {
     ["/backend/*/folder", "/backend/**"],
     ["/{a,b}/*", "/a/**"],
     ["/**", "/{a,b}/**"],
-    ["/foo*/*", "/foobar/**"]
+    ["/foo*/*", "/foobar/**"],
+    ["/backend/*/folder", "/backend/x|/folder"],
+    ["/*", "/"],
+    ["/apps/*", "/apps/"]
   ])("parent=%s does not contain %s", (parent, subset) =>
     expect(isGlobSubsetOfGlob(parent, subset)).toBe(false)
   );

@@ -229,6 +229,7 @@ describe("resolveSecretAccessPolicyForPath", () => {
     expect(resolveSecretAccessPolicyForPath(policies, "/backend/*/folder")?.id).toBe("nested");
     expect(resolveSecretAccessPolicyForPath(policies, "/backend/api/other")).toBeNull();
     expect(resolveSecretAccessPolicyForPath(policies, "/backend/**")).toBeNull();
+    expect(resolveSecretAccessPolicyForPath(policies, "/backend/x|/folder")).toBeNull();
   });
 
   test("an exact policy path wins over a glob that also covers it", () => {
