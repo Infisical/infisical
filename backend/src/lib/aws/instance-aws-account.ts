@@ -5,9 +5,13 @@ import { logger } from "@app/lib/logger";
 
 import { CustomAWSHasher } from "./hashing";
 import { getInfisicalAwsCredentials } from "./instance-credentials";
-import { AWS_REQUEST_TIMEOUTS } from "./s3";
 
 export const AWS_ACCOUNT_DETECTION_TIMEOUT_MS = 10_000;
+
+// GetCallerIdentity does no work on AWS's side and usually answers in well under a second. These limits are short
+// enough that both attempts (maxAttempts: 2) fit inside AWS_ACCOUNT_DETECTION_TIMEOUT_MS, so a slow STS still gets
+// its retry before the overall cap ends the check.
+const STS_REQUEST_TIMEOUTS = { connectionTimeout: 2_000, requestTimeout: 3_000, throwOnRequestTimeout: true };
 
 let instanceAwsAccountId: string | undefined;
 
@@ -39,7 +43,7 @@ export const detectInstanceAwsAccountId = async (
     sha256: CustomAWSHasher,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
     credentials: getInfisicalAwsCredentials(),
-    requestHandler: AWS_REQUEST_TIMEOUTS,
+    requestHandler: STS_REQUEST_TIMEOUTS,
     maxAttempts: 2
   });
 
