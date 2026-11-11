@@ -1,398 +1,442 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { format, formatDistanceToNowStrict } from "date-fns";
 
-import { ApprovalQueue, type ApprovalRequest } from "@app/components/v4/patterns/approval-queue";
-import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
+import { FilterBar, type FilterBarFilter } from "@app/components/v4/patterns/filter-bar";
+import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { Detail, DetailLabel, DetailValue } from "@app/components/v4/ui/detail";
 import { EmptyState } from "@app/components/v4/ui/empty";
-import { DetailLayout, Inline, Stack } from "@app/components/v4/ui/layout";
-import { Loader } from "@app/components/v4/ui/loader";
-import { PageHeader } from "@app/components/v4/ui/page-header";
-import { StatusText } from "@app/components/v4/ui/text";
+import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
+import { Icon } from "@app/components/v4/ui/icon";
+import { Input } from "@app/components/v4/ui/input";
+import { Inline, Stack } from "@app/components/v4/ui/layout";
+import { Pagination } from "@app/components/v4/ui/pagination";
+import { RowLink } from "@app/components/v4/ui/row-link";
+import { Meta } from "@app/components/v4/ui/text";
+import { ToggleGroup, ToggleGroupItem } from "@app/components/v4/ui/toggle-group";
+import { Tooltip } from "@app/components/v4/ui/tooltip";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/context/ProjectPermissionContext/types";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   ApprovalStatus,
-  CommitType,
-  type TSecretApprovalRequest
+  SecretApprovalRequestOrderBy,
+  type TBulkChangeRequestResult
 } from "@app/hooks/api/secretApprovalRequest/types";
+import { useDebounce } from "@app/hooks/useDebounce";
 
-import { errorMessage, failed, toast } from "../../../access/toast";
+import { useProjectPermission } from "../../../access/permissions";
+import { toast } from "../../../access/toast";
 import { useV4Adapter } from "../../../data/adapters";
 import { useV4Session } from "../../../data/session/contract";
-import { PageLoader } from "../../../shell/project-gate";
+import { useGo } from "../../../links";
+import { BulkReviewSheet } from "./BulkReviewSheet";
+import { authorName, type ChangeRequest, ChangeSummary, pathOf } from "./parts";
 
-const verbs: Record<CommitType, string> = {
-  [CommitType.CREATE]: "add",
-  [CommitType.ADD]: "add",
-  [CommitType.UPDATE]: "update",
-  [CommitType.DELETE]: "delete"
+const TABLE = "changeRequestsTable";
+const MAX_SELECTION = 25;
+const sortable: Record<string, SecretApprovalRequestOrderBy> = {
+  environment: SecretApprovalRequestOrderBy.Environment,
+  author: SecretApprovalRequestOrderBy.Author,
+  opened: SecretApprovalRequestOrderBy.CreatedAt
 };
-const opTone: Record<CommitType, BadgeTone> = {
-  [CommitType.CREATE]: "ok",
-  [CommitType.ADD]: "ok",
-  [CommitType.UPDATE]: "info",
-  [CommitType.DELETE]: "bad"
-};
+const stamp = (value: string) => format(new Date(value), "M/d/yyyy h:mm aa");
 
-const verbOf = (request: TSecretApprovalRequest) => {
-  const found = [...new Set(request.commits.map((commit) => verbs[commit.op]))];
-  return found.length === 1 ? found[0] : "change";
-};
-
-const committerName = (request: TSecretApprovalRequest) => {
-  if (request.committerUser)
-    return (
-      [request.committerUser.firstName, request.committerUser.lastName].filter(Boolean).join(" ") ||
-      request.committerUser.email
-    );
-  return request.committerIdentity?.name ?? "A deleted user";
-};
-
-const ageOf = (createdAt: string) => {
-  const minutes = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000));
-  if (minutes < 60) return `${Math.max(1, minutes)}m`;
-  if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}h`;
-  return `${Math.floor(minutes / (60 * 24))}d`;
-};
-
-const RequestTitle = ({
-  request,
-  environment
-}: {
-  request: TSecretApprovalRequest;
-  environment: string;
-}) => {
-  const keys = request.commits.flatMap((commit) => (commit.secretKey ? [commit.secretKey] : []));
-  const shown = keys.slice(0, 2);
-  if (!shown.length) {
-    const verb = verbOf(request);
-    return `${verb.charAt(0).toUpperCase()}${verb.slice(1)} in ${environment.toLowerCase()}`;
-  }
-  return (
-    <>
-      {shown.map((key, index) => (
-        <span key={key}>
-          {index > 0 && " and "}
-          <code>{key}</code>
-        </span>
-      ))}
-      {keys.length > shown.length && ` and ${keys.length - shown.length} more`}
-      {` ${verbOf(request)} in ${environment.toLowerCase()}`}
-    </>
-  );
-};
-
-const describe = (request: TSecretApprovalRequest) => {
-  const count = request.commits.length;
-  return `${committerName(request)} asked to ${verbOf(request)} ${count} secret${count === 1 ? "" : "s"} at ${request.secretPath}.`;
-};
-
-const statusOf = (request: TSecretApprovalRequest) => {
-  if (request.hasMerged) return { tone: "ok" as const, icon: "check-c" as const, label: "Merged" };
+const listStatus = (request: ChangeRequest, userId: string) => {
   if (request.status === "close")
-    return { tone: "neutral" as const, icon: "x" as const, label: "Closed" };
-  return { tone: "warn" as const, icon: "clock" as const, label: "Open" };
-};
-
-const reviewLabel: Record<ApprovalStatus, string> = {
-  [ApprovalStatus.APPROVED]: "Approved",
-  [ApprovalStatus.REJECTED]: "Rejected",
-  [ApprovalStatus.PENDING]: "Pending",
-  [ApprovalStatus.REVOKED]: "Revoked"
-};
-
-type Commit = TSecretApprovalRequest["commits"][number];
-type Approver = TSecretApprovalRequest["policy"]["approvers"][number];
-
-const approverName = (approver: Approver) =>
-  [approver.firstName, approver.lastName].filter(Boolean).join(" ") || approver.email;
-
-const changeColumns: DataTableColumn<Commit>[] = [
-  {
-    id: "change",
-    header: "Change",
-    width: 120,
-    render: (commit) => (
-      <Badge tone={opTone[commit.op]}>
-        {verbs[commit.op].charAt(0).toUpperCase() + verbs[commit.op].slice(1)}
-      </Badge>
-    )
-  },
-  {
-    id: "secret",
-    header: "Secret",
-    grow: true,
-    text: (commit) => commit.secretKey,
-    render: (commit) => <code>{commit.secretKey}</code>
-  },
-  {
-    id: "version",
-    header: "Version",
-    width: 96,
-    render: (commit) =>
-      (commit.secret?.version ?? commit.version) === undefined
-        ? "New"
-        : `v${commit.secret?.version ?? commit.version}`
-  }
-];
-
-export const RequestDetail = ({
-  projectId,
-  requestId,
-  environmentName,
-  listHref
-}: {
-  projectId: string;
-  requestId: string;
-  environmentName: (slug: string) => string;
-  listHref: string;
-}) => {
-  const secrets = useV4Adapter("secrets");
-  const { user } = useV4Session();
-  const { data: request, isPending, error } = secrets.useApprovalRequestDetails({ id: requestId });
-  const review = secrets.useReviewApprovalRequest();
-  const updateStatus = secrets.useUpdateApprovalRequestStatus();
-  const merge = secrets.useMergeApprovalRequest();
-  const act = (task: () => Promise<unknown>, done: string, failure: string) =>
-    task().then(
-      () => toast({ tone: "ok", title: done }),
-      (reason) => failed(failure, reason)
-    );
-  const reviewerColumns: DataTableColumn<Approver>[] = [
-    { id: "approver", header: "Approver", grow: true, text: approverName, render: approverName },
-    {
-      id: "review",
-      header: "Review",
-      width: 160,
-      render: (approver) =>
-        reviewLabel[
-          request?.reviewers.find((entry) => entry.userId === approver.userId)?.status ??
-            ApprovalStatus.PENDING
-        ]
-    }
-  ];
-  const back = (
-    <div>
-      <Button variant="link" size="sm" icon="chev-left" asChild>
-        <a href={listHref}>All change requests</a>
-      </Button>
-    </div>
-  );
-  if (isPending && !error) return <PageLoader label="Loading change request" />;
-  if (!request)
-    return (
-      <Stack gap={16}>
-        {back}
-        <EmptyState icon="alert" title="Change request not found" />
-      </Stack>
-    );
-  const environment = environmentName(request.environment);
-  const status = statusOf(request);
-  const mine = request.reviewers.find((reviewer) => reviewer.email === user.email);
-  const approvals = request.reviewers.filter(
+    return request.hasMerged
+      ? { label: "Merged", tone: "ok" as const, at: stamp(request.updatedAt) }
+      : { label: "Rejected", tone: "bad" as const, at: stamp(request.updatedAt) };
+  const needsMe =
+    request.policy.approvers.some((approver) => approver.userId === userId) &&
+    !request.reviewers.some((reviewer) => reviewer.userId === userId);
+  if (needsMe) return { label: "Needs review", tone: "warn" as const };
+  const approved = request.reviewers.filter(
     (reviewer) => reviewer.status === ApprovalStatus.APPROVED
   ).length;
-  const open = request.status === "open";
-  const isApprover = request.policy.approvers.some((approver) => approver.email === user.email);
-  const approveBlock = !isApprover ? "You are not an approver on this policy" : undefined;
-  const mergeBlock =
-    approvals < request.policy.approvals
-      ? `Needs ${request.policy.approvals - approvals} more approval${request.policy.approvals - approvals === 1 ? "" : "s"}`
-      : undefined;
-  return (
-    <Stack gap={24}>
-      {back}
-      <PageHeader
-        size="md"
-        title={<RequestTitle request={request} environment={environment} />}
-        description={describe(request)}
-        badges={
-          <StatusText tone={status.tone} icon={status.icon}>
-            {status.label}
-          </StatusText>
-        }
-        actions={
-          open ? (
-            <>
-              <Button
-                variant="outline"
-                disabled={Boolean(approveBlock)}
-                title={approveBlock}
-                onClick={() =>
-                  act(
-                    () =>
-                      review.mutateAsync({
-                        id: request.id,
-                        projectId,
-                        status: ApprovalStatus.REJECTED
-                      }),
-                    "You rejected this change request",
-                    "Failed to reject the change request"
-                  )
-                }
-              >
-                Reject
-              </Button>
-              <Button
-                variant="accent"
-                disabled={Boolean(approveBlock) || mine?.status === ApprovalStatus.APPROVED}
-                title={approveBlock}
-                onClick={() =>
-                  act(
-                    () =>
-                      review.mutateAsync({
-                        id: request.id,
-                        projectId,
-                        status: ApprovalStatus.APPROVED
-                      }),
-                    "You approved this change request",
-                    "Failed to approve the change request"
-                  )
-                }
-              >
-                {mine?.status === ApprovalStatus.APPROVED ? "Approved" : "Approve"}
-              </Button>
-            </>
-          ) : undefined
-        }
-      />
-      <DetailLayout
-        asideLabel="Request details"
-        aside={
-          <Card variant="framed" title="Details" size="sm">
-            <Detail>
-              <DetailLabel>Environment</DetailLabel>
-              <DetailValue>{environment}</DetailValue>
-              <DetailLabel>Path</DetailLabel>
-              <DetailValue>
-                <code>{request.secretPath}</code>
-              </DetailValue>
-              <DetailLabel>Policy</DetailLabel>
-              <DetailValue>{request.policy.name}</DetailValue>
-              <DetailLabel>Approvals</DetailLabel>
-              <DetailValue>{`${approvals} of ${request.policy.approvals} required`}</DetailValue>
-              <DetailLabel>Opened</DetailLabel>
-              <DetailValue>{new Date(request.createdAt).toLocaleString("en-US")}</DetailValue>
-            </Detail>
-          </Card>
-        }
-      >
-        <Stack gap={24}>
-          <Card variant="framed" title="Changes" flush>
-            <DataTable
-              label="Secret changes"
-              rows={request.commits}
-              columns={changeColumns}
-              getRowId={(commit) => commit.id}
-              rowLabel={(commit) => commit.secretKey}
-            />
-          </Card>
-          <Card variant="framed" title="Reviewers" flush>
-            <DataTable
-              label="Reviewers"
-              rows={request.policy.approvers}
-              columns={reviewerColumns}
-              getRowId={(approver) => approver.userId}
-              rowLabel={approverName}
-            />
-          </Card>
-          {open && (
-            <Inline gap={8}>
-              <Button
-                disabled={Boolean(mergeBlock)}
-                title={mergeBlock}
-                onClick={() =>
-                  act(
-                    () =>
-                      merge.mutateAsync({
-                        id: request.id,
-                        projectId,
-                        environment: request.environment,
-                        secretPath: request.secretPath
-                      }),
-                    "Merged the change request",
-                    "Failed to merge the change request"
-                  )
-                }
-              >
-                Merge
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() =>
-                  act(
-                    () => updateStatus.mutateAsync({ id: request.id, projectId, status: "close" }),
-                    "Closed the change request",
-                    "Failed to close the change request"
-                  )
-                }
-              >
-                Close request
-              </Button>
-            </Inline>
-          )}
-        </Stack>
-      </DetailLayout>
-    </Stack>
-  );
+  if (approved >= request.policy.approvals)
+    return { label: "Pending merge", tone: "info" as const };
+  return { label: "Review in progress", tone: "warn" as const };
 };
 
 export const ChangeRequests = ({
   projectId,
   environmentName,
   hrefFor,
-  onView
+  onConfigurePolicies
 }: {
   projectId: string;
   environmentName: (slug: string) => string;
   hrefFor: (id: string) => string;
-  onView: (id: string) => void;
+  onConfigurePolicies: () => void;
 }) => {
   const secrets = useV4Adapter("secrets");
+  const go = useGo();
   const { user } = useV4Session();
-  const { data, isPending } = secrets.useApprovalRequests({
-    projectId,
-    status: "open",
-    limit: 100
-  });
-  const review = secrets.useReviewApprovalRequest();
-  const [working, setWorking] = useState<string>();
-  const [failures, setFailures] = useState<Record<string, string>>({});
-  if (isPending) return <Loader label="Loading change requests" />;
-  const approve = async (id: string) => {
-    setWorking(id);
-    setFailures(({ [id]: _cleared, ...rest }) => rest);
-    try {
-      await review.mutateAsync({ id, projectId, status: ApprovalStatus.APPROVED });
-    } catch (error) {
-      setFailures((current) => ({
-        ...current,
-        [id]: errorMessage(error) ?? "The approval failed."
-      }));
-    } finally {
-      setWorking(undefined);
-    }
-  };
-  const waiting = (data?.approvals ?? []).filter(
-    (request) =>
-      !request.reviewers.some(
-        (reviewer) => reviewer.email === user.email && reviewer.status === ApprovalStatus.APPROVED
-      )
+  const { permission } = useProjectPermission(projectId);
+  const [status, setStatus] = useState<"open" | "close">("open");
+  const [filters, setFilters] = useState<FilterBarFilter[]>([]);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search.trim());
+  const [sort, setSort] = useState<{ columnId: string; direction: "asc" | "desc" }>();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() =>
+    getUserTablePreference(TABLE, PreferenceKey.PerPage, 20)
   );
-  const requests: ApprovalRequest[] = waiting.map((request) => {
-    const base = {
-      id: request.id,
-      object: request.commits[0]?.secretKey ?? request.slug,
-      title: <RequestTitle request={request} environment={environmentName(request.environment)} />,
-      description: describe(request),
-      age: ageOf(request.createdAt),
-      href: hrefFor(request.id)
-    };
-    if (failures[request.id]) return { ...base, state: "failed", error: failures[request.id] };
-    return { ...base, state: working === request.id ? "pending" : "new" };
+  const [selected, setSelected] = useState<Record<string, ChangeRequest>>({});
+  const [failures, setFailures] = useState<Record<string, string>>({});
+  const [reviewing, setReviewing] = useState(false);
+
+  const { data: project } = secrets.useProject(projectId);
+  const environmentFilter = filters.find((filter) => filter.field === "environment")?.values[0];
+  const authorFilter = filters.find((filter) => filter.field === "author")?.values[0];
+  const { data, isPending, error } = secrets.useApprovalRequests({
+    projectId,
+    status,
+    environment: environmentFilter,
+    committer: authorFilter,
+    search: debouncedSearch,
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+    orderBy: sort ? sortable[sort.columnId] : undefined,
+    orderDirection: sort?.direction === "asc" ? OrderByDirection.ASC : OrderByDirection.DESC
   });
+  const { data: count } = secrets.useApprovalRequestCount({ projectId });
+  const canReadMembers = permission.can(
+    ProjectPermissionMemberActions.Read,
+    ProjectPermissionSub.Member
+  );
+  const { data: members } = useV4Adapter("access").useProjectUsers(projectId, true);
+  const canReadPolicies = permission.can(
+    ProjectPermissionActions.Read,
+    ProjectPermissionSub.SecretApproval
+  );
+  const canCreatePolicies = permission.can(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretApproval
+  );
+  const { data: policies, isSuccess: policiesLoaded } = secrets.useApprovalPolicies({
+    projectId,
+    enabled: canReadPolicies && canCreatePolicies
+  });
+  const showConfigurePolicy =
+    canCreatePolicies && (!canReadPolicies || (policiesLoaded && policies?.length === 0));
+
+  const requests = data?.approvals ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const isOpen = status === "open";
+  const isFiltered = Boolean(debouncedSearch || environmentFilter || authorFilter);
+  const selectedList = Object.values(selected).map(
+    (request) => requests.find(({ id }) => id === request.id) ?? request
+  );
+
+  useEffect(() => {
+    if (!data) return;
+    const lastPage = Math.max(1, Math.ceil(data.totalCount / pageSize));
+    if (page > lastPage) setPage(lastPage);
+  }, [data, page, pageSize]);
+
+  const clearSelection = () => {
+    setSelected({});
+    setFailures({});
+  };
+  const tooMany = () =>
+    toast({
+      tone: "bad",
+      title: `You can select up to ${MAX_SELECTION} change requests at once`
+    });
+  const changeSelection = (ids: string[]) => {
+    const pageIds = new Set(requests.map(({ id }) => id));
+    const kept = Object.values(selected).filter(({ id }) => !pageIds.has(id));
+    const picked = requests.filter(({ id }) => ids.includes(id));
+    const room = MAX_SELECTION - kept.length;
+    if (picked.length > room) tooMany();
+    const next = [...kept, ...picked.slice(0, Math.max(0, room))];
+    setSelected(Object.fromEntries(next.map((request) => [request.id, request])));
+    setFailures((current) =>
+      Object.fromEntries(Object.entries(current).filter(([id]) => next.some((r) => r.id === id)))
+    );
+  };
+  const refilter = () => {
+    setPage(1);
+  };
+  const handleBulkComplete = (results: TBulkChangeRequestResult[]) => {
+    const succeeded = new Set(results.filter(({ isSuccess }) => isSuccess).map(({ id }) => id));
+    setSelected((current) =>
+      Object.fromEntries(Object.entries(current).filter(([id]) => !succeeded.has(id)))
+    );
+    setFailures(
+      Object.fromEntries(
+        results
+          .filter(({ isSuccess }) => !isSuccess)
+          .map(({ id, errorMessage }) => [id, errorMessage ?? "This request could not be updated"])
+      )
+    );
+  };
+
+  const environmentOptions = (project?.environments ?? []).map((environment) => ({
+    value: environment.slug,
+    label: environment.name
+  }));
+  const authorOptions = (members ?? []).map(({ user: member }) => ({
+    value: member.id,
+    label: member.username
+  }));
+
+  const columns: DataTableColumn<ChangeRequest>[] = [
+    {
+      id: "change",
+      header: "Change",
+      primary: true,
+      width: 240,
+      text: (row) => row.commits.map((commit) => commit.secretKey).join(", "),
+      render: (row) => (
+        <RowLink {...go.link(hrefFor(row.id))} title={`Change request #${row.slug}`}>
+          <ChangeSummary commits={row.commits} isReplicated={row.isReplicated} />
+        </RowLink>
+      )
+    },
+    {
+      id: "environment",
+      header: "Environment",
+      sortable: true,
+      width: 160,
+      text: (row) => environmentName(row.environment),
+      render: (row) => environmentName(row.environment)
+    },
+    {
+      id: "path",
+      header: "Secret path",
+      mono: true,
+      grow: true,
+      text: pathOf,
+      render: (row) => <Meta>{pathOf(row)}</Meta>
+    },
+    {
+      id: "author",
+      header: "Author",
+      sortable: true,
+      width: 220,
+      text: authorName,
+      render: (row) => (
+        <Inline gap={8} wrap={false}>
+          {row.committerUser || row.committerIdentity ? (
+            <span>{authorName(row)}</span>
+          ) : (
+            <Meta mono={false}>Deleted user</Meta>
+          )}
+          {row.committerUser && row.committerUserId === user.id && <Badge tone="soft">You</Badge>}
+          {row.committerIdentity && <Badge tone="soft">Machine</Badge>}
+        </Inline>
+      )
+    },
+    {
+      id: "opened",
+      header: "Opened",
+      sortable: true,
+      width: 132,
+      render: (row) => (
+        <Tooltip content={stamp(row.createdAt)}>
+          <Meta mono={false}>
+            {formatDistanceToNowStrict(new Date(row.createdAt), { addSuffix: true })}
+          </Meta>
+        </Tooltip>
+      )
+    },
+    {
+      id: "status",
+      header: "Status",
+      width: 184,
+      render: (row) => {
+        const state = listStatus(row, user.id);
+        const badge = <Badge tone={state.tone}>{state.label}</Badge>;
+        return (
+          <Inline gap={8} wrap={false}>
+            {state.at ? <Tooltip content={state.at}>{badge}</Tooltip> : badge}
+            {failures[row.id] && (
+              <Tooltip content={failures[row.id]}>
+                <span role="img" aria-label={`Review failed: ${failures[row.id]}`}>
+                  <Icon name="alert-c" size={16} />
+                </span>
+              </Tooltip>
+            )}
+          </Inline>
+        );
+      }
+    }
+  ];
+
+  let empty = (
+    <EmptyState
+      size="sm"
+      media="bare"
+      icon="inbox"
+      title={isOpen ? "No open change requests" : "No closed change requests"}
+      actions={
+        isOpen && showConfigurePolicy ? (
+          <Button onClick={onConfigurePolicies}>Configure policy</Button>
+        ) : undefined
+      }
+    />
+  );
+  if (isFiltered)
+    empty = (
+      <EmptyState
+        size="sm"
+        media="bare"
+        icon="search"
+        title="No change requests match these filters"
+        actions={
+          <Button
+            variant="outline"
+            onClick={() => {
+              setFilters([]);
+              setSearch("");
+              refilter();
+            }}
+          >
+            Clear filters
+          </Button>
+        }
+      />
+    );
+  if (error)
+    empty = (
+      <EmptyState
+        size="sm"
+        media="bare"
+        icon="alert"
+        title="Change requests could not be loaded"
+        description="Refresh the page to try again."
+      />
+    );
+
   return (
-    <ApprovalQueue requests={requests} onApprove={approve} onView={onView} onRetry={approve} />
+    <Stack gap={16}>
+      <FilterBar
+        label="Change request filters"
+        fields={[
+          {
+            key: "environment",
+            label: "Environment",
+            type: "select",
+            searchable: true,
+            options: environmentOptions
+          },
+          ...(canReadMembers
+            ? [
+                {
+                  key: "author",
+                  label: "Author",
+                  type: "select" as const,
+                  searchable: true,
+                  options: authorOptions
+                }
+              ]
+            : [])
+        ]}
+        value={filters}
+        onChange={(next) => {
+          setFilters(next);
+          refilter();
+        }}
+        search={
+          <Input
+            icon="search"
+            aria-label="Search change requests"
+            placeholder="Search by author, environment, path or secret"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              refilter();
+            }}
+          />
+        }
+        actions={
+          <ToggleGroup
+            type="single"
+            aria-label="Change request status"
+            value={status}
+            onValueChange={(next) => {
+              if (!next) return;
+              setStatus(next as "open" | "close");
+              clearSelection();
+              refilter();
+            }}
+          >
+            <ToggleGroupItem value="open">{`Open ${count?.open ?? 0}`}</ToggleGroupItem>
+            <ToggleGroupItem value="close">{`Closed ${count?.closed ?? 0}`}</ToggleGroupItem>
+          </ToggleGroup>
+        }
+      />
+      <DataTable
+        label={isOpen ? "Open change requests" : "Closed change requests"}
+        rows={requests}
+        columns={columns}
+        loading={isPending && !error}
+        getRowId={(row) => row.id}
+        rowLabel={(row) => `Change request #${row.slug}`}
+        sort={sort}
+        onSortChange={(next) => {
+          setSort(next);
+          refilter();
+        }}
+        selectable={isOpen}
+        selectedIds={isOpen ? Object.keys(selected) : undefined}
+        onSelectionChange={changeSelection}
+        empty={empty}
+        pagination={
+          totalCount > 0 ? (
+            <Pagination
+              label="Change request pages"
+              variant="compact"
+              page={page}
+              onPageChange={setPage}
+              total={totalCount}
+              pageSize={pageSize}
+              pageSizeOptions={[10, 20, 50, 100]}
+              onPageSizeChange={(next) => {
+                setPageSize(next);
+                setUserTablePreference(TABLE, PreferenceKey.PerPage, next);
+                setPage(1);
+              }}
+            />
+          ) : undefined
+        }
+        actionBar={
+          isOpen ? (
+            <FloatingActionBar
+              count={selectedList.length}
+              total={Math.min(
+                MAX_SELECTION,
+                selectedList.length + requests.filter(({ id }) => !selected[id]).length
+              )}
+              onSelectAll={() => changeSelection(requests.map(({ id }) => id))}
+              onClear={clearSelection}
+              noun={selectedList.length === 1 ? "change request" : "change requests"}
+              actions={[
+                { label: "Review and merge", icon: "git", onClick: () => setReviewing(true) }
+              ]}
+            />
+          ) : undefined
+        }
+      />
+      <BulkReviewSheet
+        open={reviewing}
+        onOpenChange={setReviewing}
+        projectId={projectId}
+        requests={selectedList}
+        environmentName={environmentName}
+        onComplete={handleBulkComplete}
+      />
+    </Stack>
   );
 };

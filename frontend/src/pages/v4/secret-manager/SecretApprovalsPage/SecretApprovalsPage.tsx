@@ -8,7 +8,8 @@ import { Tabs } from "@app/components/v4/ui/tabs";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { withoutDefaults } from "../search-defaults";
-import { ChangeRequests, RequestDetail } from "./change-requests/ChangeRequests";
+import { ChangeRequests } from "./change-requests/ChangeRequests";
+import { RequestDetail } from "./change-requests/RequestDetail";
 import { TabSection } from "./tabs";
 
 const ROUTE = v4Path("/organizations/$orgId/projects/secret-management/$projectId/approval");
@@ -74,11 +75,7 @@ export const SecretApprovalsPage = () => {
           projectId={projectId}
           environmentName={environmentName}
           hrefFor={hrefFor}
-          onView={(id) =>
-            navigate({
-              search: approvalSearch(TabSection.SecretApprovalRequests, id)
-            })
-          }
+          onConfigurePolicies={() => navigate({ search: approvalSearch(TabSection.Policies, "") })}
         />
       ) : (
         notPorted
