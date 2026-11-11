@@ -1,7 +1,7 @@
 import { MongoAbility, RawRuleOf } from "@casl/ability";
 
 import { AccessScopeData, TRoles } from "@app/db/schemas";
-import { OrgServiceActor } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 
 export interface TRoleScopeFactory {
   onCreateRoleGuard: (arg: TCreateRoleDTO) => Promise<void>;
@@ -16,7 +16,7 @@ export interface TRoleScopeFactory {
 }
 
 export type TCreateRoleDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     name: string;
@@ -27,7 +27,7 @@ export type TCreateRoleDTO = {
 };
 
 export type TUpdateRoleDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     id: string;
@@ -41,7 +41,7 @@ export type TUpdateRoleDTO = {
 };
 
 export type TListRoleDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   data: {
     limit?: number;
@@ -50,7 +50,7 @@ export type TListRoleDTO = {
 };
 
 export type TDeleteRoleDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     id: string;
@@ -58,7 +58,7 @@ export type TDeleteRoleDTO = {
 };
 
 export type TGetRoleByIdDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     id: string;
@@ -66,14 +66,14 @@ export type TGetRoleByIdDTO = {
 };
 
 export type TGetProjectRoleByIdDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   selector: {
     id: string;
   };
 };
 
 export type TGetRoleBySlugDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
   selector: {
     slug: string;
@@ -81,6 +81,6 @@ export type TGetRoleBySlugDTO = {
 };
 
 export type TGetUserPermissionDTO = {
-  permission: OrgServiceActor;
+  actor: TActorContext;
   scopeData: AccessScopeData;
 };

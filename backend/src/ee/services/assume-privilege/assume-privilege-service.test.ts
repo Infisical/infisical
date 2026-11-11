@@ -1,13 +1,14 @@
-import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
+import { ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { conditionsMatcher } from "@app/lib/casl";
 import { crypto } from "@app/lib/crypto/cryptography";
 
 import { assumePrivilegeServiceFactory } from "./assume-privilege-service";
@@ -20,13 +21,19 @@ vi.mock("@app/lib/logger", () => ({
 
 type Rule = RawRuleOf<MongoAbility<ProjectPermissionSet>>;
 
+const actorContexts = {
+  forPrincipal: vi.fn().mockImplementation(async (principal: unknown) => ({ principal, org: { id: "org-1" } }))
+};
+
 const USERS: Record<string, string> = { "junior-user": "junior@example.com", "admin-user": "admin@example.com" };
 
 const createService = (requesterRules: Rule[]) => {
-  const permission = createMongoAbility<ProjectPermissionSet>(requesterRules, { conditionsMatcher });
+  const permission = Permission.fromRules<ProjectPermissionSet>({ rules: requesterRules });
   return assumePrivilegeServiceFactory({
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
-    userDAL: { findById: vi.fn().mockImplementation((id: string) => Promise.resolve({ id, email: USERS[id] })) }
+    projectsDomain: { getProjectPermission: vi.fn().mockResolvedValue(permission) },
+    actorContexts,
+    userDAL: { findById: vi.fn().mockImplementation((id: string) => Promise.resolve({ id, email: USERS[id] })) },
+    identityDAL: { findById: vi.fn() }
   } as never);
 };
 
@@ -36,7 +43,7 @@ const assume = (service: ReturnType<typeof createService>, targetActorId: string
     targetActorId,
     projectId: "project-1",
     tokenVersionId: "token-version",
-    actorPermissionDetails: { type: ActorType.USER, id: "requester", orgId: "org-1", authMethod: null } as never
+    actor: { principal: { type: ActorType.USER, id: "requester" }, org: { id: "org-1" } } as TActorContext
   });
 
 describe("assume member privileges", () => {
@@ -84,25 +91,26 @@ describe("assume member privileges", () => {
     const { assumePrivilegesToken } = await assume(service, "junior-user");
     await expect(assume(service, "admin-user")).rejects.toThrow(ForbiddenError);
     await expect(
-      service.verifyAssumePrivilegeToken(assumePrivilegesToken, "token-version", null, "org-1")
+      service.verifyAssumePrivilegeToken(assumePrivilegesToken, "token-version", "org-1")
     ).resolves.toMatchObject({ actorId: "junior-user" });
   });
 
   test("the target's email is not looked up when the target is not in the project", async () => {
-    const permission = createMongoAbility<ProjectPermissionSet>(
-      [{ action: ProjectPermissionMemberActions.AssumePrivileges, subject: ProjectPermissionSub.Member }],
-      { conditionsMatcher }
-    );
+    const permission = Permission.fromRules<ProjectPermissionSet>({
+      rules: [{ action: ProjectPermissionMemberActions.AssumePrivileges, subject: ProjectPermissionSub.Member }]
+    });
     const findById = vi.fn();
     const service = assumePrivilegeServiceFactory({
-      permissionService: {
+      projectsDomain: {
         getProjectPermission: vi
           .fn()
-          .mockImplementation(({ actorId }: { actorId: string }) =>
-            actorId === "requester" ? Promise.resolve({ permission }) : Promise.reject(new Error("not a member"))
+          .mockImplementation(({ actor }: { actor: TActorContext }) =>
+            actor.principal.id === "requester" ? Promise.resolve(permission) : Promise.reject(new Error("not a member"))
           )
       },
-      userDAL: { findById }
+      actorContexts,
+      userDAL: { findById },
+      identityDAL: { findById: vi.fn() }
     } as never);
 
     await expect(assume(service, "outsider")).rejects.toThrow("not a member");
@@ -127,7 +135,7 @@ describe("assume member privileges", () => {
     ]);
 
     await expect(
-      restricted.verifyAssumePrivilegeToken(assumePrivilegesToken, "token-version", null, "org-1")
+      restricted.verifyAssumePrivilegeToken(assumePrivilegesToken, "token-version", "org-1")
     ).rejects.toThrow(ForbiddenError);
   });
 });

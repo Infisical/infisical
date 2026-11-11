@@ -1,7 +1,11 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput, TProjectPermission } from "@app/lib/types";
 
-export type TGetProjectMembershipDTO = { includeGroupMembers?: boolean; roles?: string[] } & TProjectPermission;
-export type TLeaveProjectDTO = Omit<TProjectPermission, "actorOrgId" | "actorAuthMethod">;
+export type TGetProjectMembershipDTO = {
+  includeGroupMembers?: boolean;
+  roles?: string[];
+  projectId: string;
+} & TActorInput;
+export type TLeaveProjectDTO = { projectId: string } & TActorInput;
 export enum ProjectUserMembershipTemporaryMode {
   Relative = "relative"
 }
@@ -12,7 +16,8 @@ export type TInviteUserToProjectDTO = {
 
 export type TGetProjectMembershipByUsernameDTO = {
   username: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetProjectMembershipByIdDTO = {
   id: string;
@@ -42,7 +47,8 @@ export type TDeleteProjectMembershipOldDTO = {
 export type TDeleteProjectMembershipsDTO = {
   emails: string[];
   usernames: string[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TAddUsersToWorkspaceDTO = {
   sendEmails?: boolean;
@@ -51,7 +57,8 @@ export type TAddUsersToWorkspaceDTO = {
     workspaceEncryptedKey: string;
     workspaceEncryptedNonce: string;
   }[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TAddUsersToWorkspaceNonE2EEDTO = {
   sendEmails?: boolean;

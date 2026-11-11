@@ -8,7 +8,10 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import type { TActorContexts } from "@app/domains/lib/actor-context";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TOrganizationsDomain } from "@app/domains/platform/organizations/ce/module";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -19,7 +22,6 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { terminatePamSessionsLosingGroupAccess } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSecretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -68,7 +70,9 @@ type TMembershipGroupServiceFactoryDep = {
   >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
   roleDAL: Pick<TRoleDALFactory, "find">;
-  permissionService: TPermissionServiceFactory;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission" | "getOrgPermissionByRoles">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission" | "getProjectPermissionByRoles">;
+  actorContexts: Pick<TActorContexts, "forPrincipal">;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   licenseDomain: TLicenseDomain;
@@ -103,7 +107,9 @@ export const membershipGroupServiceFactory = ({
   approvalRequestDAL,
   membershipRoleDAL,
   orgDAL,
-  permissionService,
+  organizationsDomain,
+  projectsDomain,
+  actorContexts,
   groupDAL,
   licenseDomain,
   applicationMembershipCleanupService,
@@ -122,15 +128,14 @@ export const membershipGroupServiceFactory = ({
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
-      orgDAL,
-      permissionService,
+      organizationsDomain,
+      actorContexts,
       groupDAL,
       membershipGroupDAL
     }),
     [AccessScope.Project]: newProjectMembershipGroupFactory({
       membershipGroupDAL,
-      orgDAL,
-      permissionService,
+      projectsDomain,
       groupDAL,
       projectDAL
     })
@@ -519,7 +524,7 @@ export const membershipGroupServiceFactory = ({
         message: "Group doesn't have membership"
       });
 
-    if (existingMembership.actorGroupId === dto.permission.id)
+    if (existingMembership.actorGroupId === dto.actor.principal.id)
       throw new BadRequestError({
         message: "You can't delete your own membership"
       });
@@ -665,7 +670,7 @@ export const membershipGroupServiceFactory = ({
             groupId: dto.selector.groupId,
             orgId: existingMembership.scopeOrgId,
             orgMembershipId: existingMembership.id,
-            actorId: dto.permission.id
+            actorId: dto.actor.principal.id
           },
           tx
         ));

@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TCreateServiceTokenDTO = {
   name: string;
@@ -8,12 +8,13 @@ export type TCreateServiceTokenDTO = {
   tag: string;
   expiresIn?: number | null;
   permissions: ("read" | "write")[];
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
-export type TGetServiceTokenInfoDTO = Omit<TProjectPermission, "projectId">;
+export type TGetServiceTokenInfoDTO = TActorInput;
 
 export type TDeleteServiceTokenDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
-export type TProjectServiceTokensDTO = TProjectPermission;
+export type TProjectServiceTokensDTO = { projectId: string } & TActorInput;

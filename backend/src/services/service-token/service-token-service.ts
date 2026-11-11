@@ -1,13 +1,10 @@
-import { ForbiddenError, subject } from "@casl/ability";
-
-import { ActionProjectType } from "@app/db/schemas";
 import {
   buildServiceTokenProjectPermission,
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { getConfig } from "@app/lib/config/env";
@@ -35,7 +32,7 @@ type TServiceTokenServiceFactoryDep = {
   serviceTokenDAL: TServiceTokenDALFactory;
   userDAL: TUserDALFactory;
   orgDAL: Pick<TOrgDALFactory, "findById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   accessTokenQueue: Pick<TAccessTokenQueueServiceFactory, "updateServiceTokenStatus">;
@@ -47,7 +44,7 @@ export type TServiceTokenServiceFactory = ReturnType<typeof serviceTokenServiceF
 export const serviceTokenServiceFactory = ({
   serviceTokenDAL,
   userDAL,
-  permissionService,
+  secretsDomain,
   projectEnvDAL,
   projectDAL,
   accessTokenQueue,
@@ -59,56 +56,67 @@ export const serviceTokenServiceFactory = ({
     tag,
     name,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     scopes,
-    actorId,
     projectId,
     expiresIn,
     permissions,
     encryptedKey
   }: TCreateServiceTokenDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens);
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.ServiceTokens });
 
     const canRead = permissions.includes("read");
     const canWrite = permissions.includes("write");
 
     scopes.forEach(({ environment, secretPath }) => {
-      const secretSubject = subject(ProjectPermissionSub.Secrets, { environment, secretPath });
+      const secretFields = { environment, secretPath };
 
-      ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Create, secretSubject);
+      permission.assert({
+        action: ProjectPermissionSecretActions.Create,
+        subject: ProjectPermissionSub.Secrets,
+        fields: secretFields
+      });
 
       if (canRead) {
-        const hasLegacyReadUmbrella = permission.can(
-          ProjectPermissionSecretActions.DescribeAndReadValue,
-          secretSubject
-        );
+        const hasLegacyReadUmbrella = permission.can({
+          action: ProjectPermissionSecretActions.DescribeAndReadValue,
+          subject: ProjectPermissionSub.Secrets,
+          fields: secretFields
+        });
         if (!hasLegacyReadUmbrella) {
-          ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.ReadValue, secretSubject);
-          ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.DescribeSecret, secretSubject);
+          permission.assert({
+            action: ProjectPermissionSecretActions.ReadValue,
+            subject: ProjectPermissionSub.Secrets,
+            fields: secretFields
+          });
+          permission.assert({
+            action: ProjectPermissionSecretActions.DescribeSecret,
+            subject: ProjectPermissionSub.Secrets,
+            fields: secretFields
+          });
         }
       }
 
       if (canWrite) {
-        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Edit, secretSubject);
-        ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionSecretActions.Delete, secretSubject);
+        permission.assert({
+          action: ProjectPermissionSecretActions.Edit,
+          subject: ProjectPermissionSub.Secrets,
+          fields: secretFields
+        });
+        permission.assert({
+          action: ProjectPermissionSecretActions.Delete,
+          subject: ProjectPermissionSub.Secrets,
+          fields: secretFields
+        });
       }
     });
 
     if (canRead) {
       const tokenAbilityLegacy = buildServiceTokenProjectPermission(scopes, permissions);
-      const boundaryLegacy = validatePermissionBoundary(permission, tokenAbilityLegacy);
+      const boundaryLegacy = validatePermissionBoundary(permission.toAbility(), tokenAbilityLegacy);
       if (!boundaryLegacy.isValid) {
         const tokenAbilityGranular = buildServiceTokenProjectPermission(scopes, permissions, { useLegacyRead: false });
-        const boundaryGranular = validatePermissionBoundary(permission, tokenAbilityGranular);
+        const boundaryGranular = validatePermissionBoundary(permission.toAbility(), tokenAbilityGranular);
         if (!boundaryGranular.isValid) {
           const legacyMissing = boundaryLegacy.missingPermissions ?? [];
           const granularMissing = boundaryGranular.missingPermissions ?? [];
@@ -122,7 +130,7 @@ export const serviceTokenServiceFactory = ({
     } else {
       // Write-only tokens have no read aliasing concern; a single boundary check suffices.
       const tokenAbility = buildServiceTokenProjectPermission(scopes, permissions);
-      const boundary = validatePermissionBoundary(permission, tokenAbility);
+      const boundary = validatePermissionBoundary(permission.toAbility(), tokenAbility);
       if (!boundary.isValid) {
         throw new PermissionBoundaryError({
           message: "Cannot create service token whose permissions exceed the caller's permissions",
@@ -146,7 +154,7 @@ export const serviceTokenServiceFactory = ({
       expiresAt = new Date();
       expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
     }
-    const createdBy = actorId;
+    const createdBy = actor.principal.id;
 
     const serviceToken = await serviceTokenDAL.create({
       name,
@@ -166,26 +174,20 @@ export const serviceTokenServiceFactory = ({
     return { token, serviceToken };
   };
 
-  const deleteServiceToken = async ({ actorId, actor, actorOrgId, actorAuthMethod, id }: TDeleteServiceTokenDTO) => {
+  const deleteServiceToken = async ({ actor, id }: TDeleteServiceTokenDTO) => {
     const serviceToken = await serviceTokenDAL.findById(id);
     if (!serviceToken) throw new NotFoundError({ message: `Service token with ID '${id}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: serviceToken.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Delete, ProjectPermissionSub.ServiceTokens);
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: serviceToken.projectId });
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.ServiceTokens });
 
     const deletedServiceToken = await serviceTokenDAL.deleteById(id);
     return deletedServiceToken;
   };
 
-  const getServiceToken = async ({ actor, actorId }: TGetServiceTokenInfoDTO) => {
-    if (actor !== ActorType.SERVICE)
+  const getServiceToken = async ({ actor }: TGetServiceTokenInfoDTO) => {
+    const { id: actorId } = actor.principal;
+    if (actor.principal.type !== ActorType.SERVICE)
       throw new NotFoundError({ message: `Service token with ID '${actorId}' not found` });
 
     const serviceToken = await serviceTokenDAL.findById(actorId);
@@ -198,22 +200,9 @@ export const serviceTokenServiceFactory = ({
     return { serviceToken, user: serviceTokenUser };
   };
 
-  const getProjectServiceTokens = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TProjectServiceTokensDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.ServiceTokens);
+  const getProjectServiceTokens = async ({ actor, projectId }: TProjectServiceTokensDTO) => {
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.ServiceTokens });
 
     const tokens = await serviceTokenDAL.find({ projectId }, { sort: [["createdAt", "desc"]] });
     return tokens;

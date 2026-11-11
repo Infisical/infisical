@@ -78,7 +78,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipIdentity.createMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -168,7 +168,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipIdentity.updateMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -227,7 +227,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipIdentity.deleteMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -334,7 +334,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     },
     handler: async (req) => {
       const { data: identityMemberships, totalCount } = await server.services.membershipIdentity.listMemberships({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -400,7 +400,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     },
     handler: async (req) => {
       const identityMembership = await server.services.membershipIdentity.getMembershipByIdentityId({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -455,7 +455,7 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
     },
     handler: async (req) => {
       const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId

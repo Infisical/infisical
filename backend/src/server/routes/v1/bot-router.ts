@@ -32,10 +32,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const bot = await server.services.projectBot.findBotByProjectId({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         projectId: req.params.projectId
       });
       return { bot };
@@ -77,10 +74,7 @@ export const registerProjectBotRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const bot = await server.services.projectBot.setBotActiveState({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         botId: req.params.botId,
         botKey: req.body.botKey,
         isActive: req.body.isActive

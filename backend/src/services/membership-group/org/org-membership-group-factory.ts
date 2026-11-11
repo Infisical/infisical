@@ -1,10 +1,10 @@
-import { ForbiddenError } from "@casl/ability";
-
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
+import type { TActorContext, TActorContexts } from "@app/domains/lib/actor-context";
 import {
   OrgPermissionGroupActions,
   OrgPermissionSubjects,
-  OrgPermissionSubOrgActions
+  OrgPermissionSubOrgActions,
+  TOrganizationsDomain
 } from "@app/domains/platform/organizations/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import {
@@ -12,31 +12,27 @@ import {
   constructPermissionErrorMessage,
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
-import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
-import { requestMemoize } from "@app/lib/request-context/request-memoizer";
-import { OrgServiceActor } from "@app/lib/types";
 import {
   filterRolesNeedingPrivilegeBoundary,
-  resolveMembershipRoleSlugs
+  resolveMembershipRoleSlugs,
+  toRoleAbilities
 } from "@app/services/membership/membership-fns";
-import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 
 import { TMembershipGroupDALFactory } from "../membership-group-dal";
 import { TMembershipGroupScopeFactory } from "../membership-group-types";
 
 type TOrgMembershipGroupScopeFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission" | "getOrgPermissionByRoles">;
+  actorContexts: Pick<TActorContexts, "forPrincipal">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "getGroupById">;
 };
 
 export const newOrgMembershipGroupFactory = ({
-  permissionService,
-  orgDAL,
+  organizationsDomain,
+  actorContexts,
   groupDAL,
   membershipGroupDAL
 }: TOrgMembershipGroupScopeFactoryDep): TMembershipGroupScopeFactory => {
@@ -56,73 +52,60 @@ export const newOrgMembershipGroupFactory = ({
 
   const isCustomRole: TMembershipGroupScopeFactory["isCustomRole"] = (role: string) => isCustomOrgRole(role);
 
-  const isGroupLinkedFromRootOrg = (actor: OrgServiceActor, groupOrgId: string) =>
-    actor.orgId !== actor.rootOrgId && groupOrgId !== actor.orgId;
+  const isGroupLinkedFromRootOrg = (actor: TActorContext, groupOrgId: string) =>
+    actor.org.id !== actor.org.rootOrgId && groupOrgId !== actor.org.id;
 
-  const $assertCanLinkRootGroup = async (actor: OrgServiceActor) => {
-    const { permission: rootOrgPermission } = await permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.rootOrgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.rootOrgId,
-      scope: OrganizationActionScope.Any
+  const $assertCanLinkRootGroup = async (actor: TActorContext) => {
+    const rootOrgActor = await actorContexts.forPrincipal(actor.principal, actor.org.rootOrgId);
+    const rootOrgPermission = await organizationsDomain.getOrgPermission({ actor: rootOrgActor });
+    rootOrgPermission.assert({
+      action: OrgPermissionSubOrgActions.LinkGroup,
+      subject: OrgPermissionSubjects.SubOrganization
     });
-    ForbiddenError.from(rootOrgPermission).throwUnlessCan(
-      OrgPermissionSubOrgActions.LinkGroup,
-      OrgPermissionSubjects.SubOrganization
-    );
   };
 
-  const $getGroupInActorScope = async (actor: OrgServiceActor, groupId: string) => {
+  const $getGroupInActorScope = async (actor: TActorContext, groupId: string) => {
     const group = await groupDAL.findById(groupId);
-    if (!group || (group.orgId !== actor.orgId && group.orgId !== actor.rootOrgId)) {
+    if (!group || (group.orgId !== actor.org.id && group.orgId !== actor.org.rootOrgId)) {
       throw new NotFoundError({ message: `Group with ID '${groupId}' not found` });
     }
     return group;
   };
 
   const onCreateMembershipGroupGuard: TMembershipGroupScopeFactory["onCreateMembershipGroupGuard"] = async (dto) => {
-    const isSubOrg = dto.permission.orgId !== dto.permission.rootOrgId;
+    const isSubOrg = dto.actor.org.id !== dto.actor.org.rootOrgId;
     if (!isSubOrg) {
       throw new BadRequestError({
         message: "Organization membership cannot be created for groups in root organization"
       });
     }
-    await $assertCanLinkRootGroup(dto.permission);
+    await $assertCanLinkRootGroup(dto.actor);
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
+    const permission = await organizationsDomain.getOrgPermission({
+      actor: dto.actor,
       scope: OrganizationActionScope.ChildOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Create, OrgPermissionSubjects.Groups);
+    permission.assert({ action: OrgPermissionGroupActions.Create, subject: OrgPermissionSubjects.Groups });
 
-    const group = await $getGroupInActorScope(dto.permission, dto.data.groupId);
-    if (group.orgId === dto.permission.orgId) {
+    const group = await $getGroupInActorScope(dto.actor, dto.data.groupId);
+    if (group.orgId === dto.actor.org.id) {
       throw new BadRequestError({
         message: `Group '${group.name}' belongs to this organization. Only groups from the parent organization can be linked to it.`
       });
     }
 
-    const permissionRoles = await permissionService.getOrgPermissionByRoles(
-      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
-      dto.permission.orgId
-    );
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-      requestMemoKeys.orgFindById(dto.permission.orgId),
-      () => orgDAL.findById(dto.permission.orgId)
-    );
+    const permissionRoles = await organizationsDomain.getOrgPermissionByRoles({
+      orgId: dto.actor.org.id,
+      roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
+    });
+    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
     for (const permissionRole of permissionRoles) {
       const permissionBoundary = validatePrivilegeChangeOperation(
         shouldUseNewPrivilegeSystem,
         OrgPermissionGroupActions.GrantPrivileges,
         OrgPermissionSubjects.Groups,
-        permission,
-        permissionRole.permission
+        permission.toAbility(),
+        permissionRole.permission.toAbility()
       );
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
@@ -140,37 +123,29 @@ export const newOrgMembershipGroupFactory = ({
   };
 
   const onUpdateMembershipGroupGuard: TMembershipGroupScopeFactory["onUpdateMembershipGroupGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+    const permission = await organizationsDomain.getOrgPermission({ actor: dto.actor });
+    permission.assert({ action: OrgPermissionGroupActions.Edit, subject: OrgPermissionSubjects.Groups });
 
-    const groupDetails = await $getGroupInActorScope(dto.permission, dto.selector.groupId);
-    if (isGroupLinkedFromRootOrg(dto.permission, groupDetails.orgId)) {
-      await $assertCanLinkRootGroup(dto.permission);
+    const groupDetails = await $getGroupInActorScope(dto.actor, dto.selector.groupId);
+    if (isGroupLinkedFromRootOrg(dto.actor, groupDetails.orgId)) {
+      await $assertCanLinkRootGroup(dto.actor);
     }
 
-    const permissionRoles = await permissionService.getOrgPermissionByRoles(
-      filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role),
-      dto.permission.orgId
-    );
+    const permissionRoles = await organizationsDomain.getOrgPermissionByRoles({
+      orgId: dto.actor.org.id,
+      roles: filterRolesNeedingPrivilegeBoundary(dto.data.roles).map((el) => el.role)
+    });
 
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-      requestMemoKeys.orgFindById(dto.permission.orgId),
-      () => orgDAL.findById(dto.permission.orgId)
-    );
+    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
     const targetMembership = await membershipGroupDAL.getGroupById({
       scopeData: dto.scopeData,
       groupId: dto.selector.groupId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+    const targetPermissions = await organizationsDomain.getOrgPermissionByRoles({
+      orgId: dto.actor.org.id,
+      roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
 
@@ -178,8 +153,8 @@ export const newOrgMembershipGroupFactory = ({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.GrantPrivileges,
       opSubject: OrgPermissionSubjects.Groups,
-      actorPermission: permission,
-      targetPermissions,
+      actorPermission: permission.toAbility(),
+      targetPermissions: toRoleAbilities(targetPermissions),
       baseMessage: "Failed to change the roles of a more privileged group"
     });
 
@@ -188,8 +163,8 @@ export const newOrgMembershipGroupFactory = ({
         shouldUseNewPrivilegeSystem,
         OrgPermissionGroupActions.GrantPrivileges,
         OrgPermissionSubjects.Groups,
-        permission,
-        permissionRole.permission
+        permission.toAbility(),
+        permissionRole.permission.toAbility()
       );
       if (!permissionBoundary.isValid)
         throw new PermissionBoundaryError({
@@ -207,43 +182,38 @@ export const newOrgMembershipGroupFactory = ({
   };
 
   const onDeleteMembershipGroupGuard: TMembershipGroupScopeFactory["onDeleteMembershipGroupGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
+    const permission = await organizationsDomain.getOrgPermission({
+      actor: dto.actor,
       scope: OrganizationActionScope.ChildOrganization
     });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Delete, OrgPermissionSubjects.Groups);
+    permission.assert({ action: OrgPermissionGroupActions.Delete, subject: OrgPermissionSubjects.Groups });
 
-    const group = await $getGroupInActorScope(dto.permission, dto.selector.groupId);
-    if (group.orgId === dto.permission.orgId) {
+    const group = await $getGroupInActorScope(dto.actor, dto.selector.groupId);
+    if (group.orgId === dto.actor.org.id) {
       throw new BadRequestError({
         message: `Group '${group.name}' belongs to this organization and can't be unlinked from it. Delete the group instead.`
       });
     }
-    await $assertCanLinkRootGroup(dto.permission);
+    await $assertCanLinkRootGroup(dto.actor);
 
     const targetMembership = await membershipGroupDAL.getGroupById({
       scopeData: dto.scopeData,
       groupId: dto.selector.groupId
     });
     const targetRoles = targetMembership ? resolveMembershipRoleSlugs(targetMembership.roles) : [];
-    const targetPermissions = await permissionService.getOrgPermissionByRoles(targetRoles, dto.permission.orgId, {
+    const targetPermissions = await organizationsDomain.getOrgPermissionByRoles({
+      orgId: dto.actor.org.id,
+      roles: targetRoles,
       ignoreUnresolvedRoles: true
     });
-    const { shouldUseNewPrivilegeSystem } = await requestMemoize(
-      requestMemoKeys.orgFindById(dto.permission.orgId),
-      () => orgDAL.findById(dto.permission.orgId)
-    );
+    const { shouldUseNewPrivilegeSystem } = dto.actor.org;
 
     assertRoleSetBoundary({
       shouldUseNewPrivilegeSystem,
       opActions: OrgPermissionGroupActions.Delete,
       opSubject: OrgPermissionSubjects.Groups,
-      actorPermission: permission,
-      targetPermissions,
+      actorPermission: permission.toAbility(),
+      targetPermissions: toRoleAbilities(targetPermissions),
       baseMessage: "Failed to remove a more privileged group from the organization"
     });
 
@@ -251,29 +221,15 @@ export const newOrgMembershipGroupFactory = ({
   };
 
   const onListMembershipGroupGuard: TMembershipGroupScopeFactory["onListMembershipGroupGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+    const permission = await organizationsDomain.getOrgPermission({ actor: dto.actor });
+    permission.assert({ action: OrgPermissionGroupActions.Read, subject: OrgPermissionSubjects.Groups });
   };
 
   const onGetMembershipGroupByGroupIdGuard: TMembershipGroupScopeFactory["onGetMembershipGroupByGroupIdGuard"] = async (
     dto
   ) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor: dto.permission.type,
-      actorId: dto.permission.id,
-      orgId: dto.permission.orgId,
-      actorAuthMethod: dto.permission.authMethod,
-      actorOrgId: dto.permission.orgId,
-      scope: OrganizationActionScope.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+    const permission = await organizationsDomain.getOrgPermission({ actor: dto.actor });
+    permission.assert({ action: OrgPermissionGroupActions.Read, subject: OrgPermissionSubjects.Groups });
   };
 
   return {

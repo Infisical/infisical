@@ -31,7 +31,8 @@ export const importDataIntoInfisicalFn = async ({
   folderVersionDAL,
   folderCommitService,
   eventEmitter,
-  input: { data, actor, actorId, actorOrgId, actorAuthMethod }
+  input: { data, actor, actorId, actorOrgId },
+  projectActor
 }: TImportDataIntoInfisicalDTO) => {
   // Import data to infisical
   if (!data || !data.projects) {
@@ -59,10 +60,7 @@ export const importDataIntoInfisicalFn = async ({
     for await (const project of data.projects) {
       const newProject = await projectService
         .createProject({
-          actor,
-          actorId,
-          actorOrgId,
-          actorAuthMethod,
+          actor: projectActor,
           projectName: project.name,
           createDefaultEnvs: false,
           tx

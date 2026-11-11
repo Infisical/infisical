@@ -64,7 +64,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
       if (req.auth.actor !== ActorType.USER) return;
 
       const { signUpTokens: completeInviteLinks } = await server.services.membershipUser.createMembership({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Organization,
           orgId: req.permission.orgId
@@ -145,7 +145,7 @@ export const registerInviteOrgRouter = async (server: FastifyZodProvider) => {
             }
 
             const { memberships } = await server.services.membershipUser.createMembership({
-              permission: req.permission,
+              actor: req.permission,
               scopeData: {
                 scope: AccessScope.Project,
                 orgId: req.permission.orgId,

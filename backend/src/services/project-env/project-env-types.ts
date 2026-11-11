@@ -1,36 +1,42 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TCreateEnvDTO = {
   name: string;
   slug: string;
   position?: number;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateEnvDTO = {
   id: string;
   name?: string;
   slug?: string;
   position?: number;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TDeleteEnvDTO = {
   id: string;
   hardDelete?: boolean;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TRestoreEnvDTO = {
   id: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TReorderEnvDTO = {
   id: string;
   pos: number;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetEnvDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetEnvBySlugDTO = {
   slug: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;

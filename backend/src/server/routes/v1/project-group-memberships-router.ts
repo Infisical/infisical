@@ -71,7 +71,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const { memberships: groupMemberships } = await server.services.membershipGroup.listMemberships({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -141,7 +141,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
           ? [{ role: req.body.role, isTemporary: false }]
           : [{ role: ProjectMembershipRole.NoAccess, isTemporary: false }]);
       const { group } = await server.services.membershipGroup.createMembership({
-        permission: req.permission,
+        actor: req.permission,
         data: { groupId: req.params.groupId, roles },
         scopeData: {
           scope: AccessScope.Project,
@@ -151,7 +151,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
       });
 
       const { membership: full } = await server.services.membershipGroup.getMembershipByGroupId({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -217,7 +217,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const { membership } = await server.services.membershipGroup.getMembershipByGroupId({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -282,7 +282,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const { membership: groupMembership, group } = await server.services.membershipGroup.updateMembership({
-        permission: req.permission,
+        actor: req.permission,
         selector: { groupId: req.params.groupId },
         data: { roles: req.body.roles },
         scopeData: {
@@ -346,7 +346,7 @@ export const registerProjectGroupMembershipsRouter = async (server: FastifyZodPr
     },
     handler: async (req) => {
       const { membership: groupMembership, group } = await server.services.membershipGroup.deleteMembership({
-        permission: req.permission,
+        actor: req.permission,
         selector: { groupId: req.params.groupId },
         scopeData: {
           scope: AccessScope.Project,

@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
@@ -29,18 +30,18 @@ const setup = () => {
     find: vi.fn().mockResolvedValue([]),
     transaction: vi.fn(<T>(cb: (trx: unknown) => Promise<T>) => cb(tx))
   };
-  const permissionService = {
-    getOrgPermission: vi.fn().mockResolvedValue({ permission: { cannot: () => false } })
+  const organizationsDomain = {
+    getOrgPermission: vi.fn().mockResolvedValue({ cannot: () => false })
   };
   const licenseDomain = new FakeLicenseDomain();
   const service = projectServiceFactory({
     orgDAL,
     projectDAL,
-    permissionService,
+    organizationsDomain,
     licenseDomain
   } as unknown as Parameters<typeof projectServiceFactory>[0]);
 
-  return { service, orgDAL, projectDAL, permissionService, licenseDomain, memberships, tx };
+  return { service, orgDAL, projectDAL, organizationsDomain, licenseDomain, memberships, tx };
 };
 
 describe("project navigation across sub-organizations", () => {
@@ -148,10 +149,7 @@ describe("project navigation across sub-organizations", () => {
 describe("secret scanning project uniqueness", () => {
   const createSecretScanningProject = (service: ReturnType<typeof setup>["service"]) =>
     service.createProject({
-      actor: ActorType.USER,
-      actorId: "user",
-      actorOrgId: "root",
-      actorAuthMethod: null,
+      actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "root" } } as TActorContext,
       projectName: "Scanning",
       type: ProjectType.SecretScanning
     });
@@ -185,10 +183,7 @@ describe("org-scoped product projects", () => {
 
     await expect(
       service.createProject({
-        actor: ActorType.USER,
-        actorId: "user",
-        actorOrgId: "root",
-        actorAuthMethod: null,
+        actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "root" } } as TActorContext,
         projectName: "Managed",
         type: ProjectType.PAM
       })
@@ -202,10 +197,7 @@ describe("org-scoped product projects", () => {
 
     await expect(
       service.createProject({
-        actor: ActorType.USER,
-        actorId: "user",
-        actorOrgId: "root",
-        actorAuthMethod: null,
+        actor: { principal: { type: ActorType.USER, id: "user" }, org: { id: "root" } } as TActorContext,
         projectName: "Apollo",
         type: ProjectType.AgentVault,
         template: "my-template"

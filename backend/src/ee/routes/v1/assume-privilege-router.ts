@@ -38,7 +38,7 @@ export const registerAssumePrivilegeRouter = async (server: FastifyZodProvider) 
           targetActorType: req.body.actorType,
           targetActorId: req.body.actorId,
           projectId: req.params.projectId,
-          actorPermissionDetails: req.permission,
+          actor: req.permission,
           tokenVersionId: req.auth.tokenVersionId
         });
 

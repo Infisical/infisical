@@ -32,10 +32,7 @@ export const registerGroupOrgMembershipRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const groups = await server.services.group.listAvailableGroups({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         rootOrgId: req.permission.rootOrgId
       });
 

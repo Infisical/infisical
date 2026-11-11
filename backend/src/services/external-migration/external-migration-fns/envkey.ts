@@ -2,6 +2,7 @@ import sjcl from "sjcl";
 import tweetnacl from "tweetnacl";
 import tweetnaclUtil from "tweetnacl-util";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -44,6 +45,7 @@ export type TImportDataIntoInfisicalDTO = {
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "create">;
 
   input: TImportInfisicalDataCreate;
+  projectActor: TActorContext;
 };
 
 const { codec, hash } = sjcl;

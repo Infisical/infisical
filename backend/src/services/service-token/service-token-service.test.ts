@@ -1,6 +1,7 @@
 import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionActions,
   ProjectPermissionSecretActions,
@@ -57,12 +58,10 @@ const canWithConditions = (
 };
 
 const createService = (permission: MongoAbility<ProjectPermissionSet>) => {
-  const permissionService = {
-    getProjectPermission: vi.fn().mockResolvedValue({
-      permission,
-      memberships: [],
-      hasRole: () => false,
-      hasProjectEnforcement: () => undefined
+  const secretsDomain = {
+    getSecretsPermission: vi.fn().mockResolvedValue({
+      permission: Permission.fromRules<ProjectPermissionSet>({ rules: permission.rules }),
+      folderGrants: []
     })
   };
 
@@ -94,7 +93,7 @@ const createService = (permission: MongoAbility<ProjectPermissionSet>) => {
   const service = serviceTokenServiceFactory({
     serviceTokenDAL: serviceTokenDAL as never,
     userDAL: userDAL as never,
-    permissionService: permissionService as never,
+    secretsDomain: secretsDomain as never,
     projectEnvDAL: projectEnvDAL as never,
     projectDAL: projectDAL as never,
     accessTokenQueue: accessTokenQueue as never,
@@ -102,7 +101,7 @@ const createService = (permission: MongoAbility<ProjectPermissionSet>) => {
     orgDAL: orgDAL as never
   });
 
-  return { service, serviceTokenDAL, permissionService };
+  return { service, serviceTokenDAL, secretsDomain };
 };
 
 const callCreate = ({
@@ -115,10 +114,7 @@ const callCreate = ({
   permissions: ("read" | "write")[];
 }) =>
   service.createServiceToken({
-    actor: "user" as never,
-    actorId: ACTOR_ID,
-    actorOrgId: ACTOR_ORG_ID,
-    actorAuthMethod: undefined as never,
+    actor: { principal: { type: "user", id: ACTOR_ID }, org: { id: ACTOR_ORG_ID } } as never,
     projectId: PROJECT_ID,
     name: "test-token",
     scopes,

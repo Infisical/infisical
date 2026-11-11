@@ -778,7 +778,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { users } = await server.services.membershipUser.listAvailableUsers({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           orgId: req.permission.orgId,
           scope: AccessScope.Organization
@@ -810,7 +810,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
       const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           orgId: req.permission.orgId,
           scope: AccessScope.Organization

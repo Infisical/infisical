@@ -1,8 +1,9 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { ActionProjectType, ProjectVersion } from "@app/db/schemas";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectVersion } from "@app/db/schemas";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  TProjectsDomain
+} from "@app/domains/platform/projects/ce/module";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -14,7 +15,7 @@ import { getBotKeyFnFactory, getBotPrivateKey } from "./project-bot-fns";
 import { TFindBotByProjectIdDTO, TSetActiveStateDTO } from "./project-bot-types";
 
 type TProjectBotServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   projectBotDAL: TProjectBotDALFactory;
 };
@@ -24,7 +25,7 @@ export type TProjectBotServiceFactory = ReturnType<typeof projectBotServiceFacto
 export const projectBotServiceFactory = ({
   projectBotDAL,
   projectDAL,
-  permissionService
+  projectsDomain
 }: TProjectBotServiceFactoryDep) => {
   const getBotKeyFn = getBotKeyFnFactory(projectBotDAL, projectDAL);
 
@@ -32,25 +33,9 @@ export const projectBotServiceFactory = ({
     return getBotKeyFn(projectId, shouldGetBotKey);
   };
 
-  const findBotByProjectId = async ({
-    actorId,
-    actor,
-    projectId,
-    actorOrgId,
-    privateKey,
-    actorAuthMethod,
-    botKey,
-    publicKey
-  }: TFindBotByProjectIdDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.Integrations);
+  const findBotByProjectId = async ({ actor, projectId, privateKey, botKey, publicKey }: TFindBotByProjectIdDTO) => {
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.Integrations });
 
     const bot = await projectBotDAL.transaction(async (tx) => {
       const doc = await projectBotDAL.findOne({ projectId }, tx);
@@ -103,27 +88,12 @@ export const projectBotServiceFactory = ({
     }
   };
 
-  const setBotActiveState = async ({
-    actor,
-    botId,
-    botKey,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    isActive
-  }: TSetActiveStateDTO) => {
+  const setBotActiveState = async ({ actor, botId, botKey, isActive }: TSetActiveStateDTO) => {
     const bot = await projectBotDAL.findById(botId);
     if (!bot) throw new NotFoundError({ message: `Project bot with ID '${botId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: bot.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.Any
-    });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Integrations);
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId: bot.projectId });
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.Integrations });
 
     const project = await projectBotDAL.findProjectByBotId(botId);
 
@@ -145,7 +115,7 @@ export const projectBotServiceFactory = ({
         isActive: true,
         encryptedProjectKey: botKey.encryptedKey,
         encryptedProjectKeyNonce: botKey.nonce,
-        senderId: actorId
+        senderId: actor.principal.id
       });
       if (!doc)
         throw new BadRequestError({ message: `Project bot with ID '${botId}' not found. Failed to update bot.` });

@@ -2,6 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { ProjectPermissionGroupActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import {
   projectAdminPermissions,
@@ -77,16 +78,15 @@ const createGuard = ({
   };
 
   const factory = newProjectMembershipGroupFactory({
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({ permission: actorPermission }),
-      getProjectPermissionByRoles: vi.fn().mockImplementation((roles: string[]) =>
+    projectsDomain: {
+      getProjectPermission: vi.fn().mockResolvedValue(Permission.fromRules({ rules: actorPermission.rules as never })),
+      getProjectPermissionByRoles: vi.fn().mockImplementation(({ roles }: { roles: string[] }) =>
         roles.map((role) => ({
-          permission: abilityByRole[role],
+          permission: Permission.fromRules({ rules: abilityByRole[role].rules as never }),
           role: { name: role, slug: role }
         }))
       )
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem }) } as never,
     projectDAL: { findById: vi.fn().mockResolvedValue({ id: PROJECT_ID, type: "secret-manager" }) } as never,
     groupDAL: { findById: vi.fn().mockResolvedValue({ id: GROUP_ID, name: "the-group" }) } as never,
     membershipGroupDAL: {
@@ -97,7 +97,10 @@ const createGuard = ({
 
   return () =>
     factory.onUpdateMembershipGroupGuard({
-      permission: { type: "user", id: "actor-id", orgId: ORG_ID, authMethod: "email" },
+      actor: {
+        principal: { type: "user", id: "actor-id" },
+        org: { id: ORG_ID, rootOrgId: ORG_ID, shouldUseNewPrivilegeSystem }
+      },
       scopeData: { scope: AccessScope.Project, orgId: ORG_ID, projectId: PROJECT_ID },
       selector: { groupId: GROUP_ID },
       data: { roles: [{ role: incomingRole, isTemporary: false }] }

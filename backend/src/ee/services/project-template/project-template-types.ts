@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectType, TProjectEnvironments } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TProjectPermissionV2Schema } from "@app/domains/platform/projects/ce/module";
-import { ProjectServiceActor } from "@app/lib/types";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 
 export type TProjectTemplateEnvironment = Pick<TProjectEnvironments, "name" | "slug" | "position">;
@@ -63,7 +63,7 @@ export enum InfisicalProjectTemplate {
 
 export type TProjectTemplateServiceFactory = {
   listProjectTemplatesByOrg: (
-    actor: ProjectServiceActor,
+    actor: TActorContext,
     type?: ProjectType
   ) => Promise<
     (
@@ -125,7 +125,7 @@ export type TProjectTemplateServiceFactory = {
   >;
   createProjectTemplate: (
     arg: TCreateProjectTemplateDTO,
-    actor: ProjectServiceActor
+    actor: TActorContext
   ) => Promise<{
     environments: TProjectTemplateEnvironment[];
     roles: {
@@ -153,7 +153,7 @@ export type TProjectTemplateServiceFactory = {
   updateProjectTemplateById: (
     id: string,
     { roles, environments, ...params }: TUpdateProjectTemplateDTO,
-    actor: ProjectServiceActor
+    actor: TActorContext
   ) => Promise<{
     environments: TProjectTemplateEnvironment[];
     roles: {
@@ -180,7 +180,7 @@ export type TProjectTemplateServiceFactory = {
   }>;
   deleteProjectTemplateById: (
     id: string,
-    actor: ProjectServiceActor
+    actor: TActorContext
   ) => Promise<{
     environments: TProjectTemplateEnvironment[];
     roles: {
@@ -207,7 +207,7 @@ export type TProjectTemplateServiceFactory = {
   }>;
   findProjectTemplateById: (
     id: string,
-    actor: ProjectServiceActor
+    actor: TActorContext
   ) => Promise<{
     packedRoles: TProjectTemplateRole[];
     environments: TProjectTemplateEnvironment[];
@@ -235,7 +235,7 @@ export type TProjectTemplateServiceFactory = {
   }>;
   findProjectTemplateByName: (
     name: string,
-    actor: ProjectServiceActor
+    actor: TActorContext
   ) => Promise<{
     packedRoles: TProjectTemplateRole[];
     environments: TProjectTemplateEnvironment[];

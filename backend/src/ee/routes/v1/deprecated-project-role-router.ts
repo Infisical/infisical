@@ -61,7 +61,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
         orgId: req.permission.orgId
       });
       const role = await server.services.role.createRole({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -152,7 +152,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       });
 
       const role = await server.services.role.updateRole({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -231,7 +231,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       });
 
       const role = await server.services.role.deleteRole({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -302,7 +302,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       });
 
       const { roles } = await server.services.role.listRoles({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,
@@ -339,7 +339,7 @@ export const registerDeprecatedProjectRoleRouter = async (server: FastifyZodProv
       });
 
       const role = await server.services.role.getRoleBySlug({
-        permission: req.permission,
+        actor: req.permission,
         scopeData: {
           scope: AccessScope.Project,
           orgId: req.permission.orgId,

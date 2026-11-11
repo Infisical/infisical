@@ -1,4 +1,4 @@
-import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TActorInput, TProjectPermission } from "@app/lib/types";
 
 import { ProjectUserMembershipTemporaryMode } from "../project-membership/project-membership-types";
 
@@ -46,15 +46,17 @@ export type TListProjectIdentityDTO = {
   orderBy?: ProjectIdentityOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetProjectIdentityByIdentityIdDTO = {
   identityId: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetProjectIdentityByMembershipIdDTO = {
   identityMembershipId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export enum ProjectIdentityOrderBy {
   Name = "name"
