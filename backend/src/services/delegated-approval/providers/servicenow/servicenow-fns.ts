@@ -320,6 +320,7 @@ export const parseServiceNowDecision = (data: unknown): TDelegatedApprovalDecisi
     throw new UnrecoverableError(`ServiceNow recorded a decision Infisical does not recognise ('${recorded}').`);
   }
 
+  const approvals = record.approvals ?? [];
   const permissions = record.permissions ?? "";
   if (permissions.length >= SERVICENOW_PERMISSIONS_MAX_CHARS) {
     throw new UnrecoverableError(
@@ -332,7 +333,9 @@ export const parseServiceNowDecision = (data: unknown): TDelegatedApprovalDecisi
     decision,
     approvalRequestId: toOptionalText(record.request_id),
     permissions: permissions.split(/\r?\n/),
-    decidedBy: toOptionalText(record.approved_by),
+    approvedBy: (Array.isArray(approvals) ? approvals : approvals.split(","))
+      .map((name) => name.trim())
+      .filter(Boolean),
     decidedAt: toOptionalText(record.decision_date),
     notes: toOptionalText(record.decision_notes)
   };

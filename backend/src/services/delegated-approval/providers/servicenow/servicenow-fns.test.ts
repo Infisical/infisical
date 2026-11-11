@@ -290,7 +290,7 @@ describe("parseServiceNowDecision", () => {
     permissions: "secrets:        create, read\nsecret-folders: edit",
     state: "callback_pending",
     decision: "approved",
-    approved_by: "",
+    approvals: "",
     decision_date: "2026-10-20 10:15:00",
     decision_notes: null,
     ...overrides
@@ -302,7 +302,7 @@ describe("parseServiceNowDecision", () => {
       decision: DelegatedApprovalDecision.Approved,
       approvalRequestId: "request-1",
       permissions: ["secrets:        create, read", "secret-folders: edit"],
-      decidedBy: null,
+      approvedBy: [],
       decidedAt: "2026-10-20 10:15:00",
       notes: null
     };
@@ -327,6 +327,27 @@ describe("parseServiceNowDecision", () => {
       reason: "ServiceNow has not recorded a decision for this request yet (state: completed)."
     });
   });
+
+  test.each([
+    ["comma-separated display names", "Abel Tuter, Beth Anglin ,, "],
+    ["an array of names", ["Abel Tuter", " Beth Anglin", ""]]
+  ])("reads every approver from %s", (_, approvals) => {
+    expect(parseServiceNowDecision({ result: { success: true, data: record({ approvals }) } })).toMatchObject({
+      status: "decided",
+      approvedBy: ["Abel Tuter", "Beth Anglin"]
+    });
+  });
+
+  test.each([null, undefined, 42, { name: "Abel Tuter" }])(
+    "still reads the decision when approvals is %j",
+    (approvals) => {
+      expect(parseServiceNowDecision({ result: { success: true, data: record({ approvals }) } })).toMatchObject({
+        status: "decided",
+        decision: DelegatedApprovalDecision.Approved,
+        approvedBy: []
+      });
+    }
+  );
 
   test("gives up on a decision it does not recognise", () => {
     expect(() => parseServiceNowDecision({ result: { success: true, data: record({ decision: "maybe" }) } })).toThrow(

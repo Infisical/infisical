@@ -7658,7 +7658,7 @@ interface AccessApprovalRequestDelegatedDecisionEvent {
     permissions?: string[];
     outcome: string;
     decision?: string;
-    decidedBy?: string;
+    approvedBy?: string[];
     decidedAt?: string;
     decisionNotes?: string;
     reason?: string;
