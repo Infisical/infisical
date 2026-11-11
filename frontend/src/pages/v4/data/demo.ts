@@ -1,3 +1,4 @@
+import { accessApprovalsDemo } from "./access-approvals/demo";
 import { accessDemo } from "./access/demo";
 import type { V4Adapters } from "./adapters";
 import { adminDemo } from "./admin/demo";
@@ -38,6 +39,7 @@ export const demoAdapters: V4Adapters = {
   certificates: certificatesDemo,
   certManagerSettings: certManagerSettingsDemo,
   access: accessDemo,
+  accessApprovals: accessApprovalsDemo,
   projects: projectsDemo,
   projectSettings: projectSettingsDemo,
   projectIntegrations: projectIntegrationsDemo,

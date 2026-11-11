@@ -8,6 +8,7 @@ import { Tabs } from "@app/components/v4/ui/tabs";
 import { useV4Adapter } from "../../data/adapters";
 import { orgHref, v4Path } from "../../links";
 import { withoutDefaults } from "../search-defaults";
+import { AccessRequests } from "./access-requests/AccessRequests";
 import { ChangeRequests } from "./change-requests/ChangeRequests";
 import { RequestDetail } from "./change-requests/RequestDetail";
 import { TabSection } from "./tabs";
@@ -21,6 +22,9 @@ export const SecretApprovalsPage = () => {
   const secrets = useV4Adapter("secrets");
   const { data: count } = secrets.useApprovalRequestCount({ projectId });
   const { data: project } = secrets.useProject(projectId);
+  const { data: accessCount } = useV4Adapter("accessApprovals").useRequestCount(
+    project?.slug ?? ""
+  );
   const tab = selectedTab || TabSection.SecretApprovalRequests;
   const base = orgHref(orgId, `/projects/secret-management/${projectId}/approval`);
   const approvalSearch = (nextTab: string, nextRequestId: string) =>
@@ -48,6 +52,18 @@ export const SecretApprovalsPage = () => {
       description="Use the current app for this section."
     />
   );
+  const otherTab =
+    tab === TabSection.ResourceApprovalRequests ? (
+      <AccessRequests
+        orgId={orgId}
+        projectId={projectId}
+        requestId={requestId}
+        onOpenRequest={(id) => navigate({ search: approvalSearch(tab, id) })}
+        onConfigurePolicies={() => navigate({ search: approvalSearch(TabSection.Policies, "") })}
+      />
+    ) : (
+      notPorted
+    );
   return (
     <Stack gap={24}>
       <PageHeader
@@ -64,7 +80,11 @@ export const SecretApprovalsPage = () => {
                 label: "Change requests",
                 count: count?.open || undefined
               },
-              { value: TabSection.ResourceApprovalRequests, label: "Access requests" },
+              {
+                value: TabSection.ResourceApprovalRequests,
+                label: "Access requests",
+                count: accessCount?.pendingCount || undefined
+              },
               { value: TabSection.Policies, label: "Policies" }
             ]}
           />
@@ -78,7 +98,7 @@ export const SecretApprovalsPage = () => {
           onConfigurePolicies={() => navigate({ search: approvalSearch(TabSection.Policies, "") })}
         />
       ) : (
-        notPorted
+        otherTab
       )}
     </Stack>
   );
