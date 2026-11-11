@@ -219,6 +219,18 @@ describe("CloudflareWorkersSyncFns", () => {
       expect(patch).not.toHaveBeenCalled();
     });
 
+    it("retries the sync when Cloudflare refuses a write that overlapped another", async () => {
+      stubPreview({});
+      patch.mockRejectedValueOnce(cloudflareError(11024));
+
+      const error = await syncSecrets(previewSync(), payloadOf({ API_KEY: "key" })).catch((err: unknown) => err);
+
+      expect(error).toMatchObject({ shouldRetry: true });
+      expect((error as Error).message).toContain(
+        "was saved at the same time. Infisical retries the sync automatically."
+      );
+    });
+
     it("removes only the Preview's variables of the sync's type", async () => {
       stubPreview({
         API_KEY: { type: "secret_text" },

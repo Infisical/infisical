@@ -20,6 +20,8 @@ const REQUEST_TIMEOUT_MS = 30 * 1000;
 // deployment is 10222 on reads and 10032 on writes.
 const PREVIEW_NOT_FOUND_ERROR_CODE = 10025;
 const NO_PREVIEW_DEPLOYMENT_ERROR_CODES = new Set([10032, 10222]);
+// Cloudflare refuses the second of two writes to a Preview that overlap, such as two syncs to it running at once.
+const CONCURRENT_MODIFICATION_ERROR_CODE = 11024;
 
 type TPreviewDeployment = { id: string; env?: Record<string, { type: string }> };
 
@@ -47,6 +49,14 @@ const $throwPreviewRequestError = (ctx: TPreviewContext, err: unknown): never =>
         message: `Preview '${ctx.previewName}' on Cloudflare Worker '${ctx.scriptId}' has no deployment yet. Deploy it with wrangler preview, then sync again.`,
         error: err,
         shouldRetry: false
+      });
+    }
+
+    if (codes.includes(CONCURRENT_MODIFICATION_ERROR_CODE)) {
+      throw new SecretSyncError({
+        message: `Another change to Preview '${ctx.previewName}' on Cloudflare Worker '${ctx.scriptId}' was saved at the same time. Infisical retries the sync automatically. If it keeps failing, sync again later.`,
+        error: err,
+        shouldRetry: true
       });
     }
   }
