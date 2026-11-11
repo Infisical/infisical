@@ -66,7 +66,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { request, projectId } = await server.services.accessApprovalRequest.createAccessApprovalRequest({
+      const { request, projectId } = await server.services.secretAccessApprovalRequest.createAccessApprovalRequest({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -132,7 +132,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { count } = await server.services.accessApprovalRequest.getCount({
+      const { count } = await server.services.secretAccessApprovalRequest.getCount({
         projectSlug: req.query.projectSlug,
         policyId: req.query.policyId,
         actor: req.permission.type,
@@ -214,7 +214,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { requests } = await server.services.accessApprovalRequest.listApprovalRequests({
+      const { requests } = await server.services.secretAccessApprovalRequest.listApprovalRequests({
         projectSlug: req.query.projectSlug,
         authorUserId: req.query.authorUserId,
         envSlug: req.query.envSlug,
@@ -249,7 +249,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { projectId, policyId, isBypass, ...review } =
-        await server.services.accessApprovalRequest.reviewAccessRequest({
+        await server.services.secretAccessApprovalRequest.reviewAccessRequest({
           actor: req.permission.type,
           actorId: req.permission.id,
           actorOrgId: req.permission.orgId,
@@ -312,7 +312,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const result = await server.services.accessApprovalRequest.revokeAccessRequest({
+      const result = await server.services.secretAccessApprovalRequest.revokeAccessRequest({
         requestId: req.params.requestId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -357,7 +357,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const result = await server.services.accessApprovalRequest.retryDelegatedApprovalDispatch({
+      const result = await server.services.secretAccessApprovalRequest.retryDelegatedApprovalDispatch({
         requestId: req.params.requestId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -410,7 +410,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const result = await server.services.accessApprovalRequest.cancelAccessRequest({
+      const result = await server.services.secretAccessApprovalRequest.cancelAccessRequest({
         requestId: req.params.requestId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -471,33 +471,6 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      const { request, projectId } = await server.services.accessApprovalRequest.updateAccessApprovalRequest({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        temporaryRange: req.body.temporaryRange,
-        editNote: req.body.editNote,
-        requestId: req.params.requestId
-      });
-
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId,
-        event: {
-          type: EventType.ACCESS_APPROVAL_REQUEST_UPDATE,
-          metadata: {
-            requestId: request.id,
-            policyId: request.policyId,
-            temporaryRange: req.body.temporaryRange,
-            editNote: req.body.editNote
-          }
-        }
-      });
-
-      return { approval: request };
-    }
+    handler: async () => server.services.secretAccessApprovalRequest.updateAccessApprovalRequest()
   });
 };

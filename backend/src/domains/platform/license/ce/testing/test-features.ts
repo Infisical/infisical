@@ -1,7 +1,6 @@
 import { TInstanceFeatures } from "../model/instance-entitlements";
 
-// A full feature set with nothing paid switched on, for tests. Test data only: the product's defaults are EE
-// (getDefaultOnPremFeatures in ee/service/license-fns.ts) and nothing outside tests reads this.
+// Test data only. The real defaults live in EE (getDefaultOnPremFeatures) and nothing outside tests reads this.
 export const testFeatures = (): TInstanceFeatures => ({
   _id: null,
   slug: null,
@@ -98,5 +97,4 @@ export const testFeatures = (): TInstanceFeatures => ({
   instanceUserManagement: false
 });
 
-// testFeatures on an enterprise plan with RBAC on.
 export const enterprisePlan = (): TInstanceFeatures => ({ ...testFeatures(), slug: "enterprise", rbac: true as false });

@@ -1,7 +1,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -39,7 +39,7 @@ type TCertificateEstV3ServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsCoreDomain: TKmsCoreDomain;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   estEnrollmentConfigDAL: Pick<TEstEnrollmentConfigDALFactory, "findById">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "findById">;
@@ -57,7 +57,7 @@ export const certificateEstV3ServiceFactory = ({
   certificateDAL,
   projectDAL,
   kmsCoreDomain,
-  licenseDomain,
+  licenseService,
   certificateProfileDAL,
   estEnrollmentConfigDAL,
   certificatePolicyDAL,
@@ -224,7 +224,7 @@ export const certificateEstV3ServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await licenseDomain.getPlan(project.orgId);
+    const plan = await licenseService.getPlan(project.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message:
@@ -318,7 +318,7 @@ export const certificateEstV3ServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await licenseDomain.getPlan(project.orgId);
+    const plan = await licenseService.getPlan(project.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message:
@@ -486,7 +486,7 @@ export const certificateEstV3ServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
 
-    const plan = await licenseDomain.getPlan(project.orgId);
+    const plan = await licenseService.getPlan(project.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to perform EST operation - caCerts due to plan restriction. Upgrade to the Enterprise plan."

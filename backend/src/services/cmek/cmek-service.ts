@@ -8,7 +8,7 @@ import {
   TKmsCoreDomain,
   TKmsKeyDetails
 } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCmekActions,
@@ -45,7 +45,7 @@ import {
 type TCmekServiceFactoryDep = {
   kmsCoreDomain: TKmsCoreDomain;
   permissionService: TPermissionServiceFactory;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TCmekServiceFactory = ReturnType<typeof cmekServiceFactory>;
@@ -60,7 +60,7 @@ const toCmek = ({ isExternal, ...key }: TKmsKeyDetails) => ({
 const isCmek = (key: TKmsKeyDetails | undefined): key is TKmsKeyDetails =>
   Boolean(key && !key.isReserved && !key.isExternal);
 
-export const cmekServiceFactory = ({ kmsCoreDomain, permissionService, licenseDomain }: TCmekServiceFactoryDep) => {
+export const cmekServiceFactory = ({ kmsCoreDomain, permissionService, licenseService }: TCmekServiceFactoryDep) => {
   const $findCmekById = async (keyId: string) => {
     const key = await kmsCoreDomain.findKeyById(keyId);
     return isCmek(key) ? toCmek(key) : undefined;
@@ -97,7 +97,7 @@ export const cmekServiceFactory = ({ kmsCoreDomain, permissionService, licenseDo
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionCmekActions.Create, ProjectPermissionSub.Cmek);
 
     if (isPqcKeyAlgorithm(dto.encryptionAlgorithm as string)) {
-      const plan = await licenseDomain.getPlan(dto.orgId);
+      const plan = await licenseService.getPlan(dto.orgId);
       if (!plan.kmsPqc) {
         throw new BadRequestError({
           message:
@@ -687,7 +687,7 @@ export const cmekServiceFactory = ({ kmsCoreDomain, permissionService, licenseDo
     const hasPqcKeys = keys.some((entry) => isPqcKeyAlgorithm(entry.algorithm as string));
     let pqcLicensed = true;
     if (hasPqcKeys) {
-      const plan = await licenseDomain.getPlan(actor.orgId);
+      const plan = await licenseService.getPlan(actor.orgId);
       pqcLicensed = !!plan.kmsPqc;
     }
 

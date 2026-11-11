@@ -3,7 +3,7 @@ import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionDynamicSecretActions,
@@ -49,7 +49,7 @@ type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "update">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   folderDAL: Pick<TSecretFolderDALFactory, "findBySecretPath">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
@@ -67,7 +67,7 @@ export const dynamicSecretLeaseServiceFactory = ({
   permissionService,
   dynamicSecretQueueService,
   projectDAL,
-  licenseDomain,
+  licenseService,
   kmsCoreDomain,
   userDAL,
   identityDAL,
@@ -105,7 +105,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       actionProjectType: ActionProjectType.SecretManager
     });
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to create lease due to plan restriction. Upgrade plan to create dynamic secret."
@@ -279,7 +279,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       projectId
     });
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan?.dynamicSecret) {
       throw new BadRequestError({
         message: "Failed to renew lease due to plan restriction. Upgrade plan to create dynamic secret."

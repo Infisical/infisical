@@ -1,6 +1,6 @@
 import { AccessScope } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
@@ -62,11 +62,11 @@ type TProjectCleanupQueueFactoryDep = {
   kmsCoreDomain: TKmsCoreDomain;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findExternallyKeyedByProjectId">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "prepareKeyReleases">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   queueService: Pick<TQueueServiceFactory, "queue" | "start">;
   cronJob: TCronJobFactory;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TProjectCleanupQueueFactory = ReturnType<typeof projectCleanupQueueFactory>;
@@ -82,7 +82,7 @@ export const projectCleanupQueueFactory = ({
   auditLogService,
   queueService,
   cronJob,
-  licenseDomain
+  licenseService
 }: TProjectCleanupQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -228,7 +228,7 @@ export const projectCleanupQueueFactory = ({
           logger.error(error, `project-hard-delete: failed to delete the project's KMS keys [projectId=${projectId}]`)
         );
       await releaseCaKeys();
-      await licenseDomain.invalidatePlan(project.orgId);
+      await licenseService.invalidatePlan(project.orgId);
       await auditLogService.createAuditLog({
         orgId: project.orgId,
         projectId,

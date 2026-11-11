@@ -209,20 +209,6 @@ func TestOIDCLogin_SeatLimit(t *testing.T) {
 		// Assert
 		require.NotEqual(t, http.StatusOK, res.StatusCode())
 		require.Contains(t, string(res.Body), "member limit reached")
-		require.NotContains(t, memberEmails(t, o), alice.Email)
+		require.Nil(t, fixture.MembershipOf(t, o.Tenant, alice.Email))
 	})
-}
-
-func memberEmails(t *testing.T, o *sso.OIDC) []string {
-	t.Helper()
-	res, err := o.Tenant.Admin.API.ListOrgMembershipsWithResponse(t.Context(), o.Tenant.OrgID.String())
-	require.NoError(t, err)
-	require.Equalf(t, http.StatusOK, res.StatusCode(), "listing members: %s", apierr.Body(res.Body))
-	var out []string
-	for _, m := range res.JSON200.Users {
-		if m.User.Email != nil {
-			out = append(out, *m.User.Email)
-		}
-	}
-	return out
 }

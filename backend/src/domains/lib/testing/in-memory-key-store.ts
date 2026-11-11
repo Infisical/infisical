@@ -2,7 +2,7 @@ import { TDomainKeyStore } from "../key-store";
 
 type TEntry = { value: string; expiresAt: number };
 
-// Redis semantics for the calls state holders make: TTL in seconds, expiry on read, NX.
+// Mimics Redis for the calls we make: TTL in seconds, expiry on read, NX.
 export class InMemoryKeyStore implements TDomainKeyStore {
   private readonly entries = new Map<string, TEntry>();
 

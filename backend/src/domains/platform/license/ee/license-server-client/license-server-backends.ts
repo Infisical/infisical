@@ -7,6 +7,7 @@ import {
   billingProfileResponseSchema,
   catalogResponseSchema,
   checkoutResultSchema,
+  orgDeletedResultSchema,
   cloudPlanResponseSchema,
   confirmTrialPaymentResultSchema,
   entitlementsResponseSchema,
@@ -19,6 +20,7 @@ import {
   TCatalogResponse,
   TChangeCommitmentsPayload,
   TCheckoutResult,
+  TOrgDeletedResult,
   TCloudPlanResponse,
   TConfirmTrialPaymentPayload,
   TConfirmTrialPaymentResult,
@@ -57,8 +59,7 @@ export const readLicenseRequestId = (res: Response): string => res.headers.get(L
 export const licenseErrorMessage = (requestId: string, message: string): string =>
   `license-client: [licenseRequestId=${requestId}] ${message}`;
 
-// One License Server deployment: cloud signs requests with the service key, self-hosted with a token
-// exchanged for its license key.
+// Cloud signs with the service key, self-hosted with a token it gets for its license key.
 export type TLicenseClientBackend = {
   fetchEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse>;
   // Org-scoped on cloud (the catalog is filtered per calling org). The self-hosted backend ignores the
@@ -84,8 +85,8 @@ export type TLicenseClientBackend = {
   confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
   // The org's trial history, used to tell which products have already used their one-time trial.
   fetchTrials: (orgId: string) => Promise<TTrialsResponse>;
-  cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
-  resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
+  // Cancels the sub right away and closes the org's licenses.
+  deleteOrganization: (orgId: string) => Promise<TOrgDeletedResult>;
 };
 
 // Token-scoped paths for the self-hosted (license-key) backend: the key identifies the license, so
@@ -102,6 +103,7 @@ const orgScoped = (orgId: string, suffix: string): string => `/v1/organizations/
 const SERVICE_TOKEN_ISSUER = "infisical-cloud";
 const SERVICE_TOKEN_AUDIENCE = "infisical-license-server";
 const SERVICE_TOKEN_SUBJECT = "infisical-cloud";
+const ORG_DELETED_TIMEOUT_MS = 30_000;
 
 // The license server validates a short-lived RS256 service JWT (iss/aud/exp/sub) that we sign with
 // our private key and it verifies with the matching public key. Mint a fresh token per request.
@@ -186,6 +188,12 @@ export const licenseServerBackend = (
 ): TLicenseClientBackend => ({
   fetchEntitlements: async (org: TEntitlementOrg): Promise<TEntitlementsResponse> => {
     const url = new URL(orgScoped(org.id, "/entitlements"), serverUrl);
+    if (org.name) {
+      url.searchParams.set("org_name", org.name);
+    }
+    if (org.slug) {
+      url.searchParams.set("org_slug", org.slug);
+    }
     if (region) {
       url.searchParams.set("region", region);
     }
@@ -434,28 +442,17 @@ export const licenseServerBackend = (
     return trialsResponseSchema.parse(body);
   },
 
-  cancelSubscription: async (orgId: string): Promise<TCheckoutResult> => {
-    const url = new URL(orgScoped(orgId, "/subscription/cancel"), serverUrl);
+  deleteOrganization: async (orgId: string): Promise<TOrgDeletedResult> => {
+    const url = new URL(orgScoped(orgId, ""), serverUrl);
     const res = await fetch(url, {
-      method: "POST",
+      method: "DELETE",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
-      redirect: "manual"
+      redirect: "manual",
+      signal: AbortSignal.timeout(ORG_DELETED_TIMEOUT_MS)
     });
     await throwIfResponseError(res);
     const body: unknown = await res.json();
-    return checkoutResultSchema.parse(body);
-  },
-
-  resumeSubscription: async (orgId: string): Promise<TCheckoutResult> => {
-    const url = new URL(orgScoped(orgId, "/subscription/resume"), serverUrl);
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
-      redirect: "manual"
-    });
-    await throwIfResponseError(res);
-    const body: unknown = await res.json();
-    return checkoutResultSchema.parse(body);
+    return orgDeletedResultSchema.parse(body);
   }
 });
 
@@ -547,7 +544,6 @@ export const licenseServerSelfHostedBackend = (
     cancelTrial: notSupportedOnSelfHosted("cancelTrial"),
     confirmTrialPayment: notSupportedOnSelfHosted("confirmTrialPayment"),
     fetchTrials: notSupportedOnSelfHosted("fetchTrials"),
-    cancelSubscription: notSupportedOnSelfHosted("cancelSubscription"),
-    resumeSubscription: notSupportedOnSelfHosted("resumeSubscription")
+    deleteOrganization: notSupportedOnSelfHosted("deleteOrganization")
   };
 };

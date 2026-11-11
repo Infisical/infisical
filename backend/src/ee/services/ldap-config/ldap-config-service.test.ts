@@ -2,7 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import dns from "node:dns/promises";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -24,7 +24,7 @@ const createService = () =>
         permission: createMongoAbility([{ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Ldap }])
       })
     },
-    licenseDomain: new FakeLicenseDomain().setPlan("org-id", { ldap: true as false })
+    licenseService: new FakeLicenseService().setPlan("org-id", { ldap: true as false })
   } as unknown as Parameters<typeof ldapConfigServiceFactory>[0]);
 
 // literal IPs keep the suite hermetic: blockLocalAndPrivateIpAddresses skips the DNS lookup

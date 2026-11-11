@@ -18,6 +18,7 @@ import (
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/id"
 	"github.com/stretchr/testify/require"
 )
 
@@ -163,7 +164,7 @@ func requireImported(t *testing.T, res *api.ImportCertificateResponse) {
 func createCA(t *testing.T, client *api.ClientWithResponses) *api.CreateInternalCertificateAuthorityV1Response {
 	t.Helper()
 	body := api.CreateInternalCertificateAuthorityV1JSONRequestBody{
-		Name:   "ca-" + randomSuffix(t),
+		Name:   "ca-" + id.Short(),
 		Status: api.CreateInternalCertificateAuthorityV1JSONBodyStatusActive,
 	}
 	body.Configuration.Type = api.CreateInternalCertificateAuthorityV1JSONBodyConfigurationTypeRoot
@@ -180,14 +181,6 @@ func createRootCA(t *testing.T, client *api.ClientWithResponses) {
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "creating a CA: %s", apierr.Body(res.Body))
 }
 
-func randomSuffix(t *testing.T) string {
-	t.Helper()
-	n, err := rand.Int(rand.Reader, big.NewInt(1<<40))
-	require.NoError(t, err)
-	return n.Text(36)
-}
-
-// selfSigned is a fresh certificate for commonName, also its only SAN.
 func selfSigned(t *testing.T, commonName string) string {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

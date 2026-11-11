@@ -10,7 +10,7 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -122,7 +122,7 @@ type TLdapConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsCoreDomain: TKmsCoreDomain;
@@ -157,7 +157,7 @@ export const ldapConfigServiceFactory = ({
   userAliasDAL,
   additionalPrivilegeDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   tokenService,
   smtpService,
   kmsCoreDomain,
@@ -199,7 +199,7 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.ldap)
       throw new BadRequestError({
         message:
@@ -357,7 +357,7 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.ldap)
       throw new BadRequestError({
         message:
@@ -607,8 +607,8 @@ export const ldapConfigServiceFactory = ({
         });
     } else {
       let isNewUser = false;
-      const identityLimit = Plan.restore(await licenseDomain.getPlan(orgId)).enforcedIdentityLimit;
-      const seatUsage = identityLimit ? await licenseDomain.getSeatUsage(orgId) : null;
+      const identityLimit = (await licenseService.getPlan(orgId)).enforcedIdentityLimit;
+      const seatUsage = identityLimit ? await licenseService.getSeatUsage(orgId) : null;
       userAlias = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -697,7 +697,7 @@ export const ldapConfigServiceFactory = ({
         });
       }
     }
-    await licenseDomain.syncSeats(organization.id);
+    await licenseService.syncSeats(organization.id);
 
     const pamCancellations: (() => void)[] = [];
     let user = await userDAL.transaction(async (tx) => {
@@ -749,7 +749,7 @@ export const ldapConfigServiceFactory = ({
               projectDAL,
               projectBotDAL,
               membershipGroupDAL,
-              licenseDomain,
+              licenseService,
               tx
             });
           }
@@ -780,7 +780,7 @@ export const ldapConfigServiceFactory = ({
               groupDAL,
               projectKeyDAL,
               additionalPrivilegeDAL,
-              licenseDomain,
+              licenseService,
               alertChannelRecipientDAL,
               eventEmitter,
               membershipDAL,
@@ -967,7 +967,7 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.ldap)
       throw new BadRequestError({
         message: "Failed to create LDAP group map due to plan restriction. Upgrade plan to create LDAP group map."
@@ -1040,7 +1040,7 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.ldap)
       throw new BadRequestError({
         message: "Failed to delete LDAP group map due to plan restriction. Upgrade plan to delete LDAP group map."
@@ -1088,7 +1088,7 @@ export const ldapConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.ldap)
       throw new BadRequestError({
         message: "Failed to test LDAP connection due to plan restriction. Upgrade plan to test the LDAP connection."

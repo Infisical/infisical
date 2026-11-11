@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -134,13 +134,13 @@ export const certificateDisplayName = (certificate: {
 }): string => certificate.commonName || splitAltNames(certificate.altNames)[0] || certificate.serialNumber;
 
 export const assertCertManagerAlertChannelTypesAllowed = async (
-  licenseDomain: TLicenseDomain,
+  licenseService: TLicenseService,
   { orgId, channelTypes }: { orgId: string; channelTypes: string[] }
 ) => {
   const gatedType = channelTypes.find((channelType) => channelType !== AlertChannelType.EMAIL);
   if (!gatedType) return;
 
-  const plan = await licenseDomain.getPlan(orgId);
+  const plan = await licenseService.getPlan(orgId);
   if (!plan.pkiEnterpriseAlerting) {
     throw new BadRequestError({
       message: `Failed to save a ${gatedType} channel due to plan restriction. Upgrade plan to alert on channels other than email, or disable or remove the ${gatedType} channel.`

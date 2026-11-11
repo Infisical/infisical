@@ -789,6 +789,14 @@ Rules for code outside the consumer:
   the daily `org-access-reconcile-sweep` cron is a backstop. End-to-end coverage:
   `e2e-test/routes/v1/org-access-reconcile.spec.ts`.
 
+### Organization Deletion
+
+Every organization delete (the org's own admin, a server admin, a sub-org's parent) goes through
+`orgDeletionService.deleteOrganization` (`services/org/org-deletion-service.ts`), never `orgDAL.deleteById`
+directly. It runs the cross-table cleanups and emits `OrganizationModifiedEventV1` (`org-events.ts`) inside
+the delete transaction; `license-org-deleted-consumer.ts` then tells the license server to cancel the
+subscription, retrying through the outbox. A delete that skips the service leaves the customer billing.
+
 ### Soft-Delete + Async Cleanup
 
 Resources whose deletion cascades across many/large tables use a **soft-delete + paced async hard-delete** pattern instead of a synchronous cascade in the request path.
@@ -949,7 +957,7 @@ Enterprise code lives in `src/ee/`:
 - `src/ee/services/` — service modules (access approval, audit log, dynamic secrets, external KMS, gateway, KMIP, LDAP, OIDC, PAM, PKI, SAML, SCIM, secret approval/rotation/replication, etc.)
 - `src/ee/routes/v1/`, `src/ee/routes/v2/` — EE route files
 
-EE routes register before community routes so they can override/extend endpoints. Feature gating, usage metering, seat sync and subscription cancellation live in the License domain (`src/domains/platform/license/`, read its `AGENTS.md` before touching licensing): take it as `licenseDomain: TLicenseDomain` and call `licenseDomain.getPlan(orgId)` / `assertFeature`, and `syncSeats(orgId)` only after the member change commits. License never joins a caller's transaction: read `getSeatUsage(orgId)` before opening it and check the limit inside it with `seatUsage.assertAvailable({ identityLimit })`.
+EE routes register before community routes so they can override/extend endpoints. Feature gating, usage metering, seat sync and subscription cancellation live in the License domain (`src/domains/platform/license/`, read its `AGENTS.md` before touching licensing): take it as `licenseService: TLicenseService` and call `licenseService.getPlan(orgId)`, which returns a `Plan`: read its fields (`plan.rbac`) or refuse with `plan.assert("rbac")`, which names the feature in the error, and `syncSeats(orgId)` only after the member change commits. License never joins a caller's transaction: read `getSeatUsage(orgId)` before opening it and check the limit inside it with `seatUsage.assertAvailable({ identityLimit })`.
 
 Encryption (the root key, KMS keys, org and project data keys, HSM, external KMS keys, root key rotation) lives in the KMS Core domain (`src/domains/platform/kms-core/`, read its `AGENTS.md` before touching it): take it as `kmsCoreDomain: TKmsCoreDomain`. Never call it inside a transaction you hold: fetch ciphers and key ids (`createCipherPairWithDataKey`, `getProjectCertificateKmsKeyId`) before opening it, and delete keys after it commits.
 

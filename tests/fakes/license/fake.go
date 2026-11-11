@@ -26,14 +26,9 @@ type service struct{}
 
 func (service) Host() string { return Host }
 
-// Scope is the license key for a self-hosted instance, and the organization in the
-// path for cloud.
-//
-// A self-hosted instance authenticates with its license key once, then with the token
-// it was given, and its usage reports name the "self-hosted" organization, so the key
-// is the only thing that tells two isolated stacks apart. Cloud entitlements are per
-// organization, which is the whole reason the shared harness runs in Cloud mode. The
-// instance-wide endpoints carry neither and share one scope.
+// Scope is the license key on self-hosted and the org in the path on cloud. Self-hosted
+// usage reports all say "self-hosted", so the key is the only thing telling two
+// isolated stacks apart. Instance-wide endpoints carry neither and share one scope.
 func (service) Scope(r *http.Request) (string, bool) {
 	if key := r.Header.Get("X-API-KEY"); key != "" {
 		return key, true
@@ -58,7 +53,6 @@ func (service) New(events fakenet.Emitter) fakenet.Fake {
 	return &Org{state: State{Plan: Enterprise()}, events: events}
 }
 
-// State is what the License Server holds for one organization or license key.
 type State struct {
 	Plan
 
@@ -73,19 +67,16 @@ type State struct {
 	// duplicates of an event id.
 	UsageEvents []UsageEvent `json:"usageEvents"`
 
-	// Cancellations counts subscription cancellations.
-	Cancellations int `json:"cancellations"`
-
 	// Logins counts license key exchanges.
 	Logins int `json:"logins"`
 }
 
-// EntitlementFetch is one entitlements read.
 type EntitlementFetch struct {
-	Region string `json:"region"`
+	OrgName string `json:"orgName"`
+	OrgSlug string `json:"orgSlug"`
+	Region  string `json:"region"`
 }
 
-// UsageSnapshot is one reported counter value, on the wire shape.
 type UsageSnapshot struct {
 	Dimension      string  `json:"dimension_key"`
 	Value          float64 `json:"value"`
@@ -94,7 +85,6 @@ type UsageSnapshot struct {
 	Source         string  `json:"source"`
 }
 
-// UsageEvent is one metered fact, on the wire shape.
 type UsageEvent struct {
 	EventID    string  `json:"event_id"`
 	Dimension  string  `json:"dimension_key"`
@@ -103,22 +93,14 @@ type UsageEvent struct {
 	Source     string  `json:"source"`
 }
 
-// SnapshotReceived is published for every usage snapshot.
 type SnapshotReceived struct{ UsageSnapshot }
 
 func (SnapshotReceived) EventName() string { return "license.usage-snapshot-received" }
 
-// UsageEventReceived is published for every new metered usage event.
 type UsageEventReceived struct{ UsageEvent }
 
 func (UsageEventReceived) EventName() string { return "license.usage-event-received" }
 
-// SubscriptionCanceled is published when the instance cancels a subscription.
-type SubscriptionCanceled struct{}
-
-func (SubscriptionCanceled) EventName() string { return "license.subscription-canceled" }
-
-// Org is one organization's, or one self-hosted license's, License Server state.
 type Org struct {
 	mu     sync.Mutex
 	state  State
@@ -142,7 +124,7 @@ func (o *Org) routes() *http.ServeMux {
 	entitlements := func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		o.mu.Lock()
-		o.state.EntitlementFetches = append(o.state.EntitlementFetches, EntitlementFetch{Region: q.Get("region")})
+		o.state.EntitlementFetches = append(o.state.EntitlementFetches, EntitlementFetch{OrgName: q.Get("org_name"), OrgSlug: q.Get("org_slug"), Region: q.Get("region")})
 		payload := o.state.Payload()
 		o.mu.Unlock()
 		writeJSON(w, http.StatusOK, payload)
@@ -150,17 +132,9 @@ func (o *Org) routes() *http.ServeMux {
 	mux.HandleFunc("GET /v1/organizations/{orgId}/entitlements", entitlements)
 	mux.HandleFunc("GET /v1/entitlements", entitlements)
 
-	// Deleting an organization cancels its subscription, and the delete fails if
-	// that call does. Every tenant registers its own removal on t.Cleanup, so
-	// without this each test leaks its organization into the shared database for
-	// the life of the run. The outcome is parsed rather than ignored, so an empty
-	// body is not enough.
-	mux.HandleFunc("POST /v1/organizations/{orgId}/subscription/cancel", func(w http.ResponseWriter, _ *http.Request) {
-		o.mu.Lock()
-		o.state.Cancellations++
-		o.mu.Unlock()
-		o.events.Publish(SubscriptionCanceled{})
-		writeJSON(w, http.StatusOK, map[string]any{"outcome": "subscription_canceled"})
+	// Without this, every deleted tenant keeps retrying through the outbox all run.
+	mux.HandleFunc("DELETE /v1/organizations/{orgId}", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"licensesClosed": 1, "canceledSubscriptionIds": []string{}, "commitmentForfeited": false})
 	})
 
 	mux.HandleFunc("POST /v1/organizations/{orgId}/usage-snapshots", func(w http.ResponseWriter, r *http.Request) {
@@ -230,6 +204,7 @@ func (o *Org) routes() *http.ServeMux {
 			writeJSON(w, http.StatusOK, map[string]any{})
 		})
 	}
+
 	return mux
 }
 
@@ -248,9 +223,7 @@ func (o *Org) Snapshot() ([]byte, error) {
 	return json.Marshal(o.state)
 }
 
-// Seed replaces the plan outright and leaves what the server recorded alone.
-// Entitlements are not additive: a downgrade is the case worth testing, and merging
-// would make it unexpressible.
+// Seed replaces the plan instead of merging, otherwise you couldn't test a downgrade.
 func (o *Org) Seed(raw []byte) error {
 	var p Plan
 	if err := json.Unmarshal(raw, &p); err != nil {
@@ -262,8 +235,8 @@ func (o *Org) Seed(raw []byte) error {
 	return nil
 }
 
-// issueToken returns an unsigned JWT naming the license key. The instance reads only
-// its exp; the fake reads the key back to find the license's scope.
+// Unsigned on purpose: the instance only reads exp, and the fake reads the key back
+// out to find the scope.
 func issueToken(key string, exp time.Time) string {
 	enc := base64.RawURLEncoding
 	header := enc.EncodeToString([]byte(`{"alg":"none","typ":"JWT"}`))
@@ -271,8 +244,7 @@ func issueToken(key string, exp time.Time) string {
 	return header + "." + enc.EncodeToString(payload) + ".fake"
 }
 
-// licenseKeyFromBearer reads the license key out of a token issueToken minted. A
-// cloud service token carries no such claim and resolves by path instead.
+// Cloud service tokens don't carry the key, those resolve by path instead.
 func licenseKeyFromBearer(authorization string) string {
 	token, ok := strings.CutPrefix(authorization, "Bearer ")
 	if !ok {

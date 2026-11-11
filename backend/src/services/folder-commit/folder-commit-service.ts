@@ -310,7 +310,7 @@ export const folderCommitServiceFactory = ({
       );
     }
 
-    const secretVersions = await secretVersionV2BridgeDAL.findLatestVersionByFolderId(folderId, tx);
+    const secretVersions = await secretVersionV2BridgeDAL.findLatestSharedVersionsByFolderId(folderId, tx);
     if (secretVersions.length > 0) {
       resources.push(
         ...secretVersions.map((secretVersion) => ({ secretVersionId: secretVersion.id, folderVersionId: undefined }))
@@ -1172,6 +1172,7 @@ export const folderCommitServiceFactory = ({
                 folderId,
                 secretId: secretVersion.secretId,
                 version: nextVersion,
+                type: secretVersion.type,
                 encryptedValue: secretVersion.encryptedValue,
                 key: secretVersion.key,
                 encryptedComment: secretVersion.encryptedComment,
@@ -1257,6 +1258,7 @@ export const folderCommitServiceFactory = ({
             const newVersion = await secretVersionV2BridgeDAL.create(
               {
                 version: nextVersion,
+                type: secretVersion.type,
                 encryptedValue: secretVersion.encryptedValue,
                 key: secretVersion.key,
                 encryptedComment: secretVersion.encryptedComment,
@@ -1823,8 +1825,8 @@ export const folderCommitServiceFactory = ({
         message: `Folder not found for project ID ${projectId}, environment ${environment}, path ${path}`
       });
     }
-    const folderCommits = await folderCommitDAL.findByFolderId(folder.id);
-    return { count: folderCommits.length, folderId: folder.id };
+    const count = await folderCommitDAL.countByFolderId(folder.id);
+    return { count, folderId: folder.id };
   };
 
   /**

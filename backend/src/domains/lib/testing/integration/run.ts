@@ -5,15 +5,14 @@ import path from "node:path";
 import { customAlphabet } from "nanoid";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 
-// No vitest runtime imports here: global-setup.ts runs in Vitest's main process and imports this file.
+// No vitest runtime imports: global-setup.ts imports this from Vitest's main process.
 
 export const RUN_LABEL = "com.infisical.integration-test.run";
 
-// Every database the harness creates starts with this, and the harness refuses to create or drop any other.
+// The harness only creates or drops databases with this prefix.
 export const DATABASE_PREFIX = "infisical_it_";
 
-// Lowercase letters and digits only, starting with a letter, so the result is valid as a database name,
-// a Unix username or an LDAP RDN without quoting.
+// Lowercase letters and digits, starting with a letter, so it works unquoted as a DB name, Unix user or LDAP RDN.
 const firstChar = customAlphabet("abcdefghijklmnopqrstuvwxyz", 1);
 const restChars = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 32);
 
@@ -35,7 +34,7 @@ export const readAddress = async <T>(runId: string, name: string): Promise<T | u
   }
 };
 
-// Written to a temporary file and renamed, so a reader never sees a half-written address.
+// Temp file + rename so readers never see a half-written address.
 export const writeAddress = async (runId: string, name: string, address: unknown) => {
   const target = addressFile(runId, name);
   const temporary = `${target}.${randomId(6)}.tmp`;
@@ -45,7 +44,7 @@ export const writeAddress = async (runId: string, name: string, address: unknown
 
 const containersMarker = (runId: string) => path.join(runDirectory(runId), "containers-used");
 
-// Lets global teardown skip Docker entirely on a run that never asked for a container.
+// Lets teardown skip Docker on runs that never asked for a container.
 export const markContainersUsed = (runId: string) => writeFileSync(containersMarker(runId), "");
 
 export const usedContainers = (runId: string) =>

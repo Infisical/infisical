@@ -2,7 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -57,7 +57,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findOne" | "findEffectiveOrgMembership">;
   identityAccessTokenService: Pick<
     TIdentityAccessTokenServiceFactory,
@@ -75,7 +75,7 @@ export const identityAzureAuthServiceFactory = ({
   keyStore,
   identityAccessTokenDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   orgDAL,
   identityAccessTokenService,
   eventEmitter
@@ -299,7 +299,7 @@ export const identityAzureAuthServiceFactory = ({
     );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -407,7 +407,7 @@ export const identityAzureAuthServiceFactory = ({
     );
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&

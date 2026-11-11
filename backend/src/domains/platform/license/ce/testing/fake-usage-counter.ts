@@ -1,7 +1,7 @@
 import { Meter } from "../model/meter";
-import { TUsageCounter } from "../service/registrations";
+import { TUsageCounter } from "../service/dependencies";
 
-// A counter whose value the test sets per org; null is the whole instance.
+// A null org means the whole instance.
 export class FakeUsageCounter implements TUsageCounter {
   values = new Map<string | null, number>();
 

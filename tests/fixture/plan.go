@@ -9,8 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Plan reads an organization's resolved plan as client sees it, refreshing the
-// instance's cached copy first when asked.
 func Plan(tt *testing.T, client *api.ClientWithResponses, orgID string, refresh bool) map[string]any {
 	tt.Helper()
 	params := &api.GetOrganizationPlanParams{}

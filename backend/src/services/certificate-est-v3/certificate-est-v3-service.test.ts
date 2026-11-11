@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -83,7 +83,7 @@ vi.mock("../../ee/services/certificate-est/certificate-est-fns", () => ({
 
 describe("CertificateEstV3Service", () => {
   let service: TCertificateEstV3ServiceFactory;
-  let licenseDomain: FakeLicenseDomain;
+  let licenseService: FakeLicenseService;
 
   const mockCertificateV3Service = {
     signCertificateFromProfile: vi.fn()
@@ -168,7 +168,7 @@ describe("CertificateEstV3Service", () => {
   const mockPkiApplicationDAL = { findById: vi.fn() };
 
   beforeEach(async () => {
-    licenseDomain = new FakeLicenseDomain().setPlan(mockProject.orgId, mockPlan);
+    licenseService = new FakeLicenseService().setPlan(mockProject.orgId, mockPlan);
     service = certificateEstV3ServiceFactory({
       certificateV3Service: mockCertificateV3Service,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
@@ -176,7 +176,7 @@ describe("CertificateEstV3Service", () => {
       certificateDAL: mockCertificateDAL,
       projectDAL: mockProjectDAL,
       kmsCoreDomain: mockKmsService as never,
-      licenseDomain,
+      licenseService,
       certificateProfileDAL: mockCertificateProfileDAL,
       estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
       certificatePolicyDAL: mockCertificatePolicyDAL,
@@ -284,7 +284,7 @@ describe("CertificateEstV3Service", () => {
     });
 
     it("should throw error when PKI EST is not available in plan", async () => {
-      licenseDomain.setPlan(mockProject.orgId, { pkiEst: false });
+      licenseService.setPlan(mockProject.orgId, { pkiEst: false });
 
       await expect(
         service.simpleEnrollByProfile({

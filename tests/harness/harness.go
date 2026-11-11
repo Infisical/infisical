@@ -77,9 +77,8 @@ func WithInfisicalEnv(key, value string) Option {
 	}
 }
 
-// WithInfisicalFile replaces a file inside the package's own Infisical before it
-// boots, such as the public key offline licenses are verified against. Isolated only,
-// for the same reason as WithInfisicalEnv.
+// WithInfisicalFile swaps a file into the package's Infisical before boot. Isolated
+// only, same reason as WithInfisicalEnv.
 func WithInfisicalFile(src, dst string) Option {
 	return func(c *config) { c.files = append(c.files, infra.File{Src: src, Dst: dst}) }
 }

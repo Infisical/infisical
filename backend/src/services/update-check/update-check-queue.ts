@@ -1,4 +1,4 @@
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
@@ -12,19 +12,19 @@ const GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/Infisical/infisi
 type TUpdateCheckServiceFactoryDep = {
   cronJob: TCronJobFactory;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TUpdateCheckServiceFactory = ReturnType<typeof updateCheckServiceFactory>;
 
-export const updateCheckServiceFactory = ({ cronJob, keyStore, licenseDomain }: TUpdateCheckServiceFactoryDep) => {
+export const updateCheckServiceFactory = ({ cronJob, keyStore, licenseService }: TUpdateCheckServiceFactoryDep) => {
   const appCfg = getConfig();
 
   const isEnabled = isUpdateCheckEnabled({
     isInfisicalCloud: appCfg.INFISICAL_CLOUD,
     isCloud: appCfg.isCloud,
     isUpdateCheckDisabled: appCfg.DISABLE_UPDATE_CHECK,
-    hasOfflineLicense: licenseDomain.hasOfflineLicenseKey(),
+    hasOfflineLicense: licenseService.hasOfflineLicenseKey(),
     platformVersion: appCfg.INFISICAL_PLATFORM_VERSION
   });
 

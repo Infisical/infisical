@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   PAM_FOLDER_RESOURCE_TYPE,
   PamAccessRequestEvent
@@ -116,13 +116,13 @@ const describeTarget = (eventType: PamAccessRequestEvent, target: TPamAccessRequ
 export type TPamFolderAlertProviderDep = {
   pamFolderAlertDAL: TPamFolderAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export const pamFolderAlertProviderFactory = ({
   pamFolderAlertDAL,
   permissionService,
-  licenseDomain
+  licenseService
 }: TPamFolderAlertProviderDep): IEventAlertProvider<TPamAccessRequestTarget> => {
   // The folder's Approvals tab lists every request, while the approval inbox only shows the visitor's own queue.
   const buildViewUrl = async (alert: TAlertContext): Promise<string> =>
@@ -302,7 +302,7 @@ export const pamFolderAlertProviderFactory = ({
     const gatedType = channelTypes.find((channelType) => channelType !== AlertChannelType.EMAIL);
     if (!gatedType) return;
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.pamEnterpriseAlerting) {
       throw new BadRequestError({
         message:

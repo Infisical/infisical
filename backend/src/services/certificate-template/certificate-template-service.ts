@@ -3,7 +3,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, TCertificateTemplateEstConfigsUpdate } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionPkiTemplateActions,
@@ -36,7 +36,7 @@ type TCertificateTemplateServiceFactoryDep = {
   kmsCoreDomain: TKmsCoreDomain;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TCertificateTemplateServiceFactory = ReturnType<typeof certificateTemplateServiceFactory>;
@@ -47,7 +47,7 @@ export const certificateTemplateServiceFactory = ({
   certificateAuthorityDAL,
   permissionService,
   kmsCoreDomain,
-  licenseDomain
+  licenseService
 }: TCertificateTemplateServiceFactoryDep) => {
   const createCertTemplate = async ({
     caId,
@@ -251,7 +251,7 @@ export const certificateTemplateServiceFactory = ({
     actorOrgId,
     disableBootstrapCertValidation
   }: TCreateEstConfigurationDTO) => {
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to create EST configuration due to plan restriction. Upgrade to the Enterprise plan."
@@ -330,7 +330,7 @@ export const certificateTemplateServiceFactory = ({
     actorOrgId,
     disableBootstrapCertValidation
   }: TUpdateEstConfigurationDTO) => {
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to update EST configuration due to plan restriction. Upgrade to the Enterprise plan."

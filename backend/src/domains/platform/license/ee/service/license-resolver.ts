@@ -4,17 +4,18 @@ import { logger } from "@app/lib/logger";
 
 import { InstanceEntitlements, InstanceType } from "../../ce/model/instance-entitlements";
 import { Plan } from "../../ce/model/plan";
+import { TLicenseProvider } from "../../ce/service/dependencies";
 import {
   SELF_HOSTED_LICENSE_ORG_ID,
+  TEntitlementOrg,
   TEntitlementsResponse
 } from "../../ce/service/license-server-types/license-server-types";
 import { LicenseServerClient } from "../license-server-client/license-server-client";
 import { projectV2ToFeatureSet, withCloudPlanDefaults, withSelfHostedLicenseBase } from "./entitlement-projection";
-// Imported by this exact specifier: the e2e suite aliases "./license-fns" to a permissive mock.
+// Keep this exact specifier: the e2e suite aliases "./license-fns" to a permissive mock.
 import { getDefaultOnPremFeatures, getLicenseKeyConfig } from "./license-fns";
 import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./offline-license";
 
-// Read through "./license-fns", so the e2e suite's permissive mock reaches it.
 const community = (): InstanceEntitlements =>
   InstanceEntitlements.restore({
     instanceType: InstanceType.OnPrem,
@@ -55,12 +56,14 @@ const readOfflineLicense = async (licenseKey: string): Promise<InstanceEntitleme
   });
 };
 
-// Cloud: the plan a root org's entitlements grant, over the community defaults.
 export const cloudPlanFromEntitlements = (entitlements: TEntitlementsResponse): Plan =>
   Plan.restore(withCloudPlanDefaults(projectV2ToFeatureSet(getDefaultOnPremFeatures(), entitlements), entitlements));
 
-// Cloud: what an org gets while the License Server cannot be reached.
 export const cloudFallbackPlan = (): Plan => Plan.restore(withCloudPlanDefaults(getDefaultOnPremFeatures(), null));
+
+// An offline (air-gapped) license must never reach the License Server.
+export const isOfflineLicenseKey = (licenseKeyConfig: TLicenseKeyConfig) =>
+  licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
 
 export type TLicenseResolverDeps = {
   isCloud: boolean;
@@ -68,8 +71,7 @@ export type TLicenseResolverDeps = {
   licenseServerClient: LicenseServerClient;
 };
 
-// Works out what the instance is licensed for, and reads a cloud org's plan.
-export class LicenseResolver {
+export class LicenseResolver implements TLicenseProvider {
   constructor(private readonly deps: TLicenseResolverDeps) {}
 
   // The service key wins over a license key: it is what makes the instance Infisical Cloud. Anything that
@@ -100,9 +102,18 @@ export class LicenseResolver {
     return this.readOnlineLicense();
   }
 
+  isOffline(): boolean {
+    return isOfflineLicenseKey(this.deps.licenseKeyConfig);
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  fallbackPlan(): Plan {
+    return cloudFallbackPlan();
+  }
+
   // Cloud: a root org's plan. Throws when the License Server cannot be read, so the domain serves the fallback.
-  async fetchPlan(rootOrgId: string): Promise<Plan> {
-    const entitlements = await this.deps.licenseServerClient.getEntitlements({ id: rootOrgId });
+  async fetchPlan(rootOrg: TEntitlementOrg): Promise<Plan> {
+    const entitlements = await this.deps.licenseServerClient.getEntitlements(rootOrg);
     if (!entitlements) {
       throw new BadRequestError({ message: "License Server entitlements are unavailable" });
     }

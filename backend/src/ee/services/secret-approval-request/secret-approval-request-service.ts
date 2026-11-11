@@ -10,7 +10,7 @@ import {
   TSecretApprovalRequestsSecretsInsert
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
@@ -151,7 +151,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "findById">;
   projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
@@ -200,7 +200,7 @@ export const secretApprovalRequestServiceFactory = ({
   secretV2BridgeDAL,
   secretVersionV2BridgeDAL,
   secretVersionTagV2BridgeDAL,
-  licenseDomain,
+  licenseService,
   projectSlackConfigDAL,
   resourceMetadataDAL,
   projectMicrosoftTeamsConfigDAL,
@@ -665,7 +665,7 @@ export const secretApprovalRequestServiceFactory = ({
     }
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval && status === RequestState.Open) {
       throw new BadRequestError({
         message:

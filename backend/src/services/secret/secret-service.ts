@@ -14,7 +14,7 @@ import {
   TableName
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import {
@@ -143,7 +143,7 @@ type TSecretServiceFactoryDep = {
     "generateSecretApprovalRequest" | "generateSecretApprovalRequestV2Bridge"
   >;
   secretApprovalRequestCreationFns: Pick<TSecretApprovalRequestCreationFnsFactory, "createSecretApprovalRequest">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   reminderService: Pick<TReminderServiceFactory, "createReminder">;
   secretVersionV2DAL: Pick<TSecretVersionV2DALFactory, "findOne">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "invalidateSecretCacheByProjectId" | "find">;
@@ -172,7 +172,7 @@ export const secretServiceFactory = ({
   secretApprovalRequestCreationFns,
   secretV2BridgeService,
   secretApprovalRequestService,
-  licenseDomain,
+  licenseService,
   reminderService,
   secretVersionV2DAL,
   secretV2BridgeDAL,
@@ -1370,7 +1370,7 @@ export const secretServiceFactory = ({
 
   const getSecretAccessList = async (dto: TGetSecretAccessListDTO) => {
     const { environment, secretPath, secretName, projectId, includeAllEntities } = dto;
-    const plan = await licenseDomain.getPlan(dto.actorOrgId);
+    const plan = await licenseService.getPlan(dto.actorOrgId);
     if (!plan.secretAccessInsights) {
       throw new BadRequestError({
         message: "Failed to fetch secret access list due to plan restriction. Upgrade your plan."

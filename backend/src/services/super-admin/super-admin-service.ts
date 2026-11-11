@@ -8,7 +8,7 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { RootKeyEncryptionStrategy, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, Plan, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
@@ -100,7 +100,7 @@ type TSuperAdminServiceFactoryDep = {
   kmsCoreDomain: TKmsCoreDomain;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -156,7 +156,7 @@ export const superAdminServiceFactory = ({
   orgService,
   keyStore,
   kmsCoreDomain,
-  licenseDomain,
+  licenseService,
   identityAccessTokenService,
   identityTokenAuthDAL,
   microsoftTeamsService,
@@ -738,11 +738,11 @@ export const superAdminServiceFactory = ({
   const emitUserDeletionMeterEvents = (orgMemberships: { scopeOrgId?: string | null }[]) => {
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
     orgIds.forEach((orgId) => {
-      licenseDomain.emit(orgId, Meter.Identities.key);
-      licenseDomain.emit(orgId, Meter.UserIdentities.key);
-      licenseDomain.emit(orgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(orgId, Meter.PamIdentities.key);
-      licenseDomain.emit(orgId, Meter.AgentVaultIdentities.key);
+      licenseService.emit(orgId, Meter.Identities.key);
+      licenseService.emit(orgId, Meter.UserIdentities.key);
+      licenseService.emit(orgId, Meter.SecretIdentities.key);
+      licenseService.emit(orgId, Meter.PamIdentities.key);
+      licenseService.emit(orgId, Meter.AgentVaultIdentities.key);
     });
   };
 
@@ -897,7 +897,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const identityLimit = Plan.restore(licenseDomain.getInstanceEntitlements().features).enforcedIdentityLimit;
+    const identityLimit = Plan.restore(licenseService.getInstanceEntitlements().features).enforcedIdentityLimit;
 
     const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
@@ -923,7 +923,7 @@ export const superAdminServiceFactory = ({
     }
 
     if (identityLimit) {
-      const { identitiesUsed } = await licenseDomain.getInstanceSeatUsage();
+      const { identitiesUsed } = await licenseService.getInstanceSeatUsage();
       if (identitiesUsed >= identityLimit) {
         throw new BadRequestError({
           name: "InviteUser",
@@ -996,7 +996,7 @@ export const superAdminServiceFactory = ({
       return { organization: org, users };
     });
 
-    await licenseDomain.syncSeats(organization.id);
+    await licenseService.syncSeats(organization.id);
 
     await Promise.allSettled(
       usersToEmail.map(async (user) => {
@@ -1045,11 +1045,6 @@ export const superAdminServiceFactory = ({
     return organization;
   };
 
-  const deleteOrganization = async (organizationId: string) => {
-    const organization = await orgDAL.deleteById(organizationId);
-    return organization;
-  };
-
   const deleteOrganizationMembership = async (
     organizationId: string,
     membershipId: string,
@@ -1082,7 +1077,7 @@ export const superAdminServiceFactory = ({
       orgId: organizationId,
       orgDAL,
       userAliasDAL,
-      licenseDomain,
+      licenseService,
       userId: actorType === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1091,9 +1086,9 @@ export const superAdminServiceFactory = ({
       eventEmitter
     });
 
-    licenseDomain.emit(organizationId, Meter.SecretIdentities.key);
-    licenseDomain.emit(organizationId, Meter.PamIdentities.key);
-    licenseDomain.emit(organizationId, Meter.AgentVaultIdentities.key);
+    licenseService.emit(organizationId, Meter.SecretIdentities.key);
+    licenseService.emit(organizationId, Meter.PamIdentities.key);
+    licenseService.emit(organizationId, Meter.AgentVaultIdentities.key);
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 
@@ -1218,7 +1213,7 @@ export const superAdminServiceFactory = ({
   };
 
   const grantServerAdminAccessToUser = async (userId: string) => {
-    if (!licenseDomain.getInstanceEntitlements().features.instanceUserManagement) {
+    if (!licenseService.getInstanceEntitlements().features.instanceUserManagement) {
       throw new BadRequestError({
         message: "Failed to grant server admin access to user due to plan restriction. Upgrade to Infisical's Pro plan."
       });
@@ -1229,7 +1224,7 @@ export const superAdminServiceFactory = ({
   const getConfiguredEncryptionStrategies = () => kmsCoreDomain.listEncryptionStrategies();
 
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
-    if (!licenseDomain.getInstanceEntitlements().features.hsm) {
+    if (!licenseService.getInstanceEntitlements().features.hsm) {
       throw new BadRequestError({
         message: "Failed to update encryption strategy due to plan restriction. Upgrade to Infisical's Enterprise plan."
       });
@@ -1295,7 +1290,7 @@ export const superAdminServiceFactory = ({
 
     const config = getConfig();
     if (!config.isCloud) {
-      const plan = licenseDomain.getInstanceEntitlements().features;
+      const plan = licenseService.getInstanceEntitlements().features;
       const canEmailDomainVerification = plan.samlSSO || plan.ldap || plan.oidcSSO;
       if (!canEmailDomainVerification) {
         throw new BadRequestError({
@@ -1365,7 +1360,6 @@ export const superAdminServiceFactory = ({
     invalidateCache,
     checkIfInvalidatingCache,
     getOrganizations,
-    deleteOrganization,
     deleteOrganizationMembership,
     initializeAdminIntegrationConfigSync,
     initializeEnvConfigSync,

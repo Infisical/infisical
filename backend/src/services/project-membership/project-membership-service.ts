@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
@@ -15,8 +15,6 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
-import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
-import { TAccessApprovalPolicyDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-dal";
 import { TUserGroupMembershipDALFactory } from "../../ee/services/group/user-group-membership-dal";
 import { TSecretApprovalPolicyApproverDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
 import { TSecretApprovalPolicyDALFactory } from "../../ee/services/secret-approval-policy/secret-approval-policy-dal";
@@ -63,10 +61,8 @@ type TProjectMembershipServiceFactoryDep = {
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
@@ -94,8 +90,6 @@ export const projectMembershipServiceFactory = ({
   secretReminderRecipientsDAL,
   notificationService,
   additionalPrivilegeDAL,
-  accessApprovalPolicyApproverDAL,
-  accessApprovalPolicyDAL,
   secretApprovalPolicyApproverDAL,
   secretApprovalPolicyDAL,
   approvalPolicyDAL,
@@ -106,7 +100,7 @@ export const projectMembershipServiceFactory = ({
   orgDAL,
   membershipRoleDAL,
   applicationMembershipCleanupService,
-  licenseDomain,
+  licenseService,
   alertChannelRecipientDAL
 }: TProjectMembershipServiceFactoryDep) => {
   const checkUserApproverPolicies = async (
@@ -114,24 +108,6 @@ export const projectMembershipServiceFactory = ({
     projectId: string,
     actionLabel = "Cannot remove user from project"
   ) => {
-    const accessApprovers = await accessApprovalPolicyApproverDAL.find({
-      $in: { approverUserId: userIds }
-    });
-    if (accessApprovers.length > 0) {
-      const policyIds = [...new Set(accessApprovers.map((a) => a.policyId))];
-      const policies = await accessApprovalPolicyDAL.find({
-        $in: { [`${TableName.AccessApprovalPolicy}.id` as "id"]: policyIds },
-        projectId,
-        deletedAt: null
-      });
-      if (policies.length > 0) {
-        const policyNames = policies.map((p) => p.name).join(", ");
-        throw new BadRequestError({
-          message: `${actionLabel}: user is an approver in access approval ${policies.length > 1 ? "policies" : "policy"}: ${policyNames}`
-        });
-      }
-    }
-
     const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
       projectId,
       type: ApprovalPolicyType.SecretAccess,
@@ -430,9 +406,9 @@ export const projectMembershipServiceFactory = ({
         }
       });
     }
-    licenseDomain.emit(project.orgId, Meter.SecretIdentities.key);
-    licenseDomain.emit(project.orgId, Meter.PamIdentities.key);
-    licenseDomain.emit(project.orgId, Meter.AgentVaultIdentities.key);
+    licenseService.emit(project.orgId, Meter.SecretIdentities.key);
+    licenseService.emit(project.orgId, Meter.PamIdentities.key);
+    licenseService.emit(project.orgId, Meter.AgentVaultIdentities.key);
     return orgMembers;
   };
 
@@ -594,9 +570,9 @@ export const projectMembershipServiceFactory = ({
       ? await performDelete(externalTx)
       : await membershipUserDAL.transaction(performDelete);
 
-    licenseDomain.emit(actorOrgId, Meter.SecretIdentities.key);
-    licenseDomain.emit(actorOrgId, Meter.PamIdentities.key);
-    licenseDomain.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+    licenseService.emit(actorOrgId, Meter.SecretIdentities.key);
+    licenseService.emit(actorOrgId, Meter.PamIdentities.key);
+    licenseService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return memberships;
   };
 
@@ -689,9 +665,9 @@ export const projectMembershipServiceFactory = ({
       throw new BadRequestError({ message: "Failed to leave project" });
     }
 
-    licenseDomain.emit(project.orgId, Meter.SecretIdentities.key);
-    licenseDomain.emit(project.orgId, Meter.PamIdentities.key);
-    licenseDomain.emit(project.orgId, Meter.AgentVaultIdentities.key);
+    licenseService.emit(project.orgId, Meter.SecretIdentities.key);
+    licenseService.emit(project.orgId, Meter.PamIdentities.key);
+    licenseService.emit(project.orgId, Meter.AgentVaultIdentities.key);
     return deletedMembership;
   };
 

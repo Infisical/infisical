@@ -6,7 +6,7 @@ export type TSeatLimit = {
   via?: string;
 };
 
-// Seats an org's plan is using: members, and members plus machine identities.
+// identitiesUsed is members plus machine identities.
 export class SeatUsage {
   private constructor(
     readonly membersUsed: number,

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
@@ -73,7 +73,7 @@ type TPkiAlertV2ServiceFactoryDep = {
   pkiAlertChannelDAL: Pick<TPkiAlertChannelDALFactory, "create" | "findByAlertId" | "deleteByAlertId" | "insertMany">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "createWithCertificates" | "findByAlertId">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsCoreDomain: TKmsCoreDomain;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -89,7 +89,7 @@ export const pkiAlertV2ServiceFactory = ({
   pkiAlertChannelDAL,
   pkiAlertHistoryDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   smtpService,
   kmsCoreDomain,
   notificationService,
@@ -253,7 +253,7 @@ export const pkiAlertV2ServiceFactory = ({
 
     const nonEmailChannel = channels.find((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
     if (nonEmailChannel) {
-      const plan = await licenseDomain.getPlan(actorOrgId);
+      const plan = await licenseService.getPlan(actorOrgId);
       if (!plan.pkiEnterpriseAlerting) {
         throw new BadRequestError({
           message: `Failed to create alert with a ${nonEmailChannel.channelType} channel due to plan restriction. Upgrade plan to alert on channels other than email.`
@@ -444,7 +444,7 @@ export const pkiAlertV2ServiceFactory = ({
     // email-only alert and patch Slack into it. Keeping the types it already has stays allowed.
     const addedChannelTypes = channels?.filter((channel) => channel.channelType !== PkiAlertChannelType.EMAIL);
     if (addedChannelTypes?.length) {
-      const plan = await licenseDomain.getPlan(actorOrgId);
+      const plan = await licenseService.getPlan(actorOrgId);
       if (!plan.pkiEnterpriseAlerting) {
         const existingChannels = await pkiAlertChannelDAL.findByAlertId(alertId);
         const existingTypes = new Set(existingChannels.map((channel) => channel.channelType));

@@ -28,7 +28,7 @@ export const certificateAuthorityCrlServiceFactory = ({
   certificateAuthorityDAL,
   certificateAuthorityCrlDAL,
   kmsCoreDomain,
-  permissionService // license
+  permissionService
 }: TCertificateAuthorityCrlServiceFactoryDep): TCertificateAuthorityCrlServiceFactory => {
   /**
    * Return CRL with id [crlId]

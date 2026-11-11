@@ -1,4 +1,4 @@
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
@@ -25,8 +25,8 @@ type TListOCIVaultKeysDTO = {
 };
 
 // Enterprise check
-export const checkPlan = async (licenseDomain: TLicenseDomain, orgId: string) => {
-  const plan = await licenseDomain.getPlan(orgId);
+export const checkPlan = async (licenseService: TLicenseService, orgId: string) => {
+  const plan = await licenseService.getPlan(orgId);
   if (!plan.enterpriseAppConnections)
     throw new BadRequestError({
       message:
@@ -34,9 +34,9 @@ export const checkPlan = async (licenseDomain: TLicenseDomain, orgId: string) =>
     });
 };
 
-export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, licenseDomain: TLicenseDomain) => {
+export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, licenseService: TLicenseService) => {
   const listCompartments = async (connectionId: string, actor: OrgServiceActor) => {
-    await checkPlan(licenseDomain, actor.orgId);
+    await checkPlan(licenseService, actor.orgId);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -50,7 +50,7 @@ export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, li
   };
 
   const listVaults = async ({ connectionId, compartmentOcid }: TListOCIVaultsDTO, actor: OrgServiceActor) => {
-    await checkPlan(licenseDomain, actor.orgId);
+    await checkPlan(licenseService, actor.orgId);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 
@@ -67,7 +67,7 @@ export const ociConnectionService = (getAppConnection: TGetAppConnectionFunc, li
     { connectionId, compartmentOcid, vaultOcid }: TListOCIVaultKeysDTO,
     actor: OrgServiceActor
   ) => {
-    await checkPlan(licenseDomain, actor.orgId);
+    await checkPlan(licenseService, actor.orgId);
 
     const appConnection = await getAppConnection(AppConnection.OCI, connectionId, actor);
 

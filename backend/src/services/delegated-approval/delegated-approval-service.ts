@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import { Knex } from "knex";
 
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
@@ -38,7 +38,7 @@ type TDelegatedApprovalServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   eventEmitter: TEventEmitter;
 };
 
@@ -58,7 +58,7 @@ export const delegatedApprovalServiceFactory = ({
   approvalPolicyDAL,
   appConnectionDAL,
   appConnectionService,
-  licenseDomain,
+  licenseService,
   eventEmitter
 }: TDelegatedApprovalServiceFactoryDep) => {
   const $assertConnectionMatches = async (
@@ -98,7 +98,7 @@ export const delegatedApprovalServiceFactory = ({
 
   const assertPlanAllowsPolicyEdit = async (type: DelegatedApprovalPolicyType, orgId: string) => {
     await enterpriseAppCheck(
-      licenseDomain,
+      licenseService,
       DELEGATED_APPROVAL_CONNECTION_MAP[type],
       orgId,
       `Failed to update policy: ${DELEGATED_APPROVAL_NAME_MAP[type]} delegated approval is only available on plans with enterprise app connections. Upgrade your plan, or remove the delegated approver to edit this policy.`

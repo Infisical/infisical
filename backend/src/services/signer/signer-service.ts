@@ -13,7 +13,7 @@ import {
   ResourceType
 } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCodeSigningActions,
@@ -204,7 +204,7 @@ type TSignerServiceFactoryDep = {
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
   orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TSignerServiceFactory = ReturnType<typeof signerServiceFactory>;
@@ -376,7 +376,7 @@ export const signerServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   hsmConnectorService,
-  licenseDomain,
+  licenseService,
   orgDAL
 }: TSignerServiceFactoryDep) => {
   const hsmCertIssuanceDeps = {
@@ -634,7 +634,7 @@ export const signerServiceFactory = ({
       ProjectPermissionSub.CodeSigners
     );
 
-    const plan = await licenseDomain.getPlan(dto.actorOrgId);
+    const plan = await licenseService.getPlan(dto.actorOrgId);
     if (!plan.pkiCodeSigning) {
       throw new BadRequestError({
         message: "Failed to create code signer due to plan restriction. Upgrade plan to access PKI code signing."

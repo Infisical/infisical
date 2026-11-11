@@ -5,7 +5,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
@@ -62,7 +62,7 @@ type TSecretImportServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "replicateSecrets">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   kmsCoreDomain: TKmsCoreDomain;
 };
 
@@ -81,7 +81,7 @@ export const secretImportServiceFactory = ({
   projectDAL,
   secretDAL,
   secretQueueService,
-  licenseDomain,
+  licenseService,
   projectBotService,
   secretV2BridgeDAL,
   kmsCoreDomain
@@ -166,7 +166,7 @@ export const secretImportServiceFactory = ({
     const isCrossProjectImport = sourceProjectId !== projectId;
 
     if (isCrossProjectImport) {
-      const plan = await licenseDomain.getPlan(actorOrgId);
+      const plan = await licenseService.getPlan(actorOrgId);
       const org = await orgDAL.findOrgById(actorOrgId);
       if (!plan.crossProjectSecretSharing || !org?.allowCrossProjectSecretSharing) {
         throw new ForbiddenRequestError({
@@ -210,7 +210,7 @@ export const secretImportServiceFactory = ({
         });
       }
 
-      const plan = await licenseDomain.getPlan(actorOrgId);
+      const plan = await licenseService.getPlan(actorOrgId);
       if (!plan.secretApproval) {
         throw new BadRequestError({
           message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."
@@ -607,7 +607,7 @@ export const secretImportServiceFactory = ({
       subject(ProjectPermissionSub.SecretImports, { environment, secretPath })
     );
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.secretApproval) {
       throw new BadRequestError({
         message: "Failed to create secret replication due to plan restriction. Upgrade plan to create replication."

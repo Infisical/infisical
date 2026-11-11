@@ -1,5 +1,5 @@
 import { AccessScope } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { BadRequestError } from "@app/lib/errors";
@@ -24,7 +24,7 @@ type TDeleteOrgMemberships = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "deleteByUserIdsInGroupsOwnedByOrgs">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "countActiveAdmins">;
   userAliasDAL: Pick<TUserAliasDALFactory, "delete">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   userId?: string;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -39,7 +39,7 @@ export const deleteOrgMembershipsFn = async ({
   orgId,
   orgDAL,
   userAliasDAL,
-  licenseDomain,
+  licenseService,
   userId,
   membershipUserDAL,
   userGroupMembershipDAL,
@@ -126,7 +126,7 @@ export const deleteOrgMembershipsFn = async ({
   });
 
   // After the commit: seat sync calls the License Server.
-  await licenseDomain.syncSeats(orgId);
+  await licenseService.syncSeats(orgId);
   sendPamCancellations();
   await auditRevokedProjectAccess({ auditLogService, revoked, reason: OrgAccessRemovalCause.RemovedFromOrg });
 

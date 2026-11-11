@@ -14,7 +14,7 @@ import { SubjectPublicKeyInfo } from "@peculiar/asn1-x509";
 
 import { ProjectType } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
@@ -56,7 +56,7 @@ type TAwsKmsCaKeySourceDep = {
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   kmsCoreDomain: TKmsCoreDomain;
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 const requireAwsKmsInput = (input: TExternalCaKeyInput) => {
@@ -73,7 +73,7 @@ export const awsKmsCaKeySourceFactory = ({
   appConnectionService,
   kmsCoreDomain,
   projectDAL,
-  licenseDomain
+  licenseService
 }: TAwsKmsCaKeySourceDep): TExternalCaKeyProvider => {
   const ephemeralKeys = createEphemeralKeyCache();
 
@@ -128,7 +128,7 @@ export const awsKmsCaKeySourceFactory = ({
 
       const project = await projectDAL.findById(projectId);
       if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-      const plan = await licenseDomain.getPlan(project.orgId);
+      const plan = await licenseService.getPlan(project.orgId);
       if (!plan.pkiAwsKmsSigning) {
         throw new BadRequestError({
           message:

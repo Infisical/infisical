@@ -7,28 +7,36 @@ import { DatabaseError } from "@app/lib/errors";
 import { orgTreeIds } from "@app/lib/knex";
 import { CertStatus } from "@app/services/certificate/certificate-types";
 
-// A metered PKI unit count for one org in the tree. Certificates carry no per-project attribution here
-// because the meter dedupes by quotaKey across the whole tree (see getActiveCertificateOrgBreakdown).
-export type TOrgUnitCountRow = { orgId: string; count: number };
-
-// Active certificates for one org, with the wildcard subset that active_certs and wildcard_certs both
-// read, so the two meters can never disagree about which certificates are live.
-export type TCertificateOrgUnitRow = TOrgUnitCountRow & { wildcard: number };
-
-export type TPkiRootOrgUsageRow = {
-  rootOrgId: string;
-  cas: number;
-  internalCas: number;
-  activeCertificates: number;
-  wildcardCertificates: number;
-};
+import {
+  TCertificateOrgUnitCount,
+  TCertificateUsageDataAccess,
+  TOrgUnitCount,
+  TPkiRootOrgUsage
+} from "../service/dependencies";
 
 const toCount = (row: unknown): number => Number((row as { count?: string | number } | undefined)?.count ?? 0);
 
-// Reads tables this domain will own once certificate issuance moves in: certificate_authorities,
-// internal_certificate_authorities, certificates and pki_signers (see ../../AGENTS.md).
-export class CertificateUsageDataAccess {
+// Reads tables we'll own once cert issuance moves in (see ../../AGENTS.md).
+export class CertificateUsageDataAccess implements TCertificateUsageDataAccess {
   constructor(private readonly db: DataAccessDb) {}
+
+  // No orgId = whole instance. Self-hosted reports under a non-uuid identity, so drop the org filter
+  // instead of passing it.
+  private internalCas(orgId?: string, options?: TReadOptions) {
+    const db = this.db.reader(options);
+    const qb = db(TableName.CertificateAuthority)
+      .join(
+        TableName.InternalCertificateAuthority,
+        `${TableName.CertificateAuthority}.id`,
+        `${TableName.InternalCertificateAuthority}.caId`
+      )
+      .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`);
+
+    if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, orgTreeIds(db, orgId));
+
+    return qb;
+  }
 
   async countInternalCas(orgId?: string, options?: TReadOptions): Promise<number> {
     try {
@@ -39,9 +47,45 @@ export class CertificateUsageDataAccess {
     }
   }
 
-  // Joins on projectId rather than caId, which is nullable and would drop imported and discovered
-  // certificates. Both counts read hasWildcard from the covering index; filtering with LIKE over
-  // commonName/altNames instead forces a sequential scan (measured: ~2x at 600k rows).
+  // Code signing is licensed separately, so skip signer certs. Keyed on the signer, not the code_signing
+  // EKU, since callers set the EKU and could use it to dodge the quota. Matched on quotaKey, not
+  // pki_signers.certificateId (current cert only): every cert a signer issues shares its commonName, so
+  // this covers the whole renewal chain.
+  private excludeSignerCertificates(qb: Knex.QueryBuilder, options?: TReadOptions) {
+    const db = this.db.reader(options);
+    return qb.whereNotExists((sub) => {
+      void sub
+        .select(db.raw("1"))
+        .from(`${TableName.PkiSigners} as s`)
+        .join(`${TableName.Certificate} as sc`, "sc.id", "s.certificateId")
+        .whereRaw(`sc."quotaKey" = ??`, [`${TableName.Certificate}.quotaKey`])
+        // Same project, so a tenant can't exempt certs by matching someone else's signer names.
+        .whereRaw(`s."projectId" = ??`, [`${TableName.Certificate}.projectId`]);
+    });
+  }
+
+  // No status = 'active' filter: EXPIRED and RENEWED are derived at read time, never written.
+  private activeQuotaCertificates(orgId?: string, options?: TReadOptions) {
+    const db = this.db.reader(options);
+    const qb = db(TableName.Certificate)
+      .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
+      .whereNull(`${TableName.Project}.deleteAfter`)
+      .where(`${TableName.Certificate}.notAfter`, ">", new Date())
+      .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
+      .where((liveOrIssued) => {
+        void liveOrIssued
+          .whereNull(`${TableName.Certificate}.deletedAt`)
+          .orWhereNull(`${TableName.Certificate}.source`)
+          .orWhereNotIn(`${TableName.Certificate}.source`, [CertificateSource.Imported, CertificateSource.Discovered]);
+      });
+
+    if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, orgTreeIds(db, orgId));
+
+    return this.excludeSignerCertificates(qb, options);
+  }
+
+  // Join on projectId, not caId: caId is nullable and would drop imported/discovered certs. hasWildcard
+  // comes from the covering index; LIKE over commonName/altNames forces a seq scan (~2x slower at 600k rows).
   async countActiveCertificateQuotaKeys(
     orgId?: string,
     options?: TReadOptions
@@ -64,8 +108,7 @@ export class CertificateUsageDataAccess {
     }
   }
 
-  // Lets an org at its cap keep renewing: reissuing names it already holds cannot raise the count.
-  // orgId omitted means instance-wide
+  // Lets an org at its cap keep renewing, since reissuing names it already has can't raise the count.
   async isCertificateQuotaKeyActive(
     orgId: string | undefined,
     quotaKey: string,
@@ -82,7 +125,7 @@ export class CertificateUsageDataAccess {
     }
   }
 
-  async getInternalCaOrgBreakdown(orgId?: string, options?: TReadOptions): Promise<TOrgUnitCountRow[]> {
+  async getInternalCaOrgBreakdown(orgId?: string, options?: TReadOptions): Promise<TOrgUnitCount[]> {
     try {
       const rows = (await this.internalCas(orgId, options)
         .groupBy(`${TableName.Project}.orgId`)
@@ -98,11 +141,10 @@ export class CertificateUsageDataAccess {
     }
   }
 
-  // The meter counts DISTINCT quotaKey across the whole org tree, so one certificate name issued in two
-  // orgs is a single billable unit. Splitting that by org therefore needs each quotaKey attributed to
-  // exactly one of them, else the parts sum past the billed total. The earliest issuance wins (org id
-  // breaks a tie) so the attribution is stable between reads rather than shifting with row order.
-  async getActiveCertificateOrgBreakdown(orgId?: string, options?: TReadOptions): Promise<TCertificateOrgUnitRow[]> {
+  // The meter counts DISTINCT quotaKey across the org tree, so for a per-org split each quotaKey has to land
+  // in exactly one org or the parts add up past the billed total. Earliest issuance wins (org id breaks
+  // ties) so the split stays stable between reads.
+  async getActiveCertificateOrgBreakdown(orgId?: string, options?: TReadOptions): Promise<TCertificateOrgUnitCount[]> {
     const db = this.db.reader(options);
     try {
       const attributed = this.activeQuotaCertificates(orgId, options)
@@ -117,7 +159,7 @@ export class CertificateUsageDataAccess {
           quotaKey: `${TableName.Certificate}.quotaKey`,
           orgId: `${TableName.Project}.orgId`
         })
-        // For each certificate row, it looks at all rows with the same quotaKey and sets hasWildcard to true if any of them is wildcard.
+        // A quotaKey is wildcard if any of its rows is.
         .select(
           db.raw(`bool_or(??) OVER (PARTITION BY ??) as "hasWildcard"`, [
             `${TableName.Certificate}.hasWildcard`,
@@ -146,9 +188,9 @@ export class CertificateUsageDataAccess {
     }
   }
 
-  // Orgs with a Certificate Manager project are included even at zero, so one that stops using PKI is
-  // overwritten with zeros rather than keeping stale counts. The last such project cannot be deleted.
-  async getPkiUsageByRootOrg(options?: TReadOptions): Promise<TPkiRootOrgUsageRow[]> {
+  // Orgs with a Certificate Manager project show up even at zero, so one that stops using PKI gets zeros
+  // instead of stale counts. The last such project can't be deleted.
+  async getPkiUsageByRootOrg(options?: TReadOptions): Promise<TPkiRootOrgUsage[]> {
     const db = this.db.reader(options);
     const orgColumns = [`${TableName.Organization}.rootOrgId`, `${TableName.Organization}.id`];
     const rootOrgIdSql = db.raw(`COALESCE(??, ??)`, orgColumns);
@@ -191,7 +233,7 @@ export class CertificateUsageDataAccess {
         .whereNull(`${TableName.Project}.deleteAfter`)
         .distinct(rootOrgIdSelect)) as { rootOrgId: string }[];
 
-      const usageByRootOrgId = new Map<string, TPkiRootOrgUsageRow>();
+      const usageByRootOrgId = new Map<string, TPkiRootOrgUsage>();
       const getRow = (rootOrgId: string) => {
         let row = usageByRootOrgId.get(rootOrgId);
         if (!row) {
@@ -217,65 +259,5 @@ export class CertificateUsageDataAccess {
     } catch (error) {
       throw new DatabaseError({ error, name: "Get PKI usage by root org" });
     }
-  }
-
-  // orgId omitted means instance-wide: self-hosted is one licence over the whole database and reports
-  // under an identity that is not an org id, so the org filter has to come off rather than be handed a
-  // non-uuid.
-  private internalCas(orgId?: string, options?: TReadOptions) {
-    const db = this.db.reader(options);
-    const qb = db(TableName.CertificateAuthority)
-      .join(
-        TableName.InternalCertificateAuthority,
-        `${TableName.CertificateAuthority}.id`,
-        `${TableName.InternalCertificateAuthority}.caId`
-      )
-      .join(TableName.Project, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
-      .whereNull(`${TableName.Project}.deleteAfter`);
-
-    if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, orgTreeIds(db, orgId));
-
-    return qb;
-  }
-
-  // Code signing is licensed separately, so signer certificates are excluded. Anchored on the signer
-  // rather than on the code_signing EKU: that usage is caller-supplied, so a tenant could append it to
-  // every request and escape the quota entirely.
-  //
-  // Matched on quotaKey rather than on pki_signers.certificateId, which points only at a signer's
-  // current certificate. Every certificate a signer issues carries the signer's commonName, so the
-  // whole renewal chain shares one quotaKey and this covers it without a schema change.
-  private excludeSignerCertificates(qb: Knex.QueryBuilder, options?: TReadOptions) {
-    const db = this.db.reader(options);
-    return qb.whereNotExists((sub) => {
-      void sub
-        .select(db.raw("1"))
-        .from(`${TableName.PkiSigners} as s`)
-        .join(`${TableName.Certificate} as sc`, "sc.id", "s.certificateId")
-        .whereRaw(`sc."quotaKey" = ??`, [`${TableName.Certificate}.quotaKey`])
-        // Same project, so one tenant cannot exempt a certificate by matching another's signer names.
-        .whereRaw(`s."projectId" = ??`, [`${TableName.Certificate}.projectId`]);
-    });
-  }
-
-  // No `status = 'active'` filter: nothing writes EXPIRED or RENEWED, both are derived at read time.
-  // orgId omitted means instance-wide; see countInternalCas.
-  private activeQuotaCertificates(orgId?: string, options?: TReadOptions) {
-    const db = this.db.reader(options);
-    const qb = db(TableName.Certificate)
-      .join(TableName.Project, `${TableName.Certificate}.projectId`, `${TableName.Project}.id`)
-      .whereNull(`${TableName.Project}.deleteAfter`)
-      .where(`${TableName.Certificate}.notAfter`, ">", new Date())
-      .whereNot(`${TableName.Certificate}.status`, CertStatus.REVOKED)
-      .where((liveOrIssued) => {
-        void liveOrIssued
-          .whereNull(`${TableName.Certificate}.deletedAt`)
-          .orWhereNull(`${TableName.Certificate}.source`)
-          .orWhereNotIn(`${TableName.Certificate}.source`, [CertificateSource.Imported, CertificateSource.Discovered]);
-      });
-
-    if (orgId) void qb.whereIn(`${TableName.Project}.orgId`, orgTreeIds(db, orgId));
-
-    return this.excludeSignerCertificates(qb, options);
   }
 }

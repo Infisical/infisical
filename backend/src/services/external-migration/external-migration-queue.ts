@@ -3,7 +3,7 @@ import pLimit from "p-limit";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { EventType, SecretApprovalEvent, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -38,7 +38,7 @@ import {
 const VAULT_IMPORT_SIDE_EFFECT_CONCURRENCY = 10;
 
 export type TExternalMigrationQueueFactoryDep = {
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   smtpService: TSmtpService;
   queueService: TQueueServiceFactory;
 
@@ -68,7 +68,7 @@ export type TExternalMigrationQueueFactoryDep = {
 export type TExternalMigrationQueueFactory = ReturnType<typeof externalMigrationQueueFactory>;
 
 export const externalMigrationQueueFactory = ({
-  licenseDomain,
+  licenseService,
   queueService,
   projectService,
   smtpService,
@@ -167,7 +167,7 @@ export const externalMigrationQueueFactory = ({
         resourceMetadataDAL
       });
       // The import created its projects in one transaction, which has committed now.
-      await licenseDomain.invalidatePlan(decryptedJson.actorOrgId);
+      await licenseService.invalidatePlan(decryptedJson.actorOrgId);
 
       if (projectsNotImported.length) {
         logger.info(

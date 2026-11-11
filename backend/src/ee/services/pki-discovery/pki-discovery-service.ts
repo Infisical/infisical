@@ -3,7 +3,7 @@ import pLimit from "p-limit";
 import { z } from "zod";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -87,7 +87,7 @@ type TPkiDiscoveryServiceFactoryDep = {
     "findLatestByDiscoveryId" | "findByDiscoveryId" | "countByDiscoveryId"
   >;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
@@ -103,7 +103,7 @@ export const pkiDiscoveryServiceFactory = ({
   pkiDiscoveryConfigDAL,
   pkiDiscoveryScanHistoryDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   gatewayV2DAL,
   gatewayPoolDAL,
   gatewayPoolService,
@@ -241,7 +241,7 @@ export const pkiDiscoveryServiceFactory = ({
     );
 
     // Creation only; existing discoveries keep scanning and stay editable.
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.pkiDiscovery) {
       throw new BadRequestError({
         message:

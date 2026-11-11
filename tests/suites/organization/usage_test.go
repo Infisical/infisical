@@ -14,9 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Usage reports are queued with a five second debounce, so every wait here allows
-// for it on top of the default.
+// Reports sit behind a 5s debounce, so waits need extra room on top of the default.
 const reportWithin = 30 * time.Second
+
+// A retried report also waits out the job's first backoff (10s, see UsageQueue.emit), so it lands at
+// debounce + backoff plus queue latency, which already measured 26s locally under suite load.
+const retryWithin = reportWithin + 30*time.Second
 
 func TestUsageReport_Send(t *testing.T) {
 	t.Parallel()
@@ -34,6 +37,8 @@ func TestUsageReport_Send(t *testing.T) {
 		spec.Why(t, "an invite sends no report; creating an identity syncs the seats, and the admin, in only the implicit PAM project, is not a billable seat")
 		expectSnapshot(t, root, "user_identities", 1)
 		membership := fixture.MembershipOf(t, tn, alice.Email)
+		spec.Why(t, "the first report already sent user_identities 0, so only a report after the removal counts")
+		mark := root.Mark(t)
 
 		// Action
 		res, err := tn.Admin.API.DeleteOrgMembershipWithResponse(t.Context(), tn.OrgID.String(), membership.ID.String())
@@ -41,7 +46,7 @@ func TestUsageReport_Send(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
-		expectSnapshot(t, root, "user_identities", 0)
+		expectSnapshot(t, root, "user_identities", 0, fakenet.Since(mark))
 	})
 
 	t.Run("should refetch the plan when a member is removed", func(t *testing.T) {
@@ -64,7 +69,7 @@ func TestUsageReport_Send(t *testing.T) {
 		require.Equal(t, before+1, len(root.State(t).EntitlementFetches))
 	})
 
-	t.Run("should report users and identities together when a machine identity is created", func(t *testing.T) {
+	t.Run("should report the identity count when a machine identity is created", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -162,7 +167,7 @@ func TestUsageReport_Send(t *testing.T) {
 		tn.NewMachineIdentity(t)
 
 		// Assert
-		expectSnapshot(t, root, "user_identities", 1)
+		expectSnapshot(t, root, "user_identities", 1, fakenet.Within(retryWithin))
 	})
 
 	t.Run("should send a count again when the server refused it as not priced", func(t *testing.T) {
@@ -188,12 +193,10 @@ func TestUsageReport_Send(t *testing.T) {
 	})
 }
 
-// meteredDimensions is how many dimensions a new paid org reports once, on its first
-// plan read.
+// A new paid org reports this many dimensions once, on its first plan read.
 const meteredDimensions = 8
 
-// awaitFirstReport waits for a new org's first report of every dimension, so a failure
-// injected afterwards lands on the report the test triggers.
+// Wait for the initial reports so an injected failure hits the one the test triggers.
 func awaitFirstReport(t *testing.T, sc *fakenet.Scope[license.State]) {
 	t.Helper()
 	wait.Until(t, "the first report of every dimension", func() bool {
@@ -201,7 +204,6 @@ func awaitFirstReport(t *testing.T, sc *fakenet.Scope[license.State]) {
 	}, wait.Timeout(reportWithin))
 }
 
-// refused says whether the License Server answered a usage report with an error.
 func refused(t *testing.T, sc *fakenet.Scope[license.State], path string) bool {
 	t.Helper()
 	for _, c := range sc.Calls(t) {
@@ -212,10 +214,9 @@ func refused(t *testing.T, sc *fakenet.Scope[license.State], path string) bool {
 	return false
 }
 
-// expectSnapshot waits for the License Server to receive a value for a dimension.
-func expectSnapshot(t *testing.T, sc *fakenet.Scope[license.State], dimension string, value float64) {
+func expectSnapshot(t *testing.T, sc *fakenet.Scope[license.State], dimension string, value float64, opts ...fakenet.WaitOption) {
 	t.Helper()
 	sc.ExpectEvent[license.SnapshotReceived](t, func(e license.SnapshotReceived) bool {
 		return e.Dimension == dimension && e.Value == value
-	}, fakenet.Within(reportWithin))
+	}, append([]fakenet.WaitOption{fakenet.Within(reportWithin)}, opts...)...)
 }

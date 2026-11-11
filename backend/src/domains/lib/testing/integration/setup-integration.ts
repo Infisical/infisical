@@ -6,26 +6,19 @@ import { createPlatformFactories, TPlatformFactories, TTenant } from "./factorie
 import { openEmptyDatabase, openFreshDatabase, openWorkerDatabase, TEmptyDatabase, TOpenDatabase } from "./postgres";
 
 export type TSetupIntegrationOptions = {
-  // A private clone of the migrated database for this describe, for tests that change instance-wide state.
+  // Private clone for tests that change instance-wide state.
   freshDatabase?: boolean;
 };
 
 export type TIntegration = {
-  /** Knex on this describe's database, with the Infisical schema migrated. */
   readonly db: TDbClient;
   readonly databaseName: string;
-  /** Inserts for platform rows: user, organization, memberships, project. */
   readonly factories: TPlatformFactories;
-  /** A new organization, an admin user and one project. Call it in every test that needs one. */
   newTenant(options?: Parameters<TPlatformFactories["tenant"]>[0]): Promise<TTenant>;
-  /** An empty database on the same server, dropped when the test finishes. */
   newDatabase(): Promise<TEmptyDatabase>;
 };
 
-/**
- * Call inside a describe (or at the top of a file). Opens the database in beforeAll and closes it
- * in afterAll; read its values inside tests and hooks.
- */
+// Call inside a describe (or top of a file). Opens the DB in beforeAll, closes it in afterAll.
 export const setupIntegration = (options: TSetupIntegrationOptions = {}): TIntegration => {
   let opened: (TOpenDatabase & { factories: TPlatformFactories }) | undefined;
 

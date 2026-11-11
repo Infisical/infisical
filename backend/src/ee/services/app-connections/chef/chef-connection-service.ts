@@ -1,4 +1,4 @@
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -15,8 +15,8 @@ type TGetAppConnectionFunc = (
 ) => Promise<TChefConnection>;
 
 // Enterprise check
-export const checkPlan = async (licenseDomain: TLicenseDomain, orgId: string) => {
-  const plan = await licenseDomain.getPlan(orgId);
+export const checkPlan = async (licenseService: TLicenseService, orgId: string) => {
+  const plan = await licenseService.getPlan(orgId);
   if (!plan.enterpriseAppConnections)
     throw new BadRequestError({
       message:
@@ -26,7 +26,7 @@ export const checkPlan = async (licenseDomain: TLicenseDomain, orgId: string) =>
 
 export const chefConnectionService = (
   getAppConnection: TGetAppConnectionFunc,
-  licenseDomain: TLicenseDomain,
+  licenseService: TLicenseService,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">
 ) => {
@@ -46,7 +46,7 @@ export const chefConnectionService = (
   };
 
   const listDataBags = async (appConnectionId: string, actor: OrgServiceActor) => {
-    await checkPlan(licenseDomain, actor.orgId);
+    await checkPlan(licenseService, actor.orgId);
 
     const appConnection = await $getResolvedConnection(appConnectionId, actor);
 
@@ -54,7 +54,7 @@ export const chefConnectionService = (
   };
 
   const listDataBagItems = async (appConnectionId: string, dataBagName: string, actor: OrgServiceActor) => {
-    await checkPlan(licenseDomain, actor.orgId);
+    await checkPlan(licenseService, actor.orgId);
 
     const appConnection = await $getResolvedConnection(appConnectionId, actor);
 

@@ -14,7 +14,7 @@ import {
 } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -115,7 +115,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   kmsCoreDomain: TKmsCoreDomain;
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
@@ -152,7 +152,7 @@ export const identityKubernetesAuthServiceFactory = ({
   keyStore,
   identityAccessTokenDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   gatewayV2Service,
   gatewayV2DAL,
   kmsCoreDomain,
@@ -867,7 +867,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     );
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -1208,7 +1208,7 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     );
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const { encryptor, decryptor } = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId

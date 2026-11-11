@@ -1,8 +1,6 @@
-// "org-tree" counts a root org and its sub-orgs as one, reported at the root. "org" is reported at the org
-// whose change triggered the report.
+// "org-tree": root and sub-orgs count as one, reported at the root. "org": reported at the org that changed.
 export type TMeterScope = "org" | "org-tree";
 
-// A metered dimension: the License Server prices and caps it, and the instance reports its count.
 export class Meter<K extends string = string> {
   private constructor(
     readonly key: K,

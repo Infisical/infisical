@@ -1,4 +1,4 @@
-import { TLicenseDomain, TPlanProps } from "@app/domains/platform/license/ce/module";
+import { TLicenseService, TPlanProps } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -7,7 +7,7 @@ import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 
 export type TCertificateAuthorityQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "countCasByOrgId" | "countInternalCasByOrgId">;
 };
 
@@ -40,9 +40,9 @@ export const assertCertificateAuthorityQuota = async ({
   const project = await deps.projectDAL.findById(projectId);
   if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
 
-  const plan = await deps.licenseDomain.getPlan(project.orgId);
+  const plan = await deps.licenseService.getPlan(project.orgId);
   const maxCas = resolveEffectiveMaxCas(plan);
-  const isInstanceWide = isInstanceWidePkiQuota(deps.licenseDomain);
+  const isInstanceWide = isInstanceWidePkiQuota(deps.licenseService);
   const countOrgId = isInstanceWide ? null : project.orgId;
   const scopeNote = isInstanceWide ? " across this instance" : "";
 

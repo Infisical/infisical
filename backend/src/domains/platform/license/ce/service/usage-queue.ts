@@ -3,13 +3,12 @@ import { v4 as uuidv4 } from "uuid";
 import { logger } from "@app/lib/logger";
 import type { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
-import { UsageReportCache } from "../data-access/usage-report-cache";
 import { CounterRegistry } from "./counter-registry";
-import { TLicenseHooks } from "./license-hooks";
+import { TLicenseServer, TUsageReportCache } from "./dependencies";
 import { MAX_USAGE_EVENTS_PER_REQUEST } from "./license-server-types/usage-reports";
 
-// Named as before the domain existed so jobs queued by older pods still run. Typed against the queue catalog
-// without loading it: the queue module sits in an import cycle with the crypto module.
+// Names match the old pods' so jobs they queued still run. Typed against the queue catalog without importing
+// it since the queue module is in an import cycle with crypto.
 export const UsageQueues = {
   usageEvent: "usage-event" as QueueName.UsageEvent,
   usageEventJob: "usage-event-job" as QueueJobs.UsageEvent,
@@ -31,21 +30,21 @@ export type TMeteringEventPayload = TQueueJobTypes[QueueName.MeteringEvent]["pay
 
 export type TUsageQueueDeps = {
   queueService: Pick<TQueueServiceFactory, "queue">;
-  hooks: TLicenseHooks;
-  usageReportCache: UsageReportCache;
+  licenseServer: TLicenseServer;
+  usageReportCache: TUsageReportCache;
   counters: CounterRegistry;
 };
 
 const USAGE_DEBOUNCE_MS = 5000;
 
-// Puts usage on the queues the usage workers drain. Nothing here throws into the caller: a metered write
-// has already happened, and a lost report is corrected by the next one or by reconcile.
+// Never throws into the caller: the metered write already happened, and a lost report gets fixed by the
+// next one or by reconcile.
 export class UsageQueue {
   constructor(private readonly deps: TUsageQueueDeps) {}
 
   // Queued after a short debounce, replacing an event for the same org and dimension that has not run yet.
   emit(orgId: string, dimensionKey: string): void {
-    if (!this.deps.hooks.isMeteringEnabled()) return;
+    if (!this.deps.licenseServer.isEnabled()) return;
 
     void this.deps.queueService
       .queue(
@@ -82,7 +81,7 @@ export class UsageQueue {
   // next write to it. So once per interval per org, the first plan read re-sends every meter; the worker
   // skips the ones whose value the server already has.
   reconcile(orgId: string): void {
-    if (!this.deps.hooks.isMeteringEnabled()) return;
+    if (!this.deps.licenseServer.isEnabled()) return;
 
     void (async () => {
       if (!(await this.deps.usageReportCache.acquireReconcileMarker(orgId))) return;
@@ -96,7 +95,7 @@ export class UsageQueue {
   // a request whole, so each job holds one dimension: a dimension the plan does not price is refused without
   // taking other events with it.
   recordMeteringEvents(orgId: string, events: TMeteringEventInput[]): void {
-    if (!this.deps.hooks.isMeteringEnabled() || !events.length) return;
+    if (!this.deps.licenseServer.isEnabled() || !events.length) return;
 
     const byDimension = new Map<string, TMeteringEventPayload>();
     events.forEach((e) => {

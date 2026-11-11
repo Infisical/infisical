@@ -1,6 +1,7 @@
 import { TEnvConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
+import { TLicenseServer } from "../../ce/service/dependencies";
 import {
   TBuyProductPayload,
   TCancelTrialPayload,
@@ -9,6 +10,7 @@ import {
   TCreatePortalPayload,
   TEntitlementOrg,
   TEntitlementsResponse,
+  TLicenseServerBilling,
   TStartTrialPayload,
   TSubscriptionPreviewPayload,
   TUpgradePayload
@@ -92,8 +94,7 @@ const buildBackend = (
   return licenseServerBackend(serverUrl, signingKey.replace(/\\n/g, "\n"), envConfig.INTERNAL_REGION);
 };
 
-// Where usage goes and how each post authenticates. getBearerToken is called per request so cloud can mint a
-// fresh short-lived JWT each time, while self-hosted exchanges its license key for a cached JWT.
+// getBearerToken runs per request: cloud mints a fresh short-lived JWT, self-hosted reuses a cached one.
 type TUsageEndpoint = { serverUrl: string; getBearerToken: () => Promise<string> };
 
 // Returns null when the license server is unconfigured, which keeps usage reporting inert. A
@@ -140,8 +141,8 @@ const buildUsageEndpoint = (envConfig: TLicenseServerClientConfig["envConfig"]):
   return { serverUrl, getBearerToken: () => Promise.resolve(mintServiceToken(serviceKey)) };
 };
 
-// Throws UsageReportError with the server's status and message, so a caller can tell a final refusal
-// (404 "license not found", 422 "not priced") from a failure worth retrying.
+// Throws UsageReportError so callers can tell a final no (404 "license not found", 422 "not priced") from
+// something worth retrying.
 const postUsage = async (
   endpoint: TUsageEndpoint,
   orgId: string,
@@ -170,9 +171,8 @@ const postUsage = async (
   return res;
 };
 
-// The License Server over HTTP. Dormant when it is not configured, or when the instance runs on an offline
-// license: reads then return nothing and changes are refused.
-export class LicenseServerClient {
+// Dormant when unconfigured or on an offline license: reads return nothing, changes throw.
+export class LicenseServerClient implements TLicenseServer, TLicenseServerBilling {
   constructor(
     private readonly backend: TLicenseClientBackend | null,
     private readonly usageEndpoint: TUsageEndpoint | null
@@ -262,12 +262,8 @@ export class LicenseServerClient {
     return this.configured().confirmTrialPayment(orgId, payload);
   }
 
-  cancelSubscription(orgId: string) {
-    return this.configured().cancelSubscription(orgId);
-  }
-
-  resumeSubscription(orgId: string) {
-    return this.configured().resumeSubscription(orgId);
+  deleteOrganization(orgId: string) {
+    return this.configured().deleteOrganization(orgId);
   }
 
   async reportSnapshots(orgId: string, snapshots: TUsageSnapshot[]): Promise<void> {

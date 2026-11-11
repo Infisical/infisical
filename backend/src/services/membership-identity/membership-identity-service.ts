@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -55,7 +55,7 @@ type TMembershipIdentityServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "deleteByIdentityIdsInGroupsOwnedByOrgs">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
@@ -84,7 +84,7 @@ export const membershipIdentityServiceFactory = ({
   identityDAL,
   identityMetadataDAL,
   identityGroupMembershipDAL,
-  licenseDomain,
+  licenseService,
   applicationMembershipCleanupService,
   projectDAL,
   keyStore,
@@ -135,7 +135,7 @@ export const membershipIdentityServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      licenseDomain,
+      licenseService,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -149,7 +149,7 @@ export const membershipIdentityServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await licenseDomain.getPlan(scopeData.orgId);
+      const plan = await licenseService.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -247,9 +247,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      licenseDomain.emit(scopeData.orgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(scopeData.orgId, Meter.PamIdentities.key);
-      licenseDomain.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+      licenseService.emit(scopeData.orgId, Meter.SecretIdentities.key);
+      licenseService.emit(scopeData.orgId, Meter.PamIdentities.key);
+      licenseService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
     }
     return { membership };
   };
@@ -263,7 +263,7 @@ export const membershipIdentityServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await licenseDomain.getPlan(scopeData.orgId);
+      const plan = await licenseService.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -292,7 +292,7 @@ export const membershipIdentityServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      licenseDomain,
+      licenseService,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -549,9 +549,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
-    licenseDomain.emit(scopeData.orgId, Meter.SecretIdentities.key);
-    licenseDomain.emit(scopeData.orgId, Meter.PamIdentities.key);
-    licenseDomain.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+    licenseService.emit(scopeData.orgId, Meter.SecretIdentities.key);
+    licenseService.emit(scopeData.orgId, Meter.PamIdentities.key);
+    licenseService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
 
     if (needsRevocationBump && externalTx) {
       return {

@@ -52,7 +52,7 @@ import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { AgentVaultModule } from "@app/domains/agent-vault/agent-vault/ce/module";
 import { Meter } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
+import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
 import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
@@ -63,13 +63,10 @@ import { serviceTokenDALFactory } from "@app/services/service-token/service-toke
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
 
-// The Agent Vault seat meter, as the License domain counts it.
 const countAgentVaultSeats = (orgId: string) => {
-  const licenseRegistry = new FakeLicenseRegistry();
-  const organizationsProjectsDomain = new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(testDb), licenseRegistry }).service;
-  // eslint-disable-next-line no-new
-  new AgentVaultModule({ organizationsProjectsDomain, licenseRegistry });
-  return licenseRegistry.counter(Meter.AgentVaultIdentities.key).count(orgId);
+  const organizationsProjectsService = new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(testDb) }).service;
+  const { usageCounters } = new AgentVaultModule({ organizationsProjectsService });
+  return usageCounter(usageCounters, Meter.AgentVaultIdentities.key).count(orgId);
 };
 
 declare const testKeyStore: TKeyStoreFactory;
@@ -6982,7 +6979,7 @@ describe("Agent Vault V1 Router", async () => {
   describe("session resolve", async () => {
     const buildResolver = (
       overrides: Partial<
-        Pick<Parameters<typeof agentVaultProxyServiceFactory>[0], "licenseDomain" | "agentVaultSessionLogConfigDAL">
+        Pick<Parameters<typeof agentVaultProxyServiceFactory>[0], "licenseService" | "agentVaultSessionLogConfigDAL">
       > = {}
     ) =>
       agentVaultProxyServiceFactory({
@@ -7004,7 +7001,7 @@ describe("Agent Vault V1 Router", async () => {
         kmsCoreDomain: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
-        licenseDomain: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
+        licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
         resourceAuthMethodService: {} as never,
         agentVaultOauthService: {} as never,
         ...overrides
@@ -7037,7 +7034,7 @@ describe("Agent Vault V1 Router", async () => {
       const { session, proxy } = await mintForResolve("resolve-session-logs-unlicensed");
       const getPlan = vi.fn(() => Promise.resolve({ agentVaultByoS3: false }));
       const resolver = buildResolver({
-        licenseDomain: {
+        licenseService: {
           getPlan,
           isServingFallbackPlan: () => Promise.resolve(false),
           getLastKnownPlan: () => Promise.resolve(null)
@@ -7059,7 +7056,7 @@ describe("Agent Vault V1 Router", async () => {
     test("while the plan can't be confirmed, a proxy that holds the key keeps recording and no new key goes out", async () => {
       const { session, proxy } = await mintForResolve("resolve-session-logs-plan-unknown");
       const resolver = buildResolver({
-        licenseDomain: {
+        licenseService: {
           getPlan: () => Promise.resolve({ agentVaultByoS3: false }),
           isServingFallbackPlan: () => Promise.resolve(true),
           getLastKnownPlan: () => Promise.resolve(null)
@@ -7082,7 +7079,7 @@ describe("Agent Vault V1 Router", async () => {
       const { session, proxy } = await mintForResolve("resolve-session-logs-off");
       const getPlan = vi.fn(() => Promise.resolve({ agentVaultByoS3: true }));
       const resolver = buildResolver({
-        licenseDomain: { getPlan } as never,
+        licenseService: { getPlan } as never,
         agentVaultSessionLogConfigDAL: sessionLogConfig(false) as never
       });
 
@@ -7144,7 +7141,7 @@ describe("Agent Vault V1 Router", async () => {
           createCipherPairWithDataKey: () =>
             Promise.resolve({ decryptor: () => Buffer.from(JSON.stringify({ value: "unsealed" })) })
         } as never,
-        licenseDomain: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
+        licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
         resourceAuthMethodService: {} as never,
         agentVaultOauthService: {} as never
       });
@@ -7318,7 +7315,7 @@ describe("Agent Vault V1 Router", async () => {
         kmsCoreDomain: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
         } as never,
-        licenseDomain: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
+        licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
         resourceAuthMethodService: {} as never,
         agentVaultOauthService: {} as never
       });
@@ -9296,7 +9293,7 @@ describe("Agent Vault V1 Router", async () => {
           kmsCoreDomain: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
-          licenseDomain: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
+          licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
           resourceAuthMethodService: {} as never,
           agentVaultOauthService: {} as never
         });
@@ -9402,7 +9399,7 @@ describe("Agent Vault V1 Router", async () => {
           kmsCoreDomain: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
           } as never,
-          licenseDomain: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
+          licenseService: { getPlan: () => Promise.resolve({ agentVaultByoS3: true }) } as never,
           resourceAuthMethodService: {} as never,
           agentVaultOauthService: {} as never
         });

@@ -1,7 +1,7 @@
 import * as x509 from "@peculiar/x509";
 
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
@@ -23,7 +23,7 @@ type TCertificateEstServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   kmsCoreDomain: TKmsCoreDomain;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TCertificateEstServiceFactory = ReturnType<typeof certificateEstServiceFactory>;
@@ -36,7 +36,7 @@ export const certificateEstServiceFactory = ({
   certificateAuthorityDAL,
   projectDAL,
   kmsCoreDomain,
-  licenseDomain
+  licenseService
 }: TCertificateEstServiceFactoryDep) => {
   const simpleReenroll = async ({
     csr,
@@ -52,7 +52,7 @@ export const certificateEstServiceFactory = ({
       certificateTemplateId
     });
 
-    const plan = await licenseDomain.getPlan(estConfig.orgId);
+    const plan = await licenseService.getPlan(estConfig.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message:
@@ -153,7 +153,7 @@ export const certificateEstServiceFactory = ({
       certificateTemplateId
     });
 
-    const plan = await licenseDomain.getPlan(estConfig.orgId);
+    const plan = await licenseService.getPlan(estConfig.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message:
@@ -214,7 +214,7 @@ export const certificateEstServiceFactory = ({
       certificateTemplateId
     });
 
-    const plan = await licenseDomain.getPlan(estConfig.orgId);
+    const plan = await licenseService.getPlan(estConfig.orgId);
     if (!plan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to perform EST operation - caCerts due to plan restriction. Upgrade to the Enterprise plan."

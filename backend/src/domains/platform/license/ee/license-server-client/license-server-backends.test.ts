@@ -24,6 +24,39 @@ const mockFetchReturning = (body: unknown) =>
 const readBody = (fetchMock: typeof fetch): Record<string, unknown> =>
   JSON.parse(vi.mocked(fetchMock).mock.calls[0][1]?.body as string) as Record<string, unknown>;
 
+const readUrl = (fetchMock: typeof fetch): URL => new URL(String(vi.mocked(fetchMock).mock.calls[0][0]));
+
+describe("licenseServerBackend fetchEntitlements", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test("should send the org's name, slug and the deployment region", async () => {
+    // Setup
+    const fetchMock = mockFetchReturning({ slug: "pro", features: {} });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Action
+    await licenseServerBackend(SERVER_URL, "key", "eu").fetchEntitlements({ id: ORG_ID, name: "Acme", slug: "acme" });
+
+    // Assert
+    const query = Object.fromEntries(readUrl(fetchMock).searchParams);
+    expect(query).toEqual({ org_name: "Acme", org_slug: "acme", region: "eu" });
+  });
+
+  test("should leave out a name and slug it was not given", async () => {
+    // Setup
+    const fetchMock = mockFetchReturning({ slug: "pro", features: {} });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Action
+    await licenseServerBackend(SERVER_URL, "key").fetchEntitlements({ id: ORG_ID });
+
+    // Assert
+    expect([...readUrl(fetchMock).searchParams.keys()]).toEqual([]);
+  });
+});
+
 // Region is insert-only on the license server: it is read only by the call that creates the license,
 // so every license-creating call has to carry this deployment's region or the org is recorded as "us".
 describe("licenseServerBackend region on license-creating calls", () => {
@@ -200,5 +233,48 @@ describe("licenseServerBackend rejected billing requests", () => {
         expectedPlanVersionId: "v1"
       })
     ).rejects.toThrow(want);
+  });
+});
+
+describe("licenseServerBackend deleteOrganization", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  test("calls DELETE on the org and returns what the license server closed", async () => {
+    const fetchMock = mockFetchReturning({
+      licensesClosed: 1,
+      canceledSubscriptionIds: ["sub_1"],
+      commitmentForfeited: true
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await licenseServerBackend(SERVER_URL, "key").deleteOrganization(ORG_ID);
+
+    const [url, init] = vi.mocked(fetchMock).mock.calls[0];
+    expect(String(url)).toBe(`${SERVER_URL}/v1/organizations/${ORG_ID}`);
+    expect(init?.method).toBe("DELETE");
+    expect(result).toMatchObject({ licensesClosed: 1, canceledSubscriptionIds: ["sub_1"], commitmentForfeited: true });
+  });
+
+  test("gives up on a stalled license server so the outbox can retry it", async () => {
+    const controller = new AbortController();
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    const fetchMock = vi.fn(
+      (_url: URL, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          if (init?.signal?.aborted) reject(init.signal.reason);
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+        })
+    ) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    const call = licenseServerBackend(SERVER_URL, "key").deleteOrganization(ORG_ID);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    controller.abort(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+
+    await expect(call).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(timeoutSpy).toHaveBeenCalledWith(30_000);
   });
 });

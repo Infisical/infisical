@@ -19,13 +19,8 @@ import { AuthMethod } from "@app/services/auth/auth-type";
 
 import { randomId } from "./run";
 
-/*
- * Rows for the platform tables no domain owns yet: users, organizations, projects, memberships.
- * They are inserted directly, because these tables have no domain module to go through. A domain's
- * own tables are created through that domain's module, so its tests exercise its rules.
- *
- * Projects get no legacy E2EE keys or ghost user; nothing in src/domains reads them.
- */
+// Platform tables no domain owns yet, so rows go in directly. A domain's own tables go through its
+// module so its tests hit its rules. Projects get no legacy E2EE keys or ghost user; nothing here reads them.
 
 export const DEFAULT_ENVIRONMENTS = [
   { name: "Development", slug: "dev" },
@@ -137,7 +132,6 @@ export const createPlatformFactories = (db: TDbClient) => {
     return membership;
   };
 
-  // An organization with an admin who is also admin of one project in it.
   const tenant = async ({
     projectType = ProjectType.SecretManager
   }: { projectType?: ProjectType } = {}): Promise<TTenant> => {

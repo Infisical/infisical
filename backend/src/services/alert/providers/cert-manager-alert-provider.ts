@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { getConfig } from "@app/lib/config/env";
@@ -86,14 +86,14 @@ const assertNoResource = (resourceId?: string | null) =>
 export type TCertManagerAlertProviderDep = {
   certManagerCertificateAlertDAL: TCertManagerCertificateAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   certManagerProjectResolver: Pick<TCertManagerProjectResolverFactory, "getActiveProjectId">;
 };
 
 export const certManagerAlertProviderFactory = ({
   certManagerCertificateAlertDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   certManagerProjectResolver
 }: TCertManagerAlertProviderDep): IScheduledAlertProvider<TAlertCertificate> &
   IEventAlertProvider<TAlertCertificate> => {
@@ -256,7 +256,7 @@ export const certManagerAlertProviderFactory = ({
     assertPermission,
     assertResourceInScope: async ({ resourceId }) => assertNoResource(resourceId),
     assertConditionInScope,
-    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseDomain, input),
+    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
     getWebhookSource: getScopeWideAlertWebhookSource,

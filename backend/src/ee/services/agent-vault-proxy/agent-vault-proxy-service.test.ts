@@ -2,7 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { TAgentVaultSessionInlineServices } from "@app/db/schemas";
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
@@ -122,7 +122,7 @@ const setup = (
         }) as never
     },
     kmsCoreDomain: { createCipherPairWithDataKey } as never,
-    licenseDomain: new FakeLicenseDomain(),
+    licenseService: new FakeLicenseService(),
     resourceAuthMethodService: {} as never,
     agentVaultOauthService: {
       refreshServiceToken: refreshServiceToken as never,
@@ -416,7 +416,7 @@ describe("resolve for a session on a user's behalf", () => {
         createCipherPairWithDataKey: async () =>
           ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
       } as never,
-      licenseDomain: new FakeLicenseDomain(),
+      licenseService: new FakeLicenseService(),
       resourceAuthMethodService: {} as never,
       agentVaultOauthService: {
         refreshServiceToken: vi.fn() as never,

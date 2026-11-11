@@ -11,7 +11,7 @@ import {
   TApprovalRequests
 } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -111,7 +111,7 @@ type TApprovalPolicyServiceFactoryDep = {
     TPermissionServiceFactory,
     "getProjectPermission" | "getOrgPermission" | "getResourcePermission"
   >;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
@@ -156,7 +156,7 @@ export const approvalPolicyServiceFactory = ({
   kmsCoreDomain,
   notificationService,
   permissionService,
-  licenseDomain,
+  licenseService,
   projectMembershipDAL,
   membershipDAL,
   pkiApplicationDAL,
@@ -672,7 +672,7 @@ export const approvalPolicyServiceFactory = ({
 
     // CertRequest only: code signing follows pkiCodeSigning and PAM has its own product entitlement.
     if (policyType === ApprovalPolicyType.CertRequest) {
-      const plan = await licenseDomain.getPlan(actor.orgId);
+      const plan = await licenseService.getPlan(actor.orgId);
       if (!plan.pkiApprovals) {
         throw new BadRequestError({
           message:
@@ -2150,7 +2150,7 @@ export const approvalPolicyServiceFactory = ({
     const request = grant.requestId ? await approvalRequestDAL.findById(grant.requestId) : null;
     const assertDomainCanRevoke = resources[grantPolicyType]?.assertCanRevokeGrant;
 
-    // Secret access grants are managed by the secret-access-approval-global-request-bridge service
+    // Secret access grants are managed by the access-approval-request service
     if (grantPolicyType === ApprovalPolicyType.SecretAccess) {
       throw new BadRequestError({
         message: "This grant is for a secret access request. Revoke it from the access request instead."

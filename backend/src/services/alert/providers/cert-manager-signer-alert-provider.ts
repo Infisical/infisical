@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -58,14 +58,14 @@ const formatSigners = (signerNames: string[]) =>
 export type TCertManagerSignerAlertProviderDep = {
   certManagerSignerAlertDAL: TCertManagerSignerAlertDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   certManagerProjectResolver: Pick<TCertManagerProjectResolverFactory, "getActiveProjectId">;
 };
 
 export const certManagerSignerAlertProviderFactory = ({
   certManagerSignerAlertDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   certManagerProjectResolver
 }: TCertManagerSignerAlertProviderDep): IScheduledAlertProvider<TSignerAlertCertificate> => {
   const findScheduledTargets = async (input: TFindScheduledTargetsInput): Promise<TSignerAlertCertificate[]> => {
@@ -224,7 +224,7 @@ export const certManagerSignerAlertProviderFactory = ({
     assertPermission,
     assertResourceInScope: async ({ resourceId }) => assertNoResource(resourceId),
     assertConditionInScope,
-    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseDomain, input),
+    assertChannelTypesAllowed: (input) => assertCertManagerAlertChannelTypesAllowed(licenseService, input),
     recipientPolicy: { atOrgScope: true, allowEmailAddresses: true },
     includeLastRun: true,
     getWebhookSource: getScopeWideAlertWebhookSource,

@@ -2,7 +2,7 @@ import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 
 import { identityServiceFactory } from "./identity-service";
 import { TDeleteIdentityDTO } from "./identity-types";
@@ -65,7 +65,7 @@ const createService = ({
     })
   };
 
-  const licenseDomain = new FakeLicenseDomain();
+  const licenseService = new FakeLicenseService();
 
   const service = identityServiceFactory({
     identityDAL: identityDAL as never,
@@ -81,7 +81,7 @@ const createService = ({
         .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: createMongoAbility([]) }])
     } as never,
-    licenseDomain,
+    licenseService,
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),

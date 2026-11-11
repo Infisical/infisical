@@ -5,7 +5,7 @@ import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { IdentityAuthTemplateMethod, TIdentityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template";
 import { assertTemplateUnchangedForLink } from "@app/ee/services/identity-auth-template/identity-auth-template-fns";
 import { testLDAPConfig } from "@app/ee/services/ldap-config/ldap-fns";
@@ -78,7 +78,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
@@ -110,7 +110,7 @@ export const identityLdapAuthServiceFactory = ({
   identityDAL,
   identityLdapAuthDAL,
   membershipIdentityDAL,
-  licenseDomain,
+  licenseService,
   permissionService,
   kmsCoreDomain,
   identityAuthTemplateDAL,
@@ -207,7 +207,7 @@ export const identityLdapAuthServiceFactory = ({
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a organizationSlug is specified
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
-    const plan = await licenseDomain.getPlan(identity.orgId);
+    const plan = await licenseService.getPlan(identity.orgId);
     if (!plan.ldap) {
       throw new BadRequestError({
         message:
@@ -402,7 +402,7 @@ export const identityLdapAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
     if (!plan.ldap) {
       throw new BadRequestError({
@@ -633,7 +633,7 @@ export const identityLdapAuthServiceFactory = ({
 
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const plan = await licenseDomain.getPlan(identityMembershipOrg.scopeOrgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
 
     if (!plan.ldap) {
       throw new BadRequestError({

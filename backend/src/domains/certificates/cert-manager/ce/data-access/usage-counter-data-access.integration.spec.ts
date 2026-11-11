@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { Meter } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
+import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
 import { OrganizationsProjectsModule } from "@app/domains/platform/organizations-projects/ce/module";
 
 import { CertManagerModule } from "../module";
@@ -13,23 +13,13 @@ describe("CertManagerModule usage counters", () => {
   const h = setupIntegration();
 
   const build = () => {
-    const licenseRegistry = new FakeLicenseRegistry();
-    const organizationsProjectsDomain = new OrganizationsProjectsModule({
-      db: DataAccessDb.fromClient(h.db),
-      licenseRegistry
-    }).service;
-    return {
-      module: new CertManagerModule({
-        db: DataAccessDb.fromClient(h.db),
-        organizationsProjectsDomain,
-        licenseRegistry
-      }),
-      licenseRegistry
-    };
+    const db = DataAccessDb.fromClient(h.db);
+    const organizationsProjectsService = new OrganizationsProjectsModule({ db }).service;
+    return { module: new CertManagerModule({ db, organizationsProjectsService }) };
   };
 
-  const count = ({ licenseRegistry }: ReturnType<typeof build>, key: string, orgId: string | null) =>
-    licenseRegistry.counter(key).count(orgId);
+  const count = ({ module }: ReturnType<typeof build>, key: string, orgId: string | null) =>
+    usageCounter(module.usageCounters, key).count(orgId);
 
   test("should count internal CAs across the root org's tree", async () => {
     // Setup

@@ -2,7 +2,7 @@ import * as x509 from "@peculiar/x509";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
@@ -23,7 +23,7 @@ export type TAgentProxyCaServiceFactory = ReturnType<typeof agentProxyCaServiceF
 type TAgentProxyCaServiceFactoryDep = {
   orgAgentProxyConfigDAL: TOrgAgentProxyConfigDALFactory;
   kmsCoreDomain: TKmsCoreDomain;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
 };
 
@@ -34,11 +34,11 @@ const ROOT_CA_VALIDITY_YEARS = 10;
 export const agentProxyCaServiceFactory = ({
   orgAgentProxyConfigDAL,
   kmsCoreDomain,
-  licenseDomain,
+  licenseService,
   permissionService
 }: TAgentProxyCaServiceFactoryDep) => {
   const $checkLicense = async (orgId: string) => {
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.secretsBrokering) {
       throw new BadRequestError({
         message: "Failed to use secrets brokering due to plan restriction. Upgrade your plan to use the agent proxy."

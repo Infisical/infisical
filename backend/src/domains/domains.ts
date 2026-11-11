@@ -98,11 +98,18 @@ export const startStandaloneKmsCore = async ({
 
 export type TDomains = ReturnType<typeof createDomains>;
 
-// Builds every domain in dependency order. The only file that imports ee/ from outside a domain.
-//
-// License comes first: every product depends on it, and it depends on none. Products plug in what License
-// needs from them (usage counters, root orgs) through license.registry while they are built.
+// Builds every domain in dependency order. Only file outside a domain that imports ee/.
+// License depends on no product: products build first and hand License their counters. A product that
+// needs License builds after it, so its counters must come from data access, not a service using License.
 export const createDomains = (deps: TDomainDeps) => {
+  const db = DataAccessDb.fromClient(deps.db);
+  const organizationsProjects = new OrganizationsProjectsModule({ db });
+  const organizationsProjectsService = organizationsProjects.service;
+  const secrets = new SecretsModule({ organizationsProjectsService });
+  const pam = new PamModule({ organizationsProjectsService });
+  const agentVault = new AgentVaultModule({ organizationsProjectsService });
+  const certManager = new CertManagerModule({ db, organizationsProjectsService });
+
   const licenseEe = new LicenseEeModule({ envConfig: deps.envConfig });
   const license = new LicenseModule({
     keyStore: deps.keyStore,
@@ -110,23 +117,22 @@ export const createDomains = (deps: TDomainDeps) => {
     cronJob: deps.cronJob,
     isProductionMode: deps.envConfig.isProductionMode,
     startLocalRefresh,
-    hooks: licenseEe.hooks
+    provider: licenseEe.resolver,
+    licenseServer: licenseEe.licenseServerClient,
+    billing: licenseEe.licenseServerClient,
+    organizations: organizationsProjectsService,
+    usageCounters: [
+      ...organizationsProjects.usageCounters,
+      ...secrets.usageCounters,
+      ...pam.usageCounters,
+      ...agentVault.usageCounters,
+      ...certManager.usageCounters
+    ]
   });
 
   // KMS Core depends on no other domain. HSM and external keys plug in from its enterprise edition; boot starts
   // kmsCoreEe (with the instance's HSM entitlement from License) and then kmsCore.
-  const db = DataAccessDb.fromClient(deps.db);
   const { kmsCoreEe, kmsCore } = buildKmsCore({ db, envConfig: deps.envConfig, cronJob: deps.cronJob });
 
-  const organizationsProjects = new OrganizationsProjectsModule({ db, licenseRegistry: license.registry });
-  const productDeps = {
-    organizationsProjectsDomain: organizationsProjects.service,
-    licenseRegistry: license.registry
-  };
-  const secrets = new SecretsModule(productDeps);
-  const pam = new PamModule(productDeps);
-  const agentVault = new AgentVaultModule(productDeps);
-  const certManager = new CertManagerModule({ db, ...productDeps });
-
-  return { license, kmsCoreEe, kmsCore, organizationsProjects, secrets, pam, agentVault, certManager };
+  return { license, kmsCoreEe, kmsCore, organizationsProjects, certManager };
 };

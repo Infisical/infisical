@@ -54,7 +54,7 @@ KMS keys (AWS, GCP). Depends on no other domain. CMEK and KMIP are the KMS produ
 - **Root key state reads `ReadFrom.Primary`** (`RootKeyService`, `RootKeyRotationService`): a lagging replica could
   miss the key this pod holds, or show a superseded view to promote against.
 - **Licensing stays outside.** KMS Core never calls License. HSM: boot (`routes/index.ts`) passes
-  `isHsmEntitled: () => licenseDomain.hasInstanceFeature("hsm")` to `kmsCoreEe.start`, a getter so a license refreshed
+  `isHsmEntitled: () => Boolean(licenseService.getInstanceEntitlements().features.hsm)` to `kmsCoreEe.start`, a getter so a license refreshed
   after boot takes effect without a restart, and `RootKeyService` refuses an HSM root config or a switch to HSM through
   `rootKeyWrapper.assertEntitled()`; migrations answer `true` (`startStandaloneKmsCore`). External KMS: the caller (`src/ee/services/external-kms/external-kms-service.ts`)
   checks `externalKms` on create, update and GCP key listing; using an existing external key is never gated.

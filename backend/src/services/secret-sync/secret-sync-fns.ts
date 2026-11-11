@@ -2,7 +2,7 @@ import { AxiosError } from "axios";
 import handlebars from "handlebars";
 
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { CHEF_SYNC_LIST_OPTION } from "@app/ee/services/secret-sync/chef";
@@ -810,13 +810,13 @@ export const parseSyncErrorMessage = (err: unknown): string => {
 };
 
 export const enterpriseSyncCheck = async (
-  licenseDomain: TLicenseDomain,
+  licenseService: TLicenseService,
   secretSync: SecretSync,
   orgId: string,
   errorMessage: string
 ) => {
   if (SECRET_SYNC_PLAN_MAP[secretSync] === SecretSyncPlanType.Enterprise) {
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.enterpriseSecretSyncs)
       throw new BadRequestError({
         message: errorMessage

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
 import { OrganizationActionScope, ProjectMembershipRole, ProjectType, TProjectTemplates } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectTemplateDefaultEnvironments } from "@app/ee/services/project-template/project-template-constants";
@@ -32,7 +32,7 @@ import { TProjectTemplateIdentityMembershipDALFactory } from "./project-template
 import { TProjectTemplateUserMembershipDALFactory } from "./project-template-user-membership-dal";
 
 type TProjectTemplatesServiceFactoryDep = {
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   permissionService: TPermissionServiceFactory;
   projectTemplateDAL: TProjectTemplateDALFactory;
   projectTemplateUserMembershipDAL: TProjectTemplateUserMembershipDALFactory;
@@ -87,7 +87,7 @@ const $unpackProjectTemplate = (
 });
 
 export const projectTemplateServiceFactory = ({
-  licenseDomain,
+  licenseService,
   permissionService,
   orgMembershipDAL,
   projectTemplateDAL,
@@ -132,7 +132,7 @@ export const projectTemplateServiceFactory = ({
     actor,
     type
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({
@@ -183,7 +183,7 @@ export const projectTemplateServiceFactory = ({
     name,
     actor
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({
@@ -221,7 +221,7 @@ export const projectTemplateServiceFactory = ({
   };
 
   const findProjectTemplateById: TProjectTemplateServiceFactory["findProjectTemplateById"] = async (id, actor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({
@@ -262,7 +262,7 @@ export const projectTemplateServiceFactory = ({
     { roles, environments, users, groups, identities, projectManagedIdentities, type, ...params },
     actor
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({
@@ -514,7 +514,7 @@ export const projectTemplateServiceFactory = ({
     { roles, environments, users, groups, identities, projectManagedIdentities, ...params },
     actor
   ) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({
@@ -847,7 +847,7 @@ export const projectTemplateServiceFactory = ({
   };
 
   const deleteProjectTemplateById: TProjectTemplateServiceFactory["deleteProjectTemplateById"] = async (id, actor) => {
-    const plan = await licenseDomain.getPlan(actor.orgId);
+    const plan = await licenseService.getPlan(actor.orgId);
 
     if (!plan.projectTemplates)
       throw new BadRequestError({

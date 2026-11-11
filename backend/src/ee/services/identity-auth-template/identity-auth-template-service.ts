@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { OrganizationActionScope, TIdentityKubernetesAuthsUpdate, TIdentityOidcAuthsUpdate } from "@app/db/schemas";
 import { TIdentityAuthTemplates } from "@app/db/schemas/identity-auth-templates";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
@@ -62,7 +62,7 @@ type TIdentityAuthTemplateServiceFactoryDep = {
     "getOrgPermission" | "getProjectPermission" | "getActorGrantAbilities"
   >;
   kmsCoreDomain: TKmsCoreDomain;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
@@ -80,12 +80,12 @@ export const identityAuthTemplateServiceFactory = ({
   orgDAL,
   permissionService,
   kmsCoreDomain,
-  licenseDomain,
+  licenseService,
   auditLogService
 }: TIdentityAuthTemplateServiceFactoryDep) => {
   // Plan check
   const $checkPlan = async (orgId: string) => {
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.machineIdentityAuthTemplates)
       throw new BadRequestError({
         message:
@@ -187,7 +187,7 @@ export const identityAuthTemplateServiceFactory = ({
   }: {
     gatewayId?: string | null;
     gatewayPoolId?: string | null;
-    plan: Awaited<ReturnType<TLicenseDomain["getPlan"]>>;
+    plan: Awaited<ReturnType<TLicenseService["getPlan"]>>;
     permission: Awaited<ReturnType<TPermissionServiceFactory["getOrgPermission"]>>["permission"];
   }) => {
     if (gatewayId) {

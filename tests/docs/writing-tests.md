@@ -147,7 +147,7 @@ tn.SetPlan(t, license.Enterprise()) // verifies it took effect
   check must never change a read path (`backend/CODE_QUALITY.md`).
 - What Infisical sent the License Server is the fake's state: `license.Open(t, adminURL,
   orgID)` gives entitlement reads, usage snapshots (`ExpectEvent[license.SnapshotReceived]`)
-  and cancellations. Open the root org; a sub-org's plan is fetched under its root.
+  and org deletions (`fixture.RequireLicenseOrgDeleted`). Open the root org; a sub-org's plan is fetched under its root.
 - A self-hosted instance is an `Isolated` package booted with `license.SelfHostedEnv(key)`:
   `""` for no license, `id.Nonce()` for an online key the fake serves, or an offline key from
   `license.NewSigner()` together with `harness.WithInfisicalFile(signer.PublicKeyFile,

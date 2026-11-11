@@ -8,9 +8,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
-import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { reapOrphanedFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -58,8 +56,6 @@ import { newProjectMembershipGroupFactory } from "./project/project-membership-g
 type TMembershipGroupServiceFactoryDep = {
   membershipGroupDAL: TMembershipGroupDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete" | "find">;
-  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
-  accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   approvalPolicyDAL: Pick<
@@ -71,7 +67,7 @@ type TMembershipGroupServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
@@ -95,8 +91,6 @@ export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupSe
 export const membershipGroupServiceFactory = ({
   membershipGroupDAL,
   roleDAL,
-  accessApprovalPolicyDAL,
-  accessApprovalPolicyApproverDAL,
   secretApprovalPolicyDAL,
   secretApprovalPolicyApproverDAL,
   approvalPolicyDAL,
@@ -105,7 +99,7 @@ export const membershipGroupServiceFactory = ({
   orgDAL,
   permissionService,
   groupDAL,
-  licenseDomain,
+  licenseService,
   applicationMembershipCleanupService,
   projectDAL,
   alertChannelRecipientDAL,
@@ -161,7 +155,7 @@ export const membershipGroupServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      licenseDomain,
+      licenseService,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -176,7 +170,7 @@ export const membershipGroupServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await licenseDomain.getPlan(scopeData.orgId);
+      const plan = await licenseService.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -255,9 +249,9 @@ export const membershipGroupServiceFactory = ({
 
     // Assigning a group to a project brings the group's users + identities into it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      licenseDomain.emit(scopeData.orgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(scopeData.orgId, Meter.PamIdentities.key);
-      licenseDomain.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+      licenseService.emit(scopeData.orgId, Meter.SecretIdentities.key);
+      licenseService.emit(scopeData.orgId, Meter.PamIdentities.key);
+      licenseService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
     }
     return { membership, group };
   };
@@ -271,7 +265,7 @@ export const membershipGroupServiceFactory = ({
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;
     if (hasCustomRole) {
-      const plan = await licenseDomain.getPlan(scopeData.orgId);
+      const plan = await licenseService.getPlan(scopeData.orgId);
       if (!plan?.rbac)
         throw new BadRequestError({
           message:
@@ -300,7 +294,7 @@ export const membershipGroupServiceFactory = ({
     }
 
     await assertSecretsTemporaryAccessAllowed({
-      licenseDomain,
+      licenseService,
       projectDAL,
       scope: scopeData.scope,
       projectId: scopeData.scope === AccessScope.Project ? scopeData.projectId : undefined,
@@ -524,29 +518,6 @@ export const membershipGroupServiceFactory = ({
         message: "You can't delete your own membership"
       });
 
-    const accessApprovalPolicyApprovers = await accessApprovalPolicyApproverDAL.find({
-      approverGroupId: dto.selector.groupId
-    });
-
-    // check if group is assigned to any access approval policy
-    const accessApprovalPolicyApproverGroupIds = accessApprovalPolicyApprovers.map(({ policyId }) => policyId);
-    if (accessApprovalPolicyApprovers.length > 0) {
-      const accessApprovalPolicies = await accessApprovalPolicyDAL.find({
-        $in: {
-          [`${TableName.AccessApprovalPolicy}.id` as "id"]: [...new Set(accessApprovalPolicyApproverGroupIds)]
-        },
-        projectId: existingMembership.scopeProjectId ?? undefined,
-        deletedAt: null
-      });
-
-      if (accessApprovalPolicies.length > 0) {
-        const policyNames = accessApprovalPolicies.map((p) => p.name).join(", ");
-        throw new BadRequestError({
-          message: `Cannot remove group from project: group is an approver in access approval ${accessApprovalPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
-        });
-      }
-    }
-
     const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
       ...(existingMembership.scopeProjectId
         ? { projectId: existingMembership.scopeProjectId }
@@ -700,9 +671,9 @@ export const membershipGroupServiceFactory = ({
 
     // Removing a group from a project drops its users + identities from it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      licenseDomain.emit(existingMembership.scopeOrgId, Meter.SecretIdentities.key);
-      licenseDomain.emit(existingMembership.scopeOrgId, Meter.PamIdentities.key);
-      licenseDomain.emit(existingMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+      licenseService.emit(existingMembership.scopeOrgId, Meter.SecretIdentities.key);
+      licenseService.emit(existingMembership.scopeOrgId, Meter.PamIdentities.key);
+      licenseService.emit(existingMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
     }
     return { membership: membershipDoc, group };
   };

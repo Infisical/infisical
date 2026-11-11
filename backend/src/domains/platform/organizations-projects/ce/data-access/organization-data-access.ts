@@ -2,23 +2,26 @@ import { ProjectType, TableName } from "@app/db/schemas";
 import { DataAccessDb, TReadOptions } from "@app/domains/lib/data-access-db";
 import { DatabaseError } from "@app/lib/errors";
 
-// Project types that do not take a workspace slot on a plan.
+import { TOrganization, TOrganizationDataAccess } from "../service/dependencies";
+
+type TOrganizationRow = { id: string; name: string; slug: string };
+
+const toOrganization = (row: TOrganizationRow): TOrganization => ({ id: row.id, name: row.name, slug: row.slug });
+
 const UNCOUNTED_WORKSPACE_TYPES = [
   ProjectType.CertificateManager,
   ProjectType.SecretScanning,
   ProjectType.PAM,
   ProjectType.AgentVault,
-  // Rows of the removed SSH and Agent Sentinel products are left in place (see migration 20260729150000)
-  // but must not consume workspace quota.
+  // Removed products, rows kept (see migration 20260729150000) but they shouldn't use workspace quota.
   "ssh",
   "ai"
 ];
 
-// Reads the organizations and projects tables, which a future domain will own; see ../../AGENTS.md.
-export class OrganizationDataAccess {
+// Reads tables a future domain will own; see ../../AGENTS.md.
+export class OrganizationDataAccess implements TOrganizationDataAccess {
   constructor(private readonly db: DataAccessDb) {}
 
-  // The org's root: itself for a root org, the root a sub-org belongs to. Null when the org does not exist.
   async findRootOrgId(orgId: string, options?: TReadOptions): Promise<string | null> {
     try {
       const db = this.db.reader(options);
@@ -32,12 +35,19 @@ export class OrganizationDataAccess {
     }
   }
 
-  // The org's root, or the org itself when it does not exist.
-  async resolveRootOrgId(orgId: string, options?: TReadOptions): Promise<string> {
-    return (await this.findRootOrgId(orgId, options)) ?? orgId;
+  async findById(orgId: string, options?: TReadOptions): Promise<TOrganization | null> {
+    try {
+      const row = (await this.db
+        .reader(options)(TableName.Organization)
+        .where("id", orgId)
+        .select("id", "name", "slug")
+        .first()) as TOrganizationRow | undefined;
+      return row ? toOrganization(row) : null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find organization" });
+    }
   }
 
-  // Live projects that take a workspace slot, in the org and its sub-orgs.
   async countWorkspaces(orgId: string, options?: TReadOptions): Promise<number> {
     try {
       const knex = this.db.reader(options);

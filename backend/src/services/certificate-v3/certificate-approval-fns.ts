@@ -3,9 +3,9 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { ActionProjectType, TCertificates } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateProfileActions,
@@ -109,8 +109,8 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "find" | "insertMany">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseDomain: TLicenseDomain;
-  certManagerDomain: TCertManagerDomain;
+  licenseService: TLicenseService;
+  certManagerService: TCertManagerService;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
@@ -220,8 +220,8 @@ export const certificateApprovalServiceFactory = (
     certificateSecretDAL,
     kmsCoreDomain,
     projectDAL,
-    licenseDomain,
-    certManagerDomain,
+    licenseService,
+    certManagerService,
     keyStore,
     certificatePolicyService,
     certificateIssuanceQueue,
@@ -490,7 +490,7 @@ export const certificateApprovalServiceFactory = (
       altNames: (mappedReconstructedRequest.subjectAlternativeNames ?? [])
         .map((san: { value: string }) => san.value)
         .join(","),
-      deps: { projectDAL, licenseDomain, certManagerDomain, keyStore },
+      deps: { projectDAL, licenseService, certManagerService, keyStore },
       isApprovedRequest: true
     });
 
@@ -648,7 +648,7 @@ export const certificateApprovalServiceFactory = (
       projectId: profile.projectId,
       commonName: certRequest.commonName,
       altNames: (altNames ?? []).map((san) => san.value).join(","),
-      deps: { projectDAL, licenseDomain, certManagerDomain, keyStore },
+      deps: { projectDAL, licenseService, certManagerService, keyStore },
       isApprovedRequest: true
     });
 
@@ -1167,7 +1167,7 @@ export const certificateApprovalServiceFactory = (
         projectId: targetProfile.projectId,
         commonName: certificateRequestInput.commonName,
         altNames: (altNames ?? []).map((san) => san.value).join(","),
-        deps: { projectDAL, licenseDomain, certManagerDomain, keyStore },
+        deps: { projectDAL, licenseService, certManagerService, keyStore },
         isApprovedRequest: true
       });
 

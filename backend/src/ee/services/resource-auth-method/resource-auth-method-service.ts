@@ -3,7 +3,7 @@ import { Knex } from "knex";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
@@ -113,7 +113,7 @@ type TResourceAuthMethodServiceFactoryDep = {
   agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg" | "updateById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   gatewayProxyRegistry: TGatewayProxyRegistry;
 };
@@ -179,7 +179,7 @@ export const resourceAuthMethodServiceFactory = ({
   agentVaultProxyDAL,
   identityDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   orgDAL,
   gatewayProxyRegistry
 }: TResourceAuthMethodServiceFactoryDep) => {
@@ -351,7 +351,7 @@ export const resourceAuthMethodServiceFactory = ({
         OrgPermissionSubjects.GatewayPool
       );
 
-      const plan = await licenseDomain.getPlan(actor.orgId);
+      const plan = await licenseService.getPlan(actor.orgId);
       if (!plan.gatewayPool) {
         throw new BadRequestError({
           message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."

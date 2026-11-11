@@ -3,9 +3,9 @@ import { randomUUID } from "crypto";
 import { Knex } from "knex";
 
 import { ActionProjectType, ResourceType, TCertificates } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -149,8 +149,9 @@ type TCertificateV3ServiceFactoryDep = {
     | "find"
     | "getRequestEnrollmentTypeByCertId"
     | "getOriginatingRequestByCertId"
+    | "canRenewFromCsr"
   >;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<
     TCertificateAuthorityDALFactory,
@@ -199,8 +200,8 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   apiEnrollmentConfigDAL: Pick<TApiEnrollmentConfigDALFactory, "findById">;
-  licenseDomain: TLicenseDomain;
-  certManagerDomain: TCertManagerDomain;
+  licenseService: TLicenseService;
+  certManagerService: TCertManagerService;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   auditLogService: Pick<TAuditLogServiceFactory, "createCollapsedAuditLog">;
@@ -365,13 +366,13 @@ export const certificateV3ServiceFactory = ({
   pkiApplicationProfileDAL,
   pkiApplicationDAL,
   apiEnrollmentConfigDAL,
-  licenseDomain,
-  certManagerDomain,
+  licenseService,
+  certManagerService,
   keyStore,
   telemetryService,
   auditLogService
 }: TCertificateV3ServiceFactoryDep) => {
-  const $quotaDeps = { projectDAL, licenseDomain, certManagerDomain, keyStore };
+  const $quotaDeps = { projectDAL, licenseService, certManagerService, keyStore };
 
   const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
     certificateAlertEventEmitter.emit({ ...input, eventType: CertificateApplicationAlertEvent.Issuance }, tx);
@@ -661,7 +662,7 @@ export const certificateV3ServiceFactory = ({
       altNames: (certificateRequestWithDefaults.altNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      licenseDomain,
+      licenseService,
       quotaDeps: $quotaDeps
     });
 
@@ -1439,7 +1440,7 @@ export const certificateV3ServiceFactory = ({
       altNames: (mappedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      licenseDomain,
+      licenseService,
       quotaDeps: $quotaDeps
     });
 
@@ -1969,7 +1970,7 @@ export const certificateV3ServiceFactory = ({
       altNames: (mappedCertificateRequest.subjectAlternativeNames ?? []).map((san) => san.value).join(","),
       projectId: profile.projectId,
       projectDAL,
-      licenseDomain,
+      licenseService,
       quotaDeps: $quotaDeps
     });
 
@@ -2393,7 +2394,7 @@ export const certificateV3ServiceFactory = ({
     pkiApplicationProfileDAL,
     pkiApplicationDAL,
     apiEnrollmentConfigDAL,
-    licenseDomain,
+    licenseService,
     quotaDeps: $quotaDeps,
     recordQuotaUsage: $recordQuotaUsage,
     resolveApplicationIdForProfile: $resolveApplicationIdForProfile,

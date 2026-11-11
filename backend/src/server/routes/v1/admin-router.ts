@@ -91,7 +91,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const config = await getServerCfg();
       const serverEnvs = getConfig();
 
-      const hasOfflineLicense = server.services.licenseDomain.hasOfflineLicenseKey();
+      const hasOfflineLicense = server.services.licenseService.hasOfflineLicenseKey();
 
       const isSuperAdminUser = req.auth && isSuperAdmin(req.auth);
 
@@ -378,7 +378,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       });
     },
     handler: async (req) => {
-      const organization = await server.services.superAdmin.deleteOrganization(req.params.organizationId);
+      const organization = await server.services.orgDeletion.deleteOrganization(req.params.organizationId);
 
       return {
         organization

@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
 import { runGatewayAttempt } from "@app/lib/gateway-v2/gateway-attempt-context";
@@ -42,7 +42,7 @@ type TGatewayPoolServiceFactoryDep = {
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   permissionService: TPermissionServiceFactory;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   identityKubernetesAuthDAL: Pick<TIdentityKubernetesAuthDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   pkiDiscoveryConfigDAL: Pick<TPkiDiscoveryConfigDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findByGatewayPoolId" | "countByGatewayPoolId">;
@@ -57,7 +57,7 @@ export const gatewayPoolServiceFactory = ({
   gatewayV2DAL,
   gatewayV2Service,
   permissionService,
-  licenseDomain,
+  licenseService,
   identityKubernetesAuthDAL,
   pkiDiscoveryConfigDAL,
   appConnectionDAL,
@@ -76,7 +76,7 @@ export const gatewayPoolServiceFactory = ({
   };
 
   const $checkLicense = async (orgId: string) => {
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.gatewayPool) {
       throw new BadRequestError({
         message: "Your current plan does not support gateway pools. Please upgrade to an Enterprise plan."

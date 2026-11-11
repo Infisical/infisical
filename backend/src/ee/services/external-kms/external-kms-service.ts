@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { TExternalKmsDetails, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
 import { OrgPermissionActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -21,7 +21,7 @@ import { TExternalKmsAwsSchema, TExternalKmsGcpSchema } from "./providers/model"
 type TExternalKmsServiceFactoryDep = {
   kmsCoreDomain: TKmsCoreDomain;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TExternalKmsServiceFactory = ReturnType<typeof externalKmsServiceFactory>;
@@ -39,7 +39,7 @@ const typed = (details: TExternalKmsDetails) => ({
 // Creating, changing or browsing provider keys needs the plan; reading or deleting an existing key does not.
 export const externalKmsServiceFactory = ({
   permissionService,
-  licenseDomain,
+  licenseService,
   kmsCoreDomain
 }: TExternalKmsServiceFactoryDep) => {
   const $orgPermission = (
@@ -76,7 +76,7 @@ export const externalKmsServiceFactory = ({
     const { permission } = await $orgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Kms);
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.externalKms) {
       throw new BadRequestError({
         message: "Failed to create external KMS due to plan restriction. Upgrade to the Enterprise plan."
@@ -100,7 +100,7 @@ export const externalKmsServiceFactory = ({
     const { permission } = await $orgPermission(actor, actorId, key.orgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
 
-    const plan = await licenseDomain.getPlan(key.orgId);
+    const plan = await licenseService.getPlan(key.orgId);
     if (!plan.externalKms) {
       throw new BadRequestError({
         message: "Failed to update external KMS due to plan restriction. Upgrade to the Enterprise plan."
@@ -152,7 +152,7 @@ export const externalKmsServiceFactory = ({
     const { permission } = await $orgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseService.getPlan(actorOrgId);
     if (!plan.externalKms) {
       throw new BadRequestError({
         message: "Failed to fetch GCP KMS keys due to plan restriction. Upgrade to the Enterprise plan."

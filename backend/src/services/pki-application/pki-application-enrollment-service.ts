@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ResourceType } from "@app/db/schemas";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApplicationActions,
@@ -110,7 +110,7 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -132,7 +132,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   acmeEnrollmentConfigDAL,
   scepEnrollmentConfigDAL,
   appConnectionService,
-  licenseDomain,
+  licenseService,
   approvalPolicyService,
   certificateProfileDAL,
   certificateAuthorityDAL,
@@ -401,7 +401,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
 
     // Runtime enrollment is already gated in the EST service, so this only moves the refusal to where
     // an admin can act on it instead of surfacing as a device that silently fails to enroll.
-    const estPlan = await licenseDomain.getPlan(actorOrgId);
+    const estPlan = await licenseService.getPlan(actorOrgId);
     if (!estPlan.pkiEst) {
       throw new BadRequestError({
         message: "Failed to enable EST enrollment due to plan restriction. Upgrade plan to use EST."
@@ -682,7 +682,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
       actorOrgId
     );
 
-    const scepPlan = await licenseDomain.getPlan(actorOrgId);
+    const scepPlan = await licenseService.getPlan(actorOrgId);
     if (!scepPlan.pkiScep) {
       throw new BadRequestError({
         message: "Failed to enable SCEP enrollment due to plan restriction. Upgrade plan to use SCEP."

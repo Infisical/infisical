@@ -13,8 +13,7 @@ import {
   usedContainers
 } from "./run";
 
-// Runs in Vitest's main process, once per run. Nothing is started here: servers start on first use
-// (startOnce), so a run never starts a server none of its tests asked for.
+// Runs once in Vitest's main process. Starts nothing: servers start lazily via startOnce.
 
 const dropRunDatabases = async (runId: string) => {
   const server = await readAddress<TPostgresServer>(runId, "postgres-server");
@@ -44,8 +43,7 @@ export default async function setup(project: TestProject) {
   project.provide("integrationRunId", runId);
 
   return async () => {
-    // A container server is removed whole with its container; only an external server keeps
-    // databases that need dropping.
+    // Containers take their DBs with them; only external servers need DBs dropped.
     if (process.env.INTEGRATION_POSTGRES_URL) await dropRunDatabases(runId);
     if (await usedContainers(runId)) await removeRunContainers(runId);
     await rm(runDirectory(runId), { recursive: true, force: true });

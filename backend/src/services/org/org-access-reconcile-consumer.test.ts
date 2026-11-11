@@ -89,7 +89,7 @@ const build = (opts?: {
       )
     },
     auditLogService: { createAuditLog: vi.fn().mockResolvedValue(undefined) },
-    licenseDomain: { emit: vi.fn() }
+    licenseService: { emit: vi.fn() }
   };
   const consumer = orgAccessReconcileConsumerFactory(deps as never);
   return { consumer, deps, tx, primary, sendPamCancellations };
@@ -192,7 +192,7 @@ describe("org access reconcile consumer", () => {
     expect(result.status).toBe(EventResultStatus.Delivered);
     expect(deps.projectAccessRevokeService.revokeActorsInOrgs).not.toHaveBeenCalled();
     expect(deps.auditLogService.createAuditLog).not.toHaveBeenCalled();
-    expect(deps.licenseDomain.emit).not.toHaveBeenCalled();
+    expect(deps.licenseService.emit).not.toHaveBeenCalled();
   });
 
   // A group with no org rows names no orgs, so the actual reconcile is driven by an org membership event.
@@ -239,7 +239,7 @@ describe("org access reconcile consumer", () => {
         }
       })
     );
-    expect(deps.licenseDomain.emit).toHaveBeenCalledTimes(3);
+    expect(deps.licenseService.emit).toHaveBeenCalledTimes(3);
   });
 
   test("records the identity and the group that carried the lost path, and says which grants went", async () => {
@@ -285,7 +285,7 @@ describe("org access reconcile consumer", () => {
     expect(deps.projectAccessRevokeService.revokeActorsInOrgs).toHaveBeenCalledTimes(1);
     expect(sendPamCancellations).toHaveBeenCalledTimes(1);
     expect(deps.auditLogService.createAuditLog).not.toHaveBeenCalled();
-    expect(deps.licenseDomain.emit).not.toHaveBeenCalled();
+    expect(deps.licenseService.emit).not.toHaveBeenCalled();
   });
 
   test("treats an org deleted before the run as delivered with nothing to do", async () => {

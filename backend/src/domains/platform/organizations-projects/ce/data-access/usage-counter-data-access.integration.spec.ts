@@ -4,7 +4,7 @@ import { ProjectType } from "@app/db/schemas";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
 import { Meter } from "@app/domains/platform/license/ce/module";
-import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
+import { usageCounter } from "@app/domains/platform/license/ce/testing/usage-counter";
 
 import { OrganizationsProjectsModule } from "../module";
 import { seedBillableActors } from "../testing/billable-actor-fixture";
@@ -12,21 +12,15 @@ import { seedBillableActors } from "../testing/billable-actor-fixture";
 describe("OrganizationsProjectsModule usage counters", () => {
   const h = setupIntegration();
 
-  const build = () => {
-    const licenseRegistry = new FakeLicenseRegistry();
-    return {
-      module: new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(h.db), licenseRegistry }),
-      licenseRegistry
-    };
-  };
+  const build = () => ({ module: new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(h.db) }) });
 
   test("should count only accepted, non-ghost members in a Secret Manager or KMS project or in none, each once", async () => {
     // Setup
     const { rootOrgId } = await seedBillableActors(h.db);
-    const { licenseRegistry } = build();
+    const { module } = build();
 
     // Action
-    const users = await licenseRegistry.counter(Meter.UserIdentities.key).count(rootOrgId);
+    const users = await usageCounter(module.usageCounters, Meter.UserIdentities.key).count(rootOrgId);
 
     // Assert
     expect(users).toBe(5);
@@ -35,10 +29,10 @@ describe("OrganizationsProjectsModule usage counters", () => {
   test("should count members and identities together, a sub-org's identities into its root", async () => {
     // Setup
     const { rootOrgId } = await seedBillableActors(h.db);
-    const { licenseRegistry } = build();
+    const { module } = build();
 
     // Action
-    const total = await licenseRegistry.counter(Meter.Identities.key).count(rootOrgId);
+    const total = await usageCounter(module.usageCounters, Meter.Identities.key).count(rootOrgId);
 
     // Assert
     expect(total).toBe(9);
@@ -47,10 +41,10 @@ describe("OrganizationsProjectsModule usage counters", () => {
   test("should count nothing for an org with no members", async () => {
     // Setup
     await seedBillableActors(h.db);
-    const { licenseRegistry } = build();
+    const { module } = build();
 
     // Action
-    const total = await licenseRegistry.counter(Meter.Identities.key).count(randomUUID());
+    const total = await usageCounter(module.usageCounters, Meter.Identities.key).count(randomUUID());
 
     // Assert
     expect(total).toBe(0);
@@ -60,13 +54,13 @@ describe("OrganizationsProjectsModule usage counters", () => {
     // Setup
     const first = await seedBillableActors(h.db);
     const second = await seedBillableActors(h.db);
-    const { licenseRegistry } = build();
+    const { module } = build();
     const perOrg =
-      (await licenseRegistry.counter(Meter.Identities.key).count(first.rootOrgId)) +
-      (await licenseRegistry.counter(Meter.Identities.key).count(second.rootOrgId));
+      (await usageCounter(module.usageCounters, Meter.Identities.key).count(first.rootOrgId)) +
+      (await usageCounter(module.usageCounters, Meter.Identities.key).count(second.rootOrgId));
 
     // Action
-    const instance = await licenseRegistry.counter(Meter.Identities.key).count(null);
+    const instance = await usageCounter(module.usageCounters, Meter.Identities.key).count(null);
 
     // Assert
     expect(instance).toBeGreaterThanOrEqual(perOrg);

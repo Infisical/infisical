@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TAuditLogSettings } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -40,7 +40,7 @@ type TAuditLogSettingsServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "getItems" | "setItemWithExpiry" | "deleteItem">;
 };
 
@@ -121,11 +121,11 @@ export const auditLogSettingsServiceFactory = ({
   orgDAL,
   projectDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   keyStore
 }: TAuditLogSettingsServiceFactoryDep) => {
   const assertPlanAllowsAuditLogs = async (orgId: string) => {
-    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseDomain.getPlan(orgId));
+    const plan = await requestMemoize(requestMemoKeys.licensePlan(orgId), () => licenseService.getPlan(orgId));
     if (!plan.auditLogs) {
       throw new BadRequestError({
         message:

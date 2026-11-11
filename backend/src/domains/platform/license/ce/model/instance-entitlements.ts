@@ -8,7 +8,6 @@ export enum InstanceType {
   Cloud = "cloud"
 }
 
-// Flags that describe the instance, not an org.
 export type TInstanceFeatures = TPlanProps & {
   fips: false;
   instanceUserManagement: false;
@@ -23,7 +22,7 @@ export type TInstanceEntitlementsProps = {
   customerId: string | null;
 };
 
-// What the instance itself is licensed for, read from its license key at boot.
+// The instance's own license, read from its key at boot.
 export class InstanceEntitlements {
   private constructor(private readonly props: TInstanceEntitlementsProps) {}
 

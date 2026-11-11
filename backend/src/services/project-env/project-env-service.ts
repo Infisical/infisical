@@ -1,8 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { TAccessApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-environment-dal";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { TSecretApprovalPolicyEnvironmentDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-environment-dal";
@@ -29,9 +28,8 @@ type TProjectEnvServiceFactoryDep = {
   projectEnvDAL: TProjectEnvDALFactory;
   folderDAL: Pick<TSecretFolderDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectFolderPermissionCache">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "setItemWithExpiry" | "getItem" | "waitTillReady" | "deleteItem">;
-  accessApprovalPolicyEnvironmentDAL: Pick<TAccessApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
   secretApprovalPolicyEnvironmentDAL: Pick<TSecretApprovalPolicyEnvironmentDALFactory, "findAvailablePoliciesByEnvId">;
   approvalPolicySecretEnvironmentDAL: Pick<TApprovalPolicySecretEnvironmentDALFactory, "findPolicyByEnvId">;
 };
@@ -41,10 +39,9 @@ export type TProjectEnvServiceFactory = ReturnType<typeof projectEnvServiceFacto
 export const projectEnvServiceFactory = ({
   projectEnvDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   keyStore,
   folderDAL,
-  accessApprovalPolicyEnvironmentDAL,
   secretApprovalPolicyEnvironmentDAL,
   approvalPolicySecretEnvironmentDAL
 }: TProjectEnvServiceFactoryDep) => {
@@ -100,7 +97,7 @@ export const projectEnvServiceFactory = ({
 
       // getProjectPermission above guarantees project existence and org membership,
       // so actorOrgId === project.orgId — no separate project lookup needed.
-      const plan = await licenseDomain.getPlan(actorOrgId);
+      const plan = await licenseService.getPlan(actorOrgId);
       if (plan.environmentLimit !== null && envs.length >= plan.environmentLimit) {
         // case: limit imposed on number of environments allowed
         // case: number of environments used exceeds the number of environments allowed
@@ -205,7 +202,7 @@ export const projectEnvServiceFactory = ({
       const envs = await projectEnvDAL.find({ projectId });
       // getProjectPermission above guarantees project existence and org membership,
       // so actorOrgId === project.orgId — no separate project lookup needed.
-      const plan = await licenseDomain.getPlan(actorOrgId);
+      const plan = await licenseService.getPlan(actorOrgId);
       if (plan.environmentLimit !== null && envs.length > plan.environmentLimit) {
         // case: limit imposed on number of environments allowed
         // case: number of environments used exceeds the number of environments allowed
@@ -281,17 +278,10 @@ export const projectEnvServiceFactory = ({
             name: "DeleteEnvironment"
           });
         }
-        const accessApprovalPolicies = await accessApprovalPolicyEnvironmentDAL.findAvailablePoliciesByEnvId(id, tx);
-        if (accessApprovalPolicies.length > 0) {
-          throw new BadRequestError({
-            message: "Environment is in use by an access approval policy",
-            name: "DeleteEnvironment"
-          });
-        }
         const approvalPolicy = await approvalPolicySecretEnvironmentDAL.findPolicyByEnvId(id, tx);
         if (approvalPolicy) {
           throw new BadRequestError({
-            message: `Environment is in use by ${approvalPolicy.policyType === ApprovalPolicyType.SecretAccess ? "an access approval policy" : "a secret approval policy"}`,
+            message: `Environment is in use by ${approvalPolicy.policyType === ApprovalPolicyType.SecretAccess ? "a secret access approval policy" : "an approval policy"}`,
             name: "DeleteEnvironment"
           });
         }
@@ -418,7 +408,7 @@ export const projectEnvServiceFactory = ({
         const activeEnvs = await projectEnvDAL.find({ projectId }, { tx });
         // getProjectPermission above guarantees project existence and org membership,
         // so actorOrgId === project.orgId — no separate project lookup needed.
-        const plan = await licenseDomain.getPlan(actorOrgId);
+        const plan = await licenseService.getPlan(actorOrgId);
         if (plan.environmentLimit !== null && activeEnvs.length >= plan.environmentLimit) {
           throw new BadRequestError({
             message:

@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { OrgMembershipStatus, ProjectType } from "@app/db/schemas";
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { BadRequestError } from "@app/lib/errors";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -32,15 +32,15 @@ const setup = () => {
   const permissionService = {
     getOrgPermission: vi.fn().mockResolvedValue({ permission: { cannot: () => false } })
   };
-  const licenseDomain = new FakeLicenseDomain();
+  const licenseService = new FakeLicenseService();
   const service = projectServiceFactory({
     orgDAL,
     projectDAL,
     permissionService,
-    licenseDomain
+    licenseService
   } as unknown as Parameters<typeof projectServiceFactory>[0]);
 
-  return { service, orgDAL, projectDAL, permissionService, licenseDomain, memberships, tx };
+  return { service, orgDAL, projectDAL, permissionService, licenseService, memberships, tx };
 };
 
 describe("project navigation across sub-organizations", () => {

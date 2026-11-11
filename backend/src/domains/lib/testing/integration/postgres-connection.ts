@@ -4,14 +4,14 @@ import type { TDbClient } from "@app/db";
 
 import { DATABASE_PREFIX } from "./run";
 
-// No vitest runtime imports here: global-setup.ts runs in Vitest's main process and imports this file.
+// No vitest runtime imports: global-setup.ts imports this from Vitest's main process.
 
 export type TPostgresServer = {
   host: string;
   port: number;
   user: string;
   password: string;
-  // The database the harness connects to for CREATE and DROP DATABASE.
+  // Used for CREATE and DROP DATABASE.
   maintenanceDatabase: string;
 };
 
@@ -59,7 +59,7 @@ export const createDatabase = async (admin: Knex, name: string, template?: strin
   }
 };
 
-// force ends the sessions still connected to it; without it, a database in use is left alone and the drop fails.
+// force kicks out connected sessions; without it a DB in use stays and the drop fails.
 export const dropDatabase = async (admin: Knex, name: string, { force = true }: { force?: boolean } = {}) => {
   assertHarnessDatabaseName(name);
   await admin.raw(force ? "DROP DATABASE IF EXISTS ?? WITH (FORCE)" : "DROP DATABASE IF EXISTS ??", [name]);
@@ -74,16 +74,10 @@ export const listHarnessDatabases = async (admin: Knex, prefix: string) => {
   return result.rows.map((row) => row.datname);
 };
 
-/*
- * Production builds its client with initDbConnection, which adds primaryNode() and replicaNode()
- * to knex's global QueryBuilder and returns the one client from a closure. Knex refuses to
- * register a method twice, so that works once per process, and a test file can hold several
- * databases (the worker's, a fresh one, an empty target). Here the methods are registered once
- * and look the client up by its config, which a transaction's client shares with the client it
- * came from, so every database (and every transaction on it) resolves to its own. The
- * registry lives on globalThis because knex is loaded once per process while this module can be
- * evaluated once per test file.
- */
+// Prod's initDbConnection adds primaryNode()/replicaNode() to knex's global QueryBuilder, and knex won't
+// register a method twice, but a test file can hold several DBs. So we register once and look the client
+// up by config (transactions share it). Registry lives on globalThis since knex loads once per process
+// but this module can load once per test file.
 const registryKey = Symbol.for("infisical.integration-test.knex-by-client");
 
 type TRegistry = WeakMap<object, TDbClient>;

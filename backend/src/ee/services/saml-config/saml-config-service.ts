@@ -15,7 +15,7 @@ import {
   TUsers
 } from "@app/db/schemas";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
@@ -107,7 +107,7 @@ type TSamlConfigServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsCoreDomain: TKmsCoreDomain;
@@ -148,7 +148,7 @@ export const samlConfigServiceFactory = ({
   eventEmitter,
   additionalPrivilegeDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   tokenService,
   smtpService,
   identityMetadataDAL,
@@ -276,7 +276,7 @@ export const samlConfigServiceFactory = ({
             projectDAL,
             projectBotDAL,
             membershipGroupDAL,
-            licenseDomain,
+            licenseService,
             shouldFailOnMissingMembers: false,
             tx: transaction
           });
@@ -300,7 +300,7 @@ export const samlConfigServiceFactory = ({
               groupDAL,
               projectKeyDAL,
               additionalPrivilegeDAL,
-              licenseDomain,
+              licenseService,
               alertChannelRecipientDAL,
               eventEmitter,
               membershipDAL,
@@ -360,7 +360,7 @@ export const samlConfigServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Create, OrgPermissionSubjects.Sso);
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.samlSSO)
       throw new BadRequestError({
         message:
@@ -438,7 +438,7 @@ export const samlConfigServiceFactory = ({
       actorOrgId
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionSsoActions.Edit, OrgPermissionSubjects.Sso);
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.samlSSO)
       throw new BadRequestError({
         message:
@@ -693,9 +693,9 @@ export const samlConfigServiceFactory = ({
     const samlConfig = await samlConfigDAL.findOne({ orgId });
     const groupsMetadata = metadata?.find(({ key }) => key === "groups");
 
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     const shouldSyncGroups = !!samlConfig?.enableGroupSync && !!plan.groups;
-    const identityLimit = Plan.restore(plan).enforcedIdentityLimit;
+    const identityLimit = plan.enforcedIdentityLimit;
 
     let user: TUsers;
     let sendPamCancellations = () => {};
@@ -782,7 +782,7 @@ export const samlConfigServiceFactory = ({
       });
     } else {
       let isNewUser = false;
-      const seatUsage = identityLimit ? await licenseDomain.getSeatUsage(orgId) : null;
+      const seatUsage = identityLimit ? await licenseService.getSeatUsage(orgId) : null;
       user = await userDAL.transaction(async (tx) => {
         let newUser: TUsers | undefined;
 
@@ -898,7 +898,7 @@ export const samlConfigServiceFactory = ({
     }
     sendPamCancellations();
 
-    await licenseDomain.syncSeats(organization.id);
+    await licenseService.syncSeats(organization.id);
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 

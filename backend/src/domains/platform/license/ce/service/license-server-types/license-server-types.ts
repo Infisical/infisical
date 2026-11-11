@@ -335,6 +335,16 @@ export const checkoutResultSchema = z
   })
   .passthrough();
 
+// Safe to retry, a repeat just closes 0 licenses.
+export const orgDeletedResultSchema = z
+  .object({
+    licensesClosed: z.number().int(),
+    canceledSubscriptionIds: z.array(z.string()),
+    commitmentForfeited: z.boolean()
+  })
+  .passthrough();
+export type TOrgDeletedResult = z.infer<typeof orgDeletedResultSchema>;
+
 // Proration preview for an add/remove/commitment change. prorationAmount is signed: positive is
 // charged now (an add/increase), negative is a credit toward the next invoice (a removal). prorationDate
 // is the instant the server priced at; echo it back into the apply so it reproduces the exact charge.
@@ -448,7 +458,8 @@ export const billingProfileResponseSchema = z
 export type TEntitlementFeature = z.infer<typeof entitlementFeatureSchema>;
 export type TEntitlementsResponse = z.infer<typeof entitlementsResponseSchema>;
 
-export type TEntitlementOrg = { id: string };
+// Send name and slug when you have them: it's how the License Server's org directory learns them.
+export type TEntitlementOrg = { id: string; name?: string; slug?: string };
 export type TCatalogProduct = z.infer<typeof catalogProductSchema>;
 export type TCatalogResponse = z.infer<typeof catalogResponseSchema>;
 export type TSubscriptionItem = z.infer<typeof subscriptionItemSchema>;
@@ -609,11 +620,9 @@ const trialsResponseSchema = z.object({ trials: z.array(trialHistoryItemSchema).
 export type TTrialsResponse = z.infer<typeof trialsResponseSchema>;
 export { trialsResponseSchema };
 
-// A self-hosted license is one tenant on the License Server, so its reads and reports carry this id in
-// place of an org id.
+// A self-hosted license is one tenant on the License Server, so it uses this id instead of an org id.
 export const SELF_HOSTED_LICENSE_ORG_ID = "self-hosted";
 
-// The billing calls the domain exposes to the billing portal.
 export type TLicenseServerBilling = {
   isEnabled: () => boolean;
   getEntitlements: (org: TEntitlementOrg) => Promise<TEntitlementsResponse | null>;
@@ -631,6 +640,4 @@ export type TLicenseServerBilling = {
   cancelTrial: (orgId: string, payload: TCancelTrialPayload) => Promise<TTrialCancelResult>;
   confirmTrialPayment: (orgId: string, payload: TConfirmTrialPaymentPayload) => Promise<TConfirmTrialPaymentResult>;
   getTrials: (orgId: string) => Promise<TTrialsResponse>;
-  cancelSubscription: (orgId: string) => Promise<TCheckoutResult>;
-  resumeSubscription: (orgId: string) => Promise<TCheckoutResult>;
 };

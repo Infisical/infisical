@@ -1,7 +1,9 @@
 import type { TDomainKeyStore } from "@app/domains/lib/key-store";
 import { applyJitter } from "@app/lib/dates";
 
-// Names and lifetimes are kept from before the domain existed, so a rolling deploy reads what old pods wrote.
+import { TUsageReportCache } from "../service/dependencies";
+
+// Key names and TTLs match the old pods' so a rolling deploy reads what they wrote.
 const UsageKeys = {
   reconcileMarker: (orgId: string) => `license-usage-reconcile-${orgId}`,
   lastReported: (reportOrgId: string, meterKey: string) => `license-usage-last-reported-${reportOrgId}-${meterKey}`
@@ -12,8 +14,8 @@ const UsageKeyTtls = {
   lastReportedInSeconds: 604800
 };
 
-// What has been reported to the License Server, in the key store, so an unchanged value is not sent again.
-export class UsageReportCache {
+// Remembers what we last reported so an unchanged value doesn't get sent again.
+export class UsageReportCache implements TUsageReportCache {
   constructor(private readonly keyStore: TDomainKeyStore) {}
 
   // Once per interval per org; the jitter keeps a cold start from expiring every marker together.

@@ -11,7 +11,7 @@ import {
 import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -44,7 +44,7 @@ import { AwsHoneyTokenDecryptedCredentialsSchema, TAwsHoneyTokenDecryptedCredent
 type TConfigProviderDep = {
   honeyTokenConfigDAL: THoneyTokenConfigDALFactory;
   kmsCoreDomain: TKmsCoreDomain;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
 };
 
@@ -303,7 +303,7 @@ export const parseAwsHoneyTokenDecryptedCredentials = (value: unknown): TAwsHone
 export const honeyTokenAwsConfigProviderFactory = ({
   honeyTokenConfigDAL,
   kmsCoreDomain,
-  licenseDomain,
+  licenseService,
   appConnectionDAL
 }: TConfigProviderDep) => {
   const upsertConfig = async ({
@@ -311,7 +311,7 @@ export const honeyTokenAwsConfigProviderFactory = ({
     connectionId,
     config
   }: TUpsertAwsHoneyTokenConfigInput): Promise<THoneyTokenConfigRecord> => {
-    const plan = await licenseDomain.getPlan(orgId);
+    const plan = await licenseService.getPlan(orgId);
     if (!plan.honeyTokens) {
       throw new BadRequestError({
         message: "Failed to save honey token configuration due to plan restriction. Upgrade plan to use honey tokens."

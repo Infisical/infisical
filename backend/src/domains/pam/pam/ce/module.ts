@@ -1,20 +1,20 @@
 import { ProjectType } from "@app/db/schemas";
-import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
+import { Meter, TUsageCounter } from "@app/domains/platform/license/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 
 export type TPamDeps = {
-  organizationsProjectsDomain: TOrganizationsProjectsDomain;
-  licenseRegistry: TLicenseRegistry;
+  organizationsProjectsService: TOrganizationsProjectsService;
 };
 
-// Holds only its usage counter for now; it grows as PAM moves into a domain.
 export class PamModule {
-  readonly name = "pam";
+  readonly usageCounters: TUsageCounter[];
 
-  constructor({ organizationsProjectsDomain, licenseRegistry }: TPamDeps) {
-    licenseRegistry.registerUsageCounter({
-      meter: Meter.PamIdentities,
-      count: (orgId) => organizationsProjectsDomain.countProjectIdentities(ProjectType.PAM, orgId ?? undefined)
-    });
+  constructor({ organizationsProjectsService }: TPamDeps) {
+    this.usageCounters = [
+      {
+        meter: Meter.PamIdentities,
+        count: (orgId) => organizationsProjectsService.countProjectIdentities(ProjectType.PAM, orgId ?? undefined)
+      }
+    ];
   }
 }

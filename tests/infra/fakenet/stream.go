@@ -43,10 +43,9 @@ var (
 
 // Listen opens this binary's event stream and keeps it open, resuming after a drop.
 //
-// prefix is the start every credential this binary mints shares, so the server sends
-// only this binary's events. wholeHosts are services whose scopes are ids the product
-// assigns rather than credentials the binary mints; their events all arrive, and only
-// tracked scopes are kept. It returns once the first connection is established, so
+// prefix filters to this binary's credentials. wholeHosts are scoped by product ids
+// instead, so they come through unfiltered and only tracked scopes are kept. Returns
+// once the first connection is up, so
 // an unreachable fakenet fails in TestMain rather than as a timeout in some test.
 func Listen(ctx context.Context, adminURL, prefix string, wholeHosts ...string) error {
 	adminURL = strings.TrimSuffix(adminURL, "/")

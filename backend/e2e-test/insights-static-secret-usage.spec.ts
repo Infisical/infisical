@@ -89,12 +89,12 @@ const projects = {
 
 const projectList = Object.values(projects);
 
-const { permissionService, licenseDomain, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
+const { permissionService, licenseService, setCanReadInsights, setPlanHasInsights } = buildOrgInsightsGateStubs();
 
 const insightsService = insightsServiceFactory({
   ...projectScopedInsightsDepStubs,
   permissionService,
-  licenseDomain,
+  licenseService,
   ...usageInsightsDepStubs,
   insightsDAL: insightsDALFactory(testDb),
   keyStore: passThroughKeyStore

@@ -9,7 +9,7 @@ import {
   ResourceType,
   TMemberships
 } from "@app/db/schemas";
-import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -56,7 +56,7 @@ type TAgentVaultMembershipServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 } & TClearPersonalValuesDeps;
 
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
@@ -136,7 +136,7 @@ export const agentVaultMembershipServiceFactory = ({
   userAliasDAL,
   orgDAL,
   permissionService,
-  licenseDomain,
+  licenseService,
   agentVaultPersonalValueDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL
@@ -524,7 +524,7 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.created.length) licenseDomain.emit(ctx.actorOrgId, Meter.AgentVaultIdentities.key);
+    if (written.created.length) licenseService.emit(ctx.actorOrgId, Meter.AgentVaultIdentities.key);
     return { members: written.created, skipped: written.skipped };
   };
 
@@ -713,7 +713,7 @@ export const agentVaultMembershipServiceFactory = ({
       };
     });
 
-    if (written.removed.length) licenseDomain.emit(ctx.actorOrgId, Meter.AgentVaultIdentities.key);
+    if (written.removed.length) licenseService.emit(ctx.actorOrgId, Meter.AgentVaultIdentities.key);
     return { members: written.removed, skipped: written.skipped };
   };
   return {

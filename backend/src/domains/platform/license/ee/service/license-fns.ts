@@ -3,11 +3,10 @@ import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { TInstanceFeatures } from "../../ce/model/instance-entitlements";
 import { LicenseType, TLicenseKeyConfig, TOfflineLicenseContents } from "./offline-license";
 
-// Read only through the specifier "./license-fns": the e2e suite aliases it to
-// src/ee/services/license/__mocks__/license-fns.ts, which grants every feature.
+// Only import this as "./license-fns": the e2e suite aliases that path to a mock that grants everything
+// (src/ee/services/license/__mocks__/license-fns.ts).
 
-// What an instance or org gets with no license: the community edition. EE-licensed so the free tier is not
-// edited into a paid one.
+// No-license defaults. Lives in EE so nobody can edit the free tier into a paid one.
 export const getDefaultOnPremFeatures = (): TInstanceFeatures => ({
   _id: null,
   slug: null,

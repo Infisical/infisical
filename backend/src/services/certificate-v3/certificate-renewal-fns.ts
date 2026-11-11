@@ -241,7 +241,10 @@ export const isCertificateContentEdit = ({
   return suppliedAttributeKeys(attributes).length > 0;
 };
 
-export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
+export const assertCsrRenewalAttributes = (
+  attributes?: TRenewalAttributes,
+  { isStoredCsr = false }: { isStoredCsr?: boolean } = {}
+) => {
   if (!attributes) return;
 
   const rejected = suppliedAttributeKeys(attributes)
@@ -253,7 +256,9 @@ export const assertCsrRenewalAttributes = (attributes?: TRenewalAttributes) => {
       (key) => RENEWAL_ATTRIBUTES[key].label
     );
     throw new BadRequestError({
-      message: `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
+      message: isStoredCsr
+        ? `Reusing this key pair renews from the signing request Infisical holds for it, which sets ${rejected.join(", ")}. To change them, renew with a new CSR or a new key pair. Only ${settable.join(", ")} can be set when reusing the key pair.`
+        : `The CSR is the source of truth for ${rejected.join(", ")}. Update the CSR instead, or renew without one. Only ${settable.join(", ")} can be set alongside a CSR.`
     });
   }
 };
@@ -453,6 +458,23 @@ export const buildCsrRenewalCertificateRequest = ({
     ...(basicConstraints && { basicConstraints })
   };
 };
+
+// Where the CSR is silent, a CSR renewal keeps what the certificate already has, as every other renewal
+// does, so an unchanged renewal passes the policy the certificate passed. The signature algorithm always
+// comes from the certificate: the CSR's own signature only proves possession of its key and says nothing
+// about how the CA signs, so an ECDSA CSR for a certificate an RSA CA signed must not ask for ECDSA.
+export const keepCertificateFactsInCsrRenewal = (
+  csrRequest: TCertificateRequest,
+  certificate: Pick<TCertificateRequest, "signatureAlgorithm" | "keyUsages" | "extendedKeyUsages" | "basicConstraints">
+): TCertificateRequest => ({
+  ...csrRequest,
+  signatureAlgorithm: certificate.signatureAlgorithm ?? csrRequest.signatureAlgorithm,
+  keyUsages: csrRequest.keyUsages?.length ? csrRequest.keyUsages : certificate.keyUsages,
+  extendedKeyUsages: csrRequest.extendedKeyUsages?.length
+    ? csrRequest.extendedKeyUsages
+    : certificate.extendedKeyUsages,
+  basicConstraints: csrRequest.basicConstraints ?? certificate.basicConstraints
+});
 
 export const buildRenewalAuditChanges = (
   replayedRequest: TCertificateRequest,

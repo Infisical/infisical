@@ -3,19 +3,15 @@ import { randomUUID } from "node:crypto";
 import { ProjectType } from "@app/db/schemas";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { setupIntegration } from "@app/domains/lib/testing/integration";
-import { FakeLicenseRegistry } from "@app/domains/platform/license/ce/testing/fake-license-registry";
 
 import { OrganizationsProjectsModule } from "../module";
 
-describe("OrganizationsProjectsModule organizations for License", () => {
+describe("OrganizationsProjectsService organizations for License", () => {
   const h = setupIntegration();
 
-  const build = () => {
-    const licenseRegistry = new FakeLicenseRegistry();
-    // eslint-disable-next-line no-new
-    new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(h.db), licenseRegistry });
-    return { organizations: licenseRegistry.organizations! };
-  };
+  const build = () => ({
+    organizations: new OrganizationsProjectsModule({ db: DataAccessDb.fromClient(h.db) }).service
+  });
 
   const orgTree = async () => {
     const root = await h.factories.organization();
@@ -46,6 +42,21 @@ describe("OrganizationsProjectsModule organizations for License", () => {
     expect(found).toBeNull();
   });
 
+  test("should read an org's name and slug, and nothing for an org that does not exist", async () => {
+    // Setup
+    const { root } = await orgTree();
+    const { organizations } = build();
+
+    // Action
+    const found = await Promise.all([
+      organizations.findOrganization(root.id),
+      organizations.findOrganization(randomUUID())
+    ]);
+
+    // Assert
+    expect(found).toEqual([{ id: root.id, name: root.name, slug: root.slug }, null]);
+  });
+
   test("should count live workspaces across the org tree, leaving out products that take no workspace slot", async () => {
     // Setup
     const { root, sub } = await orgTree();
@@ -60,7 +71,7 @@ describe("OrganizationsProjectsModule organizations for License", () => {
     const { organizations } = build();
 
     // Action
-    const used = await organizations.countWorkspacesUsed(root.id);
+    const used = await organizations.countWorkspaces(root.id);
 
     // Assert
     expect(used).toBe(2);

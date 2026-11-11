@@ -2,7 +2,6 @@ import { TDataAccessLocks } from "../data-access-locks";
 import { runAfterCommitHooks, TRunContext, TTransaction, TTransactionRunner } from "../transaction-runner";
 import { KeyedMutex } from "./keyed-mutex";
 
-// What the in-memory transaction runner needs from a domain's in-memory data access to roll it back.
 export type TSnapshotState = {
   snapshot(): unknown;
   restore(snapshot: unknown): void;
@@ -16,15 +15,10 @@ type TRunnerShared<TDataAccess> = {
   mutex: KeyedMutex;
 };
 
-/**
- * Behaves like TransactionRunner over an in-memory data access: it restores the state when the work throws,
- * runs afterCommit hooks only on success, joins when bound with within(tx), gives per-key locks held until
- * the outermost run ends.
- *
- * Runs share one state with no isolation: a run that throws restores the snapshot it took when it started,
- * which also undoes writes another run committed in the meantime. A test that overlaps runs must not rely
- * on one of them rolling back.
- */
+// Like TransactionRunner, in memory: restores the data access on throw, runs afterCommit only on success,
+// joins via within(tx), per-key locks held until the outermost run ends. No isolation though: a failed run
+// restores its starting snapshot, wiping writes other runs committed meanwhile, so don't overlap runs and
+// count on rollback.
 export class InMemoryTransactionRunner<TDataAccess> implements TTransactionRunner<TDataAccess> {
   private readonly shared: TRunnerShared<TDataAccess>;
 

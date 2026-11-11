@@ -1,16 +1,17 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
 import {
   TCatalogProduct,
   TEntitlementOrg,
-  TLicenseDomain,
+  TLicenseService,
+  TLicenseServerBilling,
   TProductLineItem,
   TSubscriptionPreviewPayload,
   TSubscriptionResponse
 } from "@app/domains/platform/license/ce/module";
-import { TOrganizationsProjectsDomain } from "@app/domains/platform/organizations-projects/ce/module";
+import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -39,7 +40,6 @@ import {
   BillingV2Trial,
   BillingV2UsageBreakdown,
   TAddBillingV2PaymentMethodDTO,
-  TBillingV2SubscriptionLifecycleDTO,
   TBuyBillingV2ProductDTO,
   TCancelBillingV2TrialDTO,
   TChangeBillingV2CommitmentDTO,
@@ -59,12 +59,13 @@ type TLicenseV2ServiceFactoryDep = {
   envConfig: Pick<TEnvConfig, "isCloud" | "SITE_URL">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  organizationsProjectsDomain: TOrganizationsProjectsDomain;
-  certManagerDomain: TCertManagerDomain;
+  organizationsProjectsService: TOrganizationsProjectsService;
+  certManagerService: TCertManagerService;
   breakdownDAL: TLicenseV2BreakdownDALFactory;
   // countUsage seeds a purchase's initial per_resource quantities with the org's present provisioned count,
-  // so the previewed and charged figures are truthful. billing is the License Server's billing surface.
-  licenseDomain: TLicenseDomain;
+  // so the previewed and charged figures are truthful.
+  licenseService: TLicenseService;
+  licenseBilling: TLicenseServerBilling;
 };
 
 export type TLicenseV2ServiceFactory = ReturnType<typeof licenseV2ServiceFactory>;
@@ -404,13 +405,12 @@ export const licenseV2ServiceFactory = ({
   envConfig,
   orgDAL,
   permissionService,
-  licenseDomain,
-  organizationsProjectsDomain,
-  certManagerDomain,
+  licenseService,
+  licenseBilling: licenseClient,
+  organizationsProjectsService,
+  certManagerService,
   breakdownDAL
 }: TLicenseV2ServiceFactoryDep) => {
-  const licenseClient = licenseDomain.billing;
-
   const buildProductLineItem = async (
     product: TCatalogProduct,
     cadence: "monthly" | "annual",
@@ -444,7 +444,7 @@ export const licenseV2ServiceFactory = ({
     // The org's present provisioned count per priced per_resource dimension (null when we can't meter it).
     const counted = await Promise.all(
       perUnitPrices.map(async (price) => {
-        const present = await licenseDomain.countUsage(orgId, price.dimensionKey);
+        const present = await licenseService.countUsage(orgId, price.dimensionKey);
         return { dimensionKey: price.dimensionKey, present, included: price.includedQuantity ?? 0 };
       })
     );
@@ -846,7 +846,10 @@ export const licenseV2ServiceFactory = ({
       logger.error(error, `billing-v2: failed to read billing profile [orgId=${orgId}]`);
     }
 
-    const entitlements = await buildEntitlements({ id: orgId }, subscription);
+    const entitlements = await buildEntitlements(
+      { id: orgId, name: organization.name, slug: organization.slug },
+      subscription
+    );
     // Org-wide monthly on-demand overage (dollars), summed once for the summary's on-demand note.
     const onDemandAmount = Object.values(entitlements).reduce(
       (sum, entitlement) => sum + (entitlement.onDemandAmount ?? 0),
@@ -1045,7 +1048,7 @@ export const licenseV2ServiceFactory = ({
       throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     }
 
-    const rootOrgId = isInstanceScope ? null : await organizationsProjectsDomain.resolveRootOrgId(orgId);
+    const rootOrgId = isInstanceScope ? null : await organizationsProjectsService.resolveRootOrgId(orgId);
     const scopeOrgId = rootOrgId ?? undefined;
     const orgs = isInstanceScope
       ? await breakdownDAL.findAllOrgNames()
@@ -1091,8 +1094,8 @@ export const licenseV2ServiceFactory = ({
     switch (dimensionKey) {
       case BillingV2BreakdownDimension.Identities: {
         const [counts, rows] = await Promise.all([
-          organizationsProjectsDomain.countBillableOrgActors(rootOrgId),
-          organizationsProjectsDomain.getBillableIdentityOwnershipBreakdown(rootOrgId)
+          organizationsProjectsService.countBillableOrgActors(rootOrgId),
+          organizationsProjectsService.getBillableIdentityOwnershipBreakdown(rootOrgId)
         ]);
         return { breakdown: await buildIdentityBreakdown(counts, rows, true, "machine identity") };
       }
@@ -1101,8 +1104,8 @@ export const licenseV2ServiceFactory = ({
         const isSecretIdentities = dimensionKey === BillingV2BreakdownDimension.SecretIdentities;
         const projectType = isSecretIdentities ? ProjectType.SecretManager : ProjectType.PAM;
         const [counts, rows] = await Promise.all([
-          organizationsProjectsDomain.countProjectIdentitiesByKind(projectType, scopeOrgId),
-          organizationsProjectsDomain.getProjectIdentityBreakdown(projectType, scopeOrgId)
+          organizationsProjectsService.countProjectIdentitiesByKind(projectType, scopeOrgId),
+          organizationsProjectsService.getProjectIdentityBreakdown(projectType, scopeOrgId)
         ]);
         return {
           breakdown: await buildIdentityBreakdown(
@@ -1114,7 +1117,7 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.UserIdentities: {
-        const { users } = await organizationsProjectsDomain.countBillableOrgActors(rootOrgId);
+        const { users } = await organizationsProjectsService.countBillableOrgActors(rootOrgId);
         return {
           breakdown: {
             dimensionKey,
@@ -1128,12 +1131,12 @@ export const licenseV2ServiceFactory = ({
         };
       }
       case BillingV2BreakdownDimension.InternalCas: {
-        const rows = await certManagerDomain.getInternalCaOrgBreakdown(scopeOrgId);
+        const rows = await certManagerService.getInternalCaOrgBreakdown(scopeOrgId);
         return { breakdown: buildOrgOnlyBreakdown(rows, "internal CA") };
       }
       case BillingV2BreakdownDimension.ActiveCerts:
       case BillingV2BreakdownDimension.WildcardCerts: {
-        const rows = await certManagerDomain.getActiveCertificateOrgBreakdown(scopeOrgId);
+        const rows = await certManagerService.getActiveCertificateOrgBreakdown(scopeOrgId);
         const isWildcard = dimensionKey === BillingV2BreakdownDimension.WildcardCerts;
         return {
           breakdown: buildOrgOnlyBreakdown(
@@ -1184,11 +1187,11 @@ export const licenseV2ServiceFactory = ({
     return { organizations: orgs, totalCount };
   };
 
-  // Force-refresh entitlements: ask the license server to recompute and drop the local cache, so the
-  // next overview read pulls the latest and re-populates the cache. Exposed as a manual refresh button.
+  // The manual refresh button: fetches the plan again and replaces the cached one only when the fetch
+  // succeeds, so an outage keeps the org's current plan instead of the fallback.
   const refreshEntitlements = async ({ orgId, actor }: TGetBillingV2OverviewDTO) => {
     await ensureBillingRead(orgId, actor);
-    await licenseDomain.refreshPlan(orgId);
+    await licenseService.refreshPlan(orgId);
     return { success: true as const };
   };
 
@@ -1217,7 +1220,7 @@ export const licenseV2ServiceFactory = ({
         details: { code: "payment_action_required" }
       });
     }
-    await licenseDomain.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
     return { outcome: "payment_action_required" as const, paymentUrl: url };
   };
 
@@ -1295,7 +1298,7 @@ export const licenseV2ServiceFactory = ({
     }
 
     if (result.outcome === "subscription_updated") {
-      await licenseDomain.refreshPlan(orgId, { afterBillingChange: {} });
+      await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
       return {
         outcome: "subscription_updated" as const,
         subscriptionId: result.subscriptionId,
@@ -1308,7 +1311,7 @@ export const licenseV2ServiceFactory = ({
     if (!result.checkoutUrl) {
       throw new InternalServerError({ message: "Checkout session did not return a URL" });
     }
-    await licenseDomain.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
     return {
       outcome: "checkout_created" as const,
       checkoutUrl: result.checkoutUrl,
@@ -1437,7 +1440,7 @@ export const licenseV2ServiceFactory = ({
     if (result.outcome === "payment_action_required") {
       return paymentActionRequired(orgId, result.paymentUrl);
     }
-    await licenseDomain.refreshPlan(orgId, { afterBillingChange: {} });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
     return {
       outcome: result.outcome,
       subscriptionId: result.subscriptionId,
@@ -1463,10 +1466,10 @@ export const licenseV2ServiceFactory = ({
         throw new InternalServerError({ message: "Checkout session did not return a URL" });
       }
       // Longer window: the change only applies once the customer completes the hosted checkout.
-      await licenseDomain.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
+      await licenseService.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
       return { outcome: "checkout_created" as const, checkoutUrl: result.checkoutUrl };
     }
-    await licenseDomain.refreshPlan(orgId, { afterBillingChange: {} });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
     return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
   };
 
@@ -1496,7 +1499,7 @@ export const licenseV2ServiceFactory = ({
     });
     // awaiting_card redirects to a Stripe card-setup checkout; the trial is granted by webhook only
     // after it's completed, so hold the revalidation window open longer than an immediate trial_started.
-    await licenseDomain.refreshPlan(orgId, { afterBillingChange: { checkout: result.outcome === "awaiting_card" } });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: { checkout: result.outcome === "awaiting_card" } });
     return { outcome: result.outcome, cardSetupUrl: result.cardSetupUrl };
   };
 
@@ -1505,7 +1508,7 @@ export const licenseV2ServiceFactory = ({
   const cancelTrial = async ({ orgId, actor, productId }: TCancelBillingV2TrialDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.cancelTrial(orgId, { productKey: productId });
-    await licenseDomain.refreshPlan(orgId, { afterBillingChange: {} });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
     return { outcome: result.outcome };
   };
 
@@ -1519,7 +1522,7 @@ export const licenseV2ServiceFactory = ({
       return { outcome: result.outcome, redirectUrl: paymentUrl };
     }
     if (result.outcome === "upgraded") {
-      await licenseDomain.refreshPlan(orgId, { afterBillingChange: {} });
+      await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
       return { outcome: result.outcome };
     }
     const checkoutUrl = toHttpsUrl(result.checkoutUrl);
@@ -1528,7 +1531,7 @@ export const licenseV2ServiceFactory = ({
         message: "We couldn't get a secure checkout link. Please try again or contact support."
       });
     }
-    await licenseDomain.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: { checkout: true } });
     return { outcome: result.outcome, redirectUrl: checkoutUrl };
   };
 
@@ -1537,21 +1540,7 @@ export const licenseV2ServiceFactory = ({
   const removeProduct = async ({ orgId, actor, productId }: TRemoveBillingV2ProductDTO) => {
     await ensureManageBilling(orgId, actor);
     const result = await licenseClient.removeProduct(orgId, productId);
-    await licenseDomain.refreshPlan(orgId, { afterBillingChange: {} });
-    return { subscriptionId: result.subscriptionId };
-  };
-
-  const cancelSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
-    await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.cancelSubscription(orgId);
-    await licenseDomain.refreshPlan(orgId, { afterBillingChange: {} });
-    return { subscriptionId: result.subscriptionId };
-  };
-
-  const resumeSubscription = async ({ orgId, actor }: TBillingV2SubscriptionLifecycleDTO) => {
-    await ensureManageBilling(orgId, actor);
-    const result = await licenseClient.resumeSubscription(orgId);
-    await licenseDomain.refreshPlan(orgId, { afterBillingChange: {} });
+    await licenseService.refreshPlan(orgId, { afterBillingChange: {} });
     return { subscriptionId: result.subscriptionId };
   };
 
@@ -1570,8 +1559,6 @@ export const licenseV2ServiceFactory = ({
     changeCommitments,
     startTrial,
     cancelTrial,
-    confirmTrialPayment,
-    cancelSubscription,
-    resumeSubscription
+    confirmTrialPayment
   };
 };

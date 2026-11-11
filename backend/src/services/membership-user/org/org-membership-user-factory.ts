@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus } from "@app/db/schemas";
-import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -39,7 +39,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
@@ -52,7 +52,7 @@ export const newOrgMembershipUserFactory = ({
   userDAL,
   orgDAL,
   smtpService,
-  licenseDomain,
+  licenseService,
   membershipUserDAL,
   emailDomainDAL,
   oidcConfigDAL,
@@ -128,9 +128,9 @@ export const newOrgMembershipUserFactory = ({
       });
     }
 
-    const identityLimit = Plan.restore(await licenseDomain.getPlan(dto.permission.orgId)).enforcedIdentityLimit;
+    const identityLimit = (await licenseService.getPlan(dto.permission.orgId)).enforcedIdentityLimit;
     if (identityLimit) {
-      const { identitiesUsed } = await licenseDomain.getSeatUsage(dto.permission.orgId);
+      const { identitiesUsed } = await licenseService.getSeatUsage(dto.permission.orgId);
       if (identitiesUsed >= identityLimit) {
         throw new BadRequestError({
           name: "InviteUser",

@@ -2,7 +2,7 @@ import { createMongoAbility, MongoAbility } from "@casl/ability";
 import { vi } from "vitest";
 
 import { OrgMembershipRole } from "@app/db/schemas";
-import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
+import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
 import { orgAdminPermissions } from "@app/ee/services/permission/org-permission";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -39,14 +39,14 @@ const createService = ({ groupOrgId }: { groupOrgId: string }) => {
   };
   const userDAL = { findOne: vi.fn().mockResolvedValue({ id: "user-id", username: USERNAME }) };
   const membershipDAL = { findOne: vi.fn().mockResolvedValue({ id: "identity-membership-id" }) };
-  const licenseDomain = new FakeLicenseDomain().setPlan(ORG_ID, { groups: true as false });
+  const licenseService = new FakeLicenseService().setPlan(ORG_ID, { groups: true as false });
 
   const service = groupServiceFactory({
     permissionService: {
       getOrgPermission: vi.fn().mockResolvedValue({ permission: admin }),
       getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: admin }])
     } as never,
-    licenseDomain,
+    licenseService,
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
       findMembership: vi.fn().mockResolvedValue([])

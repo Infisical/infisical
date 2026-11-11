@@ -1,20 +1,20 @@
 import crypto from "crypto";
 
-import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TLicenseService } from "@app/domains/platform/license/ce/module";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TOfflineUsageReportDALFactory } from "./offline-usage-report-dal";
 
 type TOfflineUsageReportServiceFactoryDep = {
   offlineUsageReportDAL: TOfflineUsageReportDALFactory;
-  licenseDomain: TLicenseDomain;
+  licenseService: TLicenseService;
 };
 
 export type TOfflineUsageReportServiceFactory = ReturnType<typeof offlineUsageReportServiceFactory>;
 
 export const offlineUsageReportServiceFactory = ({
   offlineUsageReportDAL,
-  licenseDomain
+  licenseService
 }: TOfflineUsageReportServiceFactoryDep) => {
   const signReportContent = (content: string, licenseId: string): string => {
     const contentHash = crypto.createHash("sha256").update(content).digest("hex");
@@ -29,7 +29,7 @@ export const offlineUsageReportServiceFactory = ({
   };
 
   const generateUsageReportCSV = async () => {
-    const hasOfflineLicense = licenseDomain.hasOfflineLicenseKey();
+    const hasOfflineLicense = licenseService.hasOfflineLicenseKey();
 
     if (!hasOfflineLicense) {
       throw new BadRequestError({
@@ -38,7 +38,7 @@ export const offlineUsageReportServiceFactory = ({
       });
     }
 
-    const licenseId = licenseDomain.getLicenseId();
+    const licenseId = licenseService.getLicenseId();
 
     const [
       userMetrics,
