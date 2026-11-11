@@ -77,7 +77,6 @@ type TRow = {
   id: string;
   name: string;
   type: string;
-  accessBundleId: string;
   credentialType: string;
   credentialConfig: unknown;
   encryptedCredential: Buffer | null;
@@ -187,7 +186,10 @@ const setup = ({
     },
     kmsService: kms as never,
     agentVaultServiceDAL: {
-      findByIdInAccessBundle: async ({ id }: { id: string }) => rows.get(id) as never,
+      findByIdInProject: async ({ id }: { id: string }) => rows.get(id) as never,
+      // Every service is in the one bundle these tests use.
+      findBundlesForServices: async (serviceIds: string[]) =>
+        new Map(serviceIds.map((id) => [id, [{ id: BUNDLE_ID, name: "bundle" }]])) as never,
       findByIdPrimary: async (id: string) => {
         const row = rows.get(id);
         return (row ? { ...row, credentialConfig: structuredClone(row.credentialConfig) } : undefined) as never;
@@ -266,9 +268,6 @@ const setup = ({
           credentialConfig: structuredClone(row.credentialConfig)
         } as never;
       }
-    },
-    agentVaultAccessBundleDAL: {
-      findByIdInProject: async ({ id }: { id: string }) => (id === BUNDLE_ID ? ({ id } as never) : undefined)
     },
     agentVaultPersonalValueDAL: {
       findOauthForOwner: async ({ serviceId, owner }: { serviceId: string; owner: { userId?: string } }) => {
@@ -375,7 +374,6 @@ const createAuthorization = (env: ReturnType<typeof setup>, extra: Record<string
   env.service.createAuthorization({
     projectId: PROJECT_ID,
     ctx: ctxOf(USER_ID),
-    accessBundleId: BUNDLE_ID,
     serverUrl: SERVER_URL,
     ...extra
   });
@@ -520,7 +518,6 @@ describe("starting an authorization", () => {
       id: SERVICE_ID,
       name: "linear",
       type: AgentVaultServiceType.Mcp,
-      accessBundleId: BUNDLE_ID,
       credentialType: AgentVaultCredentialType.OAuth,
       credentialConfig: oauthConfig({ clientId: "old-client", grantedScopes: ["admin"], ...overrides }),
       encryptedCredential: sealBytes({
@@ -630,7 +627,6 @@ describe("starting an authorization", () => {
       env.service.createAuthorization({
         projectId: PROJECT_ID,
         ctx: { ...ctxOf(USER_ID), actor: ActorType.IDENTITY },
-        accessBundleId: BUNDLE_ID,
         serverUrl: SERVER_URL
       })
     ).rejects.toThrow("Only a user can authorize an OAuth connection");
@@ -642,7 +638,6 @@ describe("starting an authorization", () => {
       id: SERVICE_ID,
       name: "stripe",
       type: AgentVaultServiceType.Http,
-      accessBundleId: BUNDLE_ID,
       credentialType: AgentVaultCredentialType.Bearer,
       credentialConfig: {},
       encryptedCredential: null,
@@ -654,13 +649,13 @@ describe("starting an authorization", () => {
     );
   });
 
-  test("an unknown bundle is a 404", async () => {
+  test("an unknown service is a 404", async () => {
     const env = setup();
     await expect(
       env.service.createAuthorization({
         projectId: PROJECT_ID,
         ctx: ctxOf(USER_ID),
-        accessBundleId: "99999999-9999-4999-8999-999999999999",
+        serviceId: "99999999-9999-4999-8999-999999999999",
         serverUrl: SERVER_URL
       })
     ).rejects.toThrow(/not found/);
@@ -690,7 +685,6 @@ describe("completing an authorization", () => {
         projectId,
         ctx: ctxOf(USER_ID),
         authorizationId: authorization!.id,
-        accessBundleId: BUNDLE_ID,
         serverUrl: SERVER_URL
       })
     ).rejects.toThrow(NotFoundError);
@@ -897,7 +891,6 @@ describe("completing an authorization", () => {
 describe("using an authorization", () => {
   const claimArgs = {
     projectId: PROJECT_ID,
-    accessBundleId: BUNDLE_ID,
     ctx: ctxOf(USER_ID),
     serverUrl: SERVER_URL
   };
@@ -923,13 +916,6 @@ describe("using an authorization", () => {
     await expect(
       env.service.claimAuthorization({ ...claimArgs, authorizationId: id, ctx: ctxOf(OTHER_USER_ID) })
     ).rejects.toThrow(/not found/);
-    await expect(
-      env.service.claimAuthorization({
-        ...claimArgs,
-        authorizationId: id,
-        accessBundleId: "99999999-9999-4999-8999-999999999999"
-      })
-    ).rejects.toThrow(/different access bundle/);
   });
 
   test("a claim uses it up, and another claim is refused with a readable error", async () => {
@@ -1001,12 +987,8 @@ describe("using an authorization", () => {
     const [key] = [...env.store.keys()];
 
     await expect(
-      env.service.claimAuthorization({
-        ...claimArgs,
-        authorizationId: id,
-        accessBundleId: "99999999-9999-4999-8999-999999999999"
-      })
-    ).rejects.toThrow(/different access bundle/);
+      env.service.claimAuthorization({ ...claimArgs, authorizationId: id, serverUrl: "https://other.example.com/k" })
+    ).rejects.toThrow(/but the service's server is/);
     expect(env.store.has(key)).toBe(true);
 
     env.ttls.set(key, -1);
@@ -1021,7 +1003,6 @@ describe("using an authorization", () => {
       id: SERVICE_ID,
       name: "linear",
       type: AgentVaultServiceType.Mcp,
-      accessBundleId: BUNDLE_ID,
       credentialType: AgentVaultCredentialType.Bearer,
       credentialConfig: {},
       encryptedCredential: sealBytes({ value: "pat" })
@@ -1056,7 +1037,6 @@ describe("refreshing a service's token", () => {
       id: SERVICE_ID,
       name: "linear",
       type: AgentVaultServiceType.Mcp,
-      accessBundleId: BUNDLE_ID,
       credentialType: AgentVaultCredentialType.OAuth,
       credentialConfig: oauthConfig(),
       encryptedCredential: sealBytes({ accessToken: "old-access", refreshToken: "old-refresh" }),
@@ -1717,7 +1697,6 @@ describe("a member's own sign-in", () => {
     id: SERVICE_ID,
     name: "linear",
     type: AgentVaultServiceType.Mcp,
-    accessBundleId: BUNDLE_ID,
     credentialType: AgentVaultCredentialType.OAuth,
     credentialConfig: {
       type: AgentVaultCredentialType.OAuth,
@@ -1737,7 +1716,6 @@ describe("a member's own sign-in", () => {
     env.service.createAuthorization({
       projectId: PROJECT_ID,
       ctx: ctxOf(userId),
-      accessBundleId: BUNDLE_ID,
       serverUrl: SERVER_URL,
       serviceId: SERVICE_ID,
       personal: true
@@ -1808,7 +1786,7 @@ describe("a member's own sign-in", () => {
   test("a personal sign-in is claimed only as a personal value, and an admin's only for the service", async () => {
     const env = setup();
     env.rows.set(SERVICE_ID, memberService());
-    const claimDto = { projectId: PROJECT_ID, accessBundleId: BUNDLE_ID, serviceId: SERVICE_ID, serverUrl: SERVER_URL };
+    const claimDto = { projectId: PROJECT_ID, serviceId: SERVICE_ID, serverUrl: SERVER_URL };
 
     const { authorization } = await startPersonal(env);
     await expect(
@@ -1830,7 +1808,7 @@ describe("a member's own sign-in", () => {
   test("loading the tools reads a sign-in of either intent without claiming it, but only for its own service", async () => {
     const env = setup();
     env.rows.set(SERVICE_ID, memberService());
-    const readDto = { projectId: PROJECT_ID, accessBundleId: BUNDLE_ID, serverUrl: SERVER_URL, ctx: ctxOf(USER_ID) };
+    const readDto = { projectId: PROJECT_ID, serverUrl: SERVER_URL, ctx: ctxOf(USER_ID) };
 
     const { authorization } = await startPersonal(env);
     const state = new URL(authorization!.authorizeUrl).searchParams.get("state")!;
@@ -1963,7 +1941,6 @@ describe("a member's own sign-in", () => {
       env.service.createAuthorization({
         projectId: PROJECT_ID,
         ctx: ctxOf(USER_ID),
-        accessBundleId: BUNDLE_ID,
         serverUrl: "https://mcp.linear.app/other",
         serviceId: SERVICE_ID,
         personal: true

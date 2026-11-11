@@ -2090,7 +2090,6 @@ export const registerRoutes = async (
     keyStore,
     kmsService,
     agentVaultServiceDAL,
-    agentVaultAccessBundleDAL,
     agentVaultPersonalValueDAL,
     permissionService,
     membershipDAL

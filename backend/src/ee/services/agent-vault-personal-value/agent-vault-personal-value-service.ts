@@ -59,7 +59,10 @@ type TAgentVaultPersonalValueServiceFactoryDep = {
   agentVaultPersonalValueDAL: TAgentVaultPersonalValueDALFactory;
   agentVaultPersonalValueReferenceDAL: TAgentVaultPersonalValueReferenceDALFactory;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findKeys" | "lockForReference">;
-  agentVaultServiceDAL: Pick<TAgentVaultServiceDALFactory, "findByIdInProject" | "lockForPersonalValues">;
+  agentVaultServiceDAL: Pick<
+    TAgentVaultServiceDALFactory,
+    "findByIdInProject" | "findBundlesForServices" | "lockForPersonalValues"
+  >;
   agentVaultOauthService: Pick<
     TAgentVaultOauthServiceFactory,
     "claimAuthorization" | "buildCredentialFromAuthorization"
@@ -114,9 +117,6 @@ export const agentVaultPersonalValueServiceFactory = ({
     );
     return { ...reachability, owner: ownerOf(ctx) };
   };
-
-  const isReachable = (accessBundleIds: string[] | null, accessBundleId: string) =>
-    !accessBundleIds || accessBundleIds.includes(accessBundleId.toLowerCase());
 
   const projectService = (
     service: TAgentVaultPersonalValueServiceRow,
@@ -197,35 +197,41 @@ export const agentVaultPersonalValueServiceFactory = ({
     withVariableReferences?: boolean;
   }) => loadServices(args);
 
-  // A service outside the caller's reach, or in another bundle than the path names, reads exactly like one that does
-  // not exist.
+  // A service outside the caller's reach, through every bundle it is in, reads exactly like one that does not exist.
   const findReachableService = async (dto: TPersonalValuesByServiceDTO) => {
     const caller = await resolveCaller(dto);
     const service = await agentVaultServiceDAL.findByIdInProject({ id: dto.serviceId, projectId: dto.projectId });
-    if (
-      !service ||
-      service.accessBundleId !== dto.accessBundleId.toLowerCase() ||
-      !isReachable(caller.accessBundleIds, service.accessBundleId)
-    ) {
+    const bundleIds = service
+      ? ((await agentVaultServiceDAL.findBundlesForServices([service.id], null)).get(service.id) ?? []).map(
+          (bundle) => bundle.id
+        )
+      : [];
+    const reachingBundleIds = caller.accessBundleIds
+      ? bundleIds.filter((id) => caller.accessBundleIds!.includes(id))
+      : bundleIds;
+    if (!service || (caller.accessBundleIds && !reachingBundleIds.length)) {
       throw new NotFoundError({ message: `Service with ID '${dto.serviceId}' not found` });
     }
-    return { ...caller, service };
+    return { ...caller, service, reachingBundleIds };
   };
 
-  // Under the service lock, after the reach check: the caller's grants on the bundle, or for an admin without one, their
-  // admin role rows. A revoke, a removal or a demotion clears what the caller saved on bundles they lose, so none of
-  // those can land between the reach check and the write and leave values behind.
+  // Under the service lock, after the reach check: the caller's grants on the bundles the service is in, or for an
+  // admin without one, their admin role rows. A revoke, a removal, a demotion or taking the service out of a bundle
+  // clears what the caller saved for services they lose, so none of those can land between the reach check and the
+  // write and leave values behind.
   const lockReach = async (
     {
       projectId,
-      accessBundleId,
+      accessBundleIds,
       owner,
       isAdmin,
       serviceId
-    }: { projectId: string; accessBundleId: string; owner: TAgentVaultOwner; isAdmin: boolean; serviceId: string },
+    }: { projectId: string; accessBundleIds: string[]; owner: TAgentVaultOwner; isAdmin: boolean; serviceId: string },
     tx: Knex
   ) => {
-    const grants = await agentVaultPersonalValueDAL.lockGrantsForOwner({ projectId, accessBundleId, owner }, tx);
+    const grants = accessBundleIds.length
+      ? await agentVaultPersonalValueDAL.lockGrantsForOwner({ projectId, accessBundleIds, owner }, tx)
+      : [];
     const adminRoles =
       !grants.length && isAdmin
         ? await agentVaultPersonalValueDAL.lockAdminRolesForOwner({ projectId, owner }, tx)
@@ -241,7 +247,7 @@ export const agentVaultPersonalValueServiceFactory = ({
    * is single use and only its creator can do it, so a link sent to someone else can't attach their account.
    */
   const connectOauth = async ({ authorizationId, credentialType, ...dto }: TConnectPersonalOauthDTO) => {
-    const { owner, service, isAdmin } = await findReachableService(dto);
+    const { owner, service, isAdmin, reachingBundleIds } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
     }
@@ -260,7 +266,6 @@ export const agentVaultPersonalValueServiceFactory = ({
     const claim = await agentVaultOauthService.claimAuthorization({
       authorizationId,
       projectId: dto.projectId,
-      accessBundleId: service.accessBundleId,
       serviceId: service.id,
       ctx: dto.ctx,
       serverUrl: getServiceServerUrl(service.config)!,
@@ -286,7 +291,7 @@ export const agentVaultPersonalValueServiceFactory = ({
         await lockReach(
           {
             projectId: dto.projectId,
-            accessBundleId: service.accessBundleId,
+            accessBundleIds: reachingBundleIds,
             owner,
             isAdmin,
             serviceId: dto.serviceId
@@ -319,7 +324,7 @@ export const agentVaultPersonalValueServiceFactory = ({
           {
             projectId: dto.projectId,
             owner,
-            accessBundleIds: [service.accessBundleId],
+            accessBundleIds: null,
             serviceId: service.id,
             withVariableReferences: false
           },
@@ -344,7 +349,7 @@ export const agentVaultPersonalValueServiceFactory = ({
   const setPersonalValues = async (input: TSetPersonalValuesDTO) => {
     const { values, credentialType, ...dto } = input;
 
-    const { owner, service, isAdmin } = await findReachableService(dto);
+    const { owner, service, isAdmin, reachingBundleIds } = await findReachableService(dto);
     if (credentialType && credentialType !== service.credentialType) {
       throw new ConflictError({ message: SERVICE_CHANGED_DURING_SAVE_MESSAGE });
     }
@@ -422,7 +427,7 @@ export const agentVaultPersonalValueServiceFactory = ({
         await lockReach(
           {
             projectId: dto.projectId,
-            accessBundleId: service.accessBundleId,
+            accessBundleIds: reachingBundleIds,
             owner,
             isAdmin,
             serviceId: dto.serviceId
@@ -473,7 +478,7 @@ export const agentVaultPersonalValueServiceFactory = ({
         if (referenceRows.length) await agentVaultPersonalValueReferenceDAL.insertMany(referenceRows, tx);
 
         const [projected] = await loadServices(
-          { projectId: dto.projectId, owner, accessBundleIds: [service.accessBundleId], serviceId: service.id },
+          { projectId: dto.projectId, owner, accessBundleIds: null, serviceId: service.id },
           tx
         );
         return { personalValues: projected };
@@ -509,7 +514,7 @@ export const agentVaultPersonalValueServiceFactory = ({
       await agentVaultPersonalValueDAL.delete({ $in: { id: existing.map((row) => row.id) } }, tx);
 
       const [projected] = await loadServices(
-        { projectId: dto.projectId, owner, accessBundleIds: [service.accessBundleId], serviceId: service.id },
+        { projectId: dto.projectId, owner, accessBundleIds: null, serviceId: service.id },
         tx
       );
       return {
@@ -517,8 +522,8 @@ export const agentVaultPersonalValueServiceFactory = ({
           serviceId: service.id,
           serviceName: service.name,
           hostPattern: service.hostPattern,
-          accessBundleId: service.accessBundleId,
-          accessBundleName: service.accessBundleName,
+          accessBundleId: null,
+          accessBundleName: null,
           credentialType: service.credentialType as TPersonalValueCredentialType,
           isConfigured: false,
           fields: []

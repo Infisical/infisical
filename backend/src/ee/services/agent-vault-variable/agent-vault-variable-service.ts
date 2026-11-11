@@ -162,6 +162,10 @@ export const agentVaultVariableServiceFactory = ({
     return accessBundleIds;
   };
 
+  // A service is reached through any bundle it is in; null reach is an admin's, which is every service.
+  const isReachable = (service: TAgentVaultServiceUsingVariable, accessBundleIds: string[] | null) =>
+    !accessBundleIds || service.accessBundles.some((bundle) => accessBundleIds.includes(bundle.id));
+
   const splitByReach = async (
     args: { projectId: string; ctx: TGenericPermission; owner: TAgentVaultOwner | null },
     services: TAgentVaultServiceUsingVariable[]
@@ -169,11 +173,8 @@ export const agentVaultVariableServiceFactory = ({
     if (!services.length) return { reachable: services, unreachable: [] };
     const accessBundleIds = await reachableBundleIdsOf(args);
     if (!accessBundleIds) return { reachable: services, unreachable: [] };
-    const reach = new Set(accessBundleIds);
-    return {
-      reachable: services.filter((service) => reach.has(service.accessBundleId)),
-      unreachable: services.filter((service) => !reach.has(service.accessBundleId))
-    };
+    const reachable = services.filter((service) => isReachable(service, accessBundleIds));
+    return { reachable, unreachable: services.filter((service) => !reachable.includes(service)) };
   };
 
   // Values never leave through this projection; only the audited value endpoint returns one.
@@ -188,8 +189,7 @@ export const agentVaultVariableServiceFactory = ({
         name: service.serviceName,
         type: service.serviceType,
         hostPattern: service.hostPattern,
-        accessBundleId: service.accessBundleId,
-        accessBundleName: service.accessBundleName
+        accessBundles: service.accessBundles
       })),
     createdAt: variable.createdAt,
     updatedAt: variable.updatedAt
@@ -207,9 +207,7 @@ export const agentVaultVariableServiceFactory = ({
     services: TAgentVaultServiceUsingVariable[],
     { owner }: TAgentVaultVariableOwnerScope
   ) => {
-    const names = services
-      .map((service) => `'${service.serviceName}' (access bundle '${service.accessBundleName}')`)
-      .join(", ");
+    const names = services.map((service) => `'${service.serviceName}'`).join(", ");
     if (owner) {
       return services.length === 1
         ? `The variable '${key}' is used by your personal values for the service ${names}. Remove it from the service before you delete it.`
@@ -245,8 +243,7 @@ export const agentVaultVariableServiceFactory = ({
       limit: limit ?? query.keys?.length ?? AGENT_VAULT_VARIABLE_LIST_DEFAULT_LIMIT
     });
     const services = await agentVaultVariableDAL.findServicesUsing(variables.map((variable) => variable.id));
-    const reach = accessBundleIds ? new Set(accessBundleIds) : null;
-    const reachable = reach ? services.filter((service) => reach.has(service.accessBundleId)) : services;
+    const reachable = services.filter((service) => isReachable(service, accessBundleIds));
 
     return { variables: variables.map((variable) => projectVariable(variable, reachable)), totalCount };
   };
@@ -347,7 +344,6 @@ export const agentVaultVariableServiceFactory = ({
     const { accessBundleIds } = scope.owner
       ? await getAgentVaultReachability({ permissionService, membershipDAL }, rest)
       : { accessBundleIds: null };
-    const reach = accessBundleIds ? new Set(accessBundleIds) : null;
 
     // The refusal here is the real check. The row lock waits for any save adding a reference to this variable, since
     // those take it FOR SHARE. The deferred foreign keys only back it up, and only raise at commit.
@@ -360,10 +356,10 @@ export const agentVaultVariableServiceFactory = ({
         if (!variable) throw notFound(variableId);
 
         const services = await agentVaultVariableDAL.findServicesUsing([variable.id], tx);
-        const blocking = reach ? services.filter((service) => reach.has(service.accessBundleId)) : services;
+        const blocking = services.filter((service) => isReachable(service, accessBundleIds));
         if (blocking.length) throw new ConflictError({ message: inUseMessage(variable.key, blocking, scope) });
 
-        // What the owner saved on a bundle they no longer reach can't be edited or used, so it doesn't hold the
+        // What the owner saved for a service they no longer reach can't be edited or used, so it doesn't hold the
         // variable in place.
         if (scope.owner && services.length) {
           await agentVaultPersonalValueDAL.delete(

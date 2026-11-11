@@ -56,7 +56,7 @@ import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault
 import { describeSessionForAudit, hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionInlineServiceDALFactory } from "../agent-vault-session/agent-vault-session-inline-service-dal";
 import {
-  parseInlineServiceSecrets,
+  openInlineServiceSecrets,
   toInlineServiceFacts,
   toResolvedInlineService
 } from "../agent-vault-session/agent-vault-session-inline-service-fns";
@@ -1121,7 +1121,10 @@ export const agentVaultProxyServiceFactory = ({
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
       rows.some((row) => row.encryptedCredential || row.memberProvidedFields?.length) ||
-      inlineServiceRows.some((row) => row.encryptedSecrets) ||
+      inlineServiceRows.some(
+        (row) =>
+          !row.secretsDeletedAt && (row.encryptedCredential || row.customHeaders.length || row.substitutions.length)
+      ) ||
       customHeaderRows.length > 0 ||
       substitutionRows.length > 0 ||
       sessionLogKeyNeeded;
@@ -1138,7 +1141,11 @@ export const agentVaultProxyServiceFactory = ({
       if (!decryptor) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
       return JSON.parse(decryptor({ cipherTextBlob: encrypted }).toString("utf-8"));
     };
-    const $decryptValue = (encryptedValue: Buffer) => ($decryptJson(encryptedValue) as { value: string }).value;
+    // Only an inline service's values are ever deleted, and those are opened by openInlineServiceSecrets.
+    const $decryptValue = (encryptedValue: Buffer | null | undefined) => {
+      if (!encryptedValue) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
+      return ($decryptJson(encryptedValue) as { value: string }).value;
+    };
 
     const decryptedServices: TResolvedService[] = rows.map((row) => ({
       id: row.id,
@@ -1187,10 +1194,7 @@ export const agentVaultProxyServiceFactory = ({
     // Never expanded: an inline service's values were sent exactly as they are. After the bundle's services, so a host a
     // later bundle edit shares with one goes to the bundle's service, which the Go matcher picks on a tie by order.
     const inlineServices = inlineServiceRows.flatMap((row) => {
-      const resolved = toResolvedInlineService(
-        row,
-        row.encryptedSecrets ? parseInlineServiceSecrets($decryptJson(row.encryptedSecrets)) : null
-      );
+      const resolved = toResolvedInlineService(row, openInlineServiceSecrets(row, $decryptJson));
       if (!resolved) {
         logger.warn(
           `agentVaultResolve: inline service has no secrets to send, leaving it out [sessionId=${session.id}] [inlineServiceId=${row.id}]`

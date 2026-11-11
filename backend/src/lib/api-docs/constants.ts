@@ -105,6 +105,7 @@ export enum ApiDocsTags {
   PamDiscovery = "PAM Discovery",
   AgentVault = "Agent Vault",
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
+  AgentVaultServices = "Agent Vault Services",
   AgentVaultVariables = "Agent Vault Variables",
   AgentVaultSkills = "Agent Vault Skills",
   AgentVaultSessions = "Agent Vault Sessions",
@@ -4701,7 +4702,17 @@ export const AGENT_VAULT = {
   },
   SERVICE: {
     serviceId: "The ID of the service.",
-    name: "The name of the service.",
+    addServiceId: "The ID of the service to add. It must be a service in the same Agent Vault project.",
+    name: "The name of the service, unique in the Agent Vault project.",
+    accessBundles: "The access bundles the service is in, by name. A member sees only the ones they have been granted.",
+    accessBundleId: "The ID of the access bundle.",
+    accessBundleName: "The name of the access bundle.",
+    createAccessBundleIds:
+      "The access bundles to add the service to, all in the same Agent Vault project. Leave out to create it in no bundle and add it later.",
+    search: "Only services whose name, description or host pattern contains this text.",
+    limit: "The number of services to return.",
+    offset: "The number of services to skip.",
+    totalCount: "The number of services that match, across every page.",
     description:
       "What the service is for, such as what an agent can do with it and when to use it. Up to 256 characters, without line breaks or invisible characters. Agents in a session can read it, so never put a credential or any other secret in it.",
     updateDescription:
@@ -4943,8 +4954,10 @@ export const AGENT_VAULT = {
     usedByServiceName: "The name of the service.",
     usedByServiceType: "The service's type: `http`, `mcp`, `postgres`, `mysql` or `ssh`.",
     usedByServiceHostPattern: "The host pattern of the service. Null for a `postgres`, `mysql` or `ssh` service.",
-    usedByServiceAccessBundleId: "The ID of the access bundle the service belongs to.",
-    usedByServiceAccessBundleName: "The name of the access bundle the service belongs to.",
+    usedByServiceAccessBundleId: "The ID of the access bundle.",
+    usedByServiceAccessBundleName: "The name of the access bundle.",
+    usedByServiceAccessBundles:
+      "The access bundles the service is in. A member sees only the ones they have been granted.",
     createdAt: "When the variable was added.",
     updatedAt: "When the variable was last changed."
   },

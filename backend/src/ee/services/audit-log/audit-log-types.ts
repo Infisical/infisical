@@ -846,6 +846,8 @@ export enum EventType {
   AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD = "agent-vault-access-bundle-skill-add",
   AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE = "agent-vault-access-bundle-skill-remove",
+  AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD = "agent-vault-access-bundle-service-add",
+  AGENT_VAULT_ACCESS_BUNDLE_SERVICE_REMOVE = "agent-vault-access-bundle-service-remove",
   AGENT_VAULT_SKILLS_DELIVERED = "agent-vault-skills-delivered",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
@@ -6670,8 +6672,13 @@ interface AgentVaultAccessBundleDeleteEvent {
 interface AgentVaultServiceCreateEvent {
   type: EventType.AGENT_VAULT_SERVICE_CREATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    // Services belonged to one access bundle until they moved to the project, so these are present only on events
+    // recorded before that.
+    accessBundleId?: string;
+    accessBundleName?: string;
+    // The access bundles the service was in, by id and in the same order by name.
+    accessBundleIds?: string[];
+    accessBundleNames?: string[];
     serviceId: string;
     name: string;
     description?: string | null;
@@ -6710,8 +6717,10 @@ interface AgentVaultServiceCreateEvent {
 interface AgentVaultServiceUpdateEvent {
   type: EventType.AGENT_VAULT_SERVICE_UPDATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    // Services belonged to one access bundle until they moved to the project, so these are present only on events
+    // recorded before that.
+    accessBundleId?: string;
+    accessBundleName?: string;
     serviceId: string;
     name?: string;
     // Null when the update removed it.
@@ -6755,8 +6764,13 @@ interface AgentVaultServiceUpdateEvent {
 interface AgentVaultServiceDeleteEvent {
   type: EventType.AGENT_VAULT_SERVICE_DELETE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    // Services belonged to one access bundle until they moved to the project, so these are present only on events
+    // recorded before that.
+    accessBundleId?: string;
+    accessBundleName?: string;
+    // The access bundles the service was in, by id and in the same order by name.
+    accessBundleIds?: string[];
+    accessBundleNames?: string[];
     serviceId: string;
     name: string;
   };
@@ -6819,8 +6833,10 @@ interface AgentVaultVariableValueViewEvent {
 interface AgentVaultPersonalValuesSetEvent {
   type: EventType.AGENT_VAULT_PERSONAL_VALUES_SET;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    // Services belonged to one access bundle until they moved to the project, so these are present only on events
+    // recorded before that.
+    accessBundleId?: string;
+    accessBundleName?: string;
     serviceId: string;
     serviceName: string;
     // Which credential the fields belong to: credential-value is a token for bearer and a password for basic.
@@ -6837,8 +6853,10 @@ interface AgentVaultPersonalValuesSetEvent {
 interface AgentVaultPersonalValuesDeleteEvent {
   type: EventType.AGENT_VAULT_PERSONAL_VALUES_DELETE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    // Services belonged to one access bundle until they moved to the project, so these are present only on events
+    // recorded before that.
+    accessBundleId?: string;
+    accessBundleName?: string;
     serviceId: string;
     serviceName: string;
     credentialType: string;
@@ -6919,6 +6937,27 @@ interface AgentVaultAccessBundleSkillRemoveEvent {
   metadata: {
     skillId: string;
     skillName: string;
+    accessBundleId: string;
+    accessBundleName: string;
+  };
+}
+
+interface AgentVaultAccessBundleServiceAddEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD;
+  metadata: {
+    serviceId: string;
+    serviceName: string;
+    accessBundleId: string;
+    accessBundleName: string;
+  };
+}
+
+// The service stays in the project. Personal values of members who reached it only through this bundle are deleted.
+interface AgentVaultAccessBundleServiceRemoveEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SERVICE_REMOVE;
+  metadata: {
+    serviceId: string;
+    serviceName: string;
     accessBundleId: string;
     accessBundleName: string;
   };
@@ -9122,6 +9161,8 @@ export type Event =
   | AgentVaultSkillDeleteEvent
   | AgentVaultAccessBundleSkillAddEvent
   | AgentVaultAccessBundleSkillRemoveEvent
+  | AgentVaultAccessBundleServiceAddEvent
+  | AgentVaultAccessBundleServiceRemoveEvent
   | AgentVaultSkillsDeliveredEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
