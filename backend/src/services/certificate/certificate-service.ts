@@ -2,7 +2,11 @@
 import * as x509 from "@peculiar/x509";
 
 import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionSub,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
@@ -14,10 +18,6 @@ import {
 } from "@app/domains/platform/projects/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
-import {
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
@@ -221,7 +221,7 @@ export const certificateServiceFactory = ({
 }: TCertificateServiceFactoryDep) => {
   const $canActOnCertViaApplication = async (
     cert: { applicationId?: string | null; projectId: string },
-    action: ResourcePermissionCertificateActions,
+    action: ApplicationCertificatePermissionActions,
     actor: TActorContext
   ): Promise<boolean> => {
     if (!cert.applicationId) return false;
@@ -230,7 +230,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       applicationId: cert.applicationId
     });
-    return permission.can({ action, subject: ResourcePermissionSub.Certificates });
+    return permission.can({ action, subject: ApplicationPermissionSub.Certificates });
   };
   /**
    * Return details for certificate with serial number [serialNumber]
@@ -309,7 +309,7 @@ export const certificateServiceFactory = ({
     ) {
       const allowedByApplication = await $canActOnCertViaApplication(
         certWithDetails,
-        ResourcePermissionCertificateActions.Read,
+        ApplicationCertificatePermissionActions.Read,
         actor
       );
       if (!allowedByApplication) {
@@ -400,7 +400,7 @@ export const certificateServiceFactory = ({
             action: ProjectPermissionCertificateActions.Read,
             subject: ProjectPermissionSub.Certificates,
             fields: renewalReadSubject
-          }) || (await $canActOnCertViaApplication(renewal, ResourcePermissionCertificateActions.Read, actor));
+          }) || (await $canActOnCertViaApplication(renewal, ApplicationCertificatePermissionActions.Read, actor));
 
         if (canReadRenewal) latestRenewalCertificateId = renewal.id;
       }
@@ -447,7 +447,7 @@ export const certificateServiceFactory = ({
     if (cert.applicationId) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
-        ResourcePermissionCertificateActions.ReadPrivateKey,
+        ApplicationCertificatePermissionActions.ReadPrivateKey,
         actor
       );
       if (!allowedByApplication) {
@@ -503,8 +503,8 @@ export const certificateServiceFactory = ({
         applicationId: cert.applicationId
       });
       permission.assert({
-        action: ResourcePermissionCertificateActions.Delete,
-        subject: ResourcePermissionSub.Certificates
+        action: ApplicationCertificatePermissionActions.Delete,
+        subject: ApplicationPermissionSub.Certificates
       });
     } else {
       const permission = await projectsDomain.getProjectPermission({
@@ -835,7 +835,7 @@ export const certificateServiceFactory = ({
     ) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
-        ResourcePermissionCertificateActions.Read,
+        ApplicationCertificatePermissionActions.Read,
         actor
       );
       if (!allowedByApplication) {
@@ -1131,8 +1131,8 @@ export const certificateServiceFactory = ({
       const permission = await certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
 
       permission.assert({
-        action: ResourcePermissionCertificateActions.Import,
-        subject: ResourcePermissionSub.Certificates
+        action: ApplicationCertificatePermissionActions.Import,
+        subject: ApplicationPermissionSub.Certificates
       });
     } else {
       const permission = await projectsDomain.getProjectPermission({
@@ -1459,7 +1459,7 @@ export const certificateServiceFactory = ({
     ) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
-        ResourcePermissionCertificateActions.Read,
+        ApplicationCertificatePermissionActions.Read,
         actor
       );
       if (!allowedByApplication) {
@@ -1473,7 +1473,7 @@ export const certificateServiceFactory = ({
     if (cert.applicationId) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
-        ResourcePermissionCertificateActions.ReadPrivateKey,
+        ApplicationCertificatePermissionActions.ReadPrivateKey,
         actor
       );
       if (!allowedByApplication) {
@@ -1594,7 +1594,7 @@ export const certificateServiceFactory = ({
     if (cert.applicationId) {
       const allowedByApplication = await $canActOnCertViaApplication(
         cert,
-        ResourcePermissionCertificateActions.ReadPrivateKey,
+        ApplicationCertificatePermissionActions.ReadPrivateKey,
         actor
       );
       if (!allowedByApplication) {

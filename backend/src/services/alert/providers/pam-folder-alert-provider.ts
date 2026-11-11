@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ProjectType } from "@app/db/schemas";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, PamResourcePermissionSub, TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import {
@@ -9,10 +9,6 @@ import {
   PamAccessRequestEvent
 } from "@app/ee/services/pam-access-request/pam-access-request-events";
 import { PamAccessType } from "@app/ee/services/pam/pam-enums";
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { formatDuration, ms } from "@app/lib/ms";
@@ -278,15 +274,15 @@ export const pamFolderAlertProviderFactory = ({
     if (
       action === AlertPermissionAction.Read &&
       permission.can({
-        action: ResourcePermissionPamResourceActions.ViewAuditLogs,
-        subject: ResourcePermissionSub.PamResource
+        action: PamResourcePermissionActions.ViewAuditLogs,
+        subject: PamResourcePermissionSub.PamResource
       })
     ) {
       return;
     }
     permission.assert({
-      action: ResourcePermissionPamResourceActions.ManagePolicies,
-      subject: ResourcePermissionSub.PamResource
+      action: PamResourcePermissionActions.ManagePolicies,
+      subject: PamResourcePermissionSub.PamResource
     });
   };
 

@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
+import { ApplicationApprovalPolicyPermissionActions } from "@app/domains/certificates/cert-manager/ce/module";
 import { TActorContext } from "@app/domains/lib/actor-context";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
-import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
 import { TSecretChangeRequestData } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-types";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
@@ -288,7 +288,7 @@ export type TApprovalResource<
     projectId: string;
     scopeId: string | null;
     actor: TApprovalActor;
-    action: ResourcePermissionApprovalPolicyActions;
+    action: ApplicationApprovalPolicyPermissionActions;
   }) => Promise<void>;
 
   // Whether the actor may read a scope's requests and grants, for a type whose read authority is the

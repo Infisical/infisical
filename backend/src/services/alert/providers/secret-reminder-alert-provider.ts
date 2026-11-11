@@ -2,8 +2,10 @@ import { z } from "zod";
 
 import { SecretType } from "@app/db/schemas";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import {
+  throwIfMissingSecretReadValueOrDescribePermission,
+  TSecretsDomain
+} from "@app/domains/secrets-manager/secrets/ce/module";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {

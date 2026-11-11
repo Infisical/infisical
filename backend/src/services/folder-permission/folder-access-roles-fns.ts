@@ -1,9 +1,15 @@
 import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 
-import { ProjectMembershipRole, ProjectType, TAdditionalPrivileges } from "@app/db/schemas";
-import { ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
+import { ProjectMembershipRole, TAdditionalPrivileges } from "@app/db/schemas";
+import { mergeRoles, unpackCustomRules } from "@app/domains/platform/access-control/ce/module";
+import {
+  expandLegacyForbidActions,
+  genericProjectRoles,
+  ProjectPermissionSet,
+  ProjectPermissionSub,
+  TProjectRule
+} from "@app/domains/platform/projects/ce/module";
 import { FOLDER_SCOPED_DENY_RULES } from "@app/domains/secrets-manager/secrets/ce/module";
-import { buildProjectPermissionRules } from "@app/ee/services/permission/permission-service";
 import { conditionsMatcher } from "@app/lib/casl";
 
 import {
@@ -72,14 +78,11 @@ export const collectDistinctRoles = (entries: { roles: TProjectMemberRoleRow[] }
 // the verdict depends only on the role. Handlebars conditions are therefore never interpolated and
 // a templated condition compares literally, which does not match.
 export const roleGrantsFolderAccess = (role: TDistinctProjectRole, folder: TFolderLocation) => {
-  const rules = buildProjectPermissionRules(
-    [
-      role.isCustom
-        ? { role: ProjectMembershipRole.Custom, permissions: role.permissions }
-        : { role: role.slug, permissions: [] }
-    ],
-    ProjectType.SecretManager
-  ) as RawRuleOf<MongoAbility>[];
+  // Secret Manager projects use the generic project roles; a slug whose product was removed grants nothing.
+  const roleRules: TProjectRule[] = role.isCustom
+    ? unpackCustomRules<MongoAbility<ProjectPermissionSet>>(role.permissions)
+    : ((genericProjectRoles as Record<string, TProjectRule[]>)[role.slug] ?? []);
+  const rules = mergeRoles({ layers: [expandLegacyForbidActions(roleRules)] }) as RawRuleOf<MongoAbility>[];
   const ability = createMongoAbility(rules, { conditionsMatcher });
   // subject() tags the object it receives with the subject type and refuses to retag it, so each probe
   // gets its own copy of the folder fields

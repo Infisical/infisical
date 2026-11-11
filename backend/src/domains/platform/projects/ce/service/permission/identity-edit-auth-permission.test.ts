@@ -7,13 +7,9 @@ import {
   OrgPermissionSet,
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
-import {
-  ProjectPermissionIdentityActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/domains/platform/projects/ce/module";
 
-import { projectAdminPermissions, projectMemberPermissions } from "./default-roles";
+import { ProjectPermissionIdentityActions, ProjectPermissionSet, ProjectPermissionSub } from "./project-permission";
+import { projectAdminPermissions, projectMemberPermissions } from "./project-roles";
 
 // Regression guard for the identity auth-method privilege-escalation fix.
 // Configuring an identity's auth methods (attach/update) is gated behind the

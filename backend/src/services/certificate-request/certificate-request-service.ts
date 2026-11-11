@@ -2,7 +2,11 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { ProjectType, TCertificateRequests } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionSub,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   ProjectPermissionCertificateActions,
@@ -11,10 +15,6 @@ import {
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import {
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -274,8 +274,8 @@ export const certificateRequestServiceFactory = ({
           applicationId: certificateRequest.applicationId
         });
         allowedByResource = resourcePermission.can({
-          action: ResourcePermissionCertificateActions.Read,
-          subject: ResourcePermissionSub.Certificates
+          action: ApplicationCertificatePermissionActions.Read,
+          subject: ApplicationPermissionSub.Certificates
         });
       }
       if (!allowedByResource) {
@@ -328,8 +328,8 @@ export const certificateRequestServiceFactory = ({
           applicationId: certificateRequest.applicationId
         });
         allowedByResource = resourcePermission.can({
-          action: ResourcePermissionCertificateActions.Read,
-          subject: ResourcePermissionSub.Certificates
+          action: ApplicationCertificatePermissionActions.Read,
+          subject: ApplicationPermissionSub.Certificates
         });
       }
       if (!allowedByResource) {
@@ -394,8 +394,8 @@ export const certificateRequestServiceFactory = ({
         applicationId: certificateRequest.applicationId
       });
       canReadPrivateKey = resourcePermission.can({
-        action: ResourcePermissionCertificateActions.ReadPrivateKey,
-        subject: ResourcePermissionSub.Certificates
+        action: ApplicationCertificatePermissionActions.ReadPrivateKey,
+        subject: ApplicationPermissionSub.Certificates
       });
     } else {
       canReadPrivateKey = permission.can({
@@ -521,8 +521,8 @@ export const certificateRequestServiceFactory = ({
       const resourcePermission = await certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
       if (
         resourcePermission.can({
-          action: ResourcePermissionCertificateActions.Read,
-          subject: ResourcePermissionSub.Certificates
+          action: ApplicationCertificatePermissionActions.Read,
+          subject: ApplicationPermissionSub.Certificates
         })
       ) {
         allowedByResource = true;
@@ -608,8 +608,8 @@ export const certificateRequestServiceFactory = ({
         applicationId: certificateRequest.applicationId
       });
       allowedByResource = resourcePermission.can({
-        action: ResourcePermissionCertificateActions.Edit,
-        subject: ResourcePermissionSub.Certificates
+        action: ApplicationCertificatePermissionActions.Edit,
+        subject: ApplicationPermissionSub.Certificates
       });
     }
     if (!allowedByResource) {

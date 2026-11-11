@@ -14,8 +14,10 @@ import { SecretsPermissionService, TSecretsPermission } from "./service/secrets-
 
 export * from "./service/folder-grant-rules";
 export * from "./service/folder-roles";
+export * from "./service/secret-read-checks";
 export type {
   TDirectMemberPermission,
+  TMemberRoleSummary,
   TGroupMemberPermission,
   TProjectMemberPermissions
 } from "./service/secrets-member-access";

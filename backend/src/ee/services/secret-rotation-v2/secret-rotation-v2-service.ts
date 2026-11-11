@@ -10,9 +10,8 @@ import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
+import { hasSecretReadValueOrDescribePermission, TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { auth0ClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/auth0-client-secret/auth0-client-secret-rotation-fns";
 import { azureClientSecretRotationFactory } from "@app/ee/services/secret-rotation-v2/azure-client-secret/azure-client-secret-rotation-fns";
 import { clickhouseCredentialsRotationFactory } from "@app/ee/services/secret-rotation-v2/clickhouse-credentials/clickhouse-credentials-rotation-fns";

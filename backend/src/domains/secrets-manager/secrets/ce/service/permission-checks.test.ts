@@ -1,7 +1,10 @@
 import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { describe, expect, test } from "vitest";
 
+import { handlebarsClient, interpolatePermissionRules } from "@app/domains/platform/access-control/ce/module";
 import {
+  checkForInvalidPermissionCombination,
+  expandLegacyForbidActions,
   ProjectPermissionActions,
   ProjectPermissionGroupActions,
   ProjectPermissionIdentityActions,
@@ -10,17 +13,9 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { ActorType } from "@app/lib/auth/actor-types";
 import { conditionsMatcher } from "@app/lib/casl";
 
-import {
-  checkForInvalidPermissionCombination,
-  expandLegacyForbidActions,
-  getProjectPermissionFingerprint,
-  handlebarsClient,
-  interpolatePermissionRules,
-  throwIfMissingSecretReadValueOrDescribePermission
-} from "./permission-fns";
+import { throwIfMissingSecretReadValueOrDescribePermission } from "./secret-read-checks";
 
 type Rule = RawRuleOf<MongoAbility<ProjectPermissionSet>>;
 
@@ -345,37 +340,6 @@ describe("trimSuffix handlebars helper", () => {
     expect(trim("my*app*x*y*z*w-pr-1", "-pr-*")).toBe("my*app*x*y*z*w");
   });
 });
-describe("getProjectPermissionFingerprint", () => {
-  const dto = {
-    projectId: "project-1",
-    orgId: "org-1",
-    actorId: "user-1",
-    actorType: ActorType.USER as ActorType.USER
-  };
-
-  const deps = (folderVersion?: number) =>
-    ({
-      permissionDAL: { getPermissionFingerprint: async () => "membership-hash" },
-      keyStore: { pgGetIntItem: async () => folderVersion }
-    }) as unknown as Parameters<typeof getProjectPermissionFingerprint>[1];
-
-  test("appends the project's folder permission version to the membership fingerprint", async () => {
-    expect(await getProjectPermissionFingerprint(dto, deps(7))).toBe("membership-hash:7");
-  });
-
-  test("changes when the folder permission version is bumped", async () => {
-    const [before, after] = await Promise.all([
-      getProjectPermissionFingerprint(dto, deps(7)),
-      getProjectPermissionFingerprint(dto, deps(8))
-    ]);
-    expect(before).not.toBe(after);
-  });
-
-  test("treats a missing version row as zero", async () => {
-    expect(await getProjectPermissionFingerprint(dto, deps(undefined))).toBe("membership-hash:0");
-  });
-});
-
 describe("interpolatePermissionRules", () => {
   const templatedRule = (value: string): Rule =>
     ({

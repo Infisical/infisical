@@ -14,7 +14,11 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionSub,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
@@ -39,7 +43,10 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
+import {
+  throwIfMissingSecretReadValueOrDescribePermission,
+  TSecretsDomain
+} from "@app/domains/secrets-manager/secrets/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
 import {
@@ -48,11 +55,6 @@ import {
 } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { THoneyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import {
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import {
   InfisicalProjectTemplate,
   TProjectTemplateServiceFactory
@@ -1499,8 +1501,8 @@ export const projectServiceFactory = ({
       });
       if (
         resourcePermission.can({
-          action: ResourcePermissionCertificateActions.Read,
-          subject: ResourcePermissionSub.Certificates
+          action: ApplicationCertificatePermissionActions.Read,
+          subject: ApplicationPermissionSub.Certificates
         })
       ) {
         allowedByResource = true;

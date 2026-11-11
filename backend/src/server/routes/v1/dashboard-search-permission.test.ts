@@ -6,7 +6,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import { hasSecretReadValueOrDescribePermission } from "@app/domains/secrets-manager/secrets/ce/module";
 
 import { registerDashboardRouter } from "./dashboard-router";
 

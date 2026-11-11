@@ -286,11 +286,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         req.permission.orgId
       );
 
-      const { sources } = await server.services.permission.getMembershipPermissionAudit({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+      const { sources } = await server.services.memberPermissionAudit.getMembershipPermissionAudit({
+        actor: req.permission,
         projectId: req.params.projectId,
         targetUserId: userId,
         includeFolderPermissions: req.query.includeFolderPermissions

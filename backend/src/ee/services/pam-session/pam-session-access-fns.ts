@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 
+import { PamResourcePermissionActions } from "@app/domains/pam/pam/ce/module";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
@@ -11,7 +12,6 @@ import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamSessionStatus } from "../pam/pam-enums";
 import { getResourceIdsWithActionsForActors, pamActorKey } from "../pam/pam-permission";
-import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { LIVE_PAM_SESSION_STATUSES, sendPamSessionCancellationSignal, terminatePamSessions } from "./pam-session-fns";
 
@@ -133,7 +133,7 @@ export const terminatePamSessionsWithoutLaunchAccess = async ({
     membershipDAL,
     membershipRoleDAL,
     projectId,
-    { allOf: [ResourcePermissionPamResourceActions.LaunchSessions] },
+    { allOf: [PamResourcePermissionActions.LaunchSessions] },
     [...new Map(sessions.map((s) => [pamActorKey(s.sessionActor), s.sessionActor])).values()],
     tx
   );

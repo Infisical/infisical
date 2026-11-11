@@ -10,8 +10,8 @@ import {
   TableName
 } from "@app/db/schemas";
 import type { TActorContext, TActorContexts } from "@app/domains/lib/actor-context";
+import { isActiveRole } from "@app/domains/platform/access-control/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";

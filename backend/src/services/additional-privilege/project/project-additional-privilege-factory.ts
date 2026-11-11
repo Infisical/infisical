@@ -3,16 +3,16 @@ import { MongoAbility, RawRule, subject } from "@casl/ability";
 import { AccessScope } from "@app/db/schemas";
 import type { TActorContext, TActorContexts } from "@app/domains/lib/actor-context";
 import {
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/domains/platform/access-control/ce/module";
+import {
   ProjectPermissionIdentityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSet,
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import {
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";

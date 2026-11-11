@@ -11,7 +11,11 @@ import {
   ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
-import { TCodeSigningDomain } from "@app/domains/certificates/code-signing/ce/module";
+import {
+  SignerPermissionActions,
+  SignerPermissionSub,
+  TCodeSigningDomain
+} from "@app/domains/certificates/code-signing/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
@@ -20,10 +24,6 @@ import {
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import {
-  ResourcePermissionSignerActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { signingService } from "@app/lib/crypto/sign/signing";
@@ -1121,7 +1121,7 @@ export const signerServiceFactory = ({
 
     const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
 
-    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.Read, subject: SignerPermissionSub.Signer });
 
     let externalOrder: { provider: string; orderId: number; status: string | null } | null = null;
     if (!signer.certificateId) {
@@ -1146,8 +1146,8 @@ export const signerServiceFactory = ({
     const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
 
     permission.assert({
-      action: ResourcePermissionSignerActions.ReissueCertificate,
-      subject: ResourcePermissionSub.Signer
+      action: SignerPermissionActions.ReissueCertificate,
+      subject: SignerPermissionSub.Signer
     });
 
     await signerIssuanceService.runPendingJobNow(signer.id);
@@ -1178,7 +1178,7 @@ export const signerServiceFactory = ({
 
     const permission = await $loadSignerResourcePermission(existingSigner.id, projectId, dto.actor);
 
-    permission.assert({ action: ResourcePermissionSignerActions.Edit, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.Edit, subject: SignerPermissionSub.Signer });
 
     const patch: Record<string, unknown> = {};
     if (dto.name !== undefined) patch.name = dto.name;
@@ -1217,7 +1217,7 @@ export const signerServiceFactory = ({
 
     const permission = await $loadSignerResourcePermission(existingSigner.id, existingSigner.projectId, dto.actor);
 
-    permission.assert({ action: ResourcePermissionSignerActions.Delete, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.Delete, subject: SignerPermissionSub.Signer });
 
     // Revoke the DigiCert order so a deleted signer can't leave a live publicly-trusted cert behind.
     // Best-effort and outside the deletion transaction so a DigiCert outage can't block the delete.
@@ -1275,7 +1275,7 @@ export const signerServiceFactory = ({
     if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
 
     const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
-    permission.assert({ action: ResourcePermissionSignerActions.ManageStatus, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.ManageStatus, subject: SignerPermissionSub.Signer });
 
     if (signer.status !== SignerStatus.Disabled) {
       throw new BadRequestError({
@@ -1295,7 +1295,7 @@ export const signerServiceFactory = ({
     if (!signer) throw new NotFoundError({ message: `Signer with ID '${dto.signerId}' not found` });
 
     const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
-    permission.assert({ action: ResourcePermissionSignerActions.ManageStatus, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.ManageStatus, subject: SignerPermissionSub.Signer });
 
     if (signer.status === SignerStatus.Disabled) return signer;
     return signerDAL.updateById(dto.signerId, { status: SignerStatus.Disabled });
@@ -1427,8 +1427,8 @@ export const signerServiceFactory = ({
 
     const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
     permission.assert({
-      action: ResourcePermissionSignerActions.ReissueCertificate,
-      subject: ResourcePermissionSub.Signer
+      action: SignerPermissionActions.ReissueCertificate,
+      subject: SignerPermissionSub.Signer
     });
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
@@ -1498,8 +1498,8 @@ export const signerServiceFactory = ({
 
     const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
     permission.assert({
-      action: ResourcePermissionSignerActions.ReissueCertificate,
-      subject: ResourcePermissionSub.Signer
+      action: SignerPermissionActions.ReissueCertificate,
+      subject: SignerPermissionSub.Signer
     });
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(dto.caId);
@@ -1633,8 +1633,8 @@ export const signerServiceFactory = ({
 
     const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
     permission.assert({
-      action: ResourcePermissionSignerActions.ExportCertificate,
-      subject: ResourcePermissionSub.Signer
+      action: SignerPermissionActions.ExportCertificate,
+      subject: SignerPermissionSub.Signer
     });
 
     if (!signer.certificateId) {
@@ -1823,7 +1823,7 @@ export const signerServiceFactory = ({
     const { projectId } = signer;
 
     const permission = await $loadSignerResourcePermission(signer.id, projectId, dto.actor);
-    permission.assert({ action: ResourcePermissionSignerActions.Sign, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.Sign, subject: SignerPermissionSub.Signer });
 
     if (signer.status !== SignerStatus.Active) {
       throw new BadRequestError({ message: `Signer '${signer.name}' is not active (status: ${signer.status})` });
@@ -2055,7 +2055,7 @@ export const signerServiceFactory = ({
     const { projectId } = signer;
 
     const permission = await $loadSignerResourcePermission(signer.id, projectId, dto.actor);
-    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.Read, subject: SignerPermissionSub.Signer });
 
     if (!signer.certificateId) {
       throw new BadRequestError({ message: `Signer '${signer.name}' has no certificate attached yet.` });
@@ -2123,7 +2123,7 @@ export const signerServiceFactory = ({
     }
 
     const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
-    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.Read, subject: SignerPermissionSub.Signer });
 
     const operations = await signingOperationDAL.findBySignerId(dto.signerId, {
       offset: dto.offset,
@@ -2143,7 +2143,7 @@ export const signerServiceFactory = ({
     }
 
     const permission = await $loadSignerResourcePermission(signer.id, signer.projectId, dto.actor);
-    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.Read, subject: SignerPermissionSub.Signer });
 
     const operation = await signingOperationDAL.findByIdWithActor(dto.operationId);
     if (!operation || operation.signerId !== signer.id) {

@@ -1,5 +1,6 @@
 import { ProjectType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
+import { PamResourcePermissionActions } from "@app/domains/pam/pam/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
@@ -7,7 +8,6 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TPamAuditLogScope } from "../audit-log/audit-log-dal";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { PamProductRole } from "./pam-enums";
 import { getResourceIdsWithActions, verifyProductMembership } from "./pam-permission";
 
@@ -42,7 +42,7 @@ export const pamAuditLogScopeResolverFactory = ({
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { anyOf: [ResourcePermissionPamResourceActions.ViewAuditLogs] },
+      { anyOf: [PamResourcePermissionActions.ViewAuditLogs] },
       actor
     );
 

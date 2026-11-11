@@ -1,13 +1,13 @@
 import { AccessScope, RESOURCE_SCOPE, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
-import { TCodeSigningDomain } from "@app/domains/certificates/code-signing/ce/module";
+import {
+  SignerPermissionActions,
+  SignerPermissionSub,
+  TCodeSigningDomain
+} from "@app/domains/certificates/code-signing/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import {
-  ResourcePermissionSignerActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -176,7 +176,7 @@ export const signerMembershipServiceFactory = ({
 
     const permission = await $loadResourcePermission(signerId, projectId, actor);
 
-    permission.assert({ action: ResourcePermissionSignerActions.ManageMembers, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.ManageMembers, subject: SignerPermissionSub.Signer });
 
     if (!isBuiltInSignerRole(role)) {
       throw new BadRequestError({ message: unknownSignerRoleMessage(role) });
@@ -269,7 +269,7 @@ export const signerMembershipServiceFactory = ({
     await $loadSignerOrThrow(signerId, projectId);
 
     const permission = await $loadResourcePermission(signerId, projectId, actor);
-    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.Read, subject: SignerPermissionSub.Signer });
 
     const memberships = await membershipDAL.find({
       scope: RESOURCE_SCOPE,
@@ -357,7 +357,7 @@ export const signerMembershipServiceFactory = ({
   }: TListEffectiveSignerMembersDTO): Promise<TEffectiveSignerMember[]> => {
     await $loadSignerOrThrow(signerId, projectId);
     const permission = await $loadResourcePermission(signerId, projectId, actor);
-    permission.assert({ action: ResourcePermissionSignerActions.Read, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.Read, subject: SignerPermissionSub.Signer });
 
     const allMemberships = await membershipDAL.find({
       scope: RESOURCE_SCOPE,
@@ -490,7 +490,7 @@ export const signerMembershipServiceFactory = ({
 
     const permission = await $loadResourcePermission(signerId, projectId, actor);
 
-    permission.assert({ action: ResourcePermissionSignerActions.ManageMembers, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.ManageMembers, subject: SignerPermissionSub.Signer });
 
     if (!isBuiltInSignerRole(role)) {
       throw new BadRequestError({ message: unknownSignerRoleMessage(role) });
@@ -555,7 +555,7 @@ export const signerMembershipServiceFactory = ({
 
     const permission = await $loadResourcePermission(signerId, projectId, actor);
 
-    permission.assert({ action: ResourcePermissionSignerActions.ManageMembers, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.ManageMembers, subject: SignerPermissionSub.Signer });
 
     const membership = await $findMembershipByMember(signerId, projectId, kind, memberId);
     const details = await $buildMemberDetails(membership);
@@ -608,7 +608,7 @@ export const signerMembershipServiceFactory = ({
 
     const permission = await $loadResourcePermission(signerId, projectId, actor);
 
-    permission.assert({ action: ResourcePermissionSignerActions.ManageMembers, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action: SignerPermissionActions.ManageMembers, subject: SignerPermissionSub.Signer });
 
     const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
     const userByEmail = new Map<string, (typeof usersByEmail)[number]>();

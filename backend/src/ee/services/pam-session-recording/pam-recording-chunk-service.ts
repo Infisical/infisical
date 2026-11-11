@@ -1,7 +1,7 @@
 import RE2 from "re2";
 
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
@@ -20,7 +20,6 @@ import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamProductRole, PamSessionStatus } from "../pam/pam-enums";
 import { checkAccountAccess, verifyProductMembership } from "../pam/pam-permission";
-import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { resolveS3RecordingAccess } from "./aws-s3/aws-s3-provider-factory";
 import { TPamSessionEventChunkDALFactory } from "./pam-recording-chunk-dal";
 import { PAM_RECORDING_MAX_CHUNK_BYTES } from "./pam-recording-constants";
@@ -123,7 +122,7 @@ export const pamSessionChunkServiceFactory = ({
       session.accountId,
       account.folderId,
       session.projectId,
-      ResourcePermissionPamResourceActions.ViewSessions,
+      PamResourcePermissionActions.ViewSessions,
       ctx
     );
   };

@@ -2,7 +2,9 @@ import { createMongoAbility } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 import { describe, expect, test } from "vitest";
 
-import { ProjectMembershipRole, ProjectType, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
+import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
+import { ActorGrants } from "@app/domains/platform/access-control/ce/module";
+import { buildAccessControlForTests } from "@app/domains/platform/access-control/ce/testing/build-access-control";
 import {
   ProjectPermissionActions,
   ProjectPermissionAgentVaultAccessBundleActions,
@@ -15,26 +17,48 @@ import {
   ProjectPermissionMemberActions,
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  Project
 } from "@app/domains/platform/projects/ce/module";
-import { AgentVaultResourceRole } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { PamResourceRole } from "@app/ee/services/pam/pam-enums";
+import { buildProjectsForTests } from "@app/domains/platform/projects/ce/testing/build-projects";
 import { NotFoundError } from "@app/lib/errors";
 
+import { AgentVaultModule } from "../module";
 import {
+  AGENT_VAULT_BUNDLE_CONSUMER_ROLE,
   agentVaultProjectAdminPermissions,
-  applicationAuditorPermissions,
-  pamResourceAdminPermissions,
-  signerOperatorPermissions
-} from "./default-roles";
-import { buildProjectPermissionRules, resolveResourceRoleRules } from "./permission-service";
+  agentVaultResourceRoles
+} from "./agent-vault-roles";
+
+const setup = () => {
+  const { service: accessControlDomain } = buildAccessControlForTests();
+  const { service: projectsDomain, productAccessRegistry } = buildProjectsForTests({
+    accessControlDomain,
+    organizationsDomain: { getOrgPermission: async () => ({}) as never },
+    projects: []
+  });
+  // Constructing it registers Agent Vault's roles, as domains.ts does.
+  const agentVault = new AgentVaultModule({
+    projectsDomain: projectsDomain as never,
+    accessControlDomain,
+    productAccessRegistry,
+    licenseRegistry: { registerUsageCounter: () => undefined } as never
+  });
+  expect(agentVault.name).toBe("agent-vault");
+  return projectsDomain;
+};
+
+const project = Project.restore({
+  id: "project-id",
+  orgId: "org-id",
+  type: ProjectType.AgentVault,
+  name: "p",
+  slug: "p"
+});
 
 const abilityFor = (role: string, permissions?: unknown) =>
   createMongoAbility<ProjectPermissionSet>(
-    buildProjectPermissionRules(
-      [{ role, permissions }] as Parameters<typeof buildProjectPermissionRules>[0],
-      ProjectType.AgentVault
-    ) as never
+    setup().resolveRoleRules({ entries: [{ role, permissions }], project, grants: ActorGrants.empty() }) as never
   );
 
 describe("agent vault project roles", () => {
@@ -124,19 +148,9 @@ describe("agent vault project roles", () => {
   });
 });
 
-describe("resource role dispatch", () => {
-  test("an agent vault consumer carries no rules, and an unknown slug fails loudly", () => {
-    expect(resolveResourceRoleRules(ResourceType.AgentVaultAccessBundle, AgentVaultResourceRole.Consumer)).toEqual([]);
-    expect(() => resolveResourceRoleRules(ResourceType.AgentVaultAccessBundle, "admin")).toThrow(NotFoundError);
-  });
-
-  test("the other products' arms are untouched", () => {
-    expect(resolveResourceRoleRules(ResourceType.PamFolder, PamResourceRole.Admin)).toBe(pamResourceAdminPermissions);
-    expect(resolveResourceRoleRules(ResourceType.Signer, ResourceMembershipRole.Operator)).toBe(
-      signerOperatorPermissions
-    );
-    expect(resolveResourceRoleRules(ResourceType.CertificateApplication, ResourceMembershipRole.Auditor)).toBe(
-      applicationAuditorPermissions
-    );
+describe("access bundle resource roles", () => {
+  test("a consumer carries no rules, and an unknown slug fails loudly", () => {
+    expect(agentVaultResourceRoles.resolveRole(AGENT_VAULT_BUNDLE_CONSUMER_ROLE)).toEqual([]);
+    expect(() => agentVaultResourceRoles.resolveRole("admin")).toThrow(NotFoundError);
   });
 });

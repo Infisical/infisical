@@ -1,13 +1,10 @@
 import { Knex } from "knex";
 
 import { TApprovalRequestGrants } from "@app/db/schemas";
+import { ApplicationApprovalPolicyPermissionActions } from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
-import {
-  ResourcePermissionApprovalPolicyActions,
-  ResourcePermissionPamResourceActions
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -158,7 +155,7 @@ export const pamAccessRequestServiceFactory = ({
       projectId,
       scopeId: folderId,
       actor: toApprovalActorContext(ctx),
-      action: ResourcePermissionApprovalPolicyActions.Edit
+      action: ApplicationApprovalPolicyPermissionActions.Edit
     });
 
     const folder = await pamFolderDAL.findById(folderId);
@@ -641,8 +638,8 @@ export const pamAccessRequestServiceFactory = ({
       account.folderId,
       projectId,
       accessType === PamAccessType.Credential
-        ? ResourcePermissionPamResourceActions.ViewCredentials
-        : ResourcePermissionPamResourceActions.LaunchSessions,
+        ? PamResourcePermissionActions.ViewCredentials
+        : PamResourcePermissionActions.LaunchSessions,
       ctx
     );
 

@@ -2,8 +2,10 @@ import slugify from "@sindresorhus/slugify";
 import { z } from "zod";
 
 import { AccessScope, TemporaryPermissionMode } from "@app/db/schemas";
-import { ProjectPermissionV2Schema } from "@app/domains/platform/projects/ce/module";
-import { checkForInvalidPermissionCombination } from "@app/ee/services/permission/permission-fns";
+import {
+  checkForInvalidPermissionCombination,
+  ProjectPermissionV2Schema
+} from "@app/domains/platform/projects/ce/module";
 import { PROJECT_USER_ADDITIONAL_PRIVILEGE } from "@app/lib/api-docs";
 import { ActorType, AuthMode } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";

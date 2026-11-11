@@ -39,6 +39,7 @@ export { ProjectResourcePermission } from "./service/project-resource-permission
 export type { TProjectPermissionAuditSource, TProjectRolePermission } from "./service/project-member-access";
 export * from "./service/permission/project-permission";
 export * from "./service/permission/project-roles";
+export * from "./service/permission/project-permission-validation";
 
 export type TProjectsDomain = {
   // Billable users and machine identities: org members in a Secret Manager or KMS project or in none.

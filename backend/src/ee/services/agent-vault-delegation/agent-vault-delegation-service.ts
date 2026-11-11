@@ -3,13 +3,13 @@ import { Knex } from "knex";
 import { AccessScope, ProjectMembershipRole, RESOURCE_SCOPE, ResourceType, TMemberships } from "@app/db/schemas";
 import { TAgentVaultDomain } from "@app/domains/agent-vault/agent-vault/ce/module";
 import type { TActorContext, TActorContexts } from "@app/domains/lib/actor-context";
+import { isActiveRole } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";

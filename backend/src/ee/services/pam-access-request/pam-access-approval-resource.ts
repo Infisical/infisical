@@ -1,18 +1,14 @@
 import { Knex } from "knex";
 
 import { RESOURCE_SCOPE, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
+import { ApplicationApprovalPolicyPermissionActions } from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, PamResourcePermissionSub, TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import {
-  ResourcePermissionApprovalPolicyActions,
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -331,16 +327,16 @@ export const pamAccessApprovalResourceFactory = ({
 
     const permission = await checkFolderPermission(pamDomain, scopeId, projectId, ctx);
     const canManage = permission.can({
-      action: ResourcePermissionPamResourceActions.ManagePolicies,
-      subject: ResourcePermissionSub.PamResource
+      action: PamResourcePermissionActions.ManagePolicies,
+      subject: PamResourcePermissionSub.PamResource
     });
 
     if (canManage) return;
 
-    const isRead = action === ResourcePermissionApprovalPolicyActions.Read;
+    const isRead = action === ApplicationApprovalPolicyPermissionActions.Read;
     const canAudit = permission.can({
-      action: ResourcePermissionPamResourceActions.ViewAuditLogs,
-      subject: ResourcePermissionSub.PamResource
+      action: PamResourcePermissionActions.ViewAuditLogs,
+      subject: PamResourcePermissionSub.PamResource
     });
     if (isRead && canAudit) return;
 
@@ -362,12 +358,12 @@ export const pamAccessApprovalResourceFactory = ({
       const permission = await checkFolderPermission(pamDomain, scopeId, projectId, toActorContext(actor));
       return (
         permission.can({
-          action: ResourcePermissionPamResourceActions.ManagePolicies,
-          subject: ResourcePermissionSub.PamResource
+          action: PamResourcePermissionActions.ManagePolicies,
+          subject: PamResourcePermissionSub.PamResource
         }) ||
         permission.can({
-          action: ResourcePermissionPamResourceActions.ViewAuditLogs,
-          subject: ResourcePermissionSub.PamResource
+          action: PamResourcePermissionActions.ViewAuditLogs,
+          subject: PamResourcePermissionSub.PamResource
         })
       );
     } catch {
@@ -424,9 +420,7 @@ export const pamAccessApprovalResourceFactory = ({
       account.id,
       account.folderId,
       projectId,
-      isCredentialRequest
-        ? ResourcePermissionPamResourceActions.ViewCredentials
-        : ResourcePermissionPamResourceActions.LaunchSessions,
+      isCredentialRequest ? PamResourcePermissionActions.ViewCredentials : PamResourcePermissionActions.LaunchSessions,
       ctx
     );
 
@@ -610,8 +604,8 @@ export const pamAccessApprovalResourceFactory = ({
         folderId,
         projectId,
         accessType === PamAccessType.Credential
-          ? ResourcePermissionPamResourceActions.ViewCredentials
-          : ResourcePermissionPamResourceActions.LaunchSessions,
+          ? PamResourcePermissionActions.ViewCredentials
+          : PamResourcePermissionActions.LaunchSessions,
         toActorContext(actor)
       );
     } catch (err) {
@@ -685,7 +679,7 @@ export const pamAccessApprovalResourceFactory = ({
         account.id,
         account.folderId,
         grant.projectId,
-        ResourcePermissionPamResourceActions.RevokeGrants,
+        PamResourcePermissionActions.RevokeGrants,
         ctx
       );
       return;

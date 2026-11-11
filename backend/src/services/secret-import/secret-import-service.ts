@@ -10,11 +10,11 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import {
   hasSecretReadValueOrDescribePermission,
-  throwIfMissingSecretReadValueOrDescribePermission
-} from "@app/ee/services/permission/permission-fns";
+  throwIfMissingSecretReadValueOrDescribePermission,
+  TSecretsDomain
+} from "@app/domains/secrets-manager/secrets/ce/module";
 import { ProjectEvents } from "@app/ee/services/project-events/project-events-types";
 import { getReplicationFolderName } from "@app/ee/services/secret-replication/secret-replication-fns";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";

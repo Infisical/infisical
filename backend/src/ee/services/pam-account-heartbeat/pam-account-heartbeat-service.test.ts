@@ -1,11 +1,8 @@
 import { beforeAll, describe, expect, test, vi } from "vitest";
 
+import { PamResourcePermissionActions, PamResourcePermissionSub } from "@app/domains/pam/pam/ce/module";
 import { ActorGrants } from "@app/domains/platform/access-control/ce/module";
 import { ProjectResourcePermission } from "@app/domains/platform/projects/ce/module";
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { NotFoundError } from "@app/lib/errors";
@@ -249,9 +246,9 @@ describe("heartbeat: manual check permissions", () => {
     org: { id: "org-1" }
   } as unknown as Parameters<ReturnType<typeof pamAccountHeartbeatServiceFactory>["checkAccount"]>[1];
 
-  const permissionFor = (actions: ResourcePermissionPamResourceActions[]) =>
+  const permissionFor = (actions: PamResourcePermissionActions[]) =>
     ProjectResourcePermission.build({
-      rules: actions.map((action) => ({ action, subject: ResourcePermissionSub.PamResource })),
+      rules: actions.map((action) => ({ action, subject: PamResourcePermissionSub.PamResource })),
       grants: ActorGrants.empty(),
       isImplicitAdmin: false,
       isProjectAdmin: false
@@ -261,7 +258,7 @@ describe("heartbeat: manual check permissions", () => {
   // gated on reading the credential rather than on editing the account.
   test("an actor with ViewCredentials may run one", async () => {
     const { service, pamDomain, testCredential } = buildService(buildWindowsAccount({ folderId: null }));
-    pamDomain.getPamPermission.mockResolvedValue(permissionFor([ResourcePermissionPamResourceActions.ViewCredentials]));
+    pamDomain.getPamPermission.mockResolvedValue(permissionFor([PamResourcePermissionActions.ViewCredentials]));
 
     await service.checkAccount({ accountId: "acc-win", projectId: "proj-1" }, actor);
 
@@ -271,10 +268,7 @@ describe("heartbeat: manual check permissions", () => {
   test("EditAccounts alone is refused before the target is contacted", async () => {
     const { service, pamDomain, testCredential } = buildService(buildWindowsAccount({ folderId: null }));
     pamDomain.getPamPermission.mockResolvedValue(
-      permissionFor([
-        ResourcePermissionPamResourceActions.EditAccounts,
-        ResourcePermissionPamResourceActions.ReadAccounts
-      ])
+      permissionFor([PamResourcePermissionActions.EditAccounts, PamResourcePermissionActions.ReadAccounts])
     );
 
     await expect(service.checkAccount({ accountId: "acc-win", projectId: "proj-1" }, actor)).rejects.toThrow();

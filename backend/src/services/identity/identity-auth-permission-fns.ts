@@ -2,7 +2,7 @@ import { MongoAbility } from "@casl/ability";
 
 import { AccessScope } from "@app/db/schemas";
 import { TActorContext } from "@app/domains/lib/actor-context";
-import { TAccessControlDomain } from "@app/domains/platform/access-control/ce/module";
+import { assertRoleSetBoundary, TAccessControlDomain } from "@app/domains/platform/access-control/ce/module";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects,
@@ -14,7 +14,6 @@ import {
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { ActorType } from "@app/lib/auth/actor-types";
 
 const PROJECT_ACTION_BY_ORG_ACTION = {

@@ -1,12 +1,12 @@
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationEnrollmentPermissionActions,
+  ApplicationPermissionActions,
+  ApplicationPermissionSub,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import {
-  ResourcePermissionApplicationActions,
-  ResourcePermissionApplicationEnrollmentActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import {
   generateAndEncryptScepRaCertificate,
@@ -172,12 +172,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const { junction, application } = await $loadJunction(applicationId, profileId, projectId);
     const permission = await certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
     permission.assert({
-      action: ResourcePermissionApplicationActions.Edit,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Edit,
+      subject: ApplicationPermissionSub.Application
     });
     permission.assert({
-      action: ResourcePermissionApplicationEnrollmentActions.Edit,
-      subject: ResourcePermissionSub.ApplicationEnrollment
+      action: ApplicationEnrollmentPermissionActions.Edit,
+      subject: ApplicationPermissionSub.ApplicationEnrollment
     });
     return { junction, application };
   };
@@ -188,12 +188,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const permission = await certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
 
     permission.assert({
-      action: ResourcePermissionApplicationActions.Read,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Read,
+      subject: ApplicationPermissionSub.Application
     });
     permission.assert({
-      action: ResourcePermissionApplicationEnrollmentActions.Read,
-      subject: ResourcePermissionSub.ApplicationEnrollment
+      action: ApplicationEnrollmentPermissionActions.Read,
+      subject: ApplicationPermissionSub.ApplicationEnrollment
     });
 
     const apiConfig = junction.apiConfigId ? await apiEnrollmentConfigDAL.findById(junction.apiConfigId) : null;
@@ -457,12 +457,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const { junction, application } = await $loadJunction(applicationId, profileId, projectId);
     const permission = await certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
     permission.assert({
-      action: ResourcePermissionApplicationActions.Read,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Read,
+      subject: ApplicationPermissionSub.Application
     });
     permission.assert({
-      action: ResourcePermissionApplicationEnrollmentActions.RevealAcmeEabSecret,
-      subject: ResourcePermissionSub.ApplicationEnrollment
+      action: ApplicationEnrollmentPermissionActions.RevealAcmeEabSecret,
+      subject: ApplicationPermissionSub.ApplicationEnrollment
     });
 
     if (!junction.acmeConfigId) {
@@ -490,12 +490,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     const { junction, application } = await $loadJunction(applicationId, profileId, projectId);
     const permission = await certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
     permission.assert({
-      action: ResourcePermissionApplicationActions.Edit,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Edit,
+      subject: ApplicationPermissionSub.Application
     });
     permission.assert({
-      action: ResourcePermissionApplicationEnrollmentActions.RotateAcmeEabSecret,
-      subject: ResourcePermissionSub.ApplicationEnrollment
+      action: ApplicationEnrollmentPermissionActions.RotateAcmeEabSecret,
+      subject: ApplicationPermissionSub.ApplicationEnrollment
     });
 
     if (!junction.acmeConfigId) {

@@ -2,11 +2,8 @@ import { ActorAuthMethod } from "@app/lib/auth/actor-types";
 import { EnforcementLevel, TActorInput } from "@app/lib/types";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
-
 export type TIsApproversValid = {
   userIds: string[];
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   envSlug: string;
   actorAuthMethod: ActorAuthMethod;
   secretPath: string;

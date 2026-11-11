@@ -4,8 +4,10 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
-import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import {
+  throwIfMissingSecretReadValueOrDescribePermission,
+  TSecretsDomain
+} from "@app/domains/secrets-manager/secrets/ce/module";
 import { NotFoundError } from "@app/lib/errors";
 import { TActorInput } from "@app/lib/types";
 

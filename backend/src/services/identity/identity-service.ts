@@ -1,4 +1,9 @@
 import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
+import {
+  assertRoleSetBoundary,
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/domains/platform/access-control/ce/module";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { Meter, Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
@@ -6,11 +11,6 @@ import {
   OrgPermissionSubjects,
   TOrganizationsDomain
 } from "@app/domains/platform/organizations/ce/module";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";

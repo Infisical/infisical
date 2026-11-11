@@ -7,7 +7,11 @@ import {
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationApprovalPolicyPermissionActions,
+  ApplicationPermissionSub,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
@@ -21,10 +25,6 @@ import {
 } from "@app/domains/platform/projects/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import {
-  ResourcePermissionApprovalPolicyActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -392,7 +392,7 @@ export const approvalPolicyServiceFactory = ({
     scopeType: string | null | undefined,
     scopeId: string | null | undefined,
     actor: TApprovalActorContext,
-    resourceAction: ResourcePermissionApprovalPolicyActions,
+    resourceAction: ApplicationApprovalPolicyPermissionActions,
     policyType: ApprovalPolicyType
   ) => {
     const assertDomainCanManage = resources[policyType]?.assertCanManagePolicy;
@@ -407,7 +407,7 @@ export const approvalPolicyServiceFactory = ({
         projectId,
         applicationId: scopeId
       });
-      permission.assert({ action: resourceAction, subject: ResourcePermissionSub.ApprovalPolicies });
+      permission.assert({ action: resourceAction, subject: ApplicationPermissionSub.ApprovalPolicies });
       return;
     }
 
@@ -665,7 +665,7 @@ export const approvalPolicyServiceFactory = ({
       dbScopeType,
       dbScopeId,
       actor,
-      ResourcePermissionApprovalPolicyActions.Create,
+      ApplicationApprovalPolicyPermissionActions.Create,
       policyType
     );
 
@@ -824,7 +824,7 @@ export const approvalPolicyServiceFactory = ({
       dbScopeType,
       dbScopeId,
       actor,
-      ResourcePermissionApprovalPolicyActions.Read,
+      ApplicationApprovalPolicyPermissionActions.Read,
       policyType
     );
 
@@ -847,7 +847,7 @@ export const approvalPolicyServiceFactory = ({
       policy.scopeType ?? null,
       policy.scopeId ?? null,
       actor,
-      ResourcePermissionApprovalPolicyActions.Read,
+      ApplicationApprovalPolicyPermissionActions.Read,
       policy.type as ApprovalPolicyType
     );
 
@@ -891,7 +891,7 @@ export const approvalPolicyServiceFactory = ({
       policyScopeType,
       policyScopeId,
       actor,
-      ResourcePermissionApprovalPolicyActions.Edit,
+      ApplicationApprovalPolicyPermissionActions.Edit,
       policy.type as ApprovalPolicyType
     );
 
@@ -1035,7 +1035,7 @@ export const approvalPolicyServiceFactory = ({
       policy.scopeType ?? null,
       policy.scopeId ?? null,
       actor,
-      ResourcePermissionApprovalPolicyActions.Delete,
+      ApplicationApprovalPolicyPermissionActions.Delete,
       policy.type as ApprovalPolicyType
     );
 
@@ -1482,7 +1482,7 @@ export const approvalPolicyServiceFactory = ({
         if (
           !resourcePermission.can({
             action: ProjectPermissionApprovalRequestActions.Read,
-            subject: ResourcePermissionSub.ApprovalRequests
+            subject: ApplicationPermissionSub.ApprovalRequests
           })
         ) {
           throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
@@ -1872,7 +1872,7 @@ export const approvalPolicyServiceFactory = ({
       });
       hasReadPermission = resourcePermission.can({
         action: ProjectPermissionApprovalRequestActions.Read,
-        subject: ResourcePermissionSub.ApprovalRequests
+        subject: ApplicationPermissionSub.ApprovalRequests
       });
     } else if (resources[policyType]?.canReadScope) {
       hasReadPermission = await resources[policyType]!.canReadScope!({ projectId, scopeId: dbScopeId, actor });
@@ -2008,7 +2008,7 @@ export const approvalPolicyServiceFactory = ({
       if (
         !resourcePermission.can({
           action: ProjectPermissionApprovalRequestGrantActions.Read,
-          subject: ResourcePermissionSub.ApprovalRequestGrants
+          subject: ApplicationPermissionSub.ApprovalRequestGrants
         })
       ) {
         throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
@@ -2126,7 +2126,7 @@ export const approvalPolicyServiceFactory = ({
           });
           resourcePerm.assert({
             action: ProjectPermissionApprovalRequestGrantActions.Revoke,
-            subject: ResourcePermissionSub.ApprovalRequestGrants
+            subject: ApplicationPermissionSub.ApprovalRequestGrants
           });
         } else {
           permission.assert({
@@ -2217,7 +2217,7 @@ export const approvalPolicyServiceFactory = ({
       scopeType,
       scopeId,
       actor,
-      ResourcePermissionApprovalPolicyActions.Read,
+      ApplicationApprovalPolicyPermissionActions.Read,
       policyType
     );
 
@@ -2251,7 +2251,7 @@ export const approvalPolicyServiceFactory = ({
       scopeType,
       scopeId,
       actor,
-      ResourcePermissionApprovalPolicyActions.Edit,
+      ApplicationApprovalPolicyPermissionActions.Edit,
       policyType
     );
 
@@ -2487,7 +2487,7 @@ export const approvalPolicyServiceFactory = ({
       scope,
       scopeId,
       actor,
-      ResourcePermissionApprovalPolicyActions.Read,
+      ApplicationApprovalPolicyPermissionActions.Read,
       policyType
     );
 

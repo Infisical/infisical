@@ -23,7 +23,7 @@ export const buildProjectsForTests = ({
 }): {
   service: Pick<
     TProjectsDomain,
-    "getProjectPermission" | "getProjectRules" | "getProjectResourcePermission" | "findProject"
+    "getProjectPermission" | "getProjectRules" | "getProjectResourcePermission" | "findProject" | "resolveRoleRules"
   >;
   productAccessRegistry: ProductAccessRegistry;
 } => {
@@ -34,9 +34,10 @@ export const buildProjectsForTests = ({
     ])
   );
   const registry = new ProductAccessRegistry();
+  const roleRules = new ProjectRoleRules(registry);
   const permissions = new ProjectPermissionService({
     accessControlDomain,
-    roleRules: new ProjectRoleRules(registry),
+    roleRules,
     projects: { findById: async (id) => byId.get(id), findDeletionState: async () => "" },
     memo: new ActorMemo<{ project: Project; grants: ActorGrants }>()
   });
@@ -50,7 +51,8 @@ export const buildProjectsForTests = ({
       getProjectPermission: (input) => permissions.getProjectPermission(input),
       getProjectRules: (input) => permissions.getProjectRules(input),
       getProjectResourcePermission: (input) => resources.getProjectResourcePermission(input),
-      findProject: async ({ projectId }) => byId.get(projectId)
+      findProject: async ({ projectId }) => byId.get(projectId),
+      resolveRoleRules: (input) => roleRules.resolve(input)
     },
     productAccessRegistry: registry
   };

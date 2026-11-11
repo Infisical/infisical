@@ -155,9 +155,6 @@ import { pamSessionExpirationServiceFactory } from "@app/ee/services/pam-session
 import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { pamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
 import { pamAuditLogScopeResolverFactory } from "@app/ee/services/pam/pam-audit-log-fns";
-import { permissionServiceFactory } from "@app/ee/services/permission/permission-adapter";
-import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
-import { legacyPermissionEngineFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { pkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { pkiAcmeAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-auth-dal";
@@ -453,6 +450,7 @@ import { integrationDeprecationQueueFactory } from "@app/services/integration/in
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
 import { legacyPkiDeprecationDALFactory } from "@app/services/legacy-pki-deprecation/legacy-pki-deprecation-dal";
 import { legacyPkiDeprecationQueueFactory } from "@app/services/legacy-pki-deprecation/legacy-pki-deprecation-queue";
+import { memberPermissionAuditServiceFactory } from "@app/services/member-permission-audit/member-permission-audit-service";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { membershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { membershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
@@ -784,7 +782,6 @@ export const registerRoutes = async (
   };
 
   // ee db layer ops
-  const permissionDAL = permissionDALFactory(db);
   const samlConfigDAL = samlConfigDALFactory(db);
   const scimDAL = scimDALFactory(db);
   const scimEventsDAL = scimEventsDALFactory(db);
@@ -886,31 +883,7 @@ export const registerRoutes = async (
   // Project events service (publishes via event bus for inter-container communication)
   const projectEventsService = projectEventsServiceFactory({ eventBus: eventBusService });
 
-  const permissionService = permissionServiceFactory({
-    userDAL,
-    identityDAL,
-    actorContexts: domains.actorContexts,
-    accessControlDomain,
-    organizationsDomain,
-    projectsDomain,
-    secretsDomain,
-    // Tests run the original engine beside every call and fail on any difference.
-    shadow: appCfg.isTestMode
-      ? legacyPermissionEngineFactory({
-          permissionDAL,
-          serviceTokenDAL,
-          projectDAL,
-          // No cache, so the comparison is between what each engine computes from the database now.
-          keyStore: { ...keyStore, getItem: async () => null, setItemWithExpiry: async () => "OK" as const },
-          roleDAL,
-          userDAL,
-          identityDAL,
-          additionalPrivilegeDAL,
-          groupDAL,
-          secretFolderDAL: folderDAL
-        })
-      : undefined
-  });
+  const memberPermissionAuditService = memberPermissionAuditServiceFactory({ projectsDomain, secretsDomain });
 
   const assumePrivilegeService = assumePrivilegeServiceFactory({
     projectsDomain,
@@ -5003,7 +4976,7 @@ export const registerRoutes = async (
     user: userService,
     group: groupService,
     groupProject: groupProjectService,
-    permission: permissionService,
+    memberPermissionAudit: memberPermissionAuditService,
     org: orgService,
     subOrganization: subOrgService,
     oidc: oidcService,
@@ -5125,6 +5098,7 @@ export const registerRoutes = async (
     secretScanning: secretScanningService,
     licenseDomain,
     actorContexts: domains.actorContexts,
+    organizationsDomain,
     instanceConfigCoreDomain,
     licenseV2: licenseV2Service,
     trustedIp: trustedIpService,

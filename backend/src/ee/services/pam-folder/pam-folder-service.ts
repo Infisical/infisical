@@ -2,15 +2,11 @@ import { Knex } from "knex";
 
 import { OrgMembershipRole, RESOURCE_SCOPE, ResourceType, TMemberships, TPamFolders } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, PamResourcePermissionSub, TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { isActiveRole } from "@app/domains/platform/access-control/ce/module";
 import { TOrganizationsDomain } from "@app/domains/platform/organizations/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { isActiveRole } from "@app/ee/services/permission/permission-fns";
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -99,11 +95,11 @@ export const pamFolderServiceFactory = ({
   const checkFolderPermission = async (
     folderId: string,
     projectId: string,
-    action: ResourcePermissionPamResourceActions,
+    action: PamResourcePermissionActions,
     ctx: TActorContext
   ) => {
     const permission = await pamDomain.getPamPermission({ actor: ctx, projectId, folderId });
-    permission.assert({ action, subject: ResourcePermissionSub.PamResource });
+    permission.assert({ action, subject: PamResourcePermissionSub.PamResource });
   };
 
   const list = async ({
@@ -118,7 +114,7 @@ export const pamFolderServiceFactory = ({
 
     const actionsToCheck = filterByAction
       ? { anyOf: [filterByAction] }
-      : { anyOf: [ResourcePermissionPamResourceActions.ReadFolder, ResourcePermissionPamResourceActions.ReadAccounts] };
+      : { anyOf: [PamResourcePermissionActions.ReadFolder, PamResourcePermissionActions.ReadAccounts] };
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
@@ -129,7 +125,7 @@ export const pamFolderServiceFactory = ({
     );
 
     // CreateAccounts is a folder-level action only - ignore account-level permissions for this filter
-    const isFolderOnlyAction = filterByAction === ResourcePermissionPamResourceActions.CreateAccounts;
+    const isFolderOnlyAction = filterByAction === PamResourcePermissionActions.CreateAccounts;
     const effectiveAccountIds = isFolderOnlyAction ? [] : accountIds;
 
     const listVisible = async () => {
@@ -153,7 +149,7 @@ export const pamFolderServiceFactory = ({
         membershipDAL,
         membershipRoleDAL,
         projectId,
-        { allOf: [ResourcePermissionPamResourceActions.ManageMembers] },
+        { allOf: [PamResourcePermissionActions.ManageMembers] },
         ctx
       )
     ]);
@@ -172,7 +168,7 @@ export const pamFolderServiceFactory = ({
   };
 
   const getById = async ({ folderId, projectId, actor: ctx }: TGetPamFolderDTO & TActorInput) => {
-    await checkFolderPermission(folderId, projectId, ResourcePermissionPamResourceActions.ReadFolder, ctx);
+    await checkFolderPermission(folderId, projectId, PamResourcePermissionActions.ReadFolder, ctx);
 
     const folder = await pamFolderDAL.findById(folderId);
     if (!folder || folder.projectId !== projectId) {
@@ -223,7 +219,7 @@ export const pamFolderServiceFactory = ({
   };
 
   const update = async ({ folderId, projectId, name, description, actor: ctx }: TUpdatePamFolderDTO & TActorInput) => {
-    await checkFolderPermission(folderId, projectId, ResourcePermissionPamResourceActions.EditFolder, ctx);
+    await checkFolderPermission(folderId, projectId, PamResourcePermissionActions.EditFolder, ctx);
 
     const existing = await pamFolderDAL.findById(folderId);
     if (!existing || existing.projectId !== projectId) {
@@ -248,7 +244,7 @@ export const pamFolderServiceFactory = ({
   };
 
   const deleteFolder = async ({ folderId, projectId, actor: ctx }: TDeletePamFolderDTO & TActorInput) => {
-    await checkFolderPermission(folderId, projectId, ResourcePermissionPamResourceActions.DeleteFolder, ctx);
+    await checkFolderPermission(folderId, projectId, PamResourcePermissionActions.DeleteFolder, ctx);
 
     const existing = await pamFolderDAL.findById(folderId);
     if (!existing || existing.projectId !== projectId) {
@@ -297,14 +293,14 @@ export const pamFolderServiceFactory = ({
     const permission = await pamDomain.getPamPermission({ actor: ctx, projectId, folderId });
 
     permission.assert({
-      action: ResourcePermissionPamResourceActions.ReadFolder,
-      subject: ResourcePermissionSub.PamResource
+      action: PamResourcePermissionActions.ReadFolder,
+      subject: PamResourcePermissionSub.PamResource
     });
 
     // Only member managers get the roster; read-only roles must not enumerate members.
     const canManageMembers = permission.can({
-      action: ResourcePermissionPamResourceActions.ManageMembers,
-      subject: ResourcePermissionSub.PamResource
+      action: PamResourcePermissionActions.ManageMembers,
+      subject: PamResourcePermissionSub.PamResource
     });
 
     return {
@@ -393,7 +389,7 @@ export const pamFolderServiceFactory = ({
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ManageMembers] },
+      { allOf: [PamResourcePermissionActions.ManageMembers] },
       ctx
     );
     if (adminFolderIds.includes(folderId)) {

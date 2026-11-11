@@ -1,8 +1,5 @@
-import { subject } from "@casl/ability";
-
 import {
   AccessScope,
-  ActionProjectType,
   OrgMembershipRole,
   OrgMembershipStatus,
   ProjectMembershipRole,
@@ -10,25 +7,17 @@ import {
   TableName
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { createDomains } from "@app/domains/domains";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { InstanceConfigCoreModule } from "@app/domains/platform/instance-config-core/ce/module";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { groupDALFactory } from "@app/ee/services/group/group-dal";
-import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
-import { legacyPermissionEngineFactory } from "@app/ee/services/permission/permission-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import type { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { keyStoreFactory, KeyStorePrefixes } from "@app/keystore/keystore";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
-import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
-import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { projectDALFactory } from "@app/services/project/project-dal";
-import { roleDALFactory } from "@app/services/role/role-dal";
-import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
-import { userDALFactory } from "@app/services/user/user-dal";
 
 const projectId = seedData1.project.id;
 const orgId = seedData1.organization.id;
@@ -38,21 +27,15 @@ const orgId = seedData1.organization.id;
 let memberUserId: string;
 let memberMembershipId: string;
 
-let permissionArg: {
-  actor: ActorType;
-  actorId: string;
-  projectId: string;
-  actorAuthMethod: AuthMethod;
-  actorOrgId: string;
-  actionProjectType: ActionProjectType;
-};
+let actor: TActorContext;
 
-// the `services` decoration is encapsulated inside the routes plugin, so build the
-// permission service directly against the same DB/Redis the test server runs on
-let permissionService: TPermissionServiceFactory;
+// The routes' services are encapsulated in their plugin, so build the domains over the same DB and Redis the test
+// server runs on.
+let secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
 
-let permissionDataKey: string;
-let permissionMarkerKey: string;
+// The domains' cached folder grants for the member. Tests run with the cache marker off, so every read revalidates
+// against the fingerprint (grants plus the folder version) and only this data entry is written.
+let folderGrantsDataKey: string;
 const folderVersionKey = KeyStorePrefixes.ProjectFolderPermissionVersion(projectId);
 
 beforeAll(async () => {
@@ -60,18 +43,15 @@ beforeAll(async () => {
   await initEnvConfig(() => InstanceConfigCoreModule.readFipsSetting(testDb), logger);
   const keyStore = keyStoreFactory(getConfig(), keyValueStoreDALFactory(testDb));
 
-  permissionService = legacyPermissionEngineFactory({
-    permissionDAL: permissionDALFactory(testDb),
-    serviceTokenDAL: serviceTokenDALFactory(testDb),
-    projectDAL: projectDALFactory(testDb),
-    userDAL: userDALFactory(testDb),
-    identityDAL: identityDALFactory(testDb),
+  const domains = createDomains({
+    db: testDb,
     keyStore,
-    roleDAL: roleDALFactory(testDb),
-    additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
-    groupDAL: groupDALFactory(testDb),
-    secretFolderDAL: secretFolderDALFactory(testDb)
-  });
+    queueService: { queue: () => undefined, start: () => undefined },
+    cronJob: { register: () => undefined },
+    eventEmitter: { emit: () => undefined },
+    envConfig: getConfig()
+  } as unknown as Parameters<typeof createDomains>[0]);
+  secretsDomain = domains.secrets.service;
 
   const username = `folder-rbac-${alphaNumericNanoId(8)}@example.com`.toLowerCase();
   const [user] = await testDb(TableName.Users)
@@ -104,36 +84,27 @@ beforeAll(async () => {
     role: ProjectMembershipRole.Member
   });
 
-  permissionArg = {
-    actor: ActorType.USER,
-    actorId: memberUserId,
-    projectId,
-    actorAuthMethod: AuthMethod.EMAIL,
-    actorOrgId: orgId,
-    actionProjectType: ActionProjectType.SecretManager
-  };
-
-  permissionDataKey = KeyStorePrefixes.ProjectPermissionData(
-    projectId,
-    ActorType.USER,
-    memberUserId,
-    ActionProjectType.SecretManager
+  actor = await domains.actorContexts.forPrincipal(
+    {
+      type: ActorType.USER,
+      id: memberUserId,
+      username,
+      email: username,
+      authMethod: AuthMethod.EMAIL,
+      isSuperAdmin: false
+    },
+    orgId
   );
-  permissionMarkerKey = KeyStorePrefixes.ProjectPermissionMarker(
-    projectId,
-    ActorType.USER,
-    memberUserId,
-    ActionProjectType.SecretManager
-  );
+  folderGrantsDataKey = `access-control:permission:data:${projectId}:${ActorType.USER}:${memberUserId}:secrets-folder-grants:v1`;
 });
 
 afterAll(async () => {
-  await testRedis.del(permissionDataKey, permissionMarkerKey);
+  await testRedis.del(folderGrantsDataKey);
   await testDb(TableName.Membership).where({ actorUserId: memberUserId }).del();
   await testDb(TableName.Users).where({ id: memberUserId }).del();
 });
 
-const clearMemberPermissionCaches = () => testRedis.del(permissionDataKey, permissionMarkerKey);
+const clearMemberPermissionCaches = () => testRedis.del(folderGrantsDataKey);
 
 const createFolder = async (dto: { path: string; name: string }) => {
   const res = await testServer.inject({
@@ -213,7 +184,7 @@ const getFolderVersion = async () => {
 };
 
 describe("Folder-scoped privilege permissions", () => {
-  test("folder grants ride in the project permission blob, under one cache key", async () => {
+  test("folder grants are cached for ten minutes under the member's folder grant key", async () => {
     const folder = await createFolder({ path: "/", name: "rbac-one-cache" });
 
     await testDb(TableName.AdditionalPrivilege).insert({
@@ -228,21 +199,17 @@ describe("Folder-scoped privilege permissions", () => {
 
     try {
       await clearMemberPermissionCaches();
-      await permissionService.getProjectPermission(permissionArg);
+      await secretsDomain.getSecretsPermission({ actor, projectId });
 
-      const [cachedBlob, permissionDataTtl, permissionMarkerTtl] = await Promise.all([
-        testRedis.get(permissionDataKey),
-        testRedis.ttl(permissionDataKey),
-        testRedis.ttl(permissionMarkerKey)
+      const [cachedBlob, dataTtl] = await Promise.all([
+        testRedis.get(folderGrantsDataKey),
+        testRedis.ttl(folderGrantsDataKey)
       ]);
 
-      expect(permissionDataTtl).toBeGreaterThan(540);
-      expect(permissionDataTtl).toBeLessThanOrEqual(600);
-      expect(permissionMarkerTtl).toBeGreaterThan(0);
-      expect(permissionMarkerTtl).toBeLessThanOrEqual(10);
-
-      const { payload } = JSON.parse(cachedBlob as string) as { payload: { folderScopedPrivileges: unknown[] } };
-      expect(payload.folderScopedPrivileges).toHaveLength(1);
+      expect(dataTtl).toBeGreaterThan(540);
+      expect(dataTtl).toBeLessThanOrEqual(600);
+      const { payload } = JSON.parse(cachedBlob as string) as { payload: unknown[] };
+      expect(payload).toHaveLength(1);
     } finally {
       await deleteFolder({ path: "/", id: folder.id, forceDelete: true });
       await clearMemberPermissionCaches();
@@ -266,8 +233,8 @@ describe("Folder-scoped privilege permissions", () => {
 
     // the raw insert bypasses the version bump, so force a cold fetch
     await clearMemberPermissionCaches();
-    const before = await permissionService.getProjectPermission(permissionArg);
-    expect(before.folderScopedPrivileges).toEqual([
+    const before = await secretsDomain.getSecretsPermission({ actor, projectId });
+    expect(before.folderGrants).toEqual([
       expect.objectContaining({
         folderId: folderB.id,
         role: SecretFolderRole.Read,
@@ -280,19 +247,25 @@ describe("Folder-scoped privilege permissions", () => {
     // edit no) while leaving every other path on the base member permissions
     const grantedPath = { environment: seedData1.environment.slug, secretPath: "/rbac-a/rbac-b" };
     expect(
-      before.permission.can(
-        ProjectPermissionSecretActions.ReadValue,
-        subject(ProjectPermissionSub.Secrets, grantedPath)
-      )
+      before.permission.can({
+        action: ProjectPermissionSecretActions.ReadValue,
+        subject: ProjectPermissionSub.Secrets,
+        fields: grantedPath
+      })
     ).toBe(true);
     expect(
-      before.permission.can(ProjectPermissionSecretActions.Edit, subject(ProjectPermissionSub.Secrets, grantedPath))
+      before.permission.can({
+        action: ProjectPermissionSecretActions.Edit,
+        subject: ProjectPermissionSub.Secrets,
+        fields: grantedPath
+      })
     ).toBe(false);
     expect(
-      before.permission.can(
-        ProjectPermissionSecretActions.Edit,
-        subject(ProjectPermissionSub.Secrets, { environment: seedData1.environment.slug, secretPath: "/" })
-      )
+      before.permission.can({
+        action: ProjectPermissionSecretActions.Edit,
+        subject: ProjectPermissionSub.Secrets,
+        fields: { environment: seedData1.environment.slug, secretPath: "/" }
+      })
     ).toBe(true);
 
     const versionBefore = await getFolderVersion();
@@ -307,11 +280,10 @@ describe("Folder-scoped privilege permissions", () => {
     const versionAfterRename = await getFolderVersion();
     expect(versionAfterRename).toBeGreaterThan(versionBefore);
 
-    // simulate marker expiry only: the stale data blob with the pre-rename fingerprint stays,
-    // so the refetch below is driven by the version bump, not by a cold cache
-    await testRedis.del(permissionMarkerKey);
-    const afterRename = await permissionService.getProjectPermission(permissionArg);
-    expect(afterRename.folderScopedPrivileges).toEqual([
+    // The cached grants with the pre-rename fingerprint stay, so the refetch below is driven by the version bump,
+    // not by a cold cache.
+    const afterRename = await secretsDomain.getSecretsPermission({ actor, projectId });
+    expect(afterRename.folderGrants).toEqual([
       expect.objectContaining({ folderId: folderB.id, secretPath: "/rbac-a-renamed/rbac-b" })
     ]);
 
@@ -324,9 +296,8 @@ describe("Folder-scoped privilege permissions", () => {
     const versionAfterMove = await getFolderVersion();
     expect(versionAfterMove).toBeGreaterThan(versionAfterRename);
 
-    await testRedis.del(permissionMarkerKey);
-    const after = await permissionService.getProjectPermission(permissionArg);
-    expect(after.folderScopedPrivileges).toEqual([
+    const after = await secretsDomain.getSecretsPermission({ actor, projectId });
+    expect(after.folderGrants).toEqual([
       expect.objectContaining({
         folderId: privilegeRow.folderId,
         role: SecretFolderRole.Read,
@@ -341,8 +312,6 @@ describe("Folder-scoped privilege permissions", () => {
     const versionAfterDelete = await getFolderVersion();
     expect(versionAfterDelete).toBeGreaterThan(versionAfterMove);
 
-    // the permission marker lives 10s past the grant's deletion; drop it so later specs sharing
-    // this user don't build abilities from the stale folder deny
     await clearMemberPermissionCaches();
   });
 });

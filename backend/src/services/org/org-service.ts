@@ -12,6 +12,7 @@ import {
   TSamlConfigs
 } from "@app/db/schemas";
 import { TActorContext, TActorContexts } from "@app/domains/lib/actor-context";
+import { assertRoleSetBoundary } from "@app/domains/platform/access-control/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermission,
@@ -35,7 +36,6 @@ import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { PgSqlLock } from "@app/keystore/keystore";

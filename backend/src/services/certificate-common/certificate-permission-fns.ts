@@ -1,7 +1,11 @@
 import { Knex } from "knex";
 
 import { ProjectType } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionSub,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   ProjectPermission,
@@ -9,10 +13,6 @@ import {
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import {
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
@@ -65,7 +65,7 @@ const assertCertificatePermission = async ({
   projectAction,
   extraSubjectFields
 }: TAssertCanEditCertificateDTO & {
-  resourceAction: ResourcePermissionCertificateActions;
+  resourceAction: ApplicationCertificatePermissionActions;
   projectAction: ProjectPermissionCertificateActions;
   extraSubjectFields?: Record<string, string | undefined>;
 }): Promise<{
@@ -78,7 +78,7 @@ const assertCertificatePermission = async ({
       projectId: certificate.projectId,
       applicationId: certificate.applicationId
     });
-    permission.assert({ action: resourceAction, subject: ResourcePermissionSub.Certificates });
+    permission.assert({ action: resourceAction, subject: ApplicationPermissionSub.Certificates });
 
     return { certMetadata: [] };
   }
@@ -110,7 +110,7 @@ const assertCertificatePermission = async ({
 export const assertCanEditCertificate = (dto: TAssertCanEditCertificateDTO) =>
   assertCertificatePermission({
     ...dto,
-    resourceAction: ResourcePermissionCertificateActions.Edit,
+    resourceAction: ApplicationCertificatePermissionActions.Edit,
     projectAction: ProjectPermissionCertificateActions.Edit
   });
 
@@ -123,7 +123,7 @@ export const assertCanRevokeCertificate = async ({
   await assertCertificatePermission({
     ...dto,
     certificate,
-    resourceAction: ResourcePermissionCertificateActions.Delete,
+    resourceAction: ApplicationCertificatePermissionActions.Delete,
     projectAction: ProjectPermissionCertificateActions.Delete,
     extraSubjectFields: {
       friendlyName: certificate.friendlyName ?? undefined,

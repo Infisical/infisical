@@ -1,7 +1,12 @@
 import { Knex } from "knex";
 
 import { ProjectType, TCertificateSyncs } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionSub,
+  ApplicationPkiSyncPermissionActions,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
@@ -12,11 +17,6 @@ import {
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import {
-  ResourcePermissionCertificateActions,
-  ResourcePermissionPkiSyncActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
@@ -194,14 +194,14 @@ export const pkiSyncServiceFactory = ({
   auditLogService
 }: TPkiSyncServiceFactoryDep) => {
   const $resourceFallback = async (
-    action: ResourcePermissionPkiSyncActions,
+    action: ApplicationPkiSyncPermissionActions,
     projectId: string,
     applicationId: string | null | undefined,
     actor: TActorContext
   ) => {
     if (!applicationId) return false;
     const permission = await certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
-    return permission.can({ action, subject: ResourcePermissionSub.PkiSyncs });
+    return permission.can({ action, subject: ApplicationPermissionSub.PkiSyncs });
   };
 
   const $assertHostCommandsAreSupported = (
@@ -242,7 +242,7 @@ export const pkiSyncServiceFactory = ({
 
   const $assertSyncAction = async (
     projectAction: ProjectPermissionPkiSyncActions,
-    resourceAction: ResourcePermissionPkiSyncActions,
+    resourceAction: ApplicationPkiSyncPermissionActions,
     pkiSync: { projectId: string; applicationId?: string | null; name: string },
     subscriberName: string | undefined,
     actor: TActorContext
@@ -272,7 +272,7 @@ export const pkiSyncServiceFactory = ({
   };
 
   const $assertMaySetHostCommand = async (
-    actions: { project: ProjectPermissionPkiSyncActions; resource: ResourcePermissionPkiSyncActions },
+    actions: { project: ProjectPermissionPkiSyncActions; resource: ApplicationPkiSyncPermissionActions },
     nextCommand: unknown,
     currentCommand: unknown,
     pkiSync: { projectId: string; applicationId?: string | null; name: string },
@@ -318,7 +318,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.SetTargetHost,
-      ResourcePermissionPkiSyncActions.SetTargetHost,
+      ApplicationPkiSyncPermissionActions.SetTargetHost,
       pkiSync,
       subscriberName,
       actor
@@ -347,11 +347,11 @@ export const pkiSyncServiceFactory = ({
   const HOST_COMMAND_ACTIONS = {
     [HEALTH_CHECK_COMMAND_OPTION_KEY]: {
       project: ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
-      resource: ResourcePermissionPkiSyncActions.SetHealthCheckCommand
+      resource: ApplicationPkiSyncPermissionActions.SetHealthCheckCommand
     },
     [POST_SYNC_COMMAND_OPTION_KEY]: {
       project: ProjectPermissionPkiSyncActions.SetPostSyncCommand,
-      resource: ResourcePermissionPkiSyncActions.SetPostSyncCommand
+      resource: ApplicationPkiSyncPermissionActions.SetPostSyncCommand
     }
   } as const;
 
@@ -401,8 +401,8 @@ export const pkiSyncServiceFactory = ({
 
     if (
       resourcePermission.can({
-        action: ResourcePermissionCertificateActions.Read,
-        subject: ResourcePermissionSub.Certificates
+        action: ApplicationCertificatePermissionActions.Read,
+        subject: ApplicationPermissionSub.Certificates
       })
     ) {
       return undefined;
@@ -678,7 +678,7 @@ export const pkiSyncServiceFactory = ({
     }
 
     const allowedByResource = await $resourceFallback(
-      ResourcePermissionPkiSyncActions.Create,
+      ApplicationPkiSyncPermissionActions.Create,
       projectId,
       applicationId,
       actor
@@ -836,7 +836,7 @@ export const pkiSyncServiceFactory = ({
 
     if (pkiSync.applicationId) {
       const editAllowedByResource = await $resourceFallback(
-        ResourcePermissionPkiSyncActions.Edit,
+        ApplicationPkiSyncPermissionActions.Edit,
         pkiSync.projectId,
         pkiSync.applicationId,
         actor
@@ -1102,7 +1102,7 @@ export const pkiSyncServiceFactory = ({
 
     if (pkiSync.applicationId) {
       const deleteAllowedByResource = await $resourceFallback(
-        ResourcePermissionPkiSyncActions.Delete,
+        ApplicationPkiSyncPermissionActions.Delete,
         pkiSync.projectId,
         pkiSync.applicationId,
         actor
@@ -1140,7 +1140,7 @@ export const pkiSyncServiceFactory = ({
 
     if (applicationId) {
       const allowedByResource = await $resourceFallback(
-        ResourcePermissionPkiSyncActions.Read,
+        ApplicationPkiSyncPermissionActions.Read,
         projectId,
         applicationId,
         actor
@@ -1217,7 +1217,7 @@ export const pkiSyncServiceFactory = ({
 
     if (pkiSync.applicationId) {
       const allowedByResource = await $resourceFallback(
-        ResourcePermissionPkiSyncActions.Read,
+        ApplicationPkiSyncPermissionActions.Read,
         pkiSync.projectId,
         pkiSync.applicationId,
         actor
@@ -1263,7 +1263,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.SyncCertificates,
-      ResourcePermissionPkiSyncActions.SyncCertificates,
+      ApplicationPkiSyncPermissionActions.SyncCertificates,
       pkiSync,
       syncSubscriber?.name,
       actor
@@ -1323,7 +1323,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.SetHealthCheckCommand,
-      ResourcePermissionPkiSyncActions.SetHealthCheckCommand,
+      ApplicationPkiSyncPermissionActions.SetHealthCheckCommand,
       testTarget,
       undefined,
       actor
@@ -1403,7 +1403,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.SyncCertificates,
-      ResourcePermissionPkiSyncActions.SyncCertificates,
+      ApplicationPkiSyncPermissionActions.SyncCertificates,
       pkiSync,
       undefined,
       actor
@@ -1440,7 +1440,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.ImportCertificates,
-      ResourcePermissionPkiSyncActions.ImportCertificates,
+      ApplicationPkiSyncPermissionActions.ImportCertificates,
       pkiSync,
       importSubscriber?.name,
       actor
@@ -1473,7 +1473,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.RemoveCertificates,
-      ResourcePermissionPkiSyncActions.RemoveCertificates,
+      ApplicationPkiSyncPermissionActions.RemoveCertificates,
       pkiSync,
       removeSubscriber?.name,
       actor
@@ -1496,7 +1496,7 @@ export const pkiSyncServiceFactory = ({
       if (!pkiSync.applicationId) return { orders: [] };
 
       const allowedByResource = await $resourceFallback(
-        ResourcePermissionPkiSyncActions.Read,
+        ApplicationPkiSyncPermissionActions.Read,
         pkiSync.projectId,
         pkiSync.applicationId,
         actor
@@ -1515,7 +1515,7 @@ export const pkiSyncServiceFactory = ({
       if (!application) throw new NotFoundError({ message: "Application not found" });
 
       const allowedByResource = await $resourceFallback(
-        ResourcePermissionPkiSyncActions.Read,
+        ApplicationPkiSyncPermissionActions.Read,
         application.projectId,
         applicationId,
         actor
@@ -1564,7 +1564,7 @@ export const pkiSyncServiceFactory = ({
 
       await $assertSyncAction(
         ProjectPermissionPkiSyncActions.Edit,
-        ResourcePermissionPkiSyncActions.Edit,
+        ApplicationPkiSyncPermissionActions.Edit,
         pkiSync,
         pkiSyncSubscriber?.name,
         actor
@@ -1635,7 +1635,7 @@ export const pkiSyncServiceFactory = ({
     if (!application) throw new NotFoundError({ message: "Application not found" });
 
     const allowedByResource = await $resourceFallback(
-      ResourcePermissionPkiSyncActions.Create,
+      ApplicationPkiSyncPermissionActions.Create,
       application.projectId,
       applicationId,
       actor
@@ -1753,7 +1753,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.Edit,
-      ResourcePermissionPkiSyncActions.Edit,
+      ApplicationPkiSyncPermissionActions.Edit,
       pkiSync,
       pkiSyncSubscriber?.name,
       actor
@@ -1797,7 +1797,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.Edit,
-      ResourcePermissionPkiSyncActions.Edit,
+      ApplicationPkiSyncPermissionActions.Edit,
       pkiSync,
       pkiSyncSubscriber?.name,
       actor
@@ -1843,7 +1843,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.Read,
-      ResourcePermissionPkiSyncActions.Read,
+      ApplicationPkiSyncPermissionActions.Read,
       pkiSync,
       pkiSyncSubscriber?.name,
       actor
@@ -1912,7 +1912,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.Edit,
-      ResourcePermissionPkiSyncActions.Edit,
+      ApplicationPkiSyncPermissionActions.Edit,
       pkiSync,
       pkiSyncSubscriber?.name,
       actor
@@ -1965,7 +1965,7 @@ export const pkiSyncServiceFactory = ({
 
     await $assertSyncAction(
       ProjectPermissionPkiSyncActions.Edit,
-      ResourcePermissionPkiSyncActions.Edit,
+      ApplicationPkiSyncPermissionActions.Edit,
       pkiSync,
       pkiSyncSubscriber?.name,
       actor

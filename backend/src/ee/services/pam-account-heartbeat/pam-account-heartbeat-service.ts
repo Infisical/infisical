@@ -1,10 +1,9 @@
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { testBuiltConnectionWithGateway } from "@app/ee/services/gateway-v2/gateway-v2-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { NotFoundError } from "@app/lib/errors";
 import { GatewayFailureKind } from "@app/lib/gateway-v2/test-connection-rpc";
 import { logger } from "@app/lib/logger";
@@ -343,7 +342,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       account.id,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.ViewCredentials,
+      PamResourcePermissionActions.ViewCredentials,
       ctx
     );
 
@@ -361,7 +360,7 @@ export const pamAccountHeartbeatServiceFactory = ({
       account.id,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.ReadAccounts,
+      PamResourcePermissionActions.ReadAccounts,
       ctx
     );
 

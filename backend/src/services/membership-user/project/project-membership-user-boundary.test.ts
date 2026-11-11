@@ -3,12 +3,13 @@ import { vi } from "vitest";
 
 import { AccessScope, ProjectMembershipRole } from "@app/db/schemas";
 import { Permission } from "@app/domains/platform/access-control/ce/module";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import {
   projectAdminPermissions,
   projectMemberPermissions,
-  projectNoAccessPermissions
-} from "@app/ee/services/permission/default-roles";
+  projectNoAccessPermissions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
 import { PermissionBoundaryError } from "@app/lib/errors";
 

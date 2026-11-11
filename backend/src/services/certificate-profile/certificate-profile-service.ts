@@ -1,7 +1,12 @@
 import * as x509 from "@peculiar/x509";
 
 import { ProjectType } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationCertificatePermissionActions,
+  ApplicationPermissionActions,
+  ApplicationPermissionSub,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
@@ -10,11 +15,6 @@ import {
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import {
-  ResourcePermissionApplicationActions,
-  ResourcePermissionCertificateActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { TScepDynamicChallengeDALFactory } from "@app/ee/services/pki-scep/pki-scep-dynamic-challenge-dal";
@@ -998,8 +998,8 @@ export const certificateProfileServiceFactory = ({
           applicationId: attachment.applicationId
         });
         return resourcePermission.can({
-          action: ResourcePermissionApplicationActions.Read,
-          subject: ResourcePermissionSub.Application
+          action: ApplicationPermissionActions.Read,
+          subject: ApplicationPermissionSub.Application
         });
       })
     );
@@ -1213,8 +1213,8 @@ export const certificateProfileServiceFactory = ({
     ) {
       const permission = await certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
       permission.assert({
-        action: ResourcePermissionApplicationActions.Read,
-        subject: ResourcePermissionSub.Application
+        action: ApplicationPermissionActions.Read,
+        subject: ApplicationPermissionSub.Application
       });
       const attached = await pkiApplicationProfileDAL.findByApplicationId(applicationId);
       attachedProfileIds = attached.map((p) => p.profileId);
@@ -1473,8 +1473,8 @@ export const certificateProfileServiceFactory = ({
         applicationId: cert.applicationId
       });
       const allowedByApplication = resourcePermission.can({
-        action: ResourcePermissionCertificateActions.ReadPrivateKey,
-        subject: ResourcePermissionSub.Certificates
+        action: ApplicationCertificatePermissionActions.ReadPrivateKey,
+        subject: ApplicationPermissionSub.Certificates
       });
       if (!allowedByApplication) {
         throw new ForbiddenRequestError({

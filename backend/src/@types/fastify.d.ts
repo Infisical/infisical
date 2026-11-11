@@ -7,6 +7,7 @@ import type { TActorContexts } from "@app/domains/lib/actor-context";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TOrganizationsDomain } from "@app/domains/platform/organizations/ce/module";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
@@ -62,7 +63,6 @@ import { TPamProjectResolverFactory } from "@app/ee/services/pam-project/pam-pro
 import { TPamSessionChunkServiceFactory } from "@app/ee/services/pam-session-recording/pam-recording-chunk-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPamWebAccessServiceFactory } from "@app/ee/services/pam-web-access/pam-web-access-service";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
 import { TPkiDiscoveryServiceFactory } from "@app/ee/services/pki-discovery/pki-discovery-service";
@@ -152,6 +152,7 @@ import { TScopedIdentityV2ServiceFactory } from "@app/services/identity-v2/ident
 import { TIdentityServiceFactory } from "@app/services/identity/identity-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
+import { TMemberPermissionAuditServiceFactory } from "@app/services/member-permission-audit/member-permission-audit-service";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { TMembershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { TMembershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
@@ -323,7 +324,6 @@ declare module "fastify" {
     authToken: TAuthTokenServiceFactory;
     oauthClient: TOauthClientServiceFactory;
     oidcIssuer: TOidcIssuerServiceFactory;
-    permission: TPermissionServiceFactory;
     org: TOrgServiceFactory;
     oidc: TOidcConfigServiceFactory;
     superAdmin: TSuperAdminServiceFactory;
@@ -424,7 +424,9 @@ declare module "fastify" {
     pkiSigner: TSignerServiceFactory;
     secretScanning: TSecretScanningServiceFactory;
     licenseDomain: TLicenseDomain;
+    organizationsDomain: TOrganizationsDomain;
     actorContexts: TActorContexts;
+    memberPermissionAudit: TMemberPermissionAuditServiceFactory;
     kmsCoreDomain: TKmsCoreDomain;
     instanceConfigCoreDomain: TInstanceConfigCoreDomain;
     licenseV2: TLicenseV2ServiceFactory;

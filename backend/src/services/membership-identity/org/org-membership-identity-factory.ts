@@ -1,14 +1,14 @@
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import {
+  assertRoleSetBoundary,
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/domains/platform/access-control/ce/module";
+import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects,
   TOrganizationsDomain
 } from "@app/domains/platform/organizations/ce/module";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";

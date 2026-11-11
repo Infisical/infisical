@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import pLimit from "p-limit";
 
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TOrganizationsDomain } from "@app/domains/platform/organizations/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
@@ -10,7 +10,6 @@ import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/a
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
@@ -239,7 +238,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       credentialAccountId,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
+      PamResourcePermissionActions.LaunchSessions,
       ctx
     );
     const expectedType = getCredentialAccountType(discoveryType);
@@ -279,7 +278,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           credentialAccountId,
           account.folderId,
           projectId,
-          ResourcePermissionPamResourceActions.ViewCredentials,
+          PamResourcePermissionActions.ViewCredentials,
           ctx
         );
       }
@@ -735,7 +734,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       accountId,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.ReadAccounts,
+      PamResourcePermissionActions.ReadAccounts,
       ctx
     );
 

@@ -1,7 +1,6 @@
 import { FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { OrganizationActionScope } from "@app/db/schemas";
 import { AuthMode } from "@app/lib/auth/actor-types";
 import { readLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -12,14 +11,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 export const registerLicenseRouter = async (server: FastifyZodProvider) => {
   // Any member of the org can read its plan, which is always its root org's.
   const readOrgPlan = async (req: FastifyRequest, orgId: string, refreshCache: boolean) => {
-    await server.services.permission.getOrgPermission({
-      actorId: req.permission.id,
-      actor: req.permission.type,
-      orgId,
-      actorOrgId: req.permission.orgId,
-      actorAuthMethod: req.permission.authMethod,
-      scope: OrganizationActionScope.Any
-    });
+    await server.services.organizationsDomain.getOrgPermission({ actor: req.permission, orgId });
     if (refreshCache) {
       await server.services.licenseDomain.refreshPlan(req.permission.rootOrgId);
     }

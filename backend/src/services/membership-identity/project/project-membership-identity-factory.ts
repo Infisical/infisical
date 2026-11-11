@@ -1,15 +1,15 @@
 import { AccessScope, getAdminMemberOnlyProductLabel, ProjectMembershipRole } from "@app/db/schemas";
 import {
+  assertRoleSetBoundary,
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/domains/platform/access-control/ce/module";
+import {
   isCustomProjectRole,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";

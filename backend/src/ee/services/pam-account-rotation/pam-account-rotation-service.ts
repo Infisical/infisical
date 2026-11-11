@@ -2,12 +2,11 @@ import { Knex } from "knex";
 import pLimit from "p-limit";
 
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "@app/ee/services/secret-rotation-v2/shared/utils";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -148,7 +147,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     accountId: string,
     folderId: string | null | undefined,
     projectId: string,
-    action: ResourcePermissionPamResourceActions,
+    action: PamResourcePermissionActions,
     ctx: TActorContext
   ) => checkAccountAccess(pamDomain, accountId, folderId, projectId, action, ctx);
 
@@ -471,7 +470,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
           ref.id,
           ref.folderId,
           projectId,
-          ResourcePermissionPamResourceActions.ReadAccounts,
+          PamResourcePermissionActions.ReadAccounts,
           ctx
         )
           .then(() => true)
@@ -858,7 +857,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     actor: ctx
   }: TGetPamAccountRotationDTO & TActorInput): Promise<TPamAccountRotationView> => {
     const account = await loadAccount(accountId, projectId);
-    await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.ReadAccounts, ctx);
+    await checkAccount(accountId, account.folderId, projectId, PamResourcePermissionActions.ReadAccounts, ctx);
 
     const settings = PamTemplateSettingsSchema.safeParse(account.templateSettings).data;
     const readiness = getRotationReadiness({
@@ -877,13 +876,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
       const rotator = await pamAccountDAL.findById(account.rotationAccountId);
       const canReadRotator =
         !!rotator &&
-        (await checkAccount(
-          rotator.id,
-          rotator.folderId,
-          projectId,
-          ResourcePermissionPamResourceActions.ReadAccounts,
-          ctx
-        )
+        (await checkAccount(rotator.id, rotator.folderId, projectId, PamResourcePermissionActions.ReadAccounts, ctx)
           .then(() => true)
           .catch(() => false));
       if (rotator && canReadRotator) {
@@ -917,7 +910,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
 
   const getSharedIdentity = async ({ accountId, projectId, actor: ctx }: TGetPamAccountRotationDTO & TActorInput) => {
     const account = await loadAccountFromPrimary(accountId, projectId);
-    await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.ReadAccounts, ctx);
+    await checkAccount(accountId, account.folderId, projectId, PamResourcePermissionActions.ReadAccounts, ctx);
     return getSharedIdentityReferences(account, projectId, ctx);
   };
 
@@ -928,13 +921,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     actor: ctx
   }: TSetPamRotationAccountDTO & TActorInput) => {
     const account = await loadAccountFromPrimary(accountId, projectId);
-    await checkAccount(
-      accountId,
-      account.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.ManageRotation,
-      ctx
-    );
+    await checkAccount(accountId, account.folderId, projectId, PamResourcePermissionActions.ManageRotation, ctx);
 
     if (!isRotatableAccountType(account.accountType)) {
       throw new BadRequestError({ message: "Credential rotation is not supported for this account type" });
@@ -996,7 +983,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
           rotationAccountId,
           rotator.folderId,
           projectId,
-          ResourcePermissionPamResourceActions.ViewCredentials,
+          PamResourcePermissionActions.ViewCredentials,
           ctx
         );
         rotationAccountName = rotator.name;
@@ -1042,13 +1029,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     message?: string;
   }> => {
     const account = await loadAccountFromPrimary(accountId, projectId);
-    await checkAccount(
-      accountId,
-      account.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.ManageRotation,
-      ctx
-    );
+    await checkAccount(accountId, account.folderId, projectId, PamResourcePermissionActions.ManageRotation, ctx);
     const readiness = getRotationReadiness({
       accountId: account.id,
       accountType: account.accountType,
@@ -1073,13 +1054,13 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     actor: ctx
   }: TListPamRotationCandidatesDTO & TActorInput) => {
     const account = await loadAccount(accountId, projectId);
-    await checkAccount(accountId, account.folderId, projectId, ResourcePermissionPamResourceActions.ReadAccounts, ctx);
+    await checkAccount(accountId, account.folderId, projectId, PamResourcePermissionActions.ReadAccounts, ctx);
 
     const { folderIds, accountIds } = await getResourceIdsWithActions(
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ViewCredentials] },
+      { allOf: [PamResourcePermissionActions.ViewCredentials] },
       ctx
     );
 

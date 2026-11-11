@@ -1,7 +1,8 @@
 import { createMongoAbility, MongoAbility, RawRuleOf, subject } from "@casl/ability";
 import { z } from "zod";
 
-import { ProjectMembershipRole, ProjectType, SecretFolderRole } from "@app/db/schemas";
+import { ProjectMembershipRole, SecretFolderRole } from "@app/db/schemas";
+import { mergeRoles, overrideAt, unpackCustomRules } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionActions,
   ProjectPermissionCommitsActions,
@@ -15,18 +16,22 @@ import {
   ProjectPermissionSecretSyncActions,
   ProjectPermissionSet,
   ProjectPermissionSub,
-  ProjectPermissionV2Schema
+  ProjectPermissionV2Schema,
+  expandLegacyForbidActions,
+  genericProjectRoles
 } from "@app/domains/platform/projects/ce/module";
-import { FOLDER_SCOPED_DENY_RULES } from "@app/domains/secrets-manager/secrets/ce/module";
 import { conditionsMatcher } from "@app/lib/casl";
 import { validatePermissionBoundary } from "@app/lib/casl/boundary";
 import { NotFoundError } from "@app/lib/errors";
 
-import { buildFolderScopedPrivilegeRules, filterOverriddenFolderScopedDenyRules } from "./permission-fns";
-import { buildProjectPermissionRules } from "./permission-service";
-import { TProjectFolderScopedPrivilege } from "./permission-service-types";
+import {
+  buildFolderScopedPrivilegeRules,
+  filterOverriddenFolderScopedDenyRules,
+  TFolderGrant
+} from "./folder-grant-rules";
+import { FOLDER_SCOPED_DENY_RULES } from "./folder-roles";
 
-const privilege = (overrides: Partial<TProjectFolderScopedPrivilege> = {}): TProjectFolderScopedPrivilege => ({
+const privilege = (overrides: Partial<TFolderGrant> = {}): TFolderGrant => ({
   id: "privilege-id",
   folderId: "folder-id",
   role: SecretFolderRole.Read,
@@ -39,11 +44,27 @@ const adminRoles = [{ role: ProjectMembershipRole.Admin, permissions: [] }];
 const memberRoles = [{ role: ProjectMembershipRole.Member, permissions: [] }];
 const viewerRoles = [{ role: ProjectMembershipRole.Viewer, permissions: [] }];
 
-const abilityFor = (roles: { role: string; permissions?: unknown }[], privileges?: TProjectFolderScopedPrivilege[]) =>
+// Secret Manager projects use the generic project roles; folder grants override them at their folders, as
+// getSecretsPermission composes them.
+const roleRules = (roles: { role: string; permissions?: unknown }[]) =>
+  mergeRoles({
+    layers: [
+      expandLegacyForbidActions(
+        roles.flatMap(({ role, permissions }) =>
+          role === ProjectMembershipRole.Custom
+            ? unpackCustomRules<MongoAbility<ProjectPermissionSet>>(permissions)
+            : ((genericProjectRoles as Record<string, RawRuleOf<MongoAbility<ProjectPermissionSet>>[]>)[role] ?? [])
+        )
+      )
+    ]
+  });
+
+const abilityFor = (roles: { role: string; permissions?: unknown }[], privileges?: TFolderGrant[]) =>
   createMongoAbility<ProjectPermissionSet>(
-    buildProjectPermissionRules(roles, ProjectType.SecretManager, privileges) as RawRuleOf<
-      MongoAbility<ProjectPermissionSet>
-    >[],
+    overrideAt({
+      base: roleRules(roles),
+      overrides: privileges?.length ? buildFolderScopedPrivilegeRules(privileges) : []
+    }),
     { conditionsMatcher }
   );
 
@@ -321,9 +342,7 @@ describe("folder-scoped privilege precedence", () => {
   });
 
   test("no folder grants leaves the rules untouched", () => {
-    expect(buildProjectPermissionRules(adminRoles, ProjectType.SecretManager, [])).toEqual(
-      buildProjectPermissionRules(adminRoles, ProjectType.SecretManager)
-    );
+    expect(abilityFor(adminRoles, []).rules).toEqual(roleRules(adminRoles));
   });
 });
 
@@ -385,7 +404,7 @@ describe("filterOverriddenFolderScopedDenyRules", () => {
 describe("folder-scoped privilege boundary", () => {
   // How `$folderScopedGrantAbilities` presents a target's grant: the denies are dropped because the
   // boundary walks the subset's rules as if each were a grant.
-  const grantAbility = (privileges: TProjectFolderScopedPrivilege[]) =>
+  const grantAbility = (privileges: TFolderGrant[]) =>
     createMongoAbility<ProjectPermissionSet>(
       buildFolderScopedPrivilegeRules(privileges).filter((rule) => !rule.inverted),
       { conditionsMatcher }

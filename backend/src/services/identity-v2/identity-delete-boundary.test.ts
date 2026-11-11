@@ -9,8 +9,12 @@ import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
-import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-import { projectAdminPermissions, projectNoAccessPermissions } from "@app/ee/services/permission/default-roles";
+import {
+  projectAdminPermissions,
+  projectNoAccessPermissions,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/domains/platform/projects/ce/module";
 import { PermissionBoundaryError } from "@app/lib/errors";
 
 import { newOrgIdentityFactory } from "./org/org-identity-factory";

@@ -30,6 +30,7 @@ export type { TCachedPermissionInput } from "./service/grant-service";
 export { reviveActorGrants } from "./service/grant-service";
 export * from "./service/permission-schemas";
 export * from "./service/permission-types";
+export * from "./service/privilege-boundary";
 export * from "./service/rule-composition";
 export * from "./service/rule-interpolation";
 export * from "./service/rule-narrowing";

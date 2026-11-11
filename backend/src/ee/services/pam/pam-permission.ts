@@ -4,26 +4,25 @@ import { Knex } from "knex";
 
 import { ProjectType, ResourceType } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import {
+  PamResourcePermissionActions,
+  PamResourcePermissionSet,
+  PamResourcePermissionSub,
+  pamResourceRoles,
+  TPamDomain
+} from "@app/domains/pam/pam/ce/module";
+import { isActiveRole } from "@app/domains/platform/access-control/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
-import { isActiveRole } from "../permission/permission-fns";
-import { resolveResourceRoleRules } from "../permission/permission-service";
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSet,
-  ResourcePermissionSub
-} from "../permission/resource-permission";
-
-const pamRoleHasAction = (role: string, action: ResourcePermissionPamResourceActions): boolean => {
+const pamRoleHasAction = (role: string, action: PamResourcePermissionActions): boolean => {
   try {
-    const rules = resolveResourceRoleRules(ResourceType.PamFolder, role);
+    const rules = pamResourceRoles.resolveRole(role);
     const ability = createMongoAbility(rules);
-    return ability.can(action, ResourcePermissionSub.PamResource);
+    return ability.can(action, PamResourcePermissionSub.PamResource);
   } catch {
     return false;
   }
@@ -36,8 +35,8 @@ type TBatchMembershipDep = Pick<TMembershipDALFactory, "findResourceMembershipsF
 type TMembershipRoleDep = Pick<TMembershipRoleDALFactory, "find">;
 
 type TPamActionFilter = {
-  allOf?: ResourcePermissionPamResourceActions[];
-  anyOf?: ResourcePermissionPamResourceActions[];
+  allOf?: PamResourcePermissionActions[];
+  anyOf?: PamResourcePermissionActions[];
 };
 
 type TPamActor = { type: ActorType.USER | ActorType.IDENTITY; id: string };
@@ -73,11 +72,11 @@ export const checkAccountAccess = async (
   accountId: string,
   folderId: string | null | undefined,
   projectId: string,
-  action: ResourcePermissionPamResourceActions,
+  action: PamResourcePermissionActions,
   ctx: TActorContext
 ) => {
   const permission = await pamDomain.getPamPermission({ actor: ctx, projectId, folderId, accountId });
-  const check = { action, subject: ResourcePermissionSub.PamResource };
+  const check = { action, subject: PamResourcePermissionSub.PamResource };
   const { memberships } = permission;
   if (
     folderId &&
@@ -157,7 +156,7 @@ export const getLaunchAccessRemainingMs = async (
   if (membershipIds.size === 0) return 0;
 
   const grantingRoles = roles.filter(
-    (r) => isActiveRole(r) && pamRoleHasAction(r.role, ResourcePermissionPamResourceActions.LaunchSessions)
+    (r) => isActiveRole(r) && pamRoleHasAction(r.role, PamResourcePermissionActions.LaunchSessions)
   );
   if (grantingRoles.some((r) => !r.isTemporary)) return null;
 
@@ -171,7 +170,7 @@ export const accountAccessAllows = async (
   accountId: string,
   folderId: string | null | undefined,
   projectId: string,
-  action: ResourcePermissionPamResourceActions,
+  action: PamResourcePermissionActions,
   ctx: TActorContext
 ): Promise<boolean> => {
   try {
@@ -283,7 +282,7 @@ export const getAccountPermissionRulesMap = async (
   accounts: { id: string; folderId?: string | null }[],
   ctx: TActorContext
 ) => {
-  const permissionsByAccountId = new Map<string, PackRule<RawRuleOf<MongoAbility<ResourcePermissionSet>>>[]>();
+  const permissionsByAccountId = new Map<string, PackRule<RawRuleOf<MongoAbility<PamResourcePermissionSet>>>[]>();
   if (accounts.length === 0) return permissionsByAccountId;
 
   const [folderMemberships, accountMemberships] = await Promise.all([
@@ -334,14 +333,14 @@ export const getAccountPermissionRulesMap = async (
 
   const rulesForRole = (resourceType: ResourceType, role: string) => {
     try {
-      return resolveResourceRoleRules(resourceType, role);
+      return pamResourceRoles.resolveRole(role);
     } catch {
       return [];
     }
   };
 
   accounts.forEach((account) => {
-    const rules: RawRuleOf<MongoAbility<ResourcePermissionSet>>[] = [];
+    const rules: RawRuleOf<MongoAbility<PamResourcePermissionSet>>[] = [];
     if (account.folderId) {
       (folderRolesByResourceId.get(account.folderId) ?? []).forEach((role) => {
         rules.push(...rulesForRole(ResourceType.PamFolder, role));
@@ -350,7 +349,7 @@ export const getAccountPermissionRulesMap = async (
     (accountRolesByResourceId.get(account.id) ?? []).forEach((role) => {
       rules.push(...rulesForRole(ResourceType.PamAccount, role));
     });
-    const ability = createMongoAbility<ResourcePermissionSet>(rules);
+    const ability = createMongoAbility<PamResourcePermissionSet>(rules);
     permissionsByAccountId.set(account.id, packRules(ability.rules));
   });
 

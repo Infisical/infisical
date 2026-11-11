@@ -1,7 +1,7 @@
 import RE2 from "re2";
 
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -61,7 +61,6 @@ import {
   resolvePolicy,
   splitPatternString
 } from "../pam/pam-policies";
-import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
   exchangeCredentialsForConsoleUrl,
@@ -152,13 +151,13 @@ export const pamSessionServiceFactory = ({
     accountId: string,
     folderId: string | null | undefined,
     projectId: string,
-    action: ResourcePermissionPamResourceActions,
+    action: PamResourcePermissionActions,
     ctx: TActorContext
   ) => checkAccountAccess(pamDomain, accountId, folderId, projectId, action, ctx);
 
   const checkSession = async (
     session: { accountId?: string | null; projectId: string },
-    action: ResourcePermissionPamResourceActions,
+    action: PamResourcePermissionActions,
     ctx: TActorContext
   ) => {
     if (session.accountId) {
@@ -195,7 +194,7 @@ export const pamSessionServiceFactory = ({
       membershipDAL,
       membershipRoleDAL,
       projectId,
-      { allOf: [ResourcePermissionPamResourceActions.ViewSessions] },
+      { allOf: [PamResourcePermissionActions.ViewSessions] },
       ctx
     );
 
@@ -211,7 +210,7 @@ export const pamSessionServiceFactory = ({
     const session = await pamSessionDAL.findById(sessionId);
     if (!session) return null;
 
-    await checkSession(session, ResourcePermissionPamResourceActions.ViewSessions, ctx);
+    await checkSession(session, PamResourcePermissionActions.ViewSessions, ctx);
 
     return session;
   };
@@ -491,13 +490,7 @@ export const pamSessionServiceFactory = ({
 
     // Approval is a layer on top of standing access: gated accounts require LaunchSessions AND an
     // approved grant, so losing LaunchSessions blocks launch even while a grant is still active.
-    await checkAccount(
-      account.id,
-      account.folderId,
-      projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
-      actor
-    );
+    await checkAccount(account.id, account.folderId, projectId, PamResourcePermissionActions.LaunchSessions, actor);
 
     const trimmedReason = reason?.trim() || null;
 
@@ -865,7 +858,7 @@ export const pamSessionServiceFactory = ({
       throw new BadRequestError({ message: "Session is not active" });
     }
 
-    await checkSession(session, ResourcePermissionPamResourceActions.TerminateSessions, ctx);
+    await checkSession(session, PamResourcePermissionActions.TerminateSessions, ctx);
 
     const updated = await pamSessionDAL.terminateSessionById(sessionId);
     if (!updated) {

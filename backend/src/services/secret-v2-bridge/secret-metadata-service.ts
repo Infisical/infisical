@@ -2,8 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { ProjectVersion, SecretType } from "@app/db/schemas";
 import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
-import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
-import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
+import { hasSecretReadValueOrDescribePermission, TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";

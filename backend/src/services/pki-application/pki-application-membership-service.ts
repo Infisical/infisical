@@ -1,16 +1,16 @@
 import { Knex } from "knex";
 
 import { AccessScope, RESOURCE_SCOPE, ResourceMembershipRole, ResourceType } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationPermissionActions,
+  ApplicationPermissionSub,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ProjectPermissionMemberActions } from "@app/domains/platform/projects/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import {
-  ResourcePermissionApplicationActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -206,7 +206,7 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    permission.assert({ action: ProjectPermissionMemberActions.Create, subject: ResourcePermissionSub.Member });
+    permission.assert({ action: ProjectPermissionMemberActions.Create, subject: ApplicationPermissionSub.Member });
 
     if (!isBuiltInApplicationRole(role)) {
       throw new BadRequestError({
@@ -318,8 +318,8 @@ export const pkiApplicationMembershipServiceFactory = ({
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
     permission.assert({
-      action: ResourcePermissionApplicationActions.Read,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Read,
+      subject: ApplicationPermissionSub.Application
     });
 
     const memberships = await membershipDAL.find({
@@ -438,7 +438,7 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    permission.assert({ action: ProjectPermissionMemberActions.Edit, subject: ResourcePermissionSub.Member });
+    permission.assert({ action: ProjectPermissionMemberActions.Edit, subject: ApplicationPermissionSub.Member });
 
     if (!isBuiltInApplicationRole(role)) {
       throw new BadRequestError({
@@ -505,7 +505,7 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    permission.assert({ action: ProjectPermissionMemberActions.Delete, subject: ResourcePermissionSub.Member });
+    permission.assert({ action: ProjectPermissionMemberActions.Delete, subject: ApplicationPermissionSub.Member });
 
     const membership = await $findMembershipByMember(applicationId, projectId, kind, memberId);
     const details = await $buildMemberDetails(membership);
@@ -560,7 +560,7 @@ export const pkiApplicationMembershipServiceFactory = ({
 
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
-    permission.assert({ action: ProjectPermissionMemberActions.Create, subject: ResourcePermissionSub.Member });
+    permission.assert({ action: ProjectPermissionMemberActions.Create, subject: ApplicationPermissionSub.Member });
 
     const usersByEmail = emails.length ? await userDAL.find({ $in: { username: emails } }) : [];
     const userByEmail = new Map<string, (typeof usersByEmail)[number]>();

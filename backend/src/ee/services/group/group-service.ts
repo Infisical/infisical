@@ -1,6 +1,11 @@
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TGroups } from "@app/db/schemas";
+import {
+  assertRoleSetBoundary,
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/domains/platform/access-control/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionGroupActions,
@@ -44,11 +49,6 @@ import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "../permission/permission-fns";
 import { TGroupDALFactory } from "./group-dal";
 import {
   addIdentitiesToGroup,

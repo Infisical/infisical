@@ -1,8 +1,7 @@
 import { z } from "zod";
 
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { ApplicationPermissionSub, TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import {
@@ -137,7 +136,7 @@ export const certManagerApplicationAlertProviderFactory = ({
     });
     permission.assert({
       action: CERT_MANAGER_ALERT_PERMISSION_ACTIONS[action],
-      subject: ResourcePermissionSub.PkiAlerts
+      subject: ApplicationPermissionSub.PkiAlerts
     });
   };
 

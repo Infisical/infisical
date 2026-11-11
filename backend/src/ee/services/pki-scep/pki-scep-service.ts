@@ -2,7 +2,11 @@ import * as x509 from "@peculiar/x509";
 import { randomBytes } from "crypto";
 
 import { ProjectType } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationEnrollmentPermissionActions,
+  ApplicationPermissionSub,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
@@ -10,10 +14,6 @@ import {
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import {
-  ResourcePermissionApplicationEnrollmentActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
@@ -1231,8 +1231,8 @@ export const pkiScepServiceFactory = ({
         applicationId
       });
       permission.assert({
-        action: ResourcePermissionApplicationEnrollmentActions.GenerateScepChallenge,
-        subject: ResourcePermissionSub.ApplicationEnrollment
+        action: ApplicationEnrollmentPermissionActions.GenerateScepChallenge,
+        subject: ApplicationPermissionSub.ApplicationEnrollment
       });
     } else {
       resolvedScepConfigId = profile.scepConfigId ?? null;

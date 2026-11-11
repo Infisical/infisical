@@ -2,8 +2,6 @@ import { MongoAbility } from "@casl/ability";
 import { MongoQuery } from "@ucast/mongo2js";
 import picomatch from "picomatch";
 
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
-
 import { haveDisjointLiteralPrefixes, isGlobSubsetOfGlob } from "./glob-subset";
 import { PermissionConditionOperators } from "./index";
 
@@ -22,9 +20,9 @@ type TPermissionConditionShape = {
 
 const getPermissionSetID = (action: string, subject: string) => `${action}:${subject}`;
 
-const IGNORED_PERMISSIONS = new Set([
-  getPermissionSetID(ProjectPermissionActions.Read, ProjectPermissionSub.SecretFolders)
-]);
+// Reading secret folders (ProjectPermissionActions.Read on ProjectPermissionSub.SecretFolders) never limits a
+// boundary. Written as the literal so this shared module imports no domain.
+const IGNORED_PERMISSIONS = new Set([getPermissionSetID("read", "secret-folders")]);
 
 const invertTheOperation = (shouldInvert: boolean, operation: boolean) => (shouldInvert ? !operation : operation);
 const formatConditionOperator = (condition: TPermissionConditionShape | string) => {

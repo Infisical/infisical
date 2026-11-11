@@ -1,17 +1,17 @@
 import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import type { TActorContext, TActorContexts } from "@app/domains/lib/actor-context";
 import {
+  assertRoleSetBoundary,
+  constructPermissionErrorMessage,
+  validatePrivilegeChangeOperation
+} from "@app/domains/platform/access-control/ce/module";
+import {
   OrgPermissionGroupActions,
   OrgPermissionSubjects,
   OrgPermissionSubOrgActions,
   TOrganizationsDomain
 } from "@app/domains/platform/organizations/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
-import {
-  assertRoleSetBoundary,
-  constructPermissionErrorMessage,
-  validatePrivilegeChangeOperation
-} from "@app/ee/services/permission/permission-fns";
 import { BadRequestError, InternalServerError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import {
   filterRolesNeedingPrivilegeBoundary,

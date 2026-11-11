@@ -1,13 +1,13 @@
 import { RESOURCE_SCOPE, ResourceMembershipRole, ResourceType, TApprovalRequestGrants } from "@app/db/schemas";
-import { TCodeSigningDomain } from "@app/domains/certificates/code-signing/ce/module";
+import {
+  SignerPermissionActions,
+  SignerPermissionSub,
+  TCodeSigningDomain
+} from "@app/domains/certificates/code-signing/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import {
-  ResourcePermissionSignerActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -164,10 +164,10 @@ export const signerPolicyServiceFactory = ({
     signerId: string,
     projectId: string,
     actor: TActorContext,
-    action: ResourcePermissionSignerActions
+    action: SignerPermissionActions
   ) => {
     const permission = await codeSigningDomain.getSignerPermission({ actor, projectId, signerId });
-    permission.assert({ action, subject: ResourcePermissionSub.Signer });
+    permission.assert({ action, subject: SignerPermissionSub.Signer });
   };
 
   const $resolveActorDisplay = async ({
@@ -323,7 +323,7 @@ export const signerPolicyServiceFactory = ({
 
   const getPolicy = async (dto: TGetSignerPolicyDTO) => {
     const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
-    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, ResourcePermissionSignerActions.Read);
+    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, SignerPermissionActions.Read);
 
     if (!signer.approvalPolicyId) {
       throw new NotFoundError({ message: `Signer '${signer.name}' has no approval policy.` });
@@ -419,12 +419,7 @@ export const signerPolicyServiceFactory = ({
 
   const updatePolicy = async (dto: TUpdateSignerPolicyDTO) => {
     const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
-    await $assertResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      ResourcePermissionSignerActions.ManagePolicy
-    );
+    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, SignerPermissionActions.ManagePolicy);
 
     const effectiveConstraints = dto.constraints ?? {};
 
@@ -514,7 +509,7 @@ export const signerPolicyServiceFactory = ({
 
   const listRequests = async (dto: TListSignerRequestsDTO) => {
     const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
-    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, ResourcePermissionSignerActions.Read);
+    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, SignerPermissionActions.Read);
 
     const UI_TO_DB_STATUS: Record<Exclude<TSignerRequestStatusFilter, "revoked">, ApprovalRequestStatus> = {
       pending: ApprovalRequestStatus.Pending,
@@ -557,12 +552,7 @@ export const signerPolicyServiceFactory = ({
 
   const requestToSign = async (dto: TRequestToSignDTO) => {
     const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
-    await $assertResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      ResourcePermissionSignerActions.RequestSign
-    );
+    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, SignerPermissionActions.RequestSign);
 
     if (!signer.approvalPolicyId) {
       throw new BadRequestError({
@@ -658,7 +648,7 @@ export const signerPolicyServiceFactory = ({
 
   const preApproveSigning = async (dto: TPreApproveSigningDTO) => {
     const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
-    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, ResourcePermissionSignerActions.PreApprove);
+    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, SignerPermissionActions.PreApprove);
 
     if (!dto.granteeUserId && !dto.granteeIdentityId) {
       throw new BadRequestError({ message: "granteeUserId or granteeIdentityId is required." });
@@ -764,12 +754,7 @@ export const signerPolicyServiceFactory = ({
 
   const revokeRequest = async (dto: TRevokeSignerRequestDTO) => {
     const signer = await $loadSignerOrThrow(signerDAL, dto.signerId);
-    await $assertResourcePermission(
-      signer.id,
-      signer.projectId,
-      dto.actor,
-      ResourcePermissionSignerActions.RevokeRequest
-    );
+    await $assertResourcePermission(signer.id, signer.projectId, dto.actor, SignerPermissionActions.RevokeRequest);
 
     const request = await approvalRequestDAL.findById(dto.requestId);
     if (!request || request.scopeId !== signer.id) {

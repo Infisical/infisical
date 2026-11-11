@@ -1,4 +1,5 @@
 import { AccessScope, OrgMembershipStatus } from "@app/db/schemas";
+import { assertRoleSetBoundary } from "@app/domains/platform/access-control/ce/module";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { Plan, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
@@ -10,7 +11,6 @@ import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-doma
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";

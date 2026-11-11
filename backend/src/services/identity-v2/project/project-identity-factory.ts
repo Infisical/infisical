@@ -1,10 +1,10 @@
 import { AccessScope } from "@app/db/schemas";
+import { assertRoleSetBoundary } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { InternalServerError } from "@app/lib/errors";
 import { TMembershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
 import { resolveMembershipRoleSlugs } from "@app/services/membership/membership-fns";

@@ -1,5 +1,5 @@
 import { ProjectMembershipRole, ProjectType } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { ApplicationPermissionSub, TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
@@ -8,7 +8,6 @@ import {
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -119,7 +118,7 @@ export const pkiAlertV2ServiceFactory = ({
   ) => {
     if (applicationId) {
       const resourcePerm = await certManagerDomain.getApplicationPermission({ actor, projectId, applicationId });
-      resourcePerm.assert({ action, subject: ResourcePermissionSub.PkiAlerts });
+      resourcePerm.assert({ action, subject: ApplicationPermissionSub.PkiAlerts });
       return null;
     }
 

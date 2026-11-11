@@ -1,5 +1,6 @@
 import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { TActorContext } from "@app/domains/lib/actor-context";
+import { assertRoleSetBoundary } from "@app/domains/platform/access-control/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionActions,
@@ -7,7 +8,6 @@ import {
   OrgPermissionSubjects,
   TOrganizationsDomain
 } from "@app/domains/platform/organizations/ce/module";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { BadRequestError } from "@app/lib/errors";
 import { constructGroupOrgMembershipRoleMappings } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-fns";
 import { TSyncExternalGroupOrgMembershipRoleMappingsDTO } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-types";

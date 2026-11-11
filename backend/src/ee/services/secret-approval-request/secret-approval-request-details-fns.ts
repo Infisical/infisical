@@ -1,9 +1,9 @@
 import { MongoAbility } from "@casl/ability";
 
 import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/domains/platform/projects/ce/module";
+import { hasSecretReadValueOrDescribePermission } from "@app/domains/secrets-manager/secrets/ce/module";
 import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "@app/services/secret/secret-fns";
 
-import { hasSecretReadValueOrDescribePermission } from "../permission/permission-fns";
 import { TSecretApprovalBridgeCommit } from "./secret-approval-request-merge-fns";
 
 export type TSecretApprovalCommitValueAccess = (tags: { slug: string }[]) => boolean;

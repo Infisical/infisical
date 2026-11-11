@@ -11,11 +11,12 @@ import {
   OrgPermissionSubjects
 } from "@app/domains/platform/organizations/ce/module";
 import {
+  projectAdminPermissions,
+  projectMemberPermissions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { projectAdminPermissions, projectMemberPermissions } from "@app/ee/services/permission/default-roles";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { PermissionBoundaryError } from "@app/lib/errors";
 

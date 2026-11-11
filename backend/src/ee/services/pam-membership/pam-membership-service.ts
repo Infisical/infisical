@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { AccessScope, ProjectType, RESOURCE_SCOPE, ResourceType, TemporaryPermissionMode } from "@app/db/schemas";
 import type { TActorContext } from "@app/domains/lib/actor-context";
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, PamResourcePermissionSub, TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionIdentityActions,
@@ -14,10 +14,6 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import {
-  ResourcePermissionPamResourceActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
@@ -153,8 +149,8 @@ export const pamMembershipServiceFactory = ({
     ctx: TActorContext
   ) => {
     const check = {
-      action: ResourcePermissionPamResourceActions.ManageMembers,
-      subject: ResourcePermissionSub.PamResource
+      action: PamResourcePermissionActions.ManageMembers,
+      subject: PamResourcePermissionSub.PamResource
     };
     if (resource.parentFolderId) {
       try {
@@ -1075,7 +1071,7 @@ export const pamMembershipServiceFactory = ({
     });
     const isProductAdmin = productPermission.hasRole({ slug: PamProductRole.Admin });
 
-    const hasAnyResourceWith = async (action: ResourcePermissionPamResourceActions) => {
+    const hasAnyResourceWith = async (action: PamResourcePermissionActions) => {
       const { folderIds, accountIds } = await getResourceIdsWithActions(
         membershipDAL,
         membershipRoleDAL,
@@ -1087,9 +1083,9 @@ export const pamMembershipServiceFactory = ({
     };
 
     const [isResourceAdmin, canViewSessions, canViewAuditLogsResource] = await Promise.all([
-      hasAnyResourceWith(ResourcePermissionPamResourceActions.ManageMembers),
-      hasAnyResourceWith(ResourcePermissionPamResourceActions.ViewSessions),
-      hasAnyResourceWith(ResourcePermissionPamResourceActions.ViewAuditLogs)
+      hasAnyResourceWith(PamResourcePermissionActions.ManageMembers),
+      hasAnyResourceWith(PamResourcePermissionActions.ViewSessions),
+      hasAnyResourceWith(PamResourcePermissionActions.ViewAuditLogs)
     ]);
 
     const canViewAuditLogs = isProductAdmin || canViewAuditLogsResource;

@@ -7,7 +7,11 @@ import {
   ResourceMembershipRole,
   ResourceType
 } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import {
+  ApplicationPermissionActions,
+  ApplicationPermissionSub,
+  TCertManagerDomain
+} from "@app/domains/certificates/cert-manager/ce/module";
 import type { TActorContext } from "@app/domains/lib/actor-context";
 import {
   ProjectPermissionApplicationActions,
@@ -15,10 +19,6 @@ import {
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import {
-  ResourcePermissionApplicationActions,
-  ResourcePermissionSub
-} from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 
@@ -171,8 +171,8 @@ export const pkiApplicationServiceFactory = ({
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
     permission.assert({
-      action: ResourcePermissionApplicationActions.Read,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Read,
+      subject: ApplicationPermissionSub.Application
     });
 
     return application;
@@ -187,8 +187,8 @@ export const pkiApplicationServiceFactory = ({
     const permission = await $loadResourcePermission(application.id, projectId, actor);
 
     permission.assert({
-      action: ResourcePermissionApplicationActions.Read,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Read,
+      subject: ApplicationPermissionSub.Application
     });
 
     return application;
@@ -258,8 +258,8 @@ export const pkiApplicationServiceFactory = ({
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
     permission.assert({
-      action: ResourcePermissionApplicationActions.Edit,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Edit,
+      subject: ApplicationPermissionSub.Application
     });
 
     if (name && name !== application.name) {
@@ -295,8 +295,8 @@ export const pkiApplicationServiceFactory = ({
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
     permission.assert({
-      action: ResourcePermissionApplicationActions.Delete,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Delete,
+      subject: ApplicationPermissionSub.Application
     });
 
     await pkiApplicationDAL.transaction(async (tx) => {
@@ -334,8 +334,8 @@ export const pkiApplicationServiceFactory = ({
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
     permission.assert({
-      action: ResourcePermissionApplicationActions.Read,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Read,
+      subject: ApplicationPermissionSub.Application
     });
 
     const profiles = await pkiApplicationProfileDAL.findByApplicationId(applicationId);
@@ -351,8 +351,8 @@ export const pkiApplicationServiceFactory = ({
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
     permission.assert({
-      action: ResourcePermissionApplicationActions.ManageProfiles,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.ManageProfiles,
+      subject: ApplicationPermissionSub.Application
     });
 
     const profilesInProject = await pkiApplicationProfileDAL.findProfilesInProject(profileIds, projectId);
@@ -396,8 +396,8 @@ export const pkiApplicationServiceFactory = ({
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
     permission.assert({
-      action: ResourcePermissionApplicationActions.ManageProfiles,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.ManageProfiles,
+      subject: ApplicationPermissionSub.Application
     });
 
     const link = await pkiApplicationProfileDAL.findOneByApplicationAndProfile(applicationId, profileId);
@@ -451,8 +451,8 @@ export const pkiApplicationServiceFactory = ({
     const permission = await $loadResourcePermission(applicationId, projectId, actor);
 
     permission.assert({
-      action: ResourcePermissionApplicationActions.Read,
-      subject: ResourcePermissionSub.Application
+      action: ApplicationPermissionActions.Read,
+      subject: ApplicationPermissionSub.Application
     });
 
     return {

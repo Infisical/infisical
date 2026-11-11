@@ -1,15 +1,15 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { PamResourcePermissionSub } from "@app/domains/pam/pam/ce/module";
 import { ActorGrants } from "@app/domains/platform/access-control/ce/module";
 import { ProjectResourcePermission } from "@app/domains/platform/projects/ce/module";
-import { ResourcePermissionSub } from "@app/ee/services/permission/resource-permission";
 import { ForbiddenRequestError } from "@app/lib/errors";
 
 import { accountAccessAllows, checkAccountAccess } from "./pam-permission";
 
 const rulesFor = (allowed: boolean) =>
-  allowed ? [{ action: "view-credentials", subject: ResourcePermissionSub.PamResource }] : [];
+  allowed ? [{ action: "view-credentials", subject: PamResourcePermissionSub.PamResource }] : [];
 
 const membershipOn = (resourceType: string, resourceId: string) => ({
   id: `membership-${resourceId}`,

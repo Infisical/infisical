@@ -2,13 +2,13 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, ProjectVersion, TableName } from "@app/db/schemas";
+import { assertRoleSetBoundary } from "@app/domains/platform/access-control/ce/module";
 import { Meter, TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { assertRoleSetBoundary } from "@app/ee/services/permission/permission-fns";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";

@@ -1,5 +1,5 @@
 import { ProjectType } from "@app/db/schemas";
-import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { ApplicationPermissionSub, TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -8,7 +8,6 @@ import {
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { TActorInput } from "@app/lib/types";
 
-import { ResourcePermissionSub } from "../../ee/services/permission/resource-permission";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "../certificate/certificate-dal";
 import { CertStatus } from "../certificate/certificate-types";
 import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
@@ -140,7 +139,7 @@ export const certificateInventoryViewServiceFactory = ({
         projectId: dto.projectId,
         applicationId: dto.applicationId
       });
-      permission.assert({ action, subject: ResourcePermissionSub.CertificateInventoryViews });
+      permission.assert({ action, subject: ApplicationPermissionSub.CertificateInventoryViews });
       return;
     }
     const permission = await projectsDomain.getProjectPermission({

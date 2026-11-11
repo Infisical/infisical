@@ -2,7 +2,7 @@ import net from "node:net";
 
 import type WebSocket from "ws";
 
-import { TPamDomain } from "@app/domains/pam/pam/ce/module";
+import { PamResourcePermissionActions, TPamDomain } from "@app/domains/pam/pam/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { AuditLogInfo, EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -11,7 +11,6 @@ import { TGatewayV2ConnectionDetails } from "@app/ee/services/gateway-v2/gateway
 import { PamAccountType } from "@app/ee/services/pam/pam-enums";
 import { enforceMfa } from "@app/ee/services/pam/pam-mfa";
 import { resolveAccessControls } from "@app/ee/services/pam/pam-policies";
-import { ResourcePermissionPamResourceActions } from "@app/ee/services/permission/resource-permission";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { setupGatewayProxy, withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -209,7 +208,7 @@ export const pamWebAccessServiceFactory = ({
       accountId,
       account.folderId,
       projectId,
-      ResourcePermissionPamResourceActions.LaunchSessions,
+      PamResourcePermissionActions.LaunchSessions,
       actor
     );
 
