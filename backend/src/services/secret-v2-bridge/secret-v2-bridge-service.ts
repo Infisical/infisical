@@ -69,6 +69,7 @@ import {
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import {
   PersonalOverridesBehavior,
@@ -1940,10 +1941,12 @@ export const secretV2BridgeServiceFactory = ({
       projectId: secret.projectId
     });
 
-    const secretValue =
-      viewSecretValue && secret.encryptedValue
+    let secretValue = INFISICAL_SECRET_VALUE_HIDDEN_MASK;
+    if (viewSecretValue) {
+      secretValue = secret.encryptedValue
         ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
         : "";
+    }
 
     const secretComment = secret.encryptedComment
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedComment }).toString()
