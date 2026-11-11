@@ -114,7 +114,7 @@ function Field({
 }: React.ComponentPropsWithoutRef<"div"> &
   VariantProps<typeof fieldVariants> & {
     label?: React.ReactNode;
-    description?: string;
+    description?: React.ReactNode;
     error?: string;
     optional?: boolean;
     wide?: boolean;
@@ -132,9 +132,11 @@ function Field({
   const noteId = `${controlId}-note`;
   const fieldRef = useDescendantFlags(fieldFlags, fieldWatch, ref);
   const labelId = `${controlId}-label`;
+  const hasNote =
+    Boolean(error) || (description != null && description !== false && description !== "");
   const attributes = {
     id: group ? undefined : controlId,
-    "aria-describedby": error || description ? noteId : undefined,
+    "aria-describedby": hasNote ? noteId : undefined,
     "aria-invalid": Boolean(error) || undefined,
     "aria-labelledby": group ? undefined : labelId
   };
@@ -142,7 +144,7 @@ function Field({
     child && typeof child.type === "string"
       ? React.cloneElement(child, { ...attributes })
       : children;
-  const note = (error || description) && (
+  const note = hasNote && (
     <p
       id={noteId}
       role={error ? "alert" : undefined}

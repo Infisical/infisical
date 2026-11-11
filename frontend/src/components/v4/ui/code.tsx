@@ -7,9 +7,7 @@ import { normalizeCodeLanguage, tokenizeCode } from "./code-tokenizer";
 import styles from "./code.module.css";
 
 export type CodeProps = Omit<React.ComponentPropsWithoutRef<"code">, "children"> & {
-  children?: string;
   code?: string;
-  block?: boolean;
   language?: string;
   format?: "syntax" | "plain";
   lineNumbers?: boolean;
@@ -18,7 +16,7 @@ export type CodeProps = Omit<React.ComponentPropsWithoutRef<"code">, "children">
   maxLines?: number;
   maxHeight?: React.CSSProperties["maxHeight"];
   label?: string;
-};
+} & ({ block?: false; children?: React.ReactNode } | { block: true; children?: string });
 export function Code({
   children,
   code,
@@ -36,7 +34,6 @@ export function Code({
   ref,
   ...props
 }: CodeProps & { ref?: React.Ref<HTMLElement> }) {
-  const value = code ?? children ?? "";
   if (!block)
     return (
       <code
@@ -46,9 +43,10 @@ export function Code({
         style={style}
         {...props}
       >
-        {value}
+        {code ?? children}
       </code>
     );
+  const value = code ?? (typeof children === "string" ? children : "");
   return (
     <pre
       data-slot="code-block-content"
