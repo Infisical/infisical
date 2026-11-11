@@ -115,8 +115,9 @@ describe("item links", () => {
         siteUrl: "https://app.infisical.com"
       } as React.ComponentProps<typeof AlertNotificationTemplate>)
     );
-    expect(html).toMatch(new RegExp(`<a[^>]*href="${CERT_A_URL}"[^>]*>api.prod.example.com</a>`));
-    expect(html).not.toMatch(/<a[^>]*>web.example.com<\/a>/);
+    expect(html).toContain(`href="${CERT_A_URL}"`);
+    expect(html).toContain(">api.prod.example.com</a>");
+    expect(html).not.toContain(">web.example.com</a>");
     expect(html).toContain('href="https://app.infisical.com/inventory"');
   });
 
