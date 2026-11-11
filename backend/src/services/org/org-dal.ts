@@ -430,16 +430,40 @@ export const orgDALFactory = (db: TDbClient) => {
 
   // special query
   const findAllOrgsByUserId = async (
-    userId: string
+    userId: string,
+    { lastMember = false }: { lastMember?: boolean } = {}
   ): Promise<
     (TOrganizations & { orgAuthMethod: string; userRole: string; userStatus: string; userJoinedAt: Date })[]
   > => {
     try {
-      const org = (await db
+      const query = db
         .replicaNode()(TableName.Membership)
         .where(`${TableName.Membership}.actorUserId`, userId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .whereNotNull(`${TableName.Membership}.actorUserId`);
+
+      // Invited and deactivated users cannot sign in to the org, and ghost users are legacy service
+      // accounts, so none of them could manage the org (or its billing) once this user is gone.
+      if (lastMember) {
+        void query.whereNotExists((qb) => {
+          void qb
+            .select(db.raw("1"))
+            .from(`${TableName.Membership} as otherMembership`)
+            .join(TableName.Users, "otherMembership.actorUserId", `${TableName.Users}.id`)
+            .where("otherMembership.scopeOrgId", db.ref(`${TableName.Membership}.scopeOrgId`))
+            .where("otherMembership.scope", AccessScope.Organization)
+            .whereNot("otherMembership.actorUserId", userId)
+            .where("otherMembership.isActive", true)
+            .where((statusQb) => {
+              void statusQb
+                .whereNull("otherMembership.status")
+                .orWhereNot("otherMembership.status", OrgMembershipStatus.Invited);
+            })
+            .where(`${TableName.Users}.isGhost`, false);
+        });
+      }
+
+      const org = (await query
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
         .whereNull(`${TableName.Organization}.rootOrgId`)

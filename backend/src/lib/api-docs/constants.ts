@@ -884,7 +884,18 @@ export const SPIFFE_AUTH = {
   }
 } as const;
 
+export const USERS = {
+  DELETE: {
+    deleteLastMemberOrganizations:
+      "Set to true to also delete every organization where you are the last member who can sign in, which cancels their subscriptions. Without it, the request is refused while any such organization exists."
+  }
+};
+
 export const ORGANIZATIONS = {
+  LIST: {
+    lastMember:
+      "When true, return only the organizations where you are the last member who can sign in. Deleting your account with deleteLastMemberOrganizations deletes these organizations."
+  },
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
   },

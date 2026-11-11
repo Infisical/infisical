@@ -23,6 +23,7 @@ export type TOrgWithSubOrgs = Organization & {
 
 export const organizationKeys = {
   getUserOrganizations: ["organization"] as const,
+  getLastMemberOrganizations: ["organization", "last-member"] as const,
   getUserOrganizationsWithSubOrgs: ["organization", "with-sub-orgs"] as const,
   getOrgIdentityMemberships: (orgId: string) =>
     [{ orgId }, "organization-identity-memberships"] as const,
@@ -64,6 +65,21 @@ export const useGetOrganizations = () => {
     queryFn: async () => {
       return fetchOrganizations();
     }
+  });
+};
+
+export const useGetLastMemberOrganizations = ({ enabled = true }: { enabled?: boolean } = {}) => {
+  return useQuery({
+    queryKey: organizationKeys.getLastMemberOrganizations,
+    queryFn: async () => {
+      const {
+        data: { organizations }
+      } = await apiRequest.get<{ organizations: Organization[] }>("/api/v1/organization", {
+        params: { lastMember: true }
+      });
+      return organizations;
+    },
+    enabled
   });
 };
 

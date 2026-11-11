@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TUsers } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -28,6 +28,7 @@ import {
 } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { getRequiredMfaMethod } from "../auth/auth-fns";
@@ -83,7 +84,9 @@ type TUserServiceFactoryDep = {
     | "findEffectiveOrgMembership"
     | "findEffectiveOrgMemberships"
     | "findActiveEffectiveOrgMembershipsByUserId"
+    | "findAllOrgsByUserId"
   >;
+  orgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -104,6 +107,7 @@ export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 export const userServiceFactory = ({
   userDAL,
   orgDAL,
+  orgDeletionService,
   membershipUserDAL,
   groupProjectDAL,
   tokenService,
@@ -727,7 +731,10 @@ export const userServiceFactory = ({
     return { challenge: preferred ?? userFactors[0], accepted: userFactors };
   };
 
-  const deleteUser = async (userId: string) => {
+  const deleteUser = async (
+    userId: string,
+    { deleteLastMemberOrganizations = false }: { deleteLastMemberOrganizations?: boolean } = {}
+  ) => {
     // If the deleting user is the only remaining server admin, block self-deletion.
     // The super_admin table's `initialized` flag is not reset on user delete, so
     // letting the last super admin self-delete leaves /admin/signup permanently
@@ -744,6 +751,27 @@ export const userServiceFactory = ({
             "Cannot delete the only server admin on this instance. Promote another user to server admin before deleting this account."
         });
       }
+    }
+
+    // An org left with no one who can sign in keeps billing with no way to cancel it.
+    const lastMemberOrgs = unique(
+      (await orgDAL.findAllOrgsByUserId(userId, { lastMember: true })).filter(
+        (org) => org.userStatus !== OrgMembershipStatus.Invited
+      ),
+      (org) => org.id
+    );
+
+    if (lastMemberOrgs.length && !deleteLastMemberOrganizations) {
+      const orgNames = lastMemberOrgs.map((org) => `'${org.name}'`).join(", ");
+      throw new BadRequestError({
+        message: `You are the last member of ${lastMemberOrgs.length === 1 ? "the organization" : "the organizations"} ${orgNames}. Invite another member, or delete ${lastMemberOrgs.length === 1 ? "it" : "them"} along with your account.`
+      });
+    }
+
+    // Before the user, one org per transaction: if one fails the account survives, so a retry
+    // finds whatever is left instead of leaving an org nobody can sign in to.
+    for await (const org of lastMemberOrgs) {
+      await orgDeletionService.deleteOrganization(org.id);
     }
 
     // Capture the user's org memberships before deletion; the delete cascades them away.

@@ -496,7 +496,7 @@ import { licenseOrgDeletedConsumerFactory } from "@app/services/org/license-org-
 import { orgAccessReconcileConsumerFactory } from "@app/services/org/org-access-reconcile-consumer";
 import { orgAccessSweepQueueFactory } from "@app/services/org/org-access-sweep-queue";
 import { orgDALFactory } from "@app/services/org/org-dal";
-import { orgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
+import { orgDeletionServiceFactory, TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { pkiAlertChannelDALFactory } from "@app/services/pki-alert-v2/pki-alert-channel-dal";
 import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-history-dal";
@@ -1571,9 +1571,15 @@ export const registerRoutes = async (
     kmsService
   });
 
+  const deferredOrgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization"> = {
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    deleteOrganization: (orgId: string) => orgDeletionService.deleteOrganization(orgId)
+  };
+
   const userService = userServiceFactory({
     userDAL,
     orgDAL,
+    orgDeletionService: deferredOrgDeletionService,
     tokenService,
     permissionService,
     groupProjectDAL,

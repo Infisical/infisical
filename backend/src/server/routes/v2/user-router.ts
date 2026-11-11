@@ -2,6 +2,7 @@ import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { z } from "zod";
 
 import { AuthTokenSessionsSchema } from "@app/db/schemas";
+import { USERS } from "@app/lib/api-docs";
 import { UnauthorizedError } from "@app/lib/errors";
 import { readLimit, smtpRateLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -14,7 +15,7 @@ import {
   getStepUpSessionId,
   MfaStepUpResource
 } from "../mfa-step-up-fns";
-import { SanitizedUserSchema } from "../sanitizedSchemas";
+import { booleanSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -563,6 +564,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "deleteUser",
+      querystring: z.object({
+        deleteLastMemberOrganizations: booleanSchema.default(false).describe(USERS.DELETE.deleteLastMemberOrganizations)
+      }),
       response: {
         200: z.object({
           user: SanitizedUserSchema
@@ -571,7 +575,9 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const user = await server.services.user.deleteUser(req.permission.id);
+      const user = await server.services.user.deleteUser(req.permission.id, {
+        deleteLastMemberOrganizations: req.query.deleteLastMemberOrganizations
+      });
       return { user };
     }
   });

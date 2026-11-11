@@ -77,10 +77,14 @@ export const useDeleteMe = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async ({
+      deleteLastMemberOrganizations = false
+    }: { deleteLastMemberOrganizations?: boolean } = {}) => {
       const {
         data: { user }
-      } = await apiRequest.delete<{ user: User }>("/api/v2/users/me");
+      } = await apiRequest.delete<{ user: User }>("/api/v2/users/me", {
+        params: { deleteLastMemberOrganizations }
+      });
       return user;
     },
     onSuccess: () => {

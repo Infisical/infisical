@@ -457,3 +457,84 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
     await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toBeNull();
   });
 });
+
+const buildDeleteUserService = (lastMemberOrgs: { id: string; name: string; userStatus: string }[]) => {
+  isSmtpConfigured = true;
+  const calls: string[] = [];
+
+  const orgDeletionService = {
+    deleteOrganization: vi.fn(async (orgId: string) => {
+      calls.push(`deleteOrganization:${orgId}`);
+      return { id: orgId };
+    })
+  };
+  const userDAL = {
+    findById: vi.fn().mockResolvedValue({ ...user, superAdmin: false }),
+    transaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
+    deleteById: vi.fn(async () => {
+      calls.push("deleteUser");
+      return user;
+    })
+  };
+  const orgDAL = { findAllOrgsByUserId: vi.fn().mockResolvedValue(lastMemberOrgs) };
+
+  const service = userServiceFactory({
+    userDAL,
+    orgDAL,
+    orgDeletionService,
+    membershipUserDAL: { find: vi.fn().mockResolvedValue([]) },
+    pamSessionDAL: { findLiveByOrgAndUserIds: vi.fn().mockResolvedValue([]) },
+    alertChannelRecipientDAL: { deleteByPrincipals: vi.fn() },
+    usageMeteringService: { emit: vi.fn() },
+    smtpService: { sendMail: vi.fn().mockResolvedValue(undefined) }
+  } as unknown as Parameters<typeof userServiceFactory>[0]);
+
+  return { service, calls, orgDAL, orgDeletionService, userDAL };
+};
+
+describe("deleteUser last member organizations", () => {
+  test("refuses without the flag and names the organizations", async () => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([
+      { id: "org-1", name: "Acme", userStatus: "accepted" }
+    ]);
+
+    await expect(service.deleteUser(USER_ID)).rejects.toThrow(/last member of the organization 'Acme'/);
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("deletes each organization once, before the user, when the flag is set", async () => {
+    const { service, calls, orgDAL } = buildDeleteUserService([
+      { id: "org-1", name: "Acme", userStatus: "accepted" },
+      // One membership with two roles comes back as two rows.
+      { id: "org-1", name: "Acme", userStatus: "accepted" },
+      { id: "org-2", name: "Beta", userStatus: "accepted" }
+    ]);
+
+    await service.deleteUser(USER_ID, { deleteLastMemberOrganizations: true });
+
+    expect(orgDAL.findAllOrgsByUserId).toHaveBeenCalledWith(USER_ID, { lastMember: true });
+    expect(calls).toEqual(["deleteOrganization:org-1", "deleteOrganization:org-2", "deleteUser"]);
+  });
+
+  test("ignores organizations the user was only invited to", async () => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([
+      { id: "org-1", name: "Acme", userStatus: "invited" }
+    ]);
+
+    await service.deleteUser(USER_ID);
+
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).toHaveBeenCalled();
+  });
+
+  test("keeps the account when an organization fails to delete", async () => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([
+      { id: "org-1", name: "Acme", userStatus: "accepted" }
+    ]);
+    orgDeletionService.deleteOrganization.mockRejectedValueOnce(new Error("boom"));
+
+    await expect(service.deleteUser(USER_ID, { deleteLastMemberOrganizations: true })).rejects.toThrow("boom");
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+});

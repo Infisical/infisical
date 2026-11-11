@@ -28,7 +28,7 @@ import { ActorType, AuthMode, MfaMethod, SsoMfaTrust } from "@app/services/auth/
 import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
+import { booleanSchema, integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
 const OrgMemberUserSchema = SanitizedUserSchema.pick({
   username: true,
@@ -67,6 +67,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       operationId: "listOrganizations",
+      querystring: z.object({
+        lastMember: booleanSchema.default(false).describe(ORGANIZATIONS.LIST.lastMember)
+      }),
       response: {
         200: z.object({
           organizations: sanitizedOrganizationSchema
@@ -83,7 +86,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     // for one org would enumerate every org the user belongs to.
     onRequest: verifyAuth([AuthMode.JWT], { requireOrg: false }),
     handler: async (req) => {
-      const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id);
+      const organizations = await server.services.org.findAllOrganizationOfUser(req.permission.id, {
+        lastMember: req.query.lastMember
+      });
       return { organizations };
     }
   });

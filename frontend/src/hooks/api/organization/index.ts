@@ -6,6 +6,7 @@ export {
   useCreateOrg,
   useDeleteOrgById,
   useGetIdentityMembershipOrgs,
+  useGetLastMemberOrganizations,
   useGetOrganizationGroups,
   useGetOrganizations,
   useGetOrganizationsWithSubOrgs,

@@ -12,7 +12,8 @@ import {
   CardTitle,
   ConfirmationAlertDialog
 } from "@app/components/v3";
-import { useDeleteMe } from "@app/hooks/api";
+import { isInfisicalCloud } from "@app/helpers/platform";
+import { useDeleteMe, useGetLastMemberOrganizations } from "@app/hooks/api";
 
 const DELETE_CONFIRMATION = "delete my account";
 
@@ -21,10 +22,14 @@ export const DeleteAccountSection = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const { mutateAsync: deleteUserMutateAsync, isPending } = useDeleteMe();
+  const { data: lastMemberOrgs = [], isPending: isLoadingLastMemberOrgs } =
+    useGetLastMemberOrganizations({ enabled: isOpen });
+
+  const deletesOrgs = lastMemberOrgs.length > 0;
 
   const handleDeleteAccountSubmit = async () => {
     try {
-      await deleteUserMutateAsync();
+      await deleteUserMutateAsync({ deleteLastMemberOrganizations: deletesOrgs });
 
       createNotification({
         text: "Account deleted.",
@@ -47,8 +52,8 @@ export const DeleteAccountSection = () => {
         <CardHeader className="p-6">
           <CardTitle className="font-alliance">Delete Account</CardTitle>
           <CardDescription>
-            Permanently delete your account and revoke its access to Infisical. This cannot be
-            undone.
+            Permanently delete your account and revoke its access to Infisical. Organizations where
+            you are the last member are deleted with it. This cannot be undone.
           </CardDescription>
         </CardHeader>
         <CardFooter className="min-h-8 justify-end border-t border-danger/15 bg-danger/5 p-4">
@@ -63,10 +68,31 @@ export const DeleteAccountSection = () => {
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title="Delete your account?"
-        description="Your account will permanently lose access to Infisical. This cannot be undone."
+        description={
+          deletesOrgs ? (
+            <div className="flex flex-col gap-2">
+              <p>
+                You are the last member of these organizations, so deleting your account also
+                permanently deletes them and all of their data.
+                {isInfisicalCloud() &&
+                  " Their subscriptions are canceled immediately, and any remaining prepaid commitment is forfeited without a refund."}
+              </p>
+              <ul className="list-disc pl-5">
+                {lastMemberOrgs.map((org) => (
+                  <li key={org.id} className="font-medium text-foreground">
+                    {org.name}
+                  </li>
+                ))}
+              </ul>
+              <p>This cannot be undone.</p>
+            </div>
+          ) : (
+            "Your account will permanently lose access to Infisical. This cannot be undone."
+          )
+        }
         confirmKey={DELETE_CONFIRMATION}
-        confirmLabel="Delete account"
-        isPending={isPending}
+        confirmLabel={deletesOrgs ? "Delete account and organizations" : "Delete account"}
+        isPending={isPending || isLoadingLastMemberOrgs}
         onConfirm={handleDeleteAccountSubmit}
       />
     </>
