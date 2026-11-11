@@ -23,21 +23,25 @@ import { pinLdapTarget, testLDAPConfig } from "./ldap-fns";
 
 // Every LDAP client here connects to a name whose DNS answer changes after validation (see
 // dns-rebinding.test-utils). Each test opens real sockets and checks which address received them.
-const { validationAnswer } = vi.hoisted(() => ({ validationAnswer: { address: "127.0.0.1" } }));
+const { validationAnswer } = vi.hoisted(() => ({ validationAnswer: { addresses: ["127.0.0.1"] } }));
 
 vi.mock("node:dns/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:dns/promises")>();
   const lookup = (hostname: string, options: LookupAllOptions) =>
     hostname === "rebind.invalid"
-      ? Promise.resolve([{ address: validationAnswer.address, family: 4 }])
+      ? Promise.resolve(validationAnswer.addresses.map((address) => ({ address, family: 4 })))
       : actual.lookup(hostname, options);
   return { ...actual, lookup, default: { ...actual, lookup } };
 });
 
-// 127.0.0.1 plays the public address, so it has to pass the private-address check
+// 127.0.0.1 plays the public address and 127.0.0.3 a public address nothing listens on, so both have to pass
+// the private-address check
 vi.mock("@app/lib/ip/ipRange", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@app/lib/ip/ipRange")>();
-  return { ...actual, isPrivateIp: (ip: string) => ip !== "127.0.0.1" && actual.isPrivateIp(ip) };
+  return {
+    ...actual,
+    isPrivateIp: (ip: string) => ip !== "127.0.0.1" && ip !== "127.0.0.3" && actual.isPrivateIp(ip)
+  };
 });
 
 vi.mock("@app/lib/config/env", () => ({
@@ -71,7 +75,7 @@ describe("LDAP connections under DNS rebinding", () => {
   beforeEach(() => {
     targets.hits.public = 0;
     targets.hits.internal = 0;
-    validationAnswer.address = PUBLIC_IP;
+    validationAnswer.addresses = [PUBLIC_IP];
     connectTimeAnswer.address = INTERNAL_IP;
   });
 
@@ -89,6 +93,15 @@ describe("LDAP connections under DNS rebinding", () => {
   it("pinLdapTarget puts the validated IP in the URL", async () => {
     const { url } = await pinLdapTarget(`ldap://${REBIND_HOST}:${targets.port}/dc=example,dc=com`, undefined);
     expect(url).toBe(`ldap://${PUBLIC_IP}:${targets.port}/dc=example,dc=com`);
+  });
+
+  it("falls back to the next validated address when the first does not answer, as connecting by name would", async () => {
+    validationAnswer.addresses = ["127.0.0.3", PUBLIC_IP];
+
+    const { url } = await pinLdapTarget(`ldap://${REBIND_HOST}:${targets.port}`, undefined);
+
+    expect(url).toBe(`ldap://${PUBLIC_IP}:${targets.port}`);
+    expect(targets.hits.internal).toBe(0);
   });
 
   it("testLDAPConfig (config save and test) connects only to the validated address", async () => {
@@ -136,7 +149,7 @@ describe("LDAP connections under DNS rebinding", () => {
   });
 
   it("refuses before connecting when the validated answer is internal", async () => {
-    validationAnswer.address = INTERNAL_IP;
+    validationAnswer.addresses = [INTERNAL_IP];
 
     await expect(pinLdapTarget(`ldap://${REBIND_HOST}:${targets.port}`, undefined)).rejects.toThrow(
       "Local IPs not allowed as URL"
@@ -150,7 +163,7 @@ describe("ldaps after pinning", () => {
 
   beforeAll(() => {
     restoreDns = installConnectTimeDns();
-    validationAnswer.address = PUBLIC_IP;
+    validationAnswer.addresses = [PUBLIC_IP];
     connectTimeAnswer.address = INTERNAL_IP;
   });
 

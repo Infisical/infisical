@@ -3,7 +3,7 @@ import https from "node:https";
 
 import { ClientMetadata, custom, Issuer } from "openid-client";
 
-import { ssrfSafeLookup, validateSsrfUrl } from "@app/lib/validator";
+import { ssrfSafeLookup, validateAndPinUrl } from "@app/lib/validator";
 
 // Dedicated agents without keep-alive. A pooled socket is reused without a lookup, and the shared global agent
 // pools by host and port, so it could hand openid-client a socket that other code opened to the same host
@@ -32,7 +32,7 @@ export const secureOidcIssuer = async (issuer: Issuer) => {
   const { jwks_uri: jwksUri, token_endpoint: tokenEndpoint, userinfo_endpoint: userinfoEndpoint } = issuer.metadata;
   for (const endpoint of [jwksUri, tokenEndpoint, userinfoEndpoint]) {
     // eslint-disable-next-line no-await-in-loop
-    if (endpoint) await validateSsrfUrl(endpoint);
+    if (endpoint) await validateAndPinUrl(endpoint);
   }
   // eslint-disable-next-line no-param-reassign
   issuer[custom.http_options] = ssrfSafeHttpOptions;

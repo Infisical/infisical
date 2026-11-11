@@ -1,7 +1,7 @@
 import { lookup as dnsLookup, LookupAddress } from "node:dns";
 import http from "node:http";
 import https from "node:https";
-import { LookupFunction } from "node:net";
+import net, { LookupFunction } from "node:net";
 import tls from "node:tls";
 
 import { AxiosRequestConfig } from "axios";
@@ -406,6 +406,32 @@ export type TSsrfSafeUrl = {
   checkServerIdentity?: NonNullable<tls.ConnectionOptions["checkServerIdentity"]>;
 };
 
+const DEFAULT_PORTS: Record<string, number> = { "ldap:": 389, "ldaps:": 636, "http:": 80, "https:": 443 };
+const REACHABILITY_PROBE_TIMEOUT_MS = 10_000;
+
+// Connecting by name, Node tries each address in turn until one answers. A URL holding one IP loses that, so
+// when the name has several validated addresses, connect to them the same way (only these addresses) and
+// keep the one that answers. If none does, the client's own connection reports the error.
+const pickReachableEntry = (validated: TValidatedHost, port: number) =>
+  new Promise<LookupAddress>((resolve) => {
+    const fallback = pickPreferredEntry(validated.entries);
+    const socket = net.connect({
+      host: validated.hostname,
+      port,
+      lookup: makePinnedLookup(validated),
+      autoSelectFamily: true
+    });
+    let timer: NodeJS.Timeout | undefined;
+    const finish = (entry: LookupAddress) => {
+      clearTimeout(timer);
+      socket.destroy();
+      resolve(entry);
+    };
+    timer = setTimeout(() => finish(fallback), REACHABILITY_PROBE_TIMEOUT_MS);
+    socket.once("connect", () => finish(validated.entries.find((e) => e.address === socket.remoteAddress) ?? fallback));
+    socket.once("error", () => finish(fallback));
+  });
+
 // For clients that resolve the URL's host themselves when they connect and accept no lookup function or agent
 // (ldapjs): put one of the validated IPs in the URL, so a second DNS answer cannot redirect the connection.
 // The certificate is still checked against the original name through checkServerIdentity. servername is left
@@ -414,8 +440,12 @@ export const buildSsrfSafeUrl = async (url: string, options?: SafeRequestSharedO
   const validated = await validateAndPinUrl(url, options);
   if (!validated || isIP(validated.hostname)) return { url };
 
-  const entry = pickPreferredEntry(validated.entries);
   const pinnedUrl = new URL(url);
+  const port = Number(pinnedUrl.port) || DEFAULT_PORTS[pinnedUrl.protocol];
+  const entry =
+    validated.entries.length > 1 && port
+      ? await pickReachableEntry(validated, port)
+      : pickPreferredEntry(validated.entries);
   pinnedUrl.hostname = entry.family === 6 ? `[${entry.address}]` : entry.address;
 
   const { hostname } = validated;

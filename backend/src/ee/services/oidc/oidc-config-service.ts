@@ -38,8 +38,8 @@ import {
   blockLocalAndPrivateIpAddresses,
   matchesAllowedEmailDomain,
   sanitizeEmail,
-  validateEmail,
-  validateSsrfUrl
+  validateAndPinUrl,
+  validateEmail
 } from "@app/lib/validator";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
@@ -913,7 +913,7 @@ export const oidcConfigServiceFactory = ({
           message: "OIDC not configured correctly"
         });
       }
-      await validateSsrfUrl(oidcCfg.discoveryURL);
+      await validateAndPinUrl(oidcCfg.discoveryURL);
       issuer = await SsrfSafeIssuer.discover(oidcCfg.discoveryURL);
     } else {
       if (

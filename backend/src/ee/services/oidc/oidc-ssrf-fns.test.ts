@@ -168,6 +168,14 @@ describe("OIDC SSO requests under DNS rebinding", () => {
     await expect(secureOidcIssuer(issuer)).rejects.toThrow("Local IPs not allowed as URL");
   });
 
+  it("accepts a discovered endpoint on a public IPv6 literal and refuses an internal one", async () => {
+    discoveredTokenEndpoint = "https://[2606:4700:4700::1111]/token";
+    await expect(secureOidcIssuer(await discoverFromPublicAnswer())).resolves.toBeUndefined();
+
+    discoveredTokenEndpoint = `http://[::1]:${targets.port}/token`;
+    await expect(secureOidcIssuer(await discoverFromPublicAnswer())).rejects.toThrow("Local IPs not allowed as URL");
+  });
+
   it("control: without the endpoint check, a discovered internal IP endpoint is called", async () => {
     discoveredTokenEndpoint = `http://${INTERNAL_IP}:${targets.port}/token`;
     const issuer = await discoverFromPublicAnswer();

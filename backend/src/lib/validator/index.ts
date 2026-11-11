@@ -10,7 +10,8 @@ export {
   buildUncachedSsrfSafeAgent,
   PRIVATE_ADDRESS_REFUSED_MESSAGE,
   safeRequest,
-  ssrfSafeLookup
+  ssrfSafeLookup,
+  validateAndPinUrl
 } from "./safe-request";
 export {
   isAliasedEmail,
