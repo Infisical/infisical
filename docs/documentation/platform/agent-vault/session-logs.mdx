@@ -150,6 +150,10 @@ You can view a session's logs if you created the session or you're an admin of i
 </Tab>
 </Tabs>
 
+### Request counts
+
+When you view a session's logs, **Requests** shows how many requests went through the session, and how many of them were brokered. The proxy counts them as it uploads the session's logs, so a session shows no count while session logs are off. If the proxy's Infisical CLI is too old to report brokered requests, the session shows the total only. Through the API, the counts are in each session's `stats`.
+
 ## What gets recorded
 
 Each HTTP request produces one record with:

@@ -35,6 +35,7 @@ import { InlineServicesHoverCard } from "./InlineServicesHoverCard";
 import { SessionExpiry } from "./SessionExpiry";
 import { inlineServiceTarget } from "./sessionInlineServices";
 import { SessionLogsPanel } from "./SessionLogsPanel";
+import { SessionRequestCount } from "./SessionRequestCount";
 import { SessionStatusBadge } from "./SessionStatusBadge";
 
 const SHOWN_INLINE_SERVICES = 1;
@@ -239,6 +240,12 @@ export const SessionDetailSheet = ({
                         </DetailValue>
                       </Detail>
                     )}
+                    <Detail>
+                      <DetailLabel>Requests</DetailLabel>
+                      <DetailValue>
+                        <SessionRequestCount stats={session.stats} />
+                      </DetailValue>
+                    </Detail>
                     <Detail className="items-start">
                       <DetailLabel>Status</DetailLabel>
                       <SessionStatusBadge status={session.status} />

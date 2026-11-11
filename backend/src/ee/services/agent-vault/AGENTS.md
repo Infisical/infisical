@@ -883,6 +883,11 @@ input: nothing it sends may erase or hide its own records, so the proxy logs eve
   `getChunkDecisionProperties`), and
   the layer counts links on `infisical.object_storage.upload.*` for operators. The cap counter floors at 16 KiB, mixes
   storage types and stops at the cap, so it isn't a usage number.
+- **Per-session request counts live in `agent_vault_session_stats`, never on the session row**: every chunk's upload
+  link adds the proxy's own unchecked `recordCount` (and `brokered` when its split adds up) through `addChunkCounts`,
+  and a write to `agent_vault_sessions` would move the `updatedAt` that retires an orphaned session. `brokered` goes
+  null for good once a chunk comes without a split (CLIs before 0.45.5). A link asked for again counts its chunk again;
+  fine for a display number, not for billing. Token and spend counts belong in the same table.
 - **The settings body is `{ enabled: false }` or `{ enabled: true, storage }`.** Turning on always names the
   storage, so nothing guesses which one an `enabled: true` meant after an off cleared it.
 - **External storage uses the generic `/app-connections/aws` routes with the project's `projectId`.**
