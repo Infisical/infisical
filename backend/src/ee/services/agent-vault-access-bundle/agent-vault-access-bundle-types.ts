@@ -276,6 +276,8 @@ export type TListServicesDTO = TAgentVaultProjectScoped & {
 
 export type TBundleServiceDTO = TAgentVaultProjectScoped & { accessBundleId: string; serviceId: string };
 
+export type TAddBundleServicesDTO = TAgentVaultProjectScoped & { accessBundleId: string; serviceIds: string[] };
+
 export type TListMembersDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   actorType?: AgentVaultMemberType;

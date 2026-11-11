@@ -4702,7 +4702,11 @@ export const AGENT_VAULT = {
   },
   SERVICE: {
     serviceId: "The ID of the service.",
-    addServiceId: "The ID of the service to add. It must be a service in the same Agent Vault project.",
+    addServiceIds:
+      "The IDs of the services to add, all in the same Agent Vault project. If any is missing or conflicts with a service in the bundle, none are added.",
+    addedServices: "The services the request added to the access bundle.",
+    addSkippedServices:
+      "The services the request named that were already in the access bundle. They're left as they are.",
     name: "The name of the service, unique in the Agent Vault project.",
     accessBundles: "The access bundles the service is in, by name. A member sees only the ones they have been granted.",
     accessBundleId: "The ID of the access bundle.",
@@ -4997,7 +5001,10 @@ export const AGENT_VAULT = {
       "The version these files were edited from. If a newer version has been saved since, nothing is saved and the request fails with 409. Omit it to update regardless.",
     restoreUnchanged:
       "True if the version being restored has the same files as the latest version, in which case no new version was made and the latest version is returned.",
-    addSkillId: "The ID of the skill to add to the access bundle.",
+    addSkillIds:
+      "The IDs of the skills to add to the access bundle. If any is missing, or the bundle would hold more than 25 skills, none are added.",
+    addedSkills: "The skills the request added to the access bundle.",
+    addSkippedSkills: "The skills the request named that were already in the access bundle. They're left as they are.",
     search: "Match skills whose name or description contains this text.",
     nameFilter: "Return only the skill with exactly this name.",
     limit: "The maximum number of skills to return. Defaults to 20.",

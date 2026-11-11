@@ -7,6 +7,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { openApiHidden } from "@app/server/lib/schemas";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -14,6 +15,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { actorContext, resolveRequestedProjectId } from "./agent-vault-router-fns";
 import {
+  AGENT_VAULT_MAX_ADDS_PER_BUNDLE_REQUEST,
   AgentVaultActorRefSchema,
   AgentVaultBundleSkillSchema,
   AgentVaultCreatedMemberSchema,
@@ -27,7 +29,8 @@ import {
   AgentVaultProductMemberSchema,
   AgentVaultProjectIdSchema,
   agentVaultServiceResponseSchema,
-  AgentVaultProjectServiceSchema
+  AgentVaultProjectServiceSchema,
+  AgentVaultSkippedBundleItemSchema
 } from "./agent-vault-schemas";
 
 const AccessBundleDescriptionSchema = AgentVaultDescriptionSchema.describe(AGENT_VAULT.ACCESS_BUNDLE.description);
@@ -192,7 +195,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         200: z.object({
           accessBundle: AccessBundleSchema.extend({
             services: agentVaultServiceResponseSchema(
-              { personalValues: AgentVaultPersonalValuesSchema.nullable() },
+              {
+                // Python SDK v1.4.0 and older require it on every service, so it stays until they age out.
+                accessBundleId: z.string().uuid().describe(openApiHidden()),
+                personalValues: AgentVaultPersonalValuesSchema.nullable()
+              },
               { optionalVariableReferences: true }
             ).array()
           })
@@ -326,15 +333,26 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       hide: false,
       operationId: "addAgentVaultAccessBundleService",
       description:
-        "Add a service from the Agent Vault project to an access bundle. Sessions on the bundle reach it from the proxy's next poll.",
+        "Add services from the Agent Vault project to an access bundle. Sessions on the bundle reach them from the proxy's next poll.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       body: z.object({
-        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.addServiceId)
+        serviceIds: z
+          .string()
+          .uuid()
+          .array()
+          .min(1)
+          .max(AGENT_VAULT_MAX_ADDS_PER_BUNDLE_REQUEST)
+          .describe(AGENT_VAULT.SERVICE.addServiceIds)
       }),
-      response: { 200: z.object({ service: AgentVaultProjectServiceSchema }) }
+      response: {
+        200: z.object({
+          services: AgentVaultProjectServiceSchema.array().describe(AGENT_VAULT.SERVICE.addedServices),
+          skipped: AgentVaultSkippedBundleItemSchema.array().describe(AGENT_VAULT.SERVICE.addSkippedServices)
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
@@ -342,34 +360,40 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         actorContext(req),
         req.params.accessBundleId
       );
-      const { service, accessBundle } = await server.services.agentVaultAccessBundle.addServiceToBundle({
+      const { services, skipped, accessBundle } = await server.services.agentVaultAccessBundle.addServicesToBundle({
         projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
-        serviceId: req.body.serviceId
+        serviceIds: req.body.serviceIds
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId,
-        event: {
-          type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD,
-          metadata: {
-            serviceId: service.id,
-            serviceName: service.name,
-            accessBundleId: accessBundle.id,
-            accessBundleName: accessBundle.name
-          }
-        }
-      });
+      await Promise.all(
+        services.map((service) =>
+          server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            projectId,
+            event: {
+              type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SERVICE_ADD,
+              metadata: {
+                serviceId: service.id,
+                serviceName: service.name,
+                accessBundleId: accessBundle.id,
+                accessBundleName: accessBundle.name
+              }
+            }
+          })
+        )
+      );
 
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultAccessBundleServiceAdded,
-        properties: { serviceId: service.id, accessBundleId: accessBundle.id, serviceType: service.type }
-      });
+      services.forEach((service) =>
+        emitAgentVaultTelemetry(server.services.telemetry, req, {
+          event: PostHogEventTypes.AgentVaultAccessBundleServiceAdded,
+          properties: { serviceId: service.id, accessBundleId: accessBundle.id, serviceType: service.type }
+        })
+      );
 
-      return { service };
+      return { services, skipped };
     }
   });
 
@@ -462,15 +486,26 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       hide: false,
       operationId: "addAgentVaultAccessBundleSkill",
       description:
-        "Add a skill to an Agent Vault access bundle. Agents get the skill when they start with the bundle, so agents already running get it after a restart.",
+        "Add skills to an Agent Vault access bundle. Agents get the skills when they start with the bundle, so agents already running get them after a restart.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       body: z.object({
-        skillId: z.string().uuid().describe(AGENT_VAULT.SKILL.addSkillId)
+        skillIds: z
+          .string()
+          .uuid()
+          .array()
+          .min(1)
+          .max(AGENT_VAULT_MAX_ADDS_PER_BUNDLE_REQUEST)
+          .describe(AGENT_VAULT.SKILL.addSkillIds)
       }),
-      response: { 200: z.object({ skill: AgentVaultBundleSkillSchema }) }
+      response: {
+        200: z.object({
+          skills: AgentVaultBundleSkillSchema.array().describe(AGENT_VAULT.SKILL.addedSkills),
+          skipped: AgentVaultSkippedBundleItemSchema.array().describe(AGENT_VAULT.SKILL.addSkippedSkills)
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
@@ -478,34 +513,40 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         actorContext(req),
         req.params.accessBundleId
       );
-      const { skill, accessBundle } = await server.services.agentVaultSkill.addToBundle({
+      const { skills, skipped, accessBundle } = await server.services.agentVaultSkill.addToBundle({
         projectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
-        skillId: req.body.skillId
+        skillIds: req.body.skillIds
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId,
-        event: {
-          type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD,
-          metadata: {
-            skillId: skill.id,
-            skillName: skill.name,
-            accessBundleId: accessBundle.id,
-            accessBundleName: accessBundle.name
-          }
-        }
-      });
+      await Promise.all(
+        skills.map((skill) =>
+          server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            orgId: req.permission.orgId,
+            projectId,
+            event: {
+              type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD,
+              metadata: {
+                skillId: skill.id,
+                skillName: skill.name,
+                accessBundleId: accessBundle.id,
+                accessBundleName: accessBundle.name
+              }
+            }
+          })
+        )
+      );
 
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultAccessBundleSkillAdded,
-        properties: { skillId: skill.id, accessBundleId: accessBundle.id }
-      });
+      skills.forEach((skill) =>
+        emitAgentVaultTelemetry(server.services.telemetry, req, {
+          event: PostHogEventTypes.AgentVaultAccessBundleSkillAdded,
+          properties: { skillId: skill.id, accessBundleId: accessBundle.id }
+        })
+      );
 
-      return { skill };
+      return { skills, skipped };
     }
   });
 

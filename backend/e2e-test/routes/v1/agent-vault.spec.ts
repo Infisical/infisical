@@ -791,7 +791,7 @@ describe("Agent Vault V1 Router", async () => {
       const skillId = skill.json().skill.id as string;
       try {
         const bundle = await createAccessBundle(`cross-project-link-${Date.now()}`);
-        const linked = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/skills`, { skillId });
+        const linked = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/skills`, { skillIds: [skillId] });
         expect(linked.statusCode).toBe(404);
       } finally {
         await testDb("agent_vault_skills").where({ id: skillId }).del();
@@ -4344,10 +4344,11 @@ describe("Agent Vault V1 Router", async () => {
       expect(read.statusCode).toBe(200);
       expect((read.json().service as TProjectService).accessBundles).toHaveLength(2);
 
-      // The bundle read lists the service, without an accessBundleId: a service is in any number of bundles.
+      // The bundle read keeps accessBundleId on each service, set to the bundle read, for older Python SDKs.
       const bundleRead = await inject("GET", `/api/v1/agent-vault/access-bundles/${second.id}`);
-      expect(bundleRead.json().accessBundle.services).toEqual([expect.objectContaining({ id: service.id })]);
-      expect(bundleRead.json().accessBundle.services[0]).not.toHaveProperty("accessBundleId");
+      expect(bundleRead.json().accessBundle.services).toEqual([
+        expect.objectContaining({ id: service.id, accessBundleId: second.id })
+      ]);
 
       // A service with no bundle is still a project service.
       const loose = await createService([], {
@@ -4380,7 +4381,7 @@ describe("Agent Vault V1 Router", async () => {
       );
     });
 
-    test("attaching adds an existing service to a bundle, once, and not over a host the bundle already covers", async () => {
+    test("attaching adds existing services to a bundle, skips ones already in it, and not over a host the bundle already covers", async () => {
       const home = await createAccessBundle("ps-attach-home");
       const target = await createAccessBundle("ps-attach-target");
       const service = await createService([home.id], {
@@ -4389,9 +4390,10 @@ describe("Agent Vault V1 Router", async () => {
         credential: { type: "passthrough" }
       });
 
-      const attached = await inject("POST", bundleServicesUrl(target.id), { serviceId: service.id });
+      const attached = await inject("POST", bundleServicesUrl(target.id), { serviceIds: [service.id] });
       expect(attached.statusCode, attached.payload).toBe(200);
-      expect((attached.json().service as TProjectService).accessBundles).toEqual(
+      expect(attached.json().skipped).toEqual([]);
+      expect((attached.json().services as TProjectService[])[0].accessBundles).toEqual(
         expect.arrayContaining([
           { id: home.id, name: home.name },
           { id: target.id, name: target.name }
@@ -4399,26 +4401,75 @@ describe("Agent Vault V1 Router", async () => {
       );
       expect(await bundleServiceNames(target.id)).toEqual(["ps-attach-github"]);
 
-      const again = await inject("POST", bundleServicesUrl(target.id), { serviceId: service.id });
-      expect(again.statusCode).toBe(409);
-      expect(again.json().message).toBe(
-        `The service 'ps-attach-github' is already in the access bundle '${target.name}'.`
-      );
+      const again = await inject("POST", bundleServicesUrl(target.id), { serviceIds: [service.id] });
+      expect(again.statusCode, again.payload).toBe(200);
+      expect(again.json()).toEqual({ services: [], skipped: [{ id: service.id, name: "ps-attach-github" }] });
 
       const overlapping = await createService([], {
         name: "ps-attach-github-wide",
         hostPattern: "api.github.com, uploads.github.com",
         credential: { type: "passthrough" }
       });
-      const refused = await inject("POST", bundleServicesUrl(target.id), { serviceId: overlapping.id });
+      const refused = await inject("POST", bundleServicesUrl(target.id), { serviceIds: [overlapping.id] });
       expect(refused.statusCode).toBe(400);
       expect(refused.json().message).toBe(
         `'ps-attach-github' already covers api.github.com:443 in the access bundle '${target.name}'. A bundle can't hold two services for the same host.`
       );
       expect(await bundleServiceNames(target.id)).toEqual(["ps-attach-github"]);
 
-      const unknown = await inject("POST", bundleServicesUrl(target.id), { serviceId: crypto.randomUUID() });
+      const unknown = await inject("POST", bundleServicesUrl(target.id), { serviceIds: [crypto.randomUUID()] });
       expect(unknown.statusCode).toBe(404);
+    });
+
+    test("attaching several services is all or nothing", async () => {
+      const target = await createAccessBundle("ps-batch-target");
+      const slack = await createService([], {
+        name: "ps-batch-slack",
+        hostPattern: "slack.com",
+        credential: { type: "passthrough" }
+      });
+      const stripe = await createService([], {
+        name: "ps-batch-stripe",
+        hostPattern: "api.stripe.com",
+        credential: { type: "passthrough" }
+      });
+      const stripeAgain = await createService([], {
+        name: "ps-batch-stripe-twin",
+        hostPattern: "api.stripe.com",
+        credential: { type: "passthrough" }
+      });
+
+      const clash = await inject("POST", bundleServicesUrl(target.id), {
+        serviceIds: [slack.id, stripe.id, stripeAgain.id]
+      });
+      expect(clash.statusCode).toBe(400);
+      expect(clash.json().message).toBe(
+        `Can't add 'ps-batch-stripe-twin': 'ps-batch-stripe' already covers api.stripe.com:443 in the access bundle '${target.name}'. A bundle can't hold two services for the same host.`
+      );
+      expect(await bundleServiceNames(target.id)).toEqual([]);
+
+      const missing = await inject("POST", bundleServicesUrl(target.id), {
+        serviceIds: [slack.id, crypto.randomUUID()]
+      });
+      expect(missing.statusCode).toBe(404);
+      expect(await bundleServiceNames(target.id)).toEqual([]);
+
+      const added = await inject("POST", bundleServicesUrl(target.id), {
+        serviceIds: [stripe.id, slack.id, stripe.id]
+      });
+      expect(added.statusCode, added.payload).toBe(200);
+      expect((added.json().services as TProjectService[]).map((row) => row.name)).toEqual([
+        "ps-batch-stripe",
+        "ps-batch-slack"
+      ]);
+      expect(await bundleServiceNames(target.id)).toEqual(["ps-batch-slack", "ps-batch-stripe"]);
+
+      const tooMany = await inject("POST", bundleServicesUrl(target.id), {
+        serviceIds: Array.from({ length: 26 }, () => crypto.randomUUID())
+      });
+      expect(tooMany.statusCode).toBe(422);
+      const none = await inject("POST", bundleServicesUrl(target.id), { serviceIds: [] });
+      expect(none.statusCode).toBe(422);
     });
 
     test("a member can't attach or detach a service, even on a bundle they hold", async () => {
@@ -4436,7 +4487,7 @@ describe("Agent Vault V1 Router", async () => {
       const member = await createMemberIdentity(`ps-member-attach-${Date.now()}`);
       try {
         await grant(bundle.id, member.id);
-        const attach = await member.as("POST", bundleServicesUrl(bundle.id), { serviceId: service.id });
+        const attach = await member.as("POST", bundleServicesUrl(bundle.id), { serviceIds: [service.id] });
         expect(attach.statusCode).toBe(403);
         const detach = await member.as("DELETE", `${bundleServicesUrl(bundle.id)}/${linked.id}`);
         expect(detach.statusCode).toBe(403);
@@ -4498,7 +4549,7 @@ describe("Agent Vault V1 Router", async () => {
         hostPattern: "api.stripe.com",
         credential: { type: "bearer", value: "sk_shared_stripe" }
       });
-      expect((await inject("POST", bundleServicesUrl(second.id), { serviceId: service.id })).statusCode).toBe(200);
+      expect((await inject("POST", bundleServicesUrl(second.id), { serviceIds: [service.id] })).statusCode).toBe(200);
 
       const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: "ps-resolve" });
       expect(proxy.statusCode).toBe(200);
@@ -4651,7 +4702,7 @@ describe("Agent Vault V1 Router", async () => {
       const clashMessage = `A session that's still active on the access bundle '${bundle.name}' was started with its own service named 'ps-inline-twin'. Choose another name, or revoke that session first.`;
 
       // Attaching a project service of that name to the bundle.
-      const attach = await inject("POST", bundleServicesUrl(bundle.id), { serviceId: loose.id });
+      const attach = await inject("POST", bundleServicesUrl(bundle.id), { serviceIds: [loose.id] });
       expect(attach.statusCode).toBe(400);
       expect(attach.json().message).toBe(clashMessage);
       expect((await inject("DELETE", `${servicesUrl}/${loose.id}`)).statusCode).toBe(200);
@@ -5334,7 +5385,7 @@ describe("Agent Vault V1 Router", async () => {
         ["PATCH", `/api/v1/agent-vault/access-bundles/${unknown}`, { name: "renamed" }],
         ["DELETE", `/api/v1/agent-vault/access-bundles/${unknown}`, undefined],
         ["GET", `/api/v1/agent-vault/access-bundles/${unknown}/members`, undefined],
-        ["POST", `/api/v1/agent-vault/access-bundles/${unknown}/services`, { serviceId: unknown }],
+        ["POST", `/api/v1/agent-vault/access-bundles/${unknown}/services`, { serviceIds: [unknown] }],
         ["DELETE", `/api/v1/agent-vault/access-bundles/${unknown}/services/${unknown}`, undefined],
         [
           "POST",
@@ -8165,7 +8216,7 @@ describe("Agent Vault V1 Router", async () => {
       });
 
       const bundle = await createAccessBundle("skills-crud-bundle");
-      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [skill.id] })).statusCode).toBe(200);
 
       const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
       expect(JSON.parse(detail.payload).skill).toMatchObject({
@@ -8285,7 +8336,7 @@ describe("Agent Vault V1 Router", async () => {
         [zeta, single]
       ] as const) {
         // eslint-disable-next-line no-await-in-loop
-        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
+        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [skill.id] })).statusCode).toBe(200);
       }
 
       const list = await inject("GET", `${skillsUrl}?search=bundles-`);
@@ -8317,7 +8368,7 @@ describe("Agent Vault V1 Router", async () => {
         [other, hidden]
       ] as const) {
         // eslint-disable-next-line no-await-in-loop
-        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: bundleSkill.id })).statusCode).toBe(200);
+        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [bundleSkill.id] })).statusCode).toBe(200);
       }
       const member = await createMemberIdentity("skills-member");
       try {
@@ -8344,7 +8395,7 @@ describe("Agent Vault V1 Router", async () => {
           ["delete", "DELETE", `${skillsUrl}/${skill.id}`, 403],
           ["update", "PATCH", `${skillsUrl}/${skill.id}`, 403, { files: skillFiles("member-reader", "x") }],
           ["restore", "POST", `${skillsUrl}/${skill.id}/versions/1/restore`, 403],
-          ["add", "POST", bundleSkillsUrl(granted.id), 403, { skillId: skill.id }],
+          ["add", "POST", bundleSkillsUrl(granted.id), 403, { skillIds: [skill.id] }],
           ["remove", "DELETE", `${bundleSkillsUrl(granted.id)}/${skill.id}`, 403]
         ];
         const statuses = await Promise.all(
@@ -8716,23 +8767,21 @@ describe("Agent Vault V1 Router", async () => {
       expect((await inject("GET", `${skillsUrl}/${skill.id}/versions/1`)).statusCode).toBe(404);
     });
 
-    test("add and remove, and a second add is a 409", async () => {
+    test("add and remove, and a second add skips the skill", async () => {
       const { skill } = await createSkill("add-skill");
       const bundle = await createAccessBundle("skills-add-bundle");
 
-      const added = await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id });
+      const added = await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [skill.id] });
       expect(added.statusCode).toBe(200);
-      expect(JSON.parse(added.payload).skill).toMatchObject({
+      expect(JSON.parse(added.payload).skills[0]).toMatchObject({
         id: skill.id,
         name: "add-skill",
         latestVersion: 1
       });
 
-      const again = await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id });
-      expect(again.statusCode).toBe(409);
-      expect(JSON.parse(again.payload).message).toBe(
-        "The skill 'add-skill' is already in the access bundle 'skills-add-bundle'."
-      );
+      const again = await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [skill.id] });
+      expect(again.statusCode).toBe(200);
+      expect(JSON.parse(again.payload)).toEqual({ skills: [], skipped: [{ id: skill.id, name: "add-skill" }] });
 
       const listed = await inject("GET", bundleSkillsUrl(bundle.id));
       expect((JSON.parse(listed.payload) as { skills: TSkill[] }).skills.map((row) => row.id)).toEqual([skill.id]);
@@ -8750,22 +8799,35 @@ describe("Agent Vault V1 Router", async () => {
       const created = await Promise.all(
         Array.from({ length: 26 }, (_, i) => createSkill(`cap-skill-${String(i).padStart(2, "0")}`))
       );
-      for (const { skill } of created.slice(0, 25)) {
-        // eslint-disable-next-line no-await-in-loop
-        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
-      }
+      const ids = (from: number, to: number) => created.slice(from, to).map(({ skill }) => skill.id);
+      const first = await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: ids(0, 23) });
+      expect(first.statusCode, first.payload).toBe(200);
+      expect(JSON.parse(first.payload).skills).toHaveLength(23);
 
-      const over = await inject("POST", bundleSkillsUrl(bundle.id), { skillId: created[25].skill.id });
+      const tooMany = await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: ids(22, 26) });
+      expect(tooMany.statusCode).toBe(400);
+      expect(JSON.parse(tooMany.payload).message).toBe(
+        "This access bundle has 23 skills and can hold 25, so only 2 more can be added."
+      );
+      const listed = await inject("GET", bundleSkillsUrl(bundle.id));
+      expect(JSON.parse(listed.payload).skills).toHaveLength(23);
+
+      const rest = await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: ids(22, 25) });
+      expect(rest.statusCode, rest.payload).toBe(200);
+      expect(JSON.parse(rest.payload).skills).toHaveLength(2);
+      expect(JSON.parse(rest.payload).skipped).toEqual([{ id: created[22].skill.id, name: "cap-skill-22" }]);
+
+      const over = await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [created[25].skill.id] });
       expect(over.statusCode).toBe(400);
       expect(JSON.parse(over.payload).message).toBe(
         "This access bundle already has 25 skills, the maximum. Remove one to add another."
       );
 
       const other = await createAccessBundle("skills-cap-other-bundle");
-      expect((await inject("POST", bundleSkillsUrl(other.id), { skillId: created[25].skill.id })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(other.id), { skillIds: [created[25].skill.id] })).statusCode).toBe(200);
 
       expect((await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${created[0].skill.id}`)).statusCode).toBe(200);
-      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: created[25].skill.id })).statusCode).toBe(
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [created[25].skill.id] })).statusCode).toBe(
         200
       );
     });
@@ -8791,9 +8853,9 @@ describe("Agent Vault V1 Router", async () => {
       const { skill: zeta, version: zetaV1 } = await createSkill("zeta-skill");
       const { skill: alpha } = await createSkill("alpha-skill");
       const { skill: foreign } = await createSkill("foreign-skill");
-      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: zeta.id })).statusCode).toBe(200);
-      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: alpha.id })).statusCode).toBe(200);
-      expect((await inject("POST", bundleSkillsUrl(otherBundle.id), { skillId: foreign.id })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [zeta.id] })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [alpha.id] })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(otherBundle.id), { skillIds: [foreign.id] })).statusCode).toBe(200);
       const republished = await publish(
         alpha.id,
         skillFiles("alpha-skill", "Second.", [
@@ -8899,8 +8961,8 @@ describe("Agent Vault V1 Router", async () => {
       const otherBundle = await createAccessBundle("skills-lost-grant-other");
       const { skill } = await createSkill("lost-grant-skill");
       const { skill: unreachable } = await createSkill("unreachable-skill");
-      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
-      expect((await inject("POST", bundleSkillsUrl(otherBundle.id), { skillId: unreachable.id })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [skill.id] })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(otherBundle.id), { skillIds: [unreachable.id] })).statusCode).toBe(200);
       const member = await createMemberIdentity("skills-lost-grant");
       try {
         const bundleMembersUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members`;
@@ -9020,7 +9082,7 @@ describe("Agent Vault V1 Router", async () => {
       const emptyBundle = await createAccessBundle("skills-event-empty-bundle");
       const bundle = await createAccessBundle("skills-event-bundle");
       const { skill } = await createSkill("event-skill");
-      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillIds: [skill.id] })).statusCode).toBe(200);
       const emptySession = await mintFor([emptyBundle]);
       const session = await mintFor([bundle]);
 

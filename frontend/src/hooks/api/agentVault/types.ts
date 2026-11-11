@@ -234,6 +234,9 @@ export type TAgentVaultService = (
 
 export type TAgentVaultBundleRef = { id: string; name: string };
 
+// A service or skill an add request named that was already in the access bundle.
+export type TAgentVaultSkippedBundleItem = { id: string; name: string };
+
 // A service read from the project, with the access bundles it is in. A member gets only the ones they reach.
 export type TAgentVaultProjectService = TAgentVaultService & {
   accessBundles: TAgentVaultBundleRef[];

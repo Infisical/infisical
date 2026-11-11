@@ -28,6 +28,7 @@ import {
   TAgentVaultSessionLogSettingsState,
   TAgentVaultSkillSummary,
   TAgentVaultSkillVersion,
+  TAgentVaultSkippedBundleItem,
   TAgentVaultVariable,
   TAgentVaultWrittenMember,
   TChangeAgentVaultDelegationSubjectsDTO,
@@ -281,16 +282,16 @@ export const useAddAgentVaultAccessBundleService = (projectId: string) => {
   return useMutation({
     mutationFn: async ({
       accessBundleId,
-      serviceId
+      serviceIds
     }: {
       accessBundleId: string;
-      serviceId: string;
+      serviceIds: string[];
     }) => {
-      const { data } = await apiRequest.post<{ service: TAgentVaultProjectService }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`,
-        { serviceId }
-      );
-      return data.service;
+      const { data } = await apiRequest.post<{
+        services: TAgentVaultProjectService[];
+        skipped: TAgentVaultSkippedBundleItem[];
+      }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/services`, { serviceIds });
+      return data;
     },
     onSuccess: () => invalidateServices(queryClient, currentOrg.id, projectId)
   });
@@ -904,16 +905,18 @@ const invalidateBundleSkillChange = (
   queryClient: ReturnType<typeof useQueryClient>,
   orgId: string,
   projectId: string,
-  { accessBundleId, skillId }: { accessBundleId: string; skillId: string }
+  { accessBundleId, skillIds }: { accessBundleId: string; skillIds: string[] }
 ) =>
   Promise.all([
     queryClient.invalidateQueries({
       queryKey: agentVaultKeys.accessBundleSkills(orgId, projectId, accessBundleId)
     }),
-    queryClient.invalidateQueries({
-      queryKey: agentVaultKeys.skill(orgId, projectId, skillId),
-      exact: true
-    }),
+    ...skillIds.map((skillId) =>
+      queryClient.invalidateQueries({
+        queryKey: agentVaultKeys.skill(orgId, projectId, skillId),
+        exact: true
+      })
+    ),
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(orgId, projectId) })
   ]);
 
@@ -923,16 +926,16 @@ export const useAddAgentVaultAccessBundleSkill = (projectId: string) => {
   return useMutation({
     mutationFn: async ({
       accessBundleId,
-      skillId
+      skillIds
     }: {
       accessBundleId: string;
-      skillId: string;
+      skillIds: string[];
     }) => {
-      const { data } = await apiRequest.post<{ skill: TAgentVaultBundleSkill }>(
-        `/api/v1/agent-vault/access-bundles/${accessBundleId}/skills`,
-        { skillId }
-      );
-      return data.skill;
+      const { data } = await apiRequest.post<{
+        skills: TAgentVaultBundleSkill[];
+        skipped: TAgentVaultSkippedBundleItem[];
+      }>(`/api/v1/agent-vault/access-bundles/${accessBundleId}/skills`, { skillIds });
+      return data;
     },
     onSuccess: (_, params) =>
       invalidateBundleSkillChange(queryClient, currentOrg.id, projectId, params)
@@ -955,7 +958,10 @@ export const useRemoveAgentVaultAccessBundleSkill = (projectId: string) => {
       );
       return data.skill;
     },
-    onSuccess: (_, params) =>
-      invalidateBundleSkillChange(queryClient, currentOrg.id, projectId, params)
+    onSuccess: (_, { accessBundleId, skillId }) =>
+      invalidateBundleSkillChange(queryClient, currentOrg.id, projectId, {
+        accessBundleId,
+        skillIds: [skillId]
+      })
   });
 };

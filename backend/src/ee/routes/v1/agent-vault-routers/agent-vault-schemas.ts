@@ -1360,6 +1360,9 @@ export const AgentVaultProjectServiceSchema = agentVaultServiceResponseSchema(
 // Enough for a bundle page that creates a service into several bundles at once, without a request that names every
 // bundle in a project.
 export const AGENT_VAULT_MAX_BUNDLES_PER_SERVICE_CREATE = 25;
+export const AGENT_VAULT_MAX_ADDS_PER_BUNDLE_REQUEST = 25;
+
+export const AgentVaultSkippedBundleItemSchema = z.object({ id: z.string().uuid(), name: z.string() });
 
 // A username follows the admin's rule for one, a token or password the admin's rule for those.
 export const AgentVaultPersonalValueInputSchema = z.discriminatedUnion("field", [

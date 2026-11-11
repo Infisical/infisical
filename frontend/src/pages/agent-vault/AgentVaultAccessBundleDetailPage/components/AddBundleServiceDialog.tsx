@@ -48,7 +48,6 @@ export const AddBundleServiceDialog = ({
   const [services, setServices] = useState<TAgentVaultProjectService[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
-  const [isAdding, setIsAdding] = useState(false);
 
   const { data, isFetching } = useListAgentVaultServices(
     projectId,
@@ -71,31 +70,25 @@ export const AddBundleServiceDialog = ({
 
   const handleAdd = async () => {
     if (services.length === 0) return;
-    setIsAdding(true);
-    const added: TAgentVaultProjectService[] = [];
     try {
-      // One at a time, so a host one of them shares with the bundle stops the rest with its own message.
-      for (const service of services) {
-        // eslint-disable-next-line no-await-in-loop
-        await addService.mutateAsync({ accessBundleId, serviceId: service.id });
-        added.push(service);
+      // All or nothing: if one is missing or covers a host the bundle has, none are added and the error says which.
+      const { services: added } = await addService.mutateAsync({
+        accessBundleId,
+        serviceIds: services.map((service) => service.id)
+      });
+      if (added.length > 0) {
+        createNotification({
+          text:
+            added.length === 1
+              ? `Service "${added[0].name}" added`
+              : `${added.length} services added`,
+          type: "success"
+        });
       }
+      handleClose();
     } catch {
       // The global mutation handler shows the server's message.
-    } finally {
-      setIsAdding(false);
     }
-    if (added.length > 0) {
-      createNotification({
-        text:
-          added.length === 1
-            ? `Service "${added[0].name}" added`
-            : `${added.length} services added`,
-        type: "success"
-      });
-    }
-    if (added.length === services.length) handleClose();
-    else setServices((prev) => prev.filter((service) => !added.includes(service)));
   };
 
   return (
@@ -109,7 +102,7 @@ export const AddBundleServiceDialog = ({
         onOpenChange(open);
       }}
     >
-      <DialogContent isPending={isAdding}>
+      <DialogContent isPending={addService.isPending}>
         <DialogHeader>
           <DialogTitle>Add Services</DialogTitle>
           <DialogDescription>
@@ -170,12 +163,12 @@ export const AddBundleServiceDialog = ({
         </Field>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose} isDisabled={isAdding}>
+          <Button variant="outline" onClick={handleClose} isDisabled={addService.isPending}>
             Cancel
           </Button>
           <Button
             variant="av"
-            isPending={isAdding}
+            isPending={addService.isPending}
             isDisabled={services.length === 0}
             onClick={handleAdd}
           >

@@ -120,6 +120,7 @@ import {
 } from "./agent-vault-access-bundle-dal";
 import {
   TAddMembersDTO,
+  TAddBundleServicesDTO,
   TBundleServiceDTO,
   TAgentVaultBasicMemberField,
   TAgentVaultBearerMemberField,
@@ -973,13 +974,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       description: bundle.description ?? null,
       createdAt: bundle.createdAt,
       updatedAt: bundle.updatedAt,
-      services: services.map((service) =>
-        viewService(
+      services: services.map((service) => ({
+        // The bundle being read. Python SDK v1.4.0 and older fail to parse a service without it.
+        accessBundleId: bundle.id,
+        ...viewService(
           service,
           { customHeaders, substitutions, variableReferences },
           { canReadVariables, status: statuses.find((entry) => entry.serviceId === service.id) }
         )
-      )
+      }))
     };
   };
 
@@ -1093,11 +1096,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     {
       accessBundles,
       hostPattern,
-      excludeServiceId
+      excludeServiceId,
+      addingName
     }: {
       accessBundles: { id: string; name: string }[];
       hostPattern: string | null;
       excludeServiceId?: string;
+      // Names the service being added, for a request that adds several.
+      addingName?: string;
     },
     // Without a tx this reads the replica outside any lock, so two creates for the same host both pass.
     tx?: Knex
@@ -1111,7 +1117,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         siblings.filter((candidate) => candidate.id !== excludeServiceId)
       );
       if (conflicts.length) {
-        throw new BadRequestError({ message: describeConflict(conflicts[0], bundle.name) });
+        const message = describeConflict(conflicts[0], bundle.name);
+        throw new BadRequestError({ message: addingName ? `Can't add '${addingName}': ${message}` : message });
       }
     }
   };
@@ -2402,12 +2409,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     return { service: view };
   };
 
-  const addServiceToBundle = async ({ accessBundleId, serviceId, ...rest }: TBundleServiceDTO) => {
+  // All or nothing: one service that's missing or conflicts stops the rest. Services already in the bundle are skipped.
+  const addServicesToBundle = async ({ accessBundleId, serviceIds, ...rest }: TAddBundleServicesDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
     );
+    const requestedIds = [...new Set(serviceIds.map((id) => id.toLowerCase()))];
 
     const add = () =>
       agentVaultServiceDAL.transaction(async (tx) => {
@@ -2417,34 +2426,59 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           tx
         );
         if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${accessBundleId}' not found` });
-        const service = await agentVaultServiceDAL.lockByIdInProject({ id: serviceId, projectId: rest.projectId }, tx);
-        if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
 
-        if (await agentVaultServiceDAL.findLink({ accessBundleId: bundle.id, serviceId: service.id }, tx)) {
-          throw new ConflictError({
-            message: `The service '${service.name}' is already in the access bundle '${bundle.name}'.`
-          });
+        // Locked in ID order, so two requests naming the same services can't each hold one the other needs.
+        const lockedById = new Map<string, TAgentVaultCatalogService>();
+        for (const id of [...requestedIds].sort()) {
+          // eslint-disable-next-line no-await-in-loop
+          const service = await agentVaultServiceDAL.lockByIdInProject({ id, projectId: rest.projectId }, tx);
+          if (!service) throw new NotFoundError({ message: `Service with ID '${id}' not found` });
+          lockedById.set(id, service);
         }
-        await checkHostPatternConflicts(
-          { accessBundles: [bundle], hostPattern: service.hostPattern ?? null, excludeServiceId: service.id },
-          tx
-        );
-        await assertNoLiveInlineNameClash({ name: service.name, accessBundles: [bundle] }, tx);
-        await agentVaultServiceDAL.insertLinks([{ accessBundleId: bundle.id, serviceId: service.id }], tx);
-        return service;
+
+        const added: TAgentVaultCatalogService[] = [];
+        const skipped: { id: string; name: string }[] = [];
+        for (const id of requestedIds) {
+          const service = lockedById.get(id) as TAgentVaultCatalogService;
+          // eslint-disable-next-line no-await-in-loop
+          if (await agentVaultServiceDAL.findLink({ accessBundleId: bundle.id, serviceId: service.id }, tx)) {
+            skipped.push({ id: service.id, name: service.name });
+            // eslint-disable-next-line no-continue
+            continue;
+          }
+          // Each link goes in before the next check, so two picked services for the same host conflict with each other.
+          // eslint-disable-next-line no-await-in-loop
+          await checkHostPatternConflicts(
+            {
+              accessBundles: [bundle],
+              hostPattern: service.hostPattern ?? null,
+              excludeServiceId: service.id,
+              addingName: requestedIds.length > 1 ? service.name : undefined
+            },
+            tx
+          );
+          // eslint-disable-next-line no-await-in-loop
+          await assertNoLiveInlineNameClash({ name: service.name, accessBundles: [bundle] }, tx);
+          // eslint-disable-next-line no-await-in-loop
+          await agentVaultServiceDAL.insertLinks([{ accessBundleId: bundle.id, serviceId: service.id }], tx);
+          added.push(service);
+        }
+        return { added, skipped };
       });
 
-    let service: TAgentVaultCatalogService;
+    let result: Awaited<ReturnType<typeof add>>;
     try {
-      service = await add();
+      result = await add();
     } catch (err) {
       if (isUniqueViolation(err)) {
-        throw new ConflictError({ message: "This service is already in this access bundle." });
+        throw new ConflictError({
+          message: "One of these services was added to this access bundle at the same time. Try again."
+        });
       }
       throw err;
     }
-    const [view] = await $viewServices(rest, [service], null, true);
-    return { service: view, accessBundle: { id: bundle.id, name: bundle.name } };
+    const services = result.added.length ? await $viewServices(rest, result.added, null, true) : [];
+    return { services, skipped: result.skipped, accessBundle: { id: bundle.id, name: bundle.name } };
   };
 
   // The service stays in the project. Whoever reached it only through this bundle loses what they saved for it.
@@ -2690,7 +2724,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     updateService,
     listMcpTools,
     deleteService,
-    addServiceToBundle,
+    addServicesToBundle,
     removeServiceFromBundle,
     listMembers,
     listAvailableMembers,

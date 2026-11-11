@@ -269,11 +269,14 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
 
 A service belongs to the project (`agent_vault_services.projectId`) and a bundle holds it through a link
 (`agent_vault_access_bundle_services`), the way skills work. `/services` creates, edits and deletes them, and
-`POST`/`DELETE /access-bundles/:id/services` add and remove a link. Personal values, OAuth sign-ins and tool loading are
+`POST`/`DELETE /access-bundles/:id/services` add and remove a link. `POST` takes `serviceIds` (as skills take
+`skillIds`) and is all or nothing: one missing or conflicting service adds none, so the error can name it and the
+dialog never leaves a half-added batch; ids already linked come back in `skipped`. Personal values, OAuth sign-ins and tool loading are
 keyed by the service, so a member sets them once however many bundles give them the service.
 
 - **Names are unique per project** among the project's services (`agent_vault_services_project_name_unique`, partial on
-  `sessionId IS NULL`). A bundle read still puts `accessBundleId` on each service: released SDKs require it.
+  `sessionId IS NULL`). A bundle read still puts `accessBundleId` (the bundle read) on each service, hidden from the
+  API docs: Python SDK v1.4.0 and older require it, so keep it until those versions age out.
 - **A bundle can't hold two services covering one host**, so a host change is checked against every bundle the service
   is in, and a create into bundles or a link against the bundle it joins (`checkHostPatternConflicts`). Under the
   bundle row locks, after the project's `AgentVaultServiceNames` advisory lock.
