@@ -215,7 +215,8 @@ describe("CertificateV3Service", () => {
     ),
     getInternalCaOrgBreakdown: vi.fn(async () => []),
     getActiveCertificateOrgBreakdown: vi.fn(async () => []),
-    getPkiUsageByRootOrg: vi.fn(async () => [])
+    getPkiUsageByRootOrg: vi.fn(async () => []),
+    getApplicationPermission: vi.fn()
   };
 
   const mockKeyStore = {

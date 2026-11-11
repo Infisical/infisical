@@ -17,6 +17,7 @@ import type { TEventEmitter } from "@app/services/event-outbox/event-outbox-type
 
 import { AgentVaultModule } from "./agent-vault/agent-vault/ce/module";
 import { CertManagerModule } from "./certificates/cert-manager/ce/module";
+import { CodeSigningModule } from "./certificates/code-signing/ce/module";
 import { KmsModule } from "./kms/kms/ce/module";
 import { actorContexts } from "./lib/actor-context";
 import { DataAccessDb } from "./lib/data-access-db";
@@ -179,6 +180,7 @@ export const createDomains = (deps: TDomainDeps) => {
   const pam = new PamModule(productDeps);
   const agentVault = new AgentVaultModule(productDeps);
   const kms = new KmsModule({ productAccessRegistry: projects.productAccessRegistry });
+  const codeSigning = new CodeSigningModule({ projectsDomain: projects.service });
   const certManager = new CertManagerModule({ db, organizationsDomain: organizations.service, ...productDeps });
 
   // Built once per request by the auth middleware, and by background jobs acting in an org.
@@ -200,6 +202,7 @@ export const createDomains = (deps: TDomainDeps) => {
     pam,
     agentVault,
     kms,
+    codeSigning,
     certManager
   };
 };

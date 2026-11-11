@@ -1,7 +1,8 @@
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
 import { Meter, TLicenseRegistry } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsDomain } from "@app/domains/platform/organizations/ce/module";
-import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
+import { ProjectResourcePermission, TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 
 import {
   CertificateUsageDataAccess,
@@ -9,12 +10,22 @@ import {
   TOrgUnitCountRow,
   TPkiRootOrgUsageRow
 } from "./data-access/usage-counter-data-access";
+import { getApplicationPermission } from "./service/application-permission";
+import { ApplicationPermissionSet } from "./service/application-roles";
+
+export { applicationRoles } from "./service/application-permission";
 
 export * from "./service/application-roles";
 
 export type { TCertificateOrgUnitRow, TOrgUnitCountRow, TPkiRootOrgUsageRow };
 
 export type TCertManagerDomain = {
+  // What the actor may do on one certificate application: its application role, with the project-admin fallback.
+  getApplicationPermission: (input: {
+    actor: TActorContext;
+    projectId: string;
+    applicationId: string;
+  }) => Promise<ProjectResourcePermission<ApplicationPermissionSet>>;
   // Distinct certificate names in use, and how many of them are wildcards. orgId omitted counts the
   // whole instance.
   countActiveCertificateQuota: (orgId?: string) => Promise<{ total: number; wildcard: number }>;
@@ -39,9 +50,10 @@ export class CertManagerModule {
 
   readonly service: TCertManagerDomain;
 
-  constructor({ db, organizationsDomain, licenseRegistry }: TCertManagerDeps) {
+  constructor({ db, organizationsDomain, projectsDomain, licenseRegistry }: TCertManagerDeps) {
     const usage = new CertificateUsageDataAccess(db);
     this.service = {
+      getApplicationPermission: (input) => getApplicationPermission(projectsDomain, input),
       countActiveCertificateQuota: (orgId) => usage.countActiveCertificateQuotaKeys(orgId),
       isCertificateQuotaKeyActive: (orgId, quotaKey) => usage.isCertificateQuotaKeyActive(orgId, quotaKey),
       getInternalCaOrgBreakdown: (orgId) => usage.getInternalCaOrgBreakdown(orgId),

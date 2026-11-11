@@ -1,3 +1,5 @@
+import { AbilityTuple } from "@casl/ability";
+
 import { ProjectType } from "@app/db/schemas";
 import { ActorMemo } from "@app/domains/lib/actor-memo";
 import { DataAccessDb } from "@app/domains/lib/data-access-db";
@@ -15,6 +17,8 @@ import {
   TGetProjectPermissionInput,
   TProjectRules
 } from "./service/project-permission-service";
+import { ProjectResourceAccess, TGetProjectResourcePermissionInput } from "./service/project-resource-access";
+import { ProjectResourcePermission } from "./service/project-resource-permission";
 
 export type { TIdentityOwnershipRow };
 export { Project } from "./model/project";
@@ -24,6 +28,12 @@ export type { TCustomRoleResolver, TProductAccessRegistry, TProjectRule } from "
 export type { TBuildProjectPermissionInput, TProjectIdentityContext } from "./service/project-access";
 export { ProjectPermission } from "./service/project-access";
 export type { TGetProjectPermissionInput, TProjectRules } from "./service/project-permission-service";
+export type {
+  TGetProjectResourcePermissionInput,
+  TResourceRef,
+  TResourceRoles
+} from "./service/project-resource-access";
+export { ProjectResourcePermission } from "./service/project-resource-permission";
 export * from "./service/permission/project-permission";
 export * from "./service/permission/project-roles";
 
@@ -47,6 +57,11 @@ export type TProjectsDomain = {
   // The project, the actor's grants and its resolved role rules, for a product to compose its own layers on and pass
   // to ProjectPermission.build.
   getProjectRules: (input: TGetProjectPermissionInput) => Promise<TProjectRules>;
+  // What the actor may do on a resource inside a project (a PAM folder or account, a certificate application, a
+  // signer), from its memberships on the resource, with the product's roles and project-admin fallback.
+  getProjectResourcePermission: <TSet extends AbilityTuple>(
+    input: TGetProjectResourcePermissionInput<TSet>
+  ) => Promise<ProjectResourcePermission<TSet>>;
 };
 
 export type TProjectsDeps = {
@@ -76,6 +91,11 @@ export class ProjectsModule {
       registry,
       memo: new ActorMemo<{ project: Project; grants: ActorGrants }>()
     });
+    const resourceAccess = new ProjectResourceAccess({
+      accessControlDomain,
+      organizationsDomain,
+      projectPermissions: permissions
+    });
     this.service = {
       countBillableOrgActors: (orgId) => actors.countBillableOrgActors(orgId),
       getBillableIdentityOwnershipBreakdown: (orgId) => actors.getBillableIdentityOwnershipBreakdown(orgId),
@@ -85,7 +105,8 @@ export class ProjectsModule {
       getProjectIdentityBreakdown: (projectType, orgId) =>
         actors.getProjectIdentityOwnershipBreakdown(projectType, orgId),
       getProjectPermission: (input) => permissions.getProjectPermission(input),
-      getProjectRules: (input) => permissions.getProjectRules(input)
+      getProjectRules: (input) => permissions.getProjectRules(input),
+      getProjectResourcePermission: (input) => resourceAccess.getProjectResourcePermission(input)
     };
 
     licenseRegistry.registerOrganizations({
