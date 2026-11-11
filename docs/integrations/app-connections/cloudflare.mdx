@@ -36,7 +36,7 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
             - **Account** - **Cloudflare Pages** - **Edit**
             - **Account** - **Account Settings** - **Read** (required only for user-owned tokens)
 
-            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+            Add these permissions to your API token and select **Continue to summary**, then **Create Token** to generate your API token.
           </Accordion>
           <Accordion title="Cloudflare Secrets Store">
             Use the following permissions to grant Infisical access to sync secrets to Cloudflare Secrets Store:
@@ -58,7 +58,7 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
             - **Account** - **Workers Scripts** - **Edit**
             - **Account** - **Account Settings** - **Read** (required only for user-owned tokens)
 
-            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+            Add these permissions to your API token and select **Continue to summary**, then **Create Token** to generate your API token.
           </Accordion>
         </AccordionGroup>
       </Tab>
@@ -73,7 +73,7 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
             - **Zone** - **DNS** - **Edit**
             - **Account** - **Account Settings** - **Read** (required only for user-owned tokens)
 
-            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+            Add these permissions to your API token and select **Continue to summary**, then **Create Token** to generate your API token.
           </Accordion>
           <Accordion title="Certificate Sync (Custom SSL)">
             Use the following permissions to grant Infisical access to sync certificates to Cloudflare as Custom SSL certificates:
@@ -86,7 +86,7 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
 
             These permissions allow Infisical to upload, update, and delete custom SSL certificates in your Cloudflare zones.
 
-            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+            Add these permissions to your API token and select **Continue to summary**, then **Create Token** to generate your API token.
           </Accordion>
         </AccordionGroup>
       </Tab>
@@ -104,12 +104,12 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
             The **API Tokens** - **Edit** permission is what allows Infisical to create the replacement token and revoke the previous one on each rotation cycle. Without it, rotation fails when creating the new token.
 
             <Note>
-              **Account Settings** - **Read** is required only when validating with a user-owned API token. When using an account-owned API token, Infisical validates directly using Cloudflare's account token verification endpoint and does not require Account Settings Read.
+              Account-owned API tokens don't need Account Settings Read.
             </Note>
 
             The generated tokens are not granted these permissions. Each rotated token only receives the access policies you configure on the [Cloudflare API Token rotation](/documentation/platform/secret-rotation/cloudflare-api-token) itself.
 
-            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+            Add these permissions to your API token and select **Continue to summary**, then **Create Token** to generate your API token.
           </Accordion>
           <Accordion title="Cloudflare R2 Access Key">
             An R2 access key is a Cloudflare API token, so rotating one needs the same **API Tokens** - **Edit** permission, plus read access to R2 so Infisical can list your buckets.
@@ -124,12 +124,12 @@ Infisical supports connecting to Cloudflare using API tokens and Account ID for 
             **API Tokens** - **Edit** is what allows Infisical to create the replacement key and revoke the previous one on each rotation cycle. **Workers R2 Storage** - **Read** is used only to populate the bucket picker when you configure the rotation; without it the picker comes back empty and you cannot select buckets.
 
             <Note>
-              **Account Settings** - **Read** is required only when validating with a user-owned API token. For account-owned API tokens, Infisical verifies credentials directly using the account token verification endpoint and does not require Account Settings Read.
+              Account-owned API tokens don't need Account Settings Read.
             </Note>
 
             The generated keys are not granted these permissions. Each rotated key only receives object access to the buckets you select on the [Cloudflare R2 Access Key rotation](/documentation/platform/secret-rotation/cloudflare-r2-access-key) itself.
 
-            Add these permissions to your API token and click **Continue to summary**, then **Create Token** to generate your API token.
+            Add these permissions to your API token and select **Continue to summary**, then **Create Token** to generate your API token.
           </Accordion>
         </AccordionGroup>
       </Tab>
