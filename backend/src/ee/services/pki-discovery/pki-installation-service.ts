@@ -155,7 +155,6 @@ export const pkiInstallationServiceFactory = ({
             commonName: cert.commonName ?? undefined,
             altNames: cert.altNames?.split(",").map((s: string) => s.trim()),
             serialNumber: cert.serialNumber ?? undefined,
-            friendlyName: cert.friendlyName ?? undefined,
             metadata
           })
         );
