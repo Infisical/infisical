@@ -102,10 +102,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.create({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         algorithm: req.body.algorithm
       });
 
@@ -156,10 +153,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.get({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.body.id
       });
 
@@ -211,10 +205,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.getAttributes({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.body.id
       });
 
@@ -261,10 +252,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.destroy({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.body.id
       });
 
@@ -312,10 +300,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.activate({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.body.id
       });
 
@@ -363,10 +348,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const object = await server.services.kmipOperation.revoke({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         id: req.body.id
       });
 
@@ -420,10 +402,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const objects = await server.services.kmipOperation.locate({
         ...req.kmipUser,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -475,10 +454,7 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
       const object = await server.services.kmipOperation.register({
         ...req.kmipUser,
         ...req.body,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({

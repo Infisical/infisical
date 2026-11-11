@@ -1,4 +1,5 @@
-import { ActionProjectType, ProjectType, TableName } from "@app/db/schemas";
+import { ProjectType, TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -67,7 +68,7 @@ const buildResolver = (projects: TProject[]) => {
   const resolver = agentVaultProjectResolverFactory({
     db: db as never,
     keyStore: { getItemPrimary: vi.fn() },
-    permissionService: { getProjectPermission: vi.fn() }
+    projectsDomain: { getProjectPermission: vi.fn() }
   });
   return { resolver, tables };
 };
@@ -144,11 +145,9 @@ describe("agentVaultProjectResolver.resolve", () => {
 });
 
 const ctx = {
-  actor: ActorType.USER,
-  actorId: "actor",
-  actorAuthMethod: AuthMethod.EMAIL,
-  actorOrgId: ORG_ID
-};
+  principal: { type: ActorType.USER, id: "actor", authMethod: AuthMethod.EMAIL },
+  org: { id: ORG_ID }
+} as unknown as TActorContext;
 const BUNDLE_ID = "7e6d5c4b-0000-4000-8000-000000000001";
 const AUTHORIZATION_ID = "7e6d5c4b-0000-4000-8000-000000000002";
 
@@ -183,7 +182,7 @@ const buildRowResolver = ({
     keyStore: {
       getItemPrimary: vi.fn().mockResolvedValue(storedAuthorization ? JSON.stringify(storedAuthorization) : null)
     },
-    permissionService: { getProjectPermission: getProjectPermission as never }
+    projectsDomain: { getProjectPermission: getProjectPermission as never }
   });
   return { resolver, filters, getProjectPermission };
 };
@@ -195,12 +194,9 @@ describe("agentVaultProjectResolver.resolveFromAccessBundle", () => {
     await expect(resolver.resolveFromAccessBundle(ctx, BUNDLE_ID)).resolves.toBe(NEWER_ID);
     expect(filters).toContainEqual([`${TableName.Project}.orgId`, ORG_ID]);
     expect(getProjectPermission).toHaveBeenCalledWith({
-      actor: ctx.actor,
-      actorId: ctx.actorId,
+      actor: ctx,
       projectId: NEWER_ID,
-      actorAuthMethod: ctx.actorAuthMethod,
-      actorOrgId: ORG_ID,
-      actionProjectType: ActionProjectType.AgentVault
+      type: ProjectType.AgentVault
     });
   });
 

@@ -108,9 +108,11 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 - Audit events name actors through `agent-vault-actor-name-fns.ts`. Resolve names before the write, so a
   failed lookup can't leave a committed change unaudited, and attach a name only to an actor already proven
   to be in the org: the lookup isn't org-scoped.
-- Reachability has one implementation, `findReachableAccessBundleIds` over the platform's
-  `findResourceMembershipsForActor`, and mint, member-facing reads and resolve all call it. A group's grants
-  count only while the group confers a live role (`liveGroupIdsFrom`). Write no group-expansion SQL here.
+- Reachability has one implementation, `agentVaultDomain.getAccessBundlePermission`, and mint, member-facing reads
+  and resolve all call it (through `getAgentVaultReachability` or directly). A group's grants count only while the
+  group confers a live role. Write no group-expansion SQL here. To check an actor other than the request's (a
+  session's owner, an on-behalf-of user, a member a delegation covers), build its context with
+  `agentVaultActorContext`, never by hand.
 - Reachability is a service-layer filter (`whereIn` on ids, `null` for an admin), not a CASL condition:
   conditions can interpolate only `identity.id`, `username` and `metadata`.
 - The creator grant exists only for a creator with a direct project membership. A group-inherited admin gets
@@ -202,8 +204,9 @@ is one `agent_vault_delegations` row per identity and project, with a scope of `
   group never holds a session. The list leaves it out, because it reads every covered user's access. The write works
   it out after its transaction commits and after the router writes the audit event, so a failure there can't leave a
   committed save unaudited.
-- **Mint runs `getProjectPermission` for the user, then once more for the caller.** The permission service leaves
-  the last actor it ran for in the request context, where the audit log reads the caller's permission metadata. The
+- **Mint checks the user's access, then the caller's once more.** The project permission functions, wrapped by
+  `withProjectAuditContext` in `server/routes/index.ts`, leave the last actor they ran for in the request context,
+  where the audit log reads the caller's permission metadata. The
   second call is memoized, so it costs no query; dropping it attributes the user's metadata to the identity.
 - **The user's Read on sessions is checked with `can()`, not thrown through CASL**, at mint as on every resolve: the
   identity starts the session, so the user only needs a live Agent Vault role. A CASL denial would be recorded against

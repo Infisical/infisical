@@ -1,11 +1,11 @@
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 import { TNotification } from "@app/lib/workflow-integrations/types";
 
-export type TGetMicrosoftTeamsIntegrationByOrgDTO = Omit<TOrgPermission, "orgId">;
+export type TGetMicrosoftTeamsIntegrationByOrgDTO = TActorInput;
 
-export type TGetClientIdDTO = Omit<TOrgPermission, "orgId">;
+export type TGetClientIdDTO = TActorInput;
 
-export type TCreateMicrosoftTeamsIntegrationDTO = Omit<TOrgPermission, "orgId"> & {
+export type TCreateMicrosoftTeamsIntegrationDTO = TActorInput & {
   tenantId: string;
   slug: string;
   redirectUri: string;
@@ -13,22 +13,19 @@ export type TCreateMicrosoftTeamsIntegrationDTO = Omit<TOrgPermission, "orgId"> 
   code: string;
 };
 
-export type TCheckInstallationStatusDTO = { workflowIntegrationId: string } & Omit<TOrgPermission, "orgId">;
+export type TCheckInstallationStatusDTO = { workflowIntegrationId: string } & TActorInput;
 
-export type TGetMicrosoftTeamsIntegrationByIdDTO = { id: string } & Omit<TOrgPermission, "orgId">;
+export type TGetMicrosoftTeamsIntegrationByIdDTO = { id: string } & TActorInput;
 
-export type TUpdateMicrosoftTeamsIntegrationDTO = { id: string; slug?: string; description?: string } & Omit<
-  TOrgPermission,
-  "orgId"
->;
+export type TUpdateMicrosoftTeamsIntegrationDTO = { id: string; slug?: string; description?: string } & TActorInput;
 
-export type TGetTeamsDTO = Omit<TOrgPermission, "orgId"> & {
+export type TGetTeamsDTO = TActorInput & {
   workflowIntegrationId: string;
 };
 
 export type TDeleteMicrosoftTeamsIntegrationDTO = {
   id: string;
-} & Omit<TOrgPermission, "orgId">;
+} & TActorInput;
 
 export type TSendNotificationDTO = {
   tenantId: string;

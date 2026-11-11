@@ -1,8 +1,10 @@
 import crypto from "node:crypto";
 
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionAgentVaultAccessBundleActions,
   ProjectPermissionSub
@@ -55,12 +57,8 @@ const SERVER_URL = "https://mcp.linear.app/mcp";
 const REDIRECT_URI = "https://app.infisical.test/agent-vault/oauth/callback";
 const DESTINATION = { hostPattern: "mcp.linear.app", serverUrl: SERVER_URL };
 
-const ctxOf = (actorId: string) => ({
-  actor: ActorType.USER,
-  actorId,
-  actorOrgId: "org-1",
-  actorAuthMethod: null
-});
+const ctxOf = (actorId: string, type: ActorType = ActorType.USER) =>
+  ({ principal: { type, id: actorId, authMethod: null }, org: { id: "org-1" } }) as unknown as TActorContext;
 
 const json = (status: number, body: unknown): TOauthHttpResponse => ({
   status,
@@ -324,10 +322,10 @@ const setup = ({
         return { id, oauthConfig: row.oauthConfig } as never;
       }
     },
-    permissionService: {
-      getProjectPermission: async () =>
-        ({
-          permission: createMongoAbility([
+    agentVaultDomain: {
+      getAccessBundlePermission: async () => ({
+        project: Permission.fromRules({
+          rules: [
             {
               action: ProjectPermissionAgentVaultAccessBundleActions.Read,
               subject: ProjectPermissionSub.AgentVaultAccessBundles
@@ -340,12 +338,13 @@ const setup = ({
                   }
                 ]
               : [])
-          ]),
-          hasRole: () => true,
-          memberships: []
-        }) as never
-    },
-    membershipDAL: { findResourceMembershipsForActor: async () => [] }
+          ]
+        }) as never,
+        isAdmin: true,
+        reachableAccessBundleIds: null,
+        grantedAccessBundleIds: []
+      })
+    }
   });
 
   return {
@@ -629,7 +628,7 @@ describe("starting an authorization", () => {
     await expect(
       env.service.createAuthorization({
         projectId: PROJECT_ID,
-        ctx: { ...ctxOf(USER_ID), actor: ActorType.IDENTITY },
+        ctx: ctxOf(USER_ID, ActorType.IDENTITY),
         accessBundleId: BUNDLE_ID,
         serverUrl: SERVER_URL
       })

@@ -1,4 +1,4 @@
-import { TOrgPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export enum WorkflowIntegration {
   SLACK = "slack",
@@ -10,4 +10,4 @@ export enum WorkflowIntegrationStatus {
   INSTALLED = "installed"
 }
 
-export type TGetWorkflowIntegrationsByOrg = Omit<TOrgPermission, "orgId">;
+export type TGetWorkflowIntegrationsByOrg = TActorInput;

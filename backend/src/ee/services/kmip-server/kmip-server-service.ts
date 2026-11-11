@@ -1,43 +1,29 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { OrganizationActionScope } from "@app/db/schemas";
-import { OrgPermissionKmipServerActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import {
+  OrgPermissionKmipServerActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
 import { TKmipServerDALFactory } from "./kmip-server-dal";
 
 export type TKmipServerServiceFactory = ReturnType<typeof kmipServerServiceFactory>;
 
-type TActor = {
-  type: ActorType;
-  id: string;
-  orgId: string;
-  authMethod: ActorAuthMethod;
-};
-
 export const kmipServerServiceFactory = ({
   kmipServerDAL,
-  permissionService,
+  organizationsDomain,
   resourceAuthMethodService
 }: {
   kmipServerDAL: TKmipServerDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate">;
 }) => {
-  const $checkPermission = async (actor: TActor, action: OrgPermissionKmipServerActions) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: actor.orgId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(action, OrgPermissionSubjects.KmipServer);
+  const $checkPermission = async (actor: TActorContext, action: OrgPermissionKmipServerActions) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor });
+    permission.assert({ action, subject: OrgPermissionSubjects.KmipServer });
   };
 
   const createKmipServer = async ({
@@ -55,13 +41,16 @@ export const kmipServerServiceFactory = ({
     authMethod:
       | { method: "aws"; config: { allowedPrincipalArns: string; allowedAccountIds: string } }
       | { method: "token" };
-    actor: TActor;
+    actor: TActorContext;
   }) => {
     await $checkPermission(actor, OrgPermissionKmipServerActions.CreateKmipServers);
 
     try {
       return await kmipServerDAL.transaction(async (tx) => {
-        const created = await kmipServerDAL.create({ name, orgId: actor.orgId, hostnamesOrIps, ttl, keyAlgorithm }, tx);
+        const created = await kmipServerDAL.create(
+          { name, orgId: actor.org.id, hostnamesOrIps, ttl, keyAlgorithm },
+          tx
+        );
         await resourceAuthMethodService.initAtCreate({ resource: { type: "kmip", id: created.id }, authMethod }, tx);
         return created;
       });
@@ -82,11 +71,11 @@ export const kmipServerServiceFactory = ({
     hostnamesOrIps?: string;
     ttl?: string | null;
     keyAlgorithm?: string;
-    actor: TActor;
+    actor: TActorContext;
   }) => {
     await $checkPermission(actor, OrgPermissionKmipServerActions.EditKmipServers);
 
-    const kmipServer = await kmipServerDAL.findOne({ id: kmipServerId, orgId: actor.orgId });
+    const kmipServer = await kmipServerDAL.findOne({ id: kmipServerId, orgId: actor.org.id });
     if (!kmipServer) {
       throw new NotFoundError({ message: `KMIP server ${kmipServerId} not found` });
     }
@@ -103,15 +92,15 @@ export const kmipServerServiceFactory = ({
     return kmipServer;
   };
 
-  const listKmipServers = async ({ actor }: { actor: TActor }) => {
+  const listKmipServers = async ({ actor }: { actor: TActorContext }) => {
     await $checkPermission(actor, OrgPermissionKmipServerActions.ListKmipServers);
-    return kmipServerDAL.find({ orgId: actor.orgId });
+    return kmipServerDAL.find({ orgId: actor.org.id });
   };
 
-  const deleteKmipServer = async ({ kmipServerId, actor }: { kmipServerId: string; actor: TActor }) => {
+  const deleteKmipServer = async ({ kmipServerId, actor }: { kmipServerId: string; actor: TActorContext }) => {
     await $checkPermission(actor, OrgPermissionKmipServerActions.DeleteKmipServers);
 
-    const kmipServer = await kmipServerDAL.findOne({ id: kmipServerId, orgId: actor.orgId });
+    const kmipServer = await kmipServerDAL.findOne({ id: kmipServerId, orgId: actor.org.id });
     if (!kmipServer) {
       throw new NotFoundError({ message: `KMIP server ${kmipServerId} not found` });
     }

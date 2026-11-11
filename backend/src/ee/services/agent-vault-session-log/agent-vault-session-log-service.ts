@@ -1,12 +1,10 @@
-import { ForbiddenError } from "@casl/ability";
-
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
 import {
   ProjectPermissionAgentVaultSessionActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import {
   BadRequestError,
@@ -94,7 +92,7 @@ type TAgentVaultSessionLogServiceFactoryDep = {
   agentVaultProxyDAL: Pick<TAgentVaultProxyDALFactory, "findByIdWithOrg">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
   kmsCoreDomain: TKmsCoreDomain;
   licenseDomain: TLicenseDomain;
   keyStore: Pick<TKeyStoreFactory, "streamAdd" | "streamRange">;
@@ -130,14 +128,14 @@ export const agentVaultSessionLogServiceFactory = ({
   agentVaultProxyDAL,
   appConnectionDAL,
   appConnectionService,
-  permissionService,
+  projectsDomain,
   kmsCoreDomain,
   licenseDomain,
   keyStore,
   objectStorage
 }: TAgentVaultSessionLogServiceFactoryDep) => {
   const $requireAdmin = async ({ projectId, ctx }: TAgentVaultSessionLogScoped) => {
-    const { isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { isAdmin } = await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
     if (!isAdmin) {
       throw new ForbiddenRequestError({
         message: "Only an Agent Vault administrator can view or change session log settings"
@@ -295,11 +293,11 @@ export const agentVaultSessionLogServiceFactory = ({
   };
 
   const $loadSessionLogs = async ({ projectId, ctx, sessionId }: TAgentVaultSessionScoped) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission, isAdmin } = await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Read,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     const session = await agentVaultSessionDAL.findOne({ id: sessionId, projectId });
     if (!session || (!isSessionOwnedBy(ctx, session) && !isAdmin)) {
@@ -317,7 +315,7 @@ export const agentVaultSessionLogServiceFactory = ({
     let disabledReason: TAgentVaultSessionLogDisabledReason | null = null;
     if (!config?.enabled) disabledReason = "off";
     else if (
-      (await getSessionLogEntitlement(licenseDomain, ctx.actorOrgId, config.storage.type)).entitlement === "unlicensed"
+      (await getSessionLogEntitlement(licenseDomain, ctx.org.id, config.storage.type)).entitlement === "unlicensed"
     ) {
       disabledReason = "not-on-plan";
     }
@@ -378,7 +376,7 @@ export const agentVaultSessionLogServiceFactory = ({
 
     try {
       // The stored id, not the route's: Postgres matches a uuid in any case, but S3 keys and the key's scope don't.
-      const { folder } = await $openSessionLogFolder(objectStorage, config.storage, scope.ctx.actorOrgId, session.id);
+      const { folder } = await $openSessionLogFolder(objectStorage, config.storage, scope.ctx.org.id, session.id);
 
       let startAfter: string | undefined;
       if (cursor !== undefined) startAfter = `${folder.prefix}${cursor}`;
@@ -443,7 +441,7 @@ export const agentVaultSessionLogServiceFactory = ({
       const { bucket, folder } = await $openSessionLogFolder(
         objectStorage,
         config.storage,
-        scope.ctx.actorOrgId,
+        scope.ctx.org.id,
         session.id
       );
 
@@ -502,9 +500,9 @@ export const agentVaultSessionLogServiceFactory = ({
     });
 
     let connectionError: string | null = null;
-    if (config && (await $isExternalStorageInUse(config, ctx.actorOrgId))) {
+    if (config && (await $isExternalStorageInUse(config, ctx.org.id))) {
       try {
-        const { namespace } = await $openSessionLogLocation(objectStorage, config.storage, ctx.actorOrgId);
+        const { namespace } = await $openSessionLogLocation(objectStorage, config.storage, ctx.org.id);
         await namespace.listAccess();
       } catch (error) {
         logger.warn(error, `agentVaultSessionLog: session log storage check failed [projectId=${projectId}]`);
@@ -528,10 +526,10 @@ export const agentVaultSessionLogServiceFactory = ({
     const config = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, projectId, {
       fromPrimary: false
     });
-    if (!config || !(await $isExternalStorageInUse(config, ctx.actorOrgId))) return { probe: null };
+    if (!config || !(await $isExternalStorageInUse(config, ctx.org.id))) return { probe: null };
 
     try {
-      const { namespace } = await $openSessionLogLocation(objectStorage, config.storage, ctx.actorOrgId);
+      const { namespace } = await $openSessionLogLocation(objectStorage, config.storage, ctx.org.id);
       return {
         probe: {
           url: await namespace.presignCorsProbe(AGENT_VAULT_SESSION_LOG_PRESIGN_EXPIRY_SECONDS),
@@ -578,7 +576,7 @@ export const agentVaultSessionLogServiceFactory = ({
     const isStorageChange = !isSameSessionLogStorage(nextStorage, current?.storage);
     const isTurningOn = !(current?.isSaved && current.enabled);
     if (isStorageChange || isTurningOn) {
-      const { entitlement } = await getSessionLogEntitlement(licenseDomain, ctx.actorOrgId, nextStorage.type);
+      const { entitlement } = await getSessionLogEntitlement(licenseDomain, ctx.org.id, nextStorage.type);
       if (entitlement === "unknown") {
         throw new InternalServerError({
           message: "Infisical couldn't confirm your plan right now. Try again in a few minutes."
@@ -610,7 +608,7 @@ export const agentVaultSessionLogServiceFactory = ({
         );
 
         try {
-          const { namespace } = await $openSessionLogLocation(objectStorage, nextStorage, ctx.actorOrgId);
+          const { namespace } = await $openSessionLogLocation(objectStorage, nextStorage, ctx.org.id);
           await namespace.check();
         } catch (error) {
           if (!(error instanceof ObjectStorageError)) throw error;

@@ -1,16 +1,15 @@
-import { ForbiddenError } from "@casl/ability";
-
+import { TAgentVaultDomain } from "@app/domains/agent-vault/agent-vault/ce/module";
+import { TActorContexts } from "@app/domains/lib/actor-context";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import {
   ProjectPermissionAgentVaultSessionActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -58,10 +57,11 @@ type TAgentVaultSessionServiceFactoryDep = {
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
   agentVaultServiceDAL: Pick<TAgentVaultServiceDALFactory, "findByAccessBundleId">;
   agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   userDAL: Pick<TUserDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  agentVaultDomain: Pick<TAgentVaultDomain, "getAccessBundlePermission">;
+  actorContexts: Pick<TActorContexts, "forPrincipal">;
   kmsCoreDomain: TKmsCoreDomain;
 };
 
@@ -74,17 +74,18 @@ export const agentVaultSessionServiceFactory = ({
   agentVaultAccessBundleDAL,
   agentVaultServiceDAL,
   agentVaultDelegationDAL,
-  membershipDAL,
   userDAL,
   orgDAL,
-  permissionService,
+  projectsDomain,
+  agentVaultDomain,
+  actorContexts,
   kmsCoreDomain
 }: TAgentVaultSessionServiceFactoryDep) => {
   const requireSessionActor = (ctx: TMintSessionDTO["ctx"]) => {
-    if (ctx.actor !== ActorType.USER && ctx.actor !== ActorType.IDENTITY) {
+    if (ctx.principal.type !== ActorType.USER && ctx.principal.type !== ActorType.IDENTITY) {
       throw new BadRequestError({ message: "Only a user or machine identity can hold an Agent Vault session" });
     }
-    return { type: ctx.actor, id: ctx.actorId };
+    return { type: ctx.principal.type, id: ctx.principal.id };
   };
 
   const toSessionView = ({
@@ -130,11 +131,11 @@ export const agentVaultSessionServiceFactory = ({
     const accessBundles = accessBundle ? [accessBundle] : [];
     const ttl = resolveSessionTtl(requestedTtl, Boolean(onBehalfOf));
 
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Create,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission, isAdmin } = await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Create,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     if (!accessBundles.length && !services.length) {
       throw new BadRequestError({
@@ -168,7 +169,7 @@ export const agentVaultSessionServiceFactory = ({
       // an admin has delegated it and granted it the bundle it asks for.
       const delegation = await findCallerDelegation({ agentVaultDelegationDAL }, { projectId, ctx });
       const { accessBundleIds: identityReach } = await getAgentVaultReachability(
-        { permissionService, membershipDAL },
+        { agentVaultDomain },
         { projectId, ctx }
       );
       const notGrantedToIdentity = firstUnreachable(identityReach);
@@ -180,12 +181,12 @@ export const agentVaultSessionServiceFactory = ({
       }
 
       onBehalfOfUser = await resolveOnBehalfOfUser(
-        { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },
+        { agentVaultDelegationDAL, userDAL, orgDAL, agentVaultDomain, actorContexts },
         { projectId, ctx, onBehalfOf, delegation }
       );
       // getProjectPermission leaves the last actor it ran for in the request context, where the audit log reads the
       // caller's permission metadata. Running the caller's check again, memoized so it costs no query, puts it back.
-      await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+      await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
 
       const notGrantedToUser = firstUnreachable(onBehalfOfUser.accessBundleIds);
       if (notGrantedToUser) {
@@ -195,10 +196,7 @@ export const agentVaultSessionServiceFactory = ({
         });
       }
     } else {
-      const { accessBundleIds } = await getAgentVaultReachability(
-        { permissionService, membershipDAL },
-        { projectId, ctx }
-      );
+      const { accessBundleIds } = await getAgentVaultReachability({ agentVaultDomain }, { projectId, ctx });
       const notGranted = firstUnreachable(accessBundleIds);
       if (notGranted) {
         throw new BadRequestError({
@@ -315,11 +313,11 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const listSessions = async ({ projectId, ctx, scope, statuses, search, limit, offset }: TListSessionsDTO) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission, isAdmin } = await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Read,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     // The CASL read action alone would let any member list everyone's sessions.
     if (scope === AgentVaultSessionScope.All && !isAdmin) {
@@ -360,11 +358,11 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const getSessionById = async ({ projectId, ctx, sessionId }: TGetSessionByIdDTO) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Read,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission, isAdmin } = await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Read,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     const [session] = await withInlineServices([
       toSessionView(await findVisibleSession({ projectId, ctx, sessionId, isAdmin }))
@@ -373,11 +371,11 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const revokeSession = async ({ projectId, ctx, sessionId }: TRevokeSessionDTO) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Revoke,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission, isAdmin } = await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Revoke,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     const session = await findVisibleSession({ projectId, ctx, sessionId, isAdmin });
 
@@ -417,11 +415,11 @@ export const agentVaultSessionServiceFactory = ({
   };
 
   const updateSessionLabel = async ({ projectId, ctx, sessionId, label }: TUpdateSessionLabelDTO) => {
-    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionAgentVaultSessionActions.Edit,
-      ProjectPermissionSub.AgentVaultSessions
-    );
+    const { permission, isAdmin } = await getAgentVaultPermission({ projectsDomain }, { projectId, ctx });
+    permission.assert({
+      action: ProjectPermissionAgentVaultSessionActions.Edit,
+      subject: ProjectPermissionSub.AgentVaultSessions
+    });
 
     const session = await findVisibleSession({ projectId, ctx, sessionId, isAdmin });
     // The visible session can come from a replica that lags, so the owner check and the previous label come from

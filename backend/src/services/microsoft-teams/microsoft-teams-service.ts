@@ -1,4 +1,3 @@
-import { ForbiddenError } from "@casl/ability";
 import {
   CloudAdapter,
   ConfigurationBotFrameworkAuthentication,
@@ -8,11 +7,13 @@ import {
 } from "botbuilder";
 import { FastifyReply, FastifyRequest } from "fastify";
 
-import { OrganizationActionScope } from "@app/db/schemas";
 import { TInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/module";
 import { KmsDataKey, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -65,7 +66,7 @@ type TMicrosoftTeamsServiceFactoryDep = {
     | "findWithWorkflowIntegrationDetails"
     | "update"
   >;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   kmsCoreDomain: TKmsCoreDomain;
   workflowIntegrationDAL: Pick<
     TWorkflowIntegrationDALFactory,
@@ -77,7 +78,7 @@ type TMicrosoftTeamsServiceFactoryDep = {
 export type TMicrosoftTeamsServiceFactory = ReturnType<typeof microsoftTeamsServiceFactory>;
 
 export const microsoftTeamsServiceFactory = ({
-  permissionService,
+  organizationsDomain,
   instanceConfigCoreDomain,
   kmsCoreDomain,
   microsoftTeamsIntegrationDAL,
@@ -183,13 +184,7 @@ export const microsoftTeamsServiceFactory = ({
     }
   };
 
-  const checkInstallationStatus = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    workflowIntegrationId
-  }: TCheckInstallationStatusDTO) => {
+  const checkInstallationStatus = async ({ actor, workflowIntegrationId }: TCheckInstallationStatusDTO) => {
     const microsoftTeamsIntegration =
       await microsoftTeamsIntegrationDAL.findByIdWithWorkflowIntegrationDetails(workflowIntegrationId);
 
@@ -199,16 +194,9 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: microsoftTeamsIntegration.orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId: microsoftTeamsIntegration.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Settings });
 
     const credentials = await $getConfiguredCredentials();
 
@@ -249,24 +237,14 @@ export const microsoftTeamsServiceFactory = ({
   const completeMicrosoftTeamsIntegration = async ({
     code,
     actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
     tenantId,
     slug,
     description,
     redirectUri
   }: TCreateMicrosoftTeamsIntegrationDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Settings });
 
     const { appId: botAppId, clientSecret: botAppPassword, botId } = await $getConfiguredCredentials();
 
@@ -275,14 +253,14 @@ export const microsoftTeamsServiceFactory = ({
     // Fetched before the transaction: KMS Core is never called inside one.
     const orgCipher = await kmsCoreDomain.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: actorOrgId
+      orgId: actor.org.id
     });
 
     await workflowIntegrationDAL.transaction(async (tx) => {
       const workflowIntegration = await workflowIntegrationDAL.create(
         {
           description,
-          orgId: actorOrgId,
+          orgId: actor.org.id,
           slug,
           integration: WorkflowIntegration.MICROSOFT_TEAMS,
           status: WorkflowIntegrationStatus.PENDING
@@ -351,17 +329,10 @@ export const microsoftTeamsServiceFactory = ({
       }
     });
   };
-  const getClientId = async ({ actorId, actor, actorOrgId, actorAuthMethod }: TGetClientIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+  const getClientId = async ({ actor }: TGetClientIdDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings });
 
     const { appId } = await instanceConfigCoreDomain.getMicrosoftTeamsCredentials();
     if (!appId) {
@@ -372,25 +343,13 @@ export const microsoftTeamsServiceFactory = ({
 
     return appId;
   };
-  const getMicrosoftTeamsIntegrationsByOrg = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod
-  }: TGetMicrosoftTeamsIntegrationByOrgDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+  const getMicrosoftTeamsIntegrationsByOrg = async ({ actor }: TGetMicrosoftTeamsIntegrationByOrgDTO) => {
+    const permission = await organizationsDomain.getOrgPermission({ actor });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Settings });
 
     const microsoftTeamsIntegrations = await microsoftTeamsIntegrationDAL.findWithWorkflowIntegrationDetails({
-      orgId: actorOrgId,
+      orgId: actor.org.id,
       status: WorkflowIntegrationStatus.INSTALLED
     });
 
@@ -401,13 +360,7 @@ export const microsoftTeamsServiceFactory = ({
     }));
   };
 
-  const getMicrosoftTeamsIntegrationById = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    id
-  }: TGetMicrosoftTeamsIntegrationByIdDTO) => {
+  const getMicrosoftTeamsIntegrationById = async ({ actor, id }: TGetMicrosoftTeamsIntegrationByIdDTO) => {
     const microsoftTeamsIntegration = await microsoftTeamsIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
     if (!microsoftTeamsIntegration) {
       throw new NotFoundError({
@@ -415,16 +368,9 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: microsoftTeamsIntegration.orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId: microsoftTeamsIntegration.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings });
 
     return {
       ...microsoftTeamsIntegration,
@@ -433,10 +379,7 @@ export const microsoftTeamsServiceFactory = ({
   };
 
   const updateMicrosoftTeamsIntegration = async ({
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     id,
     slug,
     description
@@ -448,16 +391,9 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: microsoftTeamsIntegration.orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId: microsoftTeamsIntegration.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Settings });
 
     const updatedIntegration = await workflowIntegrationDAL.transaction(async (tx) => {
       await workflowIntegrationDAL.updateById(
@@ -489,13 +425,7 @@ export const microsoftTeamsServiceFactory = ({
     return updatedIntegration;
   };
 
-  const deleteMicrosoftTeamsIntegration = async ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    id
-  }: TDeleteMicrosoftTeamsIntegrationDTO) => {
+  const deleteMicrosoftTeamsIntegration = async ({ actor, id }: TDeleteMicrosoftTeamsIntegrationDTO) => {
     const microsoftTeamsIntegration = await microsoftTeamsIntegrationDAL.findByIdWithWorkflowIntegrationDetails(id);
     if (!microsoftTeamsIntegration) {
       throw new NotFoundError({
@@ -503,16 +433,9 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: microsoftTeamsIntegration.orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId: microsoftTeamsIntegration.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Delete, subject: OrgPermissionSubjects.Settings });
 
     await workflowIntegrationDAL.deleteById(id);
 
@@ -522,7 +445,7 @@ export const microsoftTeamsServiceFactory = ({
     };
   };
 
-  const getTeams = async ({ actorId, actor, actorOrgId, actorAuthMethod, workflowIntegrationId }: TGetTeamsDTO) => {
+  const getTeams = async ({ actor, workflowIntegrationId }: TGetTeamsDTO) => {
     const microsoftTeamsIntegration =
       await microsoftTeamsIntegrationDAL.findByIdWithWorkflowIntegrationDetails(workflowIntegrationId);
 
@@ -532,16 +455,9 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      actor,
-      actorId,
-      orgId: microsoftTeamsIntegration.orgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
+    const permission = await organizationsDomain.getOrgPermission({ actor, orgId: microsoftTeamsIntegration.orgId });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Settings });
 
     if (!teamsBot || !adapter) {
       throw new BadRequestError({

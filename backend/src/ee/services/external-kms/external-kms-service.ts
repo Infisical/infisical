@@ -1,12 +1,13 @@
-import { ForbiddenError } from "@casl/ability";
-
-import { OrganizationActionScope } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { TExternalKmsDetails, TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/domains/platform/organizations/ce/module";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  TOrganizationsDomain
+} from "@app/domains/platform/organizations/ce/module";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
-import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {
   TCreateExternalKmsDTO,
   TDeleteExternalKmsDTO,
@@ -20,7 +21,7 @@ import { TExternalKmsAwsSchema, TExternalKmsGcpSchema } from "./providers/model"
 
 type TExternalKmsServiceFactoryDep = {
   kmsCoreDomain: TKmsCoreDomain;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
   licenseDomain: TLicenseDomain;
 };
 
@@ -38,25 +39,12 @@ const typed = (details: TExternalKmsDetails) => ({
 // Org permissions and the externalKms plan for external KMS keys; KMS Core stores them and talks to the providers.
 // Creating, changing or browsing provider keys needs the plan; reading or deleting an existing key does not.
 export const externalKmsServiceFactory = ({
-  permissionService,
+  organizationsDomain,
   licenseDomain,
   kmsCoreDomain
 }: TExternalKmsServiceFactoryDep) => {
-  const $orgPermission = (
-    actor: TCreateExternalKmsDTO["actor"],
-    actorId: string,
-    orgId: string,
-    actorAuthMethod: TCreateExternalKmsDTO["actorAuthMethod"],
-    actorOrgId: string
-  ) =>
-    permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+  const $orgPermission = (actor: TActorContext, orgId: string) =>
+    organizationsDomain.getOrgPermission({ actor, orgId });
 
   const $requireExternalKey = async (kmsId: string) => {
     const key = await kmsCoreDomain.findKeyById(kmsId);
@@ -64,41 +52,24 @@ export const externalKmsServiceFactory = ({
     return key;
   };
 
-  const create = async ({
-    provider,
-    description,
-    actor,
-    name,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TCreateExternalKmsDTO) => {
-    const { permission } = await $orgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Kms);
+  const create = async ({ provider, description, actor, name }: TCreateExternalKmsDTO) => {
+    const permission = await $orgPermission(actor, actor.org.id);
+    permission.assert({ action: OrgPermissionActions.Create, subject: OrgPermissionSubjects.Kms });
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.externalKms) {
       throw new BadRequestError({
         message: "Failed to create external KMS due to plan restriction. Upgrade to the Enterprise plan."
       });
     }
 
-    return typed(await kmsCoreDomain.createExternalKms({ orgId: actorOrgId, name, description, provider }));
+    return typed(await kmsCoreDomain.createExternalKms({ orgId: actor.org.id, name, description, provider }));
   };
 
-  const updateById = async ({
-    provider,
-    description,
-    actor,
-    id: kmsId,
-    name,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TUpdateExternalKmsDTO) => {
+  const updateById = async ({ provider, description, actor, id: kmsId, name }: TUpdateExternalKmsDTO) => {
     const key = await $requireExternalKey(kmsId);
-    const { permission } = await $orgPermission(actor, actorId, key.orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
+    const permission = await $orgPermission(actor, key.orgId);
+    permission.assert({ action: OrgPermissionActions.Edit, subject: OrgPermissionSubjects.Kms });
 
     const plan = await licenseDomain.getPlan(key.orgId);
     if (!plan.externalKms) {
@@ -110,49 +81,42 @@ export const externalKmsServiceFactory = ({
     return typed(await kmsCoreDomain.updateExternalKms({ kmsId, name, description, provider }));
   };
 
-  const deleteById = async ({ actor, id: kmsId, actorId, actorOrgId, actorAuthMethod }: TDeleteExternalKmsDTO) => {
+  const deleteById = async ({ actor, id: kmsId }: TDeleteExternalKmsDTO) => {
     const key = await $requireExternalKey(kmsId);
-    const { permission } = await $orgPermission(actor, actorId, key.orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
+    const permission = await $orgPermission(actor, key.orgId);
+    permission.assert({ action: OrgPermissionActions.Delete, subject: OrgPermissionSubjects.Kms });
 
     return typed(await kmsCoreDomain.deleteExternalKms(kmsId));
   };
 
-  const list = async ({ actor, actorId, actorOrgId, actorAuthMethod }: TListExternalKmsDTO) => {
-    const { permission } = await $orgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
+  const list = async ({ actor }: TListExternalKmsDTO) => {
+    const permission = await $orgPermission(actor, actor.org.id);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Kms });
 
-    return kmsCoreDomain.listExternalKms(actorOrgId);
+    return kmsCoreDomain.listExternalKms(actor.org.id);
   };
 
-  const findById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id: kmsId }: TGetExternalKmsByIdDTO) => {
+  const findById = async ({ actor, id: kmsId }: TGetExternalKmsByIdDTO) => {
     const key = await kmsCoreDomain.findKeyById(kmsId);
     if (!key) throw new NotFoundError({ message: `Could not find KMS with ID '${kmsId}'` });
-    const { permission } = await $orgPermission(actor, actorId, key.orgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
+    const permission = await $orgPermission(actor, key.orgId);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Kms });
 
     return typed(await kmsCoreDomain.getExternalKms(kmsId));
   };
 
-  const findByName = async ({ actor, actorId, actorOrgId, actorAuthMethod, name }: TGetExternalKmsBySlugDTO) => {
-    const { permission } = await $orgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
+  const findByName = async ({ actor, name }: TGetExternalKmsBySlugDTO) => {
+    const permission = await $orgPermission(actor, actor.org.id);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Kms });
 
-    return typed(await kmsCoreDomain.getExternalKmsByName(actorOrgId, name));
+    return typed(await kmsCoreDomain.getExternalKmsByName(actor.org.id, name));
   };
 
-  const fetchGcpKeys = async ({
-    credential,
-    gcpRegion,
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod
-  }: TFetchGcpKmsKeysDTO) => {
-    const { permission } = await $orgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
+  const fetchGcpKeys = async ({ credential, gcpRegion, actor }: TFetchGcpKmsKeysDTO) => {
+    const permission = await $orgPermission(actor, actor.org.id);
+    permission.assert({ action: OrgPermissionActions.Read, subject: OrgPermissionSubjects.Kms });
 
-    const plan = await licenseDomain.getPlan(actorOrgId);
+    const plan = await licenseDomain.getPlan(actor.org.id);
     if (!plan.externalKms) {
       throw new BadRequestError({
         message: "Failed to fetch GCP KMS keys due to plan restriction. Upgrade to the Enterprise plan."

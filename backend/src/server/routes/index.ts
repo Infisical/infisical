@@ -668,6 +668,9 @@ export const registerRoutes = async (
   const projectsDomain = withProjectAuditContext.projects(domains.projects.service);
   const secretsDomain = withProjectAuditContext.secrets(domains.secrets.service);
   const certManagerDomain = domains.certManager.service;
+  const kmsDomain = withProjectAuditContext.kms(domains.kms.service);
+  const secretScanningDomain = withProjectAuditContext.secretScanning(domains.secretScanning.service);
+  const agentVaultDomain = withProjectAuditContext.agentVault(domains.agentVault.service);
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
   // the fleet reports itself in Redis and every api pod complains when the reports stop.
@@ -1059,7 +1062,7 @@ export const registerRoutes = async (
 
   const externalKmsService = externalKmsServiceFactory({
     kmsCoreDomain,
-    permissionService,
+    organizationsDomain,
     licenseDomain
   });
 
@@ -1763,7 +1766,7 @@ export const registerRoutes = async (
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({
     microsoftTeamsIntegrationDAL,
-    permissionService,
+    organizationsDomain,
     workflowIntegrationDAL,
     kmsCoreDomain,
     instanceConfigCoreDomain
@@ -1830,7 +1833,7 @@ export const registerRoutes = async (
     orgMembershipDAL: orgDAL
   });
   const secretScanningService = secretScanningServiceFactory({
-    permissionService,
+    organizationsDomain,
     gitAppOrgDAL,
     gitAppInstallSessionDAL,
     secretScanningDAL,
@@ -2052,15 +2055,14 @@ export const registerRoutes = async (
     agentVaultServiceDAL,
     agentVaultAccessBundleDAL,
     agentVaultPersonalValueDAL,
-    permissionService,
-    membershipDAL
+    agentVaultDomain
   });
 
   const agentVaultVariableService = agentVaultVariableServiceFactory({
     agentVaultVariableDAL,
     agentVaultPersonalValueDAL,
-    membershipDAL,
-    permissionService,
+    projectsDomain,
+    agentVaultDomain,
     kmsCoreDomain
   });
 
@@ -2070,8 +2072,7 @@ export const registerRoutes = async (
     agentVaultVariableDAL,
     agentVaultServiceDAL,
     agentVaultOauthService,
-    permissionService,
-    membershipDAL,
+    agentVaultDomain,
     kmsCoreDomain
   });
 
@@ -2080,8 +2081,8 @@ export const registerRoutes = async (
     agentVaultSkillVersionDAL,
     agentVaultSkillBundleDAL,
     agentVaultAccessBundleDAL,
-    permissionService,
-    membershipDAL,
+    projectsDomain,
+    agentVaultDomain,
     kmsCoreDomain
   });
 
@@ -2094,7 +2095,8 @@ export const registerRoutes = async (
     agentVaultServiceVariableReferenceDAL,
     agentVaultPersonalValueDAL,
     agentVaultPersonalValueService,
-    permissionService,
+    agentVaultDomain,
+    actorContexts: domains.actorContexts,
     kmsCoreDomain,
     membershipDAL,
     membershipRoleDAL,
@@ -2116,10 +2118,11 @@ export const registerRoutes = async (
     agentVaultAccessBundleDAL,
     agentVaultServiceDAL,
     agentVaultDelegationDAL,
-    membershipDAL,
     userDAL,
     orgDAL,
-    permissionService,
+    projectsDomain,
+    agentVaultDomain,
+    actorContexts: domains.actorContexts,
     kmsCoreDomain
   });
 
@@ -2131,13 +2134,17 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     userGroupMembershipDAL,
-    permissionService
+    projectsDomain,
+    agentVaultDomain,
+    actorContexts: domains.actorContexts,
+    identityDAL,
+    userDAL
   });
 
   const agentVaultProjectResolver = agentVaultProjectResolverFactory({
     db,
     keyStore,
-    permissionService
+    projectsDomain
   });
 
   const agentVaultMembershipService = agentVaultMembershipServiceFactory({
@@ -2150,7 +2157,7 @@ export const registerRoutes = async (
     userDAL,
     userAliasDAL,
     orgDAL,
-    permissionService,
+    projectsDomain,
     licenseDomain,
     agentVaultPersonalValueDAL,
     userGroupMembershipDAL,
@@ -2207,7 +2214,7 @@ export const registerRoutes = async (
   const integrationAuthService = integrationAuthServiceFactory({
     integrationAuthDAL,
     integrationDAL,
-    permissionService,
+    secretsDomain,
     projectBotService,
     kmsCoreDomain
   });
@@ -2247,11 +2254,13 @@ export const registerRoutes = async (
     agentVaultSessionInlineServiceDAL,
     agentVaultDelegationDAL,
     agentVaultSessionLogConfigDAL,
-    membershipDAL,
     orgDAL,
     projectDAL,
     userDAL,
-    permissionService,
+    identityDAL,
+    projectsDomain,
+    agentVaultDomain,
+    actorContexts: domains.actorContexts,
     kmsCoreDomain,
     licenseDomain,
     resourceAuthMethodService,
@@ -2274,7 +2283,7 @@ export const registerRoutes = async (
 
   const kmipServerService = kmipServerServiceFactory({
     kmipServerDAL,
-    permissionService,
+    organizationsDomain,
     resourceAuthMethodService
   });
 
@@ -2365,7 +2374,9 @@ export const registerRoutes = async (
 
   const gitHubAppService = gitHubAppServiceFactory({
     gitHubAppDAL,
-    permissionService,
+    organizationsDomain,
+    projectsDomain,
+    actorContexts: domains.actorContexts,
     kmsCoreDomain,
     keyStore,
     licenseDomain,
@@ -2813,7 +2824,7 @@ export const registerRoutes = async (
   });
 
   const integrationService = integrationServiceFactory({
-    permissionService,
+    secretsDomain,
     folderDAL,
     integrationDAL,
     integrationAuthDAL,
@@ -3357,20 +3368,20 @@ export const registerRoutes = async (
 
   const slackService = slackServiceFactory({
     instanceConfigCoreDomain,
-    permissionService,
+    organizationsDomain,
     kmsCoreDomain,
     slackIntegrationDAL,
     workflowIntegrationDAL
   });
 
   const workflowIntegrationService = workflowIntegrationServiceFactory({
-    permissionService,
+    organizationsDomain,
     workflowIntegrationDAL
   });
 
   const cmekService = cmekServiceFactory({
     kmsCoreDomain,
-    permissionService,
+    kmsDomain,
     licenseDomain
   });
 
@@ -3424,6 +3435,8 @@ export const registerRoutes = async (
     orgDAL,
     appConnectionDAL,
     permissionService,
+    organizationsDomain,
+    projectsDomain,
     kmsCoreDomain,
     licenseDomain,
     gatewayV2Service,
@@ -3587,7 +3600,7 @@ export const registerRoutes = async (
     agentVaultProxyDAL,
     appConnectionDAL,
     appConnectionService,
-    permissionService,
+    projectsDomain,
     kmsCoreDomain,
     licenseDomain,
     keyStore,
@@ -3712,7 +3725,7 @@ export const registerRoutes = async (
   });
 
   const webhookService = webhookServiceFactory({
-    permissionService,
+    projectsDomain,
     webhookDAL,
     projectEnvDAL,
     projectDAL,
@@ -3740,7 +3753,8 @@ export const registerRoutes = async (
 
   const kmipService = kmipServiceFactory({
     kmipClientDAL,
-    permissionService,
+    organizationsDomain,
+    kmsDomain,
     kmipClientCertificateDAL,
     kmipOrgConfigDAL,
     kmsCoreDomain,
@@ -3751,7 +3765,7 @@ export const registerRoutes = async (
   const kmipOperationService = kmipOperationServiceFactory({
     kmsCoreDomain,
     kmipClientDAL,
-    permissionService
+    organizationsDomain
   });
 
   const secretRotationV2Service = secretRotationV2ServiceFactory({
@@ -4865,12 +4879,12 @@ export const registerRoutes = async (
 
   const secretScanningV2InstanceService = secretScanningV2InstanceServiceFactory({
     projectDAL,
-    permissionService,
+    organizationsDomain,
     secretScanningV2ProjectResolver
   });
 
   const secretScanningV2Service = secretScanningV2ServiceFactory({
-    permissionService,
+    secretScanningDomain,
     appConnectionService,
     licenseDomain,
     secretScanningV2DAL,

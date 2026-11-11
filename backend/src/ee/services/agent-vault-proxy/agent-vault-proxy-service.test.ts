@@ -1,7 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { TAgentVaultSessionInlineServices } from "@app/db/schemas";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import {
   ProjectPermissionAgentVaultSessionActions,
@@ -104,23 +104,27 @@ const setup = (
       findOne: async () => sessionLogConfig,
       findByProjectIdFromPrimary: async () => sessionLogConfig
     },
-    membershipDAL: { findResourceMembershipsForActor: async () => [] },
     orgDAL: { findEffectiveOrgMembership: async () => ({ isActive: true }) as never },
     projectDAL: { findById: async () => ({ id: PROJECT_ID, orgId: "org-1" }) as never },
     userDAL: { findById: async () => undefined as never },
-    permissionService: {
-      getProjectPermission: async () =>
-        ({
-          permission: createMongoAbility([
+    identityDAL: { findById: async () => undefined as never },
+    projectsDomain: { getProjectPermission: async () => undefined as never },
+    agentVaultDomain: {
+      getAccessBundlePermission: async () => ({
+        project: Permission.fromRules({
+          rules: [
             {
               action: ProjectPermissionAgentVaultSessionActions.Read,
               subject: ProjectPermissionSub.AgentVaultSessions
             }
-          ]),
-          hasRole: () => isOwnerAdmin,
-          memberships: []
-        }) as never
+          ]
+        }) as never,
+        isAdmin: isOwnerAdmin,
+        reachableAccessBundleIds: isOwnerAdmin ? null : [],
+        grantedAccessBundleIds: []
+      })
     },
+    actorContexts: { forPrincipal: async (principal, orgId) => ({ principal, org: { id: orgId } }) as never },
     kmsCoreDomain: { createCipherPairWithDataKey } as never,
     licenseDomain: new FakeLicenseDomain(),
     resourceAuthMethodService: {} as never,
@@ -381,21 +385,17 @@ describe("resolve for a session on a user's behalf", () => {
         findOne: async () => sessionLogConfig,
         findByProjectIdFromPrimary: async () => sessionLogConfig
       },
-      membershipDAL: {
-        findResourceMembershipsForActor: async ({ actorId }: { actorId: string }) =>
-          (actor(actorId).grants ?? []).map((scopeResourceId) => ({
-            isActive: true,
-            actorGroupId: null,
-            scopeResourceId
-          }))
-      } as never,
       orgDAL: {
         findEffectiveOrgMembership: async ({ actorId }: { actorId: string }) =>
           ({ isActive: actor(actorId).isActive ?? true }) as never
       },
-      permissionService: {
-        getProjectPermission: async ({ actorId }: { actorId: string }) => {
-          if (actor(actorId).isMember === false) {
+      identityDAL: { findById: async () => undefined as never },
+      projectsDomain: { getProjectPermission: async () => undefined as never },
+      actorContexts: { forPrincipal: async (principal, orgId) => ({ principal, org: { id: orgId } }) as never },
+      agentVaultDomain: {
+        getAccessBundlePermission: async ({ actor: actorCtx }) => {
+          const subject = actor(actorCtx.principal.id);
+          if (subject.isMember === false) {
             throw new ForbiddenRequestError({
               name: "ProjectMembershipNotFound",
               message: "Not a member of the project"
@@ -405,11 +405,14 @@ describe("resolve for a session on a user's behalf", () => {
             action: ProjectPermissionAgentVaultSessionActions.Read,
             subject: ProjectPermissionSub.AgentVaultSessions
           };
+          const isAdmin = Boolean(subject.isAdmin);
+          const granted = subject.grants ?? [];
           return {
-            permission: createMongoAbility(actor(actorId).canRead === false ? [] : [read]),
-            hasRole: () => Boolean(actor(actorId).isAdmin),
-            memberships: []
-          } as never;
+            project: Permission.fromRules({ rules: subject.canRead === false ? [] : [read] }) as never,
+            isAdmin,
+            reachableAccessBundleIds: isAdmin ? null : granted,
+            grantedAccessBundleIds: granted
+          };
         }
       },
       kmsCoreDomain: {

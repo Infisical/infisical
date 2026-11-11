@@ -1,8 +1,8 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TGetIntegrationDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateIntegrationDTO = {
   id: string;
@@ -30,13 +30,13 @@ export type TUpdateIntegrationDTO = {
     shouldDisableDelete?: boolean;
     shouldEnableDelete?: boolean;
   };
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteIntegrationDTO = {
   id: string;
   shouldDeleteIntegrationSecrets?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TSyncIntegrationDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

@@ -9,6 +9,7 @@ import {
 import { ProjectPermissionAppConnectionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TRequestPermission } from "@app/lib/types";
 
 import { AppConnection } from "./app-connection-enums";
 import { appConnectionServiceFactory } from "./app-connection-service";
@@ -22,8 +23,25 @@ const actor = {
   authMethod: AuthMethod.EMAIL,
   orgId: ACTOR_ORG_ID,
   rootOrgId: ACTOR_ORG_ID,
-  parentOrgId: ACTOR_ORG_ID
-};
+  parentOrgId: ACTOR_ORG_ID,
+  principal: {
+    type: ActorType.USER,
+    id: "user-1",
+    username: "user",
+    email: null,
+    authMethod: AuthMethod.EMAIL,
+    isSuperAdmin: false
+  },
+  org: {
+    id: ACTOR_ORG_ID,
+    name: "org",
+    rootOrgId: ACTOR_ORG_ID,
+    parentOrgId: ACTOR_ORG_ID,
+    shouldUseNewPrivilegeSystem: true,
+    ssoPolicy: { authEnforced: false, googleSsoAuthEnforced: false, bypassOrgAuthEnabled: false }
+  },
+  plan: async () => ({})
+} as unknown as TRequestPermission;
 
 class PermissionReached extends Error {}
 
@@ -39,6 +57,17 @@ const buildService = (
     getProjectPermission: vi.fn(async () => {
       if (!abilities.project) throw new PermissionReached();
       return { permission: abilities.project };
+    })
+  };
+
+  const organizationsDomain = {
+    getOrgPermission: vi.fn(async () => {
+      throw new PermissionReached();
+    })
+  };
+  const projectsDomain = {
+    getProjectPermission: vi.fn(async () => {
+      throw new PermissionReached();
     })
   };
 
@@ -58,6 +87,8 @@ const buildService = (
       }))
     },
     permissionService,
+    organizationsDomain,
+    projectsDomain,
     licenseDomain: new FakeLicenseDomain()
   };
 
@@ -66,7 +97,7 @@ const buildService = (
   });
 
   const service = appConnectionServiceFactory(deps as unknown as Parameters<typeof appConnectionServiceFactory>[0]);
-  return { service, permissionService };
+  return { service, permissionService, organizationsDomain, projectsDomain };
 };
 
 type TService = ReturnType<typeof buildService>["service"];
@@ -90,21 +121,31 @@ const CALLS: [string, (service: TService) => Promise<unknown>][] = [
 
 describe("app connection in another org reads as missing", () => {
   test.each(CALLS)("%s: org-level connection in another org", async (_, call) => {
-    const { service, permissionService } = buildService({ orgId: "org-2", projectId: null });
+    const { service, permissionService, organizationsDomain, projectsDomain } = buildService({
+      orgId: "org-2",
+      projectId: null
+    });
 
     const result = call(service);
     await expect(result).rejects.toBeInstanceOf(NotFoundError);
     await expect(result).rejects.toThrow(`Could not find App Connection with ID ${CONNECTION_ID}`);
     expect(permissionService.getOrgPermission).not.toHaveBeenCalled();
     expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(organizationsDomain.getOrgPermission).not.toHaveBeenCalled();
+    expect(projectsDomain.getProjectPermission).not.toHaveBeenCalled();
   });
 
   test.each(CALLS)("%s: project connection in another org", async (_, call) => {
-    const { service, permissionService } = buildService({ orgId: "org-2", projectId: "proj-2" });
+    const { service, permissionService, organizationsDomain, projectsDomain } = buildService({
+      orgId: "org-2",
+      projectId: "proj-2"
+    });
 
     await expect(call(service)).rejects.toBeInstanceOf(NotFoundError);
     expect(permissionService.getOrgPermission).not.toHaveBeenCalled();
     expect(permissionService.getProjectPermission).not.toHaveBeenCalled();
+    expect(organizationsDomain.getOrgPermission).not.toHaveBeenCalled();
+    expect(projectsDomain.getProjectPermission).not.toHaveBeenCalled();
   });
 
   test.each(CALLS)("%s: connection in the caller's org still reaches the permission check", async (_, call) => {

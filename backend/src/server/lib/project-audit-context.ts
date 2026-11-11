@@ -1,5 +1,6 @@
 import { requestContext } from "@fastify/request-context";
 
+import type { TAgentVaultDomain } from "@app/domains/agent-vault/agent-vault/ce/module";
 import type { TKmsDomain } from "@app/domains/kms/kms/ce/module";
 import type { ProjectPermission, TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import type { TSecretScanningDomain } from "@app/domains/secrets-manager/secret-scanning/ce/module";
@@ -36,5 +37,13 @@ export const withProjectAuditContext = {
   secretScanning: (domain: TSecretScanningDomain): TSecretScanningDomain => ({
     ...domain,
     getSecretScanningPermission: async (input) => record(await domain.getSecretScanningPermission(input))
+  }),
+  agentVault: (domain: TAgentVaultDomain): TAgentVaultDomain => ({
+    ...domain,
+    getAccessBundlePermission: async (input) => {
+      const result = await domain.getAccessBundlePermission(input);
+      record(result.project);
+      return result;
+    }
   })
 };

@@ -1,18 +1,18 @@
 import { Knex } from "knex";
 
-import { ActionProjectType, ProjectType, TableName } from "@app/db/schemas";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectType, TableName } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { TProjectsDomain } from "@app/domains/platform/projects/ce/module";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TGenericPermission } from "@app/lib/types";
 
 import { TAgentVaultOauthAuthorization } from "../agent-vault-oauth/agent-vault-oauth-types";
 
 type TResolverDeps = {
   db: Knex;
   keyStore: Pick<TKeyStoreFactory, "getItemPrimary">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
 };
 
 export type TAgentVaultProjectResolverFactory = ReturnType<typeof agentVaultProjectResolverFactory>;
@@ -39,7 +39,7 @@ const ROW_NOT_FOUND: Record<TRowTable, (id: string) => string> = {
   [TableName.AgentVaultVariable]: (id) => `Variable with ID '${id}' not found`
 };
 
-export const agentVaultProjectResolverFactory = ({ db, keyStore, permissionService }: TResolverDeps) => {
+export const agentVaultProjectResolverFactory = ({ db, keyStore, projectsDomain }: TResolverDeps) => {
   // Every read here is on the primary: a project created a moment ago (signup creates one and opens it straight
   // away) may not be on a replica yet, and write services lock the addressed rows on the primary.
   const orgProjects = (orgId: string) =>
@@ -81,28 +81,21 @@ export const agentVaultProjectResolverFactory = ({ db, keyStore, permissionServi
 
   // Another org, a deleted project, a project the actor is not a member of or a missing row all read as the
   // resource's own 404, never as the permission service's 403, which would confirm the id exists.
-  const assertMember = async (ctx: TGenericPermission, projectId: string, notFound: () => NotFoundError) => {
+  const assertMember = async (ctx: TActorContext, projectId: string, notFound: () => NotFoundError) => {
     try {
-      await permissionService.getProjectPermission({
-        actor: ctx.actor,
-        actorId: ctx.actorId,
-        projectId,
-        actorAuthMethod: ctx.actorAuthMethod,
-        actorOrgId: ctx.actorOrgId,
-        actionProjectType: ActionProjectType.AgentVault
-      });
+      await projectsDomain.getProjectPermission({ actor: ctx, projectId, type: ProjectType.AgentVault });
     } catch (error) {
       if (error instanceof Error && error.name === "ProjectMembershipNotFound") throw notFound();
       throw error;
     }
   };
 
-  const resolveFromRow = async (table: TRowTable, ctx: TGenericPermission, id: string) => {
+  const resolveFromRow = async (table: TRowTable, ctx: TActorContext, id: string) => {
     const notFound = () => new NotFoundError({ message: ROW_NOT_FOUND[table](id) });
     const row = (await db(table)
       .join(TableName.Project, `${table}.projectId`, `${TableName.Project}.id`)
       .where(`${table}.id`, id)
-      .where(`${TableName.Project}.orgId`, ctx.actorOrgId)
+      .where(`${TableName.Project}.orgId`, ctx.org.id)
       .where(`${TableName.Project}.type`, ProjectType.AgentVault)
       .whereNull(`${TableName.Project}.deleteAfter`)
       .first(`${TableName.Project}.id as projectId`)) as { projectId: string } | undefined;
@@ -111,7 +104,7 @@ export const agentVaultProjectResolverFactory = ({ db, keyStore, permissionServi
     return row.projectId;
   };
 
-  const resolveFromAuthorization = async (ctx: TGenericPermission, authorizationId: string) => {
+  const resolveFromAuthorization = async (ctx: TActorContext, authorizationId: string) => {
     const notFound = () =>
       new NotFoundError({
         message: `Authorization with ID '${authorizationId}' not found. It may have expired or was already used. Authorize the service again.`
@@ -119,7 +112,7 @@ export const agentVaultProjectResolverFactory = ({ db, keyStore, permissionServi
     const raw = await keyStore.getItemPrimary(KeyStorePrefixes.AgentVaultOauthAuthorization(authorizationId));
     if (!raw) throw notFound();
     const { projectId } = JSON.parse(raw) as TAgentVaultOauthAuthorization;
-    const project = await findOrgProject(ctx.actorOrgId, projectId);
+    const project = await findOrgProject(ctx.org.id, projectId);
     if (!project) throw notFound();
     await assertMember(ctx, project.id, notFound);
     return project.id;
@@ -135,12 +128,12 @@ export const agentVaultProjectResolverFactory = ({ db, keyStore, permissionServi
   return {
     resolve,
     filterAgentVaultProjectIds,
-    resolveFromAccessBundle: (ctx: TGenericPermission, id: string) =>
+    resolveFromAccessBundle: (ctx: TActorContext, id: string) =>
       resolveFromRow(TableName.AgentVaultAccessBundle, ctx, id),
-    resolveFromSkill: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultSkill, ctx, id),
-    resolveFromProxy: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultProxy, ctx, id),
-    resolveFromSession: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultSession, ctx, id),
-    resolveFromVariable: (ctx: TGenericPermission, id: string) => resolveFromRow(TableName.AgentVaultVariable, ctx, id),
+    resolveFromSkill: (ctx: TActorContext, id: string) => resolveFromRow(TableName.AgentVaultSkill, ctx, id),
+    resolveFromProxy: (ctx: TActorContext, id: string) => resolveFromRow(TableName.AgentVaultProxy, ctx, id),
+    resolveFromSession: (ctx: TActorContext, id: string) => resolveFromRow(TableName.AgentVaultSession, ctx, id),
+    resolveFromVariable: (ctx: TActorContext, id: string) => resolveFromRow(TableName.AgentVaultVariable, ctx, id),
     resolveFromAuthorization
   };
 };

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import RE2 from "re2";
 import { z } from "zod";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { ActorType } from "@app/lib/auth/actor-types";
 
 import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
@@ -65,9 +66,9 @@ export const isOrphanedSession = (session: TSessionOwnerColumns) =>
   (!session.userId && !session.identityId) || (session.onBehalfOfUserName != null && !session.onBehalfOfUserId);
 
 // A session started on a user's behalf belongs to the machine identity alone, so the user can't see it or its logs.
-export const isSessionOwnedBy = (ctx: { actor: ActorType; actorId: string }, session: TSessionOwnerColumns) =>
-  (ctx.actor === ActorType.USER && session.userId === ctx.actorId) ||
-  (ctx.actor === ActorType.IDENTITY && session.identityId === ctx.actorId);
+export const isSessionOwnedBy = (ctx: Pick<TActorContext, "principal">, session: TSessionOwnerColumns) =>
+  (ctx.principal.type === ActorType.USER && session.userId === ctx.principal.id) ||
+  (ctx.principal.type === ActorType.IDENTITY && session.identityId === ctx.principal.id);
 
 export const deriveSessionStatus = (
   session: { expiresAt: Date | null; revokedAt: Date | null } & TSessionOwnerColumns,
