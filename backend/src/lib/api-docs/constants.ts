@@ -893,7 +893,11 @@ export const USERS = {
     lastMemberOrganizations:
       "Organizations where you are the last member who can sign in. Deleting your account deletes them, which cancels their subscriptions, and requires their IDs in lastMemberOrganizationIds.",
     lastAdminOrganizations:
-      "Organizations that have other members but where you are the only admin. Promote another member to admin in each before deleting your account."
+      "Organizations that have other members but where you are the only admin. Promote another member to admin in each before deleting your account.",
+    organization: {
+      id: "The ID of the organization.",
+      name: "The name of the organization."
+    }
   },
   DELETE: {
     lastMemberOrganizationIds:

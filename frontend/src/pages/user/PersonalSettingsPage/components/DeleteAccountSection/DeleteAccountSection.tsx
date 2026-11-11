@@ -112,7 +112,7 @@ export const DeleteAccountSection = () => {
         <CardFooter className="min-h-8 justify-end border-t border-danger/15 bg-danger/5 p-4">
           <Button variant="danger" size="sm" isPending={isLoadingEligibility} onClick={handleOpen}>
             <Trash2Icon />
-            Delete account
+            Delete Account
           </Button>
         </CardFooter>
       </Card>
@@ -120,7 +120,7 @@ export const DeleteAccountSection = () => {
       <AlertDialog open={isOpen && isBlocked} onOpenChange={setIsOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>You can&apos;t delete your account yet</AlertDialogTitle>
+            <AlertDialogTitle>You Can&apos;t Delete Your Account Yet</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="w-full">
                 {eligibility && <BlockedReasons eligibility={eligibility} />}
@@ -134,9 +134,13 @@ export const DeleteAccountSection = () => {
       </AlertDialog>
 
       <ConfirmationAlertDialog
+        key={lastMemberOrgs
+          .map((org) => org.id)
+          .sort()
+          .join(",")}
         isOpen={isOpen && !isBlocked}
         onOpenChange={setIsOpen}
-        title="Delete your account?"
+        title="Delete Your Account?"
         description={
           deletesOrgs ? (
             <div className="flex flex-col gap-2">
@@ -154,7 +158,7 @@ export const DeleteAccountSection = () => {
           )
         }
         confirmKey={DELETE_CONFIRMATION}
-        confirmLabel={deletesOrgs ? "Delete account and organizations" : "Delete account"}
+        confirmLabel={deletesOrgs ? "Delete Account and Organizations" : "Delete Account"}
         isPending={isPending || isLoadingEligibility}
         onConfirm={handleDeleteAccountSubmit}
       />

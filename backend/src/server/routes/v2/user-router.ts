@@ -17,7 +17,10 @@ import {
 } from "../mfa-step-up-fns";
 import { SanitizedUserSchema } from "../sanitizedSchemas";
 
-const DeletionEligibilityOrgSchema = z.object({ id: z.string(), name: z.string() });
+const DeletionEligibilityOrgSchema = z.object({
+  id: z.string().describe(USERS.GET_DELETION_ELIGIBILITY.organization.id),
+  name: z.string().describe(USERS.GET_DELETION_ELIGIBILITY.organization.name)
+});
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
