@@ -55,6 +55,7 @@ import {
   serializeFailureAlertChannels,
   TSecretRotationV2Form
 } from "./schemas";
+import { explodePolicies } from "./schemas/cloudflare-api-token-rotation-schema";
 
 type Props = {
   onComplete: (secretRotation: TSecretRotationV2) => void;
@@ -208,6 +209,14 @@ const SecretRotationV2FormContent = ({
     defaultValues: (secretRotation
       ? {
           ...secretRotation,
+          // Stored policies become form rows here rather than when Parameters opens, since an edit can
+          // save without opening it.
+          ...(secretRotation.type === SecretRotation.CloudflareApiToken && {
+            parameters: {
+              ...secretRotation.parameters,
+              policies: explodePolicies(secretRotation.parameters.policies)
+            }
+          }),
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath,
           isFailureAlertEnabled: savedFailureAlert?.enabled ?? false,
