@@ -93690,6 +93690,24 @@ func (e DuplicateSecretV4500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for GetSecretByIdV4ParamsViewSecretValue.
+const (
+	GetSecretByIdV4ParamsViewSecretValueFalse GetSecretByIdV4ParamsViewSecretValue = "false"
+	GetSecretByIdV4ParamsViewSecretValueTrue  GetSecretByIdV4ParamsViewSecretValue = "true"
+)
+
+// Valid indicates whether the value is a known member of the GetSecretByIdV4ParamsViewSecretValue enum.
+func (e GetSecretByIdV4ParamsViewSecretValue) Valid() bool {
+	switch e {
+	case GetSecretByIdV4ParamsViewSecretValueFalse:
+		return true
+	case GetSecretByIdV4ParamsViewSecretValueTrue:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetSecretByIdV4400JSONResponseBodyStatusCode.
 const (
 	GetSecretByIdV4400JSONResponseBodyStatusCodeN400 GetSecretByIdV4400JSONResponseBodyStatusCode = 400
@@ -134540,6 +134558,15 @@ type DuplicateSecretV4422JSONResponseBodyStatusCode float32
 // DuplicateSecretV4500JSONResponseBodyStatusCode defines parameters for DuplicateSecretV4.
 type DuplicateSecretV4500JSONResponseBodyStatusCode float32
 
+// GetSecretByIdV4Params defines parameters for GetSecretByIdV4.
+type GetSecretByIdV4Params struct {
+	// ViewSecretValue Whether or not to retrieve the secret value.
+	ViewSecretValue *GetSecretByIdV4ParamsViewSecretValue `form:"viewSecretValue,omitempty" json:"viewSecretValue,omitempty"`
+}
+
+// GetSecretByIdV4ParamsViewSecretValue defines parameters for GetSecretByIdV4.
+type GetSecretByIdV4ParamsViewSecretValue string
+
 // GetSecretByIdV4400JSONResponseBodyStatusCode defines parameters for GetSecretByIdV4.
 type GetSecretByIdV4400JSONResponseBodyStatusCode float32
 
@@ -168207,7 +168234,7 @@ type ClientInterface interface {
 	DuplicateSecretV4(ctx context.Context, body DuplicateSecretV4JSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetSecretByIdV4 performs a GET /api/v4/secrets/id/{secretId} (the `GetSecretByIdV4` operationId) request.
-	GetSecretByIdV4(ctx context.Context, secretId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetSecretByIdV4(ctx context.Context, secretId string, params *GetSecretByIdV4Params, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MoveSecretsV4WithBody performs a POST /api/v4/secrets/move (the `MoveSecretsV4` operationId) request,
 	// with any type of body and a specified content type.
@@ -183876,8 +183903,8 @@ func (c *Client) DuplicateSecretV4(ctx context.Context, body DuplicateSecretV4JS
 }
 
 // GetSecretByIdV4 performs a GET /api/v4/secrets/id/{secretId} (the `GetSecretByIdV4` operationId) request.
-func (c *Client) GetSecretByIdV4(ctx context.Context, secretId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetSecretByIdV4Request(c.Server, secretId)
+func (c *Client) GetSecretByIdV4(ctx context.Context, secretId string, params *GetSecretByIdV4Params, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSecretByIdV4Request(c.Server, secretId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -217617,7 +217644,7 @@ func NewDuplicateSecretV4RequestWithBody(server string, contentType string, body
 }
 
 // NewGetSecretByIdV4Request constructs an http.Request for the GetSecretByIdV4 method
-func NewGetSecretByIdV4Request(server string, secretId string) (*http.Request, error) {
+func NewGetSecretByIdV4Request(server string, secretId string, params *GetSecretByIdV4Params) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -217640,6 +217667,33 @@ func NewGetSecretByIdV4Request(server string, secretId string) (*http.Request, e
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.ViewSecretValue != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "viewSecretValue", *params.ViewSecretValue, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -224658,7 +224712,7 @@ type ClientWithResponsesInterface interface {
 	// GetSecretByIdV4WithResponse performs a GET /api/v4/secrets/id/{secretId} (the `GetSecretByIdV4` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
-	GetSecretByIdV4WithResponse(ctx context.Context, secretId string, reqEditors ...RequestEditorFn) (*GetSecretByIdV4Response, error)
+	GetSecretByIdV4WithResponse(ctx context.Context, secretId string, params *GetSecretByIdV4Params, reqEditors ...RequestEditorFn) (*GetSecretByIdV4Response, error)
 
 	// MoveSecretsV4WithBodyWithResponse performs a POST /api/v4/secrets/move (the `MoveSecretsV4` operationId) request,
 	// with any type of body and a specified content type.
@@ -359284,6 +359338,7 @@ type GetSecretByIdV4Response struct {
 			SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
 			SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
 			SecretValue              string   `json:"secretValue"`
+			SecretValueHidden        bool     `json:"secretValueHidden"`
 			SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
 			Tags                     *[]struct {
 				Color *string            `json:"color,omitempty"`
@@ -359370,6 +359425,7 @@ func (r GetSecretByIdV4Response) GetJSON200() *struct {
 		SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
 		SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
 		SecretValue              string   `json:"secretValue"`
+		SecretValueHidden        bool     `json:"secretValueHidden"`
 		SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
 		Tags                     *[]struct {
 			Color *string            `json:"color,omitempty"`
@@ -373508,8 +373564,8 @@ func (c *ClientWithResponses) DuplicateSecretV4WithResponse(ctx context.Context,
 // GetSecretByIdV4WithResponse performs a GET /api/v4/secrets/id/{secretId} (the `GetSecretByIdV4` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
-func (c *ClientWithResponses) GetSecretByIdV4WithResponse(ctx context.Context, secretId string, reqEditors ...RequestEditorFn) (*GetSecretByIdV4Response, error) {
-	rsp, err := c.GetSecretByIdV4(ctx, secretId, reqEditors...)
+func (c *ClientWithResponses) GetSecretByIdV4WithResponse(ctx context.Context, secretId string, params *GetSecretByIdV4Params, reqEditors ...RequestEditorFn) (*GetSecretByIdV4Response, error) {
+	rsp, err := c.GetSecretByIdV4(ctx, secretId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -460005,6 +460061,7 @@ func ParseGetSecretByIdV4Response(rsp *http.Response) (*GetSecretByIdV4Response,
 				SecretReminderNote       *string  `json:"secretReminderNote,omitempty"`
 				SecretReminderRepeatDays *float32 `json:"secretReminderRepeatDays,omitempty"`
 				SecretValue              string   `json:"secretValue"`
+				SecretValueHidden        bool     `json:"secretValueHidden"`
 				SkipMultilineEncoding    *bool    `json:"skipMultilineEncoding,omitempty"`
 				Tags                     *[]struct {
 					Color *string            `json:"color,omitempty"`
