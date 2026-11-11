@@ -17,6 +17,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
@@ -132,40 +133,22 @@ export const DeleteKeyDialog = ({
   );
 };
 
-const KeyMaterial = ({
-  label,
-  value,
-  filename
-}: {
-  label: string;
-  value: string;
-  filename: string;
-}) => (
+const KeyMaterial = ({ label, value }: { label: string; value: string }) => (
   <Field label={label} wide>
-    <Stack gap={8}>
-      <Snippet
-        label={label}
-        value={value}
-        maxLines={6}
-        copyLabel={`Copy ${label.toLowerCase()}`}
-        onCopy={() => saved(`${label} copied`)}
-      />
-      <Inline justify="end">
-        <Button
-          variant="outline"
-          size="sm"
-          icon="download"
-          onClick={() => {
-            FileSaver.saveAs(new Blob([value], { type: "text/plain;charset=utf-8" }), filename);
-            saved(`${label} downloaded`);
-          }}
-        >
-          Download
-        </Button>
-      </Inline>
-    </Stack>
+    <Snippet
+      label={label}
+      value={value}
+      maxLines={6}
+      copyLabel={`Copy ${label.toLowerCase()}`}
+      onCopy={() => saved(`${label} copied`)}
+    />
   </Field>
 );
+
+const download = (value: string, filename: string, label: string) => {
+  FileSaver.saveAs(new Blob([value], { type: "text/plain;charset=utf-8" }), filename);
+  saved(`${label} downloaded`);
+};
 
 export const ExportKeyDialog = ({
   cmek,
@@ -181,6 +164,8 @@ export const ExportKeyDialog = ({
   const loading =
     (canExportMaterial && privateKey.isPending) || (canReadPublicKey && publicKey.isPending);
   const loadError = privateKey.error ?? publicKey.error;
+  const privateMaterial = canExportMaterial ? privateKey.data?.privateKey : undefined;
+  const publicMaterial = canReadPublicKey ? publicKey.data?.publicKey : undefined;
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
@@ -202,22 +187,46 @@ export const ExportKeyDialog = ({
         ) : null}
         {!loading && (
           <Stack gap={16}>
-            {canExportMaterial && privateKey.data?.privateKey && (
+            {privateMaterial && (
               <KeyMaterial
                 label={asymmetric ? "Private key (Base64)" : "Key material (Base64)"}
-                value={privateKey.data.privateKey}
-                filename={`${cmek.name}_${asymmetric ? "private_key" : "key_material"}`}
+                value={privateMaterial}
               />
             )}
-            {canReadPublicKey && publicKey.data?.publicKey && (
-              <KeyMaterial
-                label="Public key (Base64)"
-                value={publicKey.data.publicKey}
-                filename={`${cmek.name}_public_key`}
-              />
-            )}
+            {publicMaterial && <KeyMaterial label="Public key (Base64)" value={publicMaterial} />}
           </Stack>
         )}
+        <DialogFooter>
+          <Inline gap={8} justify="end">
+            {privateMaterial && (
+              <Button
+                variant="outline"
+                icon="download"
+                onClick={() =>
+                  download(
+                    privateMaterial,
+                    `${cmek.name}_${asymmetric ? "private_key" : "key_material"}`,
+                    asymmetric ? "Private key" : "Key material"
+                  )
+                }
+              >
+                {asymmetric ? "Download private key" : "Download"}
+              </Button>
+            )}
+            {publicMaterial && (
+              <Button
+                variant="outline"
+                icon="download"
+                onClick={() => download(publicMaterial, `${cmek.name}_public_key`, "Public key")}
+              >
+                Download public key
+              </Button>
+            )}
+            <Button variant="primary" onClick={onClose}>
+              Close
+            </Button>
+          </Inline>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

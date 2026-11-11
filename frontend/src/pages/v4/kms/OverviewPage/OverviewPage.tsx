@@ -454,10 +454,11 @@ export const OverviewPage = () => {
             )
           }}
           selectable
-          isSelectable={eligible}
-          selectionDisabledReason={(r) =>
-            r.isDisabled ? "Disabled keys can't be exported" : "Created as non-exportable"
-          }
+          selectionDisabledReason={(r) => {
+            if (r.isDisabled) return "Disabled keys can't be exported";
+            if (!r.isExportable) return "Created as non-exportable";
+            return undefined;
+          }}
           selectedIds={selected}
           onSelectionChange={(ids) => {
             if (ids.length > MAX_SELECTED) {
