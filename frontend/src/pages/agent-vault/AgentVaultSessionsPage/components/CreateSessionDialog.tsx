@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { SiPython, SiTypescript } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
 import {
@@ -202,7 +202,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
   // Switching away after Create Now would hide a token that can't be shown again.
   const isLocked = Boolean(createdSession);
 
-  const platformOptions = [
+  const platformOptions: { value: TPlatformTab; name: string; icon: ReactNode }[] = [
     ...Object.values(SandboxPlatform).map((value) => ({
       value,
       name: PLATFORMS[value].name,
