@@ -2,6 +2,7 @@ import { Knex } from "knex";
 import { z } from "zod";
 
 import { TCertificates } from "@app/db/schemas";
+import { AuditLogInfo, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -24,7 +25,13 @@ import { CertKeySource } from "@app/services/signer/signer-enums";
 import type { TCaKeySourceServiceFactory } from "../ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
-import { CaRenewalType, CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";
+import {
+  CaCrlRegenerationTrigger,
+  CaRenewalType,
+  CaStatus,
+  CaType,
+  InternalCaType
+} from "../certificate-authority-enums";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
 import {
   CreateInternalCertificateAuthoritySchema,
@@ -210,6 +217,7 @@ export type TImportCertToCaDTO = {
       certificate: string;
       certificateChain: string;
       parentCaId?: string | undefined;
+      crlRegenerationTrigger?: CaCrlRegenerationTrigger;
       actorId?: undefined;
       actorAuthMethod?: undefined;
       actor?: undefined;
@@ -409,6 +417,9 @@ export type TBuildIssuedCertificateChainDTO = {
 
 export type TRebuildCaCrlDTO = {
   caId: string;
+  trigger: CaCrlRegenerationTrigger;
+  auditLogInfo?: AuditLogInfo;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateAuthorityCrlDAL: Pick<TCertificateAuthorityCrlDALFactory, "findOne" | "update" | "primaryNode">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;

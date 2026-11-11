@@ -2406,12 +2406,12 @@ export const CERTIFICATE_AUTHORITIES = {
     id: "The ID of certificate revocation list (CRL).",
     crl: "The certificate revocation list (CRL).",
     thisUpdate: "When the current CRL was issued.",
-    nextUpdate:
-      "When the current CRL expires. A new CRL is issued before this time, unless this time is the CA certificate's expiry.",
-    crlNumber: "The CRL Number extension of the current CRL. It increases each time the CRL is regenerated."
+    nextUpdate: "When the current CRL expires. A new CRL is issued before this time.",
+    crlNumber: "The CRL number of the current CRL. Null for a CRL issued without a CRL Number extension."
   },
-  REBUILD_CRL: {
-    caId: "The ID of the CA to regenerate the certificate revocation list (CRL) for."
+  REGENERATE_CRL: {
+    caId: "The ID of the CA to regenerate the certificate revocation list (CRL) for.",
+    crlNumber: "The CRL number of the new CRL."
   },
   INSTALL_CERT_VENAFI: {
     caId: "The ID of the CA to install the certificate for via Venafi."
@@ -2486,7 +2486,8 @@ export const CERTIFICATES = {
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
     revokedAt: "The date and time when the certificate was revoked.",
-    serialNumberRes: "The serial number of the revoked certificate."
+    serialNumberRes: "The serial number of the revoked certificate.",
+    crlWarning: "Set when the certificate was revoked but the CRL could not be regenerated. Contains the reason."
   },
   DELETE: {
     id: "The ID of the certificate to delete.",
@@ -2976,6 +2977,9 @@ export const CertificateAuthorities = {
     enableDirectIssuance: `Whether or not to enable direct issuance of certificates for the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`,
     status: `The updated status of the ${CERTIFICATE_AUTHORITIES_TYPE_MAP[type]} Certificate Authority.`
   }),
+  UPDATE_INTERNAL_RESPONSE: {
+    crlWarning: "Set when the CRL validity was changed but the CRL could not be regenerated. Contains the reason."
+  },
   CONFIGURATIONS: {
     ACME: {
       dnsAppConnectionId: `The ID of the App Connection to use for creating and managing DNS TXT records required for ACME domain validation. This connection must have permissions to create and delete TXT records in your DNS provider (e.g., Route53) for the ACME challenge process.`,
@@ -3034,7 +3038,7 @@ export const CertificateAuthorities = {
       isOcspEnabled:
         "When set to true, certificates issued by this CA carry the Infisical-managed OCSP responder URL in their Authority Information Access extension, and that responder answers revocation status queries for them. Applies to certificates issued after it is enabled.",
       crlValidityDays:
-        "The number of days each CRL issued by this CA stays valid (its nextUpdate), from 1 to 365. Defaults to 7 when creating a CA, and leaving it out of an update keeps the current value. A value other than 7 requires the Enterprise plan. Never extends past the CA certificate's expiry. Changing it regenerates the CRL immediately, and it can't be changed once the CA has expired."
+        "How many days each CRL issued by this CA is valid, from 1 to 365. Defaults to 7. A value other than 7 requires the Enterprise plan. A CRL is never valid past the CA certificate's expiry. Changing the value regenerates the CRL. It can't be changed after the CA expires."
     }
   }
 };

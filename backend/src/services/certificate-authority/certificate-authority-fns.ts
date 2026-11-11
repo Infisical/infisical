@@ -4,15 +4,23 @@ import { CRLNumber, id_ce_cRLNumber } from "@peculiar/asn1-x509";
 import * as x509 from "@peculiar/x509";
 import RE2 from "re2";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { derivePublicKeyFromSecret, getPqcCrypto, isPqcAlgorithm, PqcCryptoKey } from "@app/lib/crypto/pqc";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  DatabaseError,
+  ForbiddenRequestError,
+  InternalServerError,
+  NotFoundError
+} from "@app/lib/errors";
 import { pick } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ExecutionError, isLockHeldByAnotherOwner } from "@app/lib/red-lock";
+import { ActorType } from "@app/services/auth/auth-type";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { CERT_CLOCK_SKEW_MS } from "../certificate-common/certificate-constants";
@@ -602,7 +610,33 @@ export const getCaCertChain = async ({
 
 const CA_CRL_REBUILD_LOCK_TTL_MS = 4 * 60 * 1000;
 
-const CA_CRL_REBUILD_LOCK_RETRY = { retryCount: 120, retryDelay: 500, retryJitter: 100 };
+const CA_CRL_REBUILD_LOCK_RETRY = { retryCount: 20, retryDelay: 500, retryJitter: 100 };
+
+export const assertCaValidityDates = (notAfter: string, notBefore?: string) => {
+  if (new Date(notAfter) <= new Date()) {
+    throw new BadRequestError({
+      message: `CA notAfter date (${notAfter}) must be in the future`
+    });
+  }
+  if (notBefore && new Date(notAfter) <= new Date(notBefore)) {
+    throw new BadRequestError({
+      message: `CA notAfter date (${notAfter}) must be after its notBefore date (${notBefore})`
+    });
+  }
+};
+
+export const nextCrlNumber = (previousCrlNumber: number) =>
+  Math.max(previousCrlNumber + 1, Math.floor(Date.now() / 1000));
+
+export const buildCaCrlPem = (crl: x509.X509Crl) => {
+  const base64Lines = crl.toString("base64").match(new RE2(".{1,64}", "g"));
+  return `-----BEGIN X509 CRL-----\n${base64Lines?.join("\n")}\n-----END X509 CRL-----`;
+};
+
+export const getCrlNumber = (crl: x509.X509Crl) => {
+  const crlNumberExtension = crl.getExtension(id_ce_cRLNumber);
+  return crlNumberExtension ? Number(AsnConvert.parse(crlNumberExtension.value, CRLNumber).value) : null;
+};
 
 export const isCaCrlAllowed = async ({
   orgId,
@@ -639,7 +673,7 @@ export const buildCaCrlParams = async ({
   const nextUpdate = caNotAfter && caNotAfter < validityEnd ? caNotAfter : validityEnd;
   if (nextUpdate <= thisUpdate) {
     throw new BadRequestError({
-      message: "Failed to sign a CRL because the CA certificate has expired. Renew the CA to publish a new CRL."
+      message: "Failed to regenerate the CRL because the CA certificate has expired. Renew the CA first."
     });
   }
 
@@ -657,6 +691,12 @@ export const buildCaCrlParams = async ({
   };
 };
 
+class CaCrlUpdateInProgressError extends BadRequestError {
+  constructor(message: string) {
+    super({ message });
+  }
+}
+
 const acquireCaCrlRebuildLock = async (caId: string, keyStore: TRebuildCaCrlDTO["keyStore"]) => {
   try {
     return await keyStore.acquireLock(
@@ -666,8 +706,12 @@ const acquireCaCrlRebuildLock = async (caId: string, keyStore: TRebuildCaCrlDTO[
     );
   } catch (error) {
     if (error instanceof ExecutionError && (await isLockHeldByAnotherOwner(error))) {
-      throw new BadRequestError({
-        message: "Another CRL update for this CA is still in progress. Try again once it finishes."
+      throw new CaCrlUpdateInProgressError("Another CRL update for this CA is still in progress. Try again shortly.");
+    }
+    if (error instanceof ExecutionError) {
+      throw new InternalServerError({
+        message: "Failed to update the CRL because a required service is unavailable. Try again shortly.",
+        error
       });
     }
     throw error;
@@ -787,7 +831,10 @@ export const rebuildCaCrl = async ({
   certificateDAL,
   kmsService,
   caKeySourceService,
-  keyStore
+  keyStore,
+  auditLogService,
+  trigger,
+  auditLogInfo
 }: TRebuildCaCrlDTO) => {
   const lock = await acquireCaCrlRebuildLock(caId, keyStore);
 
@@ -829,7 +876,7 @@ export const rebuildCaCrl = async ({
 
     const revokedCerts = await certificateDAL.find({ caId: ca.id, status: CertStatus.REVOKED }, { tx: primary });
 
-    const crlNumber = Number(caCrl.crlNumber) + 1;
+    const crlNumber = nextCrlNumber(Number(caCrl.crlNumber));
     const crlParams = await buildCaCrlParams({
       issuer: caCertificate?.subjectName ?? ca.internalCa.dn,
       caPublicKey: signer.caPublicKey,
@@ -861,12 +908,39 @@ export const rebuildCaCrl = async ({
     );
 
     if (!storedCrl) {
-      throw new BadRequestError({
-        message: `The CRL of CA '${ca.name}' was updated by another request while this one was being signed. Regenerate it again to publish the latest list.`
-      });
+      throw new CaCrlUpdateInProgressError(
+        `Another request updated the CRL of CA '${ca.name}' at the same time. Try again shortly.`
+      );
     }
 
-    return { id: caCrl.id, thisUpdate: crlParams.thisUpdate, nextUpdate: crlParams.nextUpdate, crlNumber };
+    await auditLogService
+      .createAuditLog({
+        projectId: ca.projectId,
+        ...(auditLogInfo ?? { actor: { type: ActorType.PLATFORM, metadata: {} } }),
+        event: {
+          type: EventType.REGENERATE_CA_CRL,
+          metadata: {
+            caId: ca.id,
+            caName: ca.name,
+            crlId: caCrl.id,
+            crlNumber,
+            thisUpdate: crlParams.thisUpdate.toISOString(),
+            nextUpdate: crlParams.nextUpdate.toISOString(),
+            trigger
+          }
+        }
+      })
+      .catch((error) => {
+        logger.error(error, `Failed to write the CRL regeneration audit log [caId=${caId}]`);
+      });
+
+    return {
+      id: caCrl.id,
+      thisUpdate: crlParams.thisUpdate,
+      nextUpdate: crlParams.nextUpdate,
+      crlNumber,
+      crl: buildCaCrlPem(crl)
+    };
   } finally {
     await lock.release().catch((error) => {
       logger.warn(error, `Failed to release the CRL rebuild lock [caId=${caId}]`);
@@ -880,14 +954,30 @@ export const getInternalCaExpiredAt = (notAfter?: Date | string | null) => {
   return caNotAfter <= new Date() ? caNotAfter : undefined;
 };
 
-export const rebuildCaCrlAfterChange = async (dto: TRebuildCaCrlDTO) => {
+export const rebuildCaCrlAfterChange = async (
+  dto: TRebuildCaCrlDTO
+): Promise<{ isRegenerated: true } | { isRegenerated: false; reason: string }> => {
   try {
     await rebuildCaCrl(dto);
+    return { isRegenerated: true };
   } catch (error) {
     logger.error(
       error,
       `Failed to rebuild the CRL after a CA change, the hourly CRL rebuild job will retry it [caId=${dto.caId}]`
     );
+    if (error instanceof CaCrlUpdateInProgressError) {
+      return {
+        isRegenerated: false,
+        reason: "Another CRL update for this CA is in progress. The CRL will be regenerated automatically."
+      };
+    }
+    if (error instanceof BadRequestError || error instanceof NotFoundError || error instanceof InternalServerError) {
+      return { isRegenerated: false, reason: error.message };
+    }
+    return {
+      isRegenerated: false,
+      reason: "Failed to sign the CRL. It will be regenerated automatically once the CA key is reachable."
+    };
   }
 };
 

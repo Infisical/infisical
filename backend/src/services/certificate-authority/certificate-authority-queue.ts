@@ -1,4 +1,5 @@
 /* eslint-disable no-await-in-loop */
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -25,7 +26,7 @@ import { AcmeCertificateAuthorityFns } from "./acme/acme-certificate-authority-f
 import { AzureAdCsCertificateAuthorityFns } from "./azure-ad-cs/azure-ad-cs-certificate-authority-fns";
 import { TCertificateAuthorityCertDALFactory } from "./certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
-import { CaType } from "./certificate-authority-enums";
+import { CaCrlRegenerationTrigger, CaType } from "./certificate-authority-enums";
 import { rebuildCaCrl } from "./certificate-authority-fns";
 import { TCertificateAuthoritySecretDALFactory } from "./certificate-authority-secret-dal";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
@@ -56,6 +57,7 @@ type TCertificateAuthorityQueueFactoryDep = {
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TCertificateAuthorityQueueFactory = ReturnType<typeof certificateAuthorityQueueFactory>;
@@ -83,7 +85,8 @@ export const certificateAuthorityQueueFactory = ({
   pkiSyncQueue,
   caKeySourceService,
   gatewayV2Service,
-  gatewayPoolService
+  gatewayPoolService,
+  auditLogService
 }: TCertificateAuthorityQueueFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -145,6 +148,8 @@ export const certificateAuthorityQueueFactory = ({
             try {
               await rebuildCaCrl({
                 caId: dueCrl.caId,
+                trigger: CaCrlRegenerationTrigger.Scheduled,
+                auditLogService,
                 certificateAuthorityDAL,
                 certificateAuthorityCrlDAL,
                 certificateAuthorityCertDAL,

@@ -6,6 +6,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -49,7 +50,6 @@ import { TCertificateAuthorityCrlDALFactory } from "../../../ee/services/certifi
 import {
   DEFAULT_CRL_VALIDITY_DAYS,
   GENERAL_NAME_TYPES_WITH_OTHER_NAME,
-  INITIAL_CRL_NUMBER,
   PKI_TEXT_COLUMN_MAX_LENGTH,
   SUPPORTED_GENERAL_NAME_TYPES
 } from "../../certificate-common/certificate-constants";
@@ -78,8 +78,9 @@ import { TCaSigningConfigDALFactory } from "../ca-signing-config/ca-signing-conf
 import { CaSigningConfigType } from "../ca-signing-config/ca-signing-config-enums";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory, TCertificateAuthorityWithAssociatedCa } from "../certificate-authority-dal";
-import { CaStatus, InternalCaType } from "../certificate-authority-enums";
+import { CaCrlRegenerationTrigger, CaStatus, InternalCaType } from "../certificate-authority-enums";
 import {
+  assertCaValidityDates,
   assertNoCertificateProfilesUsingCa,
   assertPathLengthMatchesCa,
   buildAuthorityInfoAccessExtension,
@@ -98,6 +99,7 @@ import {
   getIssuedCaCertChain,
   isCaCrlAllowed,
   keyAlgorithmToAlgCfg,
+  nextCrlNumber,
   rebuildCaCrlAfterChange,
   signatureAlgorithmToAlgCfg,
   validateImportedCertificate
@@ -174,6 +176,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
     "createKey" | "buildSigner" | "describeKey" | "prepareKeyReleases"
   >;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export type TInternalCertificateAuthorityServiceFactory = ReturnType<typeof internalCertificateAuthorityServiceFactory>;
@@ -199,7 +202,8 @@ export const internalCertificateAuthorityServiceFactory = ({
   caSigningConfigDAL,
   usageMeteringService,
   caKeySourceService,
-  keyStore
+  keyStore,
+  auditLogService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
   const $validatePqcLicense = (keyAlgorithm: string, projectId: string) =>
     validatePqcLicense({ keyAlgorithm, projectId, projectDAL, licenseService });
@@ -210,9 +214,11 @@ export const internalCertificateAuthorityServiceFactory = ({
     return isCaCrlAllowed({ orgId: project.orgId, licenseService });
   };
 
-  const $rebuildCaCrlAfterChange = (caId: string) =>
+  const $rebuildCaCrlAfterChange = (caId: string, trigger: CaCrlRegenerationTrigger) =>
     rebuildCaCrlAfterChange({
       caId,
+      trigger,
+      auditLogService,
       certificateAuthorityDAL,
       certificateAuthorityCrlDAL,
       certificateAuthorityCertDAL,
@@ -439,6 +445,10 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
     }
 
+    if (type === InternalCaType.ROOT && notAfter) {
+      assertCaValidityDates(notAfter, notBefore);
+    }
+
     const dn = createDistinguishedName({
       commonName,
       organization,
@@ -565,10 +575,11 @@ export const internalCertificateAuthorityServiceFactory = ({
         };
       }
 
+      const crlNumber = nextCrlNumber(0);
       const crlParams = await buildCaCrlParams({
         issuer: dn,
         caPublicKey: caSigner.caPublicKey,
-        crlNumber: INITIAL_CRL_NUMBER,
+        crlNumber,
         crlValidityDays: resolvedCrlValidityDays,
         caNotAfter: type === InternalCaType.ROOT ? notAfterDate : undefined,
         entries: []
@@ -658,7 +669,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             caSecretId: caSecret.id,
             thisUpdate: crlParams.thisUpdate,
             nextUpdate: crlParams.nextUpdate,
-            crlNumber: INITIAL_CRL_NUMBER
+            crlNumber
           },
           tx
         );
@@ -796,11 +807,13 @@ export const internalCertificateAuthorityServiceFactory = ({
       return certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
     });
 
+    let crlWarning: string | undefined;
     if (isCrlValidityChanged) {
-      await $rebuildCaCrlAfterChange(ca.id);
+      const crlRegeneration = await $rebuildCaCrlAfterChange(ca.id, CaCrlRegenerationTrigger.ValidityChange);
+      if (!crlRegeneration.isRegenerated) crlWarning = crlRegeneration.reason;
     }
 
-    return expandInternalCa(updatedCa);
+    return { ...expandInternalCa(updatedCa), crlWarning };
   };
 
   /**
@@ -1170,7 +1183,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
     }
 
-    await $rebuildCaCrlAfterChange(ca.id);
+    await $rebuildCaCrlAfterChange(ca.id, CaCrlRegenerationTrigger.CaRenewal);
 
     return {
       certificate,
@@ -1548,7 +1561,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notBefore date is before CA certificate's notBefore date" });
     }
 
-    if (notBeforeDate > notAfterDate) throw new BadRequestError({ message: "notBefore date is after notAfter date" });
+    assertCaValidityDates(notAfter, notBefore);
 
     // check not after constraint
     if (notAfterDate > caCertNotAfterDate) {
@@ -1618,6 +1631,10 @@ export const internalCertificateAuthorityServiceFactory = ({
     const { caId, certificate, certificateChain } = params;
     const parentCaId = "parentCaId" in params ? params.parentCaId : undefined;
     const isInternal = "isInternal" in params && params.isInternal === true;
+    const crlRegenerationTrigger =
+      "crlRegenerationTrigger" in params && params.crlRegenerationTrigger
+        ? params.crlRegenerationTrigger
+        : CaCrlRegenerationTrigger.CaCertificateImport;
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
@@ -1806,7 +1823,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       );
     });
 
-    await $rebuildCaCrlAfterChange(ca.id);
+    await $rebuildCaCrlAfterChange(ca.id, crlRegenerationTrigger);
 
     if (!isInternal && ca.internalCa.type === InternalCaType.INTERMEDIATE) {
       const existingConfig = await caSigningConfigDAL.findByCaId(ca.internalCa.id);
@@ -1910,7 +1927,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       caId,
       certificate: signedResult.certificate,
       certificateChain: signedResult.certificateChain,
-      parentCaId
+      parentCaId,
+      crlRegenerationTrigger: CaCrlRegenerationTrigger.CaCertificateGeneration
     });
 
     const internalCaId = intermediateCa.internalCa.id;
@@ -2976,6 +2994,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     );
 
     await $validatePqcLicense(ca.internalCa.keyAlgorithm, ca.projectId);
+    assertCaValidityDates(notAfter, notBefore);
 
     const notBeforeDate = new Date(notBefore);
     const notAfterDate = new Date(notAfter);
@@ -3086,7 +3105,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       };
     });
 
-    await $rebuildCaCrlAfterChange(ca.id);
+    await $rebuildCaCrlAfterChange(ca.id, CaCrlRegenerationTrigger.CaCertificateGeneration);
 
     return rootCaCertificate;
   };

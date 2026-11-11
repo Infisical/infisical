@@ -20,6 +20,7 @@ import {
   Card,
   CardAction,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
   Tooltip,
@@ -31,7 +32,7 @@ import {
   ProjectPermissionSub,
   useSubscription
 } from "@app/context";
-import { CaStatus, CaType, useGetCa, useGetCaCrls, useRebuildCaCrl } from "@app/hooks/api";
+import { CaStatus, CaType, useGetCa, useGetCaCrls, useRegenerateCaCrl } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 
 import { CaCrlsTable } from "./CaCrlsTable";
@@ -47,14 +48,16 @@ export const CaCrlsSection = ({ caId }: Props) => {
   const { data } = useGetCa({ caId, type: CaType.INTERNAL });
   const ca = data as TInternalCertificateAuthority | undefined;
   const { data: caCrls } = useGetCaCrls(caId);
-  const rebuildCaCrl = useRebuildCaCrl();
+  const regenerateCaCrl = useRegenerateCaCrl();
 
-  const caNotAfter = ca?.configuration.notAfter;
+  if (!ca) return null;
+
+  const caNotAfter = ca.configuration.notAfter;
   let regenerateBlockedReason: string | undefined;
-  if (ca?.status === CaStatus.PENDING_CERTIFICATE) {
+  if (ca.status === CaStatus.PENDING_CERTIFICATE) {
     regenerateBlockedReason = "This CA has no certificate yet. Add one before regenerating the CRL";
   } else if (caNotAfter && new Date(caNotAfter) <= new Date()) {
-    regenerateBlockedReason = "Renew this expired CA to publish a new CRL";
+    regenerateBlockedReason = "Renew this expired CA to regenerate the CRL";
   }
 
   const handleRegenerateClick = () => {
@@ -75,7 +78,7 @@ export const CaCrlsSection = ({ caId }: Props) => {
   };
 
   const handleConfirm = () =>
-    rebuildCaCrl.mutate(
+    regenerateCaCrl.mutate(
       { caId },
       {
         onSuccess: () => {
@@ -90,7 +93,8 @@ export const CaCrlsSection = ({ caId }: Props) => {
       <Card className="w-full">
         <CardHeader className="border-b">
           <CardTitle>CA Certificate Revocation Lists (CRLs)</CardTitle>
-          {ca && Boolean(caCrls?.length) && (
+          <CardDescription>Each CRL is regenerated automatically before it expires</CardDescription>
+          {Boolean(caCrls?.length) && (
             <CardAction>
               <ProjectPermissionCan
                 I={ProjectPermissionCertificateAuthorityActions.Edit}
@@ -127,21 +131,21 @@ export const CaCrlsSection = ({ caId }: Props) => {
           )}
         </CardHeader>
         <CardContent>
-          <CaCrlsTable caId={caId} />
+          <CaCrlsTable caId={caId} caName={ca.name} />
         </CardContent>
       </Card>
 
       <AlertDialog
         open={isConfirmOpen}
-        isPending={rebuildCaCrl.isPending}
+        isPending={regenerateCaCrl.isPending}
         onOpenChange={setIsConfirmOpen}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Regenerate CRL</AlertDialogTitle>
             <AlertDialogDescription>
-              This will sign a new CRL with the current list of revoked certificates and publish it
-              at the same URL.
+              A new CRL with the current list of revoked certificates replaces the one at the same
+              URL.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -149,7 +153,7 @@ export const CaCrlsSection = ({ caId }: Props) => {
             <Button
               variant="project"
               size="sm"
-              isPending={rebuildCaCrl.isPending}
+              isPending={regenerateCaCrl.isPending}
               onClick={handleConfirm}
             >
               Regenerate CRL

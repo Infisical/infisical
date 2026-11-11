@@ -145,6 +145,10 @@ export const InternalCertificateAuthoritySchema = BaseCertificateAuthoritySchema
   configuration: InternalCertificateAuthorityConfigurationSchema
 });
 
+export const UpdateInternalCertificateAuthorityResponseSchema = InternalCertificateAuthoritySchema.extend({
+  crlWarning: z.string().optional().describe(CertificateAuthorities.UPDATE_INTERNAL_RESPONSE.crlWarning)
+});
+
 export const CreateInternalCertificateAuthoritySchema = GenericCreateCertificateAuthorityFieldsSchema(CaType.INTERNAL)
   .extend({
     configuration: InternalCertificateAuthorityConfigurationSchema

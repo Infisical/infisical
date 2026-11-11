@@ -23,9 +23,7 @@ export async function up(knex: Knex): Promise<void> {
     });
 
     await knex(TableName.CertificateAuthorityCrl).whereNull("thisUpdate").update("thisUpdate", knex.ref("updatedAt"));
-    await knex(TableName.CertificateAuthorityCrl)
-      .whereNull("nextUpdate")
-      .update("nextUpdate", knex.raw(`?? + interval '7 days'`, ["updatedAt"]));
+    await knex(TableName.CertificateAuthorityCrl).whereNull("nextUpdate").update("nextUpdate", knex.ref("updatedAt"));
 
     await knex.schema.alterTable(TableName.CertificateAuthorityCrl, (t) => {
       t.timestamp("thisUpdate", { useTz: true }).notNullable().defaultTo(knex.fn.now()).alter();

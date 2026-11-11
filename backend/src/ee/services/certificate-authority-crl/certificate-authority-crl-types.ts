@@ -1,3 +1,4 @@
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TProjectPermission } from "@app/lib/types";
 
 export type TGetCrlById = string;
@@ -6,15 +7,16 @@ export type TGetCaCrlsDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TRebuildCrlDTO = {
+export type TRegenerateCrlDTO = {
   caId: string;
+  auditLogInfo: AuditLogInfo;
 } & Omit<TProjectPermission, "projectId">;
 
 type TCaCrlDetails = {
   id: string;
   thisUpdate: Date;
   nextUpdate: Date;
-  crlNumber: number;
+  crl: string;
 };
 
 export type TCertificateAuthorityCrlServiceFactory = {
@@ -144,10 +146,9 @@ export type TCertificateAuthorityCrlServiceFactory = {
       readonly notAfter: string | undefined;
       readonly activeCaCertId: string | null | undefined;
     };
-    crls: (TCaCrlDetails & { crl: string })[];
+    crls: (TCaCrlDetails & { crlNumber: number | null })[];
   }>;
-  rebuildCrl: (dto: TRebuildCrlDTO) => Promise<{
-    ca: { id: string; name: string; projectId: string };
-    crl: TCaCrlDetails;
+  regenerateCrl: (dto: TRegenerateCrlDTO) => Promise<{
+    crl: TCaCrlDetails & { crlNumber: number };
   }>;
 };

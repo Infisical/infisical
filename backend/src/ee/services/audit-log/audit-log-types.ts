@@ -40,7 +40,7 @@ import { TCreateAppConnectionDTO, TUpdateAppConnectionDTO } from "@app/services/
 import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdpMfaSignal } from "@app/services/auth/idp-mfa-signal";
-import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaCrlRegenerationTrigger, CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
@@ -439,7 +439,7 @@ export enum EventType {
   IMPORT_CA_CROSS_SIGNED_CERT = "import-ca-cross-signed-cert",
   DELETE_CA_CROSS_SIGNED_CERT = "delete-ca-cross-signed-cert",
   GET_CA_CRLS = "get-certificate-authority-crls",
-  REBUILD_CA_CRL = "rebuild-certificate-authority-crl",
+  REGENERATE_CA_CRL = "regenerate-certificate-authority-crl",
   GENERATE_CA_CERTIFICATE = "generate-ca-certificate",
   INSTALL_CA_CERT_VENAFI = "install-ca-cert-venafi",
   INSTALL_CA_CERT_ADCS = "install-ca-cert-adcs",
@@ -3236,13 +3236,16 @@ interface GetCaCrls {
   };
 }
 
-interface RebuildCaCrl {
-  type: EventType.REBUILD_CA_CRL;
+interface RegenerateCaCrl {
+  type: EventType.REGENERATE_CA_CRL;
   metadata: {
     caId: string;
-    name: string;
+    caName: string;
+    crlId: string;
     crlNumber: number;
+    thisUpdate: string;
     nextUpdate: string;
+    trigger: CaCrlRegenerationTrigger;
   };
 }
 
@@ -8770,7 +8773,7 @@ export type Event =
   | ImportCaCrossSignedCert
   | DeleteCaCrossSignedCert
   | GetCaCrls
-  | RebuildCaCrl
+  | RegenerateCaCrl
   | GenerateCaCertificate
   | InstallCaCertVenafi
   | InstallCaCertAdcs

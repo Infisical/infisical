@@ -2,6 +2,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -14,8 +15,11 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaCrlRegenerationTrigger } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
+  buildCaCrlPem,
   expandInternalCa,
+  getCrlNumber,
   getInternalCaExpiredAt,
   isCaCrlAllowed,
   rebuildCaCrl
@@ -43,6 +47,7 @@ type TCertificateAuthorityCrlServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export const certificateAuthorityCrlServiceFactory = ({
@@ -56,7 +61,8 @@ export const certificateAuthorityCrlServiceFactory = ({
   permissionService,
   licenseService,
   caKeySourceService,
-  keyStore
+  keyStore,
+  auditLogService
 }: TCertificateAuthorityCrlServiceFactoryDep): TCertificateAuthorityCrlServiceFactory => {
   /**
    * Return CRL with id [crlId]
@@ -133,14 +139,12 @@ export const certificateAuthorityCrlServiceFactory = ({
         const decryptedCrl = await kmsDecryptor({ cipherTextBlob: caCrl.encryptedCrl });
         const crl = new x509.X509Crl(decryptedCrl);
 
-        const base64crl = crl.toString("base64");
-        const crlPem = `-----BEGIN X509 CRL-----\n${base64crl.match(/.{1,64}/g)?.join("\n")}\n-----END X509 CRL-----`;
         return {
           id: caCrl.id,
-          crl: crlPem,
-          thisUpdate: caCrl.thisUpdate,
-          nextUpdate: caCrl.nextUpdate,
-          crlNumber: Number(caCrl.crlNumber)
+          crl: buildCaCrlPem(crl),
+          thisUpdate: crl.thisUpdate,
+          nextUpdate: crl.nextUpdate ?? caCrl.nextUpdate,
+          crlNumber: getCrlNumber(crl)
         };
       })
     );
@@ -151,12 +155,13 @@ export const certificateAuthorityCrlServiceFactory = ({
     };
   };
 
-  const rebuildCrl: TCertificateAuthorityCrlServiceFactory["rebuildCrl"] = async ({
+  const regenerateCrl: TCertificateAuthorityCrlServiceFactory["regenerateCrl"] = async ({
     caId,
     actorId,
     actorAuthMethod,
     actor,
-    actorOrgId
+    actorOrgId,
+    auditLogInfo
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     const project = ca?.internalCa?.id ? await projectDAL.findById(ca.projectId) : undefined;
@@ -193,7 +198,7 @@ export const certificateAuthorityCrlServiceFactory = ({
     const caExpiredAt = getInternalCaExpiredAt(ca.internalCa.notAfter);
     if (caExpiredAt) {
       throw new BadRequestError({
-        message: `CA '${ca.name}' expired on ${caExpiredAt.toISOString()}. Renew the CA to publish a new CRL.`
+        message: `CA '${ca.name}' expired on ${caExpiredAt.toISOString()}. Renew the CA to regenerate its CRL.`
       });
     }
 
@@ -207,15 +212,18 @@ export const certificateAuthorityCrlServiceFactory = ({
       certificateDAL,
       kmsService,
       caKeySourceService,
-      keyStore
+      keyStore,
+      auditLogService,
+      trigger: CaCrlRegenerationTrigger.Manual,
+      auditLogInfo
     });
 
-    return { ca, crl };
+    return { crl };
   };
 
   return {
     getCrlById,
     getCaCrls,
-    rebuildCrl
+    regenerateCrl
   };
 };

@@ -6,13 +6,16 @@ import * as x509 from "@peculiar/x509";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { TCertificateAuthorityCrossSignedCerts } from "@app/db/schemas";
+import { EventType, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
 import { ExecutionError, ResourceLockedError } from "@app/lib/red-lock";
+import { ActorType } from "@app/services/auth/auth-type";
 import { CertKeyAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { buildExternalCaSigner, buildLocalCaSigner } from "./ca-signer";
+import { CaCrlRegenerationTrigger } from "./certificate-authority-enums";
 import {
   buildAuthorityInfoAccessExtension,
   buildCaCrlParams,
@@ -22,6 +25,7 @@ import {
   createDistinguishedName,
   extractDnParts,
   getActiveCaCertificate,
+  getCrlNumber,
   rebuildCaCrl,
   rebuildCaCrlAfterChange,
   signatureAlgorithmToAlgCfg
@@ -382,11 +386,6 @@ const CA_DN = "CN=CRL Test CA";
 const generateCaKeys = () =>
   webcrypto.subtle.generateKey(EC_KEY_PARAMS, true, ["sign", "verify"]) as Promise<CryptoKeyPair>;
 
-const readCrlNumber = (crl: x509.X509Crl) => {
-  const extension = crl.extensions.find((ext) => ext.type === id_ce_cRLNumber);
-  return extension ? AsnConvert.parse(extension.value, CRLNumber).value : undefined;
-};
-
 const readAuthorityKeyId = (crl: x509.X509Crl) => crl.getExtension(x509.AuthorityKeyIdentifierExtension)?.keyId;
 
 const subjectKeyIdOf = async (publicKey: CryptoKey) =>
@@ -439,7 +438,7 @@ describe("buildCaCrlParams", () => {
     const signer = buildLocalCaSigner({ ...caKeys, signingAlgorithm: EC_SIGNING_ALGORITHM });
     const crl = await signer.createCrl(await build({ crlNumber: 42 }));
 
-    expect(readCrlNumber(crl)).toBe(42);
+    expect(getCrlNumber(crl)).toBe(42);
     expect(readAuthorityKeyId(crl)).toBe(await subjectKeyIdOf(caKeys.publicKey));
     expect(await crl.verify({ publicKey: caKeys.publicKey })).toBe(true);
   });
@@ -470,9 +469,32 @@ describe("buildCaCrlParams", () => {
     });
     const crl = await signer.createCrl(await build({ crlNumber: 7 }));
 
-    expect(readCrlNumber(crl)).toBe(7);
+    expect(getCrlNumber(crl)).toBe(7);
     expect(readAuthorityKeyId(crl)).toBe(await subjectKeyIdOf(caKeys.publicKey));
     expect(await crl.verify({ publicKey: caKeys.publicKey })).toBe(true);
+  });
+});
+
+describe("getCrlNumber", () => {
+  beforeAll(() => {
+    x509.cryptoProvider.set(webcrypto as unknown as Crypto);
+  });
+
+  it("should read a CRL number above 32 bits as a number and return null for a CRL without one", async () => {
+    const caKeys = await generateCaKeys();
+    const signer = buildLocalCaSigner({ ...caKeys, signingAlgorithm: EC_SIGNING_ALGORITHM });
+    const thisUpdate = new Date();
+    const nextUpdate = new Date(thisUpdate.getTime() + DAY_MS);
+    const crlParams = { issuer: CA_DN, thisUpdate, nextUpdate, entries: [] };
+
+    const numberedCrl = await signer.createCrl({
+      ...crlParams,
+      extensions: [new x509.Extension(id_ce_cRLNumber, false, AsnConvert.serialize(new CRLNumber(10_000_000_000)))]
+    });
+    const legacyCrl = await signer.createCrl(crlParams);
+
+    expect(getCrlNumber(numberedCrl)).toBe(10_000_000_000);
+    expect(getCrlNumber(legacyCrl)).toBeNull();
   });
 });
 
@@ -537,13 +559,20 @@ describe("rebuildCaCrl", () => {
       })
     };
 
+    const auditLogService = {
+      createAuditLog: vi.fn<(dto: TCreateAuditLogDTO) => Promise<void>>(async () => undefined)
+    };
+
     const deps = {
       caId: CA_ID,
+      trigger: CaCrlRegenerationTrigger.Scheduled,
+      auditLogService,
       keyStore,
       certificateAuthorityCrlDAL,
       certificateAuthorityDAL: {
         findByIdWithAssociatedCa: vi.fn(async () => ({
           id: CA_ID,
+          name: "root-ca",
           projectId: "project-1",
           internalCa: { id: "internal-1", dn: CA_DN, keyAlgorithm: CertKeyAlgorithm.ECDSA_P256, crlValidityDays: 30 }
         }))
@@ -585,12 +614,14 @@ describe("rebuildCaCrl", () => {
       calls,
       certificateAuthorityCrlDAL,
       certificateDAL: deps.certificateDAL,
-      keyStore
+      keyStore,
+      auditLogService
     };
   };
 
-  it("should sign the next CRL number after the stored one and store exactly what it signed", async () => {
+  it("should sign a CRL number from the clock and store exactly what it signed", async () => {
     const { deps, certificateAuthorityCrlDAL } = await buildRebuildDeps({ storedCrlNumber: 41 });
+    const nowSeconds = Math.floor(Date.now() / 1000);
 
     const result = await rebuildCaCrl(deps);
 
@@ -601,12 +632,62 @@ describe("rebuildCaCrl", () => {
     const signed = new x509.X509Crl(new Uint8Array(stored.encryptedCrl));
 
     expect(filter).toEqual({ id: "crl-1", crlNumber: "41" });
-    expect(result.crlNumber).toBe(42);
-    expect(stored.crlNumber).toBe(42);
-    expect(readCrlNumber(signed)).toBe(42);
+    expect(result.crlNumber).toBeGreaterThanOrEqual(nowSeconds);
+    expect(stored.crlNumber).toBe(result.crlNumber);
+    expect(getCrlNumber(signed)).toBe(result.crlNumber);
+    expect(getCrlNumber(new x509.X509Crl(result.crl))).toBe(result.crlNumber);
     expect(Math.floor(stored.nextUpdate.getTime() / 1000)).toBe((signed.nextUpdate as Date).getTime() / 1000);
     expect(stored.nextUpdate.getTime() - stored.thisUpdate.getTime()).toBeGreaterThan(29 * DAY_MS);
     expect(signed.entries.map((entry) => entry.serialNumber)).toEqual([REVOKED_SERIAL]);
+  });
+
+  it("should still increase the CRL number when the stored one is ahead of the clock", async () => {
+    const { deps } = await buildRebuildDeps({ storedCrlNumber: 9_999_999_999 });
+
+    const result = await rebuildCaCrl(deps);
+
+    expect(result.crlNumber).toBe(10_000_000_000);
+  });
+
+  it("should audit the regeneration as the platform when no actor is given", async () => {
+    const { deps, auditLogService } = await buildRebuildDeps();
+
+    const result = await rebuildCaCrl(deps);
+
+    expect(auditLogService.createAuditLog.mock.calls[0][0]).toMatchObject({
+      projectId: "project-1",
+      actor: { type: ActorType.PLATFORM, metadata: {} },
+      event: {
+        type: EventType.REGENERATE_CA_CRL,
+        metadata: { caId: CA_ID, crlNumber: result.crlNumber, trigger: CaCrlRegenerationTrigger.Scheduled }
+      }
+    });
+  });
+
+  it("should audit the regeneration as the requesting actor when one is given", async () => {
+    const { deps, auditLogService } = await buildRebuildDeps();
+    const auditLogInfo = {
+      ipAddress: "127.0.0.1",
+      userAgent: "vitest",
+      actor: { type: ActorType.USER as const, metadata: { userId: "user-1", username: "john.smith", email: "" } }
+    };
+
+    await rebuildCaCrl({ ...deps, trigger: CaCrlRegenerationTrigger.Manual, auditLogInfo });
+
+    expect(auditLogService.createAuditLog.mock.calls[0][0]).toMatchObject({
+      actor: auditLogInfo.actor,
+      event: { metadata: { trigger: CaCrlRegenerationTrigger.Manual } }
+    });
+  });
+
+  it("should keep the stored CRL when the audit log cannot be written", async () => {
+    const { deps, certificateAuthorityCrlDAL, auditLogService } = await buildRebuildDeps();
+    auditLogService.createAuditLog.mockRejectedValueOnce(new Error("audit log store unavailable"));
+
+    const result = await rebuildCaCrl(deps);
+
+    expect(certificateAuthorityCrlDAL.update).toHaveBeenCalledTimes(1);
+    expect(getCrlNumber(new x509.X509Crl(result.crl))).toBe(result.crlNumber);
   });
 
   it("should read the stored CRL number only while holding the CA's lock", async () => {
@@ -653,14 +734,49 @@ describe("rebuildCaCrl", () => {
   it("should not report a lock store failure as another update in progress", async () => {
     const { deps } = await buildRebuildDeps({ isRedisDown: true });
 
-    await expect(rebuildCaCrl(deps)).rejects.toBeInstanceOf(ExecutionError);
+    await expect(rebuildCaCrl(deps)).rejects.toThrow("a required service is unavailable");
   });
 
-  it("should log and continue when a rebuild after a CA change fails", async () => {
-    const { deps, certificateAuthorityCrlDAL } = await buildRebuildDeps({ isSigningBroken: true });
+  it("should report a readable reason instead of throwing when a rebuild after a CA change fails", async () => {
+    const { deps, certificateAuthorityCrlDAL, auditLogService } = await buildRebuildDeps({ isSigningBroken: true });
 
-    await expect(rebuildCaCrlAfterChange(deps)).resolves.toBeUndefined();
+    const result = await rebuildCaCrlAfterChange(deps);
+
+    expect(result.isRegenerated).toBe(false);
+    expect(!result.isRegenerated && result.reason).toContain("once the CA key is reachable");
     expect(certificateAuthorityCrlDAL.update).not.toHaveBeenCalled();
+    expect(auditLogService.createAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("should give a busy lock a different reason than a signing failure, since the hourly job catches it up", async () => {
+    const { deps: lockBusyDeps } = await buildRebuildDeps({ isLockBusy: true });
+    const { deps: signingBrokenDeps } = await buildRebuildDeps({ isSigningBroken: true });
+
+    const lockBusyResult = await rebuildCaCrlAfterChange(lockBusyDeps);
+    const signingBrokenResult = await rebuildCaCrlAfterChange(signingBrokenDeps);
+
+    expect(lockBusyResult.isRegenerated).toBe(false);
+    expect(signingBrokenResult.isRegenerated).toBe(false);
+    expect(lockBusyResult).not.toEqual(signingBrokenResult);
+    expect(!lockBusyResult.isRegenerated && lockBusyResult.reason).toContain(
+      "The CRL will be regenerated automatically"
+    );
+  });
+
+  it("should report a conflicting CRL write as an update in progress", async () => {
+    const { deps } = await buildRebuildDeps({ conflictingWrites: 1 });
+
+    const result = await rebuildCaCrlAfterChange(deps);
+
+    expect(!result.isRegenerated && result.reason).toContain("Another CRL update for this CA is in progress");
+  });
+
+  it("should pass a readable error through as the reason", async () => {
+    const { deps } = await buildRebuildDeps({ isRedisDown: true });
+
+    const result = await rebuildCaCrlAfterChange(deps);
+
+    expect(!result.isRegenerated && result.reason).toContain("a required service is unavailable");
   });
 });
 

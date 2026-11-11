@@ -23,7 +23,8 @@ export const registerCertificateAuthorityEndpoints = <
   caType,
   createSchema,
   updateSchema,
-  responseSchema
+  responseSchema,
+  updateResponseSchema = responseSchema
 }: {
   caType: CaType;
   server: FastifyZodProvider;
@@ -38,6 +39,7 @@ export const registerCertificateAuthorityEndpoints = <
     configuration?: I["configuration"];
   }>;
   responseSchema: z.ZodTypeAny;
+  updateResponseSchema?: z.ZodTypeAny;
 }) => {
   const caTypeNameForOpId = caType
     .split("-")
@@ -199,7 +201,7 @@ export const registerCertificateAuthorityEndpoints = <
       }),
       body: updateSchema,
       response: {
-        200: responseSchema
+        200: updateResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),

@@ -903,7 +903,7 @@ export const registerCaRouter = async (server: FastifyZodProvider) => {
             crl: z.string().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crl),
             thisUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.thisUpdate),
             nextUpdate: z.date().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.nextUpdate),
-            crlNumber: z.number().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crlNumber)
+            crlNumber: z.number().nullable().describe(CERTIFICATE_AUTHORITIES.GET_CRLS.crlNumber)
           })
         )
       }

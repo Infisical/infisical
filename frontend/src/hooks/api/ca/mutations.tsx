@@ -21,20 +21,21 @@ import {
   TImportCaCrossSignedCertificateDTO,
   TOrderCertificateDTO,
   TOrderCertificateResponse,
-  TRebuildCaCrlResponse,
+  TRegenerateCaCrlResponse,
   TRenewCaDTO,
   TRenewCaResponse,
   TSignIntermediateDTO,
   TSignIntermediateResponse,
   TUnifiedCertificateAuthority,
-  TUpdateCertificateAuthorityDTO
+  TUpdateCertificateAuthorityDTO,
+  TUpdateCertificateAuthorityResponse
 } from "./types";
 
 export const useUpdateCa = () => {
   const queryClient = useQueryClient();
-  return useMutation<TUnifiedCertificateAuthority, object, TUpdateCertificateAuthorityDTO>({
+  return useMutation<TUpdateCertificateAuthorityResponse, object, TUpdateCertificateAuthorityDTO>({
     mutationFn: async ({ id, ...body }) => {
-      const { data } = await apiRequest.patch<TUnifiedCertificateAuthority>(
+      const { data } = await apiRequest.patch<TUpdateCertificateAuthorityResponse>(
         `/api/v1/cert-manager/ca/${body.type}/${id}`,
         body
       );
@@ -277,12 +278,12 @@ export const useRenewCa = () => {
   });
 };
 
-export const useRebuildCaCrl = () => {
+export const useRegenerateCaCrl = () => {
   const queryClient = useQueryClient();
-  return useMutation<TRebuildCaCrlResponse, object, { caId: string }>({
+  return useMutation<TRegenerateCaCrlResponse, object, { caId: string }>({
     mutationFn: async ({ caId }) => {
-      const { data } = await apiRequest.post<TRebuildCaCrlResponse>(
-        `/api/v1/cert-manager/ca/internal/${caId}/crls/rebuild`
+      const { data } = await apiRequest.post<TRegenerateCaCrlResponse>(
+        `/api/v1/cert-manager/ca/internal/${caId}/crls/regenerate`
       );
       return data;
     },

@@ -9,7 +9,7 @@ import { internalCertificateAuthorityServiceFactory } from "./internal-certifica
 
 vi.mock("../certificate-authority-fns", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../certificate-authority-fns")>()),
-  rebuildCaCrlAfterChange: vi.fn(async () => undefined)
+  rebuildCaCrlAfterChange: vi.fn(async () => ({ isRegenerated: true }))
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -28,6 +28,7 @@ const buildService = ({
   const calls: string[] = [];
   vi.mocked(rebuildCaCrlAfterChange).mockImplementation(async () => {
     calls.push("rebuild");
+    return { isRegenerated: true };
   });
 
   const ca = {
@@ -111,6 +112,28 @@ describe("internal CA CRL validity", () => {
     expect(calls).toEqual(["store", "commit", "rebuild"]);
   });
 
+  test("returns a CRL warning when the CRL cannot be regenerated after the validity change", async () => {
+    const { service } = buildService({ caCrl: true });
+    const reason = "Failed to sign the CRL.";
+    vi.mocked(rebuildCaCrlAfterChange).mockResolvedValueOnce({ isRegenerated: false, reason });
+
+    const updatedCa = await service.updateCaById({ isInternal: true, caId: CA_ID, crlValidityDays: 1 });
+
+    expect(updatedCa.crlWarning).toBe(reason);
+  });
+
+  test("returns no CRL warning when the validity is unchanged", async () => {
+    const { service } = buildService({ caCrl: true });
+
+    const updatedCa = await service.updateCaById({
+      isInternal: true,
+      caId: CA_ID,
+      crlValidityDays: STORED_CRL_VALIDITY_DAYS
+    });
+
+    expect(updatedCa.crlWarning).toBeUndefined();
+  });
+
   test("refuses to create a CA with a custom validity on a plan without CRLs", async () => {
     const { service } = buildService({ caCrl: false });
 
@@ -129,5 +152,46 @@ describe("internal CA CRL validity", () => {
         crlValidityDays: 30
       })
     ).rejects.toThrow("CRL validity");
+  });
+
+  test("refuses to create a root CA whose notAfter has already passed", async () => {
+    const { service } = buildService({ caCrl: true });
+
+    await expect(
+      service.createCa({
+        isInternal: true,
+        projectId: PROJECT_ID,
+        type: InternalCaType.ROOT,
+        commonName: "Root CA",
+        organization: "",
+        ou: "",
+        country: "",
+        province: "",
+        locality: "",
+        keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
+        notAfter: new Date(Date.now() - 60_000).toISOString()
+      })
+    ).rejects.toThrow("CA notAfter date");
+  });
+
+  test("refuses to create a root CA whose notAfter is before its notBefore", async () => {
+    const { service } = buildService({ caCrl: true });
+
+    await expect(
+      service.createCa({
+        isInternal: true,
+        projectId: PROJECT_ID,
+        type: InternalCaType.ROOT,
+        commonName: "Root CA",
+        organization: "",
+        ou: "",
+        country: "",
+        province: "",
+        locality: "",
+        keyAlgorithm: CertKeyAlgorithm.ECDSA_P256,
+        notBefore: new Date(Date.now() + 2 * 86_400_000).toISOString(),
+        notAfter: new Date(Date.now() + 86_400_000).toISOString()
+      })
+    ).rejects.toBeInstanceOf(BadRequestError);
   });
 });

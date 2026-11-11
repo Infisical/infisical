@@ -188,11 +188,11 @@ export type TCaCrl = {
   crl: string;
   thisUpdate: string;
   nextUpdate: string;
-  crlNumber: number;
+  crlNumber: number | null;
 };
 
-export type TRebuildCaCrlResponse = {
-  crl: Omit<TCaCrl, "crl">;
+export type TRegenerateCaCrlResponse = {
+  crl: TCaCrl;
 };
 
 export type TUnifiedCertificateAuthority =
@@ -205,6 +205,10 @@ export type TUnifiedCertificateAuthority =
   | TAwsAcmPublicCaCertificateAuthority
   | TVenafiTppCertificateAuthority
   | TInternalCertificateAuthority;
+
+export type TUpdateCertificateAuthorityResponse = TUnifiedCertificateAuthority & {
+  crlWarning?: string;
+};
 
 export type TCreateCertificateAuthorityDTO = Omit<
   TUnifiedCertificateAuthority,

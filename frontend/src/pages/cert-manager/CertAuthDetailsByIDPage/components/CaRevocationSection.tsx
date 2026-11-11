@@ -51,15 +51,17 @@ import {
 import {
   CaType,
   DEFAULT_CRL_VALIDITY_DAYS,
-  MAX_CRL_VALIDITY_DAYS,
   MAX_DISTRIBUTION_POINT_URL_LENGTH,
   MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS,
-  MIN_CRL_VALIDITY_DAYS,
   useGetCa,
   useUpdateCa
 } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import {
+  CrlValidityDaysField,
+  crlValidityDaysSchema
+} from "@app/pages/cert-manager/components/CrlValidityDaysField";
 
 type Props = {
   caId: string;
@@ -97,11 +99,7 @@ const editSchema = z.object({
         seen.add(normalized);
       });
     }),
-  crlValidityDays: z.coerce
-    .number()
-    .int("Must be a whole number of days")
-    .min(MIN_CRL_VALIDITY_DAYS, `Must be at least ${MIN_CRL_VALIDITY_DAYS} day`)
-    .max(MAX_CRL_VALIDITY_DAYS, `Must be ${MAX_CRL_VALIDITY_DAYS} days or less`)
+  crlValidityDays: crlValidityDaysSchema
 });
 
 type EditFormData = z.infer<typeof editSchema>;
@@ -120,6 +118,7 @@ export const CaRevocationSection = ({ caId }: Props) => {
     control,
     handleSubmit,
     reset,
+    trigger,
     formState: { isSubmitting }
   } = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
@@ -180,13 +179,21 @@ export const CaRevocationSection = ({ caId }: Props) => {
     }
 
     try {
-      await updateCa({
+      const { crlWarning } = await updateCa({
         id: ca.id,
         type: CaType.INTERNAL,
         configuration: changedConfiguration as TInternalCertificateAuthority["configuration"]
       });
-      createNotification({ text: "Revocation settings updated", type: "success" });
       handlePopUpToggle("editRevocation", false);
+      if (crlWarning) {
+        createNotification({
+          title: "Revocation settings updated, CRL not regenerated",
+          text: crlWarning,
+          type: "warning"
+        });
+        return;
+      }
+      createNotification({ text: "Revocation settings updated", type: "success" });
     } catch {
       handlePopUpToggle("editRevocation", true);
     }
@@ -278,7 +285,8 @@ export const CaRevocationSection = ({ caId }: Props) => {
           <DialogHeader>
             <DialogTitle>Edit Revocation</DialogTitle>
             <DialogDescription>
-              OCSP and CRL URL changes apply to certificates issued after you save.
+              OCSP and CRL URL changes apply to certificates issued after you save. Changing the CRL
+              validity regenerates the CRL.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onEditSubmit)} className="flex flex-col gap-4">
@@ -383,44 +391,11 @@ export const CaRevocationSection = ({ caId }: Props) => {
                 </FieldContent>
               </Field>
 
-              <Controller
+              <CrlValidityDaysField
                 control={control}
                 name="crlValidityDays"
-                render={({ field, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="crl-validity-days">
-                      CRL Validity (Days)
-                      {!subscription.caCrl && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="info">Enterprise</Badge>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs">
-                            Custom CRL validity is available on Infisical&apos;s Enterprise plan.
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                    </FieldLabel>
-                    <FieldContent>
-                      <Input
-                        {...field}
-                        id="crl-validity-days"
-                        type="number"
-                        disabled={
-                          isCaExpired ||
-                          (!subscription.caCrl && crlValidityDays === DEFAULT_CRL_VALIDITY_DAYS)
-                        }
-                        isError={Boolean(error)}
-                      />
-                      <FieldDescription>
-                        {isCaExpired
-                          ? "This CA has expired. Renew it to change the CRL validity."
-                          : `How long each CRL is valid, from ${MIN_CRL_VALIDITY_DAYS} to ${MAX_CRL_VALIDITY_DAYS} days, and never past the CA certificate's expiry. Saving a new value regenerates the CRL.`}
-                      </FieldDescription>
-                      <FieldError errors={[error]} />
-                    </FieldContent>
-                  </Field>
-                )}
+                trigger={trigger}
+                isCaExpired={isCaExpired}
               />
             </FieldGroup>
 

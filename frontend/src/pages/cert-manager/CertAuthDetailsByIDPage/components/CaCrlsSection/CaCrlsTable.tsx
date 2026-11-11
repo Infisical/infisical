@@ -27,9 +27,12 @@ import { useGetCaCrls } from "@app/hooks/api";
 
 type Props = {
   caId: string;
+  caName: string;
 };
 
-export const CaCrlsTable = ({ caId }: Props) => {
+const formatFullTimestamp = (date: string) => format(new Date(date), "MMM dd, yyyy HH:mm:ss zzz");
+
+export const CaCrlsTable = ({ caId, caName }: Props) => {
   const { data: caCrls, isPending } = useGetCaCrls(caId);
 
   const downloadTxtFile = (filename: string, content: string) => {
@@ -68,7 +71,7 @@ export const CaCrlsTable = ({ caId }: Props) => {
       </TableHeader>
       <TableBody>
         {caCrls.map(({ id, crl, crlNumber, thisUpdate, nextUpdate }) => {
-          const crlUrl = `${window.origin}/api/v1/cert-manager/crl/${id}`;
+          const crlUrl = `${window.origin}/api/v1/cert-manager/crl/${id}/der`;
           return (
             <TableRow key={`ca-crl-${id}`} className="group">
               <TableCell className="max-w-0">
@@ -86,9 +89,23 @@ export const CaCrlsTable = ({ caId }: Props) => {
                   />
                 </div>
               </TableCell>
-              <TableCell>{crlNumber}</TableCell>
-              <TableCell>{format(new Date(thisUpdate), "yyyy-MM-dd")}</TableCell>
-              <TableCell>{format(new Date(nextUpdate), "yyyy-MM-dd")}</TableCell>
+              <TableCell>{crlNumber ?? "-"}</TableCell>
+              <TableCell>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <time dateTime={thisUpdate}>{format(new Date(thisUpdate), "yyyy-MM-dd")}</time>
+                  </TooltipTrigger>
+                  <TooltipContent>{formatFullTimestamp(thisUpdate)}</TooltipContent>
+                </Tooltip>
+              </TableCell>
+              <TableCell>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <time dateTime={nextUpdate}>{format(new Date(nextUpdate), "yyyy-MM-dd")}</time>
+                  </TooltipTrigger>
+                  <TooltipContent>{formatFullTimestamp(nextUpdate)}</TooltipContent>
+                </Tooltip>
+              </TableCell>
               <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -109,7 +126,12 @@ export const CaCrlsTable = ({ caId }: Props) => {
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
-                        downloadTxtFile("crl.pem", crl);
+                        downloadTxtFile(
+                          crlNumber === null
+                            ? `${caName}-crl.pem`
+                            : `${caName}-crl-${crlNumber}.pem`,
+                          crl
+                        );
                       }}
                     >
                       <DownloadIcon />

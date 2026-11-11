@@ -1,16 +1,96 @@
 ---
-title: "CRL distribution points"
-sidebarTitle: "CRL distribution"
-description: "Configure Certificate Revocation List (CRL) distribution points, CRL validity, and on-demand CRL regeneration for your internal CAs."
+title: "Certificate revocation lists (CRLs)"
+sidebarTitle: "CRLs"
+description: "Set how long the certificate revocation lists (CRLs) of your internal CAs stay valid, regenerate a CRL on demand, and configure CRL mirror URLs."
 ---
 
-Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP) extension that tells validators where to fetch the revocation list. You can register additional mirror URLs at the CA level so validators have fallback locations if the primary endpoint is unreachable.
+Each internal CA has a certificate revocation list (CRL), a signed list of the certificates the CA has revoked. Validators download the CRL to check whether a certificate is still trusted. This page covers CRL validity, regenerating a CRL, and CRL mirror URLs.
 
 <Info>
-  This page is for product admins managing PKI infrastructure. CRL configuration is an advanced topic — most users don't need to configure custom mirrors.
+  This page is for product admins who manage internal CAs. The default CRL settings work for most CAs.
 </Info>
 
-## How it works
+## Set the CRL validity
+
+Each CRL carries a next update time. Clients treat a CRL as current until that time and fetch a new one after it. The CRL is regenerated automatically before that time, until the CA certificate expires. A CA's CRLs are valid for 7 days by default, and you can set any whole number of days from 1 to 365:
+
+- Use a longer validity, such as 30 days, if clients are often offline and can't fetch a new CRL every few days
+- Use a shorter validity, such as 1 day, if clients are always online and need to see revocations sooner
+
+Changing the validity regenerates the CRL right away. If the CA certificate expires before the validity period ends, the CRL's next update time is the CA certificate's expiry instead.
+
+A validity other than 7 days requires the Enterprise plan.
+
+<Note>
+  You can't change the validity of a CA that has expired. Renew the CA first.
+</Note>
+
+<Tabs>
+  <Tab title="Infisical UI">
+    When you create an internal CA, set **CRL Validity (Days)** in the **Distribution** step. To change it on an existing CA:
+
+    <Steps>
+      <Step>
+        Go to **Certificate Manager → Certificate Authorities → Internal** and select your CA.
+      </Step>
+      <Step>
+        Select the pencil icon on the **Revocation** card.
+      </Step>
+      <Step>
+        Enter the number of days in **CRL Validity (Days)** and select **Save**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Set `crlValidityDays` under `configuration` when you call the internal CA [Create](/api-reference/endpoints/certificate-authorities/internal/create) or [Update](/api-reference/endpoints/certificate-authorities/internal/update) endpoint. If you leave it out when creating a CA, the CA uses 7 days.
+
+    ```bash
+    curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>' \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "configuration": {
+              "crlValidityDays": 30
+          }
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+## Regenerate a CRL
+
+CRLs are [regenerated automatically](#set-the-crl-validity). Regenerate one yourself when you need a fresh copy with a full validity period, for example before you copy the CRL to clients on an offline network. The new CRL replaces the current one at the same URL and gets a higher CRL number. CRL numbers are based on the signing time, so they keep increasing after you restore Infisical from a backup.
+
+Regenerating a CRL requires the Enterprise plan. Only **Product Admins** can regenerate a CRL.
+
+<Note>
+  **Regenerate CRL** is unavailable for a CA that's waiting for its certificate or has expired.
+</Note>
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        Go to **Certificate Manager → Certificate Authorities → Internal** and select your CA.
+      </Step>
+      <Step>
+        Select **Regenerate CRL** on the **CA Certificate Revocation Lists (CRLs)** card, then select **Regenerate CRL** to confirm.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Call the [Regenerate CRL](/api-reference/endpoints/certificate-authorities/internal/regenerate-crl) endpoint.
+
+    ```bash
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/crls/regenerate' \
+      --header 'Authorization: Bearer <access-token>'
+    ```
+  </Tab>
+</Tabs>
+
+## CRL distribution points
+
+Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP) extension that tells validators where to fetch the CRL. You can register additional mirror URLs at the CA level so validators have fallback locations if the primary endpoint is unreachable.
 
 - The **Infisical-managed URL** is included as the primary CDP by default. It can be disabled per CA.
 - Up to **4 mirror URLs** can be configured per CA.
@@ -18,7 +98,7 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
 - URL changes apply only to certificates issued **after** the update. Existing certificates aren't affected.
 
 <Warning>
-  Infisical only **advertises** the mirror URLs in issued certificates — it doesn't publish your CRL to them. You're responsible for fetching the latest CRL from Infisical and serving an up-to-date copy at every mirror URL you register. If a mirror serves a stale CRL, validators that fall back to it will get outdated revocation information and may continue to trust certificates you have already revoked.
+  Infisical only **advertises** the mirror URLs in issued certificates. It doesn't publish your CRL to them. You're responsible for fetching the latest CRL from Infisical and serving an up-to-date copy at every mirror URL you register. If a mirror serves a stale CRL, validators that fall back to it will get outdated revocation information and may continue to trust certificates you have already revoked.
 </Warning>
 
 ## Configure CRL mirrors
@@ -82,85 +162,7 @@ Every certificate issued by an internal CA embeds a CRL Distribution Point (CDP)
       }'
     ```
 
-    Setting `disableManagedCrlDistributionPointUrl` to `true` removes the Infisical-managed CRL endpoint from the CDP extension of newly issued certificates. The managed CRL endpoint itself remains available — this only controls whether its URL is advertised in certificates.
-  </Tab>
-</Tabs>
-
-## Set the CRL validity
-
-Each CRL carries a next update time. Clients treat a CRL as current until that time and fetch a new one after it. A CA's CRLs are valid for 7 days by default, and you can set any whole number of days from 1 to 365:
-
-- Use a longer validity, such as 30 days, if clients are often offline and can't fetch a new CRL every few days
-- Use a shorter validity, such as 1 day, if clients are always online and need to see revocations sooner
-
-Changing the validity regenerates the CRL right away. If the CA certificate expires before the validity period ends, the CRL's next update time is the CA certificate's expiry instead.
-
-A validity other than 7 days requires the Enterprise plan.
-
-<Note>
-  You can't change the validity of a CA that has expired. Renew the CA first.
-</Note>
-
-<Tabs>
-  <Tab title="Infisical UI">
-    When you create an internal CA, set **CRL Validity (Days)** in the **Distribution** step. To change it on an existing CA:
-
-    <Steps>
-      <Step>
-        Go to **Certificate Manager → Certificate Authorities → Internal** and select your CA.
-      </Step>
-      <Step>
-        Select the pencil icon on the **Revocation** card.
-      </Step>
-      <Step>
-        Enter the number of days in **CRL Validity (Days)** and select **Save**.
-      </Step>
-    </Steps>
-  </Tab>
-  <Tab title="API">
-    Set `crlValidityDays` under `configuration` when you call the internal CA [Create](/api-reference/endpoints/certificate-authorities/internal/create) or [Update](/api-reference/endpoints/certificate-authorities/internal/update) endpoint. If you leave it out when creating a CA, the CA uses 7 days.
-
-    ```bash
-    curl --location --request PATCH 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>' \
-      --header 'Authorization: Bearer <access-token>' \
-      --header 'Content-Type: application/json' \
-      --data-raw '{
-          "configuration": {
-              "crlValidityDays": 30
-          }
-      }'
-    ```
-  </Tab>
-</Tabs>
-
-## Regenerate a CRL
-
-Regenerate a CRL when you need a fresh copy with a full validity period, for example right before you copy the CRL to clients on a network without internet access. The new CRL replaces the current one at the same URL, with the next CRL number and a next update time based on the CA's [CRL validity](#set-the-crl-validity).
-
-Regenerating a CRL requires the Enterprise plan and permission to edit the CA, which the Admin role has.
-
-<Note>
-  **Regenerate CRL** is unavailable for a CA that's waiting for its certificate or has expired.
-</Note>
-
-<Tabs>
-  <Tab title="Infisical UI">
-    <Steps>
-      <Step>
-        Go to **Certificate Manager → Certificate Authorities → Internal** and select your CA.
-      </Step>
-      <Step>
-        Select **Regenerate CRL** on the **CA Certificate Revocation Lists (CRLs)** card, then select **Regenerate CRL** to confirm.
-      </Step>
-    </Steps>
-  </Tab>
-  <Tab title="API">
-    Call the [Regenerate CRL](/api-reference/endpoints/certificate-authorities/internal/regenerate-crl) endpoint.
-
-    ```bash
-    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/crls/rebuild' \
-      --header 'Authorization: Bearer <access-token>'
-    ```
+    Setting `disableManagedCrlDistributionPointUrl` to `true` removes the Infisical-managed CRL endpoint from the CDP extension of newly issued certificates. The managed CRL endpoint itself remains available, and this setting only controls whether its URL is advertised in certificates.
   </Tab>
 </Tabs>
 
@@ -170,7 +172,7 @@ Each CA's CRL is regenerated whenever a certificate is revoked, and again before
 
 ### Fetch the current CRL
 
-The current CRL is served in DER format at the CA's managed CRL URL, shown on the **CA Certificate Revocation Lists (CRLs)** card. Download it and write it to your mirror destination using your preferred sync method:
+The current CRL is served in DER format at the **Distribution Point URL** on the **CA Certificate Revocation Lists (CRLs)** card. Download it and write it to your mirror destination using your preferred sync method:
 
 ```bash
 curl --location 'https://app.infisical.com/api/v1/cert-manager/crl/<crl-id>/der' --output internal-ca.crl
@@ -179,7 +181,7 @@ curl --location 'https://app.infisical.com/api/v1/cert-manager/crl/<crl-id>/der'
 To look up `<crl-id>` with the API, call the [List CRLs](/api-reference/endpoints/certificate-authorities/internal/crl) endpoint and use the `id` of the entry.
 
 <Note>
-  Run this on a cron schedule that's well within the CRL validity window — every few hours is a reasonable default — so mirrors never serve a stale or expired CRL to validators.
+  Run this on a cron schedule that's well within the [CRL validity](#set-the-crl-validity), such as every few hours, so mirrors never serve a stale or expired CRL to validators.
 </Note>
 
 ### Example: Sync to S3

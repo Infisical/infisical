@@ -24,7 +24,7 @@ export {
   useInstallCaCertificateAdcsNative,
   useInstallCaCertificateVenafi,
   useOrderCertificateWithProfile,
-  useRebuildCaCrl,
+  useRegenerateCaCrl,
   useRenewCa,
   useSignIntermediate,
   useUpdateCa,

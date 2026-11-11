@@ -26,7 +26,11 @@ import { ActorType } from "@app/services/auth/auth-type";
 import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import {
+  CaCapability,
+  CaCrlRegenerationTrigger,
+  CaType
+} from "@app/services/certificate-authority/certificate-authority-enums";
 import { caIssuesFromCsr, caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
@@ -818,9 +822,12 @@ export const certificateServiceFactory = ({
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
     }
 
+    let crlWarning: string | undefined;
     if (!ca.externalCa?.id && !getInternalCaExpiredAt(ca.internalCa?.notAfter)) {
-      await rebuildCaCrlAfterChange({
+      const crlRegeneration = await rebuildCaCrlAfterChange({
         caId: ca.id,
+        trigger: CaCrlRegenerationTrigger.Revocation,
+        auditLogService,
         certificateAuthorityDAL,
         certificateAuthorityCertDAL,
         certificateAuthorityCrlDAL,
@@ -831,6 +838,7 @@ export const certificateServiceFactory = ({
         caKeySourceService,
         keyStore
       });
+      if (!crlRegeneration.isRegenerated) crlWarning = crlRegeneration.reason;
     }
 
     if (!cert.deletedAt) {
@@ -859,7 +867,13 @@ export const certificateServiceFactory = ({
         }
       : expandInternalCa(ca);
 
-    return { revokedAt, cert, applicationName: await $resolveApplicationName(cert.applicationId), ca: caResult };
+    return {
+      revokedAt,
+      cert,
+      applicationName: await $resolveApplicationName(cert.applicationId),
+      ca: caResult,
+      crlWarning
+    };
   };
 
   /**

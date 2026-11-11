@@ -2,15 +2,14 @@ import { z } from "zod";
 
 import {
   DEFAULT_CRL_VALIDITY_DAYS,
-  MAX_CRL_VALIDITY_DAYS,
   MAX_DISTRIBUTION_POINT_URL_LENGTH,
-  MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS,
-  MIN_CRL_VALIDITY_DAYS
+  MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS
 } from "@app/hooks/api/ca";
 import { InternalCaType } from "@app/hooks/api/ca/enums";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { CertKeySource } from "@app/hooks/api/signers";
 import { slugSchema } from "@app/lib/schemas";
+import { crlValidityDaysSchema } from "@app/pages/cert-manager/components/CrlValidityDaysField";
 
 import { isKeyAlgorithmSupportedByKeySource } from "./types";
 
@@ -66,12 +65,7 @@ export const caWizardSchema = z
     isOcspEnabled: z.boolean().default(false),
     disableManagedCrlDistributionPointUrl: z.boolean().default(false),
     crlDistributionPointUrls: distributionPointUrlsSchema.default([]),
-    crlValidityDays: z.coerce
-      .number()
-      .int("Must be a whole number of days")
-      .min(MIN_CRL_VALIDITY_DAYS, `Must be at least ${MIN_CRL_VALIDITY_DAYS} day`)
-      .max(MAX_CRL_VALIDITY_DAYS, `Must be ${MAX_CRL_VALIDITY_DAYS} days or less`)
-      .default(DEFAULT_CRL_VALIDITY_DAYS)
+    crlValidityDays: crlValidityDaysSchema.default(DEFAULT_CRL_VALIDITY_DAYS)
   })
   .refine(
     (data) =>

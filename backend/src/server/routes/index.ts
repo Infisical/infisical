@@ -3840,7 +3840,8 @@ export const registerRoutes = async (
     pkiSyncQueue,
     caKeySourceService,
     gatewayV2Service,
-    gatewayPoolService
+    gatewayPoolService,
+    auditLogService
   });
 
   const certificateAuthorityOcspService = certificateAuthorityOcspServiceFactory({
@@ -3865,7 +3866,8 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     caKeySourceService,
-    keyStore
+    keyStore,
+    auditLogService
   });
 
   const internalCertificateAuthorityService = internalCertificateAuthorityServiceFactory({
@@ -3890,7 +3892,8 @@ export const registerRoutes = async (
     caSigningConfigDAL,
     usageMeteringService,
     caKeySourceService,
-    keyStore
+    keyStore,
+    auditLogService
   });
 
   const certificateAuthorityCrossSignedCertService = certificateAuthorityCrossSignedCertServiceFactory({
