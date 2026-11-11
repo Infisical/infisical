@@ -82,7 +82,7 @@ describe("validateCloudflareConnectionCredentials", () => {
       } as AxiosResponse)
     );
 
-    // 2. User-owned endpoint verifies the token
+    // 2. User-owned endpoint verifies the token is active
     safeRequestGetMock.mockResolvedValueOnce({
       data: {
         success: true,
@@ -93,14 +93,61 @@ describe("validateCloudflareConnectionCredentials", () => {
       }
     });
 
+    // 3. Account details endpoint verifies access to the account
+    safeRequestGetMock.mockResolvedValueOnce({
+      data: {
+        result: { id: "test-account-id", name: "Account Name" }
+      }
+    });
+
     const result = await validateCloudflareConnectionCredentials(config);
 
     expect(result).toEqual(credentials);
-    expect(safeRequestGetMock).toHaveBeenCalledTimes(2);
+    expect(safeRequestGetMock).toHaveBeenCalledTimes(3);
     expect(safeRequestGetMock).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining("/client/v4/user/tokens/verify"),
       expect.any(Object)
+    );
+    expect(safeRequestGetMock).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("/client/v4/accounts/test-account-id"),
+      expect.any(Object)
+    );
+  });
+
+  it("rejects a user-owned token when accountId is invalid or inaccessible", async () => {
+    // 1. Account-owned endpoint rejects user token
+    safeRequestGetMock.mockRejectedValueOnce(
+      new AxiosError("Unauthorized", "401", undefined, undefined, {
+        status: 401,
+        data: { errors: [{ message: "Unauthorized to access requested resource" }] }
+      } as AxiosResponse)
+    );
+
+    // 2. User-owned endpoint confirms active token
+    safeRequestGetMock.mockResolvedValueOnce({
+      data: {
+        success: true,
+        result: {
+          id: "user-token-id",
+          status: "active"
+        }
+      }
+    });
+
+    // 3. Scoped account check fails (wrong account ID)
+    const accountError = new AxiosError("Not Found", "404", undefined, undefined, {
+      status: 404,
+      data: { errors: [{ message: "Account not found" }] }
+    } as AxiosResponse);
+    safeRequestGetMock.mockRejectedValueOnce(accountError);
+
+    // 4. Fallback account check also fails
+    safeRequestGetMock.mockRejectedValueOnce(accountError);
+
+    await expect(validateCloudflareConnectionCredentials(config)).rejects.toThrow(
+      "Failed to validate credentials: Account not found"
     );
   });
 
@@ -124,7 +171,7 @@ describe("validateCloudflareConnectionCredentials", () => {
     );
   });
 
-  it("rejects when the token status is disabled or expired", async () => {
+  it("rejects when an account-owned token status is disabled or expired without making further requests", async () => {
     safeRequestGetMock.mockResolvedValueOnce({
       data: {
         success: true,
@@ -138,6 +185,33 @@ describe("validateCloudflareConnectionCredentials", () => {
     await expect(validateCloudflareConnectionCredentials(config)).rejects.toThrow(
       "Unable to validate connection: Cloudflare API token is disabled."
     );
+    expect(safeRequestGetMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects when a user-owned token status is disabled or expired without making further requests", async () => {
+    // 1. Account-owned endpoint rejects
+    safeRequestGetMock.mockRejectedValueOnce(
+      new AxiosError("Unauthorized", "401", undefined, undefined, {
+        status: 401,
+        data: { errors: [{ message: "Unauthorized to access requested resource" }] }
+      } as AxiosResponse)
+    );
+
+    // 2. User-owned endpoint reports expired status
+    safeRequestGetMock.mockResolvedValueOnce({
+      data: {
+        success: true,
+        result: {
+          id: "user-token-id",
+          status: "expired"
+        }
+      }
+    });
+
+    await expect(validateCloudflareConnectionCredentials(config)).rejects.toThrow(
+      "Unable to validate connection: Cloudflare API token is expired."
+    );
+    expect(safeRequestGetMock).toHaveBeenCalledTimes(2);
   });
 
   it("rejects with Cloudflare error message when all verification paths fail with AxiosError", async () => {

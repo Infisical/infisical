@@ -248,12 +248,12 @@ export const validateCloudflareConnectionCredentials = async (config: TCloudflar
   const { apiToken, accountId } = config.credentials;
 
   // Cloudflare separates token verification into:
-  // 1. Account-owned tokens: GET /client/v4/accounts/{accountId}/tokens/verify
+  // 1. Account-owned tokens: GET /client/v4/accounts/{accountId}/tokens/verify (scoped to accountId)
   // 2. User-owned tokens: GET /client/v4/user/tokens/verify
   // Older setups or tokens with broad account access may also access GET /client/v4/accounts/{accountId}
   let lastError: unknown;
 
-  // 1. Try account-owned token verification
+  // 1. Try account-owned token verification (inherently scoped to accountId)
   try {
     const { data } = await safeRequest.get<{
       result?: { status?: string };
@@ -288,16 +288,18 @@ export const validateCloudflareConnectionCredentials = async (config: TCloudflar
       headers: getCloudflareAuthHeaders(apiToken)
     });
 
-    if (data?.result?.status) {
-      if (data.result.status !== "active") {
-        throw new BadRequestError({
-          message: `Unable to validate connection: Cloudflare API token is ${data.result.status}.`
-        });
-      }
-      return config.credentials;
+    if (data?.result?.status && data.result.status !== "active") {
+      throw new BadRequestError({
+        message: `Unable to validate connection: Cloudflare API token is ${data.result.status}.`
+      });
     }
 
-    if (data?.success) {
+    // Active user-owned token verified; ensure it has access to the specified accountId
+    const resp = await safeRequest.get(`${IntegrationUrls.CLOUDFLARE_API_URL}/client/v4/accounts/${accountId}`, {
+      headers: getCloudflareAuthHeaders(apiToken)
+    });
+
+    if (resp.data !== null) {
       return config.credentials;
     }
   } catch (error: unknown) {
