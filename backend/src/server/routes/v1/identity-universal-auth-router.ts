@@ -232,10 +232,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identityUniversalAuth = await server.services.identityUa.attachUniversalAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -372,10 +369,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identityUniversalAuth = await server.services.identityUa.updateUniversalAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -448,10 +442,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identityUniversalAuth = await server.services.identityUa.getIdentityUniversalAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId
       });
 
@@ -498,10 +489,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const identityUniversalAuth = await server.services.identityUa.revokeIdentityUniversalAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
@@ -576,10 +564,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { clientSecret, clientSecretData, orgId } =
         await server.services.identityUa.createUniversalAuthClientSecret({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           identityId: req.params.identityId,
           isActorSuperAdmin: isSuperAdmin(req.auth),
           ...req.body
@@ -644,10 +629,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { clientSecrets: clientSecretData, orgId } = await server.services.identityUa.getUniversalAuthClientSecrets(
         {
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
+          actor: req.permission,
           identityId: req.params.identityId
         }
       );
@@ -695,10 +677,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const clientSecretData = await server.services.identityUa.getUniversalAuthClientSecretById({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         clientSecretId: req.params.clientSecretId
       });
@@ -748,10 +727,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const clientSecretData = await server.services.identityUa.revokeUniversalAuthClientSecret({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         clientSecretId: req.params.clientSecretId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -815,10 +791,7 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req) => {
       const clearLockoutsData = await server.services.identityUa.clearUniversalAuthLockouts({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

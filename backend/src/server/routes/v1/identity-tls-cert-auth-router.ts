@@ -274,10 +274,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     },
     handler: async (req) => {
       const identityTlsCertAuth = await server.services.identityTlsCertAuth.attachTlsCertAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -409,10 +406,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     },
     handler: async (req) => {
       const identityTlsCertAuth = await server.services.identityTlsCertAuth.updateTlsCertAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -489,10 +483,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     handler: async (req) => {
       const identityTlsCertAuth = await server.services.identityTlsCertAuth.getTlsCertAuth({
         identityId: req.params.identityId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       const tlsCertAuthResponse = toTlsCertAuthResponse(identityTlsCertAuth);
@@ -539,10 +530,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
     },
     handler: async (req) => {
       const identityTlsCertAuth = await server.services.identityTlsCertAuth.revokeTlsCertAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

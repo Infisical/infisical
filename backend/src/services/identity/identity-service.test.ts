@@ -1,7 +1,7 @@
-import { createMongoAbility } from "@casl/ability";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeInstanceConfigCoreDomain } from "@app/domains/platform/instance-config-core/ce/testing/fake-instance-config-core-domain";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 
@@ -33,15 +33,15 @@ const TX = { sentinel: "tx" } as unknown as Knex;
 
 const buildDto = (): TDeleteIdentityDTO =>
   ({
-    actor: "user",
-    actorId: "actor-1",
-    actorAuthMethod: null,
-    actorOrgId: ORG_ID,
+    actor: {
+      principal: { type: "user", id: "actor-1" },
+      org: { id: ORG_ID, shouldUseNewPrivilegeSystem: false }
+    },
     id: IDENTITY_ID
   }) as unknown as TDeleteIdentityDTO;
 
 const createService = ({
-  // Equal to actorOrgId means the identity lives here and the row itself is deleted. Different
+  // Equal to the actor's org means the identity lives here and the row itself is deleted. Different
   // means it was only invited in, so the delete just takes the membership away.
   identityOrgId = ORG_ID,
   hasDeleteProtection = false,
@@ -76,17 +76,16 @@ const createService = ({
     membershipIdentityService: { removeIdentityFromOrg },
     membershipRoleDAL: {} as never,
     identityProjectDAL: { findByIdentityId: vi.fn() } as never,
-    permissionService: {
+    organizationsDomain: {
       getOrgPermission: vi
         .fn()
-        .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) }),
-      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: createMongoAbility([]) }])
+        .mockResolvedValue(Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] })),
+      getOrgPermissionByRoles: vi.fn().mockResolvedValue([{ permission: Permission.fromRules({ rules: [] }) }])
     } as never,
     licenseDomain,
     instanceConfigCoreDomain: new FakeInstanceConfigCoreDomain(),
     keyStore: { sortedSetRangeByScore: vi.fn().mockResolvedValue([]) } as never,
     orgDAL: {
-      findById: vi.fn().mockResolvedValue({ id: ORG_ID, shouldUseNewPrivilegeSystem: false }),
       findEffectiveOrgMembership: vi.fn().mockResolvedValue({ id: "membership-1", scopeOrgId: ORG_ID })
     } as never,
     alertService: { deleteAlertsForDeletedResource } as never,

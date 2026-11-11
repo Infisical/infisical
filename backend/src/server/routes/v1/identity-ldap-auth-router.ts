@@ -434,10 +434,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.attachLdapAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -571,10 +568,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.updateLdapAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -658,10 +652,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.getLdapAuth({
         identityId: req.params.identityId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -711,10 +702,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const identityLdapAuth = await server.services.identityLdapAuth.revokeIdentityLdapAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });
@@ -777,10 +765,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const clearLockoutsData = await server.services.identityLdapAuth.clearLdapAuthLockouts({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId
       });
 

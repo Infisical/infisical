@@ -221,10 +221,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     },
     handler: async (req) => {
       const identityAliCloudAuth = await server.services.identityAliCloudAuth.attachAliCloudAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
@@ -329,10 +326,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     },
     handler: async (req) => {
       const identityAliCloudAuth = await server.services.identityAliCloudAuth.updateAliCloudAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body,
         identityId: req.params.identityId,
         allowedArns: req.body.allowedArns,
@@ -403,10 +397,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     handler: async (req) => {
       const identityAliCloudAuth = await server.services.identityAliCloudAuth.getAliCloudAuth({
         identityId: req.params.identityId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
@@ -451,10 +442,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     },
     handler: async (req) => {
       const identityAliCloudAuth = await server.services.identityAliCloudAuth.revokeIdentityAliCloudAuth({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         identityId: req.params.identityId,
         isActorSuperAdmin: isSuperAdmin(req.auth)
       });

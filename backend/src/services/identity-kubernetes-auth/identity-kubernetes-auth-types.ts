@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TLoginKubernetesAuthDTO = {
   identityId: string;
@@ -29,7 +29,7 @@ export type TAttachKubernetesAuthDTO = {
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateKubernetesAuthDTO = {
   identityId: string;
@@ -49,11 +49,11 @@ export type TUpdateKubernetesAuthDTO = {
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetKubernetesAuthDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 type TCreateTokenReviewSuccessResponse = {
   authenticated: true;
@@ -93,4 +93,4 @@ export type TKubernetesTokenRequest = {
 export type TRevokeKubernetesAuthDTO = {
   identityId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

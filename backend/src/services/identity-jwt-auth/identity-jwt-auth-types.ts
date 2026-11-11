@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export enum JwtConfigurationType {
   JWKS = "jwks",
@@ -20,7 +20,7 @@ export type TAttachJwtAuthDTO = {
   accessTokenNumUsesLimit: number;
   accessTokenTrustedIps: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateJwtAuthDTO = {
   identityId: string;
@@ -37,16 +37,16 @@ export type TUpdateJwtAuthDTO = {
   accessTokenNumUsesLimit?: number;
   accessTokenTrustedIps?: { ipAddress: string }[];
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetJwtAuthDTO = {
   identityId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRevokeJwtAuthDTO = {
   identityId: string;
   isActorSuperAdmin?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TLoginJwtAuthDTO = {
   identityId: string;
