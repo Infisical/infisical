@@ -733,7 +733,7 @@ export const userServiceFactory = ({
 
   const deleteUser = async (
     userId: string,
-    { deleteLastMemberOrganizations = false }: { deleteLastMemberOrganizations?: boolean } = {}
+    { lastMemberOrganizationIds }: { lastMemberOrganizationIds?: string[] } = {}
   ) => {
     // If the deleting user is the only remaining server admin, block self-deletion.
     // The super_admin table's `initialized` flag is not reset on user delete, so
@@ -754,17 +754,26 @@ export const userServiceFactory = ({
     }
 
     // An org left with no one who can sign in keeps billing with no way to cancel it.
-    const lastMemberOrgs = unique(
-      (await orgDAL.findAllOrgsByUserId(userId, { lastMember: true })).filter(
-        (org) => org.userStatus !== OrgMembershipStatus.Invited
-      ),
-      (org) => org.id
+    const lastMemberOrgs = (await orgDAL.findAllOrgsByUserId(userId, { lastMember: true })).filter(
+      (org) => org.userStatus !== OrgMembershipStatus.Invited
     );
 
-    if (lastMemberOrgs.length && !deleteLastMemberOrganizations) {
+    // Only orgs the caller reviewed may go: if the list moved since they saw it, they review it again.
+    const confirmedOrgIds = new Set(lastMemberOrganizationIds ?? []);
+    const matchesConfirmed =
+      lastMemberOrgs.length === confirmedOrgIds.size && lastMemberOrgs.every((org) => confirmedOrgIds.has(org.id));
+    if (!matchesConfirmed) {
       const orgNames = lastMemberOrgs.map((org) => `'${org.name}'`).join(", ");
+      const orgNoun = lastMemberOrgs.length === 1 ? "the organization" : "the organizations";
+      if (!lastMemberOrganizationIds) {
+        throw new BadRequestError({
+          message: `You are the last member of ${orgNoun} ${orgNames}. Invite another member, or delete ${lastMemberOrgs.length === 1 ? "it" : "them"} along with your account.`
+        });
+      }
       throw new BadRequestError({
-        message: `You are the last member of ${lastMemberOrgs.length === 1 ? "the organization" : "the organizations"} ${orgNames}. Invite another member, or delete ${lastMemberOrgs.length === 1 ? "it" : "them"} along with your account.`
+        message: lastMemberOrgs.length
+          ? `The organizations you are the last member of have changed. You are now the last member of ${orgNoun} ${orgNames}. Review them and try again; nothing was deleted.`
+          : "You are no longer the last member of any organization. Review your account deletion and try again; nothing was deleted."
       });
     }
 

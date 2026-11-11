@@ -886,15 +886,15 @@ export const SPIFFE_AUTH = {
 
 export const USERS = {
   DELETE: {
-    deleteLastMemberOrganizations:
-      "Set to true to also delete every organization where you are the last member who can sign in, which cancels their subscriptions. Without it, the request is refused while any such organization exists."
+    lastMemberOrganizationIds:
+      "Comma-separated IDs of the organizations where you are the last member who can sign in, as listed by GET /api/v1/organization?lastMember=true. They are deleted with your account, which cancels their subscriptions. The request is refused unless this matches that list exactly, and refused without it while any such organization exists."
   }
 };
 
 export const ORGANIZATIONS = {
   LIST: {
     lastMember:
-      "When true, return only the organizations where you are the last member who can sign in. Deleting your account with deleteLastMemberOrganizations deletes these organizations."
+      "When true, return only the organizations where you are the last member who can sign in. Deleting your account deletes these organizations, and requires their IDs in lastMemberOrganizationIds."
   },
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."

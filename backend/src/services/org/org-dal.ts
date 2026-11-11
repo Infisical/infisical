@@ -442,25 +442,43 @@ export const orgDALFactory = (db: TDbClient) => {
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorUserId`);
 
-      // Invited and deactivated users cannot sign in to the org, and ghost users are legacy service
-      // accounts, so none of them could manage the org (or its billing) once this user is gone.
+      // Anyone else who can sign in to the org keeps it, directly or through a group, and so does anyone in
+      // one of its sub-orgs, since deleting the org cascades to them. Invited and deactivated memberships
+      // cannot sign in, and ghost users are legacy service accounts, so none of them could manage the org
+      // (or its billing) once this user is gone.
       if (lastMember) {
-        void query.whereNotExists((qb) => {
+        const signInMembershipsOfOrgTree = (qb: Knex.QueryBuilder, alias: string) => {
           void qb
-            .select(db.raw("1"))
-            .from(`${TableName.Membership} as otherMembership`)
-            .join(TableName.Users, "otherMembership.actorUserId", `${TableName.Users}.id`)
-            .where("otherMembership.scopeOrgId", db.ref(`${TableName.Membership}.scopeOrgId`))
-            .where("otherMembership.scope", AccessScope.Organization)
-            .whereNot("otherMembership.actorUserId", userId)
-            .where("otherMembership.isActive", true)
-            .where((statusQb) => {
-              void statusQb
-                .whereNull("otherMembership.status")
-                .orWhereNot("otherMembership.status", OrgMembershipStatus.Invited);
+            .from(`${TableName.Membership} as ${alias}`)
+            .join(`${TableName.Organization} as ${alias}Org`, `${alias}Org.id`, `${alias}.scopeOrgId`)
+            .where((orgQb) => {
+              void orgQb
+                .where(`${alias}Org.id`, db.ref(`${TableName.Membership}.scopeOrgId`))
+                .orWhere(`${alias}Org.rootOrgId`, db.ref(`${TableName.Membership}.scopeOrgId`));
             })
-            .where(`${TableName.Users}.isGhost`, false);
-        });
+            .where(`${alias}.scope`, AccessScope.Organization)
+            .where(`${alias}.isActive`, true)
+            .where((statusQb) => {
+              void statusQb.whereNull(`${alias}.status`).orWhereNot(`${alias}.status`, OrgMembershipStatus.Invited);
+            });
+        };
+
+        void query
+          .whereNotExists((qb) => {
+            signInMembershipsOfOrgTree(qb.select(db.raw("1")), "direct");
+            void qb
+              .join(`${TableName.Users} as directUser`, "directUser.id", "direct.actorUserId")
+              .whereNot("direct.actorUserId", userId)
+              .where("directUser.isGhost", false);
+          })
+          .whereNotExists((qb) => {
+            signInMembershipsOfOrgTree(qb.select(db.raw("1")), "viaGroup");
+            void qb
+              .join(`${TableName.UserGroupMembership} as groupMember`, "groupMember.groupId", "viaGroup.actorGroupId")
+              .join(`${TableName.Users} as groupUser`, "groupUser.id", "groupMember.userId")
+              .whereNot("groupMember.userId", userId)
+              .where("groupUser.isGhost", false);
+          });
       }
 
       const org = (await query
@@ -500,7 +518,8 @@ export const orgDALFactory = (db: TDbClient) => {
         userJoinedAt: Date;
       })[];
 
-      return org;
+      // A membership with several roles comes back once per role.
+      return lastMember ? unique(org, (row) => row.id) : org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org by user id" });
     }

@@ -78,12 +78,14 @@ export const useDeleteMe = () => {
 
   return useMutation({
     mutationFn: async ({
-      deleteLastMemberOrganizations = false
-    }: { deleteLastMemberOrganizations?: boolean } = {}) => {
+      lastMemberOrganizationIds = []
+    }: { lastMemberOrganizationIds?: string[] } = {}) => {
       const {
         data: { user }
       } = await apiRequest.delete<{ user: User }>("/api/v2/users/me", {
-        params: { deleteLastMemberOrganizations }
+        params: lastMemberOrganizationIds.length
+          ? { lastMemberOrganizationIds: lastMemberOrganizationIds.join(",") }
+          : undefined
       });
       return user;
     },

@@ -79,6 +79,8 @@ export const useGetLastMemberOrganizations = ({ enabled = true }: { enabled?: bo
       });
       return organizations;
     },
+    // The account deletion dialog must show the current list, never a cached one.
+    staleTime: 0,
     enabled
   });
 };

@@ -493,7 +493,7 @@ const buildDeleteUserService = (lastMemberOrgs: { id: string; name: string; user
 };
 
 describe("deleteUser last member organizations", () => {
-  test("refuses without the flag and names the organizations", async () => {
+  test("refuses without confirmed organizations and names them", async () => {
     const { service, orgDeletionService, userDAL } = buildDeleteUserService([
       { id: "org-1", name: "Acme", userStatus: "accepted" }
     ]);
@@ -503,18 +503,58 @@ describe("deleteUser last member organizations", () => {
     expect(userDAL.deleteById).not.toHaveBeenCalled();
   });
 
-  test("deletes each organization once, before the user, when the flag is set", async () => {
+  test("deletes the confirmed organizations before the user", async () => {
     const { service, calls, orgDAL } = buildDeleteUserService([
-      { id: "org-1", name: "Acme", userStatus: "accepted" },
-      // One membership with two roles comes back as two rows.
       { id: "org-1", name: "Acme", userStatus: "accepted" },
       { id: "org-2", name: "Beta", userStatus: "accepted" }
     ]);
 
-    await service.deleteUser(USER_ID, { deleteLastMemberOrganizations: true });
+    await service.deleteUser(USER_ID, { lastMemberOrganizationIds: ["org-2", "org-1"] });
 
     expect(orgDAL.findAllOrgsByUserId).toHaveBeenCalledWith(USER_ID, { lastMember: true });
     expect(calls).toEqual(["deleteOrganization:org-1", "deleteOrganization:org-2", "deleteUser"]);
+  });
+
+  test.each([
+    ["an organization the caller never saw", ["org-1"]],
+    ["an organization that is no longer theirs alone", ["org-1", "org-2", "org-3"]],
+    ["a different organization", ["org-1", "org-3"]]
+  ])("refuses and deletes nothing when the server list has %s", async (_, confirmed) => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([
+      { id: "org-1", name: "Acme", userStatus: "accepted" },
+      { id: "org-2", name: "Beta", userStatus: "accepted" }
+    ]);
+
+    await expect(service.deleteUser(USER_ID, { lastMemberOrganizationIds: confirmed })).rejects.toThrow(
+      /have changed.*'Acme', 'Beta'.*nothing was deleted/
+    );
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("refuses confirmed organizations once the caller is no longer the last member of any", async () => {
+    const { service, orgDeletionService, userDAL } = buildDeleteUserService([]);
+
+    await expect(service.deleteUser(USER_ID, { lastMemberOrganizationIds: ["org-1"] })).rejects.toThrow(
+      /no longer the last member/
+    );
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
+  });
+
+  test("refuses the only server admin before touching any organization", async () => {
+    const { service, orgDAL, orgDeletionService, userDAL } = buildDeleteUserService([
+      { id: "org-1", name: "Acme", userStatus: "accepted" }
+    ]);
+    userDAL.findById.mockResolvedValue({ ...user, superAdmin: true });
+    Object.assign(userDAL, { find: vi.fn().mockResolvedValue([{ id: USER_ID }]) });
+
+    await expect(service.deleteUser(USER_ID, { lastMemberOrganizationIds: ["org-1"] })).rejects.toThrow(
+      /only server admin/
+    );
+    expect(orgDAL.findAllOrgsByUserId).not.toHaveBeenCalled();
+    expect(orgDeletionService.deleteOrganization).not.toHaveBeenCalled();
+    expect(userDAL.deleteById).not.toHaveBeenCalled();
   });
 
   test("ignores organizations the user was only invited to", async () => {
@@ -534,7 +574,7 @@ describe("deleteUser last member organizations", () => {
     ]);
     orgDeletionService.deleteOrganization.mockRejectedValueOnce(new Error("boom"));
 
-    await expect(service.deleteUser(USER_ID, { deleteLastMemberOrganizations: true })).rejects.toThrow("boom");
+    await expect(service.deleteUser(USER_ID, { lastMemberOrganizationIds: ["org-1"] })).rejects.toThrow("boom");
     expect(userDAL.deleteById).not.toHaveBeenCalled();
   });
 });

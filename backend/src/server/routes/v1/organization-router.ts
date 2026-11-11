@@ -28,7 +28,7 @@ import { ActorType, AuthMode, MfaMethod, SsoMfaTrust } from "@app/services/auth/
 import { OrgWithSubOrgsSchema, sanitizedOrganizationSchema } from "@app/services/org/org-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { booleanSchema, integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
+import { integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
 const OrgMemberUserSchema = SanitizedUserSchema.pick({
   username: true,
@@ -68,7 +68,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "listOrganizations",
       querystring: z.object({
-        lastMember: booleanSchema.default(false).describe(ORGANIZATIONS.LIST.lastMember)
+        lastMember: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+          .describe(ORGANIZATIONS.LIST.lastMember)
       }),
       response: {
         200: z.object({

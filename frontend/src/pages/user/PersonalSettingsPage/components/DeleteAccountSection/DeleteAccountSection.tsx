@@ -13,7 +13,7 @@ import {
   ConfirmationAlertDialog
 } from "@app/components/v3";
 import { isInfisicalCloud } from "@app/helpers/platform";
-import { useDeleteMe, useGetLastMemberOrganizations } from "@app/hooks/api";
+import { useDeleteMe, useGetBillingOverview, useGetLastMemberOrganizations } from "@app/hooks/api";
 
 const DELETE_CONFIRMATION = "delete my account";
 
@@ -22,14 +22,23 @@ export const DeleteAccountSection = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const { mutateAsync: deleteUserMutateAsync, isPending } = useDeleteMe();
-  const { data: lastMemberOrgs = [], isPending: isLoadingLastMemberOrgs } =
-    useGetLastMemberOrganizations({ enabled: isOpen });
+  const {
+    data: lastMemberOrgs = [],
+    isPending: isLoadingLastMemberOrgs,
+    refetch: refetchLastMemberOrgs
+  } = useGetLastMemberOrganizations({ enabled: isOpen });
 
   const deletesOrgs = lastMemberOrgs.length > 0;
 
+  // isCloud describes the instance, so any of the orgs can answer it.
+  const overview = useGetBillingOverview(lastMemberOrgs[0]?.id ?? "", { enabled: deletesOrgs });
+  const cancelsSubscriptions = overview.data ? overview.data.isCloud : isInfisicalCloud();
+
   const handleDeleteAccountSubmit = async () => {
     try {
-      await deleteUserMutateAsync({ deleteLastMemberOrganizations: deletesOrgs });
+      await deleteUserMutateAsync({
+        lastMemberOrganizationIds: lastMemberOrgs.map((org) => org.id)
+      });
 
       createNotification({
         text: "Account deleted.",
@@ -39,10 +48,9 @@ export const DeleteAccountSection = () => {
       setIsOpen(false);
       navigate({ to: "/login" });
     } catch {
-      createNotification({
-        text: "Failed to delete account.",
-        type: "error"
-      });
+      // The request error toast carries the reason. The server refuses when the orgs it would delete
+      // differ from the ones shown here, so show the current list.
+      await refetchLastMemberOrgs();
     }
   };
 
@@ -74,7 +82,7 @@ export const DeleteAccountSection = () => {
               <p>
                 You are the last member of these organizations, so deleting your account also
                 permanently deletes them and all of their data.
-                {isInfisicalCloud() &&
+                {cancelsSubscriptions &&
                   " Their subscriptions are canceled immediately, and any remaining prepaid commitment is forfeited without a refund."}
               </p>
               <ul className="list-disc pl-5">

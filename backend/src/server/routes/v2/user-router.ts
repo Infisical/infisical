@@ -15,7 +15,7 @@ import {
   getStepUpSessionId,
   MfaStepUpResource
 } from "../mfa-step-up-fns";
-import { booleanSchema, SanitizedUserSchema } from "../sanitizedSchemas";
+import { SanitizedUserSchema } from "../sanitizedSchemas";
 
 export const registerUserRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -565,7 +565,13 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "deleteUser",
       querystring: z.object({
-        deleteLastMemberOrganizations: booleanSchema.default(false).describe(USERS.DELETE.deleteLastMemberOrganizations)
+        lastMemberOrganizationIds: z
+          .string()
+          .max(3800)
+          .transform((value) => [...new Set(value.split(",").map((id) => id.trim()))])
+          .pipe(z.array(z.string().uuid()).max(100))
+          .optional()
+          .describe(USERS.DELETE.lastMemberOrganizationIds)
       }),
       response: {
         200: z.object({
@@ -576,7 +582,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const user = await server.services.user.deleteUser(req.permission.id, {
-        deleteLastMemberOrganizations: req.query.deleteLastMemberOrganizations
+        lastMemberOrganizationIds: req.query.lastMemberOrganizationIds
       });
       return { user };
     }
