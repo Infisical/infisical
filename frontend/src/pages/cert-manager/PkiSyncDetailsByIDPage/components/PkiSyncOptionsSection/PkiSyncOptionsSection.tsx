@@ -12,6 +12,7 @@ import {
 } from "@app/components/v3";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
+  getSyncOptionValueLabel,
   getUnusedExportOptionKeys,
   VALUE_SYNC_OPTION_FIELDS
 } from "@app/helpers/pkiSyncs";
@@ -63,7 +64,7 @@ export const PkiSyncOptionsSection = ({ pkiSync }: Props) => {
                     <DetailLabel>{label}</DetailLabel>
                     <DetailValue>
                       <Badge variant="neutral" className="max-w-full truncate">
-                        {String(value)}
+                        {getSyncOptionValueLabel(key, value)}
                       </Badge>
                     </DetailValue>
                   </Detail>

@@ -9,10 +9,19 @@ export enum CloudflareBundleMethod {
   Force = "force"
 }
 
+export const CLOUDFLARE_BUNDLE_METHOD_LABELS: Record<CloudflareBundleMethod, string> = {
+  [CloudflareBundleMethod.Ubiquitous]: "Compatible",
+  [CloudflareBundleMethod.Optimal]: "Modern",
+  [CloudflareBundleMethod.Force]: "User-defined"
+};
+
 export type TCloudflareCustomCertificatePkiSync = TRootPkiSync & {
   destination: PkiSync.CloudflareCustomCertificate;
   destinationConfig: {
     zoneId: string;
+  };
+  syncOptions: TRootPkiSync["syncOptions"] & {
+    bundleMethod?: CloudflareBundleMethod;
   };
   connection: {
     app: AppConnection.Cloudflare;

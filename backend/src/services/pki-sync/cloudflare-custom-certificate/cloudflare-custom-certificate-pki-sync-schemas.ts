@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_OPTIONS } from "@app/lib/api-docs";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
@@ -26,7 +27,10 @@ export const CloudflareCustomCertificatePkiSyncOptionsSchema = z.object({
   canRemoveCertificates: z.boolean().default(true),
   healthCheckCommand: HostCommandSchema,
   postSyncCommand: HostCommandSchema,
-  bundleMethod: z.nativeEnum(CloudflareBundleMethod).optional(),
+  bundleMethod: z
+    .nativeEnum(CloudflareBundleMethod)
+    .optional()
+    .describe(CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_OPTIONS.bundleMethod),
   certificateNameSchema: z
     .string()
     .trim()

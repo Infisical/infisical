@@ -5336,6 +5336,11 @@ export const IMPERVA_PKI_SYNC_DESTINATION_CONFIG = {
   siteName: "The website's name, kept for display. Imperva's website ID is what the sync acts on."
 };
 
+export const CLOUDFLARE_CUSTOM_CERTIFICATE_PKI_SYNC_OPTIONS = {
+  bundleMethod:
+    "The Cloudflare bundle method for uploaded certificates: ubiquitous (Compatible), optimal (Modern), or force (User-defined, serves the uploaded chain as-is). When omitted, certificates from an Infisical CA use force and all others use ubiquitous."
+};
+
 export const PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATION_CONFIG = {
   template:
     "The Panorama template to store certificates in. Required when the connection points to a Panorama, and not allowed for a firewall.",

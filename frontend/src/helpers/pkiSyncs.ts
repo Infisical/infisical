@@ -1,7 +1,9 @@
 import { AppConnection } from "@app/hooks/api/appConnections";
 import {
+  CLOUDFLARE_BUNDLE_METHOD_LABELS,
   HostCommandVariable,
   isKeystoreExportFormat,
+  PKI_SYNC_EXPORT_FORMAT_LABELS,
   PkiSync,
   PkiSyncExportFormat,
   PkiSyncStatus
@@ -240,6 +242,14 @@ export const VALUE_SYNC_OPTION_FIELDS = [
   { key: "owner", label: "Owner" },
   { key: "group", label: "Group" }
 ] as const;
+
+const SYNC_OPTION_VALUE_LABELS: Record<string, Record<string, string>> = {
+  exportFormat: PKI_SYNC_EXPORT_FORMAT_LABELS,
+  bundleMethod: CLOUDFLARE_BUNDLE_METHOD_LABELS
+};
+
+export const getSyncOptionValueLabel = (key: string, value: unknown) =>
+  SYNC_OPTION_VALUE_LABELS[key]?.[String(value)] ?? String(value);
 
 export const getUnusedExportOptionKeys = (exportFormat?: PkiSyncExportFormat): Set<string> => {
   if (!exportFormat) return new Set();

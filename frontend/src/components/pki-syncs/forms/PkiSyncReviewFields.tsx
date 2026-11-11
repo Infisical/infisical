@@ -15,6 +15,7 @@ import { useProject } from "@app/context";
 import {
   BOOLEAN_SYNC_OPTION_FIELDS,
   getPaloAltoNetworksProfileLabel,
+  getSyncOptionValueLabel,
   getUnusedExportOptionKeys,
   isPaloAltoNetworksPkiSync,
   KEY_VALUE_SYNC_OPTION_FIELDS,
@@ -23,7 +24,6 @@ import {
 } from "@app/helpers/pkiSyncs";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import {
-  PKI_SYNC_EXPORT_FORMAT_LABELS,
   PkiSyncExportFormat,
   usePkiSyncOption,
   usePkiSyncPreviewCertificates
@@ -282,12 +282,7 @@ export const PkiSyncReviewFields = ({ applicationId }: Props = {}) => {
               return null;
             return (
               <ReviewFieldLabel key={key} label={label}>
-                <Badge variant="neutral">
-                  {key === "exportFormat"
-                    ? (PKI_SYNC_EXPORT_FORMAT_LABELS[optionValue as PkiSyncExportFormat] ??
-                      String(optionValue))
-                    : String(optionValue)}
-                </Badge>
+                <Badge variant="neutral">{getSyncOptionValueLabel(key, optionValue)}</Badge>
               </ReviewFieldLabel>
             );
           })}

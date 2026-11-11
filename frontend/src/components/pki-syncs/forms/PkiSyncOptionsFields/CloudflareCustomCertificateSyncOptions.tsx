@@ -14,7 +14,10 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { CloudflareBundleMethod } from "@app/hooks/api/pkiSyncs/types/cloudflare-custom-certificate-sync";
+import {
+  CLOUDFLARE_BUNDLE_METHOD_LABELS,
+  CloudflareBundleMethod
+} from "@app/hooks/api/pkiSyncs/types/cloudflare-custom-certificate-sync";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
 
@@ -54,9 +57,11 @@ export const CloudflareCustomCertificateSyncOptions = () => {
             </SelectTrigger>
             <SelectContent position="popper">
               <SelectItem value={AUTOMATIC}>Automatic</SelectItem>
-              <SelectItem value={CloudflareBundleMethod.Ubiquitous}>Compatible</SelectItem>
-              <SelectItem value={CloudflareBundleMethod.Optimal}>Modern</SelectItem>
-              <SelectItem value={CloudflareBundleMethod.Force}>User-defined</SelectItem>
+              {Object.values(CloudflareBundleMethod).map((method) => (
+                <SelectItem key={method} value={method}>
+                  {CLOUDFLARE_BUNDLE_METHOD_LABELS[method]}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <FieldError errors={[error]} />
