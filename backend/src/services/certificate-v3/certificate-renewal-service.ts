@@ -1179,12 +1179,15 @@ export const certificateRenewalServiceFactory = ({
           csrRenewalRequest && ca && caKeyAlgorithm
             ? {
                 ...csrRenewalRequest,
-                signatureAlgorithm: (await caKeySourceService.resolveCsrSignatureAlgorithm({
-                  caId: ca.id,
-                  keyAlgorithm: caKeyAlgorithm as CertKeyAlgorithm,
-                  csrSignatureAlgorithm: csrRenewalRequest.signatureAlgorithm,
-                  policySignatureAlgorithms: policy?.algorithms?.signature
-                })) as CertSignatureAlgorithm
+                signatureAlgorithm: (await caKeySourceService.resolveCsrSignatureAlgorithm(
+                  {
+                    caId: ca.id,
+                    keyAlgorithm: caKeyAlgorithm as CertKeyAlgorithm,
+                    csrSignatureAlgorithm: csrRenewalRequest.signatureAlgorithm,
+                    policySignatureAlgorithms: policy?.algorithms?.signature
+                  },
+                  tx
+                )) as CertSignatureAlgorithm
               }
             : csrRenewalRequest;
 

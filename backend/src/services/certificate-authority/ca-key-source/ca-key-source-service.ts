@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { TCertificateAuthoritySecret } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -115,18 +117,21 @@ export const caKeySourceServiceFactory = (deps: TCaKeySourceServiceFactoryDep) =
     };
   };
 
-  const resolveCsrSignatureAlgorithm = async ({
-    caId,
-    keyAlgorithm,
-    csrSignatureAlgorithm,
-    policySignatureAlgorithms
-  }: {
-    caId: string;
-    keyAlgorithm: CertKeyAlgorithm;
-    csrSignatureAlgorithm?: string;
-    policySignatureAlgorithms?: string[] | null;
-  }): Promise<string | undefined> => {
-    const caSecret = await deps.certificateAuthoritySecretDAL.findOne({ caId });
+  const resolveCsrSignatureAlgorithm = async (
+    {
+      caId,
+      keyAlgorithm,
+      csrSignatureAlgorithm,
+      policySignatureAlgorithms
+    }: {
+      caId: string;
+      keyAlgorithm: CertKeyAlgorithm;
+      csrSignatureAlgorithm?: string;
+      policySignatureAlgorithms?: string[] | null;
+    },
+    tx?: Knex
+  ): Promise<string | undefined> => {
+    const caSecret = await deps.certificateAuthoritySecretDAL.findOne({ caId }, tx);
     const requiredSignatureAlgorithm =
       caSecret && isExternalCaKeySource(caSecret.keySource)
         ? $getProvider(caSecret.keySource).requiredSignatureAlgorithm?.(keyAlgorithm)
