@@ -2837,14 +2837,18 @@ export const KMS = {
     type: "The type of key to be created, either encrypt-decrypt or sign-verify, based on your intended use for the key.",
     isExportable:
       "Whether the raw key material can be exported after creation. When set to false, the key can never be exported regardless of permissions. This cannot be changed after creation.",
-    hasDeleteProtection: "Prevents deletion of the key when enabled."
+    hasDeleteProtection: "Prevents deletion of the key when enabled.",
+    isPublicKeyPublished:
+      "Publish the key's public key as a JWKS at an unauthenticated URL, so third parties can verify its signatures. Only sign-verify keys using RSA, ECC or ED25519 can be published. Requires the publish-public-key permission."
   },
   UPDATE_KEY: {
     keyId: "The ID of the key to be updated.",
     name: "The updated name of this key. Must be slug-friendly.",
     description: "The updated description of this key.",
     isDisabled: "The flag to enable or disable this key.",
-    hasDeleteProtection: "Enable or disable delete protection for this key."
+    hasDeleteProtection: "Enable or disable delete protection for this key.",
+    isPublicKeyPublished:
+      "Publish this key's public key as a JWKS at an unauthenticated URL, so third parties can verify its signatures. Only sign-verify keys using RSA, ECC or ED25519 can be published."
   },
   ROTATE_KEY: {
     keyId: "The ID of the key to be rotated."
@@ -2882,6 +2886,26 @@ export const KMS = {
 
   GET_PUBLIC_KEY: {
     keyId: "The ID of the key to get the public key for. The key must be for signing and verifying."
+  },
+
+  GET_JWKS: {
+    keyId: "The ID of the key whose published public key to return.",
+    keys: "The key's public key as a JWK, the only entry in the set.",
+    kty: "The key type: RSA for RSA keys, EC for ECC keys, and OKP for ED25519 keys.",
+    use: "Always sig, because the key verifies signatures.",
+    kid: "The key's identifier in the set: the KMS key ID followed by the key version, such as <key-id>:v1. Put it in the kid header of tokens signed with this key, so verifiers can find the key.",
+    alg: "The algorithm the key signs with: ES256, ES384, or ES512 for ECC keys, and EdDSA for ED25519 keys. Left out for RSA keys, which can sign with RS256, RS384, RS512, PS256, PS384, or PS512.",
+    n: "The RSA modulus, base64url encoded.",
+    e: "The RSA public exponent, base64url encoded.",
+    crv: "The curve: P-256, P-384, or P-521 for ECC keys, and Ed25519 for ED25519 keys.",
+    x: "The x coordinate of an ECC public key, or the ED25519 public key itself, base64url encoded.",
+    y: "The y coordinate of an ECC public key, base64url encoded."
+  },
+
+  PUBLIC_JWKS: {
+    kid: "The kid of this key in its published JWKS. Put it in the header of tokens signed with this key. Null for keys that can't publish their public key.",
+    jwksUrl:
+      "The unauthenticated URL serving this key's public key as a JWKS. Null unless the key's public key is published, or when the instance's SITE_URL is unset."
   },
 
   GET_PRIVATE_KEY: {

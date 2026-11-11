@@ -4698,6 +4698,7 @@
                       "api-reference/endpoints/kms/keys/rotate",
                       "api-reference/endpoints/kms/keys/delete",
                       "api-reference/endpoints/kms/keys/public-key",
+                      "api-reference/endpoints/kms/keys/public-jwks",
                       "api-reference/endpoints/kms/keys/private-key",
                       "api-reference/endpoints/kms/keys/bulk-export-private-keys"
                     ]

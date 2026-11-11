@@ -3300,7 +3300,8 @@ export const registerRoutes = async (
     kmsDAL,
     kmsService,
     permissionService,
-    licenseService
+    licenseService,
+    keyStore
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
