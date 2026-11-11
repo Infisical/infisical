@@ -2,6 +2,8 @@ import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
@@ -58,6 +60,12 @@ const delegatedPolicy = {
   delegatedApproval: { type: "servicenow", connectionId: "connection-1" }
 };
 
+const actorContext = (actorId: string) =>
+  ({
+    principal: { type: ActorType.USER, id: actorId, authMethod: AuthMethod.EMAIL },
+    org: { id: "org-1" }
+  }) as unknown as TActorContext;
+
 const createService = ({
   lockedRequest = pendingRequest as unknown,
   delegated = delegatedRequest as unknown,
@@ -72,9 +80,14 @@ const createService = ({
     return current;
   });
   const findSecretAccessPolicies = vi.fn().mockResolvedValue(policy ? [policy] : []);
-  const getProjectPermission =
+  const getSecretsPermission =
     projectAccess === "member"
-      ? vi.fn().mockResolvedValue({ permission, memberships })
+      ? vi.fn().mockResolvedValue({
+          permission: Object.assign(Permission.fromRules({ rules: permission.rules }), {
+            grants: { activeEntries: () => memberships.flatMap((membership) => membership.roles) }
+          }),
+          folderGrants: []
+        })
       : vi
           .fn()
           .mockRejectedValue(
@@ -86,7 +99,7 @@ const createService = ({
       findSecretAccessRequestById: vi.fn().mockImplementation(async () => current)
     },
     secretAccessApprovalGlobalPolicyBridgeDAL: { findSecretAccessPolicies },
-    permissionService: { getProjectPermission },
+    secretsDomain: { getSecretsPermission },
     delegatedApprovalService: { getRequestByRequestId: vi.fn().mockResolvedValue(delegated) },
     approvalRequestDAL: {
       transaction: vi.fn().mockImplementation(async (cb: (tx: string) => unknown) => cb("tx")),
@@ -101,10 +114,7 @@ const createService = ({
 const cancelAs = (service: ReturnType<typeof createService>["service"], actorId: string) =>
   service.cancelAccessApprovalRequest({
     requestId: "req-1",
-    actor: ActorType.USER,
-    actorId,
-    actorOrgId: "org-1",
-    actorAuthMethod: AuthMethod.EMAIL
+    actor: actorContext(actorId)
   });
 
 describe("secretAccessApprovalGlobalRequestBridge.cancelAccessApprovalRequest", () => {
@@ -157,10 +167,7 @@ describe("secretAccessApprovalGlobalRequestBridge.reviewAccessApprovalRequest", 
     service.reviewAccessApprovalRequest({
       requestId: "req-1",
       status,
-      actor: ActorType.USER,
-      actorId: "reviewer",
-      actorOrgId: "org-1",
-      actorAuthMethod: AuthMethod.EMAIL
+      actor: actorContext("reviewer")
     });
 
   test("refuses to approve a request reviewed in an external approval system", async () => {

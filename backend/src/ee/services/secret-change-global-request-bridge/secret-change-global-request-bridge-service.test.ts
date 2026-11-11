@@ -2,6 +2,7 @@ import { Knex } from "knex";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/lib/auth/actor-types";
@@ -216,8 +217,15 @@ const buildService = ({
         })
       )
     },
-    permissionService: {
-      getProjectPermission: vi.fn().mockResolvedValue({ hasRole, permission: { can: vi.fn().mockReturnValue(false) } })
+    secretsDomain: {
+      getSecretsPermission: vi.fn().mockResolvedValue({
+        permission: {
+          hasRole,
+          can: vi.fn().mockReturnValue(false),
+          toAbility: () => ({ can: vi.fn().mockReturnValue(false) })
+        },
+        folderGrants: []
+      })
     },
     membershipUserDAL: {
       find: vi.fn().mockResolvedValue([{ actorUserId: "approver-1", isActive: true }])
@@ -269,6 +277,11 @@ const dto = (overrides: Record<string, unknown> = {}) => ({
   policy: { id: "policy-1" },
   data: { [SecretOperations.Create]: [{ secretKey: "NEW_KEY", secretValue: "v" }] },
   ...overrides
+});
+
+const withActorContext = ({ actor, actorId, actorOrgId, actorAuthMethod: _, ...rest }: Record<string, unknown>) => ({
+  ...rest,
+  actor: { principal: { type: actor, id: actorId }, org: { id: actorOrgId } } as unknown as TActorContext
 });
 
 type TGenerateInput = Parameters<ReturnType<typeof buildService>["service"]["generateSecretChangeRequest"]>[0];
@@ -470,25 +483,28 @@ describe("secretChangeGlobalRequestBridge reviewSecretChangeRequest", () => {
   });
 
   const review = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
-    service.reviewSecretChangeRequest({
-      approvalId: "request-1",
-      actor: ActorType.USER,
-      actorId: "approver-1",
-      actorOrgId: "org-1",
-      actorAuthMethod: null,
-      status: ApprovalStatus.APPROVED,
-      comment: "ship it",
-      ...overrides
-    } as Parameters<ReturnType<typeof buildService>["service"]["reviewSecretChangeRequest"]>[0]);
+    service.reviewSecretChangeRequest(
+      withActorContext({
+        approvalId: "request-1",
+        actor: ActorType.USER,
+        actorId: "approver-1",
+        actorOrgId: "org-1",
+        actorAuthMethod: null,
+        status: ApprovalStatus.APPROVED,
+        comment: "ship it",
+        ...overrides
+      }) as unknown as Parameters<ReturnType<typeof buildService>["service"]["reviewSecretChangeRequest"]>[0]
+    );
 
   test("records an approver's decision on the current step under the request lock and queues the webhook", async () => {
     const { service, deps } = buildService();
 
     const result = await review(service);
 
-    expect(deps.permissionService.getProjectPermission).toHaveBeenCalledWith(
-      expect.objectContaining({ actor: ActorType.USER, actorId: "approver-1", projectId: "project-1" })
-    );
+    expect(deps.secretsDomain.getSecretsPermission).toHaveBeenCalledWith({
+      actor: expect.objectContaining({ principal: { type: ActorType.USER, id: "approver-1" } }) as unknown,
+      projectId: "project-1"
+    });
     expect(deps.approvalRequestDAL.transaction).toHaveBeenCalledTimes(1);
     expect(deps.approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("request-1", OWN_TX);
     expect(deps.approvalRequestApprovalsDAL.findOne).toHaveBeenCalledWith(
@@ -548,7 +564,7 @@ describe("secretChangeGlobalRequestBridge reviewSecretChangeRequest", () => {
 
     hasRole.mockReturnValueOnce(true);
     await expect(review(service, { actorId: "outsider" })).resolves.toMatchObject({ reviewerUserId: "outsider" });
-    expect(hasRole).toHaveBeenCalledWith(ProjectMembershipRole.Admin);
+    expect(hasRole).toHaveBeenCalledWith({ slug: ProjectMembershipRole.Admin });
 
     await expect(review(service, { actorId: "user-1" })).resolves.toMatchObject({ reviewerUserId: "user-1" });
 
@@ -664,14 +680,16 @@ describe("secretChangeGlobalRequestBridge mergeSecretChangeRequest", () => {
   });
 
   const merge = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
-    service.mergeSecretChangeRequest({
-      approvalId: "request-1",
-      actor: ActorType.USER,
-      actorId: "approver-1",
-      actorOrgId: "org-1",
-      actorAuthMethod: null,
-      ...overrides
-    } as Parameters<ReturnType<typeof buildService>["service"]["mergeSecretChangeRequest"]>[0]);
+    service.mergeSecretChangeRequest(
+      withActorContext({
+        approvalId: "request-1",
+        actor: ActorType.USER,
+        actorId: "approver-1",
+        actorOrgId: "org-1",
+        actorAuthMethod: null,
+        ...overrides
+      }) as unknown as Parameters<ReturnType<typeof buildService>["service"]["mergeSecretChangeRequest"]>[0]
+    );
 
   test("applies the commits under the request lock, closes the request and reports the merge", async () => {
     const { service, deps } = buildService({ requestSteps: [stepWith({ approvals: approvedBy("approver-1") })] });
@@ -990,15 +1008,17 @@ describe("secretChangeGlobalRequestBridge updateSecretChangeRequestStatus", () =
   });
 
   const setStatus = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
-    service.updateSecretChangeRequestStatus({
-      approvalId: "request-1",
-      actor: ActorType.USER,
-      actorId: "approver-1",
-      actorOrgId: "org-1",
-      actorAuthMethod: null,
-      status: RequestState.Closed,
-      ...overrides
-    } as Parameters<ReturnType<typeof buildService>["service"]["updateSecretChangeRequestStatus"]>[0]);
+    service.updateSecretChangeRequestStatus(
+      withActorContext({
+        approvalId: "request-1",
+        actor: ActorType.USER,
+        actorId: "approver-1",
+        actorOrgId: "org-1",
+        actorAuthMethod: null,
+        status: RequestState.Closed,
+        ...overrides
+      }) as unknown as Parameters<ReturnType<typeof buildService>["service"]["updateSecretChangeRequestStatus"]>[0]
+    );
 
   test("closes an open request on both tables under the request lock and queues the webhook", async () => {
     const { service, deps } = buildService();
@@ -1220,14 +1240,16 @@ describe("secretChangeGlobalRequestBridge getSecretChangeRequestById", () => {
   };
 
   const details = (service: ReturnType<typeof buildService>["service"], overrides: Record<string, unknown> = {}) =>
-    service.getSecretChangeRequestById({
-      id: "request-1",
-      actor: ActorType.USER,
-      actorId: "approver-1",
-      actorOrgId: "org-1",
-      actorAuthMethod: null,
-      ...overrides
-    } as Parameters<ReturnType<typeof buildService>["service"]["getSecretChangeRequestById"]>[0]);
+    service.getSecretChangeRequestById(
+      withActorContext({
+        id: "request-1",
+        actor: ActorType.USER,
+        actorId: "approver-1",
+        actorOrgId: "org-1",
+        actorAuthMethod: null,
+        ...overrides
+      }) as unknown as Parameters<ReturnType<typeof buildService>["service"]["getSecretChangeRequestById"]>[0]
+    );
 
   const buildDetailsService = (overrides: Parameters<typeof buildService>[0] = {}) => {
     const built = buildService({ requestSteps: [reviewedStep], ...overrides });
@@ -1310,9 +1332,13 @@ describe("secretChangeGlobalRequestBridge getSecretChangeRequestById", () => {
 
     await expect(details(service, { actorId: "stranger" })).rejects.toBeInstanceOf(ForbiddenRequestError);
 
-    deps.permissionService.getProjectPermission.mockResolvedValueOnce({
-      hasRole,
-      permission: { can: vi.fn().mockReturnValue(true) }
+    deps.secretsDomain.getSecretsPermission.mockResolvedValueOnce({
+      permission: {
+        hasRole,
+        can: vi.fn().mockReturnValue(true),
+        toAbility: () => ({ can: vi.fn().mockReturnValue(true) })
+      },
+      folderGrants: []
     });
     await expect(details(service, { actorId: "stranger" })).resolves.toMatchObject({ id: "request-1" });
 

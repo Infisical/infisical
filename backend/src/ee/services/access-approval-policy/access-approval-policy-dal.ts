@@ -181,23 +181,13 @@ export interface TAccessApprovalPolicyDALFactory extends Omit<
 }
 
 export interface TAccessApprovalPolicyServiceFactory {
-  getAccessPolicyCountByEnvSlug: ({
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectSlug,
-    actorId,
-    envSlug
-  }: TGetAccessPolicyCountByEnvironmentDTO) => Promise<{
+  getAccessPolicyCountByEnvSlug: ({ actor, projectSlug, envSlug }: TGetAccessPolicyCountByEnvironmentDTO) => Promise<{
     count: number;
   }>;
   createAccessApprovalPolicy: ({
     name,
     actor,
-    actorId,
-    actorOrgId,
     secretPath,
-    actorAuthMethod,
     approvals,
     approvers,
     bypassers,
@@ -228,13 +218,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     secretPath: string;
     deletedAt?: Date | null | undefined;
   }>;
-  deleteAccessApprovalPolicy: ({
-    policyId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteAccessApprovalPolicy) => Promise<{
+  deleteAccessApprovalPolicy: ({ policyId, actor }: TDeleteAccessApprovalPolicy) => Promise<{
     approvers: {
       id: string | null | undefined;
       type: string;
@@ -264,10 +248,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     bypassers,
     secretPath,
     name,
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     approvals,
     enforcementLevel,
     allowedSelfApprovals,
@@ -290,13 +271,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     secretPath: string;
     deletedAt?: Date | null | undefined;
   }>;
-  getAccessApprovalPolicyByProjectSlug: ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectSlug
-  }: TListAccessApprovalPoliciesDTO) => Promise<
+  getAccessApprovalPolicyByProjectSlug: ({ actor, projectSlug }: TListAccessApprovalPoliciesDTO) => Promise<
     {
       approvers: (
         | {
@@ -342,13 +317,7 @@ export interface TAccessApprovalPolicyServiceFactory {
       )[];
     }[]
   >;
-  getAccessApprovalPolicyById: ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    policyId
-  }: TGetAccessApprovalPolicyByIdDTO) => Promise<{
+  getAccessApprovalPolicyById: ({ actor, policyId }: TGetAccessApprovalPolicyByIdDTO) => Promise<{
     approvers: (
       | {
           id: string | null | undefined;

@@ -1,5 +1,5 @@
 import { ActorAuthMethod } from "@app/lib/auth/actor-types";
-import { EnforcementLevel, OrgServiceActor, TProjectPermission } from "@app/lib/types";
+import { EnforcementLevel, OrgServiceActor, TActorInput } from "@app/lib/types";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
@@ -48,7 +48,7 @@ export type TCreateAccessApprovalPolicy = {
   requestExpirationTime?: string | null;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
   orgActor: OrgServiceActor;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateAccessApprovalPolicy = {
   policyId: string;
@@ -71,43 +71,33 @@ export type TUpdateAccessApprovalPolicy = {
   requestExpirationTime?: string | null;
   delegatedApproval?: TDelegatedApprovalPolicyInput | null;
   orgActor: OrgServiceActor;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteAccessApprovalPolicy = {
   policyId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetAccessPolicyCountByEnvironmentDTO = {
   envSlug: string;
   projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetAccessApprovalPolicyByIdDTO = {
   policyId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListAccessApprovalPoliciesDTO = {
   projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export interface TAccessApprovalPolicyServiceFactory {
-  getAccessPolicyCountByEnvSlug: ({
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectSlug,
-    actorId,
-    envSlug
-  }: TGetAccessPolicyCountByEnvironmentDTO) => Promise<{
+  getAccessPolicyCountByEnvSlug: ({ actor, projectSlug, envSlug }: TGetAccessPolicyCountByEnvironmentDTO) => Promise<{
     count: number;
   }>;
   createAccessApprovalPolicy: ({
     name,
     actor,
-    actorId,
-    actorOrgId,
     secretPath,
-    actorAuthMethod,
     approvals,
     approvers,
     bypassers,
@@ -151,13 +141,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     requestExpirationTime?: string | null;
     delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
   }>;
-  deleteAccessApprovalPolicy: ({
-    policyId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteAccessApprovalPolicy) => Promise<{
+  deleteAccessApprovalPolicy: ({ policyId, actor }: TDeleteAccessApprovalPolicy) => Promise<{
     approvers: {
       id: string | null | undefined;
       type: string;
@@ -195,10 +179,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     bypassers,
     secretPath,
     name,
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     approvals,
     enforcementLevel,
     allowedSelfApprovals,
@@ -230,13 +211,7 @@ export interface TAccessApprovalPolicyServiceFactory {
     maxTimePeriod?: string | null;
     delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
   }>;
-  getAccessApprovalPolicyByProjectSlug: ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    projectSlug
-  }: TListAccessApprovalPoliciesDTO) => Promise<
+  getAccessApprovalPolicyByProjectSlug: ({ actor, projectSlug }: TListAccessApprovalPoliciesDTO) => Promise<
     {
       approvers: (
         | {
@@ -289,13 +264,7 @@ export interface TAccessApprovalPolicyServiceFactory {
       delegatedApproval?: TDelegatedApprovalPolicyOutput | null;
     }[]
   >;
-  getAccessApprovalPolicyById: ({
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    policyId
-  }: TGetAccessApprovalPolicyByIdDTO) => Promise<{
+  getAccessApprovalPolicyById: ({ actor, policyId }: TGetAccessApprovalPolicyByIdDTO) => Promise<{
     approvers: (
       | {
           id: string | null | undefined;

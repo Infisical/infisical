@@ -11,7 +11,7 @@ import {
 } from "@app/db/schemas";
 import { TCipherPair } from "@app/domains/platform/kms-core/ce/module";
 import { ActorType } from "@app/lib/auth/actor-types";
-import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+import { OrderByDirection, TActorInput, TProjectPermission } from "@app/lib/types";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
 import { SecretOperations } from "@app/services/secret/secret-types";
@@ -135,20 +135,20 @@ export type TMergeSecretApprovalRequestDTO = {
   approvalId: string;
   bypassReason?: string;
   requireApprovals?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TStatusChangeDTO = {
   approvalId: string;
   status: RequestState;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TReviewRequestDTO = {
   approvalId: string;
   status: ApprovalStatus;
   comment?: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
-export type TApprovalRequestCountDTO = TProjectPermission & { policyId?: string };
+export type TApprovalRequestCountDTO = { projectId: string; policyId?: string } & TActorInput;
 
 export type TListApprovalsDTO = {
   projectId: string;
@@ -160,11 +160,11 @@ export type TListApprovalsDTO = {
   search?: string;
   orderBy?: SecretApprovalRequestOrderBy;
   orderDirection?: OrderByDirection;
-} & TProjectPermission;
+} & TActorInput;
 
 export type TSecretApprovalDetailsDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export enum InternalMetadataType {
   MoveSecret = "move-secret"

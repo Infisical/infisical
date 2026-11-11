@@ -1,6 +1,7 @@
 import { Knex } from "knex";
 
 import { TApprovalPolicies, TApprovalRequestGrants, TApprovalRequests } from "@app/db/schemas";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { Event } from "@app/ee/services/audit-log/audit-log-types";
 import { ResourcePermissionApprovalPolicyActions } from "@app/ee/services/permission/resource-permission";
 import { TSecretChangeRequestData } from "@app/ee/services/secret-change-global-request-bridge/secret-change-global-request-bridge-types";
@@ -61,6 +62,10 @@ import {
 } from "./secret-access/secret-access-policy-types";
 
 export type TApprovalActor = Pick<OrgServiceActor, "id" | "type" | "authMethod" | "orgId">;
+
+// An approval actor that also carries its actor context, which the service's own permission checks need. A request's
+// req.permission is one; code with no request builds one with toApprovalActorContext.
+export type TApprovalActorContext = TApprovalActor & TActorContext;
 
 export type TApprovalSubjectActor = Pick<TApprovalActor, "id" | "type">;
 

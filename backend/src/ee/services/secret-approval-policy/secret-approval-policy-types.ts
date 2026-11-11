@@ -1,4 +1,4 @@
-import { EnforcementLevel, TProjectPermission } from "@app/lib/types";
+import { EnforcementLevel, TActorInput } from "@app/lib/types";
 import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 
 import { ApproverType, BypasserType } from "../access-approval-policy/access-approval-policy-types";
@@ -19,7 +19,7 @@ export type TCreateSapDTO = {
   allowedSelfApprovals: boolean;
   bypassForMachineIdentities: boolean;
   delegatedApproval?: TDelegatedApprovalPolicyInput;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateSapDTO = {
   secretPolicyId: string;
@@ -36,18 +36,18 @@ export type TUpdateSapDTO = {
   bypassForMachineIdentities?: boolean;
   environments?: string[];
   delegatedApproval?: TDelegatedApprovalPolicyInput;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteSapDTO = {
   secretPolicyId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
-export type TListSapDTO = TProjectPermission;
+export type TListSapDTO = { projectId: string } & TActorInput;
 
-export type TGetSapByIdDTO = Omit<TProjectPermission, "projectId"> & { sapId: string };
+export type TGetSapByIdDTO = TActorInput & { sapId: string };
 
 export type TGetBoardSapDTO = {
   projectId: string;
   environment: string;
   secretPath: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;

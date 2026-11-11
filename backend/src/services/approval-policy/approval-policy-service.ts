@@ -1,26 +1,26 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import {
-  ActionProjectType,
-  OrganizationActionScope,
   ProjectMembershipRole,
   RESOURCE_SCOPE,
   ResourceType,
   TApprovalPolicies,
   TApprovalRequests
 } from "@app/db/schemas";
+import { TCertManagerDomain } from "@app/domains/certificates/cert-manager/ce/module";
+import { TActorContext } from "@app/domains/lib/actor-context";
 import { TKmsCoreDomain } from "@app/domains/platform/kms-core/ce/module";
 import { TLicenseDomain } from "@app/domains/platform/license/ce/module";
+import { TOrganizationsDomain } from "@app/domains/platform/organizations/ce/module";
 import {
   ProjectPermissionApprovalRequestActions,
   ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionCodeSigningActions,
-  ProjectPermissionSub
+  ProjectPermissionSub,
+  TProjectsDomain
 } from "@app/domains/platform/projects/ce/module";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionApprovalPolicyActions,
   ResourcePermissionSub
@@ -62,6 +62,7 @@ import {
   PolicyBypasser,
   TApprovalAccessStatus,
   TApprovalActor,
+  TApprovalActorContext,
   TApprovalPolicy,
   TApprovalPolicyInputs,
   TApprovalRequest,
@@ -107,10 +108,9 @@ type TApprovalPolicyServiceFactoryDep = {
   slackIntegrationDAL: Pick<TSlackIntegrationDALFactory, "findByIdWithWorkflowIntegrationDetails">;
   kmsCoreDomain: TKmsCoreDomain;
   notificationService: TNotificationServiceFactory;
-  permissionService: Pick<
-    TPermissionServiceFactory,
-    "getProjectPermission" | "getOrgPermission" | "getResourcePermission"
-  >;
+  organizationsDomain: Pick<TOrganizationsDomain, "getOrgPermission">;
+  projectsDomain: Pick<TProjectsDomain, "getProjectPermission">;
+  certManagerDomain: Pick<TCertManagerDomain, "getApplicationPermission">;
   licenseDomain: TLicenseDomain;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
@@ -141,6 +141,14 @@ export const isApprovalRequestExpired = (
   now: Date = new Date()
 ): boolean => Boolean(request.expiresAt && new Date(request.expiresAt) < now);
 
+export const toApprovalActorContext = (actor: TActorContext): TApprovalActorContext => ({
+  ...actor,
+  id: actor.principal.id,
+  type: actor.principal.type,
+  authMethod: actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
+  orgId: actor.org.id
+});
+
 export const approvalPolicyServiceFactory = ({
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
@@ -155,7 +163,9 @@ export const approvalPolicyServiceFactory = ({
   slackIntegrationDAL,
   kmsCoreDomain,
   notificationService,
-  permissionService,
+  organizationsDomain,
+  projectsDomain,
+  certManagerDomain,
   licenseDomain,
   projectMembershipDAL,
   membershipDAL,
@@ -381,7 +391,7 @@ export const approvalPolicyServiceFactory = ({
     projectId: string,
     scopeType: string | null | undefined,
     scopeId: string | null | undefined,
-    actor: TApprovalActor,
+    actor: TApprovalActorContext,
     resourceAction: ResourcePermissionApprovalPolicyActions,
     policyType: ApprovalPolicyType
   ) => {
@@ -392,29 +402,18 @@ export const approvalPolicyServiceFactory = ({
     }
 
     if (scopeType === ApprovalPolicyScope.PkiApplication && scopeId) {
-      const { permission } = await permissionService.getResourcePermission({
-        actor: actor.type,
-        actorId: actor.id,
+      const permission = await certManagerDomain.getApplicationPermission({
+        actor,
         projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: scopeId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId
+        applicationId: scopeId
       });
-      ForbiddenError.from(permission).throwUnlessCan(resourceAction, ResourcePermissionSub.ApprovalPolicies);
+      permission.assert({ action: resourceAction, subject: ResourcePermissionSub.ApprovalPolicies });
       return;
     }
 
-    const { hasRole } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId,
-      actionProjectType: ActionProjectType.Any
-    });
+    const permission = await projectsDomain.getProjectPermission({ actor, projectId });
 
-    if (!hasRole(ProjectMembershipRole.Admin)) {
+    if (!permission.hasRole({ slug: ProjectMembershipRole.Admin })) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
   };
@@ -656,7 +655,7 @@ export const approvalPolicyServiceFactory = ({
       bypassers,
       autoApproval
     }: TCreatePolicyDTO,
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ) => {
     const resolved = await $resolveScope(scope, inputScopeId, policyType);
     const { projectId, scopeType: dbScopeType, scopeId: dbScopeId } = resolved;
@@ -812,7 +811,7 @@ export const approvalPolicyServiceFactory = ({
     policyType: ApprovalPolicyType,
     scope: ApprovalPolicyScope,
     inputScopeId: string,
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ) => {
     const {
       projectId,
@@ -837,7 +836,7 @@ export const approvalPolicyServiceFactory = ({
     return { policies: await $withAutoApproval(policies), projectId };
   };
 
-  const getById = async (policyId: string, actor: TApprovalActor, policyType: ApprovalPolicyType) => {
+  const getById = async (policyId: string, actor: TApprovalActorContext, policyType: ApprovalPolicyType) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Policy not found" });
@@ -876,7 +875,7 @@ export const approvalPolicyServiceFactory = ({
       bypassers,
       autoApproval
     }: TUpdatePolicyDTO,
-    actor: TApprovalActor,
+    actor: TApprovalActorContext,
     policyType: ApprovalPolicyType
   ) => {
     const policy = await approvalPolicyDAL.findById(policyId);
@@ -1025,7 +1024,7 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
-  const deleteById = async (policyId: string, actor: TApprovalActor, policyType: ApprovalPolicyType) => {
+  const deleteById = async (policyId: string, actor: TApprovalActorContext, policyType: ApprovalPolicyType) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
       throw new ForbiddenRequestError({ message: "Policy not found" });
@@ -1271,7 +1270,7 @@ export const approvalPolicyServiceFactory = ({
       requesterEmail: string;
       machineIdentityId?: string;
     },
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ) => {
     const { projectId } = await $resolveScope(scope, inputScopeId, policyType);
 
@@ -1279,25 +1278,18 @@ export const approvalPolicyServiceFactory = ({
 
     // A type with its own authorization model owns this outright; its gate runs once the policy matched
     if (!assertDomainCanCreateRequest) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorAuthMethod: actor.authMethod,
-        actorId: actor.id,
-        actorOrgId: actor.orgId,
-        projectId,
-        actionProjectType: ActionProjectType.Any
-      });
+      const permission = await projectsDomain.getProjectPermission({ actor, projectId });
 
       if (policyType === ApprovalPolicyType.CertCodeSigning) {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCodeSigningActions.Sign,
-          ProjectPermissionSub.CodeSigners
-        );
+        permission.assert({
+          action: ProjectPermissionCodeSigningActions.Sign,
+          subject: ProjectPermissionSub.CodeSigners
+        });
       } else {
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionApprovalRequestActions.Create,
-          ProjectPermissionSub.ApprovalRequests
-        );
+        permission.assert({
+          action: ProjectPermissionApprovalRequestActions.Create,
+          subject: ProjectPermissionSub.ApprovalRequests
+        });
       }
     }
 
@@ -1439,17 +1431,10 @@ export const approvalPolicyServiceFactory = ({
     return { request: decorated };
   };
 
-  const $assertOrgMember = (organizationId: string, actor: TApprovalActor) =>
-    permissionService.getOrgPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      orgId: organizationId,
-      actorOrgId: actor.orgId,
-      scope: OrganizationActionScope.Any,
-      actorAuthMethod: actor.authMethod
-    });
+  const $assertOrgMember = (organizationId: string, actor: TApprovalActorContext) =>
+    organizationsDomain.getOrgPermission({ actor, orgId: organizationId });
 
-  const getRequestById = async (requestId: string, actor: TApprovalActor) => {
+  const getRequestById = async (requestId: string, actor: TApprovalActorContext) => {
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
       throw new ForbiddenRequestError({ message: "Request not found" });
@@ -1489,17 +1474,16 @@ export const approvalPolicyServiceFactory = ({
     // If user is requester or approver, allow access regardless of role permission
     if (!isRequester && !isApprover) {
       if (request.scopeType === ApprovalPolicyScope.PkiApplication && request.scopeId) {
-        const { permission: resourcePermission } = await permissionService.getResourcePermission({
-          actor: actor.type,
-          actorId: actor.id,
+        const resourcePermission = await certManagerDomain.getApplicationPermission({
+          actor,
           projectId: request.projectId,
-          resourceType: ResourceType.CertificateApplication,
-          resourceId: request.scopeId,
-          actorAuthMethod: actor.authMethod,
-          actorOrgId: actor.orgId
+          applicationId: request.scopeId
         });
         if (
-          !resourcePermission.can(ProjectPermissionApprovalRequestActions.Read, ResourcePermissionSub.ApprovalRequests)
+          !resourcePermission.can({
+            action: ProjectPermissionApprovalRequestActions.Read,
+            subject: ResourcePermissionSub.ApprovalRequests
+          })
         ) {
           throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
         }
@@ -1508,18 +1492,11 @@ export const approvalPolicyServiceFactory = ({
           throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
         }
       } else {
-        const { permission } = await permissionService.getProjectPermission({
-          actor: actor.type,
-          actorAuthMethod: actor.authMethod,
-          actorId: actor.id,
-          actorOrgId: actor.orgId,
-          projectId: request.projectId,
-          actionProjectType: ActionProjectType.Any
+        const permission = await projectsDomain.getProjectPermission({ actor, projectId: request.projectId });
+        permission.assert({
+          action: ProjectPermissionApprovalRequestActions.Read,
+          subject: ProjectPermissionSub.ApprovalRequests
         });
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionApprovalRequestActions.Read,
-          ProjectPermissionSub.ApprovalRequests
-        );
       }
     }
 
@@ -1530,7 +1507,7 @@ export const approvalPolicyServiceFactory = ({
   const approveRequest = async (
     requestId: string,
     { comment, bypassReason }: { comment?: string; bypassReason?: string },
-    actor: TApprovalActor,
+    actor: TApprovalActorContext,
     policyType: ApprovalPolicyType
   ): Promise<{
     request: TApprovalRequests & { steps: unknown[] } & TBypassAffordances;
@@ -1762,7 +1739,7 @@ export const approvalPolicyServiceFactory = ({
   const rejectRequest = async (
     requestId: string,
     { comment }: { comment?: string },
-    actor: TApprovalActor,
+    actor: TApprovalActorContext,
     policyType: ApprovalPolicyType
   ) => {
     const request = await approvalRequestDAL.findById(requestId);
@@ -1878,7 +1855,7 @@ export const approvalPolicyServiceFactory = ({
     policyType: ApprovalPolicyType,
     scope: ApprovalPolicyScope,
     inputScopeId: string,
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ) => {
     const {
       projectId,
@@ -1888,34 +1865,23 @@ export const approvalPolicyServiceFactory = ({
 
     let hasReadPermission: boolean;
     if (scope === ApprovalPolicyScope.PkiApplication && inputScopeId) {
-      const { permission: resourcePermission } = await permissionService.getResourcePermission({
-        actor: actor.type,
-        actorId: actor.id,
+      const resourcePermission = await certManagerDomain.getApplicationPermission({
+        actor,
         projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: inputScopeId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId
+        applicationId: inputScopeId
       });
-      hasReadPermission = resourcePermission.can(
-        ProjectPermissionApprovalRequestActions.Read,
-        ResourcePermissionSub.ApprovalRequests
-      );
+      hasReadPermission = resourcePermission.can({
+        action: ProjectPermissionApprovalRequestActions.Read,
+        subject: ResourcePermissionSub.ApprovalRequests
+      });
     } else if (resources[policyType]?.canReadScope) {
       hasReadPermission = await resources[policyType]!.canReadScope!({ projectId, scopeId: dbScopeId, actor });
     } else {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorAuthMethod: actor.authMethod,
-        actorId: actor.id,
-        actorOrgId: actor.orgId,
-        projectId,
-        actionProjectType: ActionProjectType.Any
+      const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+      hasReadPermission = permission.can({
+        action: ProjectPermissionApprovalRequestActions.Read,
+        subject: ProjectPermissionSub.ApprovalRequests
       });
-      hasReadPermission = permission.can(
-        ProjectPermissionApprovalRequestActions.Read,
-        ProjectPermissionSub.ApprovalRequests
-      );
     }
 
     const requests = await approvalRequestDAL.findByProjectId(
@@ -2025,7 +1991,7 @@ export const approvalPolicyServiceFactory = ({
     policyType: ApprovalPolicyType,
     scope: ApprovalPolicyScope,
     inputScopeId: string,
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ) => {
     const {
       projectId,
@@ -2034,20 +2000,16 @@ export const approvalPolicyServiceFactory = ({
     } = await $resolveScope(scope, inputScopeId, policyType);
 
     if (scope === ApprovalPolicyScope.PkiApplication && inputScopeId) {
-      const { permission: resourcePermission } = await permissionService.getResourcePermission({
-        actor: actor.type,
-        actorId: actor.id,
+      const resourcePermission = await certManagerDomain.getApplicationPermission({
+        actor,
         projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: inputScopeId,
-        actorAuthMethod: actor.authMethod,
-        actorOrgId: actor.orgId
+        applicationId: inputScopeId
       });
       if (
-        !resourcePermission.can(
-          ProjectPermissionApprovalRequestGrantActions.Read,
-          ResourcePermissionSub.ApprovalRequestGrants
-        )
+        !resourcePermission.can({
+          action: ProjectPermissionApprovalRequestGrantActions.Read,
+          subject: ResourcePermissionSub.ApprovalRequestGrants
+        })
       ) {
         throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
       }
@@ -2056,18 +2018,11 @@ export const approvalPolicyServiceFactory = ({
         throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
       }
     } else {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorAuthMethod: actor.authMethod,
-        actorId: actor.id,
-        actorOrgId: actor.orgId,
-        projectId,
-        actionProjectType: ActionProjectType.Any
+      const permission = await projectsDomain.getProjectPermission({ actor, projectId });
+      permission.assert({
+        action: ProjectPermissionApprovalRequestGrantActions.Read,
+        subject: ProjectPermissionSub.ApprovalRequestGrants
       });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionApprovalRequestGrantActions.Read,
-        ProjectPermissionSub.ApprovalRequestGrants
-      );
     }
 
     const grants = await approvalRequestGrantsDAL.findByProjectAndScope({
@@ -2090,7 +2045,7 @@ export const approvalPolicyServiceFactory = ({
     return { grants: updatedGrants, projectId };
   };
 
-  const getGrantById = async (grantId: string, actor: TApprovalActor) => {
+  const getGrantById = async (grantId: string, actor: TApprovalActorContext) => {
     const grant = await approvalRequestGrantsDAL.findById(grantId);
     if (!grant) {
       throw new NotFoundError({ message: "Grant not found" });
@@ -2103,19 +2058,12 @@ export const approvalPolicyServiceFactory = ({
         throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
       }
     } else {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorAuthMethod: actor.authMethod,
-        actorId: actor.id,
-        actorOrgId: actor.orgId,
-        projectId: grant.projectId,
-        actionProjectType: ActionProjectType.Any
-      });
+      const permission = await projectsDomain.getProjectPermission({ actor, projectId: grant.projectId });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionApprovalRequestGrantActions.Read,
-        ProjectPermissionSub.ApprovalRequestGrants
-      );
+      permission.assert({
+        action: ProjectPermissionApprovalRequestGrantActions.Read,
+        subject: ProjectPermissionSub.ApprovalRequestGrants
+      });
     }
 
     let { status } = grant;
@@ -2132,7 +2080,7 @@ export const approvalPolicyServiceFactory = ({
   const revokeGrant = async (
     grantId: string,
     { revocationReason }: { revocationReason?: string },
-    actor: TApprovalActor,
+    actor: TApprovalActorContext,
     policyType: ApprovalPolicyType
   ) => {
     const grant = await approvalRequestGrantsDAL.findById(grantId);
@@ -2160,42 +2108,31 @@ export const approvalPolicyServiceFactory = ({
     if (assertDomainCanRevoke) {
       await assertDomainCanRevoke({ grant, request, actor });
     } else {
-      const { permission } = await permissionService.getProjectPermission({
-        actor: actor.type,
-        actorAuthMethod: actor.authMethod,
-        actorId: actor.id,
-        actorOrgId: actor.orgId,
-        projectId: grant.projectId,
-        actionProjectType: ActionProjectType.Any
-      });
+      const permission = await projectsDomain.getProjectPermission({ actor, projectId: grant.projectId });
 
-      const allowedAtProject = permission.can(
-        ProjectPermissionApprovalRequestGrantActions.Revoke,
-        ProjectPermissionSub.ApprovalRequestGrants
-      );
+      const allowedAtProject = permission.can({
+        action: ProjectPermissionApprovalRequestGrantActions.Revoke,
+        subject: ProjectPermissionSub.ApprovalRequestGrants
+      });
 
       if (!allowedAtProject) {
         const requestScopeType = (request as { scopeType?: string | null } | null)?.scopeType ?? null;
         const requestScopeId = (request as { scopeId?: string | null } | null)?.scopeId ?? null;
         if (requestScopeType === ApprovalPolicyScope.PkiApplication && requestScopeId) {
-          const { permission: resourcePerm } = await permissionService.getResourcePermission({
-            actor: actor.type,
-            actorId: actor.id,
+          const resourcePerm = await certManagerDomain.getApplicationPermission({
+            actor,
             projectId: grant.projectId,
-            resourceType: ResourceType.CertificateApplication,
-            resourceId: requestScopeId,
-            actorAuthMethod: actor.authMethod,
-            actorOrgId: actor.orgId
+            applicationId: requestScopeId
           });
-          ForbiddenError.from(resourcePerm).throwUnlessCan(
-            ProjectPermissionApprovalRequestGrantActions.Revoke,
-            ResourcePermissionSub.ApprovalRequestGrants
-          );
+          resourcePerm.assert({
+            action: ProjectPermissionApprovalRequestGrantActions.Revoke,
+            subject: ResourcePermissionSub.ApprovalRequestGrants
+          });
         } else {
-          ForbiddenError.from(permission).throwUnlessCan(
-            ProjectPermissionApprovalRequestGrantActions.Revoke,
-            ProjectPermissionSub.ApprovalRequestGrants
-          );
+          permission.assert({
+            action: ProjectPermissionApprovalRequestGrantActions.Revoke,
+            subject: ProjectPermissionSub.ApprovalRequestGrants
+          });
         }
       }
     }
@@ -2240,16 +2177,9 @@ export const approvalPolicyServiceFactory = ({
   const checkPolicyMatch = async (
     policyType: ApprovalPolicyType,
     { projectId, inputs }: { projectId: string; inputs: TApprovalPolicyInputs },
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ) => {
-    await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId,
-      actionProjectType: ActionProjectType.Any
-    });
+    await projectsDomain.getProjectPermission({ actor, projectId });
 
     const resource = $resource(policyType);
 
@@ -2279,7 +2209,7 @@ export const approvalPolicyServiceFactory = ({
     policyType: ApprovalPolicyType,
     scope: ApprovalPolicyScope,
     inputScopeId: string,
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ) => {
     const { projectId, scopeType, scopeId } = await $resolveScope(scope, inputScopeId, policyType);
     await $assertCanManagePolicy(
@@ -2313,7 +2243,7 @@ export const approvalPolicyServiceFactory = ({
       search?: string;
       siblings: Record<string, string[]>;
     },
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ) => {
     const { projectId, scopeType, scopeId } = await $resolveScope(scope, inputScopeId, policyType);
     await $assertCanManagePolicy(
@@ -2549,7 +2479,7 @@ export const approvalPolicyServiceFactory = ({
     scope: ApprovalPolicyScope,
     scopeId: string,
     { status, offset, limit }: { status?: string; offset?: number; limit?: number },
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ) => {
     const { projectId } = await $resolveScope(scope, scopeId, policyType);
     await $assertCanManagePolicy(
@@ -2714,7 +2644,7 @@ export const approvalPolicyServiceFactory = ({
     policyType: ApprovalPolicyType,
     scope: ApprovalPolicyScope,
     scopeId: string,
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ): Promise<TApprovalScopeConfiguration> => {
     const { policies } = await list(policyType, scope, scopeId, actor);
     const policy = policies[0];
@@ -2750,7 +2680,7 @@ export const approvalPolicyServiceFactory = ({
       conditions: TApprovalPolicy["conditions"]["conditions"];
       constraints: TApprovalPolicy["constraints"]["constraints"];
     },
-    actor: TApprovalActor
+    actor: TApprovalActorContext
   ) => {
     const { projectId } = await $resolveScope(scope, scopeId, policyType);
     const [existing] = await approvalPolicyDAL.findByProjectId(policyType, projectId, {

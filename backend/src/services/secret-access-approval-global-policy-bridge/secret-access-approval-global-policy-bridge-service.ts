@@ -1,7 +1,5 @@
-import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { ActionProjectType } from "@app/db/schemas";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { approvalPolicyMembershipVerifierFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-fns";
 import {
@@ -55,7 +53,7 @@ const isDelegatedApprovalChanged = (
 
 export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
   projectDAL,
-  permissionService,
+  secretsDomain,
   projectEnvDAL,
   userDAL,
   groupDAL,
@@ -319,21 +317,11 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
   const $getProjectPermission = async ({
     actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
     projectId
-  }: Pick<TUpdateSecretAccessApprovalGlobalPolicyDTO, "actor" | "actorId" | "actorAuthMethod" | "actorOrgId"> & {
+  }: Pick<TUpdateSecretAccessApprovalGlobalPolicyDTO, "actor"> & {
     projectId: string;
   }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId });
     return permission;
   };
 
@@ -443,10 +431,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
   const createAccessApprovalPolicy = async ({
     name,
     actor,
-    actorId,
-    actorOrgId,
     secretPath,
-    actorAuthMethod,
     approvals,
     approvers,
     bypassers,
@@ -461,20 +446,14 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     delegatedApproval,
     orgActor
   }: TCreateSecretAccessApprovalGlobalPolicyDTO) => {
-    const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
+    const project = await projectDAL.findProjectBySlug(projectSlug, actor.org.id);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     const permission = await $getProjectPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: project.id
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.SecretApproval
-    );
+    permission.assert({ action: ProjectPermissionActions.Create, subject: ProjectPermissionSub.SecretApproval });
 
     const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApproval;
 
@@ -571,10 +550,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     bypassers,
     secretPath,
     name,
-    actorId,
     actor,
-    actorOrgId,
-    actorAuthMethod,
     approvals,
     enforcementLevel,
     allowedSelfApprovals: allowedSelfApprovalsInput,
@@ -587,18 +563,15 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
   }: TUpdateSecretAccessApprovalGlobalPolicyDTO) => {
     const policy = await $findPolicyById(
       policyId,
-      actorOrgId,
+      actor.org.id,
       `Access approval policy with ID '${policyId}' not found`
     );
 
     const permission = await $getProjectPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: policy.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+    permission.assert({ action: ProjectPermissionActions.Edit, subject: ProjectPermissionSub.SecretApproval });
 
     let envs: { id: string; slug: string }[] = policy.environments;
     if (environments) {
@@ -619,7 +592,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     const nextDelegatedApproval = delegatedApproval === undefined ? policy.delegatedApproval : delegatedApproval;
     if (nextDelegatedApproval) {
       // we might need to change this in the future to check a specific permission if this is changed on the license server
-      await delegatedApprovalService.assertPlanAllowsPolicyEdit(nextDelegatedApproval.type, actorOrgId);
+      await delegatedApprovalService.assertPlanAllowsPolicyEdit(nextDelegatedApproval.type, actor.org.id);
       if (isDelegatedApprovalChanged(policy.delegatedApproval, nextDelegatedApproval)) {
         await delegatedApprovalService.validateConnection(
           { ...nextDelegatedApproval, projectId: policy.projectId },
@@ -636,7 +609,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
       const current = await $findPolicyById(
         policy.id,
-        actorOrgId,
+        actor.org.id,
         `Access approval policy with ID '${policyId}' not found`,
         tx
       );
@@ -655,7 +628,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
           approvalsRequired,
           approvals: approvals ?? current.approvals
         },
-        { projectId: current.projectId, orgId: actorOrgId },
+        { projectId: current.projectId, orgId: actor.org.id },
         tx
       );
       if (involvesDelegatedApproval) await $assertNoPendingRequests(current, tx);
@@ -702,30 +675,18 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     });
   };
 
-  const deleteAccessApprovalPolicy = async ({
-    policyId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TDeleteSecretAccessApprovalGlobalPolicyDTO) => {
+  const deleteAccessApprovalPolicy = async ({ policyId, actor }: TDeleteSecretAccessApprovalGlobalPolicyDTO) => {
     const policy = await $findPolicyById(
       policyId,
-      actorOrgId,
+      actor.org.id,
       `Secret approval policy with ID '${policyId}' not found`
     );
 
     const permission = await $getProjectPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: policy.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.SecretApproval
-    );
+    permission.assert({ action: ProjectPermissionActions.Delete, subject: ProjectPermissionSub.SecretApproval });
 
     await approvalPolicyDAL.transaction(async (tx) => {
       await approvalRequestDAL.update(
@@ -738,7 +699,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       await revokeActiveSecretAccessGrants(
         {
           requestIds: requests.map((request) => request.id),
-          revokedByUserId: actor === ActorType.USER ? actorId : null
+          revokedByUserId: actor.principal.type === ActorType.USER ? actor.principal.id : null
         },
         { approvalRequestGrantsDAL, additionalPrivilegeDAL },
         tx
@@ -752,27 +713,18 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     return policy;
   };
 
-  const getAccessApprovalPolicyById = async ({
-    policyId,
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId
-  }: TGetSecretAccessApprovalGlobalPolicyByIdDTO) => {
+  const getAccessApprovalPolicyById = async ({ policyId, actor }: TGetSecretAccessApprovalGlobalPolicyByIdDTO) => {
     const policy = await $findPolicyById(
       policyId,
-      actorOrgId,
+      actor.org.id,
       `Cannot find access approval policy with ID ${policyId}`
     );
 
     const permission = await $getProjectPermission({
       actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
       projectId: policy.projectId
     });
-    ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.SecretApproval);
+    permission.assert({ action: ProjectPermissionActions.Read, subject: ProjectPermissionSub.SecretApproval });
 
     return policy;
   };
