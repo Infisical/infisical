@@ -85,8 +85,6 @@ export const useGetMyDeletionEligibility = ({ enabled = true }: { enabled?: bool
       );
       return deletionEligibility;
     },
-    // Delete dialog needs fresh data, not the 60s default.
-    staleTime: 0,
     enabled
   });
 };

@@ -70,7 +70,14 @@ export const DeleteAccountSection = () => {
 
   const handleOpen = async () => {
     const { isSuccess } = await refetchEligibility();
-    if (isSuccess) setIsOpen(true);
+    if (isSuccess) {
+      setIsOpen(true);
+      return;
+    }
+    createNotification({
+      text: "Couldn't check whether your account can be deleted. Try again.",
+      type: "error"
+    });
   };
 
   const handleDeleteAccountSubmit = async () => {

@@ -430,54 +430,16 @@ export const orgDALFactory = (db: TDbClient) => {
 
   // special query
   const findAllOrgsByUserId = async (
-    userId: string,
-    { lastMember = false }: { lastMember?: boolean } = {}
+    userId: string
   ): Promise<
     (TOrganizations & { orgAuthMethod: string; userRole: string; userStatus: string; userJoinedAt: Date })[]
   > => {
     try {
-      // Primary for lastMember since it picks orgs to delete, and lag could hide someone who just joined.
-      const query = (lastMember ? db : db.replicaNode())(TableName.Membership)
+      const org = (await db
+        .replicaNode()(TableName.Membership)
         .where(`${TableName.Membership}.actorUserId`, userId)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .whereNotNull(`${TableName.Membership}.actorUserId`);
-
-      // Anyone else who can sign in (direct or via a group, sub-orgs too since they go with the root) keeps
-      // the org. Invited/deactivated folks can't sign in and ghost users are old service accounts, so skip them.
-      if (lastMember) {
-        const signInMembershipsOfOrgTree = (qb: Knex.QueryBuilder, alias: string) =>
-          qb
-            .select(db.raw("1"))
-            .from(`${TableName.Membership} as ${alias}`)
-            .join(`${TableName.Organization} as ${alias}Org`, `${alias}Org.id`, `${alias}.scopeOrgId`)
-            .where((orgQb) => {
-              void orgQb
-                .where(`${alias}Org.id`, db.ref(`${TableName.Membership}.scopeOrgId`))
-                .orWhere(`${alias}Org.rootOrgId`, db.ref(`${TableName.Membership}.scopeOrgId`));
-            })
-            .where(`${alias}.scope`, AccessScope.Organization)
-            .where(`${alias}.isActive`, true)
-            .where((statusQb) => {
-              void statusQb.whereNull(`${alias}.status`).orWhereNot(`${alias}.status`, OrgMembershipStatus.Invited);
-            });
-
-        void query
-          .whereNotExists((qb) => {
-            void signInMembershipsOfOrgTree(qb, "direct")
-              .join(`${TableName.Users} as directUser`, "directUser.id", "direct.actorUserId")
-              .whereNot("direct.actorUserId", userId)
-              .where("directUser.isGhost", false);
-          })
-          .whereNotExists((qb) => {
-            void signInMembershipsOfOrgTree(qb, "viaGroup")
-              .join(`${TableName.UserGroupMembership} as groupMember`, "groupMember.groupId", "viaGroup.actorGroupId")
-              .join(`${TableName.Users} as groupUser`, "groupUser.id", "groupMember.userId")
-              .whereNot("groupMember.userId", userId)
-              .where("groupUser.isGhost", false);
-          });
-      }
-
-      const org = (await query
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
         .whereNull(`${TableName.Organization}.rootOrgId`)
@@ -514,10 +476,62 @@ export const orgDALFactory = (db: TDbClient) => {
         userJoinedAt: Date;
       })[];
 
-      // Joins give one row per role.
-      return lastMember ? unique(org, (row) => row.id) : org;
+      return org;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org by user id" });
+    }
+  };
+
+  // Root orgs where nobody but the user can sign in, so they are deleted with the user's account. Anyone else
+  // with an accepted, active membership (direct or via a group, in the org or one of its sub-orgs, since those
+  // go with the root) keeps the org. Ghost users are legacy service accounts and do not count.
+  const findOrgsWhereUserIsLastMember = async (userId: string): Promise<{ id: string; name: string }[]> => {
+    try {
+      const signInMembershipsOfOrgTree = (qb: Knex.QueryBuilder, alias: string) =>
+        qb
+          .select(db.raw("1"))
+          .from(`${TableName.Membership} as ${alias}`)
+          .join(`${TableName.Organization} as ${alias}Org`, `${alias}Org.id`, `${alias}.scopeOrgId`)
+          .where((orgQb) => {
+            void orgQb
+              .where(`${alias}Org.id`, db.ref(`${TableName.Organization}.id`))
+              .orWhere(`${alias}Org.rootOrgId`, db.ref(`${TableName.Organization}.id`));
+          })
+          .where(`${alias}.scope`, AccessScope.Organization)
+          .where(`${alias}.isActive`, true)
+          .where((statusQb) => {
+            void statusQb.whereNull(`${alias}.status`).orWhereNot(`${alias}.status`, OrgMembershipStatus.Invited);
+          });
+
+      // Primary on purpose: this picks orgs to delete, and replica lag could hide someone who just joined.
+      const orgs = await db(TableName.Membership)
+        .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
+        .where(`${TableName.Membership}.actorUserId`, userId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
+        .where((statusQb) => {
+          void statusQb
+            .whereNull(`${TableName.Membership}.status`)
+            .orWhereNot(`${TableName.Membership}.status`, OrgMembershipStatus.Invited);
+        })
+        .whereNotExists((qb) => {
+          void signInMembershipsOfOrgTree(qb, "direct")
+            .join(`${TableName.Users} as directUser`, "directUser.id", "direct.actorUserId")
+            .whereNot("direct.actorUserId", userId)
+            .where("directUser.isGhost", false);
+        })
+        .whereNotExists((qb) => {
+          void signInMembershipsOfOrgTree(qb, "viaGroup")
+            .join(`${TableName.UserGroupMembership} as groupMember`, "groupMember.groupId", "viaGroup.actorGroupId")
+            .join(`${TableName.Users} as groupUser`, "groupUser.id", "groupMember.userId")
+            .whereNot("groupMember.userId", userId)
+            .where("groupUser.isGhost", false);
+        })
+        .distinct(`${TableName.Organization}.id`, `${TableName.Organization}.name`);
+
+      return orgs as { id: string; name: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find orgs where user is last member" });
     }
   };
 
@@ -1511,6 +1525,7 @@ export const orgDALFactory = (db: TDbClient) => {
     findOrgById,
     findOrgBySlug,
     findAllOrgsByUserId,
+    findOrgsWhereUserIsLastMember,
     countJoinedRootOrgsCreatedByUserId,
     findOrganizationsByFilter,
     findOrgMembersByUsername,

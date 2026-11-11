@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TUsers } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -85,7 +85,7 @@ type TUserServiceFactoryDep = {
     | "findEffectiveOrgMembership"
     | "findEffectiveOrgMemberships"
     | "findActiveEffectiveOrgMembershipsByUserId"
-    | "findAllOrgsByUserId"
+    | "findOrgsWhereUserIsLastMember"
   >;
   orgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization">;
   membershipUserDAL: Pick<
@@ -759,9 +759,7 @@ export const userServiceFactory = ({
     }
 
     // If nobody's left to sign in, nobody can cancel billing, so these orgs go with the account.
-    const lastMemberOrgs = (await orgDAL.findAllOrgsByUserId(userId, { lastMember: true })).filter(
-      (org) => org.userStatus !== OrgMembershipStatus.Invited
-    );
+    const lastMemberOrgs = await orgDAL.findOrgsWhereUserIsLastMember(userId);
 
     // Skip orgs that get deleted with the account, plus their sub-orgs since those cascade.
     const deletedOrgIds = new Set(lastMemberOrgs.map((org) => org.id));
@@ -772,7 +770,7 @@ export const userServiceFactory = ({
     return {
       canDelete: !isOnlyServerAdmin && !lastAdminOrgs.length,
       isOnlyServerAdmin,
-      lastMemberOrganizations: lastMemberOrgs.map(({ id, name }) => ({ id, name })),
+      lastMemberOrganizations: lastMemberOrgs,
       lastAdminOrganizations: lastAdminOrgs.map(({ id, name }) => ({ id, name }))
     };
   };

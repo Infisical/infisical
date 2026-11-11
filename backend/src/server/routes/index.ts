@@ -496,7 +496,7 @@ import { licenseOrgDeletedConsumerFactory } from "@app/services/org/license-org-
 import { orgAccessReconcileConsumerFactory } from "@app/services/org/org-access-reconcile-consumer";
 import { orgAccessSweepQueueFactory } from "@app/services/org/org-access-sweep-queue";
 import { orgDALFactory } from "@app/services/org/org-dal";
-import { orgDeletionServiceFactory, TOrgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
+import { orgDeletionServiceFactory } from "@app/services/org/org-deletion-service";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { pkiAlertChannelDALFactory } from "@app/services/pki-alert-v2/pki-alert-channel-dal";
 import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-history-dal";
@@ -1571,15 +1571,32 @@ export const registerRoutes = async (
     kmsService
   });
 
-  const deferredOrgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization"> = {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    deleteOrganization: (orgId: string) => orgDeletionService.deleteOrganization(orgId)
-  };
+  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
+
+  const reminderService = reminderServiceFactory({
+    reminderDAL,
+    eventEmitter: eventOutboxService,
+    alertService,
+    permissionService,
+    secretV2BridgeDAL,
+    folderDAL
+  });
+
+  const orgDeletionService = orgDeletionServiceFactory({
+    orgDAL,
+    projectDAL,
+    secretDAL,
+    folderDAL,
+    projectBotService,
+    reminderService,
+    honeyTokenCleanupService,
+    eventEmitter: eventOutboxService
+  });
 
   const userService = userServiceFactory({
     userDAL,
     orgDAL,
-    orgDeletionService: deferredOrgDeletionService,
+    orgDeletionService,
     tokenService,
     permissionService,
     groupProjectDAL,
@@ -1728,29 +1745,7 @@ export const registerRoutes = async (
     emailDispatchGuard
   });
 
-  const projectBotService = projectBotServiceFactory({ permissionService, projectBotDAL, projectDAL });
-
-  const reminderService = reminderServiceFactory({
-    reminderDAL,
-    eventEmitter: eventOutboxService,
-    alertService,
-    permissionService,
-    secretV2BridgeDAL,
-    folderDAL
-  });
-
   const certificatePolicyDAL = certificatePolicyDALFactory(db);
-
-  const orgDeletionService = orgDeletionServiceFactory({
-    orgDAL,
-    projectDAL,
-    secretDAL,
-    folderDAL,
-    projectBotService,
-    reminderService,
-    honeyTokenCleanupService,
-    eventEmitter: eventOutboxService
-  });
 
   const orgService = orgServiceFactory({
     auditLogSettingsService,
