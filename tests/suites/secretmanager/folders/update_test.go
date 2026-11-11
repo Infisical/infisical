@@ -221,10 +221,73 @@ func TestFolder_Update(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Equal(t,
-			`Folder "/app/api" overlaps with folder "/app" in environment "dev". A batch can include each folder only once and cannot include a folder together with its subfolders. Update them in separate requests.`,
+			`Folder "/app/api" overlaps with folder "/app" in environment "dev". A batch can rename each folder only once and cannot rename a folder together with its subfolders. Rename them in separate requests.`,
 			res.JSON400.Message)
 		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
 		require.Equal(t, []string{"API_KEY"}, secretKeys(t, proj, "dev", "/app/api"))
+	})
+
+	t.Run("should save descriptions for a folder and its subfolder in one batch", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		appID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
+		apiID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app/api"))
+		batch := api.UpdateSecretFoldersBatchJSONRequestBody{ProjectId: proj.ID}
+		batch.Folders = slices.Grow(batch.Folders, 2)[:2]
+		batch.Folders[0].Id, batch.Folders[0].Environment, batch.Folders[0].Name, batch.Folders[0].Path, batch.Folders[0].Description =
+			appID.String(), "dev", "app", new("/"), new("parent")
+		batch.Folders[1].Id, batch.Folders[1].Environment, batch.Folders[1].Name, batch.Folders[1].Path, batch.Folders[1].Description =
+			apiID.String(), "dev", "api", new("/app"), new("child")
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretFoldersBatchWithResponse(t.Context(), batch)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "batch update returned %d: %s", res.StatusCode(), res.Body)
+		for id, want := range map[uuid.UUID]string{appID: "parent", apiID: "child"} {
+			got, err := tn.Admin.API.GetSecretFolderByIdWithResponse(t.Context(), id.String())
+			require.NoError(t, err)
+			require.NotNilf(t, got.JSON200, "reading returned %d: %s", got.StatusCode(), got.Body)
+			require.NotNil(t, got.JSON200.Folder.Description)
+			require.Equal(t, want, *got.JSON200.Folder.Description)
+		}
+	})
+
+	t.Run("should refuse renaming a folder whose subfolder has an open change request and keep the folder", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
+		secretmanager.CreateFolder(t, proj, "dev", "/app/api")
+		secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/app/api"}, reviewer)
+		held, err := committer.API.CreateSecretV4WithResponse(t.Context(), "API_KEY", api.CreateSecretV4JSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", SecretPath: new("/app/api"), SecretValue: "value",
+		})
+		require.NoError(t, err)
+		require.Containsf(t, string(held.Body), `"approval"`, "the write was not held: %s", held.Body)
+		spec.Why(t, `The request keeps the policy it was opened under, so after a rename it would merge into a
+			path whose own policy never reviewed it.`)
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretFolderWithResponse(t.Context(), folderID.String(), api.UpdateSecretFolderJSONRequestBody{
+			ProjectId: proj.ID, Environment: "dev", Path: new("/"), Name: "service",
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			`You cannot rename the selected folder because it has open change requests at folder path "/app/api". Merge or close the change requests and try again.`,
+			res.JSON400.Message)
+		require.Equal(t, []string{"app"}, folderNames(t, proj, "dev", "/"))
 	})
 
 	t.Run("should refuse a rename when a policy protects a secret import in a subfolder and keep the folder", func(t *testing.T) {

@@ -26,7 +26,7 @@ import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
-import { TFolderMoveBlockingType } from "./secret-folder-types";
+import { TFolderChangeAction, TFolderMoveBlockingType, TFolderRenameScope } from "./secret-folder-types";
 
 export const buildFolderPath = (
   folder: TSecretFolders,
@@ -400,6 +400,7 @@ export const findFoldersWithContent = async (
 };
 
 export type TPolicyProtectedFolder = {
+  environment: string;
   path: string;
   contentPath: string;
   policyName: string;
@@ -443,6 +444,7 @@ export const findPolicyProtectedFolder = async (
     const policy = policyByPath.get(folder.path);
     if (shouldApplyPolicy(policy, actor)) {
       return {
+        environment,
         path: folder.path,
         contentPath: folder.contentPath ?? folder.path,
         policyName: policy.name,
@@ -454,11 +456,6 @@ export const findPolicyProtectedFolder = async (
   return null;
 };
 
-export type TFolderContentAccess = {
-  permission: MongoAbility<ProjectPermissionSet>;
-  environment: string;
-};
-
 type TVisibleProtectedContent = TPolicyProtectedFolder["protects"] | "content";
 
 const PROTECTED_CONTENT_LABEL: Record<TVisibleProtectedContent, string> = {
@@ -467,7 +464,7 @@ const PROTECTED_CONTENT_LABEL: Record<TVisibleProtectedContent, string> = {
   content: "resources"
 };
 
-const FOLDER_CHANGE_BLOCKED_BY_POLICY = {
+const FOLDER_CHANGE_BLOCKED_BY_POLICY: Record<TFolderChangeAction, Record<TVisibleProtectedContent, string>> = {
   delete: {
     secret: "DeleteFolderProtectedByPolicy",
     secret_import: "DeleteFolderImportProtectedByPolicy",
@@ -478,11 +475,11 @@ const FOLDER_CHANGE_BLOCKED_BY_POLICY = {
     secret_import: "RenameFolderImportProtectedByPolicy",
     content: "RenameFolderProtectedByPolicy"
   }
-} as const;
+};
 
 const visibleProtectedContent = (
-  { contentPath, protects }: TPolicyProtectedFolder,
-  { permission, environment }: TFolderContentAccess
+  { environment, contentPath, protects }: TPolicyProtectedFolder,
+  permission: MongoAbility<ProjectPermissionSet>
 ): TVisibleProtectedContent => {
   const canRead =
     protects === "secret_import"
@@ -496,7 +493,7 @@ const visibleProtectedContent = (
 };
 
 const throwFolderChangeBlockedByPolicy = (
-  action: keyof typeof FOLDER_CHANGE_BLOCKED_BY_POLICY,
+  action: TFolderChangeAction,
   { path, policyName }: TPolicyProtectedFolder,
   visibleContent: TVisibleProtectedContent
 ): never => {
@@ -509,20 +506,20 @@ const throwFolderChangeBlockedByPolicy = (
 
 export const assertFolderDeleteAllowed = (
   protectedFolder: TPolicyProtectedFolder | null,
-  access: TFolderContentAccess
+  permission: MongoAbility<ProjectPermissionSet>
 ) => {
   if (!protectedFolder) return;
-  throwFolderChangeBlockedByPolicy("delete", protectedFolder, visibleProtectedContent(protectedFolder, access));
+  throwFolderChangeBlockedByPolicy("delete", protectedFolder, visibleProtectedContent(protectedFolder, permission));
 };
 
 export const assertFolderRenameAllowed = (
   protectedFolder: TPolicyProtectedFolder | null,
-  scope: "source" | "destination",
-  access: TFolderContentAccess
+  scope: TFolderRenameScope,
+  permission: MongoAbility<ProjectPermissionSet>
 ) => {
   if (!protectedFolder) return;
 
-  const visibleContent = visibleProtectedContent(protectedFolder, access);
+  const visibleContent = visibleProtectedContent(protectedFolder, permission);
 
   if (scope === "destination") {
     const { path, policyName } = protectedFolder;
@@ -546,14 +543,16 @@ export const assertNoOverlappingFolderEntries = (entries: { environment: string;
 
     if (overlapping) {
       throw new BadRequestError({
-        message: `Folder "${entry.path}" overlaps with folder "${overlapping.path}" in environment "${entry.environment}". A batch can include each folder only once and cannot include a folder together with its subfolders. Update them in separate requests.`,
+        message: `Folder "${entry.path}" overlaps with folder "${overlapping.path}" in environment "${entry.environment}". A batch can rename each folder only once and cannot rename a folder together with its subfolders. Rename them in separate requests.`,
         name: "UpdateManyFolders"
       });
     }
   });
 };
 
-export const resolveBatchFolderEntries = async <T extends { environment: string; path: string; id: string }>(
+export const resolveBatchFolderEntries = async <
+  T extends { environment: string; path: string; id: string; name: string }
+>(
   { projectId, folders }: { projectId: string; folders: T[] },
   {
     folderDAL,
@@ -620,7 +619,11 @@ export const resolveBatchFolderEntries = async <T extends { environment: string;
     return { ...entry, folderPath };
   });
 
-  assertNoOverlappingFolderEntries(entries.map(({ env, folderPath }) => ({ environment: env.slug, path: folderPath })));
+  assertNoOverlappingFolderEntries(
+    entries
+      .filter(({ newFolder, folder }) => newFolder.name !== folder.name)
+      .map(({ env, folderPath }) => ({ environment: env.slug, path: folderPath }))
+  );
 
   return entries;
 };

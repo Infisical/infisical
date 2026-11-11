@@ -33,7 +33,6 @@ import {
   resolveClosestFolder,
   resolvePathToFolder,
   TFolderContent,
-  TFolderContentAccess,
   TPolicyProtectedFolder
 } from "./secret-folder-fns";
 
@@ -508,6 +507,7 @@ describe("findPolicyProtectedFolder", () => {
     ]);
 
     await expect(find(makeContent({ secrets: ["web-id", "api-id"] }), deps)).resolves.toEqual({
+      environment: "dev",
       path: "/app/api",
       contentPath: "/app/api",
       policyName: "prod-guard",
@@ -519,6 +519,7 @@ describe("findPolicyProtectedFolder", () => {
     const { deps } = makeService([["/app/api", guard]]);
 
     await expect(find(makeContent({ imports: ["api-id"] }), deps)).resolves.toEqual({
+      environment: "dev",
       path: "/app/api",
       contentPath: "/app/api",
       policyName: "prod-guard",
@@ -572,10 +573,8 @@ describe("findPolicyProtectedFolder", () => {
   });
 });
 
-const buildAccess = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]): TFolderContentAccess => ({
-  permission: createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher }),
-  environment: "dev"
-});
+const buildAccess = (rules: RawRuleOf<MongoAbility<ProjectPermissionSet>>[]) =>
+  createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher });
 
 const canReadAll = buildAccess([
   { action: ProjectPermissionSecretActions.DescribeSecret, subject: ProjectPermissionSub.Secrets },
@@ -587,7 +586,7 @@ const protectedAt = (
   path: string,
   protects: TPolicyProtectedFolder["protects"],
   contentPath: string = path
-): TPolicyProtectedFolder => ({ path, contentPath, policyName: "prod-guard", protects });
+): TPolicyProtectedFolder => ({ environment: "dev", path, contentPath, policyName: "prod-guard", protects });
 
 const thrown = (fn: () => void) => {
   try {
@@ -770,7 +769,7 @@ describe("assertNoOverlappingFolderEntries", () => {
     expect(error).toMatchObject({
       name: "UpdateManyFolders",
       message:
-        'Folder "/app/api/v1" overlaps with folder "/app" in environment "dev". A batch can include each folder only once and cannot include a folder together with its subfolders. Update them in separate requests.'
+        'Folder "/app/api/v1" overlaps with folder "/app" in environment "dev". A batch can rename each folder only once and cannot rename a folder together with its subfolders. Rename them in separate requests.'
     });
   });
 });
@@ -868,6 +867,20 @@ describe("resolveBatchFolderEntries", () => {
         deps
       )
     ).rejects.toThrow('Folder "/app/api" overlaps with folder "/app"');
+  });
+
+  test("allows a folder and its subfolder when only one of them is renamed", async () => {
+    const { deps } = makeDeps({ [appId]: "/app", "api-id": "/app/api" });
+
+    const entries = await resolve(
+      [
+        { environment: "dev", path: "/", id: appId, name: "app" },
+        { environment: "dev", path: "/app", id: "api", name: "web" }
+      ],
+      deps
+    );
+
+    expect(entries.map(({ folderPath }) => folderPath)).toEqual(["/app", "/app/api"]);
   });
 
   test("refuses a folder that does not exist under the given path", async () => {
