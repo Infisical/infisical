@@ -4,6 +4,7 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
+import { TSecretSyncPayload } from "../secret-sync-payload";
 import {
   TCoolifyAPICreateEnvResponse,
   TCoolifyAPIResponse,
@@ -117,9 +118,10 @@ const infisicalSecretToCoolifySecret = (key: string, secret: TSecretMap[keyof TS
 };
 
 export const CoolifySyncFns = {
-  syncSecrets: async (secretSync: TCoolifySyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TCoolifySyncWithCredentials, payload: TSecretSyncPayload) => {
     const existingCoolifySecrets = await getAllCoolifySecrets(secretSync);
 
+    const secretMap = payload.flatten();
     for await (const entry of Object.entries(secretMap)) {
       const [key, secret] = entry;
       try {
@@ -180,8 +182,9 @@ export const CoolifySyncFns = {
 
     return result;
   },
-  removeSecrets: async (secretSync: TCoolifySyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TCoolifySyncWithCredentials, payload: TSecretSyncPayload) => {
     const allSecrets = await getAllCoolifySecrets(secretSync);
+    const secretMap = payload.flatten();
 
     for await (const secret of Object.keys(secretMap)) {
       const coolifySecret = allSecrets.find((s) => s.key === secret);
