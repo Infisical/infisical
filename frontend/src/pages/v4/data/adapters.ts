@@ -1,6 +1,7 @@
 import { useMatches } from "@tanstack/react-router";
 
 import type { V4Mode } from "../mode";
+import type { AccessApprovalsAdapter } from "./access-approvals/contract";
 import type { AccessAdapter } from "./access/contract";
 import type { AdminAdapter } from "./admin/contract";
 import type { AgentVaultSettingsAdapter } from "./agent-vault-settings/contract";
@@ -38,6 +39,7 @@ export type V4Adapters = {
   certificates: CertificatesAdapter;
   certManagerSettings: CertManagerSettingsAdapter;
   access: AccessAdapter;
+  accessApprovals: AccessApprovalsAdapter;
   projects: ProjectsAdapter;
   projectSettings: ProjectSettingsAdapter;
   projectIntegrations: ProjectIntegrationsAdapter;

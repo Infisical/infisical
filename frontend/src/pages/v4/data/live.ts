@@ -1,3 +1,4 @@
+import { accessApprovalsLive } from "./access-approvals/live";
 import { accessLive } from "./access/live";
 import type { V4Adapters } from "./adapters";
 import { adminLive } from "./admin/live";
@@ -38,6 +39,7 @@ export const liveAdapters: V4Adapters = {
   certificates: certificatesLive,
   certManagerSettings: certManagerSettingsLive,
   access: accessLive,
+  accessApprovals: accessApprovalsLive,
   projects: projectsLive,
   projectSettings: projectSettingsLive,
   projectIntegrations: projectIntegrationsLive,
