@@ -25,6 +25,8 @@ export type TProductAccessRegistry = {
   registerDefaultRoles: (input: { projectType: ProjectType; roles: Record<string, TProjectRule[]> }) => void;
   // Overrides what custom roles mean in this product's projects. Default: apply the customer's rules as written.
   overrideCustomRoles: (input: { projectType: ProjectType; resolve: TCustomRoleResolver }) => void;
+  // Which project types registered what, for the wiring test.
+  registeredProjectTypes: () => { defaultRoles: ProjectType[]; customRoles: ProjectType[] };
 };
 
 export class ProductAccessRegistry implements TProductAccessRegistry {
