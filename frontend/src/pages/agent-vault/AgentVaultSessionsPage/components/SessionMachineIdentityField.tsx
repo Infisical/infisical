@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import axios from "axios";
 import { BotIcon, TriangleAlertIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -11,6 +12,7 @@ import {
   Combobox,
   Field,
   FieldContent,
+  FieldDescription,
   FieldLabel
 } from "@app/components/v3";
 import {
@@ -46,24 +48,36 @@ type TSnippetClientId = {
   identity: TSnippetIdentity | null;
   clientId: string | null;
   hasNoUniversalAuth: boolean;
+  hasLoadError: boolean;
 };
+
+// The endpoint answers 404 when the identity has no Universal Auth configuration, and 400 when it
+// has one but Universal Auth isn't among its auth methods. Any other failure says nothing about
+// the identity, so it gets the usual retry and isn't reported as missing Universal Auth.
+const isNoUniversalAuthError = (error: unknown) =>
+  axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 400);
 
 // Holds the last loaded result while the next identity's loads, so switching identities doesn't
 // blank the snippet and the notices before filling them back in.
 export const useSnippetClientId = (identity: TSnippetIdentity | null): TSnippetClientId => {
-  const { data, isError, isPending } = useGetIdentityUniversalAuth(identity?.id ?? "");
+  const { data, error, isPending } = useGetIdentityUniversalAuth(identity?.id ?? "", {
+    retry: (failureCount, retryError) => !isNoUniversalAuthError(retryError) && failureCount < 1
+  });
   const isLoading = Boolean(identity) && isPending;
+  const hasNoUniversalAuth = Boolean(identity) && isNoUniversalAuthError(error);
   const latest: TSnippetClientId = {
     identity,
     clientId: identity && data?.identityId === identity.id ? data.clientId : null,
-    hasNoUniversalAuth: Boolean(identity) && isError
+    hasNoUniversalAuth,
+    hasLoadError: Boolean(identity && error) && !hasNoUniversalAuth
   };
 
   const [settled, setSettled] = useState(latest);
   const isSettledStale =
     settled.identity?.id !== latest.identity?.id ||
     settled.clientId !== latest.clientId ||
-    settled.hasNoUniversalAuth !== latest.hasNoUniversalAuth;
+    settled.hasNoUniversalAuth !== latest.hasNoUniversalAuth ||
+    settled.hasLoadError !== latest.hasLoadError;
   if (!isLoading && isSettledStale) setSettled(latest);
 
   return isLoading ? settled : latest;
@@ -149,8 +163,12 @@ export const SessionMachineIdentityField = ({
       </Link>
     );
 
+  const hasNotice = snippet.hasNoUniversalAuth || grant.needsGrant;
+
+  // A fragment, because both parts sit in the dialog's grid: the picker in its column and the
+  // notices on a row of their own under both columns.
   return (
-    <div className="flex flex-col gap-3">
+    <>
       <Field>
         <FieldLabel htmlFor="agent-vault-session-snippet-identity">Machine Identity</FieldLabel>
         <FieldContent>
@@ -208,58 +226,70 @@ export const SessionMachineIdentityField = ({
                 : undefined
             }
           />
+          {/* Holds two lines before and after the pick, so the snippets below don't jump when it fills in. */}
+          <FieldDescription className="min-h-8">
+            {snippet.hasNoUniversalAuth ? null : (
+              <>
+                {snippet.identity && snippet.hasLoadError && (
+                  <>
+                    Couldn&apos;t load {snippet.identity.name}&apos;s client ID, so the snippets
+                    below show <span className="font-mono">&lt;client-id&gt;</span>. Find it on{" "}
+                    {renderIdentityPageLink(snippet.identity)}.
+                  </>
+                )}
+                {snippet.identity && !snippet.hasLoadError && (
+                  <>
+                    The snippets below have {snippet.identity.name}&apos;s client ID. Replace{" "}
+                    <span className="font-mono">&lt;client-secret&gt;</span> with one of its{" "}
+                    {renderIdentityPageLink(snippet.identity, "client secrets")}.
+                  </>
+                )}
+                {!snippet.identity &&
+                  "Your code creates sessions as a machine identity. Pick one to fill in its client ID below."}
+              </>
+            )}
+          </FieldDescription>
         </FieldContent>
       </Field>
 
-      {snippet.hasNoUniversalAuth && (
-        <Alert variant="warning">
-          <TriangleAlertIcon />
-          <AlertDescription>
-            <p>
-              {snippet.identity?.name} doesn&apos;t use Universal Auth, so it has no client ID. Add
-              Universal Auth on {renderIdentityPageLink(snippet.identity)}.
-            </p>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {grant.needsGrant && (
-        <Alert variant="warning">
-          <TriangleAlertIcon />
-          <AlertTitle>
-            {grant.identity?.name} can&apos;t use {accessBundle?.name}
-          </AlertTitle>
-          <AlertDescription>
-            <p>Creating a session fails until the access bundle is granted to it.</p>
-            <Button
-              variant="warning"
-              size="xs"
-              className="mt-2"
-              isPending={grantAccess.isPending}
-              // While the next identity's grants load, the warning still names the previous one.
-              isDisabled={grant.identity?.id !== identity?.id}
-              onClick={onGrant}
-            >
-              Grant Access
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Holds two lines before and after the pick, so the snippets below don't jump when it fills in. */}
-      {!snippet.hasNoUniversalAuth && (
-        <p className="min-h-8 text-xs text-accent">
-          {snippet.identity ? (
-            <>
-              The snippets below have {snippet.identity.name}&apos;s client ID. Replace{" "}
-              <span className="font-mono">&lt;client-secret&gt;</span> with one of its{" "}
-              {renderIdentityPageLink(snippet.identity, "client secrets")}.
-            </>
-          ) : (
-            "Your code creates sessions as a machine identity. Pick one to fill in its client ID below."
+      {hasNotice && (
+        <div className="flex flex-col gap-3 md:col-span-2">
+          {snippet.hasNoUniversalAuth && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertDescription>
+                <p>
+                  {snippet.identity?.name} doesn&apos;t use Universal Auth, so it has no client ID.
+                  Add Universal Auth on {renderIdentityPageLink(snippet.identity)}.
+                </p>
+              </AlertDescription>
+            </Alert>
           )}
-        </p>
+
+          {grant.needsGrant && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>
+                {grant.identity?.name} can&apos;t use {accessBundle?.name}
+              </AlertTitle>
+              <AlertDescription>
+                <p>Creating a session fails until the access bundle is granted to it.</p>
+                <Button
+                  variant="warning"
+                  size="xs"
+                  className="mt-2"
+                  isPending={grantAccess.isPending}
+                  // While the next identity's grants load, the warning still names the previous one.
+                  isDisabled={grant.identity?.id !== identity?.id}
+                  onClick={onGrant}
+                >
+                  Grant Access
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 };

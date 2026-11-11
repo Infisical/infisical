@@ -1,6 +1,6 @@
 import { ReactNode, useMemo, useState } from "react";
-import { CheckIcon, CopyIcon } from "lucide-react";
 import { SiPython, SiTypescript } from "react-icons/si";
+import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { Button, CodeBlock, Tabs, TabsList, TabsTrigger } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";

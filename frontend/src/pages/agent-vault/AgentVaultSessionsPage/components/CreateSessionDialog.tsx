@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SiPython, SiTypescript } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
 import {
   BoxIcon,
@@ -8,7 +9,6 @@ import {
   TriangleAlertIcon,
   UserIcon
 } from "lucide-react";
-import { SiPython, SiTypescript } from "react-icons/si";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -260,21 +260,19 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
       {bundleField}
       {isCreateNow && (
         // Shaped like the identity field it replaces, so the tabs below don't move.
-        <div className="flex flex-col gap-3">
-          <Field>
-            <FieldLabel>Created As</FieldLabel>
-            <FieldContent>
-              {/* As tall as the picker beside it, so the two columns line up. */}
-              <span className="flex h-9 min-w-0 items-center gap-2 text-sm">
-                <UserIcon className="size-4 shrink-0 text-muted" />
-                <span className="truncate">{userName}</span>
-              </span>
-            </FieldContent>
-          </Field>
-          <p className="min-h-8 text-xs text-accent">
-            Sessions you create here are attributed to you.
-          </p>
-        </div>
+        <Field>
+          <FieldLabel>Created As</FieldLabel>
+          <FieldContent>
+            {/* As tall as the picker beside it, so the two columns line up. */}
+            <span className="flex h-9 min-w-0 items-center gap-2 text-sm">
+              <UserIcon className="size-4 shrink-0 text-muted" />
+              <span className="truncate">{userName}</span>
+            </span>
+            <FieldDescription className="min-h-8">
+              Sessions you create here are attributed to you.
+            </FieldDescription>
+          </FieldContent>
+        </Field>
       )}
       {!isCreateNow && isAdmin && (
         <SessionMachineIdentityField
@@ -284,10 +282,16 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
         />
       )}
       {!isCreateNow && !isAdmin && (
-        <p className="text-xs text-accent">
-          Your code creates sessions as a machine identity. Ask an Agent Vault admin for one
-          that&apos;s granted the access bundle, with its client ID and client secret.
-        </p>
+        // Labeled like the picker admins see here, so it lines up with the bundle field beside it.
+        <Field>
+          <FieldLabel>Machine Identity</FieldLabel>
+          <FieldContent>
+            <FieldDescription>
+              Your code creates sessions as a machine identity. Ask an Agent Vault admin for the
+              client ID and client secret of one that&apos;s granted this access bundle.
+            </FieldDescription>
+          </FieldContent>
+        </Field>
       )}
     </div>
   );

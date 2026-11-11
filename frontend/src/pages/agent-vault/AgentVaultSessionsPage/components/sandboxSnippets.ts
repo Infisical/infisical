@@ -1,8 +1,8 @@
+import cursorControllerDockerfile from "./sandbox-scripts/cursor-controller-dockerfile.txt?raw";
 // The scripts are copied verbatim from the provider guides in
 // docs/documentation/platform/agent-vault/guides/, which are tested end to end. Update them
 // together, or the sheet hands out code the guide no longer recommends.
 import cursorControllerManifest from "./sandbox-scripts/cursor-controller.yaml.txt?raw";
-import cursorControllerDockerfile from "./sandbox-scripts/cursor-controller-dockerfile.txt?raw";
 import cursorProxy from "./sandbox-scripts/cursor-proxy.yaml.txt?raw";
 import cursorSpawnWorker from "./sandbox-scripts/cursor-spawn-worker.sh.txt?raw";
 import cursorWorkerDockerfile from "./sandbox-scripts/cursor-worker-dockerfile.txt?raw";
