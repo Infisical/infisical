@@ -206,19 +206,46 @@ export const getDefaultSignatureAlgorithmForCaKey = (caKeyAlgorithm: CertKeyAlgo
   return `${keyType}-${hash.replace("-", "")}` as CertSignatureAlgorithm;
 };
 
+const POLICY_SIGNATURE_ALGORITHM_TO_API: Record<string, string> = {
+  "SHA256-RSA": "RSA-SHA256",
+  "SHA384-RSA": "RSA-SHA384",
+  "SHA512-RSA": "RSA-SHA512",
+  "SHA256-ECDSA": "ECDSA-SHA256",
+  "SHA384-ECDSA": "ECDSA-SHA384",
+  "SHA512-ECDSA": "ECDSA-SHA512"
+};
+
+export const mapPolicySignatureAlgorithmToApi = (policyFormat: string): string =>
+  POLICY_SIGNATURE_ALGORITHM_TO_API[policyFormat] || policyFormat;
+
 /**
  * A CSR's own signature only proves possession of the CSR's key, so it says nothing about how the CA
- * can sign. Keep it when the CA can produce it (it carries the requester's hash preference) and
- * otherwise sign with the CA key's default.
+ * can sign. Keep it when the CA can produce it and the policy allows it (it carries the requester's
+ * hash preference), otherwise sign with the CA key's default or, failing that, the first algorithm
+ * the policy allows that the CA can produce.
  */
 export const resolveCsrSignatureAlgorithmForCaKey = (
   csrSignatureAlgorithm: string | undefined,
-  caKeyAlgorithm: CertKeyAlgorithm
+  caKeyAlgorithm: CertKeyAlgorithm,
+  policySignatureAlgorithms?: string[] | null
 ): string => {
-  if (csrSignatureAlgorithm && isSignatureAlgorithmCompatibleWithCaKey(csrSignatureAlgorithm, caKeyAlgorithm)) {
+  const allowed = policySignatureAlgorithms?.length
+    ? policySignatureAlgorithms.map(mapPolicySignatureAlgorithmToApi)
+    : undefined;
+  const isAllowed = (algorithm: string) => !allowed || allowed.includes(algorithm);
+
+  if (
+    csrSignatureAlgorithm &&
+    isSignatureAlgorithmCompatibleWithCaKey(csrSignatureAlgorithm, caKeyAlgorithm) &&
+    isAllowed(csrSignatureAlgorithm)
+  ) {
     return csrSignatureAlgorithm;
   }
-  return getDefaultSignatureAlgorithmForCaKey(caKeyAlgorithm);
+
+  const caDefault = getDefaultSignatureAlgorithmForCaKey(caKeyAlgorithm);
+  if (isAllowed(caDefault)) return caDefault;
+
+  return allowed?.find((algorithm) => isSignatureAlgorithmCompatibleWithCaKey(algorithm, caKeyAlgorithm)) ?? caDefault;
 };
 
 /**

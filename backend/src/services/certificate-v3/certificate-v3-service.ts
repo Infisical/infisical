@@ -1432,7 +1432,8 @@ export const certificateV3ServiceFactory = ({
         ? await caKeySourceService.resolveCsrSignatureAlgorithm({
             caId: ca.id,
             keyAlgorithm: ca.internalCa.keyAlgorithm as CertKeyAlgorithm,
-            csrSignatureAlgorithm
+            csrSignatureAlgorithm,
+            policySignatureAlgorithms: policy.algorithms?.signature
           })
         : csrSignatureAlgorithm
     ) as typeof csrSignatureAlgorithm;
@@ -2399,7 +2400,8 @@ export const certificateV3ServiceFactory = ({
     quotaDeps: $quotaDeps,
     recordQuotaUsage: $recordQuotaUsage,
     resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
-    reportCertificateIssued: $reportCertificateIssued
+    reportCertificateIssued: $reportCertificateIssued,
+    caKeySourceService
   });
 
   const issueCertificateFromProfile = async (dto: TIssueCertificateFromProfileDTO) => {

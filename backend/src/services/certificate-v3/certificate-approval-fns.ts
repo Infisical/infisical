@@ -16,6 +16,7 @@ import { logger } from "@app/lib/logger";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { validateAcmIssuanceInputs } from "@app/services/certificate-authority/aws-acm-public-ca/aws-acm-public-ca-certificate-authority-fns";
 import { validateAwsPcaCaIssuanceInputs } from "@app/services/certificate-authority/aws-pca/aws-pca-certificate-authority-validators";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -118,6 +119,7 @@ export type TIssueCertificateFromApprovedRequestDeps = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "emit">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "resolveCsrSignatureAlgorithm">;
 };
 
 export type TCertificateApprovalService = {
@@ -234,7 +236,8 @@ export const certificateApprovalServiceFactory = (
     apiEnrollmentConfigDAL,
     pkiSyncQueue,
     pkiAlertV2Queue,
-    certificateAlertEventEmitter
+    certificateAlertEventEmitter,
+    caKeySourceService
   } = deps;
 
   const $emitIssuanceAlert = (input: Omit<TCertificateAlertEventInput, "eventType">, tx: Knex) =>
@@ -579,8 +582,19 @@ export const certificateApprovalServiceFactory = (
     );
     const mappedReconstructedRequest = mapEnumsForValidation(reconstructedRequest);
     mappedReconstructedRequest.keyAlgorithm = reconstructedKeyAlg;
-    mappedReconstructedRequest.signatureAlgorithm =
-      (certRequest.signatureAlgorithm as typeof reconstructedSigAlg | null) || reconstructedSigAlg;
+    // Resolved again at issuance: ACME stores the CSR's own algorithm, and the CA or policy may have
+    // changed since the request was made.
+    const issuedSignatureAlgorithm = (
+      ca.internalCa
+        ? await caKeySourceService.resolveCsrSignatureAlgorithm({
+            caId: ca.id,
+            keyAlgorithm: ca.internalCa.keyAlgorithm as CertKeyAlgorithm,
+            csrSignatureAlgorithm: certRequest.signatureAlgorithm || reconstructedSigAlg,
+            policySignatureAlgorithms: certPolicy.algorithms?.signature
+          })
+        : certRequest.signatureAlgorithm || reconstructedSigAlg
+    ) as typeof reconstructedSigAlg;
+    mappedReconstructedRequest.signatureAlgorithm = issuedSignatureAlgorithm;
     if (certRequest.notAfter) {
       mappedReconstructedRequest.notBefore = certRequest.notBefore || undefined;
       mappedReconstructedRequest.notAfter = certRequest.notAfter;
@@ -656,7 +670,7 @@ export const certificateApprovalServiceFactory = (
         : undefined,
       notBefore: normalizeDateForApi(certRequest.notBefore || undefined),
       notAfter: normalizeDateForApi(certRequest.notAfter || undefined),
-      signatureAlgorithm: certRequest.signatureAlgorithm || undefined,
+      signatureAlgorithm: issuedSignatureAlgorithm,
       keyAlgorithm: certRequest.keyAlgorithm || undefined,
       customExtensions: revalidationResult.resolvedCustomExtensions,
       isFromProfile: true,

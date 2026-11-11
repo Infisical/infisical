@@ -4259,7 +4259,8 @@ export const registerRoutes = async (
     apiEnrollmentConfigDAL,
     pkiSyncQueue,
     pkiAlertV2Queue,
-    certificateAlertEventEmitter
+    certificateAlertEventEmitter,
+    caKeySourceService
   });
 
   const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
@@ -4659,7 +4660,8 @@ export const registerRoutes = async (
     certificateRequestDAL,
     pkiApplicationProfileDAL,
     pkiApplicationDAL,
-    acmeEnrollmentConfigDAL
+    acmeEnrollmentConfigDAL,
+    caKeySourceService
   });
 
   const pkiSubscriberService = pkiSubscriberServiceFactory({

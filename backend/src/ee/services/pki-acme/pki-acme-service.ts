@@ -28,6 +28,7 @@ import {
   TCertRequestRequestData
 } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -64,7 +65,7 @@ import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certi
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { assertCertificateMaterialAvailable } from "@app/services/certificate/certificate-fns";
-import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
@@ -201,6 +202,7 @@ type TPkiAcmeServiceFactoryDep = {
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   acmeEnrollmentConfigDAL: Pick<TAcmeEnrollmentConfigDALFactory, "findById">;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "resolveCsrSignatureAlgorithm">;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -231,7 +233,8 @@ export const pkiAcmeServiceFactory = ({
   certificateRequestDAL,
   pkiApplicationProfileDAL,
   pkiApplicationDAL,
-  acmeEnrollmentConfigDAL
+  acmeEnrollmentConfigDAL,
+  caKeySourceService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (
     profileId: string,
@@ -1344,11 +1347,26 @@ export const pkiAcmeServiceFactory = ({
               throw new NotFoundError({ message: "Certificate policy not found" });
             }
 
-            // The CSR's own algorithms are spread in so a profile default cannot override what the
+            // The CSR's signature only proves possession of its key, so an internal CA signs with an
+            // algorithm its own key and the policy allow, and that is what the policy is checked against.
+            const csrAlgorithms = extractAlgorithmsFromCSR(csr);
+            const requestAlgorithms = {
+              ...csrAlgorithms,
+              signatureAlgorithm: (ca.internalCa
+                ? await caKeySourceService.resolveCsrSignatureAlgorithm({
+                    caId: ca.id,
+                    keyAlgorithm: ca.internalCa.keyAlgorithm as CertKeyAlgorithm,
+                    csrSignatureAlgorithm: csrAlgorithms.signatureAlgorithm,
+                    policySignatureAlgorithms: policy.algorithms?.signature
+                  })
+                : csrAlgorithms.signatureAlgorithm) as typeof csrAlgorithms.signatureAlgorithm
+            };
+
+            // The request's algorithms are spread in so a profile default cannot override what the
             // key actually is, which would fail a policy the CSR itself satisfies.
             const validationResult = await certificatePolicyService.validateCertificateRequest(
               policy.id,
-              applyProfileDefaults({ ...certificateRequest, ...extractAlgorithmsFromCSR(csr) }, profile.defaults),
+              applyProfileDefaults({ ...certificateRequest, ...requestAlgorithms }, profile.defaults),
               { profileCustomExtensions: profile.defaults?.customExtensions }
             );
             if (!validationResult.isValid) {
@@ -1362,6 +1380,7 @@ export const pkiAcmeServiceFactory = ({
             return {
               approvalPolicy: matchedApprovalPolicy,
               policy,
+              requestAlgorithms,
               resolvedCustomExtensions: validationResult.resolvedCustomExtensions,
               policySteps: await approvalPolicyDAL.findStepsByPolicyId(matchedApprovalPolicy.id)
             };
@@ -1389,7 +1408,7 @@ export const pkiAcmeServiceFactory = ({
       let certIssuanceJobData: TIssueCertificateFromProfileJobData | undefined;
 
       if (approvalContext) {
-        const { approvalPolicy, policy, policySteps } = approvalContext;
+        const { approvalPolicy, policy, policySteps, requestAlgorithms } = approvalContext;
         const $recordApprovalFailure = async (error: unknown) => {
           if (!(error instanceof AcmeOrderNotReadyError)) await $recordFinalizeFailure(error);
           throw error;
@@ -1435,7 +1454,7 @@ export const pkiAcmeServiceFactory = ({
                 extendedKeyUsages: certificateRequest.extendedKeyUsages || null,
                 notBefore: finalizingOrder.notBefore || null,
                 notAfter: finalizingOrder.notAfter || null,
-                ...extractAlgorithmsFromCSR(csr),
+                ...requestAlgorithms,
                 ttl,
                 enrollmentType: EnrollmentType.ACME,
                 status: CertificateRequestStatus.PENDING_APPROVAL,

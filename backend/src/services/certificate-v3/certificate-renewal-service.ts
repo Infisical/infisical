@@ -14,6 +14,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import {
   TCertificateAuthorityDALFactory,
   TCertificateAuthorityWithAssociatedCa
@@ -65,7 +66,6 @@ import {
   getEffectiveAlgorithms,
   isValidRenewalTiming,
   resolveEffectiveApiConfig,
-  resolveCsrSignatureAlgorithmForCaKey,
   resolveRenewedCertificateRenewBeforeDays,
   validateAlgorithmCompatibility,
   validateCaSupport
@@ -186,6 +186,7 @@ type TCertificateRenewalServiceFactoryDep = {
   recordQuotaUsage: (usage?: { orgId: string; isNewQuotaKey: boolean; isWildcard: boolean }) => Promise<void>;
   resolveApplicationIdForProfile: TResolveApplicationIdForProfile;
   reportCertificateIssued: TReportCertificateIssued;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "resolveCsrSignatureAlgorithm">;
 };
 
 class RenewalBlockedError extends BadRequestError {
@@ -251,7 +252,8 @@ export const certificateRenewalServiceFactory = ({
   quotaDeps,
   recordQuotaUsage,
   resolveApplicationIdForProfile: $resolveApplicationIdForProfile,
-  reportCertificateIssued: $reportCertificateIssued
+  reportCertificateIssued: $reportCertificateIssued,
+  caKeySourceService
 }: TCertificateRenewalServiceFactoryDep) => {
   const $linkRenewedCertificate = async (
     {
@@ -1174,13 +1176,15 @@ export const certificateRenewalServiceFactory = ({
 
         const caKeyAlgorithm = caType === CaType.INTERNAL ? ca?.internalCa?.keyAlgorithm : undefined;
         const issuableCsrRenewalRequest =
-          csrRenewalRequest && caKeyAlgorithm
+          csrRenewalRequest && ca && caKeyAlgorithm
             ? {
                 ...csrRenewalRequest,
-                signatureAlgorithm: resolveCsrSignatureAlgorithmForCaKey(
-                  csrRenewalRequest.signatureAlgorithm,
-                  caKeyAlgorithm as CertKeyAlgorithm
-                ) as CertSignatureAlgorithm
+                signatureAlgorithm: (await caKeySourceService.resolveCsrSignatureAlgorithm({
+                  caId: ca.id,
+                  keyAlgorithm: caKeyAlgorithm as CertKeyAlgorithm,
+                  csrSignatureAlgorithm: csrRenewalRequest.signatureAlgorithm,
+                  policySignatureAlgorithms: policy?.algorithms?.signature
+                })) as CertSignatureAlgorithm
               }
             : csrRenewalRequest;
 

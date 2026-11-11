@@ -72,4 +72,20 @@ describe("resolveCsrSignatureAlgorithmForCaKey", () => {
   test("uses the CA key's default when the CSR algorithm is unknown", () => {
     expect(resolveCsrSignatureAlgorithmForCaKey(undefined, CertKeyAlgorithm.RSA_2048)).toBe("RSA-SHA256");
   });
+
+  test.each([
+    ["RSA-SHA384", CertKeyAlgorithm.RSA_2048, ["SHA256-RSA"], "RSA-SHA256"],
+    ["RSA-SHA384", CertKeyAlgorithm.RSA_2048, ["RSA-SHA256", "RSA-SHA384"], "RSA-SHA384"],
+    ["ECDSA-SHA256", CertKeyAlgorithm.RSA_2048, ["SHA512-RSA"], "RSA-SHA512"],
+    ["RSA-SHA256", CertKeyAlgorithm.ECDSA_P384, ["SHA256-ECDSA", "SHA384-ECDSA"], "ECDSA-SHA384"],
+    ["ECDSA-SHA256", CertKeyAlgorithm.RSA_2048, [], "RSA-SHA256"]
+  ])("resolves a %s CSR on a %s CA against policy %j to %s", (csrSig, caKey, policyAlgorithms, expected) => {
+    expect(resolveCsrSignatureAlgorithmForCaKey(csrSig, caKey, policyAlgorithms)).toBe(expected);
+  });
+
+  test("falls back to the CA key's default when the policy allows nothing the CA can produce", () => {
+    expect(resolveCsrSignatureAlgorithmForCaKey("RSA-SHA256", CertKeyAlgorithm.RSA_2048, ["SHA256-ECDSA"])).toBe(
+      "RSA-SHA256"
+    );
+  });
 });

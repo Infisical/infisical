@@ -161,4 +161,14 @@ describe("Signing a CSR whose algorithm differs from the CA's", async () => {
 
     expect(issuedSignatureAlgorithm(certificate)).toEqual({ name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" });
   });
+
+  test("a CSR hash the policy doesn't allow falls back to one it does", async () => {
+    const issuer = await createProfile("rsa-ca-policy-hash", CertKeyAlgorithm.RSA_2048, {
+      signature: ["RSA-SHA256"]
+    });
+
+    const certificate = await signCsr(issuer, await generateCsr(RSA_SHA384));
+
+    expect(issuedSignatureAlgorithm(certificate)).toEqual({ name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" });
+  });
 });

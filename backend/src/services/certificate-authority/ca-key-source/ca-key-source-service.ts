@@ -118,18 +118,23 @@ export const caKeySourceServiceFactory = (deps: TCaKeySourceServiceFactoryDep) =
   const resolveCsrSignatureAlgorithm = async ({
     caId,
     keyAlgorithm,
-    csrSignatureAlgorithm
+    csrSignatureAlgorithm,
+    policySignatureAlgorithms
   }: {
     caId: string;
     keyAlgorithm: CertKeyAlgorithm;
     csrSignatureAlgorithm?: string;
+    policySignatureAlgorithms?: string[] | null;
   }): Promise<string | undefined> => {
     const caSecret = await deps.certificateAuthoritySecretDAL.findOne({ caId });
     const requiredSignatureAlgorithm =
       caSecret && isExternalCaKeySource(caSecret.keySource)
         ? $getProvider(caSecret.keySource).requiredSignatureAlgorithm?.(keyAlgorithm)
         : undefined;
-    return requiredSignatureAlgorithm ?? resolveCsrSignatureAlgorithmForCaKey(csrSignatureAlgorithm, keyAlgorithm);
+    return (
+      requiredSignatureAlgorithm ??
+      resolveCsrSignatureAlgorithmForCaKey(csrSignatureAlgorithm, keyAlgorithm, policySignatureAlgorithms)
+    );
   };
 
   return { assertCanUse, createKey, buildSigner, describeKey, prepareKeyReleases, resolveCsrSignatureAlgorithm };
