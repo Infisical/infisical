@@ -32,6 +32,7 @@ import { LicenseModule } from "./platform/license/ce/module";
 import { LicenseEeModule } from "./platform/license/ee/module";
 import { OrganizationsModule } from "./platform/organizations/ce/module";
 import { ProjectsModule } from "./platform/projects/ce/module";
+import { SecretScanningModule } from "./secrets-manager/secret-scanning/ce/module";
 import { SecretsModule } from "./secrets-manager/secrets/ce/module";
 
 export type TDomainDeps = {
@@ -180,7 +181,11 @@ export const createDomains = (deps: TDomainDeps) => {
   const secrets = new SecretsModule({ db, keyStore: deps.keyStore, ...productDeps });
   const pam = new PamModule(productDeps);
   const agentVault = new AgentVaultModule(productDeps);
-  const kms = new KmsModule({ productAccessRegistry: projects.productAccessRegistry });
+  const kms = new KmsModule({
+    projectsDomain: projects.service,
+    productAccessRegistry: projects.productAccessRegistry
+  });
+  const secretScanning = new SecretScanningModule({ projectsDomain: projects.service });
   const codeSigning = new CodeSigningModule({ projectsDomain: projects.service });
   const certManager = new CertManagerModule({ db, organizationsDomain: organizations.service, ...productDeps });
 
@@ -204,6 +209,7 @@ export const createDomains = (deps: TDomainDeps) => {
     agentVault,
     kms,
     codeSigning,
+    secretScanning,
     certManager
   };
 };
