@@ -1,5 +1,5 @@
 import { TDynamicSecretLeases } from "@app/db/schemas";
-import { TDynamicSecretWithMetadata, TProjectPermission } from "@app/lib/types";
+import { TActorInput, TDynamicSecretWithMetadata } from "@app/lib/types";
 
 export enum DynamicSecretLeaseStatus {
   FailedDeletion = "Failed to delete"
@@ -16,21 +16,21 @@ export type TCreateDynamicSecretLeaseDTO = {
   ttl?: string;
   projectSlug: string;
   config?: TDynamicSecretLeaseConfig;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDetailsDynamicSecretLeaseDTO = {
   leaseId: string;
   path: string;
   environmentSlug: string;
   projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TListDynamicSecretLeasesDTO = {
   name: string;
   path: string;
   environmentSlug: string;
   projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteDynamicSecretLeaseDTO = {
   leaseId: string;
@@ -38,7 +38,7 @@ export type TDeleteDynamicSecretLeaseDTO = {
   environmentSlug: string;
   projectSlug: string;
   isForced?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TRenewDynamicSecretLeaseDTO = {
   leaseId: string;
@@ -46,7 +46,7 @@ export type TRenewDynamicSecretLeaseDTO = {
   environmentSlug: string;
   ttl?: string;
   projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDynamicSecretKubernetesLeaseConfig = {
   namespace?: string;

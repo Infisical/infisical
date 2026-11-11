@@ -15,7 +15,6 @@ import {
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
@@ -82,8 +81,7 @@ const once = <T>(build: () => T) => {
 };
 
 type TSecretReadActivityServiceFactoryDep = {
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermissions">;
-  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission" | "getProjectMemberPermissions">;
   licenseDomain: TLicenseDomain;
   secretReadActivityDAL: Pick<
     TSecretReadActivityDALFactory,
@@ -107,7 +105,6 @@ type TSecretReadActivityServiceFactoryDep = {
 export type TSecretReadActivityServiceFactory = ReturnType<typeof secretReadActivityServiceFactory>;
 
 export const secretReadActivityServiceFactory = ({
-  permissionService,
   secretsDomain,
   licenseDomain,
   secretReadActivityDAL,
@@ -350,7 +347,7 @@ export const secretReadActivityServiceFactory = ({
       adminActorIds,
       { trackingStartedAt }
     ] = await Promise.all([
-      permissionService.getProjectPermissions(projectId, orgId),
+      secretsDomain.getProjectMemberPermissions({ orgId, projectId }),
       secretReadActivityDAL.findAccessSourceDates(projectId),
       secretReadActivityDAL.findAdminActorIds(projectId),
       $getProjectTrackingStartedAt(projectId)
@@ -406,7 +403,7 @@ export const secretReadActivityServiceFactory = ({
     const readers = actors.map(({ actorType, actorId }) => ({
       actorType,
       actorId,
-      permission: permissionForActor({ actorId, groupIds: groupIdsOf(actorId), ...detailsOf(actorId) })
+      permission: permissionForActor({ actorId, groupIds: groupIdsOf(actorId), ...detailsOf(actorId) }).toAbility()
     }));
 
     // Every source of each actor's access with its date: their own roles and project-wide privileges, each group
@@ -415,7 +412,7 @@ export const secretReadActivityServiceFactory = ({
     const sources = [
       ...[...directMembers.values()].flatMap((member) => {
         const sourceOf = (key: string) => () =>
-          member.accessSources().find((source) => source.key === key)?.permission ?? member.permission;
+          (member.accessSources().find((source) => source.key === key)?.permission ?? member.permission).toAbility();
         return [
           ...member.roles.map((role) => ({
             actorId: member.id,
@@ -435,7 +432,7 @@ export const secretReadActivityServiceFactory = ({
           actorId,
           date: groupChangedAt && groupChangedAt > joinedAt ? groupChangedAt : joinedAt,
           permission: once(() =>
-            permissionForActor({ actorId, groupIds: [group.id], groupsOnly: true, ...detailsOf(actorId) })
+            permissionForActor({ actorId, groupIds: [group.id], groupsOnly: true, ...detailsOf(actorId) }).toAbility()
           )
         };
       }),

@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { ActionProjectType, ProjectVersion, SecretType } from "@app/db/schemas";
+import { ProjectVersion, SecretType } from "@app/db/schemas";
 import { ProjectPermissionSecretActions } from "@app/domains/platform/projects/ce/module";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { hasSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -19,7 +20,7 @@ const SECRET_METADATA_MAX_SCAN_ROWS = 2000;
 const SECRET_METADATA_CURSOR_TTL_SECONDS = 300;
 
 export const secretMetadataServiceFactory = ({
-  permissionService,
+  secretsDomain,
   folderDAL,
   projectEnvDAL,
   projectDAL,
@@ -27,7 +28,7 @@ export const secretMetadataServiceFactory = ({
   keyStore
 }: {
   keyStore: Pick<TKeyStoreFactory, "getItemPrimary" | "setItemWithExpiry">;
-  permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  secretsDomain: Pick<TSecretsDomain, "getSecretsPermission">;
   folderDAL: Pick<TSecretFolderDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -39,13 +40,10 @@ export const secretMetadataServiceFactory = ({
     secretPath,
     cursor,
     limit,
-    ...actor
+    actor
   }: TGetSecretMetadataDTO) => {
-    const { permission } = await permissionService.getProjectPermission({
-      ...actor,
-      projectId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
+    const { permission: projectPermission } = await secretsDomain.getSecretsPermission({ actor, projectId });
+    const permission = projectPermission.toAbility();
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: "Project not found" });
     if (project.version !== ProjectVersion.V3) {
@@ -64,10 +62,10 @@ export const secretMetadataServiceFactory = ({
     const cursorScope = createHash("sha256")
       .update(
         JSON.stringify([
-          actor.actor,
-          actor.actorId,
-          actor.actorOrgId,
-          actor.actorAuthMethod,
+          actor.principal.type,
+          actor.principal.id,
+          actor.org.id,
+          actor.principal.type === ActorType.USER ? actor.principal.authMethod : null,
           projectId,
           environment,
           secretPath

@@ -1,33 +1,26 @@
-import { ActorAuthMethod, ActorType } from "@app/lib/auth/actor-types";
+import { TActorInput } from "@app/lib/types";
 
-type TBaseActor = {
-  actorId: string;
-  actor: ActorType;
-  actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string;
-};
-
-export type TCreateProjectFolderGrantDTO = TBaseActor & {
+export type TCreateProjectFolderGrantDTO = TActorInput & {
   sourceProjectId: string;
   environment: string;
   secretPath: string;
   targetProjectId: string;
 };
 
-export type TDeleteProjectFolderGrantDTO = TBaseActor & {
+export type TDeleteProjectFolderGrantDTO = TActorInput & {
   grantId: string;
   sourceProjectId: string;
 };
 
-export type TListProjectFolderGrantsDTO = TBaseActor & {
+export type TListProjectFolderGrantsDTO = TActorInput & {
   sourceProjectId: string;
 };
 
-export type TListProjectFolderGrantsForTargetDTO = TBaseActor & {
+export type TListProjectFolderGrantsForTargetDTO = TActorInput & {
   targetProjectId: string;
 };
 
-export type TGetGrantUsageDTO = TBaseActor & {
+export type TGetGrantUsageDTO = TActorInput & {
   grantId: string;
   sourceProjectId: string;
 };

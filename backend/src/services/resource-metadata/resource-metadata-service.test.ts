@@ -1,13 +1,14 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { Knex } from "knex";
 import { vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionSecretActions as Actions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 
 import { resourceMetadataServiceFactory } from "./resource-metadata-service";
 import {
@@ -20,8 +21,8 @@ const dto = {
   projectId: "project",
   filters: [{ key: "team", value: "platform", operator: SecretMetadataSearchOperator.Is }],
   operator: SecretMetadataSearchLogicalOperator.And,
-  actor: { type: "user", id: "user", orgId: "org" }
-} as TSearchSecretMetadataDTO;
+  actor: { principal: { type: "user", id: "user" }, org: { id: "org" } }
+} as unknown as TSearchSecretMetadataDTO;
 
 const candidate = (id: string, encrypted = false) => ({
   secretId: id,
@@ -40,9 +41,10 @@ const setup = (
 ) => {
   const db = vi.fn() as unknown as Knex;
   const tx = {};
-  const getProjectPermission = vi.fn().mockResolvedValue({
-    permission: createMongoAbility<ProjectPermissionSet>(rules)
-  }) as unknown as TPermissionServiceFactory["getProjectPermission"];
+  const getSecretsPermission = vi.fn().mockResolvedValue({
+    permission: Permission.fromRules<ProjectPermissionSet>({ rules }),
+    folderGrants: []
+  }) as unknown as TSecretsDomain["getSecretsPermission"];
   const find = vi.fn().mockResolvedValue([{ slug: "dev" }, { slug: "prod" }]);
   const findBySecretPathMultiEnv = vi.fn().mockResolvedValue([{ id: "parent" }]);
   const findByEnvsDeep = vi.fn().mockResolvedValue([{ id: "parent" }, { id: "child" }]);
@@ -56,7 +58,7 @@ const setup = (
     .mockResolvedValue({ decryptor: vi.fn().mockReturnValue(Buffer.from("unmatched")) });
   const service = resourceMetadataServiceFactory({
     db,
-    permissionService: { getProjectPermission },
+    secretsDomain: { getSecretsPermission },
     projectEnvDAL: { find },
     folderDAL: { findBySecretPathMultiEnv, findByEnvsDeep, findSecretPathByFolderIds },
     resourceMetadataDAL: {

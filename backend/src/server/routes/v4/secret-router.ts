@@ -207,9 +207,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const referencedSecretIds: string[] = [];
       const result = await server.services.secret.getSecretsRaw({
         onSecretReferenced: (secretId) => referencedSecretIds.push(secretId),
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         environment,
         expandSecretReferences: req.query.expandSecretReferences,
         personalOverridesBehavior: req.query.includePersonalOverrides
@@ -217,7 +215,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           : PersonalOverridesBehavior.NeverInclude,
         secretImportReferencesBehavior: SecretImportReferencesBehavior.Relative,
         expandPersonalOverrides: req.query.includePersonalOverrides,
-        actorAuthMethod: req.permission.authMethod,
         projectId,
         viewSecretValue: req.query.viewSecretValue,
         path: secretPath,
@@ -323,10 +320,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { secretId } = req.params;
       const secret = await server.services.secret.getSecretByIdRaw({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         secretId
       });
 
@@ -403,10 +397,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const referencedSecretIds: string[] = [];
       const secret = await server.services.secret.getSecretByNameRaw({
         onSecretReferenced: (secretId) => referencedSecretIds.push(secretId),
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         expandSecretReferences: req.query.expandSecretReferences,
         expandPersonalOverrides: true,
         environment,
@@ -533,11 +524,8 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretOperation = await server.services.secret.createSecretRaw({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         environment: req.body.environment,
-        actorAuthMethod: req.permission.authMethod,
         projectId: req.body.projectId,
         secretPath: req.body.secretPath,
         secretName: req.params.secretName,
@@ -702,10 +690,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const secretOperation = await server.services.secret.updateSecretRaw({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
+        actor: req.permission,
         environment: req.body.environment,
         projectId: req.body.projectId,
         secretPath: req.body.secretPath,
@@ -855,10 +840,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     ]),
     handler: async (req) => {
       const secretOperation = await server.services.secret.deleteSecretRaw({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         environment: req.body.environment,
         projectId: req.body.projectId,
         secretPath: req.body.secretPath,
@@ -951,10 +933,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId, isSourceUpdated, isDestinationUpdated } = await server.services.secret.moveSecrets({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -1040,10 +1019,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const { projectId, results } = await server.services.secret.duplicateSecrets({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         ...req.body
       });
 
@@ -1138,10 +1114,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const { environment, secretPath, secrets: inputSecrets } = req.body;
 
       const secretOperation = await server.services.secret.createManySecretsRaw({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         secretPath,
         environment,
         projectId: req.body.projectId,
@@ -1296,10 +1269,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const sortedSecrets = [...inputSecrets].sort((a, b) => a.secretKey.localeCompare(b.secretKey));
 
       const secretOperation = await server.services.secret.updateManySecretsRaw({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         secretPath,
         environment,
         projectId: req.body.projectId,
@@ -1453,10 +1423,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const sortedSecrets = [...inputSecrets].sort((a, b) => a.secretKey.localeCompare(b.secretKey));
 
       const secretOperation = await server.services.secret.deleteManySecretsRaw({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         environment,
         secretPath,
         projectId: req.body.projectId,
@@ -1562,10 +1529,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const { secretPath, environment, projectId } = req.query;
 
       const { tree } = await server.services.secret.getSecretReferenceDependencyTree({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId,
         secretName,
         secretPath,
@@ -1617,10 +1581,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       const { secretName } = req.params;
       const { secretPath, environment, projectId } = req.query;
       const { tree, value, secret } = await server.services.secret.getSecretReferenceTree({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId,
         secretName,
         secretPath,
@@ -1683,10 +1644,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { projectId } = req.body;
       const message = await server.services.secret.backfillSecretReferences({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         projectId
       });
 

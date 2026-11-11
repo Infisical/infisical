@@ -1,12 +1,12 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
-export type TGetProjectBlindIndexStatusDTO = TProjectPermission;
+export type TGetProjectBlindIndexStatusDTO = { projectId: string } & TActorInput;
 
-export type TGetProjectSecretsDTO = TProjectPermission;
+export type TGetProjectSecretsDTO = { projectId: string } & TActorInput;
 
-export type TUpdateProjectSecretNameDTO = TProjectPermission & {
-  secretsToUpdate: {
-    secretName: string;
-    secretId: string;
-  }[];
-};
+export type TUpdateProjectSecretNameDTO = { projectId: string } & TActorInput & {
+    secretsToUpdate: {
+      secretName: string;
+      secretId: string;
+    }[];
+  };

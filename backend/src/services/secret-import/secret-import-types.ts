@@ -1,4 +1,4 @@
-import { TProjectPermission } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 export type TCreateSecretImportDTO = {
   environment: string;
@@ -9,26 +9,30 @@ export type TCreateSecretImportDTO = {
     sourceProjectId?: string;
   };
   isReplication?: boolean;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TUpdateSecretImportDTO = {
   environment: string;
   path: string;
   id: string;
   data: Partial<{ environment: string; path: string; position: number }>;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TResyncSecretImportReplicationDTO = {
   environment: string;
   path: string;
   id: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TDeleteSecretImportDTO = {
   environment: string;
   path: string;
   id: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetSecretImportsDTO = {
   environment: string;
@@ -36,16 +40,18 @@ export type TGetSecretImportsDTO = {
   search?: string;
   limit?: number;
   offset?: number;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type TGetSecretImportByIdDTO = {
   id: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetSecretsFromImportDTO = {
   environment: string;
   path: string;
-} & TProjectPermission;
+  projectId: string;
+} & TActorInput;
 
 export type FolderResult = {
   envName: string;

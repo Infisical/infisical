@@ -1,4 +1,4 @@
-import { OrgServiceActor } from "@app/lib/types";
+import { TActorInput } from "@app/lib/types";
 
 // per-condition match operator; only exact-match ("is") is supported today,
 // but this is kept as an enum so additional operators can be added later.
@@ -41,5 +41,4 @@ export type TSearchSecretMetadataDTO = {
   tagSlugs?: string[];
   environments?: string[];
   secretPath?: string;
-  actor: OrgServiceActor;
-};
+} & TActorInput;

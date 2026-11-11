@@ -57,10 +57,8 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
     handler: async (req) => {
       const secretRequest = await req.server.services.secretSharing.getSecretRequestById({
         id: req.params.id,
-        actorOrgId: req.permission?.orgId,
-        actor: req.permission?.type,
-        actorId: req.permission?.id,
-        actorAuthMethod: req.permission?.authMethod
+        // Unauthenticated, or signed in without an organization selected.
+        actor: req.permission?.orgId ? req.permission : undefined
       });
 
       let brandingConfig;
@@ -144,10 +142,8 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
     handler: async (req) => {
       const secretRequest = await req.server.services.secretSharing.setSecretRequestValue({
         id: req.params.id,
-        actorOrgId: req.permission?.orgId,
-        actor: req.permission?.type,
-        actorId: req.permission?.id,
-        actorAuthMethod: req.permission?.authMethod,
+        // Unauthenticated, or signed in without an organization selected.
+        actor: req.permission?.orgId ? req.permission : undefined,
         secretValue: req.body.secretValue
       });
 
@@ -183,11 +179,8 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
     handler: async (req) => {
       const secretRequest = await req.server.services.secretSharing.revealSecretRequestValue({
         id: req.params.id,
-        actorOrgId: req.permission.orgId,
         orgId: req.permission.orgId,
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod
+        actor: req.permission
       });
 
       return { secretRequest };
@@ -219,12 +212,9 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const secretRequest = await req.server.services.secretSharing.deleteSharedSecretById({
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorId: req.permission.id,
         sharedSecretId: req.params.id,
         orgId: req.permission.orgId,
-        actor: req.permission.type,
+        actor: req.permission,
         type: SecretSharingType.Request
       });
 
@@ -263,10 +253,7 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { secrets, totalCount } = await req.server.services.secretSharing.getSharedSecrets({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
+        actor: req.permission,
         type: SecretSharingType.Request,
         ...req.query
       });
@@ -328,11 +315,8 @@ export const registerSecretRequestsRouter = async (server: FastifyZodProvider) =
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const shareRequest = await req.server.services.secretSharing.createSecretRequest({
-        actor: req.permission.type,
-        actorId: req.permission.id,
+        actor: req.permission,
         orgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
         ...req.body
       });
 

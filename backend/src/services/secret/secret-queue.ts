@@ -283,7 +283,7 @@ export const secretQueueFactory = ({
         (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
       ) {
         await reminderService.createReminder({
-          ...actor,
+          actor,
           reminder: {
             secretId: newSecret.id,
             message: secretReminderNote,

@@ -1,13 +1,15 @@
-import { createMongoAbility, MongoAbility, RawRuleOf } from "@casl/ability";
+import { MongoAbility, RawRuleOf } from "@casl/ability";
 import { vi } from "vitest";
 
 import { ProjectVersion, SecretType, TSecretFolders } from "@app/db/schemas";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import {
   ProjectPermissionSecretActions as Actions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/domains/platform/projects/ce/module";
-import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretsDomain } from "@app/domains/secrets-manager/secrets/ce/module";
 import { TGetSecretMetadataDTO } from "@app/services/secret/secret-types";
 
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
@@ -31,12 +33,14 @@ const metadata = (id: string, folderId = "app", extras = {}) => ({
   tagSlugs: [],
   ...extras
 });
+const actorOf = ({ type = "user", id = "user", orgId = "org", authMethod = "email" } = {}) =>
+  ({ principal: { type, id, authMethod }, org: { id: orgId } }) as unknown as TActorContext;
 const dto = {
   projectId: "project",
   environment: "dev",
   secretPath: "/app",
   limit: 2,
-  actorId: "user"
+  actor: actorOf()
 } as TGetSecretMetadataDTO;
 
 const setup = (
@@ -44,10 +48,10 @@ const setup = (
     { action: Actions.DescribeSecret, subject: ProjectPermissionSub.Secrets }
   ]
 ) => {
-  const permission = createMongoAbility<ProjectPermissionSet>(rules);
-  const getProjectPermission = vi
+  const permission = Permission.fromRules<ProjectPermissionSet>({ rules });
+  const getSecretsPermission = vi
     .fn()
-    .mockResolvedValue({ permission }) as unknown as TPermissionServiceFactory["getProjectPermission"];
+    .mockResolvedValue({ permission, folderGrants: [] }) as unknown as TSecretsDomain["getSecretsPermission"];
   const find = vi.fn().mockResolvedValue(folders);
   const findOne = vi.fn().mockResolvedValue({ id: "env" });
   const findMetadataByFolderIds = vi.fn<TSecretV2BridgeDALFactory["findMetadataByFolderIds"]>().mockResolvedValue([]);
@@ -65,13 +69,13 @@ const setup = (
   };
   const service = secretMetadataServiceFactory({
     keyStore,
-    permissionService: { getProjectPermission },
+    secretsDomain: { getSecretsPermission },
     folderDAL: { find },
     projectEnvDAL: { findOne },
     projectDAL: { findById },
     secretDAL: { findMetadataByFolderIds }
   });
-  return { ...service, keyStore, cursorStore, findMetadataByFolderIds, getProjectPermission, find, findOne, findById };
+  return { ...service, keyStore, cursorStore, findMetadataByFolderIds, getSecretsPermission, find, findOne, findById };
 };
 
 const paginateMetadata =
@@ -367,10 +371,10 @@ describe("recursive secret metadata", () => {
     service.findMetadataByFolderIds.mockClear();
     for (const changed of [
       { cursor: "00000000-0000-4000-8000-000000000000" },
-      { actorId: "another-user" },
-      { actorOrgId: "another-org" },
-      { actor: "identity" },
-      { actorAuthMethod: "another-method" },
+      { actor: actorOf({ id: "another-user" }) },
+      { actor: actorOf({ orgId: "another-org" }) },
+      { actor: actorOf({ type: "identity" }) },
+      { actor: actorOf({ authMethod: "another-method" }) },
       { projectId: "another-project" },
       { environment: "prod" },
       { secretPath: "/app/nested" }
@@ -395,15 +399,18 @@ describe("recursive secret metadata", () => {
       paginateMetadata([metadata("one"), metadata("three", "app", { key: "DENIED" }), metadata("two")])
     );
     const first = await service.getSecretMetadata({ ...dto, limit: 1 });
-    vi.mocked(service.getProjectPermission).mockResolvedValue({
-      permission: createMongoAbility<ProjectPermissionSet>([
-        {
-          action: Actions.DescribeSecret,
-          subject: ProjectPermissionSub.Secrets,
-          conditions: { secretName: "SHARED_KEY" }
-        }
-      ])
-    } as Awaited<ReturnType<TPermissionServiceFactory["getProjectPermission"]>>);
+    vi.mocked(service.getSecretsPermission).mockResolvedValue({
+      permission: Permission.fromRules<ProjectPermissionSet>({
+        rules: [
+          {
+            action: Actions.DescribeSecret,
+            subject: ProjectPermissionSub.Secrets,
+            conditions: { secretName: "SHARED_KEY" }
+          }
+        ]
+      }),
+      folderGrants: []
+    } as unknown as Awaited<ReturnType<TSecretsDomain["getSecretsPermission"]>>);
     const page = await service.getSecretMetadata({ ...dto, cursor: first.nextCursor! });
     expect(page.secrets.map(({ id }) => id)).toEqual(["two"]);
     expect(await service.getSecretMetadata({ ...dto, cursor: first.nextCursor! })).toEqual(page);
@@ -434,7 +441,7 @@ describe("recursive secret metadata", () => {
 
   test("does not read metadata after project authorization fails", async () => {
     const service = setup();
-    vi.mocked(service.getProjectPermission).mockRejectedValue(new Error("Forbidden"));
+    vi.mocked(service.getSecretsPermission).mockRejectedValue(new Error("Forbidden"));
     await expect(service.getSecretMetadata(dto)).rejects.toThrow("Forbidden");
     expect(service.find).not.toHaveBeenCalled();
     expect(service.findMetadataByFolderIds).not.toHaveBeenCalled();

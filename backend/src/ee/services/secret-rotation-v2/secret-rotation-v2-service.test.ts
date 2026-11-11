@@ -1,6 +1,6 @@
-import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { Permission } from "@app/domains/platform/access-control/ce/module";
 import { FakeLicenseDomain } from "@app/domains/platform/license/ce/testing/fake-license-domain";
 import { ActorType, AuthMethod } from "@app/lib/auth/actor-types";
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
@@ -90,12 +90,8 @@ const rotation = (rotationStatus: SecretRotationStatus, type = SecretRotation.St
 const TX = { name: "rotation-transaction" };
 
 const actor = {
-  type: ActorType.USER,
-  id: "user-1",
-  orgId: "org-1",
-  authMethod: AuthMethod.EMAIL,
-  rootOrgId: "org-1",
-  parentOrgId: "org-1"
+  principal: { type: ActorType.USER, id: "user-1", authMethod: AuthMethod.EMAIL },
+  org: { id: "org-1", rootOrgId: "org-1", parentOrgId: "org-1" }
 };
 
 // storedStatus is the rotation row in the database; the object passed to rotateGeneratedCredentials is what the
@@ -125,9 +121,10 @@ const createService = ({
       }))
     },
     licenseDomain: new FakeLicenseDomain().setPlan("org-1", { secretRotation: true as false }),
-    permissionService: {
-      getProjectPermission: vi.fn(async () => ({
-        permission: createMongoAbility([{ action: "manage", subject: "all" }])
+    secretsDomain: {
+      getSecretsPermission: vi.fn(async () => ({
+        permission: Permission.fromRules({ rules: [{ action: "manage", subject: "all" }] }),
+        folderGrants: []
       }))
     },
     secretValidationRuleService: { findConstraintsForGeneratedSecret: vi.fn(async () => ({ ruleNames: [] })) },

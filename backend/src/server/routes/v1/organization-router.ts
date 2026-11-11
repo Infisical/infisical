@@ -866,7 +866,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectsTotal } = await server.services.secretValueTracking.enableForOrg(req.permission);
+      const { projectsTotal } = await server.services.secretValueTracking.enableForOrg({ actor: req.permission });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -903,6 +903,6 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
-    handler: async (req) => server.services.secretValueTracking.getOrgStatus(req.permission)
+    handler: async (req) => server.services.secretValueTracking.getOrgStatus({ actor: req.permission })
   });
 };

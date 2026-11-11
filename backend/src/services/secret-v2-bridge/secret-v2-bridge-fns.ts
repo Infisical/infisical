@@ -4,15 +4,7 @@ import { ForbiddenError, subject } from "@casl/ability";
 import { Knex } from "knex";
 import RE2 from "re2";
 
-import {
-  ActionProjectType,
-  SecretType,
-  TableName,
-  TSecretFolders,
-  TSecretImports,
-  TSecretsV2,
-  TSecretVersionsV2
-} from "@app/db/schemas";
+import { SecretType, TableName, TSecretFolders, TSecretImports, TSecretsV2, TSecretVersionsV2 } from "@app/db/schemas";
 import { ProjectPermissionSecretActions, ProjectPermissionSub } from "@app/domains/platform/projects/ce/module";
 import { throwIfMissingSecretReadValueOrDescribePermission } from "@app/ee/services/permission/permission-fns";
 import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
@@ -2196,16 +2188,15 @@ export const fnSecretMove = async (dto: TFnSecretMove): Promise<TFnSecretMoveRes
 // external callers (e.g. folder move) use this to run several moves inside one transaction, then call
 // dispatchSecretMoveSideEffects + invalidateSecretCacheByProjectId afterwards.
 export const fnSecretMoveInTransaction = async (dto: TFnSecretMoveInTransaction): Promise<TFnSecretMoveResult> => {
-  const { actorAuthMethod, permissionService, ...fnSecretMoveDTO } = dto;
+  const { actor, secretsDomain, ...fnSecretMoveDTO } = dto;
 
-  const { permission } = await permissionService.getProjectPermission({
-    actor: dto.actor,
-    actorId: dto.actorId,
-    projectId: dto.projectId,
-    actorAuthMethod,
-    actorOrgId: dto.actorOrgId,
-    actionProjectType: ActionProjectType.SecretManager
+  const { permission } = await secretsDomain.getSecretsPermission({ actor, projectId: dto.projectId });
+
+  return fnSecretMove({
+    ...fnSecretMoveDTO,
+    actor: actor.principal.type,
+    actorId: actor.principal.id,
+    actorOrgId: actor.org.id,
+    permission: permission.toAbility()
   });
-
-  return fnSecretMove({ ...fnSecretMoveDTO, permission });
 };

@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import { TDynamicSecrets } from "@app/db/schemas";
-import { OrderByDirection, OrgServiceActor, TDynamicSecretWithMetadata, TProjectPermission } from "@app/lib/types";
+import type { TActorContext } from "@app/domains/lib/actor-context";
+import { OrderByDirection, TActorInput, TDynamicSecretWithMetadata } from "@app/lib/types";
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
@@ -25,7 +26,7 @@ export type TCreateDynamicSecretDTO = {
   projectSlug: string;
   metadata?: ResourceMetadataDTO;
   usernameTemplate?: string | null;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TUpdateDynamicSecretDTO = {
   name: string;
@@ -38,7 +39,7 @@ export type TUpdateDynamicSecretDTO = {
   projectSlug: string;
   metadata?: ResourceMetadataDTO;
   usernameTemplate?: string | null;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDeleteDynamicSecretDTO = {
   name: string;
@@ -46,22 +47,22 @@ export type TDeleteDynamicSecretDTO = {
   environmentSlug: string;
   projectSlug: string;
   isForced?: boolean;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDetailsDynamicSecretDTO = {
   name: string;
   path: string;
   environmentSlug: string;
   projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TGetSshCaPublicKeyDTO = {
   dynamicSecretId: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type TDynamicSecretProviderDiscoveryDTO = {
   projectSlug: string;
-} & Omit<TProjectPermission, "projectId">;
+} & TActorInput;
 
 export type ListDynamicSecretsFilters = {
   offset?: number;
@@ -77,7 +78,7 @@ export type TListDynamicSecretsDTO = {
   projectSlug?: string;
   projectId?: string;
 } & ListDynamicSecretsFilters &
-  Omit<TProjectPermission, "projectId">;
+  TActorInput;
 
 export type TListDynamicSecretsByFolderMappingsDTO = {
   projectId: string;
@@ -146,7 +147,7 @@ export type TDynamicSecretServiceFactory = {
   ) => Promise<TApiConnectApp[]>;
   listDynamicSecretsByFolderIds: (
     arg: TListDynamicSecretsByFolderMappingsDTO,
-    actor: OrgServiceActor
+    actor: TActorContext
   ) => Promise<{
     dynamicSecrets: Array<TDynamicSecretWithMetadata & { environment: string; path: string }>;
     isLimitReached: boolean;

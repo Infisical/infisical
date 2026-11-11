@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 
+import type { TActorContext } from "@app/domains/lib/actor-context";
 import { FakeKmsCoreDomain } from "@app/domains/platform/kms-core/ce/testing/fake-kms-core-domain";
 import { ActorType } from "@app/lib/auth/actor-types";
 import { BadRequestError } from "@app/lib/errors";
@@ -10,6 +11,11 @@ import { pitServiceFactory } from "./pit-service";
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 vi.mock("../secret-scanning-v2/secret-scanning-v2-fns", () => ({ scanSecretPolicyViolations: vi.fn() }));
+
+const actor = {
+  principal: { type: ActorType.USER, id: "user-1", authMethod: null },
+  org: { id: "org-1" }
+} as unknown as TActorContext;
 
 const buildService = ({ commitFolderId = "folder-1" }: { commitFolderId?: string } = {}) => {
   const getChangeVersions = vi.fn().mockResolvedValue([]);
@@ -53,10 +59,7 @@ describe("compareCommitChanges", () => {
     const { service, getChangeVersions } = buildService();
 
     const { diffs } = await service.compareCommitChanges({
-      actor: ActorType.USER,
-      actorId: "user-1",
-      actorOrgId: "org-1",
-      actorAuthMethod: null,
+      actor,
       projectId: "project-1",
       commitId: "target-commit",
       folderId: "folder-1",
@@ -70,10 +73,7 @@ describe("compareCommitChanges", () => {
         id: "change-1"
       }),
       "1",
-      "user-1",
-      ActorType.USER,
-      "org-1",
-      null,
+      actor,
       "env-prod",
       "project-1",
       "/app/backend"
@@ -85,10 +85,7 @@ describe("compareCommitChanges", () => {
     const { service, findEnv } = buildService();
 
     const { environment, folderPath } = await service.compareCommitChanges({
-      actor: ActorType.USER,
-      actorId: "user-1",
-      actorOrgId: "org-1",
-      actorAuthMethod: null,
+      actor,
       projectId: "project-1",
       commitId: "target-commit",
       folderId: "folder-1",
@@ -105,10 +102,7 @@ describe("compareCommitChanges", () => {
 
     await expect(
       service.compareCommitChanges({
-        actor: ActorType.USER,
-        actorId: "user-1",
-        actorOrgId: "org-1",
-        actorAuthMethod: null,
+        actor,
         projectId: "project-1",
         commitId: "target-commit",
         folderId: "folder-1",
@@ -146,10 +140,7 @@ describe("processNewCommitRaw", () => {
     const service = pitServiceFactory(deps as unknown as Parameters<typeof pitServiceFactory>[0]);
     const run = (secrets: object) =>
       service.processNewCommitRaw({
-        actor: ActorType.USER,
-        actorId: "user-1",
-        actorOrgId: "org-1",
-        actorAuthMethod: null,
+        actor,
         projectId: "project-1",
         environment: "dev",
         secretPath: "/",
