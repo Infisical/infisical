@@ -5,11 +5,12 @@ import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/m
 import {
   TCatalogProduct,
   TEntitlementOrg,
-  TLicenseService,
   TLicenseServerBilling,
+  TLicenseService,
   TProductLineItem,
   TSubscriptionPreviewPayload,
-  TSubscriptionResponse
+  TSubscriptionResponse,
+  TUsageMeteringService
 } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { TEnvConfig } from "@app/lib/config/env";
@@ -65,6 +66,7 @@ type TLicenseV2ServiceFactoryDep = {
   // countUsage seeds a purchase's initial per_resource quantities with the org's present provisioned count,
   // so the previewed and charged figures are truthful.
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   licenseBilling: TLicenseServerBilling;
 };
 
@@ -406,6 +408,7 @@ export const licenseV2ServiceFactory = ({
   orgDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   licenseBilling,
   organizationsProjectsService,
   certManagerService,
@@ -444,7 +447,7 @@ export const licenseV2ServiceFactory = ({
     // The org's present provisioned count per priced per_resource dimension (null when we can't meter it).
     const counted = await Promise.all(
       perUnitPrices.map(async (price) => {
-        const present = await licenseService.countUsage(orgId, price.dimensionKey);
+        const present = await usageMeteringService.countUsage(orgId, price.dimensionKey);
         return { dimensionKey: price.dimensionKey, present, included: price.includedQuantity ?? 0 };
       })
     );

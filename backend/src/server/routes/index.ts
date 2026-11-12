@@ -678,6 +678,7 @@ export const registerRoutes = async (
   });
   await domains.license.start();
   const licenseService = domains.license.service;
+  const { usageMeteringService } = domains.license;
 
   // An api-only deployment with no general-workers pod queues background work nobody consumes, so
   // the fleet reports itself in Redis and every api pod complains when the reports stop.
@@ -916,6 +917,7 @@ export const registerRoutes = async (
     orgDAL,
     permissionService,
     licenseService,
+    usageMeteringService,
     licenseBilling: domains.licenseBilling,
     organizationsProjectsService: domains.organizationsProjects.service,
     certManagerService: domains.certManager.service,
@@ -977,6 +979,7 @@ export const registerRoutes = async (
     orgDAL,
     groupDAL,
     licenseService,
+    usageMeteringService,
     applicationMembershipCleanupService,
     projectDAL,
     alertChannelRecipientDAL,
@@ -1296,6 +1299,7 @@ export const registerRoutes = async (
     roleDAL,
     additionalPrivilegeDAL,
     licenseService,
+    usageMeteringService,
     applicationMembershipCleanupService,
     projectDAL,
     keyStore,
@@ -1310,6 +1314,7 @@ export const registerRoutes = async (
 
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
+    usageMeteringService,
     membershipRoleDAL,
     alertChannelRecipientDAL,
     membershipUserDAL,
@@ -1375,6 +1380,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     permissionService,
     licenseService,
+    usageMeteringService,
     oidcConfigDAL,
     membershipGroupDAL,
     membershipRoleDAL,
@@ -1450,6 +1456,7 @@ export const registerRoutes = async (
 
   const scimService = scimServiceFactory({
     licenseService,
+    usageMeteringService,
     scimDAL,
     scimEventsDAL,
     userDAL,
@@ -1483,6 +1490,7 @@ export const registerRoutes = async (
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
     licenseService,
+    usageMeteringService,
     githubOrgSyncDAL,
     kmsService,
     permissionService,
@@ -1532,7 +1540,7 @@ export const registerRoutes = async (
     totpConfigDAL,
     webAuthnCredentialDAL,
     mfaRecoveryCodeService,
-    licenseService,
+    usageMeteringService,
     alertChannelRecipientDAL,
     emailDomainDAL,
     pamSessionDAL,
@@ -1601,6 +1609,7 @@ export const registerRoutes = async (
     projectBotDAL,
     projectKeyDAL,
     licenseService,
+    usageMeteringService,
     tokenService,
     smtpService,
     kmsService,
@@ -1635,6 +1644,7 @@ export const registerRoutes = async (
     userAliasDAL,
     permissionService,
     licenseService,
+    usageMeteringService,
     tokenService,
     smtpService,
     kmsService,
@@ -1699,6 +1709,7 @@ export const registerRoutes = async (
     identityMetadataDAL,
     secretV2BridgeDAL,
     licenseService,
+    usageMeteringService,
     orgDeletionService,
     samlConfigDAL,
     permissionService,
@@ -1729,6 +1740,7 @@ export const registerRoutes = async (
 
   const subOrgService = subOrgServiceFactory({
     licenseService,
+    usageMeteringService,
     membershipDAL,
     membershipRoleDAL,
     orgDAL,
@@ -1750,7 +1762,7 @@ export const registerRoutes = async (
     emailDomainDAL,
     signupOnboardingResponseDAL,
     emailDispatchGuard,
-    licenseService
+    usageMeteringService
   });
 
   const microsoftTeamsService = microsoftTeamsServiceFactory({
@@ -1775,6 +1787,7 @@ export const registerRoutes = async (
     keyStore,
     orgDAL,
     licenseService,
+    usageMeteringService,
     kmsService,
     microsoftTeamsService,
     invalidateCacheQueue,
@@ -1811,7 +1824,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     projectMembershipDAL,
-    licenseService
+    usageMeteringService
   });
 
   const secretScanningQueue = secretScanningQueueFactory({
@@ -1841,7 +1854,7 @@ export const registerRoutes = async (
     projectKeyDAL,
     groupProjectDAL,
     secretReminderRecipientsDAL,
-    licenseService,
+    usageMeteringService,
     notificationService,
     membershipUserDAL,
     additionalPrivilegeDAL,
@@ -2126,7 +2139,7 @@ export const registerRoutes = async (
     userAliasDAL,
     orgDAL,
     permissionService,
-    licenseService,
+    usageMeteringService,
     agentVaultPersonalValueDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL
@@ -2138,7 +2151,7 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     keyStore,
-    licenseService
+    usageMeteringService
   });
 
   const pamAccountTemplateDAL = pamAccountTemplateDALFactory(db);
@@ -2325,7 +2338,7 @@ export const registerRoutes = async (
     identityDAL,
     permissionService,
     gatewayV2Service,
-    licenseService
+    usageMeteringService
   });
 
   const pamSessionExpirationService = pamSessionExpirationServiceFactory({
@@ -2483,6 +2496,7 @@ export const registerRoutes = async (
     projectMembershipDAL,
     folderDAL,
     licenseService,
+    usageMeteringService,
     pkiSubscriberDAL,
     certificateAuthorityDAL,
     certificateDAL,
@@ -2772,6 +2786,7 @@ export const registerRoutes = async (
     identityOrgMembershipDAL,
     identityProjectDAL,
     licenseService,
+    usageMeteringService,
     identityMetadataDAL,
     keyStore,
     orgDAL,
@@ -2787,6 +2802,7 @@ export const registerRoutes = async (
     membershipRoleDAL,
     identityMetadataDAL,
     licenseService,
+    usageMeteringService,
     permissionService,
     identityDAL: identityV2DAL,
     identityMembershipV2DAL,
@@ -3136,7 +3152,7 @@ export const registerRoutes = async (
       orgDAL,
       projectAccessRevokeService,
       auditLogService,
-      licenseService
+      usageMeteringService
     })
   );
   eventOutboxRegistry.register(licenseOrgDeletedConsumerFactory({ envConfig, licenseService }));
@@ -3179,6 +3195,7 @@ export const registerRoutes = async (
     userDAL,
     userAliasDAL,
     licenseService,
+    usageMeteringService,
     tokenService,
     smtpService,
     kmsService,
@@ -3723,7 +3740,7 @@ export const registerRoutes = async (
     certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue,
-    licenseService,
+    usageMeteringService,
     auditLogService,
     telemetryService
   });
@@ -3834,6 +3851,7 @@ export const registerRoutes = async (
     kmsService,
     permissionService,
     licenseService,
+    usageMeteringService,
     caSigningConfigDAL,
     caKeySourceService,
     keyStore,
@@ -3894,6 +3912,7 @@ export const registerRoutes = async (
     gatewayV2Service,
     gatewayPoolService,
     licenseService,
+    usageMeteringService,
     caKeySourceService,
     certificateAuthoritySecretDAL,
     telemetryService,
@@ -3984,6 +4003,7 @@ export const registerRoutes = async (
     digicertFns: digicertCaFns,
     certificatePolicyService,
     licenseService,
+    usageMeteringService,
     caKeySourceService,
     internalCertificateAuthorityDAL,
     signerDAL,

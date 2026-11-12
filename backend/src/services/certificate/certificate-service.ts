@@ -4,7 +4,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType, ProjectMembershipRole, ResourceType } from "@app/db/schemas";
 import { TCertManagerService } from "@app/domains/certificates/cert-manager/ce/module";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -186,6 +186,7 @@ type TCertificateServiceFactoryDep = {
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
   certificateAlertEventEmitter: Pick<TCertificateAlertEventEmitter, "notify">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   certManagerService: TCertManagerService;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "acquireLock">;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
@@ -223,6 +224,7 @@ export const certificateServiceFactory = ({
   digicertFns,
   certificatePolicyService,
   licenseService,
+  usageMeteringService,
   certManagerService,
   keyStore,
   caKeySourceService,
@@ -618,8 +620,8 @@ export const certificateServiceFactory = ({
       auditLogInfo
     );
 
-    licenseService.emit(actorOrgId, Meter.ActiveCerts.key);
-    licenseService.emit(actorOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts.key);
 
     return {
       deletedCert,
@@ -801,8 +803,8 @@ export const certificateServiceFactory = ({
       });
     }
 
-    licenseService.emit(actorOrgId, Meter.ActiveCerts.key);
-    licenseService.emit(actorOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts.key);
 
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
@@ -1561,8 +1563,8 @@ export const certificateServiceFactory = ({
 
     if (isNewQuotaKey) await recordNewCertificateQuotaKey(quotaOrgId, { keyStore }, isWildcard);
 
-    licenseService.emit(actorOrgId, Meter.ActiveCerts.key);
-    licenseService.emit(actorOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.ActiveCerts.key);
+    usageMeteringService.emit(actorOrgId, Meter.WildcardCerts.key);
 
     if (cert.id && cert.applicationId) {
       await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);

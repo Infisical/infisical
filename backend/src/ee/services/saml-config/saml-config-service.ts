@@ -14,7 +14,7 @@ import {
   TSamlConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
@@ -109,6 +109,7 @@ type TSamlConfigServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -150,6 +151,7 @@ export const samlConfigServiceFactory = ({
   additionalPrivilegeDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   tokenService,
   smtpService,
   identityMetadataDAL,
@@ -277,7 +279,7 @@ export const samlConfigServiceFactory = ({
             projectDAL,
             projectBotDAL,
             membershipGroupDAL,
-            licenseService,
+            usageMeteringService,
             shouldFailOnMissingMembers: false,
             tx: transaction
           });
@@ -301,7 +303,7 @@ export const samlConfigServiceFactory = ({
               groupDAL,
               projectKeyDAL,
               additionalPrivilegeDAL,
-              licenseService,
+              usageMeteringService,
               alertChannelRecipientDAL,
               eventEmitter,
               membershipDAL,
@@ -899,7 +901,7 @@ export const samlConfigServiceFactory = ({
     }
     sendPamCancellations();
 
-    await licenseService.syncSeats(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
 

@@ -191,7 +191,7 @@ export const addUsersToGroupByUserIds = async ({
   tx: outerTx,
   membershipGroupDAL,
   shouldFailOnMissingMembers = true,
-  licenseService
+  usageMeteringService
 }: TAddUsersToGroupByUserIds) => {
   const processAddition = async (tx: Knex) => {
     if (userIds.length === 0) {
@@ -315,9 +315,9 @@ export const addUsersToGroupByUserIds = async ({
     }
 
     // These users may now be in a secret-manager or PAM project through this group.
-    licenseService?.emit(group.orgId, Meter.SecretIdentities.key);
-    licenseService?.emit(group.orgId, Meter.PamIdentities.key);
-    licenseService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.PamIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return membersToAddToGroupNonPending.concat(membersToAddToGroupPending);
   };
 
@@ -342,7 +342,7 @@ export const addIdentitiesToGroup = async ({
   identityGroupMembershipDAL,
   membershipDAL,
   orgDAL,
-  licenseService
+  usageMeteringService
 }: TAddIdentitiesToGroup) => {
   const identityIdsSet = new Set(identityIds);
   const identityIdsArray = Array.from(identityIdsSet);
@@ -396,9 +396,9 @@ export const addIdentitiesToGroup = async ({
     );
 
     // These identities may now be in a secret-manager or PAM project through this group.
-    licenseService?.emit(group.orgId, Meter.SecretIdentities.key);
-    licenseService?.emit(group.orgId, Meter.PamIdentities.key);
-    licenseService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.PamIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return identityIdsArray.map((identityId) => ({ id: identityId }));
   });
 };
@@ -427,7 +427,7 @@ export const removeUsersFromGroupByUserIds = async ({
   groupDAL,
   shouldFailOnMissingMembers = true,
   deferPersonalValueClear = false,
-  licenseService,
+  usageMeteringService,
   alertChannelRecipientDAL,
   eventEmitter,
   membershipDAL,
@@ -652,9 +652,9 @@ export const removeUsersFromGroupByUserIds = async ({
     });
 
     // These users may have left a secret-manager or PAM project they only reached through this group.
-    licenseService?.emit(group.orgId, Meter.SecretIdentities.key);
-    licenseService?.emit(group.orgId, Meter.PamIdentities.key);
-    licenseService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.PamIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return {
       users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending),
       sendPamCancellations,
@@ -687,7 +687,7 @@ export const removeIdentitiesFromGroup = async ({
   userGroupMembershipDAL,
   agentVaultPersonalValueDAL,
   additionalPrivilegeDAL,
-  licenseService,
+  usageMeteringService,
   eventEmitter,
   membershipRoleDAL,
   pamAccountDAL,
@@ -820,9 +820,9 @@ export const removeIdentitiesFromGroup = async ({
     });
 
     // These identities may have left a secret-manager or PAM project they only reached through this group.
-    licenseService?.emit(group.orgId, Meter.SecretIdentities.key);
-    licenseService?.emit(group.orgId, Meter.PamIdentities.key);
-    licenseService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.SecretIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.PamIdentities.key);
+    usageMeteringService?.emit(group.orgId, Meter.AgentVaultIdentities.key);
     return { identities: identityIdsArray.map((identityId) => ({ id: identityId })), sendPamCancellations };
   });
 };

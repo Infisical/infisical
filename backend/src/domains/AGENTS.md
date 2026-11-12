@@ -75,7 +75,7 @@ static-secrets/
 | Model | One entity | An entity stored across several tables is still one model | `KmsKey` (tables `kms_keys` and `internal_kms`) |
 | Data access | One model | Owns every table that stores the model. Returns models, never rows | `KmsKeyDataAccess`, `KmsKeyVersionDataAccess` |
 | Store | One domain | All the domain's data access classes, bound to one connection or transaction | `TKmsCoreStore` |
-| Service | A group of use cases | Start with one per entity. Split when a group of use cases needs different dependencies | `KmsKeyService` writes a `KmsKey` and a `KmsKeyVersion` in one transaction |
+| Service | A group of use cases | Start with one per entity. Split when a group of use cases needs different dependencies, or when callers use one group without the other (`LicenseService` and `UsageMeteringService`) | `KmsKeyService` writes a `KmsKey` and a `KmsKeyVersion` in one transaction |
 | Module | One domain | Builds the domain's state, data access and services once, and exposes the services as they are, typed by their service type, plus `routes`. It never wraps a service method | `KmsCoreModule` |
 
 When one entity holds another:
@@ -170,9 +170,9 @@ export const createKmsKey = async (store: TKmsCoreStore, state: TKmsCoreState, i
 
 | Rule | Why |
 | --- | --- |
-| A public service method calls `this.deps.runner.run(...)` once; only calls to other domains (see below) come before it | One place decides the transaction |
+| A public service method calls `this.deps.runner.run(...)` once; calls to other services, in this domain or another, come before it or after it commits | One place decides the transaction |
 | Work shared between services goes into a helper that takes `store` | A helper cannot open a second transaction by accident |
-| Services in the same domain never call each other's public methods | A public method on another service runs its own `run` and is the usual way to open a second connection by mistake |
+| Inside `run`, never call a public service method, of this domain or another; share the work as a helper that takes `store`. Outside `run`, services in the same domain may call each other (`UsageReportWorker` reads `licenseService.getPlan`) | A public method runs its own `run`, so calling it inside yours takes a second connection while the first is held |
 | Data access never opens a transaction. Writes that span tables (`kms_keys` + `internal_kms`) rely on the caller's | The service owns the boundary |
 | Locks exist only on the store handed out by `run` (`store.locks.*`) | A lock outside a transaction does not compile |
 | Models never see a store or a transaction | Rules stay pure and testable |
@@ -283,7 +283,7 @@ Paths are inside `ce/` unless the code is a paid feature.
 | Folder | kebab-case noun | `static-secrets` |
 | Module class | `<Domain>Module`, in `ce/module.ts` | `StaticSecretsModule` |
 | Service type (what other code calls) | `T<Name>Service`, beside `class <Name>Service implements T<Name>Service` | `TLicenseService`, `LicenseService` |
-| A service passed as a dependency | `<name>Service: T<Name>Service`, everywhere it is passed, never a shorter or role name (`license`, `usageMeteringService`). Take the whole type, never a `Pick<>` of it: tests pass the domain's full `Fake<Name>Service` anyway | `licenseService: TLicenseService` |
+| A service passed as a dependency | `<name>Service: T<Name>Service`, everywhere it is passed, never a shorter or role name (`license`, `metering`). Take the whole type, never a `Pick<>` of it: tests pass the domain's full `Fake<Name>Service` anyway | `licenseService: TLicenseService` |
 | Dependencies of a module or service | `T<Name>Deps`, a named type beside the class, never inline in the constructor | `TKmsCoreDeps`, `TKmsKeyServiceDeps` |
 | Dependency type | A `type` in `service/dependencies.ts`, named for what the service needs | `TPlanCache`, `TLicenseProvider`, `TUsageCounter` |
 | Store | `<domain>-store.ts` in `data-access/`, exporting `T<Domain>Store` and `build<Domain>Store` | `kms-core-store.ts` |

@@ -14,10 +14,10 @@ describe("UsageQueue.emit", () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
     licenseServer.meteringEnabled = false;
-    const { licenseService, queue } = await buildLicense({ licenseServer });
+    const { usageMeteringService, queue } = await buildLicense({ licenseServer });
 
     // Action
-    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
@@ -27,12 +27,12 @@ describe("UsageQueue.emit", () => {
 
   test("should replace a waiting event for the same org and dimension", async () => {
     // Setup
-    const { licenseService, queue } = await buildLicense();
+    const { usageMeteringService, queue } = await buildLicense();
 
     // Action
-    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
-    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
-    licenseService.emit(ROOT.id, Meter.Identities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.Identities.key);
     await new Promise((resolve) => {
       setImmediate(resolve);
     });
@@ -46,10 +46,10 @@ describe("UsageQueue.emit", () => {
 
   test("should queue a usage event that is retried with backoff", async () => {
     // Setup
-    const { licenseService, queue } = await buildLicense();
+    const { usageMeteringService, queue } = await buildLicense();
 
     // Action
-    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
     await new Promise((resolve) => {
       setImmediate(resolve);
     });
@@ -62,11 +62,11 @@ describe("UsageQueue.emit", () => {
 describe("UsageQueue.recordMeteringEvents", () => {
   test("should queue one retried job per dimension and never debounce", async () => {
     // Setup
-    const { licenseService, queue } = await buildLicense();
+    const { usageMeteringService, queue } = await buildLicense();
     const at = new Date("2026-01-01T00:00:00Z");
 
     // Action
-    licenseService.recordMeteringEvents(ROOT.id, [
+    usageMeteringService.recordMeteringEvents(ROOT.id, [
       { eventId: "e1", dimensionKey: "a", quantity: 1, occurredAt: at },
       { eventId: "e2", dimensionKey: "b", quantity: 1, occurredAt: at },
       { eventId: "e3", dimensionKey: "a", quantity: 1, occurredAt: at }
@@ -84,12 +84,16 @@ describe("UsageQueue.recordMeteringEvents", () => {
   test("should report events at the triggering org on cloud, and drop a batch the server refuses with a 422", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
-    const { licenseService, queue } = await buildLicense({ licenseServer });
+    const { usageMeteringService, queue } = await buildLicense({ licenseServer });
     const at = new Date("2026-01-01T00:00:00Z");
-    licenseService.recordMeteringEvents(ROOT.id, [{ eventId: "e1", dimensionKey: "a", quantity: 1, occurredAt: at }]);
+    usageMeteringService.recordMeteringEvents(ROOT.id, [
+      { eventId: "e1", dimensionKey: "a", quantity: 1, occurredAt: at }
+    ]);
     await queue.drain();
     licenseServer.failNextReports.push(new UsageReportError(422, "not metered"));
-    licenseService.recordMeteringEvents(ROOT.id, [{ eventId: "e2", dimensionKey: "a", quantity: 1, occurredAt: at }]);
+    usageMeteringService.recordMeteringEvents(ROOT.id, [
+      { eventId: "e2", dimensionKey: "a", quantity: 1, occurredAt: at }
+    ]);
 
     // Action
     await queue.drain();

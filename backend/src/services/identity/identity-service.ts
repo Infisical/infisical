@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, TableName, TRoles } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   assertRoleSetBoundary,
@@ -50,6 +50,7 @@ type TIdentityServiceFactoryDep = {
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   keyStore: Pick<TKeyStoreFactory, "sortedSetRangeByScore">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
   alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
@@ -68,6 +69,7 @@ export const identityServiceFactory = ({
   identityProjectDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   keyStore,
   orgDAL,
   membershipIdentityDAL,
@@ -184,8 +186,8 @@ export const identityServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.syncSeats(orgId);
-    licenseService.emit(orgId, Meter.Identities.key);
+    await usageMeteringService.syncSeats(orgId);
+    usageMeteringService.emit(orgId, Meter.Identities.key);
 
     return identity;
   };
@@ -426,23 +428,23 @@ export const identityServiceFactory = ({
         return identityDAL.deleteById(id, tx);
       });
       await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: id });
-      await licenseService.syncSeats(identityOrgMembership.scopeOrgId);
-      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
-      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
-      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
-      licenseService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+      await usageMeteringService.syncSeats(identityOrgMembership.scopeOrgId);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 
     await membershipIdentityService.removeIdentityFromOrg({ identityId: id, orgId: actorOrgId });
 
     const deletedIdentity = await requestMemoize(requestMemoKeys.identityFindById(id), () => identityDAL.findById(id));
-    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.Identities.key);
     // Deleting the identity cascades its project + group memberships, so the secret-manager and PAM
     // identity meters change too.
-    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
-    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
-    licenseService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(identityOrgMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 

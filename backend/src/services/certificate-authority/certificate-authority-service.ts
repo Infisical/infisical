@@ -1,7 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -168,6 +168,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   caKeySourceService: Pick<TCaKeySourceServiceFactory, "assertCanUse" | "describeKey" | "prepareKeyReleases">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne" | "primaryNode">;
   pkiAlertV2Queue?: Pick<TPkiAlertV2QueueServiceFactory, "queueCertificateEvent">;
@@ -201,6 +202,7 @@ export const certificateAuthorityServiceFactory = ({
   gatewayPoolService,
   keyStore,
   licenseService,
+  usageMeteringService,
   caKeySourceService,
   certificateAuthoritySecretDAL,
   pkiAlertV2Queue,
@@ -387,7 +389,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
-      licenseService.emit(actor.orgId, Meter.InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas.key);
 
       const caSecret = await certificateAuthoritySecretDAL.findOne(
         { caId: ca.id },
@@ -968,7 +970,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      licenseService.emit(actor.orgId, Meter.InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,
@@ -1207,7 +1209,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     if (type === CaType.INTERNAL) {
-      licenseService.emit(actor.orgId, Meter.InternalCas.key);
+      usageMeteringService.emit(actor.orgId, Meter.InternalCas.key);
       return {
         id: certificateAuthority.id,
         type,

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, OrgMembershipRole, ProjectType, TableName } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -16,7 +16,7 @@ type TResolverDeps = {
   membershipDAL: Pick<TMembershipDALFactory, "create">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
-  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
 };
 
 type TOrgAdminRow = {
@@ -33,7 +33,7 @@ export const pamProjectResolverFactory = ({
   membershipDAL,
   membershipRoleDAL,
   keyStore,
-  licenseService
+  usageMeteringService
 }: TResolverDeps) => {
   // Newest live PAM project (find() excludes soft-deleted); tx reads the primary for the in-lock re-check.
   const findDefaultProjectId = async (orgId: string, tx?: Knex): Promise<string | null> => {
@@ -85,7 +85,7 @@ export const pamProjectResolverFactory = ({
 
     // Bootstrap seeds org admins as project members, which changes the pam_identities meter.
     if (created) {
-      licenseService.emit(orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(orgId, Meter.PamIdentities.key);
     }
     return projectId;
   };

@@ -7,7 +7,7 @@ import { testFeatures } from "./test-features";
 
 const noSeatsUsed = () => SeatUsage.create({ membersUsed: 0, identitiesUsed: 0 });
 
-// For tests of code that uses License: set a plan per org, usage reports get dropped.
+// For tests of code that uses License: set a plan per org.
 export class FakeLicenseService implements TLicenseService {
   instance: TInstanceEntitlementsProps = {
     instanceType: InstanceType.Cloud,
@@ -52,15 +52,7 @@ export class FakeLicenseService implements TLicenseService {
 
   getInstanceSeatUsage = async () => noSeatsUsed();
 
-  syncSeats = async () => undefined;
-
   closeDeletedOrg = async () => ({ licensesClosed: 0, canceledSubscriptionIds: [], commitmentForfeited: false });
-
-  emit = () => undefined;
-
-  countUsage = async () => null;
-
-  recordMeteringEvents = () => undefined;
 
   hasOfflineLicenseKey = () => false;
 }

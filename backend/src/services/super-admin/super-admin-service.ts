@@ -7,7 +7,7 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
-import { Meter, Plan, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, Plan, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
@@ -105,6 +105,7 @@ type TSuperAdminServiceFactoryDep = {
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -162,6 +163,7 @@ export const superAdminServiceFactory = ({
   kmsRootConfigDAL,
   kmsService,
   licenseService,
+  usageMeteringService,
   identityAccessTokenService,
   identityTokenAuthDAL,
   microsoftTeamsService,
@@ -743,11 +745,11 @@ export const superAdminServiceFactory = ({
   const emitUserDeletionMeterEvents = (orgMemberships: { scopeOrgId?: string | null }[]) => {
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
     orgIds.forEach((orgId) => {
-      licenseService.emit(orgId, Meter.Identities.key);
-      licenseService.emit(orgId, Meter.UserIdentities.key);
-      licenseService.emit(orgId, Meter.SecretIdentities.key);
-      licenseService.emit(orgId, Meter.PamIdentities.key);
-      licenseService.emit(orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(orgId, Meter.Identities.key);
+      usageMeteringService.emit(orgId, Meter.UserIdentities.key);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities.key);
     });
   };
 
@@ -1001,7 +1003,7 @@ export const superAdminServiceFactory = ({
       return { organization: org, users };
     });
 
-    await licenseService.syncSeats(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
 
     await Promise.allSettled(
       usersToEmail.map(async (user) => {
@@ -1082,7 +1084,7 @@ export const superAdminServiceFactory = ({
       orgId: organizationId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      usageMeteringService,
       userId: actorType === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1091,9 +1093,9 @@ export const superAdminServiceFactory = ({
       eventEmitter
     });
 
-    licenseService.emit(organizationId, Meter.SecretIdentities.key);
-    licenseService.emit(organizationId, Meter.PamIdentities.key);
-    licenseService.emit(organizationId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(organizationId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(organizationId, Meter.PamIdentities.key);
+    usageMeteringService.emit(organizationId, Meter.AgentVaultIdentities.key);
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 

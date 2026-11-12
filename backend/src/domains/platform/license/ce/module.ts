@@ -10,7 +10,9 @@ import { CounterRegistry } from "./service/counter-registry";
 import { TLicenseOrganizations, TLicenseProvider, TLicenseServer, TUsageCounter } from "./service/dependencies";
 import { InstanceEntitlementsHolder } from "./service/instance-entitlements-holder";
 import { LicenseService, TLicenseService } from "./service/license-service";
+import { TUsageMeteringService, UsageMeteringService } from "./service/usage-metering-service";
 import { UsageQueue, UsageQueues } from "./service/usage-queue";
+import { UsageReportWorker } from "./service/usage-report-worker";
 
 export * from "./model/instance-entitlements";
 export * from "./model/meter";
@@ -27,6 +29,7 @@ export type {
   TUsageCounter,
   TUsageReportCache
 } from "./service/dependencies";
+export type { TUsageMeteringService } from "./service/usage-metering-service";
 export type { TMeteringEventInput } from "./service/usage-queue";
 
 export type TLicenseDeps = {
@@ -46,37 +49,54 @@ export type TLicenseDeps = {
 };
 
 export class LicenseModule {
+  // Entitlements: plans, the instance's license and seat usage.
   readonly service: TLicenseService;
+
+  // Reporting usage to the License Server.
+  readonly usageMeteringService: TUsageMeteringService;
 
   // Exposed for the e2e suite's license overrides, which replace the instance entitlements in place.
   readonly instanceEntitlements = new InstanceEntitlementsHolder();
 
   private readonly counters: CounterRegistry;
 
-  // The same object as service, as the class, for the workers start() registers.
-  private readonly license: LicenseService;
+  private readonly worker: UsageReportWorker;
 
   constructor(private readonly deps: TLicenseDeps) {
     const { keyStore, organizations, provider, licenseServer } = deps;
     const usageReportCache = new UsageReportCache(keyStore);
     this.counters = new CounterRegistry(deps.usageCounters);
 
-    this.license = new LicenseService({
+    const usageQueue = new UsageQueue({
+      queueService: deps.queueService,
+      licenseServer,
+      usageReportCache,
+      counters: this.counters
+    });
+
+    this.service = new LicenseService({
       instance: this.instanceEntitlements,
-      counters: this.counters,
       planCache: new PlanCache(keyStore),
       usageReportCache,
-      usageQueue: new UsageQueue({
-        queueService: deps.queueService,
-        licenseServer,
-        usageReportCache,
-        counters: this.counters
-      }),
+      usageQueue,
       organizations,
       provider,
       licenseServer
     });
-    this.service = this.license;
+    this.usageMeteringService = new UsageMeteringService({
+      counters: this.counters,
+      usageQueue,
+      licenseService: this.service,
+      organizations
+    });
+    this.worker = new UsageReportWorker({
+      counters: this.counters,
+      usageReportCache,
+      usageQueue,
+      licenseService: this.service,
+      licenseServer,
+      organizations
+    });
   }
 
   // The meters a counter was given for.
@@ -91,13 +111,13 @@ export class LicenseModule {
 
     this.deps.queueService.start(
       UsageQueues.usageEvent,
-      (job) => this.license.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
+      (job) => this.worker.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
       // Counts are DB-heavy, so a backlog is rate-shaped instead of bursting the read replica.
       { concurrency: 5, limiter: { max: 50, duration: 1000 } }
     );
     this.deps.queueService.start(
       UsageQueues.meteringEvent,
-      (job) => this.license.handleMeteringEvents(job.data.orgId, job.data.events),
+      (job) => this.worker.handleMeteringEvents(job.data.orgId, job.data.events),
       { concurrency: 5 }
     );
 
@@ -106,7 +126,7 @@ export class LicenseModule {
       pattern: "0 0 * * *",
       runHashTtlS: 60 * 60,
       enabled: !this.instanceEntitlements.isCloud() && !this.deps.provider.isOffline(),
-      handler: async () => this.license.flushInstanceUsage()
+      handler: async () => this.worker.flushInstanceUsage()
     });
   }
 

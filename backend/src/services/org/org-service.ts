@@ -12,7 +12,7 @@ import {
   TOidcConfigs,
   TSamlConfigs
 } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -133,6 +133,7 @@ type TOrgServiceFactoryDep = {
   tokenService: TAuthTokenServiceFactory;
   permissionService: TPermissionServiceFactory;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
@@ -162,6 +163,7 @@ export const orgServiceFactory = ({
   orgMembershipDAL,
   tokenService,
   licenseService,
+  usageMeteringService,
   samlConfigDAL,
   oidcConfigDAL,
   ldapConfigDAL,
@@ -841,9 +843,9 @@ export const orgServiceFactory = ({
 
     // Seat sync calls the License Server, so it waits for the org to commit. A caller that passed its own
     // transaction syncs seats once that transaction commits.
-    if (!trx) await licenseService.syncSeats(organization.id);
+    if (!trx) await usageMeteringService.syncSeats(organization.id);
 
-    licenseService.emit(organization.id, Meter.PamIdentities.key);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities.key);
 
     return organization;
   };
@@ -1381,7 +1383,7 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      usageMeteringService,
       userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1391,9 +1393,9 @@ export const orgServiceFactory = ({
     });
 
     // Removing an org member cascades their project + group memberships, changing the identity meters.
-    licenseService.emit(orgId, Meter.SecretIdentities.key);
-    licenseService.emit(orgId, Meter.PamIdentities.key);
-    licenseService.emit(orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(orgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(orgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities.key);
     return deletedMembership;
   };
 
@@ -1435,7 +1437,7 @@ export const orgServiceFactory = ({
       orgId,
       orgDAL,
       userAliasDAL,
-      licenseService,
+      usageMeteringService,
       userId: actor === ActorType.USER ? actorId : undefined,
       membershipUserDAL,
       userGroupMembershipDAL,
@@ -1445,9 +1447,9 @@ export const orgServiceFactory = ({
     });
 
     // Removing org members cascades their project + group memberships, changing the identity meters.
-    licenseService.emit(orgId, Meter.SecretIdentities.key);
-    licenseService.emit(orgId, Meter.PamIdentities.key);
-    licenseService.emit(orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(orgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(orgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(orgId, Meter.AgentVaultIdentities.key);
     return deletedMemberships;
   };
 

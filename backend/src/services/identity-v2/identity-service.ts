@@ -9,7 +9,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   OrgPermissionAdminConsoleAction,
   OrgPermissionIdentityActions,
@@ -67,6 +67,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   identityMembershipV2DAL: TIdentityMembershipV2DALFactory;
   permissionService: TPermissionServiceFactory;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -88,6 +89,7 @@ export const identityV2ServiceFactory = ({
   identityMembershipV2DAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   membershipIdentityDAL,
   membershipRoleDAL,
   identityMetadataDAL,
@@ -312,15 +314,15 @@ export const identityV2ServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.syncSeats(dto.permission.orgId);
+    await usageMeteringService.syncSeats(dto.permission.orgId);
 
     // A new identity always adds an org membership; a project-scoped one also joins that project, so
     // it counts toward the secret-manager and PAM identity meters too.
-    licenseService.emit(dto.permission.orgId, Meter.Identities.key);
+    usageMeteringService.emit(dto.permission.orgId, Meter.Identities.key);
     if (scopeData.scope === AccessScope.Project) {
-      licenseService.emit(dto.permission.orgId, Meter.SecretIdentities.key);
-      licenseService.emit(dto.permission.orgId, Meter.PamIdentities.key);
-      licenseService.emit(dto.permission.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(dto.permission.orgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(dto.permission.orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(dto.permission.orgId, Meter.AgentVaultIdentities.key);
     }
 
     return { identity };
@@ -441,13 +443,13 @@ export const identityV2ServiceFactory = ({
     });
     await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId: dto.selector.identityId });
 
-    await licenseService.syncSeats(scopeData.orgId);
+    await usageMeteringService.syncSeats(scopeData.orgId);
 
     // Deleting the identity cascades its org + project + group memberships, so all meters change.
-    licenseService.emit(scopeData.orgId, Meter.Identities.key);
-    licenseService.emit(scopeData.orgId, Meter.SecretIdentities.key);
-    licenseService.emit(scopeData.orgId, Meter.PamIdentities.key);
-    licenseService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.Identities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
 
     return { identity: deletedIdentity };
   };

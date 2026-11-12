@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope, ProjectType } from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 
 import { identityV2ServiceFactory } from "./identity-service";
 import { TDeleteIdentityV2DTO } from "./identity-types";
@@ -69,6 +70,7 @@ const createService = ({
       getProjectPermissionByRoles: vi.fn().mockResolvedValue([])
     } as never,
     licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
     // The delete guards bound the removal against the roles the target identity holds.
     membershipIdentityDAL: {
       getIdentityById: vi.fn().mockResolvedValue({ roles: [] }),

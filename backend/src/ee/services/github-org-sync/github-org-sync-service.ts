@@ -7,7 +7,7 @@ import { Octokit as OctokitRest } from "@octokit/rest";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -388,6 +388,7 @@ type TGithubOrgSyncServiceFactoryDep = {
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   agentVaultPersonalValueDAL: TClearPersonalValuesInProjectsDeps["agentVaultPersonalValueDAL"];
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
   userAliasDAL: Pick<TUserAliasDALFactory, "find">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
@@ -410,6 +411,7 @@ export const githubOrgSyncServiceFactory = ({
   userGroupMembershipDAL,
   groupDAL,
   licenseService,
+  usageMeteringService,
   orgMembershipDAL,
   userAliasDAL,
   membershipRoleDAL,
@@ -852,9 +854,9 @@ export const githubOrgSyncServiceFactory = ({
       }
 
       // Group membership changes cascade into the group-expanded project identity meters.
-      licenseService.emit(orgId, Meter.SecretIdentities.key);
-      licenseService.emit(orgId, Meter.PamIdentities.key);
-      licenseService.emit(orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities.key);
     }
   };
 
@@ -1311,9 +1313,9 @@ export const githubOrgSyncServiceFactory = ({
 
     if (createdTeams.size || updatedTeams.size) {
       // Team membership changes cascade into the group-expanded project identity meters.
-      licenseService.emit(orgPermission.orgId, Meter.SecretIdentities.key);
-      licenseService.emit(orgPermission.orgId, Meter.PamIdentities.key);
-      licenseService.emit(orgPermission.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(orgPermission.orgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(orgPermission.orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(orgPermission.orgId, Meter.AgentVaultIdentities.key);
     }
 
     if (unmatchedGithubUsers.size) {

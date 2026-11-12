@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { bootstrapPamProject } from "@app/ee/services/pam-project/pam-project-bootstrap";
 import { bootstrapSecretScanningProject } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-bootstrap";
 import { BadRequestError } from "@app/lib/errors";
@@ -27,6 +27,7 @@ type TSubOrgServiceFactoryDep = {
   orgDeletionService: Pick<TOrgDeletionServiceFactory, "deleteOrganization">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findOne">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectDAL: Pick<TProjectDALFactory, "create" | "findOne">;
@@ -40,6 +41,7 @@ export const subOrgServiceFactory = ({
   orgDeletionService,
   permissionService,
   licenseService,
+  usageMeteringService,
   membershipDAL,
   membershipRoleDAL,
   projectDAL,
@@ -134,7 +136,7 @@ export const subOrgServiceFactory = ({
       return org;
     });
 
-    licenseService.emit(organization.id, Meter.PamIdentities.key);
+    usageMeteringService.emit(organization.id, Meter.PamIdentities.key);
 
     return {
       organization

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -56,6 +56,7 @@ type TMembershipIdentityServiceFactoryDep = {
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "deleteByIdentityIdsInGroupsOwnedByOrgs">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
@@ -85,6 +86,7 @@ export const membershipIdentityServiceFactory = ({
   identityMetadataDAL,
   identityGroupMembershipDAL,
   licenseService,
+  usageMeteringService,
   applicationMembershipCleanupService,
   projectDAL,
   keyStore,
@@ -247,9 +249,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Adding an identity to a project changes the secret-manager and PAM identity meters (a direct member).
     if (scopeData.scope === AccessScope.Project) {
-      licenseService.emit(scopeData.orgId, Meter.SecretIdentities.key);
-      licenseService.emit(scopeData.orgId, Meter.PamIdentities.key);
-      licenseService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
     }
     return { membership };
   };
@@ -549,9 +551,9 @@ export const membershipIdentityServiceFactory = ({
 
     // Removing an identity from a project drops a direct member; removing it from the org cascades its
     // project + group memberships. Either way the secret-manager and PAM identity meters change.
-    licenseService.emit(scopeData.orgId, Meter.SecretIdentities.key);
-    licenseService.emit(scopeData.orgId, Meter.PamIdentities.key);
-    licenseService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
 
     if (needsRevocationBump && externalTx) {
       return {

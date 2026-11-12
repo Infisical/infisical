@@ -17,7 +17,7 @@ import {
   TProjectEnvironments,
   TProjects
 } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
@@ -193,6 +193,7 @@ type TProjectServiceFactoryDep = {
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   smtpService: Pick<TSmtpService, "sendMail">;
   orgDAL: Pick<TOrgDALFactory, "findOne" | "findEffectiveOrgMembership" | "listOrganizationsWithSubOrgs">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "ttl">;
@@ -249,6 +250,7 @@ export const projectServiceFactory = ({
   projectMembershipDAL,
   projectEnvDAL,
   licenseService,
+  usageMeteringService,
   certificateAuthorityDAL,
   certificateDAL,
   certificateTemplateDAL,
@@ -826,9 +828,9 @@ export const projectServiceFactory = ({
     if (!trx) await licenseService.invalidatePlan(actorOrgId);
     // A new project seeds its creator (plus any template members/identities); emit so a new secret-manager,
     // PAM or Agent Vault project's seats are metered. The counters filter by project type.
-    licenseService.emit(results.orgId, Meter.SecretIdentities.key);
-    licenseService.emit(results.orgId, Meter.PamIdentities.key);
-    licenseService.emit(results.orgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(results.orgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(results.orgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(results.orgId, Meter.AgentVaultIdentities.key);
     return results;
   };
 
@@ -943,9 +945,9 @@ export const projectServiceFactory = ({
       // Cached reads of this project and of the projects it shares with would keep serving its secrets.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
       // The soft-deleted project drops out of the meters' counts, so its members no longer count.
-      licenseService.emit(project.orgId, Meter.SecretIdentities.key);
-      licenseService.emit(project.orgId, Meter.PamIdentities.key);
-      licenseService.emit(project.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities.key);
       return { ...softDeletedProject, slug: project.slug, hardDelete: !hasGracePeriod };
     } finally {
       await lock.release();
@@ -1091,9 +1093,9 @@ export const projectServiceFactory = ({
       await licenseService.invalidatePlan(project.orgId);
       // Cached reads from before the deletion can hold imports from projects deleted since.
       await secretV2BridgeDAL.invalidateSecretCacheByProjectId(project.id);
-      licenseService.emit(project.orgId, Meter.SecretIdentities.key);
-      licenseService.emit(project.orgId, Meter.PamIdentities.key);
-      licenseService.emit(project.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(project.orgId, Meter.AgentVaultIdentities.key);
       return restoredProject;
     } finally {
       await lock.release();

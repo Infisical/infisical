@@ -1,6 +1,6 @@
 import { InstanceType } from "../model/instance-entitlements";
 import { Meter } from "../model/meter";
-import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID } from "../testing/build-license";
+import { buildLicense, ROOT, SUB_ORG_ID } from "../testing/build-license";
 import { FakeLicenseServer } from "../testing/fake-license-server";
 import { FakeUsageCounter } from "../testing/fake-usage-counter";
 import { enterprisePlan } from "../testing/test-features";
@@ -13,14 +13,14 @@ vi.mock("@app/lib/logger", () => ({
 const snapshotsFor = (licenseServer: FakeLicenseServer, dimension: string) =>
   licenseServer.snapshots.filter((s) => s.snapshot.dimension_key === dimension).map((s) => [s.orgId, s.snapshot.value]);
 
-describe("LicenseService.handleUsageEvent", () => {
+describe("UsageReportWorker.handleUsageEvent", () => {
   test("should report the counter's value and record it", async () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
-    const { licenseService, queue, licenseServer } = await buildLicense({ counters: [counter] });
+    const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [counter] });
 
     // Action
-    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
@@ -30,9 +30,9 @@ describe("LicenseService.handleUsageEvent", () => {
   test("should send a recount under a new idempotency key when a retry follows a lost reply", async () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.ActiveCerts).set(ROOT.id, 9);
-    const { licenseService, queue, licenseServer } = await buildLicense({ counters: [counter] });
+    const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [counter] });
     licenseServer.loseNextReplies = 1;
-    licenseService.emit(ROOT.id, Meter.ActiveCerts.key);
+    usageMeteringService.emit(ROOT.id, Meter.ActiveCerts.key);
     await new Promise((resolve) => {
       setImmediate(resolve);
     });
@@ -55,12 +55,12 @@ describe("LicenseService.handleUsageEvent", () => {
   test("should not report a value the server already has", async () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
-    const { licenseService, queue, licenseServer } = await buildLicense({ counters: [counter] });
-    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
+    const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [counter] });
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Action
-    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
@@ -72,10 +72,10 @@ describe("LicenseService.handleUsageEvent", () => {
     const licenseServer = new FakeLicenseServer();
     licenseServer.plans.set(ROOT.id, { ...enterprisePlan(), slug: null });
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
-    const { licenseService, queue } = await buildLicense({ licenseServer, counters: [counter] });
+    const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
 
     // Action
-    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
@@ -86,11 +86,11 @@ describe("LicenseService.handleUsageEvent", () => {
     // Setup
     const certs = new FakeUsageCounter(Meter.ActiveCerts).set(ROOT.id, 9);
     const users = new FakeUsageCounter(Meter.UserIdentities).set(SUB_ORG_ID, 2);
-    const { licenseService, queue, licenseServer } = await buildLicense({ counters: [certs, users] });
+    const { usageMeteringService, queue, licenseServer } = await buildLicense({ counters: [certs, users] });
 
     // Action
-    licenseService.emit(SUB_ORG_ID, Meter.ActiveCerts.key);
-    licenseService.emit(SUB_ORG_ID, Meter.UserIdentities.key);
+    usageMeteringService.emit(SUB_ORG_ID, Meter.ActiveCerts.key);
+    usageMeteringService.emit(SUB_ORG_ID, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
@@ -107,10 +107,10 @@ describe("LicenseService.handleUsageEvent", () => {
       features: enterprisePlan()
     };
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(null, 12);
-    const { licenseService, queue } = await buildLicense({ licenseServer, counters: [counter] });
+    const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
 
     // Action
-    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
     await queue.drain();
 
     // Assert
@@ -120,10 +120,10 @@ describe("LicenseService.handleUsageEvent", () => {
 
   test("should drop an event for a dimension nothing counts", async () => {
     // Setup
-    const { licenseService, queue, licenseServer } = await buildLicense();
+    const { usageMeteringService, queue, licenseServer } = await buildLicense();
 
     // Action
-    licenseService.emit(ROOT.id, "unknown_dimension");
+    usageMeteringService.emit(ROOT.id, "unknown_dimension");
     await queue.drain();
 
     // Assert
@@ -140,12 +140,12 @@ describe("LicenseService.handleUsageEvent", () => {
       const licenseServer = new FakeLicenseServer();
       licenseServer.failNextReports.push(new UsageReportError(status, message));
       const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
-      const { licenseService, queue } = await buildLicense({ licenseServer, counters: [counter] });
-      licenseService.emit(ROOT.id, Meter.UserIdentities.key);
+      const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
+      usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
       await queue.drain();
 
       // Action
-      licenseService.emit(ROOT.id, Meter.UserIdentities.key);
+      usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
       await queue.drain();
 
       // Assert
@@ -158,8 +158,8 @@ describe("LicenseService.handleUsageEvent", () => {
     const licenseServer = new FakeLicenseServer();
     licenseServer.failNextReports.push(new UsageReportError(500, "boom"));
     const counter = new FakeUsageCounter(Meter.UserIdentities).set(ROOT.id, 4);
-    const { licenseService, queue } = await buildLicense({ licenseServer, counters: [counter] });
-    licenseService.emit(ROOT.id, Meter.UserIdentities.key);
+    const { usageMeteringService, queue } = await buildLicense({ licenseServer, counters: [counter] });
+    usageMeteringService.emit(ROOT.id, Meter.UserIdentities.key);
 
     // Action
     const result = queue.drain();
@@ -192,7 +192,7 @@ describe("LicenseService.handleUsageEvent", () => {
   });
 });
 
-describe("LicenseService.flushInstanceUsage", () => {
+describe("UsageReportWorker.flushInstanceUsage", () => {
   test("should report every meter once under the instance, counting the whole instance", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();
@@ -216,54 +216,6 @@ describe("LicenseService.flushInstanceUsage", () => {
       ["self-hosted", Meter.UserIdentities.key, 12],
       ["self-hosted", Meter.ActiveCerts.key, 4]
     ]);
-  });
-});
-
-describe("LicenseService.getSeatUsage", () => {
-  test("should count the root org's tree on cloud, in one count", async () => {
-    // Setup
-    const counted: (string | null)[] = [];
-    const { licenseService } = await buildLicense({
-      organizations: {
-        countBillableOrgActors: async (orgId) => {
-          counted.push(orgId);
-          return { users: 3, identities: 4 };
-        }
-      }
-    });
-
-    // Action
-    const usage = await licenseService.getSeatUsage(SUB_ORG_ID);
-
-    // Assert
-    expect([usage.membersUsed, usage.identitiesUsed]).toEqual([3, 7]);
-    expect(counted).toEqual([ROOT.id]);
-  });
-
-  test("should count every org on the instance for the instance's seat usage, even on cloud", async () => {
-    // Setup
-    const { licenseService } = await buildLicense({
-      organizations: {
-        countBillableOrgActors: async (orgId) => ({ users: 0, identities: orgId === null ? 9 : 2 })
-      }
-    });
-
-    // Action
-    const usage = await licenseService.getInstanceSeatUsage();
-
-    // Assert
-    expect(usage.identitiesUsed).toBe(9);
-  });
-
-  test("should refuse an org that does not exist on cloud", async () => {
-    // Setup
-    const { licenseService } = await buildLicense();
-
-    // Action
-    const result = licenseService.getSeatUsage(OTHER_ROOT.id.replace("3", "5"));
-
-    // Assert
-    await expect(result).rejects.toThrow("not found");
   });
 });
 

@@ -9,7 +9,7 @@ import {
   TGroups,
   TRoles
 } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -120,6 +120,7 @@ type TGroupServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals" | "pruneOutOfScopeRecipients">;
@@ -147,6 +148,7 @@ export const groupServiceFactory = ({
   additionalPrivilegeDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   oidcConfigDAL,
   membershipGroupDAL,
   membershipRoleDAL,
@@ -527,17 +529,17 @@ export const groupServiceFactory = ({
       sendPamCancellations();
       await membershipGroupService.bumpIdentityRevocationVersions(identityIdsLosingOrgAccess);
       // Removing the group drops its members from any project it was on.
-      licenseService.emit(actorOrgId, Meter.SecretIdentities.key);
-      licenseService.emit(actorOrgId, Meter.PamIdentities.key);
-      licenseService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
     const deletedGroup = await deleteOwnedGroup({ groupId: id, actorId, actorOrgId });
     // Deleting the group drops its members from any project it was on.
-    licenseService.emit(actorOrgId, Meter.SecretIdentities.key);
-    licenseService.emit(actorOrgId, Meter.PamIdentities.key);
-    licenseService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { group: deletedGroup, isUnlinked: false };
   };
 
@@ -879,9 +881,9 @@ export const groupServiceFactory = ({
     });
 
     // The user may now be in a secret-manager or PAM project through this group.
-    licenseService.emit(actorOrgId, Meter.SecretIdentities.key);
-    licenseService.emit(actorOrgId, Meter.PamIdentities.key);
-    licenseService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -991,9 +993,9 @@ export const groupServiceFactory = ({
     }
 
     // The identity may now be in a secret-manager or PAM project through this group.
-    licenseService.emit(actorOrgId, Meter.SecretIdentities.key);
-    licenseService.emit(actorOrgId, Meter.PamIdentities.key);
-    licenseService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 
@@ -1087,9 +1089,9 @@ export const groupServiceFactory = ({
     sendPamCancellations();
 
     // The user may have left a secret-manager or PAM project it only reached through this group.
-    licenseService.emit(actorOrgId, Meter.SecretIdentities.key);
-    licenseService.emit(actorOrgId, Meter.PamIdentities.key);
-    licenseService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { user: users[0], group: groupMembership.group };
   };
 
@@ -1181,9 +1183,9 @@ export const groupServiceFactory = ({
     }
 
     // The identity may have left a secret-manager or PAM project it only reached through this group.
-    licenseService.emit(actorOrgId, Meter.SecretIdentities.key);
-    licenseService.emit(actorOrgId, Meter.PamIdentities.key);
-    licenseService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.SecretIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.PamIdentities.key);
+    usageMeteringService.emit(actorOrgId, Meter.AgentVaultIdentities.key);
     return { identity: identities[0], group: groupMembership.group };
   };
 

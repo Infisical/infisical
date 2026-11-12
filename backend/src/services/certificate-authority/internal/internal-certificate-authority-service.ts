@@ -6,7 +6,7 @@ import slugify from "@sindresorhus/slugify";
 import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TCertificateAuthorityCrossSignedCertDALFactory } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-dal";
 import { assertCrossSignedCertsAllowSubCa } from "@app/ee/services/certificate-authority-cross-signed-cert/certificate-authority-cross-signed-cert-fns";
@@ -167,6 +167,7 @@ type TInternalCertificateAuthorityServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   caSigningConfigDAL: Pick<TCaSigningConfigDALFactory, "findByCaId" | "create" | "deleteById" | "transaction">;
   caKeySourceService: Pick<
     TCaKeySourceServiceFactory,
@@ -196,6 +197,7 @@ export const internalCertificateAuthorityServiceFactory = ({
   kmsService,
   permissionService,
   licenseService,
+  usageMeteringService,
   caSigningConfigDAL,
   caKeySourceService,
   keyStore,
@@ -2423,8 +2425,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
-    licenseService.emit(projectOrgId, Meter.ActiveCerts.key);
-    licenseService.emit(projectOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(projectOrgId, Meter.ActiveCerts.key);
+    usageMeteringService.emit(projectOrgId, Meter.WildcardCerts.key);
 
     return {
       certificate: leafCert.toString("pem"),
@@ -2921,8 +2923,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       cert = await certificateDAL.transaction(persist);
     }
 
-    licenseService.emit(projectOrgId, Meter.ActiveCerts.key);
-    licenseService.emit(projectOrgId, Meter.WildcardCerts.key);
+    usageMeteringService.emit(projectOrgId, Meter.ActiveCerts.key);
+    usageMeteringService.emit(projectOrgId, Meter.WildcardCerts.key);
 
     return {
       certificate: leafCert,

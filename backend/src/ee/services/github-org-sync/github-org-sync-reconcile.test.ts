@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { AccessScope } from "@app/db/schemas";
 import { FakeLicenseService } from "@app/domains/platform/license/ce/testing/fake-license-service";
+import { FakeUsageMeteringService } from "@app/domains/platform/license/ce/testing/fake-usage-metering-service";
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { GROUP_MEMBERSHIP_REMOVED_EVENT } from "@app/services/org/org-membership-events";
@@ -127,6 +128,7 @@ const createService = () => {
     identityGroupMembershipDAL: identityGroupMembershipDAL as never,
     agentVaultPersonalValueDAL: agentVaultPersonalValueDAL as never,
     licenseService,
+    usageMeteringService: new FakeUsageMeteringService(),
     orgMembershipDAL: orgMembershipDAL as never,
     userAliasDAL: userAliasDAL as never,
     alertChannelRecipientDAL: { pruneOutOfScopeRecipients: vi.fn().mockResolvedValue(undefined) } as never,

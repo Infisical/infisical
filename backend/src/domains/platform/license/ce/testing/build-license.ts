@@ -63,5 +63,14 @@ export const buildLicense = async ({
     usageCounters: counters
   });
   await module.start();
-  return { module, licenseService: module.service, licenseServer, keyStore, queue, registeredCrons, cronHandlers };
+  return {
+    module,
+    licenseService: module.service,
+    usageMeteringService: module.usageMeteringService,
+    licenseServer,
+    keyStore,
+    queue,
+    registeredCrons,
+    cronHandlers
+  };
 };

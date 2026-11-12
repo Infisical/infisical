@@ -7,7 +7,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { reapOrphanedFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
@@ -63,6 +63,7 @@ type TMembershipGroupServiceFactoryDep = {
   orgDAL: TOrgDALFactory;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   applicationMembershipCleanupService: Pick<
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
@@ -93,6 +94,7 @@ export const membershipGroupServiceFactory = ({
   permissionService,
   groupDAL,
   licenseService,
+  usageMeteringService,
   applicationMembershipCleanupService,
   projectDAL,
   alertChannelRecipientDAL,
@@ -242,9 +244,9 @@ export const membershipGroupServiceFactory = ({
 
     // Assigning a group to a project brings the group's users + identities into it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      licenseService.emit(scopeData.orgId, Meter.SecretIdentities.key);
-      licenseService.emit(scopeData.orgId, Meter.PamIdentities.key);
-      licenseService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(scopeData.orgId, Meter.AgentVaultIdentities.key);
     }
     return { membership, group };
   };
@@ -643,9 +645,9 @@ export const membershipGroupServiceFactory = ({
 
     // Removing a group from a project drops its users + identities from it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
-      licenseService.emit(existingMembership.scopeOrgId, Meter.SecretIdentities.key);
-      licenseService.emit(existingMembership.scopeOrgId, Meter.PamIdentities.key);
-      licenseService.emit(existingMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(existingMembership.scopeOrgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(existingMembership.scopeOrgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(existingMembership.scopeOrgId, Meter.AgentVaultIdentities.key);
     }
     return { membership: membershipDoc, group };
   };

@@ -2,7 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
 import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
-import { Meter, TLicenseService } from "@app/domains/platform/license/ce/module";
+import { Meter, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -85,7 +85,7 @@ type TUserServiceFactoryDep = {
   totpConfigDAL: Pick<TTotpConfigDALFactory, "findOne">;
   webAuthnCredentialDAL: Pick<TWebAuthnCredentialDALFactory, "find">;
   mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
-  licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -106,7 +106,7 @@ export const userServiceFactory = ({
   totpConfigDAL,
   webAuthnCredentialDAL,
   mfaRecoveryCodeService,
-  licenseService,
+  usageMeteringService,
   alertChannelRecipientDAL,
   emailDomainDAL,
   pamSessionDAL,
@@ -774,11 +774,11 @@ export const userServiceFactory = ({
     // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
     orgIds.forEach((orgId) => {
-      licenseService.emit(orgId, Meter.Identities.key);
-      licenseService.emit(orgId, Meter.UserIdentities.key);
-      licenseService.emit(orgId, Meter.SecretIdentities.key);
-      licenseService.emit(orgId, Meter.PamIdentities.key);
-      licenseService.emit(orgId, Meter.AgentVaultIdentities.key);
+      usageMeteringService.emit(orgId, Meter.Identities.key);
+      usageMeteringService.emit(orgId, Meter.UserIdentities.key);
+      usageMeteringService.emit(orgId, Meter.SecretIdentities.key);
+      usageMeteringService.emit(orgId, Meter.PamIdentities.key);
+      usageMeteringService.emit(orgId, Meter.AgentVaultIdentities.key);
     });
 
     try {

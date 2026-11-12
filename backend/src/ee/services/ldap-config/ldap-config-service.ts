@@ -9,7 +9,7 @@ import {
   TLdapConfigsUpdate,
   TUsers
 } from "@app/db/schemas";
-import { TLicenseService } from "@app/domains/platform/license/ce/module";
+import { TLicenseService, TUsageMeteringService } from "@app/domains/platform/license/ce/module";
 import {
   clearPersonalValuesInProjects,
   TClearPersonalValuesInProjectsDeps
@@ -124,6 +124,7 @@ type TLdapConfigServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: TLicenseService;
+  usageMeteringService: TUsageMeteringService;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -159,6 +160,7 @@ export const ldapConfigServiceFactory = ({
   additionalPrivilegeDAL,
   permissionService,
   licenseService,
+  usageMeteringService,
   tokenService,
   smtpService,
   kmsService,
@@ -683,7 +685,7 @@ export const ldapConfigServiceFactory = ({
         });
       }
     }
-    await licenseService.syncSeats(organization.id);
+    await usageMeteringService.syncSeats(organization.id);
 
     const pamCancellations: (() => void)[] = [];
     let user = await userDAL.transaction(async (tx) => {
@@ -735,7 +737,7 @@ export const ldapConfigServiceFactory = ({
               projectDAL,
               projectBotDAL,
               membershipGroupDAL,
-              licenseService,
+              usageMeteringService,
               tx
             });
           }
@@ -766,7 +768,7 @@ export const ldapConfigServiceFactory = ({
               groupDAL,
               projectKeyDAL,
               additionalPrivilegeDAL,
-              licenseService,
+              usageMeteringService,
               alertChannelRecipientDAL,
               eventEmitter,
               membershipDAL,
