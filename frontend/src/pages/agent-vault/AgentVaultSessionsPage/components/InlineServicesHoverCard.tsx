@@ -1,9 +1,9 @@
 import { ReactNode, useState } from "react";
+import { WebhookIcon } from "lucide-react";
 
 import { hostPatternOf } from "@app/components/agent-vault/service-sheet/serviceSchema";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import {
-  Badge,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -45,9 +45,12 @@ export const InlineServicesList = ({ services }: ListProps) => (
               <span className="truncate text-xs text-muted">{target}</span>
             )}
             {service.hook && (
-              <Badge variant="neutral" className="shrink-0" title={service.hook.url}>
-                Hook
-              </Badge>
+              <span
+                className="flex shrink-0 text-muted"
+                title={`Calls a hook: ${service.hook.url}`}
+              >
+                <WebhookIcon className="size-3.5" />
+              </span>
             )}
           </div>
         );

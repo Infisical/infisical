@@ -473,13 +473,12 @@ export const ServicesCard = ({
                       {service.hook && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Badge variant="neutral">
-                              <WebhookIcon />
-                              Hook
-                            </Badge>
+                            <span className="flex shrink-0 text-muted" aria-label="Calls a hook">
+                              <WebhookIcon className="size-3.5" />
+                            </span>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-sm break-all">
-                            {service.hook.url}
+                            Calls a hook: {service.hook.url}
                           </TooltipContent>
                         </Tooltip>
                       )}
