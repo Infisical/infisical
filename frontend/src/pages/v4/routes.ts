@@ -114,6 +114,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
         "/secret-management/$projectId/integrations/$integrationId",
         "v4/secret-manager/IntegrationDetailsByIDPage/route.tsx"
       ),
+      route(
+        "/secret-management/$projectId/integrations/secret-syncs/$destination/$syncId",
+        "v4/secret-manager/SecretSyncDetailsByIDPage/route.tsx"
+      ),
       route("/secret-management/$projectId/settings", "v4/secret-manager/SettingsPage/route.tsx"),
       route("/agent-vault/$projectId/", "v4/redirects/AgentVaultIndexRedirect/route.tsx"),
       route("/agent-vault/$projectId/sessions", "v4/agent-vault/AgentVaultSessionsPage/route.tsx"),

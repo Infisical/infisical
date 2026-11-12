@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   Controller,
   type FieldValues,
@@ -250,7 +250,7 @@ function IncludeSubfoldersSwitch({
   );
 }
 
-function SourceFields({
+export function SourceFields({
   environments,
   conflicts
 }: {
@@ -534,7 +534,7 @@ function InitialSyncAlerts({
   );
 }
 
-function InitialSyncFields() {
+export function InitialSyncFields() {
   const values = useSyncValues();
   const destination = values.destination as SecretSync;
   const destinationName = nameOf(destination);
@@ -703,7 +703,7 @@ function KeySchemaField({ destinationName }: { destinationName: string }) {
   );
 }
 
-function OptionsFields() {
+export function OptionsFields() {
   const { destination } = useSyncValues();
   const destinationName = nameOf(destination);
   const [confirmAllowDeletion, setConfirmAllowDeletion] = useState<(value: boolean) => void>();
@@ -792,7 +792,7 @@ const suggestedNameOf = (values: FieldValues) => {
   return [prefix, environmentSlug].filter(Boolean).join("-");
 };
 
-function DetailsFields() {
+export function DetailsFields() {
   const { setValue, getValues } = useSyncFormContext();
   const suggested = suggestedNameOf(getValues());
   return (
@@ -932,7 +932,8 @@ export function CreateSecretSyncSheet({
   syncs,
   resources,
   onCreate,
-  onToast
+  onToast,
+  destination: requestedDestination
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -942,6 +943,7 @@ export function CreateSecretSyncSheet({
   resources?: readonly Resource[];
   onCreate: (sync: LocalSecretSync, feedback: FlowFeedback) => void;
   onToast: (tone: RowActionTone, feedback: FlowFeedback) => void;
+  destination?: SecretSync;
 }) {
   const environments: SyncEnvironment[] = scope.environments.map((environment) => ({
     slug: environment.value,
@@ -1030,6 +1032,10 @@ export function CreateSecretSyncSheet({
     setStep(0);
     setDestination(next);
   };
+  useEffect(() => {
+    if (open && requestedDestination && PORTED_SYNCS.includes(requestedDestination))
+      select(requestedDestination);
+  }, [open, requestedDestination]);
   const close = () => {
     setDestination(null);
     setStep(0);

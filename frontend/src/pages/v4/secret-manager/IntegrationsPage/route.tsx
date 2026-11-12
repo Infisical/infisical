@@ -9,14 +9,11 @@ export const Route = createFileRoute(
 )({
   staticData: {
     readiness: "partial",
-    missing: [
-      "App connections",
-      "Secret syncs",
-      "Framework integrations",
-      "Infrastructure integrations"
-    ]
+    missing: ["App connections", "Framework integrations", "Infrastructure integrations"]
   },
   component: IntegrationsPage,
-  validateSearch: zodValidator(z.object({ selectedTab: z.string().optional() })),
+  validateSearch: zodValidator(
+    z.object({ selectedTab: z.string().optional(), addSync: z.string().optional() })
+  ),
   errorComponent: lazyRouteComponent(() => import("../../V4ErrorPage"), "V4ErrorPage")
 });

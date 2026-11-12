@@ -20,8 +20,20 @@ import {
   useUpdateSecretRotationV2
 } from "@app/hooks/api/secretRotationsV2/mutations";
 import { useViewSecretRotationV2GeneratedCredentials } from "@app/hooks/api/secretRotationsV2/queries";
-import { useCreateSecretSync } from "@app/hooks/api/secretSyncs/mutations";
-import { useListSecretSyncs } from "@app/hooks/api/secretSyncs/queries";
+import {
+  useCreateSecretSync,
+  useDeleteSecretSync,
+  useTriggerSecretSyncImportSecrets,
+  useTriggerSecretSyncRemoveSecrets,
+  useTriggerSecretSyncSyncSecrets,
+  useUpdateSecretSync
+} from "@app/hooks/api/secretSyncs/mutations";
+import {
+  useCheckDuplicateDestination,
+  useGetSecretSync,
+  useListSecretSyncs,
+  useSecretSyncOptions
+} from "@app/hooks/api/secretSyncs/queries";
 
 import type { SecretsManagedAdapter } from "./contract-managed";
 import { secretsOptionsLive } from "./live-options";
@@ -44,8 +56,30 @@ export const secretsManagedLive: SecretsManagedAdapter = {
   useRevokeHoneyToken,
   useUpdateProxiedService,
   useDeleteProxiedService,
-  useSecretSyncs: (projectId) => useListSecretSyncs(projectId),
+  useSecretSyncs: (projectId, options) =>
+    useListSecretSyncs(projectId, { refetchInterval: options?.refetchInterval }),
+  useSecretSync: (destination, syncId) =>
+    useGetSecretSync(destination, syncId, { refetchInterval: 30_000 }),
+  useSecretSyncOptions: () => useSecretSyncOptions(),
+  useSecretSyncDuplicate: (dto, options) =>
+    useCheckDuplicateDestination(
+      dto.destination,
+      dto.destinationConfig,
+      dto.projectId,
+      dto.excludeSyncId,
+      dto.connectionId,
+      {
+        enabled:
+          (options?.enabled ?? true) &&
+          Object.keys((dto.destinationConfig as object | null) ?? {}).length > 0
+      }
+    ),
   useCreateSecretSync,
+  useUpdateSecretSync,
+  useDeleteSecretSync,
+  useTriggerSecretSync: useTriggerSecretSyncSyncSecrets,
+  useImportSecretSyncSecrets: useTriggerSecretSyncImportSecrets,
+  useRemoveSecretSyncSecrets: useTriggerSecretSyncRemoveSecrets,
   useSyncConnections: (app, projectId, options) =>
     useListAvailableAppConnections(app, projectId, { enabled: options?.enabled })
 };

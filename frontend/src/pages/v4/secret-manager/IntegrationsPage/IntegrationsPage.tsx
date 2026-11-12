@@ -15,6 +15,7 @@ import { useV4Adapter } from "../../data/adapters";
 import { v4Path } from "../../links";
 import { NativeIntegrationsTab } from "./native-integrations";
 import { NATIVE_INTEGRATIONS_TAB, SECRET_SYNCS_TAB } from "./native-model";
+import { SecretSyncsTab } from "./secret-syncs/secret-syncs-tab";
 
 const route = v4Path("/organizations/$orgId/projects/secret-management/$projectId/integrations/");
 const path = v4Path("/organizations/$orgId/projects/secret-management/$projectId/integrations");
@@ -106,15 +107,21 @@ export const IntegrationsPage = () => {
             />
           }
         />
-        {activeTab === NATIVE_INTEGRATIONS_TAB ? (
+        {activeTab === NATIVE_INTEGRATIONS_TAB && (
           <NativeIntegrationsTab
             orgId={orgId}
             projectId={projectId}
             environments={project?.environments ?? []}
           />
-        ) : (
-          <NotPorted />
         )}
+        {activeTab === SECRET_SYNCS_TAB && (
+          <SecretSyncsTab
+            orgId={orgId}
+            projectId={projectId}
+            environments={project?.environments ?? []}
+          />
+        )}
+        {activeTab !== NATIVE_INTEGRATIONS_TAB && activeTab !== SECRET_SYNCS_TAB && <NotPorted />}
       </Stack>
     </TooltipProvider>
   );

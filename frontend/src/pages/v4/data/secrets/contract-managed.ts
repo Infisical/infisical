@@ -22,7 +22,17 @@ import type {
   TUpdateSecretRotationV2DTO,
   TViewSecretRotationGeneratedCredentialsResponse
 } from "@app/hooks/api/secretRotationsV2/types";
-import type { TCreateSecretSyncDTO, TSecretSync } from "@app/hooks/api/secretSyncs/types";
+import type { SecretSync } from "@app/hooks/api/secretSyncs/enums";
+import type {
+  TCreateSecretSyncDTO,
+  TDeleteSecretSyncDTO,
+  TSecretSync,
+  TSecretSyncOption,
+  TTriggerSecretSyncImportSecretsDTO,
+  TTriggerSecretSyncRemoveSecretsDTO,
+  TTriggerSecretSyncSyncSecretsDTO,
+  TUpdateSecretSyncDTO
+} from "@app/hooks/api/secretSyncs/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
 import type { SecretsOptionsAdapter } from "./contract-options";
@@ -55,8 +65,28 @@ export type SecretsManagedAdapter = SecretsOptionsAdapter & {
   useRevokeHoneyToken: V4Mutation<TRevokeHoneyTokenDTO>;
   useUpdateProxiedService: V4Mutation<TUpdateProxiedServiceDTO>;
   useDeleteProxiedService: V4Mutation<TDeleteProxiedServiceDTO>;
-  useSecretSyncs: (projectId: string) => V4QueryResult<TSecretSync[]>;
+  useSecretSyncs: (
+    projectId: string,
+    options?: { refetchInterval?: number }
+  ) => V4QueryResult<TSecretSync[]>;
+  useSecretSync: (destination: SecretSync, syncId: string) => V4QueryResult<TSecretSync>;
+  useSecretSyncOptions: () => V4QueryResult<TSecretSyncOption[]>;
+  useSecretSyncDuplicate: (
+    dto: {
+      destination: SecretSync;
+      destinationConfig: unknown;
+      projectId: string;
+      excludeSyncId?: string;
+      connectionId?: string;
+    },
+    options?: { enabled?: boolean }
+  ) => V4QueryResult<{ hasDuplicate: boolean; duplicateProjectId?: string }>;
   useCreateSecretSync: V4Mutation<TCreateSecretSyncDTO>;
+  useUpdateSecretSync: V4Mutation<TUpdateSecretSyncDTO, TSecretSync>;
+  useDeleteSecretSync: V4Mutation<TDeleteSecretSyncDTO>;
+  useTriggerSecretSync: V4Mutation<TTriggerSecretSyncSyncSecretsDTO>;
+  useImportSecretSyncSecrets: V4Mutation<TTriggerSecretSyncImportSecretsDTO>;
+  useRemoveSecretSyncSecrets: V4Mutation<TTriggerSecretSyncRemoveSecretsDTO>;
   useSyncConnections: (
     app: AppConnection,
     projectId: string,
