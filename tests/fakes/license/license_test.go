@@ -1,8 +1,13 @@
 package license
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -86,4 +91,48 @@ func TestServiceKey_IsParseablePEM(t *testing.T) {
 
 	// Assert: the license client parses it before sending anything.
 	require.Regexp(t, `^-----BEGIN PRIVATE KEY-----`, key)
+}
+
+func TestOrg_UsageReports(t *testing.T) {
+	t.Parallel()
+	spec.Why(t, `A refused report is retried by the instance ten times per metered dimension,
+		which shows up as a slower run rather than a failing one.`)
+
+	t.Run("should accept a usage snapshot", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		req := httptest.NewRequest(http.MethodPost, "/v1/organizations/org-1/usage-snapshots",
+			strings.NewReader(`{"snapshots":[{"dimension_key":"identities","value":3}]}`))
+		rec := httptest.NewRecorder()
+
+		// Action
+		(&Org{plan: Enterprise()}).ServeHTTP(rec, req)
+
+		// Assert
+		require.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("should accept every usage event and name each by its id", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		req := httptest.NewRequest(http.MethodPost, "/v1/organizations/org-1/usage-events",
+			strings.NewReader(`{"events":[{"event_id":"a"},{"event_id":"b"}]}`))
+		rec := httptest.NewRecorder()
+
+		// Action
+		(&Org{plan: Enterprise()}).ServeHTTP(rec, req)
+
+		// Assert
+		require.Equal(t, http.StatusOK, rec.Code)
+		var body struct {
+			Results []map[string]string `json:"results"`
+		}
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+		require.Equal(t, []map[string]string{
+			{"event_id": "a", "status": "accepted"},
+			{"event_id": "b", "status": "accepted"},
+		}, body.Results)
+	})
 }

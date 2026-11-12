@@ -146,8 +146,11 @@ A policy type plugs in through **one** extension point, a `TApprovalResource` (s
 constructed with its own dependencies and registered in the `approvalResources` map in
 `server/routes/index.ts`; that also gives it the generic `/v1/approval-policies/<type>/...` endpoints,
 which every type now uses for policy CRUD, requests, approve, reject and grant revocation. **Do not stand up a per-product approval service, request table, or review
-endpoint**: `access-approval-*` and `secret-approval-*` predate this module and are what we are
-converging away from. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
+endpoint**: secret access (`ee/services/access-approval-*`) and secret change
+(`ee/services/secret-change-policy/`, `ee/services/secret-change-request/`) approvals both run on this module and no
+longer read the legacy `access_approval_*` / `secret_approval_*` tables. The one exception is
+`secret_approval_requests_secrets_v2` (and its tags table), which still stores the commits of a secret change request.
+Secret change policies exist only on V3 projects, so older projects have no secret approval path. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
@@ -165,9 +168,9 @@ never `autoApprovalEvidence`.
 A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
 through `backend/src/services/delegated-approval/`, which owns the `delegated_approval_policies` and
 `delegated_approval_requests` rows. Secret access policies opt in with `delegatedApproval: { type, connectionId }`
-on create and update (`secret-access-approval-global-policy-bridge-service.ts`). A delegated policy has no
-Infisical approvers, cannot use break glass (soft enforcement or bypassers) or self approval, cannot be updated
-while it has pending requests, and a policy on the legacy approval system can never be delegated. Keep those
+on create and update (`ee/services/access-approval-policy/access-approval-policy-service.ts`). A delegated policy has no
+Infisical approvers, cannot use break glass (soft enforcement or bypassers) or self approval, and cannot be
+updated while it has pending requests. Keep those
 rules in `assertDelegatedApprovalPolicyConstraints` when another policy type opts in. Only secret access
 policies may opt in today: `assertPolicyTypeSupportsDelegatedApproval` refuses the rest, and secret change
 policies return it as a 400 rather than dropping the field.
@@ -187,7 +190,7 @@ request goes `cancelled`, and the consumer returns `Failed`. A terminal failure 
 `UnrecoverableError`: SITE_URL unset, the app connection gone, the policy no longer delegated) stays
 `failed_dispatch` on every attempt, because an admin can fix the cause and resend. A user resends a
 `failed_dispatch` request with `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The
-product's bridge checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
+access approval request service (`ee/services/access-approval-request/`) checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
 retried. A resend supersedes the event still in the outbox rather than running beside it: the row stores the
 live event id in `dispatchEventId`, and a resend writes a new random one (only while the row is
 `failed_dispatch`) and emits the event under it in one transaction. The consumer marks any event whose id no

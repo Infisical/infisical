@@ -8,6 +8,7 @@ import {
   billingProfileResponseSchema,
   catalogResponseSchema,
   checkoutResultSchema,
+  orgDeletedResultSchema,
   cloudPlanResponseSchema,
   confirmTrialPaymentResultSchema,
   entitlementsResponseSchema,
@@ -20,6 +21,7 @@ import {
   TCatalogResponse,
   TChangeCommitmentsPayload,
   TCheckoutResult,
+  TOrgDeletedResult,
   TCloudPlanResponse,
   TConfirmTrialPaymentPayload,
   TConfirmTrialPaymentResult,
@@ -58,6 +60,7 @@ const orgScoped = (orgId: string, suffix: string): string => `/v1/organizations/
 const SERVICE_TOKEN_ISSUER = "infisical-cloud";
 const SERVICE_TOKEN_AUDIENCE = "infisical-license-server";
 const SERVICE_TOKEN_SUBJECT = "infisical-cloud";
+const ORG_DELETED_TIMEOUT_MS = 30_000;
 
 // The license server validates a short-lived RS256 service JWT (iss/aud/exp/sub) that we sign with
 // our private key and it verifies with the matching public key. Mint a fresh token per request.
@@ -396,28 +399,17 @@ export const licenseServerBackend = (
     return trialsResponseSchema.parse(body);
   },
 
-  cancelSubscription: async (orgId: string): Promise<TCheckoutResult> => {
-    const url = new URL(orgScoped(orgId, "/subscription/cancel"), serverUrl);
+  deleteOrganization: async (orgId: string): Promise<TOrgDeletedResult> => {
+    const url = new URL(orgScoped(orgId, ""), serverUrl);
     const res = await fetch(url, {
-      method: "POST",
+      method: "DELETE",
       headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
-      redirect: "manual"
+      redirect: "manual",
+      signal: AbortSignal.timeout(ORG_DELETED_TIMEOUT_MS)
     });
     await throwIfResponseError(res);
     const body: unknown = await res.json();
-    return checkoutResultSchema.parse(body);
-  },
-
-  resumeSubscription: async (orgId: string): Promise<TCheckoutResult> => {
-    const url = new URL(orgScoped(orgId, "/subscription/resume"), serverUrl);
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${mintServiceToken(signingKey)}` },
-      redirect: "manual"
-    });
-    await throwIfResponseError(res);
-    const body: unknown = await res.json();
-    return checkoutResultSchema.parse(body);
+    return orgDeletedResultSchema.parse(body);
   }
 });
 
@@ -507,7 +499,6 @@ export const licenseServerSelfHostedBackend = (
     cancelTrial: notSupportedOnSelfHosted("cancelTrial"),
     confirmTrialPayment: notSupportedOnSelfHosted("confirmTrialPayment"),
     fetchTrials: notSupportedOnSelfHosted("fetchTrials"),
-    cancelSubscription: notSupportedOnSelfHosted("cancelSubscription"),
-    resumeSubscription: notSupportedOnSelfHosted("resumeSubscription")
+    deleteOrganization: notSupportedOnSelfHosted("deleteOrganization")
   };
 };

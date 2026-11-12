@@ -72,6 +72,15 @@ describe("prepareInlineServices", () => {
     expect(service.secrets?.substitutions).toEqual(["42", "eu"]);
   });
 
+  test("keeps the description it was sent with, and null for a service sent without one", () => {
+    const [described, bare] = prepareInlineServices([
+      httpBearer({ description: "Payments, read only" }),
+      httpBearer({ hostPattern: "other.example.com" })
+    ]);
+    expect(described.description).toBe("Payments, read only");
+    expect(bare.description).toBeNull();
+  });
+
   test("seals nothing for a pass-through service with nothing to send", () => {
     const [service] = prepareInlineServices([
       httpBearer({ credential: { type: AgentVaultCredentialType.Passthrough } })
@@ -225,6 +234,13 @@ describe("inline service reads", () => {
   test("the summary names a service sent without a name by its first host", () => {
     expect(toInlineServiceSummary(storedRow()).name).toBe("api.example.com");
     expect(toInlineServiceSummary(storedRow({ name: "example" })).name).toBe("example");
+  });
+
+  test("the summary carries the description, and null for a service sent without one", () => {
+    expect(toInlineServiceSummary(storedRow({ description: "Payments, read only" })).description).toBe(
+      "Payments, read only"
+    );
+    expect(toInlineServiceSummary(storedRow()).description).toBeNull();
   });
 
   test("the summary carries no secret, nor anything else stored beside the credential", () => {

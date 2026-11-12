@@ -202,3 +202,46 @@ describe("licenseServerBackend rejected billing requests", () => {
     ).rejects.toThrow(want);
   });
 });
+
+describe("licenseServerBackend deleteOrganization", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  test("calls DELETE on the org and returns what the license server closed", async () => {
+    const fetchMock = mockFetchReturning({
+      licensesClosed: 1,
+      canceledSubscriptionIds: ["sub_1"],
+      commitmentForfeited: true
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await licenseServerBackend(SERVER_URL, "key").deleteOrganization(ORG_ID);
+
+    const [url, init] = vi.mocked(fetchMock).mock.calls[0];
+    expect(String(url)).toBe(`${SERVER_URL}/v1/organizations/${ORG_ID}`);
+    expect(init?.method).toBe("DELETE");
+    expect(result).toMatchObject({ licensesClosed: 1, canceledSubscriptionIds: ["sub_1"], commitmentForfeited: true });
+  });
+
+  test("gives up on a stalled license server so the outbox can retry it", async () => {
+    const controller = new AbortController();
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    const fetchMock = vi.fn(
+      (_url: URL, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          if (init?.signal?.aborted) reject(init.signal.reason);
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+        })
+    ) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    const call = licenseServerBackend(SERVER_URL, "key").deleteOrganization(ORG_ID);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    controller.abort(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+
+    await expect(call).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(timeoutSpy).toHaveBeenCalledWith(30_000);
+  });
+});
