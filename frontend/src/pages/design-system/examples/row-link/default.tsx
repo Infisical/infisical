@@ -2,7 +2,7 @@ import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
-import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
+import { Icon, type IconName } from "@app/components/v4/ui/icon";
 import { RowLink } from "@app/components/v4/ui/row-link";
 import { SmallText } from "@app/components/v4/ui/text";
 
@@ -12,7 +12,7 @@ type Page = {
   id: string;
   group: string;
   title: string;
-  icon: string;
+  icon: IconName;
   status: string;
   ready: boolean;
 };
@@ -21,7 +21,7 @@ const pages: Page[] = [
     id: "detail",
     group: "data-display",
     title: "Detail",
-    icon: "Infisical.png",
+    icon: "file",
     status: "Data display",
     ready: true
   },
@@ -29,7 +29,7 @@ const pages: Page[] = [
     id: "documentation-link-badge",
     group: "navigation",
     title: "Documentation link badge",
-    icon: "GitHub.png",
+    icon: "link",
     status: "Navigation",
     ready: true
   },
@@ -37,7 +37,7 @@ const pages: Page[] = [
     id: "provider-icon",
     group: "data-display",
     title: "Provider icon",
-    icon: "Amazon Web Services.png",
+    icon: "apps",
     status: "Data display",
     ready: true
   },
@@ -45,7 +45,7 @@ const pages: Page[] = [
     id: "unreleased",
     group: "patterns",
     title: "Unreleased page, not linked yet",
-    icon: "Kafka.png",
+    icon: "folder",
     status: "Draft",
     ready: false
   }
@@ -60,7 +60,7 @@ export default function Example() {
       text: (row) => row.title,
       render: (row) => (
         <div className="flex min-w-0 items-center gap-2">
-          <ProviderIcon icon={row.icon} alt="" />
+          <Icon name={row.icon} size="var(--v4-size-icon)" className="shrink-0" />
           <RowLink
             link={{
               to: "/design-system/components/$group/$component",
@@ -114,7 +114,7 @@ export default function Example() {
       >
         <Card variant="framed">
           <div className="flex items-center gap-3">
-            <ProviderIcon icon="Infisical.png" alt="" size="xl" />
+            <Icon name="apps" size="var(--v4-size-icon-xl)" className="shrink-0" />
             <div className="min-w-0 flex-1">
               <RowLink
                 link={{
