@@ -187,7 +187,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 ### level
 
-- boot: example `boot`, visible label "Boot, peach".
+- boot: example `boot`, visible label "Boot, Lightly Peach".
 - route: example `route-progress`, visible label "Route progress while a navigation resolves".
 - page: example `default`, visible label "page".
 - region: example `default`, visible label "base".

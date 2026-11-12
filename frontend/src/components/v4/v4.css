@@ -298,6 +298,9 @@
 .v4 [data-slot="sidebar"] [data-slot="list-highlight"][data-slot] {
   background-color: var(--v4-sidebar-current);
 }
+.v4 [data-slot="sidebar"] [data-slot="list-highlight"][data-thumb="hover"] {
+  background-color: var(--v4-sidebar-hover);
+}
 .v4
   [data-list-highlight][data-list-highlight]
   :is(

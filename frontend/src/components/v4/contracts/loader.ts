@@ -79,7 +79,7 @@ export const loaderDefinition = {
       axis: "level",
       expected: ["boot", "route", "page", "region"],
       shown: [
-        { value: "boot", exampleId: "boot", label: "Boot, peach" },
+        { value: "boot", exampleId: "boot", label: "Boot, Lightly Peach" },
         {
           value: "route",
           exampleId: "route-progress",
