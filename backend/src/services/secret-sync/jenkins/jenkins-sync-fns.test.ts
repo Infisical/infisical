@@ -137,6 +137,16 @@ describe("JenkinsSyncFns", () => {
     expect(deletedUrls()).toHaveLength(250);
   });
 
+  it("refuses to remove secrets from a store larger than the listing cap", async () => {
+    stubJenkins(Array.from({ length: 10_050 }, (_, index) => ({ id: `STALE_${index}`, typeName: "Secret text" })));
+
+    await expect(remove(syncWith(), payloadOf({ STALE_10049: "a" }))).rejects.toThrow(
+      "exceeds the 100 page listing cap"
+    );
+
+    expect(deletedUrls()).toHaveLength(0);
+  });
+
   it("refuses a key that belongs to a credential of another type without writing anything", async () => {
     stubJenkins([{ id: "DEPLOY_KEY", typeName: "SSH Username with private key" }]);
 

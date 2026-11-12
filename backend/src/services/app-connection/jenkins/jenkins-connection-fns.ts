@@ -203,9 +203,11 @@ export const paginateJenkins = async <T>(
     if (pageItems.length < JENKINS_PAGE_SIZE) return items;
   }
 
-  logger.warn(`Jenkins listing stopped after ${JENKINS_MAX_PAGES} pages of ${JENKINS_PAGE_SIZE} items [path=${path}]`);
-
-  return items;
+  // Returning here would hand callers a partial list, and a sync would then skip the credentials past the cap
+  // when it deletes or removes secrets
+  throw new BadRequestError({
+    message: `Jenkins returned more than ${JENKINS_MAX_PAGES * JENKINS_PAGE_SIZE} items, which exceeds the ${JENKINS_MAX_PAGES} page listing cap. Refusing to continue with an incomplete list.`
+  });
 };
 
 export const validateJenkinsConnectionCredentials = async (
