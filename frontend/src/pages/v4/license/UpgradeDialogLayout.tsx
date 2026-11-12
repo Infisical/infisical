@@ -26,14 +26,11 @@ const dots = Array.from({ length: 30 }, (_, index) => ({
   y: 24 + Math.floor(index / 6) * 16
 }));
 
-export const focusUpgradeContinuation = (event: Event) => {
-  const action = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>(
-    "[data-upgrade-cta]:not(:disabled):not([aria-disabled='true'])"
-  );
-  if (!action) return;
-
+// Focusing the primary action would inherit :focus-visible from a menu or keyboard opener and
+// paint its ring before any keyboard use, so the dialog itself takes initial focus.
+export const focusUpgradeDialog = (event: Event) => {
   event.preventDefault();
-  action.focus({ preventScroll: true });
+  (event.currentTarget as HTMLElement | null)?.focus({ preventScroll: true });
 };
 
 export const UpgradeDialogLayout = ({
@@ -52,7 +49,7 @@ export const UpgradeDialogLayout = ({
       className={styles.content}
       onOpenAutoFocus={(event) => {
         onOpenAutoFocus?.(event);
-        if (!event.defaultPrevented) focusUpgradeContinuation(event);
+        if (!event.defaultPrevented) focusUpgradeDialog(event);
       }}
       onCloseAutoFocus={onCloseAutoFocus}
     >

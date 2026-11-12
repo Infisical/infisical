@@ -48,7 +48,9 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
       route("/access-management", "v4/admin/AccessManagementPage/route.tsx")
     ])
   ]),
-  route("/personal-settings", "v4/user/PersonalSettingsPage/route.tsx"),
+  route("/personal-settings", "v4/user/route.tsx", [
+    index("v4/user/PersonalSettingsPage/route.tsx")
+  ]),
   route("/organizations/$orgId", "v4/organization/route.tsx", [
     route("/projects", [
       index("v4/organization/ProjectsPage/route.tsx"),
@@ -134,6 +136,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route("/oauth-applications", "v4/organization/OauthApplicationsPage/route.tsx"),
     route("/audit-logs", "v4/organization/AuditLogsPage/route.tsx"),
     route("/integrations", "v4/organization/IntegrationsPage/route.tsx"),
+    route(
+      "/app-connections/$appConnection/callback",
+      "v4/organization/AppConnectionCallbackPage/route.tsx"
+    ),
     route("/networking/", "v4/organization/NetworkingPage/route.tsx"),
     route("/networking/gateways/$gatewayId", "v4/organization/GatewayDetailsByIDPage/route.tsx"),
     route("/networking/relays/$relayId", "v4/organization/RelayDetailsByIDPage/route.tsx"),
@@ -145,6 +151,10 @@ export const v4Routes = route("/v4", "v4/route.tsx", [
     route(
       "/secret-scanning/data-sources/",
       "v4/secret-scanning/SecretScanningDataSourcesPage/route.tsx"
+    ),
+    route(
+      "/secret-scanning/data-sources/$type/$dataSourceId",
+      "v4/secret-scanning/SecretScanningDataSourceByIdPage/route.tsx"
     ),
     route("/secret-scanning/findings", "v4/secret-scanning/SecretScanningFindingsPage/route.tsx"),
     route("/cert-manager/", "v4/cert-manager/IndexPage/route.tsx"),

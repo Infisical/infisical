@@ -1,0 +1,6 @@
+.durationInput {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--v4-space-8);
+  min-width: 0;
+}

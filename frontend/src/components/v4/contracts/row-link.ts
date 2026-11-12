@@ -14,7 +14,7 @@ export const rowLinkDefinition = {
     "Its ::after covers the nearest table row or Card. The row or Card becomes the positioning context through :has(), so hosts need no linked prop.",
     "Buttons, inputs, checkboxes, comboboxes, switches, other links, tooltip triggers and anything marked data-row-interactive inside that host sit above the overlay and keep their own click.",
     "The link text truncates with an ellipsis; pass title to show the full value on hover.",
-    "A trailing chevron-right marks the row as navigation. The link grows to fill its cell's flex line, so the chevron sits at the trailing edge, at size-glyph in muted, and turns ink while the row or Card is hovered or holds focus. It takes no width a column did not already have and does not change the row height. Pass chevron={false} for the rare host that should not show it, such as a Card whose whole surface already reads as a link.",
+    "A trailing chevron-right marks the row as navigation. It follows the link text 8px after it, never pushed to the cell's far edge, so in a multi-column row it stays with the name it belongs to (rule/chevron-tile-frame). It is size-glyph in muted and turns ink while the row or Card is hovered or holds focus. It takes no width a column did not already have and does not change the row height. Pass chevron={false} for the rare host that should not show it, such as a Card whose whole surface already reads as a link.",
     "disabled renders a span with no href and no overlay, in muted text, so the row stays visible but does not navigate."
   ],
   accessibility: [

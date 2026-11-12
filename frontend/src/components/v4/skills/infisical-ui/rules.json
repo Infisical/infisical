@@ -65,7 +65,20 @@
         "check": "nested-frame"
       },
       "category": "Visual",
-      "exceptions": "The check reads containers written directly inside a framed parent in the same file. A framed child rendered from another component drops its frame at runtime and logs a development warning when it was asked for variant framed."
+      "exceptions": "The check reads containers written directly inside a framed parent in the same file. A framed child rendered from another component drops its frame at runtime and logs a development warning when it was asked for variant framed. Bordered boxes drawn by page stylesheets are caught by page-css-frame (rule/page-boxes-from-primitives)."
+    },
+    {
+      "id": "page-boxes-from-primitives",
+      "title": "Draw bordered boxes with primitives, not page stylesheets",
+      "instruction": "A page stylesheet under pages/v4 never draws a four-sided border, or an outline outside a focus state, around a box. A page CSS module cannot see the frame it lands in, so a bordered pane or value box rendered inside a framed Card, List or DataTable from another file nests a frame in a frame (rule/no-nested-frames). Use a primitive that reads the frame context (Card, Tile, List, CodeBlock), the frame's own head, section or inset, or the tint shade. One-sided dividers stay fine.",
+      "good": "A previous and next diff pane on its bad or ok wash with no border of its own inside a bordered change card, or an icon tile on the tint shade in a card header.",
+      "avoid": "A .pane with a four-sided status border holding a .box with its own border, inside a card that already draws one.",
+      "exceptions": "A box that stays bordered wherever it renders, such as a dashed dropzone, a color swatch or a standalone tile in a sheet, marks its rule with v4-check-ignore page-css-frame and the reason in a comment before the rule. Findings that predate the check sit in scripts/check-v4-baseline.json.",
+      "detect": {
+        "by": "lint",
+        "check": "page-css-frame"
+      },
+      "category": "Visual"
     },
     {
       "id": "theme-scheme",

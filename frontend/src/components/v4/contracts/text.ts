@@ -14,11 +14,12 @@ export const textDefinition = {
     "Heading separates semantic level from visual size. page uses 28/32, explicit display uses 44/44, and section/subsection use the shared section role. Meta uses the 12/16 metadata role with optional monospace.",
     "Native attributes and refs are preserved.",
     "StatusText reports a state as a required line icon plus words. It inherits the surrounding type role; neutral is muted and ok, warn and bad tint both the icon and the words, so the state still reads in grayscale.",
+    "StatusText loading swaps the icon for the inline Spinner in the same icon box, for a state that is still in progress such as Submitting or Retrying; icon becomes optional when loading is true, so a status map can keep its icon and pass loading beside it. The Spinner animates like the one in Button and toasts and holds still under prefers-reduced-motion.",
     "Highlight renders text with every case-insensitive occurrence of query wrapped in a mark (data-slot highlight), filled with the accent and on-accent text, the search highlight in every theme. The query is literal text, never a pattern, so dots, brackets and other symbols match themselves. Overlapping matches merge into one mark. terms matches each whitespace-separated word on its own, for multi-word filters. An empty or blank query, or no match, returns the text unchanged. It is the one search highlight: Combobox options and CommandMenu items use it, and a search list in a page uses it instead of slicing strings by hand."
   ],
   accessibility: [
     "Text and SmallText render paragraphs; Heading renders the requested h1-h6 level; Meta renders a span.",
-    "StatusText renders a span whose icon is hidden from assistive technology; its words carry the whole state, so they must make sense on their own.",
+    "StatusText renders a span whose icon is hidden from assistive technology; its words carry the whole state, so they must make sense on their own. The loading Spinner is hidden too and adds no live region, so a table of loading rows stays quiet.",
     "Highlight uses the native mark element and adds no announcement; the surrounding text reads as usual."
   ],
   limitations: [
@@ -35,7 +36,7 @@ export const textDefinition = {
     },
     {
       id: "status",
-      title: "StatusText tones",
+      title: "StatusText tones and loading",
       module: "./examples/text/status.tsx",
       states: ["default"]
     },
@@ -86,6 +87,14 @@ export const textDefinition = {
         { value: "warn", exampleId: "status", label: "warn" },
         { value: "bad", exampleId: "status", label: "bad" }
       ]
+    },
+    {
+      axis: "StatusText.loading",
+      expected: ["false", "true"],
+      shown: [
+        { value: "false", exampleId: "status", label: "neutral" },
+        { value: "true", exampleId: "status", label: "loading" }
+      ]
     }
   ],
   guidance: {
@@ -132,7 +141,7 @@ export const textDefinition = {
       {
         id: "text-status-icon-words",
         when: "A table cell or record fact reports a state such as locked out or never signed in.",
-        do: "Use StatusText with a line icon and words that name the state, and derive the state only from data the product has.",
+        do: "Use StatusText with a line icon and words that name the state, and derive the state only from data the product has. Pass loading for a state that is still in progress, such as Submitting or Retrying, instead of a static sync or clock icon.",
         avoid:
           "Show the state as a colored dot, a colored word or a brand mark alone, or invent a health score the API does not expose.",
         reason:

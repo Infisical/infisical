@@ -383,6 +383,37 @@ export const pointerOutsideLinks = (selector: string, body: string) => {
   return declarations.map((match) => match[1].trim());
 };
 
+const hiddenEdge = /^(?:none|hidden|0(?:px)?)$|\b(?:none|hidden|transparent)\b|^0(?:px)?\s/;
+const frameSides = [
+  ["border-top", "border-right", "border-bottom", "border-left"],
+  ["border-block", "border-inline"]
+];
+
+/** Four-sided borders, and outlines outside a focus state, that a page stylesheet draws around a box. */
+export const pageCssFrames = (selector: string, body: string) => {
+  const declarations = [
+    ...body.matchAll(/(?:^|;|\n)\s*((border|outline)(-[\w-]+)?\s*:\s*([^;]+))/g)
+  ]
+    .filter((match) => !hiddenEdge.test(match[4].trim()))
+    .map((match) => ({ text: match[1].trim(), property: `${match[2]}${match[3] ?? ""}` }));
+  const shorthand = declarations.filter(
+    ({ property }) => property === "border" || (property === "outline" && !/:focus/.test(selector))
+  );
+  const sides = frameSides.find((set) =>
+    set.every((side) => declarations.some(({ property }) => property === side))
+  );
+  return [
+    ...shorthand.map(({ text }) => text),
+    ...(sides
+      ? [
+          sides
+            .map((side) => declarations.find(({ property }) => property === side)?.text)
+            .join("; ")
+        ]
+      : [])
+  ];
+};
+
 const tabWidthSubject =
   /\[role=["']?tab["']?\]|\[data-slot=["']?(?:tabs-(?:list|trigger)|toggle-group(?:-item)?)["']?\]/;
 
@@ -987,6 +1018,14 @@ export const v4Checks: readonly V4Check[] = [
       'A framed container never renders inside another framed container. Remove variant="framed": inside a framed Card, List, DataTable or CodeBlock, a Card, List or ApprovalQueue drops to its frameless treatment on its own.',
     appliesTo: isMarkup,
     source: nestedFrames
+  },
+  {
+    id: "page-css-frame",
+    rule: "page-boxes-from-primitives",
+    message:
+      "A page stylesheet never draws a four-sided border or an outline around a box: it cannot see the frame it lands in, so inside a framed Card, List or DataTable it nests a frame in a frame. Use a v4 primitive that reads the frame context (Card, Tile, List, CodeBlock), the frame's own section, or the tint shade. A box that stays bordered wherever it renders, such as a dropzone or a standalone tile, takes v4-check-ignore page-css-frame with the reason in a comment before the rule.",
+    appliesTo: (file) => isPage(file) && file.endsWith(".module.css"),
+    cssBlock: pageCssFrames
   },
   {
     id: "interactive-tooltip",
