@@ -22,31 +22,15 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { TDNSMadeEasyConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
+import { dnsMadeEasyConnectionFormSchema as formSchema } from "@app/lib/schemas/app-connections";
 
 import { AppConnectionFormFooter } from "./AppConnectionFormFooter";
-import {
-  genericAppConnectionFieldsSchema,
-  GenericAppConnectionsFields
-} from "./GenericAppConnectionFields";
+import { GenericAppConnectionsFields } from "./GenericAppConnectionFields";
 
 type Props = {
   appConnection?: TDNSMadeEasyConnection;
   onSubmit: (formData: FormData) => Promise<void>;
 };
-
-const rootSchema = genericAppConnectionFieldsSchema.extend({
-  app: z.literal(AppConnection.DNSMadeEasy)
-});
-
-const formSchema = z.discriminatedUnion("method", [
-  rootSchema.extend({
-    method: z.literal(DNSMadeEasyConnectionMethod.APIKeySecret),
-    credentials: z.object({
-      apiKey: z.string().trim().min(1, "API Key required"),
-      secretKey: z.string().trim().min(1, "Secret Key required")
-    })
-  })
-]);
 
 type FormData = z.infer<typeof formSchema>;
 
