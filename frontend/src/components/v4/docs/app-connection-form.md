@@ -235,7 +235,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/app-connection-form/edit.tsx`; its relative imports are generated for that exact path. States: default, loading.
 
-Registry items used: @infisical/app-connection-form, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/app-connection-form, @cipher/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useId, useState } from "react";
