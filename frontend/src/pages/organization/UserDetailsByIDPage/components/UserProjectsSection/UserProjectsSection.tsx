@@ -112,6 +112,7 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
         memberProjectIds={allProjectMemberships?.memberships.map(({ project }) => project.id)}
         isMembershipsLoading={isAllMembershipsLoading}
         isMembershipsError={isAllMembershipsError}
+        excludeV1Projects
         onAddToProject={(project, roleSlug) =>
           addUserToProject({
             projectId: project.id,

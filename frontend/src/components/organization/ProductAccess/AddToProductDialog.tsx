@@ -60,6 +60,7 @@ type Props = {
   memberProjectIds?: string[];
   isMembershipsLoading: boolean;
   isMembershipsError: boolean;
+  excludeV1Projects?: boolean;
   onAddToProject: (
     project: { id: string; type: ProjectType },
     roleSlug: string
@@ -74,6 +75,7 @@ export const AddToProductDialog = ({
   memberProjectIds,
   isMembershipsLoading,
   isMembershipsError,
+  excludeV1Projects = false,
   onAddToProject
 }: Props) => {
   const { currentOrg } = useOrganization();
@@ -103,13 +105,15 @@ export const AddToProductDialog = ({
     projects
       .filter(
         ({ id, orgId: projectOrgId, version }) =>
-          !memberIds.has(id) && projectOrgId === orgId && version !== ProjectVersion.V1
+          !memberIds.has(id) &&
+          projectOrgId === orgId &&
+          !(excludeV1Projects && version === ProjectVersion.V1)
       )
       .forEach((project) => {
         grouped.set(project.type, [...(grouped.get(project.type) ?? []), project]);
       });
     return grouped;
-  }, [projects, memberProjectIds, orgId]);
+  }, [projects, memberProjectIds, orgId, excludeV1Projects]);
 
   const availableProducts = PRODUCT_DEFINITIONS.filter((product) =>
     availableProjectsByType.has(product.type)
