@@ -4873,63 +4873,84 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a service can't take the name of an inline service in a live session on its bundle until that session ends", async () => {
-      const bundle = await createAccessBundle("ps-inline-clash");
+    test("a bundle service can take the name of a live session's inline service, and that session keeps its own", async () => {
+      const bundle = await createAccessBundle("ps-inline-shadow");
       const service = await createService([bundle.id], {
-        name: "ps-inline-github",
+        name: "ps-shadow-github",
         hostPattern: "api.github.com",
-        credential: { type: "passthrough" }
+        credential: { type: "bearer", value: "sk-bundle-github" }
       });
       const loose = await createService([], {
-        name: "ps-inline-twin",
+        name: "ps-shadow-twin",
         hostPattern: "twin.example.com",
-        credential: { type: "passthrough" }
+        credential: { type: "bearer", value: "sk-bundle-twin" }
       });
-      const mint = await inject("POST", "/api/v1/agent-vault/sessions", {
+      const inline = (name: string, host: string) => ({
+        type: "http",
+        name,
+        hostPattern: host,
+        credential: { type: "bearer", value: `sk-inline-${name}` }
+      });
+      const withInline = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundle: bundle.name,
+        ttl: "never",
+        services: [inline("ps-shadow-twin", "inline-twin.example.com"), inline("ps-shadow-renamed", "inline-renamed.example.com")]
+      });
+      expect(withInline.statusCode, withInline.payload).toBe(200);
+
+      // Neither a link nor a rename waits for that session to end.
+      expect((await inject("POST", bundleServicesUrl(bundle.id), { serviceIds: [loose.id] })).statusCode).toBe(200);
+      const renamed = await inject("PATCH", `${servicesUrl}/${service.id}`, { type: "http", name: "ps-shadow-renamed" });
+      expect(renamed.statusCode, renamed.payload).toBe(200);
+
+      const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: "ps-inline-shadow" });
+      expect(proxy.statusCode).toBe(200);
+      const { proxyToken } = proxy.json() as { proxyToken: string };
+      const resolve = async (sessionToken: string) => {
+        const res = await testServer.inject({
+          method: "POST",
+          url: "/api/v1/agent-vault/proxy/resolve",
+          headers: { authorization: `Bearer ${proxyToken}`, "x-infisical-agent-session": sessionToken }
+        });
+        expect(res.statusCode, res.payload).toBe(200);
+        return (res.json().services as { name: string; credential: { value?: string } }[])
+          .map((entry) => `${entry.name}=${entry.credential.value}`)
+          .sort();
+      };
+      const listNames = async (sessionToken: string) => {
+        const res = await testServer.inject({
+          method: "GET",
+          url: "/api/v1/agent-vault/session/services",
+          headers: { authorization: `Bearer ${sessionToken}` }
+        });
+        expect(res.statusCode, res.payload).toBe(200);
+        return (res.json().services as { name: string }[]).map((entry) => entry.name).sort();
+      };
+
+      // The session that sent its own keeps them; the bundle's services of the same names are left out of it.
+      const shadowedToken = withInline.json().session.token as string;
+      expect(await resolve(shadowedToken)).toEqual([
+        "ps-shadow-renamed=sk-inline-ps-shadow-renamed",
+        "ps-shadow-twin=sk-inline-ps-shadow-twin"
+      ]);
+      expect(await listNames(shadowedToken)).toEqual(["ps-shadow-renamed", "ps-shadow-twin"]);
+
+      // Every other session on the bundle gets the bundle's services.
+      const plain = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundle: bundle.name, ttl: "1h" });
+      expect(plain.statusCode).toBe(200);
+      expect(await resolve(plain.json().session.token as string)).toEqual([
+        "ps-shadow-renamed=sk-bundle-github",
+        "ps-shadow-twin=sk-bundle-twin"
+      ]);
+
+      // Starting a session still refuses an inline name its bundle already uses, since the caller can rename it there.
+      const clash = await inject("POST", "/api/v1/agent-vault/sessions", {
         accessBundle: bundle.name,
         ttl: "1h",
-        services: [
-          {
-            type: "http",
-            name: "ps-inline-twin",
-            hostPattern: "inline-twin.example.com",
-            credential: { type: "bearer", value: "sk-inline-twin" }
-          }
-        ]
+        services: [inline("ps-shadow-twin", "another-twin.example.com")]
       });
-      expect(mint.statusCode, mint.payload).toBe(200);
-      const sessionId = mint.json().session.id as string;
-      const clashMessage = `A session that's still active on the access bundle '${bundle.name}' was started with its own service named 'ps-inline-twin'. Choose another name, or revoke that session first.`;
-
-      // Attaching a project service of that name to the bundle.
-      const attach = await inject("POST", bundleServicesUrl(bundle.id), { serviceIds: [loose.id] });
-      expect(attach.statusCode).toBe(400);
-      expect(attach.json().message).toBe(clashMessage);
-      expect((await inject("DELETE", `${servicesUrl}/${loose.id}`)).statusCode).toBe(200);
-
-      // Creating one of that name into the bundle.
-      const created = await inject("POST", servicesUrl, {
-        accessBundleIds: [bundle.id],
-        type: "http",
-        name: "ps-inline-twin",
-        hostPattern: "twin.example.com",
-        credential: { type: "passthrough" }
-      });
-      expect(created.statusCode).toBe(400);
-      expect(created.json().message).toBe(clashMessage);
-
-      // Renaming one of the bundle's services to it.
-      const clash = await inject("PATCH", `${servicesUrl}/${service.id}`, { type: "http", name: "ps-inline-twin" });
       expect(clash.statusCode).toBe(400);
-      expect(clash.json().message).toBe(clashMessage);
-      expect(
-        (await inject("PATCH", `${servicesUrl}/${service.id}`, { type: "http", name: "ps-inline-other" })).statusCode
-      ).toBe(200);
-
-      expect((await inject("POST", `/api/v1/agent-vault/sessions/${sessionId}/revoke`)).statusCode).toBe(200);
-
-      const after = await inject("PATCH", `${servicesUrl}/${service.id}`, { type: "http", name: "ps-inline-twin" });
-      expect(after.statusCode, after.payload).toBe(200);
+      expect(clash.json().message).toContain(`has the same name as a service in the access bundle '${bundle.name}'`);
     });
 
     test("deleting a bundle keeps its services, and clears values of grantees who no longer reach them", async () => {

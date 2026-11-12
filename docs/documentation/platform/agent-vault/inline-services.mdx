@@ -62,7 +62,7 @@ When you create the session, Infisical compares the host patterns of the inline 
 - If two of the services use the same host pattern, creating the session fails
 - If an inline service and a service in the access bundle cover the same host with different patterns, such as `api.github.com` and `*.github.com`, requests to that host use the service with the more specific pattern
 
-While the session is active, no service in its access bundle can have the same name as one of the session's inline services. Infisical refuses to add a service with that name to the access bundle, or to rename a service in the access bundle to that name. To use the name, [revoke the session](/documentation/platform/agent-vault/sessions#revoke-a-session) first.
+If someone later adds a service to the access bundle with the same name as one of the session's inline services, or renames a service in the access bundle to that name, the session keeps using its own inline service and doesn't get the access bundle's service. Other sessions on the access bundle get the access bundle's service as usual.
 
 ## Find a session's inline services
 

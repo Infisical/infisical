@@ -280,10 +280,11 @@ keyed by the service, so a member sets them once however many bundles give them 
 - **A bundle can't hold two services covering one host**, so a host change is checked against every bundle the service
   is in, and a create into bundles or a link against the bundle it joins (`checkHostPatternConflicts`). Under the
   bundle row locks, after the project's `AgentVaultServiceNames` advisory lock.
-- **A service a bundle gains can't take the name of an inline service in a live session on that bundle**, or the session
-  would hold two services called the same, and an agent finds a database or SSH service by name. A rename, a create
-  into a bundle and a link all check (`assertNoLiveInlineNameClash`), and a mint with inline services and a bundle
-  re-checks the bundle's names in its transaction, all under `AgentVaultServiceNames`, so neither can pass the other.
+- **A session's inline service wins over a bundle service with the same name.** Resolve and `GET /session/services`
+  both drop the shadowed bundle service through `withoutShadowedBundleServices`, so the agent, the proxy and the
+  session logs see one service per name. Use that helper in any new path that lists a session's services. Admins can
+  add or rename bundle services while sessions are live; a mint still refuses an inline service that clashes with its
+  bundle, re-checked in its transaction under `AgentVaultServiceNames`, because the caller can rename it right there.
   Adding and removing a link take that lock too, so `updateService` can read a service's bundles and lock them.
   Deleting a bundle or a service drops its links by cascade without the lock, which only ever removes a link.
 - **Removing a service from a bundle keeps it in the project**, and clears the personal values of everyone who no longer

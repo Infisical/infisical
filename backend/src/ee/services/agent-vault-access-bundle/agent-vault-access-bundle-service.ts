@@ -60,7 +60,6 @@ import {
   sameMemberProvidedFields
 } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TAgentVaultPersonalValueServiceFactory } from "../agent-vault-personal-value/agent-vault-personal-value-service";
-import { inlineServiceDisplayName } from "../agent-vault-session/agent-vault-session-inline-service-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import {
   agentVaultActorKey,
@@ -1123,24 +1122,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     }
   };
 
-  // A live session holds its bundle's services and its own inline ones side by side, and an agent finds a database or
-  // SSH service by name, so a service a bundle gains can't take the name of an inline service in a live session on it.
-  // Under the AgentVaultServiceNames lock, which mint takes too, so the two can't pass each other.
-  const assertNoLiveInlineNameClash = async (
-    { name, accessBundles }: { name: string; accessBundles: { id: string; name: string }[] },
-    tx: Knex
-  ) => {
-    const inline = await agentVaultServiceDAL.findLiveInlineNamesInBundles(
-      accessBundles.map((bundle) => bundle.id),
-      tx
-    );
-    if (inline.some((service) => inlineServiceDisplayName(service) === name)) {
-      throw new BadRequestError({
-        message: `A session that's still active on ${accessBundles.length === 1 ? `the access bundle '${accessBundles[0].name}'` : "one of these access bundles"} was started with its own service named '${name}'. Choose another name, or revoke that session first.`
-      });
-    }
-  };
-
   const lockServiceNames = (projectId: string, tx: Knex) =>
     tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.AgentVaultServiceNames(projectId)]);
 
@@ -1311,7 +1292,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           if (!locked) throw new NotFoundError({ message: `Access bundle with ID '${bundle.id}' not found` });
         }
         await checkHostPatternConflicts({ accessBundles: bundles, hostPattern }, tx);
-        await assertNoLiveInlineNameClash({ name, accessBundles: bundles }, tx);
 
         const created = await agentVaultServiceDAL.create(
           {
@@ -1848,7 +1828,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
         const locked = await agentVaultServiceDAL.lockByIdInProject({ id: service.id, projectId: rest.projectId }, tx);
         if (!locked) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
-        if (name && name !== locked.name) await assertNoLiveInlineNameClash({ name, accessBundles: bundles }, tx);
         const reconciled = reconcileWithLockedRow(locked);
         const tlsCaChanged = reconciled.serviceConfig
           ? describeNativeTlsCaChange(locked.config, reconciled.serviceConfig)
@@ -2467,8 +2446,6 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
             },
             tx
           );
-          // eslint-disable-next-line no-await-in-loop
-          await assertNoLiveInlineNameClash({ name: service.name, accessBundles: [bundle] }, tx);
           // eslint-disable-next-line no-await-in-loop
           await agentVaultServiceDAL.insertLinks([{ accessBundleId: bundle.id, serviceId: service.id }], tx);
           added.push(service);

@@ -91,6 +91,20 @@ export const inlineServiceDisplayName = ({
   hostPattern?: string | null;
 }) => name || (hostPattern ?? "").split(",")[0].trim().toLowerCase().replace(/:443$/, "");
 
+/**
+ * A session's own service wins over a bundle service of the same name: the bundle's is left out of that session, so
+ * the agent, the proxy and its logs each see one service per name. Admins can add or rename bundle services freely
+ * while sessions are live, and only the sessions that sent a service by that name keep their own.
+ */
+export const withoutShadowedBundleServices = <T extends { name: string }>(
+  bundleServices: T[],
+  inlineServices: { name?: string | null; hostPattern?: string | null }[]
+) => {
+  if (!inlineServices.length) return bundleServices;
+  const inlineNames = new Set(inlineServices.map(inlineServiceDisplayName));
+  return bundleServices.filter((service) => !inlineNames.has(service.name));
+};
+
 const toInlineCredential = (
   credential: Exclude<TAgentVaultInlineServiceInput["credential"], { type: AgentVaultCredentialType.OAuth }>
 ): { config: TInlineCredentialConfig; secret: TInlineServiceSecrets["credential"] } => {

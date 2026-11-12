@@ -58,7 +58,8 @@ import { TAgentVaultSessionInlineServiceDALFactory } from "../agent-vault-sessio
 import {
   openInlineServiceSecrets,
   toInlineServiceFacts,
-  toResolvedInlineService
+  toResolvedInlineService,
+  withoutShadowedBundleServices
 } from "../agent-vault-session/agent-vault-session-inline-service-fns";
 import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
@@ -994,18 +995,21 @@ export const agentVaultProxyServiceFactory = ({
       sessionToken
     });
 
-    const rows = await agentVaultResolveDAL.findResolvableServices({
-      sessionId: session.id,
-      projectId: session.projectId,
-      accessBundleIds,
-      onPrimary
-    });
     // Starting a session with inline services is an admin's call, and like a grant it is re-checked on every resolve: an
     // owner who is no longer an admin keeps the session's bundle, if it has one, and loses its inline services until
     // they are an admin again.
     const inlineServiceRows = isOwnerAdmin
       ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
       : [];
+    const rows = withoutShadowedBundleServices(
+      await agentVaultResolveDAL.findResolvableServices({
+        sessionId: session.id,
+        projectId: session.projectId,
+        accessBundleIds,
+        onPrimary
+      }),
+      inlineServiceRows
+    );
 
     // The values of whoever the session uses (its owner, or the user it acts for), read once: a member's OAuth
     // connection is refreshed below with the services' own tokens, and every value is applied after expansion.
@@ -1386,19 +1390,21 @@ export const agentVaultProxyServiceFactory = ({
     const { accessBundleIds, isOwnerAdmin } = await $authorizeSessionOwner(session, project.orgId);
 
     const scope = { sessionId: session.id, projectId: session.projectId, accessBundleIds, onPrimary };
-    const [rows, bundles] = await Promise.all([
+    const [bundleRows, bundles, inlineRows] = await Promise.all([
       agentVaultResolveDAL.findResolvableServices(scope),
-      agentVaultResolveDAL.findReachableBundles(scope)
+      agentVaultResolveDAL.findReachableBundles(scope),
+      isOwnerAdmin ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary }) : []
     ]);
+    // The same services resolve sends: a bundle service the session sent one of its own by name for is left out.
+    const rows = withoutShadowedBundleServices(bundleRows, inlineRows);
     const serviceIds = rows.map((row) => row.id);
-    const [customHeaderRows, substitutionRows, personalValueRows, inlineRows, proxy] = await Promise.all([
+    const [customHeaderRows, substitutionRows, personalValueRows, proxy] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds),
       agentVaultPersonalValueDAL.findForResolve({
         serviceIds: rows.filter((row) => row.memberProvidedFields?.length).map((row) => row.id),
         owner: personalValuesOwner(session)
       }),
-      isOwnerAdmin ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary }) : [],
       proxyId ? agentVaultProxyDAL.findByIdWithOrg(proxyId) : undefined
     ]);
 

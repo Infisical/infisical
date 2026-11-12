@@ -53,17 +53,18 @@ export const AgentVaultServicesPage = () => {
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("ascending");
   const [page, setPage] = useState(1);
   // In the URL, so the Access Bundles banner can open the page filtered and a reload keeps the filter.
-  const navigate = useNavigate();
-  const { requiresSetup } = useSearch({ strict: false }) as { requiresSetup?: boolean };
+  const navigate = useNavigate({
+    from: "/organizations/$orgId/projects/agent-vault/$projectId/services"
+  });
+  const { requiresSetup } = useSearch({
+    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/agent-vault/$projectId/_agent-vault-layout/services"
+  });
   const onlyRequiringSetup = Boolean(requiresSetup);
   const toggleRequiringSetup = () => {
     navigate({
-      search: (prev: Record<string, unknown>) => ({
-        ...prev,
-        requiresSetup: !onlyRequiringSetup || undefined
-      }),
+      search: { requiresSetup: !onlyRequiringSetup || undefined },
       replace: true
-    } as never);
+    });
     setPage(1);
   };
   const [perPage, setPerPage] = useState(() =>

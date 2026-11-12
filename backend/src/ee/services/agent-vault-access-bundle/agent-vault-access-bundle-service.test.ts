@@ -48,7 +48,6 @@ const buildService = ({ firstRead, locked }: { firstRead: TAgentVaultServices; l
     findByAccessBundleId: vi.fn().mockResolvedValue([]),
     findByNameInProject: vi.fn().mockResolvedValue(undefined),
     findBundlesForServices: vi.fn().mockResolvedValue(new Map([[SERVICE_ID, [{ id: BUNDLE_ID, name: "infra" }]]])),
-    findLiveInlineNamesInBundles: vi.fn().mockResolvedValue([]),
     updateById: vi.fn(async (_id: string, columns: Partial<TAgentVaultServices>) => ({ ...locked, ...columns })),
     transaction: vi.fn(async (fn: (trx: unknown) => Promise<unknown>) => fn(tx))
   };

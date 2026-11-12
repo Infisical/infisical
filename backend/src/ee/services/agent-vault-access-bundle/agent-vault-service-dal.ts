@@ -255,55 +255,6 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     }
   };
 
-  /**
-   * The inline services of sessions that can still resolve and carry one of these bundles, with what they go by. A
-   * catalog service in such a bundle must not take one of these names, or a live session would hold two services
-   * called the same. Matches deriveSessionStatus for which sessions count.
-   */
-  const findLiveInlineNamesInBundles = async (
-    accessBundleIds: string[],
-    tx?: Knex
-  ): Promise<{ sessionId: string; name: string | null; hostPattern: string | null }[]> => {
-    if (!accessBundleIds.length) return [];
-    try {
-      return (await (tx || db)(TableName.AgentVaultService)
-        .join(
-          TableName.AgentVaultSessionAccessBundle,
-          `${TableName.AgentVaultSessionAccessBundle}.sessionId`,
-          `${TableName.AgentVaultService}.sessionId`
-        )
-        .join(
-          TableName.AgentVaultSession,
-          `${TableName.AgentVaultSession}.id`,
-          `${TableName.AgentVaultService}.sessionId`
-        )
-        .whereIn(`${TableName.AgentVaultSessionAccessBundle}.accessBundleId`, accessBundleIds)
-        .whereNull(`${TableName.AgentVaultSession}.revokedAt`)
-        .where((live) => {
-          void live
-            .whereNull(`${TableName.AgentVaultSession}.expiresAt`)
-            .orWhere(`${TableName.AgentVaultSession}.expiresAt`, ">", db.fn.now());
-        })
-        .where((owned) => {
-          void owned
-            .whereNotNull(`${TableName.AgentVaultSession}.userId`)
-            .orWhereNotNull(`${TableName.AgentVaultSession}.identityId`);
-        })
-        .where((onBehalfOf) => {
-          void onBehalfOf
-            .whereNull(`${TableName.AgentVaultSession}.onBehalfOfUserName`)
-            .orWhereNotNull(`${TableName.AgentVaultSession}.onBehalfOfUserId`);
-        })
-        .select(
-          db.ref("sessionId").withSchema(TableName.AgentVaultService),
-          db.ref("name").withSchema(TableName.AgentVaultService),
-          db.ref("hostPattern").withSchema(TableName.AgentVaultService)
-        )) as { sessionId: string; name: string | null; hostPattern: string | null }[];
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find live inline agent vault service names" });
-    }
-  };
-
   const findByIdPrimary = async (id: string, tx?: Knex): Promise<TAgentVaultServices | undefined> => {
     try {
       return await (tx || db)(TableName.AgentVaultService).where({ id }).first();
@@ -417,7 +368,6 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     insertLinks,
     deleteLink,
     clearLegacyAccessBundle,
-    findLiveInlineNamesInBundles,
     findByIdPrimary,
     lockForPersonalValues,
     compareAndSwapCredential,
