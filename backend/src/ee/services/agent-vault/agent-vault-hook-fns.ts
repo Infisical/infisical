@@ -23,6 +23,9 @@ export const AGENT_VAULT_HOOK_CHANGED_DURING_SAVE_MESSAGE =
 const HOOK_URL_EXAMPLE = "https://hooks.example.com/agent-vault";
 const HOOK_URL_SCHEME_RE = new RE2(/^https?:\/\//i);
 const HOOK_SECRET_RE = new RE2(/^[\x21-\x7e]+$/);
+const HOOK_URL_PERCENT_ESCAPE_RE = new RE2(/%[0-9a-f]{2}/gi);
+const HOOK_URL_STRAY_CHARACTERS_MESSAGE = `Enter a URL without backslashes or stray % signs, as in ${HOOK_URL_EXAMPLE}.`;
+const HOOK_URL_INVALID_MESSAGE = `The hook URL isn't a valid URL. Enter the full address, as in ${HOOK_URL_EXAMPLE}.`;
 
 export const describeHookUrlProblem = (raw: string): string | null => {
   if (!AGENT_VAULT_NO_CONTROL_CHARS_RE.test(raw)) return AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE;
@@ -33,12 +36,21 @@ export const describeHookUrlProblem = (raw: string): string | null => {
   if (!HOOK_URL_SCHEME_RE.test(raw)) {
     return `The hook URL must start with https:// or http://, as in ${HOOK_URL_EXAMPLE}.`;
   }
+  // Also on the raw text: the URL parser turns backslashes into slashes and decodes % escapes in the host.
+  if (raw.includes("\\") || raw.replace(HOOK_URL_PERCENT_ESCAPE_RE, "").includes("%")) {
+    return HOOK_URL_STRAY_CHARACTERS_MESSAGE;
+  }
+  const afterScheme = raw.slice(raw.indexOf("//") + 2);
+  const authorityEnd = afterScheme.search(/[/?#]/);
+  const authority = authorityEnd === -1 ? afterScheme : afterScheme.slice(0, authorityEnd);
+  if (!authority) return HOOK_URL_INVALID_MESSAGE;
+  if (authority.slice(authority.lastIndexOf("@") + 1).includes("%")) return HOOK_URL_STRAY_CHARACTERS_MESSAGE;
 
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
-    return `The hook URL isn't a valid URL. Enter the full address, as in ${HOOK_URL_EXAMPLE}.`;
+    return HOOK_URL_INVALID_MESSAGE;
   }
 
   if (url.username || url.password) return "The hook URL can't contain a username or password.";

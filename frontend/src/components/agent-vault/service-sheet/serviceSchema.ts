@@ -379,11 +379,23 @@ export const hookUrlError = (value: string): string | null => {
   if (!/^https?:\/\//i.test(trimmed)) {
     return "The hook URL must start with https:// or http://, as in https://hooks.example.com/agent-vault.";
   }
+  const strayCharactersMessage =
+    "Enter a URL without backslashes or stray % signs, as in https://hooks.example.com/agent-vault.";
+  const invalidUrlMessage =
+    "The hook URL isn't a valid URL. Enter the full address, as in https://hooks.example.com/agent-vault.";
+  if (trimmed.includes("\\") || trimmed.replace(/%[0-9a-f]{2}/gi, "").includes("%")) {
+    return strayCharactersMessage;
+  }
+  const afterScheme = trimmed.slice(trimmed.indexOf("//") + 2);
+  const authorityEnd = afterScheme.search(/[/?#]/);
+  const authority = authorityEnd === -1 ? afterScheme : afterScheme.slice(0, authorityEnd);
+  if (!authority) return invalidUrlMessage;
+  if (authority.slice(authority.lastIndexOf("@") + 1).includes("%")) return strayCharactersMessage;
   let url: URL;
   try {
     url = new URL(trimmed);
   } catch {
-    return "The hook URL isn't a valid URL. Enter the full address, as in https://hooks.example.com/agent-vault.";
+    return invalidUrlMessage;
   }
   if (url.username || url.password) return "The hook URL can't contain a username or password.";
   if (trimmed.includes("#")) return "The hook URL can't contain a fragment (the part after #).";

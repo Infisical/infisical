@@ -111,7 +111,7 @@ export const SecretInput = <TName extends SecretName>({
   const caretRef = useRef<number | null>(null);
 
   const value = field.value ?? "";
-  const isReferenceOnly = !isUntouched && isVariableReferenceOnly(value);
+  const isReferenceOnly = allowsVariables && !isUntouched && isVariableReferenceOnly(value);
   // The sentinel must never render as text, and a lone reference holds no secret.
   const isShown = (isVisible && !isUntouched) || isReferenceOnly;
   const isHighlighted = isShown && value.includes("{{");

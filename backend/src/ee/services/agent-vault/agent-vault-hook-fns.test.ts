@@ -20,7 +20,8 @@ describe("hook URL", () => {
   test.each([
     "https://hooks.example.com/agent-vault",
     "http://10.0.0.5:8080/hook",
-    "https://hooks.example.com/agent-vault/stripe-prod"
+    "https://hooks.example.com/agent-vault/stripe-prod",
+    "https://hooks.example.com/a%20b"
   ])("accepts %s", (url) => {
     expect(AgentVaultHookUrlSchema.parse(url)).toBe(url);
   });
@@ -42,7 +43,23 @@ describe("hook URL", () => {
     { url: "https://x/{{KEY}}", message: "Variables aren't supported in the hook URL. Enter the URL itself." },
     { url: "https://x/a b", message: "The hook URL can't contain spaces." },
     { url: "https://x/a\nb", message: AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE },
-    { url: "https://x/\uD800", message: "The hook URL contains invalid text. Copy the URL and try again." }
+    { url: "https://x/\uD800", message: "The hook URL contains invalid text. Copy the URL and try again." },
+    {
+      url: "https://hooks.example.com\\agent-vault",
+      message: "Enter a URL without backslashes or stray % signs, as in https://hooks.example.com/agent-vault."
+    },
+    {
+      url: "https://ex%61mple.com/hook",
+      message: "Enter a URL without backslashes or stray % signs, as in https://hooks.example.com/agent-vault."
+    },
+    {
+      url: "https://hooks.example.com/a%zz",
+      message: "Enter a URL without backslashes or stray % signs, as in https://hooks.example.com/agent-vault."
+    },
+    {
+      url: "https:///hook",
+      message: "The hook URL isn't a valid URL. Enter the full address, as in https://hooks.example.com/agent-vault."
+    }
   ])("refuses $url", ({ url, message }) => {
     expect(issuesOf(AgentVaultHookUrlSchema.safeParse(url))).toEqual([message]);
   });

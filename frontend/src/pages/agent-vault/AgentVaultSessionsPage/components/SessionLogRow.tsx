@@ -459,7 +459,7 @@ export const SessionLogRow = ({
           {outcomeHover ? (
             <Tooltip>
               <TooltipTrigger asChild>{outcome}</TooltipTrigger>
-              <TooltipContent className="max-w-sm">{outcomeHover}</TooltipContent>
+              <TooltipContent className="max-w-sm break-all">{outcomeHover}</TooltipContent>
             </Tooltip>
           ) : (
             outcome

@@ -714,6 +714,18 @@ describe("hookUrlError, which mirrors the API's hook URL rule", () => {
       "Hook URLs can't include a query string."
     );
   });
+
+  it("refuses backslashes, stray % signs, a % in the host and an empty host", () => {
+    const strayMessage =
+      "Enter a URL without backslashes or stray % signs, as in https://hooks.example.com/agent-vault.";
+    expect(hookUrlError("https://hooks.example.com\\agent-vault")).toBe(strayMessage);
+    expect(hookUrlError("https://ex%61mple.com/hook")).toBe(strayMessage);
+    expect(hookUrlError("https://hooks.example.com/a%zz")).toBe(strayMessage);
+    expect(hookUrlError("https:///hook")).toBe(
+      "The hook URL isn't a valid URL. Enter the full address, as in https://hooks.example.com/agent-vault."
+    );
+    expect(hookUrlError("https://hooks.example.com/a%20b")).toBeNull();
+  });
 });
 
 describe("hookSigningSecretError", () => {

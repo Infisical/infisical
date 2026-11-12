@@ -1,6 +1,6 @@
 ---
 title: "Hooks"
-description: "Let your own server allow or refuse each request an AI agent sends to a service, before the proxy attaches the credential."
+description: "Let your own server allow or refuse an AI agent's requests and connections to a service, before the proxy attaches the credential."
 ---
 
 A hook is a server of yours that the [proxy](/documentation/platform/agent-vault/proxies) asks before it uses a [service](/documentation/platform/agent-vault/services)'s credential. The proxy sends your server a signed description of what the agent is about to do, and your server answers `allow` or `deny`. The proxy goes on with the request only if your server answers `allow`.
@@ -42,14 +42,14 @@ You can add a hook when you add a service, or later when you edit it. A change t
         In **Hook URL**, enter your server's URL, such as `https://hooks.example.com/agent-vault/stripe`. The URL can't include a username, a password, a query string, or a fragment. Give each service its own path if the services use different signing secrets (see [Pick a signing secret](#pick-a-signing-secret)).
       </Step>
       <Step>
-        In **Signing Secret**, enter the secret your server checks signatures with.
+        In **Signing Secret**, enter the secret your server checks signatures with. If you're editing a service that already has a hook, leave the field as it is to keep the saved secret.
       </Step>
       <Step>
         Select **Continue**, then select **Add Service**, or **Save** if you're editing the service.
       </Step>
     </Steps>
 
-    The **Services** page shows a **Hook** badge next to each service that has a hook.
+    The **Services** page shows a **Hook** badge next to each service that has a hook. To remove a hook, edit the service and turn off **Use a Hook** on the **Hook** step.
   </Tab>
   <Tab title="Through the API">
     To add a service with a hook, call the [Create service](/api-reference/endpoints/agent-vault-services/create) endpoint with a `hook` object that holds the `url` and the `signingSecret`:
@@ -122,7 +122,7 @@ Your server receives one `POST` request for each check, verifies its signature, 
 
 ### Verify the signature
 
-The proxy signs requests the way the [Standard Webhooks](https://www.standardwebhooks.com/) specification describes, so you can verify them with any Standard Webhooks library. Load the library in raw-key mode, which uses the signing secret's characters as the key. The libraries' default mode expects a base64 secret that starts with `whsec_`, so it rejects every signature from the proxy.
+The proxy signs requests the way the [Standard Webhooks](https://www.standardwebhooks.com/) specification describes, so you can verify them with any Standard Webhooks library. Load the library in raw-key mode, which uses the signing secret's characters as the key. The libraries' default mode base64-decodes the secret first, so it uses a different key and rejects every signature from the proxy.
 
 Verify the raw request body, before any framework parses it. The libraries also refuse a request whose `webhook-timestamp` is more than five minutes away from your server's clock.
 
@@ -134,7 +134,7 @@ import { Webhook } from "standardwebhooks";
 const hook = new Webhook(process.env.STRIPE_HOOK_SECRET, { format: "raw" });
 const app = express();
 
-app.post("/agent-vault/stripe", express.raw({ type: "application/json" }), (req, res) => {
+app.post("/agent-vault/stripe", express.raw({ type: "application/json", limit: "4mb" }), (req, res) => {
   let check;
   try {
     check = hook.verify(req.body, req.headers);
@@ -151,7 +151,7 @@ app.post("/agent-vault/stripe", express.raw({ type: "application/json" }), (req,
 app.listen(8080);
 ```
 
-```go Go
+```go Go expandable
 package main
 
 import (
@@ -252,10 +252,10 @@ The body describes the session, the service, and what the agent is about to send
 - `service.accessBundle`: the access bundle the session uses the service through, or `null` for an inline service
 - `request.host`: the host in lowercase (`request.port` is a string)
 - `request.path`: the path as the agent sent it, still percent-encoded, which is the path the proxy checked against the service's [paths](/documentation/platform/agent-vault/http-apis#paths)
-- `request.headers`: every header the agent sent, each with a list of values
+- `request.headers`: the headers the agent sent, with names in lowercase, each with a list of values (the host is in `request.host`, not here)
 - `request.body`: the request body as text if it's valid UTF-8, or as base64 with `bodyEncoding` set to `base64`
 
-For an MCP server, `request` describes the HTTP request, and `mcp` lists the calls in its body:
+For an MCP server, `request` describes the HTTP request, and `mcp` lists the calls in its body. A tool call's arguments are only in `request.body`:
 
 ```json
 "mcp": {
@@ -281,8 +281,8 @@ Answer with a `2xx` status and a JSON body, for both decisions:
 ```
 
 - `decision`: `allow` or `deny`, in lowercase
-- `message` (optional): the text the agent gets, up to 2 KB (say what the agent should do next, such as whether to try again)
-- `reason` (optional): text for the [session logs](/documentation/platform/agent-vault/session-logs), up to 512 characters
+- `message` (optional): the text the agent gets, up to 2 KB, or 1 KB for databases and SSH servers (say what the agent should do next, such as whether to try again)
+- `reason` (optional): text for the [session logs](/documentation/platform/agent-vault/session-logs), up to 512 bytes
 
 The proxy removes control characters and invisible characters from `message` and `reason`, and cuts text that's longer than these limits. Build the answer with a JSON library rather than by joining strings, so quotes and line breaks in a message don't break the JSON.
 
@@ -302,11 +302,13 @@ If your rule depends on a part of the request that your server can't read in ful
 
 ## Refused requests
 
-If your server denies a request, the agent gets your `message`, or "Your organization's hook refused this request." if you sent none. If your server doesn't give a usable answer, the agent gets a message that says the hook server didn't give a usable answer. Each service type delivers the refusal in its own way:
+If your server denies a request, the agent gets your `message`, or "Your organization's hook refused this request." if you sent none ("Your organization's hook refused this connection." for databases and SSH servers). If your server doesn't give a usable answer, the agent gets a message that says the hook server didn't give a usable answer. Each service type delivers the refusal in its own way:
 
 - **HTTP APIs:** A `403` response with the `hook_denied` error code, or a `503` response with the `hook_failed` error code and a `Retry-After: 5` header, each with a JSON body like the proxy's other [refusals](/documentation/platform/agent-vault/service-discovery#responses-from-the-proxy)
-- **MCP servers:** For a tool call, a tool result with `isError` set to `true` that holds the message, so the agent reads the message as the tool's answer (any other MCP request gets a JSON-RPC error with the same message)
+- **MCP servers:** For a tool call, a tool result with `isError` set to `true` that holds the message, so the agent reads the message as the tool's answer. Any other `POST`, or a tool call the proxy couldn't read (`parsed` is `false`), gets a JSON-RPC error with the same message, and a `GET` or `DELETE` gets the same response as an HTTP API.
 - **Databases and SSH servers:** `infisical agent-vault connect` prints the service's name and the message, as in `analytics: <message>`, and the proxy closes the agent's connection without opening one to the server
+
+If the hook refuses an MCP request that holds a batch of calls, the first call gets your message, and each other call gets "This batch was refused by your organization's hook."
 
 For an HTTP denial, the response looks like this:
 
@@ -324,9 +326,9 @@ X-Agent-Vault-Error: hook_denied
 Each refusal adds a row to the [session logs](/documentation/platform/agent-vault/session-logs):
 
 - **HTTP APIs and MCP servers:** A denied request shows as **Blocked** with "The hook refused this request:" followed by your `reason`, and a failed hook call shows as **Error** with "The hook didn't give a usable answer, so the request wasn't sent."
-- **Databases and SSH servers:** A denied connection shows "The hook refused this connection:" followed by your `reason`, and a failed hook call shows "The hook didn't give a usable answer, so the connection wasn't opened."
+- **Databases and SSH servers:** A denied connection shows "The hook refused this connection:" followed by your `reason` (or your `message`, if you sent no `reason`), and a failed hook call shows "The hook didn't give a usable answer, so the connection wasn't opened."
 
-The session's owner and the project's admins can read the session logs, so don't put anything in `reason` that they shouldn't see.
+The session's owner and the project's admins can read the session logs, and the proxy also writes `reason` to its own log, so don't put anything in `reason` that those readers shouldn't see.
 
 ## Limitations
 

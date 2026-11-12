@@ -1665,8 +1665,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         encryptedCredential !== undefined && (Boolean(service.encryptedCredential) || encryptedCredential !== null);
     }
 
+    const newHookSigningSecret = hookChange && hookChange.kind !== "removed" ? hookChange.signingSecret : undefined;
     const cipherForTransformations =
-      customHeaders?.length || substitutions?.length ? await getProjectCipher(rest.projectId) : null;
+      customHeaders?.length || substitutions?.length || newHookSigningSecret !== undefined
+        ? await getProjectCipher(rest.projectId)
+        : null;
     const seal = (storedValue: string | undefined) =>
       storedValue === undefined
         ? undefined
@@ -1703,12 +1706,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       encryptedValue: seal(storedSubstitutionValues[index])
     }));
 
-    const encryptedHookSecret =
-      hookChange && hookChange.kind !== "removed" && hookChange.signingSecret !== undefined
-        ? (await getProjectCipher(rest.projectId)).encryptor({
-            plainText: Buffer.from(JSON.stringify({ value: hookChange.signingSecret }))
-          }).cipherTextBlob
-        : undefined;
+    const encryptedHookSecret = seal(newHookSigningSecret);
 
     const oauth = oauthAuthorizationId
       ? await claimOauthCredential({

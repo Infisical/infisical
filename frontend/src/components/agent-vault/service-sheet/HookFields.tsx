@@ -117,6 +117,7 @@ export const HookFields = ({
                     }
                   }}
                   label="Signing Secret"
+                  ariaLabel="Signing Secret"
                   placeholder="Enter the signing secret"
                   isError={Boolean(fieldState.error)}
                   isUntouched={hookSigningSecret === UNCHANGED_SECRET}
