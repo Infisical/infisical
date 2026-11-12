@@ -75,6 +75,7 @@ export function AnimatedCollapse({
       aria-hidden={!open || undefined}
       {...(!open ? { inert: true } : {})}
       initial={false}
+      // react-doctor-disable-next-line react-doctor/no-layout-property-animation -- the collapse pushes the content after it, which needs layout; no transform can move siblings
       animate={{ height: expanded ? "auto" : 0, marginBlockStart: expanded ? 0 : -gap }}
       transition={travel}
       onAnimationComplete={() => {
