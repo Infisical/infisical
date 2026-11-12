@@ -610,12 +610,11 @@ export const scanSecretPolicyViolations = async (
 };
 
 /**
- * Closes findings and every unresolved finding in the project with the same secret value. Every path that closes
- * findings goes through here, so a provider's own triage action (such as a GitHub check skip) behaves like the API.
+ * Closes findings and every unresolved finding with the same secret value, across the project or, with
+ * `sameValueResourceId`, only in that resource. Every path that closes findings goes through here, so a provider's own
+ * triage action (such as a GitHub check skip) behaves like the API.
  *
  * Takes the caller's transaction, so the findings it is handed were read in the same one it writes in.
- *
- * Returns, for each finding passed in, the IDs of the other findings closed with it, for its audit log.
  */
 export const closeFindingsWithSameValue = async (
   {
@@ -624,7 +623,8 @@ export const closeFindingsWithSameValue = async (
     findings,
     status,
     triageComment,
-    triagedByUserId
+    triagedByUserId,
+    sameValueResourceId
   }: {
     secretScanningV2DAL: Pick<TSecretScanningV2DALFactory, "findings">;
     projectId: string;
@@ -632,6 +632,7 @@ export const closeFindingsWithSameValue = async (
     status: Exclude<SecretScanningFindingStatus, SecretScanningFindingStatus.Unresolved>;
     triageComment: string | null;
     triagedByUserId: string | null;
+    sameValueResourceId?: string;
   },
   tx: Knex
 ) => {
@@ -643,11 +644,12 @@ export const closeFindingsWithSameValue = async (
     )
   ];
 
-  const triagedFindings = await secretScanningV2DAL.findings.triageWithSameValue(
+  await secretScanningV2DAL.findings.triageWithSameValue(
     {
       projectId,
       findingIds: [...findingIds],
       blindIndexes,
+      sameValueResourceId,
       data: {
         status,
         triageComment,
@@ -657,23 +659,5 @@ export const closeFindingsWithSameValue = async (
       }
     },
     tx
-  );
-
-  const sameValueFindingIdsByBlindIndex = new Map<string, string[]>();
-
-  for (const { id, secretFindingBlindIndex } of triagedFindings) {
-    if (secretFindingBlindIndex && !findingIds.has(id)) {
-      sameValueFindingIdsByBlindIndex.set(secretFindingBlindIndex, [
-        ...(sameValueFindingIdsByBlindIndex.get(secretFindingBlindIndex) ?? []),
-        id
-      ]);
-    }
-  }
-
-  return new Map(
-    findings.map(({ id, secretFindingBlindIndex }) => [
-      id,
-      (secretFindingBlindIndex && sameValueFindingIdsByBlindIndex.get(secretFindingBlindIndex)) || []
-    ])
   );
 };

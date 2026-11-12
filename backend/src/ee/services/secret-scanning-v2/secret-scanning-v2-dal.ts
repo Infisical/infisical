@@ -817,8 +817,8 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
   };
 
   /**
-   * Applies one triage to the given findings and to every unresolved finding in the project that shares a secret value
-   * with them, returning all the rows it changed.
+   * Applies one triage to the given findings and to every unresolved finding that shares a secret value with them,
+   * in the project or, with `sameValueResourceId`, only in that resource. Returns all the rows it changed.
    *
    * The rows are locked in id order before they are written. Two closes of the same value (the batch PATCH runs its
    * items concurrently) each touch the other's finding, so locking in any other order deadlocks them. The second one
@@ -829,11 +829,13 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
       projectId,
       findingIds,
       blindIndexes,
+      sameValueResourceId,
       data
     }: {
       projectId: string;
       findingIds: string[];
       blindIndexes: string[];
+      sameValueResourceId?: string;
       data: Pick<
         TSecretScanningFindingsUpdate,
         "status" | "triageComment" | "triagedAt" | "triagedByUserId" | "resolvedAt"
@@ -844,22 +846,25 @@ export const secretScanningV2DALFactory = (db: TDbClient) => {
     try {
       const lockedFindings = (await tx(TableName.SecretScanningFinding)
         .select("id")
-        .whereIn("id", findingIds)
-        .orWhere((qb) => {
-          void qb
-            .whereIn("secretFindingBlindIndex", blindIndexes)
-            .where("status", SecretScanningFindingStatus.Unresolved)
-            .whereIn("resourceId", (subQuery) => {
-              void subQuery
-                .select(`${TableName.SecretScanningResource}.id`)
-                .from(TableName.SecretScanningResource)
-                .join(
-                  TableName.SecretScanningDataSource,
-                  `${TableName.SecretScanningDataSource}.id`,
-                  `${TableName.SecretScanningResource}.dataSourceId`
-                )
-                .where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
-            });
+        .where((qb) => {
+          void qb.whereIn("id", findingIds).orWhere((sameValueQb) => {
+            void sameValueQb
+              .whereIn("secretFindingBlindIndex", blindIndexes)
+              .where("status", SecretScanningFindingStatus.Unresolved)
+              .whereIn("resourceId", (subQuery) => {
+                void subQuery
+                  .select(`${TableName.SecretScanningResource}.id`)
+                  .from(TableName.SecretScanningResource)
+                  .join(
+                    TableName.SecretScanningDataSource,
+                    `${TableName.SecretScanningDataSource}.id`,
+                    `${TableName.SecretScanningResource}.dataSourceId`
+                  )
+                  .where(`${TableName.SecretScanningDataSource}.projectId`, projectId);
+              });
+
+            if (sameValueResourceId) void sameValueQb.where("resourceId", sameValueResourceId);
+          });
         })
         .orderBy("id")
         .forUpdate()) as Pick<TSecretScanningFindings, "id">[];

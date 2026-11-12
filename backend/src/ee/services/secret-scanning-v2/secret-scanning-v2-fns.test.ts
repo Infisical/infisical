@@ -11,8 +11,10 @@ import {
   SecretScanningExecPhase
 } from "@app/ee/services/secret-scanning/secret-scanning-exec";
 
+import { SecretScanningFindingStatus } from "./secret-scanning-v2-enums";
 import {
   assertClonedRepositoryWithinSizeLimit,
+  closeFindingsWithSameValue,
   convertPatchLineToFileLineNumber,
   parseScanErrorMessage,
   planCommitBatches,
@@ -324,5 +326,42 @@ describe("convertPatchLineToFileLineNumber", () => {
     const patch = "--- a/file.txt\n+++ b/file.txt\n@@ -4,0 +5,1 @@\n+secret";
 
     expect(convertPatchLineToFileLineNumber(patch, scannedLineOf(patch, "secret"))).toBe(5);
+  });
+});
+
+describe("closeFindingsWithSameValue", () => {
+  const tx = {} as Parameters<typeof closeFindingsWithSameValue>[1];
+
+  test("closes the findings and their unresolved same-value findings in one call", async () => {
+    const triageWithSameValue = vi.fn().mockResolvedValue([]);
+
+    await closeFindingsWithSameValue(
+      {
+        secretScanningV2DAL: {
+          findings: { triageWithSameValue }
+        } as unknown as Parameters<typeof closeFindingsWithSameValue>[0]["secretScanningV2DAL"],
+        projectId: "p",
+        findings: [
+          { id: "f1", secretFindingBlindIndex: "v1" },
+          { id: "f2", secretFindingBlindIndex: "v2" },
+          { id: "f3", secretFindingBlindIndex: null }
+        ],
+        status: SecretScanningFindingStatus.Ignore,
+        triageComment: null,
+        triagedByUserId: null,
+        sameValueResourceId: "r1"
+      },
+      tx
+    );
+
+    expect(triageWithSameValue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        findingIds: ["f1", "f2", "f3"],
+        blindIndexes: ["v1", "v2"],
+        sameValueResourceId: "r1",
+        data: expect.objectContaining({ status: SecretScanningFindingStatus.Ignore })
+      }),
+      tx
+    );
   });
 });

@@ -1347,12 +1347,10 @@ export const secretScanningV2ServiceFactory = ({
     const now = new Date();
     const triagedByUserId = actor.type === ActorType.USER ? actor.id : null;
 
-    const { updatedFinding, sameValueFindingIds } = await secretScanningV2DAL.findings.transaction(async (tx) => {
-      let sameValueFindingIds: string[] = [];
-
+    const updatedFinding = await secretScanningV2DAL.findings.transaction(async (tx) => {
       if (isStatusChange && status && status !== SecretScanningFindingStatus.Unresolved) {
         // a request without a comment keeps the finding's own, which is also the comment the same-value findings get
-        const closed = await closeFindingsWithSameValue(
+        await closeFindingsWithSameValue(
           {
             secretScanningV2DAL,
             projectId: finding.projectId,
@@ -1363,8 +1361,6 @@ export const secretScanningV2ServiceFactory = ({
           },
           tx
         );
-
-        sameValueFindingIds = closed.get(findingId) ?? [];
       } else {
         await secretScanningV2DAL.findings.updateById(
           findingId,
@@ -1378,18 +1374,14 @@ export const secretScanningV2ServiceFactory = ({
         );
       }
 
-      return {
-        // read back in the same transaction: a replica may not have the write yet
-        updatedFinding: await secretScanningV2DAL.findings.findByIdWithDetails(findingId, tx),
-        sameValueFindingIds
-      };
+      // read back in the same transaction: a replica may not have the write yet
+      return secretScanningV2DAL.findings.findByIdWithDetails(findingId, tx);
     });
 
     return {
       finding: updatedFinding as TSecretScanningFinding,
       projectId: finding.projectId,
-      previousStatus: isStatusChange ? (finding.status as SecretScanningFindingStatus) : undefined,
-      sameValueFindingIds
+      previousStatus: isStatusChange ? (finding.status as SecretScanningFindingStatus) : undefined
     };
   };
 

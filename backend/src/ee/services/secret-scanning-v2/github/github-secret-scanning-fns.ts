@@ -1149,38 +1149,35 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
       action === SecretScanningFindingStatus.FalsePositive ? "Marked as a false positive" : "Ignored"
     } from GitHub by @${sender.login} on pull request ${repository.full_name}#${pullRequestNumber}.`;
 
-    const { findingsToSkip, sameValueFindingIdsByFindingId } = await secretScanningV2DAL.findings.transaction(
-      async (tx) => {
-        const findings = findingIds.length
-          ? await secretScanningV2DAL.findings.find({ resourceId: resource.id, $in: { id: findingIds } }, { tx })
-          : [];
-        const toSkip = findings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
+    const findingsToSkip = await secretScanningV2DAL.findings.transaction(async (tx) => {
+      const findings = findingIds.length
+        ? await secretScanningV2DAL.findings.find({ resourceId: resource.id, $in: { id: findingIds } }, { tx })
+        : [];
+      const toSkip = findings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
 
-        return {
-          findingsToSkip: toSkip,
-          sameValueFindingIdsByFindingId: toSkip.length
-            ? await closeFindingsWithSameValue(
-                {
-                  secretScanningV2DAL,
-                  projectId: dataSource.projectId,
-                  findings: toSkip,
-                  status: action,
-                  triageComment,
-                  triagedByUserId: null
-                },
-                tx
-              )
-            : new Map<string, string[]>()
-        };
+      if (toSkip.length) {
+        await closeFindingsWithSameValue(
+          {
+            secretScanningV2DAL,
+            projectId: dataSource.projectId,
+            findings: toSkip,
+            status: action,
+            triageComment,
+            triagedByUserId: null,
+            // the sender only needs write access to this repository, so the skip doesn't reach any other
+            sameValueResourceId: resource.id
+          },
+          tx
+        );
       }
-    );
+
+      return toSkip;
+    });
 
     if (findingsToSkip.length) {
       await Promise.all(
-        findingsToSkip.map((finding) => {
-          const sameValueFindingIds = sameValueFindingIdsByFindingId.get(finding.id);
-
-          return auditLogService.createAuditLog({
+        findingsToSkip.map((finding) =>
+          auditLogService.createAuditLog({
             projectId: dataSource.projectId,
             actor: {
               type: ActorType.PLATFORM,
@@ -1188,15 +1185,10 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
             },
             event: {
               type: EventType.SECRET_SCANNING_FINDING_UPDATE,
-              metadata: {
-                findingId: finding.id,
-                status: action,
-                triageComment,
-                ...(sameValueFindingIds?.length ? { sameValueFindingIds } : {})
-              }
+              metadata: { findingId: finding.id, status: action, triageComment }
             }
-          });
-        })
+          })
+        )
       );
 
       logger.info(
