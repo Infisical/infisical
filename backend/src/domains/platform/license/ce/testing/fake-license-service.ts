@@ -1,5 +1,5 @@
 /* eslint-disable class-methods-use-this */
-import { InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
+import { InstanceEntitlements, InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
 import { Plan, TPlanProps } from "../model/plan";
 import { SeatUsage } from "../model/seat-usage";
 import { TLicenseService } from "../service/license-service";
@@ -29,7 +29,7 @@ export class FakeLicenseService implements TLicenseService {
     return this;
   }
 
-  getInstanceEntitlements = () => this.instance;
+  getInstanceEntitlements = () => InstanceEntitlements.restore(this.instance);
 
   getInstanceType = () => this.instance.instanceType;
 

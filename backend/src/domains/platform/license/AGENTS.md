@@ -3,7 +3,8 @@
 Two services, one module. Take only the one you use:
 
 - `licenseService: TLicenseService` (`LicenseModule.service`): entitlements. `getPlan` then `plan.has` /
-  `plan.assert`, the instance's own license (`getInstanceEntitlements`), seat usage.
+  `plan.assert`, the instance's own license (`getInstanceEntitlements()`, a model: `.plan()` for plan features,
+  `.has(InstanceFeature.Fips)` for the instance-only flags), seat usage.
 - `usageMeteringService: TUsageMeteringService` (`LicenseModule.usageMeteringService`): reports usage to the
   License Server via `emit`, `recordMeteringEvents`, `countUsage`, `syncSeats`.
 

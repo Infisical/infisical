@@ -8,8 +8,8 @@ import {
   TUsers
 } from "@app/db/schemas";
 import {
+  InstanceFeature,
   Meter,
-  Plan,
   PlanFeature,
   PlanLimit,
   TLicenseService,
@@ -911,7 +911,7 @@ export const superAdminServiceFactory = ({
       throw new BadRequestError({ message: "This endpoint is not supported for cloud instances" });
 
     const serverAdmin = await userDAL.findById(actor.id);
-    const instancePlan = Plan.restore(licenseService.getInstanceEntitlements().features);
+    const instancePlan = licenseService.getInstanceEntitlements().plan();
 
     const isEmailInvalid = await isDisposableEmail(inviteAdminEmails);
     if (isEmailInvalid) {
@@ -1227,7 +1227,7 @@ export const superAdminServiceFactory = ({
   };
 
   const grantServerAdminAccessToUser = async (userId: string) => {
-    if (!licenseService.getInstanceEntitlements().features.instanceUserManagement) {
+    if (!licenseService.getInstanceEntitlements().has(InstanceFeature.InstanceUserManagement)) {
       throw new BadRequestError({
         message: "Failed to grant server admin access to user due to plan restriction. Upgrade to Infisical's Pro plan."
       });
@@ -1270,7 +1270,7 @@ export const superAdminServiceFactory = ({
   };
 
   const updateRootEncryptionStrategy = async (strategy: RootKeyEncryptionStrategy) => {
-    if (!Plan.restore(licenseService.getInstanceEntitlements().features).has(PlanFeature.Hsm)) {
+    if (!licenseService.getInstanceEntitlements().plan().has(PlanFeature.Hsm)) {
       throw new BadRequestError({
         message: "Failed to update encryption strategy due to plan restriction. Upgrade to Infisical's Enterprise plan."
       });
@@ -1336,7 +1336,7 @@ export const superAdminServiceFactory = ({
 
     const config = getConfig();
     if (!config.isCloud) {
-      const plan = Plan.restore(licenseService.getInstanceEntitlements().features);
+      const plan = licenseService.getInstanceEntitlements().plan();
       const canEmailDomainVerification =
         plan.has(PlanFeature.SamlSso) || plan.has(PlanFeature.Ldap) || plan.has(PlanFeature.OidcSso);
       if (!canEmailDomainVerification) {

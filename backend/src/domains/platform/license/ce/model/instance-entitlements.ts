@@ -8,6 +8,12 @@ export enum InstanceType {
   Cloud = "cloud"
 }
 
+// Flags that belong to the instance's license, not to an org's plan.
+export enum InstanceFeature {
+  Fips = "fips",
+  InstanceUserManagement = "instanceUserManagement"
+}
+
 export type TInstanceFeatures = TPlanProps & {
   fips: boolean;
   instanceUserManagement: boolean;
@@ -32,12 +38,12 @@ export class InstanceEntitlements {
     return this.props.instanceType;
   }
 
-  get features(): TInstanceFeatures {
-    return this.props.features;
-  }
-
   get licenseId(): string {
     return this.props.licenseId ?? "unknown";
+  }
+
+  has(feature: InstanceFeature): boolean {
+    return Boolean(this.props.features[feature]);
   }
 
   isCloud(): boolean {

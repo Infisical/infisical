@@ -1,5 +1,6 @@
 import { testFeatures } from "../testing/test-features";
-import { InstanceEntitlements, InstanceType, TInstanceFeatures } from "./instance-entitlements";
+import { InstanceEntitlements, InstanceFeature, InstanceType, TInstanceFeatures } from "./instance-entitlements";
+import { PlanFeature } from "./plan";
 
 const licensed = (instanceType: InstanceType) =>
   InstanceEntitlements.restore({
@@ -28,6 +29,19 @@ describe("InstanceEntitlements.plan", () => {
   });
 });
 
+describe("InstanceEntitlements.has", () => {
+  test("should report the instance flags the license grants and refuse the ones it leaves out", () => {
+    // Setup
+    const instance = licensed(InstanceType.EnterpriseOnPremOffline);
+
+    // Action
+    const granted = [InstanceFeature.Fips, InstanceFeature.InstanceUserManagement].map((f) => instance.has(f));
+
+    // Assert
+    expect(granted).toEqual([true, false]);
+  });
+});
+
 describe("InstanceEntitlements.withFeatures", () => {
   test("should replace the given features and leave the original unchanged", () => {
     // Setup
@@ -42,7 +56,7 @@ describe("InstanceEntitlements.withFeatures", () => {
     const overridden = instance.withFeatures({ rbac: true });
 
     // Assert
-    expect([overridden.features.rbac, instance.features.rbac]).toEqual([true, false]);
+    expect([overridden.plan().has(PlanFeature.Rbac), instance.plan().has(PlanFeature.Rbac)]).toEqual([true, false]);
   });
 });
 

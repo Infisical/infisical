@@ -76,7 +76,7 @@ describe("LicenseResolver.resolveInstanceEntitlements", () => {
 
     // Assert
     expect(instance.instanceType).toBe(InstanceType.EnterpriseOnPrem);
-    expect(instance.features.rbac).toBe(true);
+    expect(instance.toJSON().features.rbac).toBe(true);
   });
 
   test("should fall back to the community edition when the online license cannot be read", async () => {
@@ -85,7 +85,7 @@ describe("LicenseResolver.resolveInstanceEntitlements", () => {
 
     // Assert
     expect(instance.instanceType).toBe(InstanceType.OnPrem);
-    expect(instance.features.slug).toBeNull();
+    expect(instance.toJSON().features.slug).toBeNull();
   });
 
   test("should resolve a valid offline key to EnterpriseOnPremOffline with its license id", async () => {
@@ -94,7 +94,7 @@ describe("LicenseResolver.resolveInstanceEntitlements", () => {
 
     // Assert
     expect(instance.instanceType).toBe(InstanceType.EnterpriseOnPremOffline);
-    expect(instance.features).toMatchObject({ slug: "enterprise", isOffline: true, rbac: true });
+    expect(instance.toJSON().features).toMatchObject({ slug: "enterprise", isOffline: true, rbac: true });
     expect(instance.licenseId).toBe("lic-1");
   });
 
@@ -107,7 +107,7 @@ describe("LicenseResolver.resolveInstanceEntitlements", () => {
 
     // Assert
     expect(instance.instanceType).toBe(InstanceType.OnPrem);
-    expect(instance.features.rbac).toBe(false);
+    expect(instance.toJSON().features.rbac).toBe(false);
   });
 
   test("should fall back to the community edition when the offline key has terminated, not merely expired", async () => {
@@ -143,7 +143,7 @@ describe("LicenseResolver.resolveInstanceEntitlements", () => {
     });
 
     // Assert
-    expect(instance.features.pamEnterpriseAlerting).toBe(true);
+    expect(instance.toJSON().features.pamEnterpriseAlerting).toBe(true);
   });
 
   test("should leave CAs uncapped for a license that does not set max_cas, and keep the cap when it does", async () => {
@@ -163,7 +163,7 @@ describe("LicenseResolver.resolveInstanceEntitlements", () => {
     const unlicensed = await resolve({});
 
     // Assert
-    expect([uncapped, capped, v1, online, unlicensed].map((r) => r.instance.features.maxCas)).toEqual([
+    expect([uncapped, capped, v1, online, unlicensed].map((r) => r.instance.toJSON().features.maxCas)).toEqual([
       null,
       4,
       3,
@@ -185,7 +185,7 @@ describe("LicenseResolver.resolveInstanceEntitlements", () => {
     const unlicensed = await resolve({});
 
     // Assert
-    expect([off, on, unlicensed].map((r) => r.instance.features.agentVaultManagedStorage)).toEqual([
+    expect([off, on, unlicensed].map((r) => r.instance.toJSON().features.agentVaultManagedStorage)).toEqual([
       false,
       true,
       false

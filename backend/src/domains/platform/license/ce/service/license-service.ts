@@ -2,7 +2,7 @@ import { EntityNotFoundError, ExternalSystemError } from "@app/domains/lib/error
 import { TOrganizationsProjectsService } from "@app/domains/platform/organizations-projects/ce/module";
 import { logger } from "@app/lib/logger";
 
-import { InstanceType, TInstanceEntitlementsProps } from "../model/instance-entitlements";
+import { InstanceEntitlements, InstanceType } from "../model/instance-entitlements";
 import { Plan } from "../model/plan";
 import { SeatUsage } from "../model/seat-usage";
 import { TLicenseProvider, TLicenseServer, TPlanCache, TUsageReportCache } from "./dependencies";
@@ -17,7 +17,7 @@ export type TRefreshPlanOptions = {
 };
 
 export type TLicenseService = {
-  getInstanceEntitlements(): TInstanceEntitlementsProps;
+  getInstanceEntitlements(): InstanceEntitlements;
   getInstanceType(): InstanceType;
   getLicenseId(): string;
   // Whether LICENSE_KEY or LICENSE_KEY_OFFLINE holds an offline key, whether or not it verifies.
@@ -53,8 +53,8 @@ export type TLicenseServiceDeps = {
 export class LicenseService implements TLicenseService {
   constructor(private readonly deps: TLicenseServiceDeps) {}
 
-  getInstanceEntitlements(): TInstanceEntitlementsProps {
-    return this.deps.instance.get().toJSON();
+  getInstanceEntitlements(): InstanceEntitlements {
+    return this.deps.instance.get();
   }
 
   getInstanceType(): InstanceType {
