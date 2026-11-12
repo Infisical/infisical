@@ -429,6 +429,27 @@ export const secretsManagedDemo: SecretsManagedAdapter = {
     isPending: false,
     error: null
   }),
+  useSecretSyncRecursiveConflicts: ({ projectId, environment, secretPath }, options) => {
+    const state = useStore().use();
+    if (options?.enabled === false || !environment || !secretPath)
+      return { data: { conflicts: [] }, isPending: false, error: null };
+    const base = secretPath === "/" ? "/" : secretPath.replace(/\/+$/, "");
+    const prefix = base === "/" ? "/" : `${base}/`;
+    const byKey = new Map<string, Set<string>>();
+    state.secrets.forEach((secret) => {
+      if (
+        secret.projectId !== projectId ||
+        secret.env !== environment ||
+        !(secret.path === base || secret.path.startsWith(prefix))
+      )
+        return;
+      byKey.set(secret.key, (byKey.get(secret.key) ?? new Set()).add(secret.path));
+    });
+    const conflicts = [...byKey]
+      .filter(([, paths]) => paths.size > 1)
+      .map(([key, paths]) => ({ key, paths: [...paths].sort() }));
+    return { data: { conflicts }, isPending: false, error: null };
+  },
   useSecretSyncDuplicate: () => ({
     data: { hasDuplicate: false },
     isPending: false,

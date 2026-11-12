@@ -2319,7 +2319,6 @@ export const OverviewPage = () => {
             scope={{ project, path, environments: projectEnvironments, visibleEnvironments }}
             initial={single ? { environment: activeEnvironment, path } : undefined}
             syncs={syncs}
-            resources={resources}
             onCreate={(sync, feedback) =>
               createSecretSync
                 .mutateAsync({

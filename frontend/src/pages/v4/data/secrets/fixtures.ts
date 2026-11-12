@@ -444,7 +444,10 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
   secretsAt(
     "payments-api",
     "/workers",
-    [{ name: "QUEUE_CONCURRENCY", envs: ["dev", "staging"] }],
+    [
+      { name: "QUEUE_CONCURRENCY", envs: ["dev", "staging"] },
+      { name: "LOG_LEVEL", envs: ["dev"] }
+    ],
     secrets
   );
   secretsAt("payments-api", "/api/v1", [{ name: "V1_SUNSET_DATE", envs: ["staging"] }], secrets);
