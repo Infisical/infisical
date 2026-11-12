@@ -733,7 +733,8 @@
                     "pages": [
                       "documentation/platform/agent-vault/http-apis",
                       "documentation/platform/agent-vault/mcp-servers",
-                      "documentation/platform/agent-vault/databases-and-ssh"
+                      "documentation/platform/agent-vault/databases-and-ssh",
+                      "documentation/platform/agent-vault/hooks"
                     ]
                   },
                   "documentation/platform/agent-vault/variables",

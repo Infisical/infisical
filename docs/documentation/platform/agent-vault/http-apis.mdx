@@ -212,6 +212,8 @@ HTTP/1.1 403 Forbidden
 service "github" does not allow path "/admin": blocked by service policy
 ```
 
+If the service has a [hook](/documentation/platform/agent-vault/hooks), the proxy also refuses each request that your hook server denies, with a `403` response and the server's message.
+
 ## Custom headers
 
 Some APIs need a header alongside the credential, such as an organization ID or an API version. On the **Credential** step, under **Advanced Options**, select **Add Custom Header** and enter a name, an optional prefix, and a value. The proxy attaches it to every request to that service, whatever credential type the service uses.

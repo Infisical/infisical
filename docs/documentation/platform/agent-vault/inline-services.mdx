@@ -45,6 +45,8 @@ An inline service has the same fields as an [HTTP API](/documentation/platform/a
 - A credential can't use [member-provided values](/documentation/platform/agent-vault/http-apis#member-provided-values)
 - You can't change an inline service after you create the session
 
+An inline service can also have a [hook](/documentation/platform/agent-vault/hooks): send a `hook` object with its `url` and `signingSecret`, the same as for a service in the project. Infisical deletes the signing secret when the session ends.
+
 A session can have up to 20 inline services, and no two of its services can have the same name, including the services in its access bundle. A service sent without a name counts as its first host. The reference for [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) lists every field and its limits.
 
 Start the agent with the session token from the response, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes. When the agent finishes, [revoke the session](/documentation/platform/agent-vault/sessions-api#step-5-revoke-the-session).
