@@ -268,30 +268,31 @@ const winRMRootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.WinRM)
 });
 
-export const winRMConnectionFormSchema = z
-  .discriminatedUnion("method", [
-    winRMRootSchema.extend({
-      method: z.literal(WinRMConnectionMethod.UsernamePassword),
-      credentials: z.object({
-        host: z.string().trim().min(1, "Host required"),
-        port: z.coerce.number().int().min(1).max(65535),
-        username: z.string().trim().min(1, "Username required"),
-        password: z.string().min(1, "Password required"),
-        sslEnabled: z.boolean(),
-        sslRejectUnauthorized: z.boolean(),
-        sslCertificate: z.string().optional()
-      })
+/** Without the gateway rule, which v4 enforces through its gateway field outside the form. */
+export const winRMConnectionBaseFormSchema = z.discriminatedUnion("method", [
+  winRMRootSchema.extend({
+    method: z.literal(WinRMConnectionMethod.UsernamePassword),
+    credentials: z.object({
+      host: z.string().trim().min(1, "Host required"),
+      port: z.coerce.number().int().min(1).max(65535),
+      username: z.string().trim().min(1, "Username required"),
+      password: z.string().min(1, "Password required"),
+      sslEnabled: z.boolean(),
+      sslRejectUnauthorized: z.boolean(),
+      sslCertificate: z.string().optional()
     })
-  ])
-  .superRefine((data, ctx) => {
-    if (!data.gatewayId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Gateway required",
-        path: ["gatewayId"]
-      });
-    }
-  });
+  })
+]);
+
+export const winRMConnectionFormSchema = winRMConnectionBaseFormSchema.superRefine((data, ctx) => {
+  if (!data.gatewayId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Gateway required",
+      path: ["gatewayId"]
+    });
+  }
+});
 
 const hcVaultRootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.HCVault)

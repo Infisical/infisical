@@ -43,7 +43,7 @@ import {
   smbConnectionFormSchema,
   snowflakeConnectionFormSchema,
   sshConnectionFormSchema,
-  winRMConnectionFormSchema
+  winRMConnectionBaseFormSchema
 } from "@app/lib/schemas/app-connections";
 
 import { methodLabel } from "./shared";
@@ -406,7 +406,7 @@ export const DATABASE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset
   [AppConnection.WinRM]: {
     app: AppConnection.WinRM,
     name: APP_CONNECTION_MAP[AppConnection.WinRM].name,
-    schema: winRMConnectionFormSchema,
+    schema: winRMConnectionBaseFormSchema,
     values: gatewayValues,
     methods: [
       {

@@ -1,5 +1,6 @@
 import type {
   AppConnectionFieldPreset,
+  AppConnectionMethodPreset,
   AppConnectionPreset
 } from "@app/components/v4/patterns/app-connection-form";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
@@ -23,7 +24,7 @@ import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/type
 import { SalesforceConnectionMethod } from "@app/hooks/api/appConnections/types/salesforce-connection";
 import { StripeConnectionMethod } from "@app/hooks/api/appConnections/types/stripe-connection";
 import {
-  adcsConnectionFormSchema,
+  adcsConnectionBaseFormSchema,
   azureAdcsConnectionFormSchema,
   azureAppConfigurationConnectionFormSchema,
   azureClientSecretsConnectionFormSchema,
@@ -43,6 +44,7 @@ import {
   stripeConnectionFormSchema
 } from "@app/lib/schemas/app-connections";
 
+import { appStateSuffix } from "../connection-redirect";
 import { methodLabel } from "./shared";
 
 const UUID_PLACEHOLDER = "00000000-0000-0000-0000-000000000000";
@@ -86,6 +88,55 @@ const azureCertificateFields: readonly AppConnectionFieldPreset[] = [
   }
 ];
 
+const AZURE_SCOPES = {
+  vault: "https://vault.azure.net/.default openid offline_access",
+  appConfiguration: "https://azconfig.io/.default openid offline_access",
+  graph: "https://graph.microsoft.com/.default openid offline_access"
+};
+
+/** Azure OAuth: tenant ID (and organization for DevOps) sit at the form root in main's schemas. */
+const azureOAuthMethod = (
+  app: AppConnection,
+  value: string,
+  scope: string,
+  withOrgName = false
+): AppConnectionMethodPreset => ({
+  value,
+  label: methodLabel(value as Parameters<typeof methodLabel>[0]),
+  credentials: {},
+  fields: [
+    { ...tenantIdField, name: "tenantId" },
+    ...(withOrgName
+      ? [{ name: "orgName", label: "Organization name", mono: true } as AppConnectionFieldPreset]
+      : [])
+  ],
+  redirect: {
+    submitLabel: "Connect to Azure",
+    href: ({ values, option }) => {
+      if (typeof option?.oauthClientId !== "string" || !option.oauthClientId) return undefined;
+      const tenantId = (values.tenantId as string | undefined)?.trim();
+      const query = new URLSearchParams({
+        client_id: option.oauthClientId,
+        response_type: "code",
+        redirect_uri: `${window.location.origin}/organization/app-connections/azure/oauth/callback`,
+        response_mode: "query",
+        scope,
+        state: appStateSuffix(app, {
+          tenantId,
+          ...(withOrgName ? { orgName: (values.orgName as string | undefined)?.trim() } : {})
+        })
+      });
+      return `https://login.microsoftonline.com/${encodeURIComponent(tenantId || "common")}/oauth2/v2.0/authorize?${query}`;
+    },
+    unconfigured: "This server has no Azure OAuth application configured.",
+    credentials: ({ callback, stored }) => ({
+      code: callback.code ?? "",
+      tenantId: stored.tenantId,
+      ...(withOrgName ? { orgName: stored.orgName } : {})
+    })
+  }
+});
+
 const okmsFields: readonly AppConnectionFieldPreset[] = [
   {
     name: "credentials.okmsDomain",
@@ -125,6 +176,11 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
     schema: azureKeyVaultConnectionFormSchema,
     values: { gatewayId: null, gatewayPoolId: null },
     methods: [
+      azureOAuthMethod(
+        AppConnection.AzureKeyVault,
+        AzureKeyVaultConnectionMethod.OAuth,
+        AZURE_SCOPES.vault
+      ),
       {
         value: AzureKeyVaultConnectionMethod.ClientSecret,
         label: methodLabel(AzureKeyVaultConnectionMethod.ClientSecret),
@@ -144,6 +200,11 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
     name: APP_CONNECTION_MAP[AppConnection.AzureAppConfiguration].name,
     schema: azureAppConfigurationConnectionFormSchema,
     methods: [
+      azureOAuthMethod(
+        AppConnection.AzureAppConfiguration,
+        AzureAppConfigurationConnectionMethod.OAuth,
+        AZURE_SCOPES.appConfiguration
+      ),
       {
         value: AzureAppConfigurationConnectionMethod.ClientSecret,
         label: methodLabel(AzureAppConfigurationConnectionMethod.ClientSecret),
@@ -157,6 +218,11 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
     name: APP_CONNECTION_MAP[AppConnection.AzureClientSecrets].name,
     schema: azureClientSecretsConnectionFormSchema,
     methods: [
+      azureOAuthMethod(
+        AppConnection.AzureClientSecrets,
+        AzureClientSecretsConnectionMethod.OAuth,
+        AZURE_SCOPES.graph
+      ),
       {
         value: AzureClientSecretsConnectionMethod.ClientSecret,
         label: methodLabel(AzureClientSecretsConnectionMethod.ClientSecret),
@@ -197,6 +263,12 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
     name: APP_CONNECTION_MAP[AppConnection.AzureDevOps].name,
     schema: azureDevOpsConnectionFormSchema,
     methods: [
+      azureOAuthMethod(
+        AppConnection.AzureDevOps,
+        AzureDevOpsConnectionMethod.OAuth,
+        AZURE_SCOPES.appConfiguration,
+        true
+      ),
       {
         value: AzureDevOpsConnectionMethod.AccessToken,
         label: methodLabel(AzureDevOpsConnectionMethod.AccessToken),
@@ -270,7 +342,7 @@ export const CLOUD_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> 
   [AppConnection.ADCS]: {
     app: AppConnection.ADCS,
     name: APP_CONNECTION_MAP[AppConnection.ADCS].name,
-    schema: adcsConnectionFormSchema,
+    schema: adcsConnectionBaseFormSchema,
     values: { gatewayId: null, gatewayPoolId: null },
     methods: [
       {

@@ -9,7 +9,7 @@ import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/app
 import { failed, saved } from "../../access/toast";
 import { useV4Adapter } from "../../data/adapters";
 import { CONNECTION_PRESETS } from "../../data/integrations/connection-presets";
-import { takeConnectionRedirect } from "../../data/integrations/connection-redirect";
+import { stateValues, takeConnectionRedirect } from "../../data/integrations/connection-redirect";
 import { orgHref, v4Path } from "../../links";
 import { useResolveV4Href } from "../../resolveV4Href";
 
@@ -73,7 +73,7 @@ export const AppConnectionCallbackPage = () => {
     }
     const credentials = redirect.credentials({
       callback,
-      stored: pending.credentials
+      stored: { ...stateValues(state), ...pending.credentials }
     }) as TAppConnection["credentials"];
     const gateway =
       pending.gatewayId !== undefined || pending.gatewayPoolId !== undefined

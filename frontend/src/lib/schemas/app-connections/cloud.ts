@@ -183,27 +183,28 @@ export const azureAdcsConnectionFormSchema = z.discriminatedUnion("method", [
   })
 ]);
 
-export const adcsConnectionFormSchema = z
-  .discriminatedUnion("method", [
-    genericAppConnectionFieldsSchema.extend({
-      app: z.literal(AppConnection.ADCS),
-      method: z.literal(AdcsConnectionMethod.UsernamePassword),
-      credentials: z.object({
-        host: z.string().trim().min(1, "CA Host required"),
-        username: z.string().trim().min(1, "Username required"),
-        password: z.string().trim().min(1, "Password required")
-      })
+/** Without the gateway rule, which v4 enforces through its gateway field outside the form. */
+export const adcsConnectionBaseFormSchema = z.discriminatedUnion("method", [
+  genericAppConnectionFieldsSchema.extend({
+    app: z.literal(AppConnection.ADCS),
+    method: z.literal(AdcsConnectionMethod.UsernamePassword),
+    credentials: z.object({
+      host: z.string().trim().min(1, "CA Host required"),
+      username: z.string().trim().min(1, "Username required"),
+      password: z.string().trim().min(1, "Password required")
     })
-  ])
-  .superRefine((data, ctx) => {
-    if (!data.gatewayId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Gateway required",
-        path: ["gatewayId"]
-      });
-    }
-  });
+  })
+]);
+
+export const adcsConnectionFormSchema = adcsConnectionBaseFormSchema.superRefine((data, ctx) => {
+  if (!data.gatewayId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Gateway required",
+      path: ["gatewayId"]
+    });
+  }
+});
 
 export const azureDnsConnectionFormSchema = z.discriminatedUnion("method", [
   genericAppConnectionFieldsSchema.extend({

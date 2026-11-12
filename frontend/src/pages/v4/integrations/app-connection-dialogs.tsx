@@ -66,6 +66,7 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import type { TAppConnection, TCreateAppConnectionDTO } from "@app/hooks/api/appConnections/types";
+import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
 import type { ProjectType } from "@app/hooks/api/projects/types";
 import { genericAppConnectionFieldsSchema } from "@app/lib/schemas/app-connections";
@@ -98,7 +99,13 @@ export const credentialsBlock = (row: TAppConnection) => {
   if (row.isPlatformManagedCredentials) return undefined;
   if (customGitHubApp(row))
     return "This connection uses your organization's own GitHub App, which v4 can't reconnect yet";
-  return methodPreset(row) ? undefined : NOT_IN_V4;
+  if (methodPreset(row)) return undefined;
+  if (
+    row.app === AppConnection.AzureKeyVault &&
+    row.method === AzureKeyVaultConnectionMethod.ManagedIdentity
+  )
+    return "Managed identity needs the federated credential step, which v4 doesn't have yet";
+  return NOT_IN_V4;
 };
 
 const NO_GATEWAY: GatewayPickerValue = { gatewayId: null, gatewayPoolId: null };
@@ -623,6 +630,10 @@ const CredentialsForm = ({
       name: connection.name,
       description: connection.description ?? "",
       method: method.value,
+      ...storedCredentials(
+        connection,
+        method.fields.map((spec) => spec.name).filter((name) => !name.includes("."))
+      ),
       credentials: {
         ...method.credentials,
         ...storedCredentials(connection, [
@@ -694,7 +705,11 @@ const CredentialsForm = ({
             <form id={formId} noValidate onSubmit={submit}>
               <FieldSet disabled={pending}>
                 {method.fields
-                  .filter((spec) => spec.visible?.(values) ?? true)
+                  .filter(
+                    (spec) =>
+                      spec.name !== "isPlatformManagedCredentials" &&
+                      (spec.visible?.(values) ?? true)
+                  )
                   .map((spec) => (
                     <CredentialField key={spec.name} control={form.control} spec={spec} />
                   ))}
