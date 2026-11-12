@@ -128,7 +128,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/input-group/default.tsx`; its relative imports are generated for that exact path. States: default, controlled, invalid, disabled, read-only.
 
-Registry items used: @infisical/field, @infisical/icon, @infisical/input-group. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/icon, @cipher/input-group. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -208,7 +208,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/input-group/sizes.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/field, @infisical/icon, @infisical/input-group. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/icon, @cipher/input-group. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -261,7 +261,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/input-group/addons.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/field, @infisical/icon, @infisical/input-group. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/icon, @cipher/input-group. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
@@ -309,7 +309,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/input-group/buttons.tsx`; its relative imports are generated for that exact path. States: default, controlled.
 
-Registry items used: @infisical/field, @infisical/icon, @infisical/input-group. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/icon, @cipher/input-group. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

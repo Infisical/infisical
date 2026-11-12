@@ -93,7 +93,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/scroll-area/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/scroll-area. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/scroll-area. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as UI from "../../../../components/v4/ui/scroll-area";
@@ -117,7 +117,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/scroll-area/variants.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/scroll-area. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/scroll-area. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { ScrollArea, ScrollBar } from "../../../../components/v4/ui/scroll-area";

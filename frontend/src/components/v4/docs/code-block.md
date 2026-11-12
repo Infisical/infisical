@@ -118,7 +118,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/code-block/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/code-block. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/code-block. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { CodeBlock } from "../../../../components/v4/ui/code-block";

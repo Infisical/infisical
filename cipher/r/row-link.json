@@ -1,0 +1,23 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "row-link",
+  "type": "registry:ui",
+  "registryDependencies": [
+    "@cipher/cipher-base",
+    "@cipher/icon"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/ui/row-link.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/row-link.tsx",
+      "content": "import { CipherLink, type CipherLinkProps } from \"../lib/link\";\nimport { useStretchedLink } from \"../lib/stretched-link\";\nimport { cn } from \"../lib/utils\";\nimport { Icon } from \"./icon\";\n\nimport styles from \"./row-link.module.css\";\n\nfunction RowLink({\n  className,\n  disabled,\n  chevron = true,\n  title,\n  children,\n  ref,\n  ...props\n}: CipherLinkProps & {\n  disabled?: boolean;\n  chevron?: boolean;\n}) {\n  const off = disabled ?? (props.link as { disabled?: boolean }).disabled;\n  useStretchedLink(!off);\n  const content = chevron ? (\n    <>\n      <span className={styles.label}>{children}</span>\n      <Icon name=\"chev-right\" className={styles.chevron} data-row-link-chevron=\"\" />\n    </>\n  ) : (\n    children\n  );\n  if (off)\n    return (\n      <span\n        role=\"link\"\n        aria-disabled=\"true\"\n        title={title}\n        data-slot=\"row-link\"\n        data-disabled=\"\"\n        data-chevron={chevron || undefined}\n        className={cn(styles.rowLink, className)}\n      >\n        {content}\n      </span>\n    );\n  return (\n    <CipherLink\n      ref={ref}\n      title={title}\n      data-slot=\"row-link\"\n      data-row-link=\"\"\n      data-chevron={chevron || undefined}\n      className={cn(styles.rowLink, styles.stretched, className)}\n      {...props}\n    >\n      {content}\n    </CipherLink>\n  );\n}\n\nexport { RowLink };\n"
+    },
+    {
+      "path": "src/components/v4/ui/row-link.module.css",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/row-link.module.css",
+      "content": ".rowLink {\n  display: block;\n  min-width: 0;\n  overflow: hidden;\n  color: inherit;\n  text-decoration: none;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  outline: none;\n}\n.rowLink[data-disabled] {\n  color: var(--v4-muted);\n  cursor: not-allowed;\n}\n.rowLink[data-chevron] {\n  display: flex;\n  flex: 1 1 auto;\n  align-items: center;\n  gap: var(--v4-space-8);\n}\n.label {\n  flex: 0 1 auto;\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n.chevron {\n  flex: none;\n  width: var(--v4-size-glyph);\n  height: var(--v4-size-glyph);\n  stroke-width: var(--v4-stroke-icon);\n  color: var(--v4-muted);\n  transition: color var(--v4-duration-fast) var(--v4-ease-fade);\n}\n.rowLink[data-disabled] .chevron {\n  color: var(--v4-faint);\n}\n:is(:global(tr), :global([data-slot=\"card\"])):is(:hover, :focus-within) .stretched .chevron {\n  color: var(--v4-ink);\n}\n.cardLink {\n  color: inherit;\n  text-decoration: none;\n  outline: none;\n}\n.cardLink[data-disabled] {\n  color: var(--v4-muted);\n  cursor: not-allowed;\n}\n.stretched::after {\n  content: \"\";\n  position: absolute;\n  inset: 0;\n  z-index: 1;\n}\n.stretched:focus-visible::after {\n  outline: var(--v4-size-focus-ring) solid var(--v4-ink);\n  outline-offset: calc(-1 * var(--v4-size-focus-ring));\n}\n:global(tr)[data-stretched-link],\n:global([data-slot=\"card\"])[data-stretched-link] {\n  position: relative;\n  cursor: pointer;\n}\n:global([data-slot=\"card\"])[data-stretched-link]:hover {\n  background-image: linear-gradient(var(--v4-action-ghost-hover), var(--v4-action-ghost-hover));\n}\n/* :where keeps this at zero specificity, so a control that positions itself absolutely keeps its own layout. */\n:where(:global(tr)[data-stretched-link], :global([data-slot=\"card\"])[data-stretched-link])\n  :where(\n    button,\n    input,\n    select,\n    textarea,\n    label,\n    summary,\n    a:not(.stretched),\n    [role=\"button\"],\n    [role=\"checkbox\"],\n    [role=\"combobox\"],\n    [role=\"switch\"],\n    [data-slot=\"tooltip-trigger\"],\n    [data-row-interactive]\n  ) {\n  position: relative;\n  z-index: 2;\n}\n"
+    }
+  ]
+}

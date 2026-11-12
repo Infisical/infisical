@@ -147,7 +147,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/sensitive-editor/lifecycle.tsx`; its relative imports are generated for that exact path. States: default, controlled, editing.
 
-Registry items used: @infisical/sensitive-editor. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/sensitive-editor. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

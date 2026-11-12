@@ -108,7 +108,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/spinner/default.tsx`; its relative imports are generated for that exact path. States: loading.
 
-Registry items used: @infisical/spinner. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/spinner. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Spinner } from "../../../../components/v4/ui/spinner";

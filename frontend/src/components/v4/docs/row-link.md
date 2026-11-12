@@ -132,7 +132,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/row-link/default.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @infisical/badge, @infisical/button, @infisical/card, @infisical/data-table, @infisical/icon, @infisical/row-link, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/button, @cipher/card, @cipher/data-table, @cipher/icon, @cipher/row-link, @cipher/text. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";
@@ -197,10 +197,7 @@ export default function Example() {
         <div className="flex min-w-0 items-center gap-2">
           <Icon name={row.icon} size="var(--v4-size-icon)" className="shrink-0" />
           <RowLink
-            link={{
-              to: "/design-system/components/$group/$component",
-              params: { group: row.group, component: row.id }
-            }}
+            link={{ href: `/design-system/components/${row.group}/${row.id}` }}
             disabled={!row.ready}
             title={row.title}
           >
@@ -255,10 +252,7 @@ export default function Example() {
               <Icon name="apps" size="var(--v4-size-icon-xl)" className="shrink-0" />
               <div className="min-w-0 flex-1">
                 <RowLink
-                  link={{
-                    to: "/design-system/components/$group/$component",
-                    params: { group: "data-display", component: "detail" }
-                  }}
+                  link={{ href: "/design-system/components/data-display/detail" }}
                   chevron={false}
                 >
                   Detail

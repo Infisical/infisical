@@ -154,7 +154,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/multi-select/default.tsx`; its relative imports are generated for that exact path. States: controlled, keyboard.
 
-Registry items used: @infisical/field, @infisical/multi-select. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/multi-select. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -217,7 +217,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/multi-select/sizes.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/multi-select. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/multi-select. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { MultiSelect } from "../../../../components/v4/ui/multi-select";
@@ -250,7 +250,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/multi-select/environments.tsx`; its relative imports are generated for that exact path. States: empty, controlled.
 
-Registry items used: @infisical/field, @infisical/multi-select. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/multi-select. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

@@ -105,7 +105,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/input-otp/default.tsx`; its relative imports are generated for that exact path. States: default, disabled, invalid.
 
-Registry items used: @infisical/input-otp, @infisical/label. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/input-otp, @cipher/label. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Fragment } from "react";
@@ -181,7 +181,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/input-otp/controlled.tsx`; its relative imports are generated for that exact path. States: controlled, keyboard, success.
 
-Registry items used: @infisical/input-otp, @infisical/label. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/input-otp, @cipher/label. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

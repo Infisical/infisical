@@ -141,7 +141,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/select/default.tsx`; its relative imports are generated for that exact path. States: default, controlled.
 
-Registry items used: @infisical/field, @infisical/input, @infisical/select. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/input, @cipher/select. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -179,7 +179,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/select/sizes.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/field, @infisical/select. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/select. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
@@ -216,7 +216,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/select/metadata.tsx`; its relative imports are generated for that exact path. States: default, overflow.
 
-Registry items used: @infisical/field, @infisical/select. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/select. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
@@ -266,7 +266,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/select/states.tsx`; its relative imports are generated for that exact path. States: empty, disabled, invalid.
 
-Registry items used: @infisical/field, @infisical/select. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/select. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
@@ -312,7 +312,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/select/accessible-name.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/select. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/select. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Select } from "../../../../components/v4/ui/select";

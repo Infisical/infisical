@@ -1,0 +1,22 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "route-progress",
+  "type": "registry:ui",
+  "registryDependencies": [
+    "@cipher/cipher-base"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/ui/route-progress.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/route-progress.tsx",
+      "content": "import * as React from \"react\";\n\nimport { cn } from \"../lib/utils\";\n\nimport styles from \"./route-progress.module.css\";\n\nexport type RouteProgressProps = {\n  /** Whether a navigation is resolving; the app reads it from its router. */\n  pending: boolean;\n  className?: string;\n};\n\n/** A thin bar along the top of the viewport while the router resolves a navigation. */\nexport function RouteProgress({ pending, className }: RouteProgressProps) {\n  const [run, setRun] = React.useState(0);\n  React.useEffect(() => {\n    if (pending) setRun((current) => current + 1);\n  }, [pending]);\n  let state = \"idle\";\n  if (pending) state = \"loading\";\n  else if (run > 0) state = \"done\";\n  return (\n    <div\n      aria-hidden=\"true\"\n      data-slot=\"route-progress\"\n      data-state={state}\n      className={cn(styles.progress, className)}\n    >\n      <div key={run} className={styles.bar} />\n    </div>\n  );\n}\nRouteProgress.displayName = \"RouteProgress\";\n"
+    },
+    {
+      "path": "src/components/v4/ui/route-progress.module.css",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/route-progress.module.css",
+      "content": ".progress {\n  position: fixed;\n  inset: 0 0 auto;\n  z-index: 50;\n  height: var(--v4-space-2);\n  overflow: hidden;\n  opacity: 0;\n  pointer-events: none;\n  transition: opacity var(--v4-duration-moderate) var(--v4-ease-fade);\n}\n.progress[data-state=\"loading\"] {\n  opacity: 1;\n  transition-delay: var(--v4-duration-slow);\n}\n.bar {\n  height: 100%;\n  background: var(--v4-ink);\n  transform: scaleX(0);\n  transform-origin: left;\n}\n.progress[data-state=\"loading\"] > .bar {\n  animation: trickle calc(var(--v4-duration-slow) * 40) var(--v4-ease-exit) forwards;\n}\n.progress[data-state=\"done\"] > .bar {\n  transform: scaleX(1);\n}\n@keyframes trickle {\n  to {\n    transform: scaleX(0.9);\n  }\n}\n@media (prefers-reduced-motion: reduce) {\n  .progress,\n  .progress[data-state=\"loading\"] {\n    transition-duration: 0s;\n  }\n  .progress[data-state=\"loading\"] > .bar {\n    animation: none;\n    transform: scaleX(1);\n  }\n}\n"
+    }
+  ]
+}

@@ -138,11 +138,10 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/breadcrumb/default.tsx`; its relative imports are generated for that exact path. States: controlled, overflow, keyboard.
 
-Registry items used: @infisical/breadcrumb. Additional packages: @tanstack/react-router@^1.95.1. Install every listed item before compiling this example.
+Registry items used: @cipher/breadcrumb. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
-import { linkOptions } from "@tanstack/react-router";
 
 import { Breadcrumb } from "../../../../components/v4/ui/breadcrumb";
 
@@ -176,10 +175,7 @@ export default function Example() {
             items={[
               {
                 label: org === "acme" ? "Acme Corp" : "Globex",
-                link: linkOptions({
-                  to: "/design-system/components/$group/$component",
-                  params: { group: "navigation", component: "breadcrumb" }
-                }),
+                link: { href: "/design-system/components/navigation/breadcrumb" },
                 switcher: {
                   label: "Switch organization",
                   value: org,
@@ -191,10 +187,7 @@ export default function Example() {
                   actions: [
                     {
                       label: "Organization settings",
-                      link: linkOptions({
-                        to: "/design-system/components/$group/$component",
-                        params: { group: "navigation", component: "top-bar" }
-                      })
+                      link: { href: "/design-system/components/navigation/top-bar" }
                     }
                   ]
                 }

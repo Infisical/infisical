@@ -110,7 +110,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/card/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/card, @infisical/item. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/card, @cipher/item. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import {
@@ -206,7 +206,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/card/link.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @infisical/badge, @infisical/button, @infisical/card, @infisical/icon, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/button, @cipher/card, @cipher/icon, @cipher/text. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";
@@ -225,10 +225,7 @@ export default function Example() {
               <Icon name="apps" size="var(--v4-size-icon-xl)" className="shrink-0" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <CardLink
-                  link={{
-                    to: "/design-system/components/$group/$component",
-                    params: { group: "data-display", component: "detail" }
-                  }}
+                  link={{ href: "/design-system/components/data-display/detail" }}
                 >
                   Detail
                 </CardLink>
@@ -265,10 +262,7 @@ export default function Example() {
               <Icon name="apps" size="var(--v4-size-icon-xl)" className="shrink-0" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <CardLink
-                  link={{
-                    to: "/design-system/components/$group/$component",
-                    params: { group: "data-display", component: "detail" }
-                  }}
+                  link={{ href: "/design-system/components/data-display/detail" }}
                   disabled
                 >
                   Unreleased page
@@ -291,7 +285,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/card/band-actions.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/card, @infisical/input. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/card, @cipher/input. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";

@@ -121,7 +121,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/toggle-group/default.tsx`; its relative imports are generated for that exact path. States: default, keyboard.
 
-Registry items used: @infisical/toggle-group. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/toggle-group. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { ToggleGroup, ToggleGroupItem } from "../../../../components/v4/ui/toggle-group";
@@ -163,7 +163,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/toggle-group/permissions.tsx`; its relative imports are generated for that exact path. States: controlled, disabled, keyboard.
 
-Registry items used: @infisical/toggle-group. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/toggle-group. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

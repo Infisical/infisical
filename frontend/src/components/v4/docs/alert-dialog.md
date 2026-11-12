@@ -95,7 +95,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/alert-dialog/default.tsx`; its relative imports are generated for that exact path. States: default, loading, error, keyboard.
 
-Registry items used: @infisical/alert, @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/alert, @cipher/alert-dialog, @cipher/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -156,7 +156,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/alert-dialog/loading.tsx`; its relative imports are generated for that exact path. States: default, loading.
 
-Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/alert-dialog, @cipher/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
@@ -217,7 +217,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/alert-dialog/sizes.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/alert-dialog, @cipher/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as UI from "../../../../components/v4/ui/alert-dialog";
@@ -265,7 +265,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/alert-dialog/content.tsx`; its relative imports are generated for that exact path. States: overflow.
 
-Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/alert-dialog, @cipher/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as UI from "../../../../components/v4/ui/alert-dialog";
@@ -302,7 +302,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/alert-dialog/confirm.tsx`; its relative imports are generated for that exact path. States: default, disabled, loading, keyboard.
 
-Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/alert-dialog, @cipher/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
@@ -391,7 +391,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/alert-dialog/discard.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/alert-dialog, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/alert-dialog, @cipher/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

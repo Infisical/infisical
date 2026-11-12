@@ -95,7 +95,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/middle-truncate/default.tsx`; its relative imports are generated for that exact path. States: overflow.
 
-Registry items used: @infisical/middle-truncate, @infisical/sensitive-editor. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/middle-truncate, @cipher/sensitive-editor. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { MiddleTruncate } from "../../../../components/v4/ui/middle-truncate";
@@ -125,7 +125,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/middle-truncate/states.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/middle-truncate, @infisical/sensitive-editor. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/middle-truncate, @cipher/sensitive-editor. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { MiddleTruncate } from "../../../../components/v4/ui/middle-truncate";

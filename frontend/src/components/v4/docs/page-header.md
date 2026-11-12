@@ -103,7 +103,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/page-header/default.tsx`; its relative imports are generated for that exact path. States: default, overflow.
 
-Registry items used: @infisical/badge, @infisical/button, @infisical/item, @infisical/page-header, @infisical/tabs. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/button, @cipher/item, @cipher/page-header, @cipher/tabs. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";

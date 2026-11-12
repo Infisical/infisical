@@ -92,7 +92,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/error-state/default.tsx`; its relative imports are generated for that exact path. States: default, error.
 
-Registry items used: @infisical/error-state, @infisical/sidebar, @infisical/top-bar. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/error-state, @cipher/sidebar, @cipher/top-bar. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -209,7 +209,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/error-state/long-stack.tsx`; its relative imports are generated for that exact path. States: error.
 
-Registry items used: @infisical/error-state. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/error-state. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { ErrorState } from "../../../../components/v4/patterns/error-state";
@@ -259,7 +259,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/error-state/forbidden.tsx`; its relative imports are generated for that exact path. States: default, disabled.
 
-Registry items used: @infisical/button, @infisical/error-state, @infisical/sidebar, @infisical/top-bar. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/error-state, @cipher/sidebar, @cipher/top-bar. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
