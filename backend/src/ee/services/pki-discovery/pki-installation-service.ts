@@ -1,4 +1,4 @@
-import { ForbiddenError, subject } from "@casl/ability";
+import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType, ResourceType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -14,6 +14,11 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import {
+  buildCertificateBundleSubject,
+  buildCertificateReadSubject,
+  canReadCertificatePrivateKey
+} from "@app/services/certificate/certificate-permission-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TPkiCertificateInstallationDALFactory } from "./pki-certificate-installation-dal";
@@ -149,22 +154,8 @@ export const pkiInstallationServiceFactory = ({
 
     const certificates = await Promise.all(
       installation.certificates.map(async ({ metadata, ...cert }) => {
-        const altNames = cert.altNames?.split(",").map((s: string) => s.trim());
-        const readSubject = subject(ProjectPermissionSub.Certificates, {
-          commonName: cert.commonName ?? undefined,
-          altNames,
-          serialNumber: cert.serialNumber ?? undefined,
-          metadata
-        });
-        // getCertPkcs12 goes through getCertBundle, whose subject also has friendlyName and status
-        const bundleSubject = subject(ProjectPermissionSub.Certificates, {
-          commonName: cert.commonName ?? undefined,
-          altNames,
-          serialNumber: cert.serialNumber ?? undefined,
-          friendlyName: cert.friendlyName ?? undefined,
-          status: cert.status ?? undefined,
-          metadata
-        });
+        const readSubject = buildCertificateReadSubject(cert, metadata);
+        const bundleSubject = buildCertificateBundleSubject(cert, metadata);
 
         const appPermission = cert.applicationId ? await getApplicationPermission(cert.applicationId) : null;
         const canReadViaApplication = Boolean(
@@ -175,14 +166,12 @@ export const pkiInstallationServiceFactory = ({
 
         const canReadBundle =
           permission.can(ProjectPermissionCertificateActions.Read, bundleSubject) || canReadViaApplication;
-        const canReadPrivateKey = cert.applicationId
-          ? Boolean(
-              appPermission?.can(
-                ResourcePermissionCertificateActions.ReadPrivateKey,
-                ResourcePermissionSub.Certificates
-              )
-            )
-          : permission.can(ProjectPermissionCertificateActions.ReadPrivateKey, bundleSubject);
+        const canReadPrivateKey = canReadCertificatePrivateKey({
+          applicationId: cert.applicationId,
+          projectPermission: permission,
+          applicationPermission: appPermission,
+          certSubject: bundleSubject
+        });
         const canExportPkcs12 = cert.hasPrivateKey && canReadBundle && canReadPrivateKey;
 
         return { ...cert, canRead, canExportPkcs12 };
