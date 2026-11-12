@@ -112,6 +112,7 @@ export type TPullRequestCheckRunResult = {
   title: string;
   summary: string;
   findings?: TCheckRunFinding[];
+  oversizedFiles?: TGitHubOversizedFile[];
   offerSkipActions?: boolean;
 };
 
@@ -611,6 +612,16 @@ const toCheckRunAnnotations = (findings: TCheckRunFinding[]) =>
     message: `${description.replace(/\.+$/, "")}. Found in commit ${commit.slice(0, 7)}.`
   }));
 
+const toOversizedFileAnnotations = (oversizedFiles: TGitHubOversizedFile[]) =>
+  oversizedFiles.map(({ commitSha, filename }) => ({
+    path: filename,
+    start_line: 1,
+    end_line: 1,
+    annotation_level: "warning" as const,
+    title: "File not scanned for secrets",
+    message: `This file is larger than ${MISSING_PATCH_MAX_FILE_MB} MB and its change in commit ${commitSha.slice(0, 7)} is too large for GitHub to include, so Infisical didn't scan it. Check it for secrets before merging.`
+  }));
+
 const escapeMarkdownTableCell = (value: string) => value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 
 // GitHub splits table cells on "|" even inside a link, so it is encoded along with the characters that end a link.
@@ -632,7 +643,7 @@ const getOversizedFilesNote = (oversizedFiles: TGitHubOversizedFile[]) => {
   const unlistedCount = oversizedFiles.length - listed.length;
 
   return [
-    `Infisical didn't scan ${oversizedFiles.length} file(s) larger than ${MISSING_PATCH_MAX_FILE_MB} MB whose changes are too large for GitHub to include:`,
+    `Infisical didn't scan ${oversizedFiles.length} file(s) larger than ${MISSING_PATCH_MAX_FILE_MB} MB whose changes are too large for GitHub to include. Check them for secrets before merging:`,
     `\`\`\`\n${listed.join("\n")}\n\`\`\``,
     unlistedCount ? `${unlistedCount} more file(s) were not scanned.` : ""
   ]
@@ -666,6 +677,12 @@ export const getPullRequestScanCheckRunResult = ({
   ]
     .filter(Boolean)
     .join("\n\n");
+  const truncationAlert = truncationNote
+    ? `> [!WARNING]\n${truncationNote
+        .split("\n")
+        .map((line) => (line ? `> ${line}` : ">"))
+        .join("\n")}`
+    : "";
 
   const findings = allFindings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
   const skippedCount = allFindings.length - findings.length;
@@ -676,10 +693,11 @@ export const getPullRequestScanCheckRunResult = ({
       title: `${skippedCount} secret(s) skipped`,
       summary: [
         `Found ${skippedCount} secret(s) in the commits of this pull request, all marked as false positives or ignored in Infisical.`,
-        truncationNote
+        truncationAlert
       ]
         .filter(Boolean)
-        .join("\n\n")
+        .join("\n\n"),
+      oversizedFiles
     };
   }
 
@@ -687,8 +705,11 @@ export const getPullRequestScanCheckRunResult = ({
     if (truncationNote) {
       return {
         conclusion: "neutral",
-        title: "Scan incomplete",
-        summary: `No secrets found in the scanned commits.\n\n${truncationNote}`
+        title: oversizedFiles.length
+          ? `No secrets found, ${oversizedFiles.length} file(s) not scanned`
+          : "Scan incomplete",
+        summary: `No secrets found in the scanned commits.\n\n${truncationAlert}`,
+        oversizedFiles
       };
     }
 
@@ -703,7 +724,7 @@ export const getPullRequestScanCheckRunResult = ({
     `Found ${findings.length} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
     "If the findings are false positives or safe to ignore, use Skip: False positive or Skip: Ignore above to mark them in Infisical and re-run this check. To stop a value from being reported anywhere, add it to the allowlist in your Infisical secret scanning configuration.",
     skippedCount ? `${skippedCount} more secret(s) were marked as false positives or ignored in Infisical.` : "",
-    truncationNote
+    truncationAlert
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -758,6 +779,7 @@ export const getPullRequestScanCheckRunResult = ({
     title: `${findings.length} secret(s) found`,
     summary,
     findings,
+    oversizedFiles,
     offerSkipActions: true
   };
 };
@@ -788,7 +810,10 @@ export const completePullRequestCheckRun = async ({
   const octokit = getGitHubRadarInstallationOctokit(installationId);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
-  const annotations = toCheckRunAnnotations((result.findings ?? []).slice(0, CHECK_RUN_MAX_ANNOTATIONS));
+  const annotations = [
+    ...toCheckRunAnnotations(result.findings ?? []),
+    ...toOversizedFileAnnotations(result.oversizedFiles ?? [])
+  ].slice(0, CHECK_RUN_MAX_ANNOTATIONS);
   const [firstBatch = [], ...remainingBatches] = chunkArray(annotations, CHECK_RUN_ANNOTATIONS_PER_REQUEST);
 
   await octokit.checks.update({

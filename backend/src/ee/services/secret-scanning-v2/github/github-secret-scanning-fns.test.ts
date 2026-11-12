@@ -16,7 +16,7 @@ import {
 type TCheckRunParams = {
   name?: string;
   conclusion?: string;
-  output: { annotations: { message: string }[] };
+  output: { annotations: { message: string; path?: string; annotation_level?: string }[] };
   actions?: { identifier: string }[];
 };
 
@@ -152,12 +152,26 @@ describe("getPullRequestScanCheckRunResult", () => {
     });
 
     expect(result.conclusion).toBe("neutral");
-    expect(result.title).toBe("Scan incomplete");
-    expect(result.summary).toContain("Infisical scanned the first 3,000 files of each: bbbbbbb.");
+    expect(result.title).toBe("No secrets found, 12 file(s) not scanned");
+    expect(result.summary).toContain("\n\n> [!WARNING]\n> ");
+    expect(result.summary).toContain("> 1 commit(s) change more than 3,000 files");
     expect(result.summary).toContain("didn't scan 12 file(s) larger than 50 MB");
-    expect(result.summary).toContain("aaaaaaa gen-9.go\n```");
+    expect(result.summary).toContain("> aaaaaaa gen-9.go\n> ```");
     expect(result.summary).not.toContain("gen-10.go");
-    expect(result.summary).toContain("2 more file(s) were not scanned.");
+    expect(result.summary).toContain("> 2 more file(s) were not scanned.");
+    expect(result.oversizedFiles).toHaveLength(12);
+  });
+
+  test("says the scan is incomplete when only commits were left out", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: [],
+      scannedCommitCount: 1,
+      totalCommitCount: 1,
+      truncatedCommitShas: ["b".repeat(40)]
+    });
+
+    expect(result.conclusion).toBe("neutral");
+    expect(result.title).toBe("Scan incomplete");
   });
 
   test("still fails on findings when files couldn't be scanned", () => {
@@ -250,6 +264,26 @@ describe("completePullRequestCheckRun", () => {
     ]);
     expect(second.actions).toBeUndefined();
     expect(JSON.stringify(checksUpdate.mock.calls)).not.toContain(SECRET_VALUE);
+  });
+
+  test("marks each file it couldn't scan with a warning annotation", async () => {
+    await completePullRequestCheckRun({
+      installationId: "1",
+      repositoryFullName: "acme/api",
+      checkRunId: 99,
+      result: getPullRequestScanCheckRunResult({
+        findings: [makeFinding(0)],
+        scannedCommitCount: 1,
+        totalCommitCount: 1,
+        oversizedFiles: [{ commitSha: "a".repeat(40), filename: "data/app-logs.log" }]
+      })
+    });
+
+    const { annotations } = checksUpdate.mock.calls[0][0].output;
+
+    expect(annotations.map((annotation) => annotation.annotation_level)).toEqual(["failure", "warning"]);
+    expect(annotations[1]).toMatchObject({ path: "data/app-logs.log" });
+    expect(annotations[1].message).toContain("commit aaaaaaa");
   });
 });
 
