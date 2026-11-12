@@ -50,6 +50,7 @@ import {
 } from "@app/context";
 import {
   CaType,
+  DEFAULT_CRL_VALIDITY_DAYS,
   MAX_DISTRIBUTION_POINT_URL_LENGTH,
   MAX_INTERNAL_CA_DISTRIBUTION_POINT_URLS,
   useGetCa,
@@ -57,6 +58,10 @@ import {
 } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import {
+  CrlValidityDaysField,
+  crlValidityDaysSchema
+} from "@app/pages/cert-manager/components/CrlValidityDaysField";
 
 type Props = {
   caId: string;
@@ -93,7 +98,8 @@ const editSchema = z.object({
         }
         seen.add(normalized);
       });
-    })
+    }),
+  crlValidityDays: crlValidityDaysSchema
 });
 
 type EditFormData = z.infer<typeof editSchema>;
@@ -112,6 +118,7 @@ export const CaRevocationSection = ({ caId }: Props) => {
     control,
     handleSubmit,
     reset,
+    trigger,
     formState: { isSubmitting }
   } = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
@@ -121,7 +128,8 @@ export const CaRevocationSection = ({ caId }: Props) => {
         ca?.configuration.disableManagedCrlDistributionPointUrl ?? false,
       crlDistributionPointUrls: (ca?.configuration.crlDistributionPointUrls ?? []).map((value) => ({
         value
-      }))
+      })),
+      crlValidityDays: ca?.configuration.crlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS
     }
   });
 
@@ -133,6 +141,10 @@ export const CaRevocationSection = ({ caId }: Props) => {
   const isOcspEnabled = ca.configuration.isOcspEnabled ?? false;
   const ocspResponderUrl = `${window.origin}/api/v1/cert-manager/ocsp/${ca.id}`;
   const mirrorUrls = ca.configuration.crlDistributionPointUrls ?? [];
+  const crlValidityDays = ca.configuration.crlValidityDays ?? DEFAULT_CRL_VALIDITY_DAYS;
+  const isCaExpired = Boolean(
+    ca.configuration.notAfter && new Date(ca.configuration.notAfter) <= new Date()
+  );
 
   const handleAddCrlUrl = () => {
     if (!subscription.caCrl) {
@@ -157,7 +169,8 @@ export const CaRevocationSection = ({ caId }: Props) => {
         (ca.configuration.disableManagedCrlDistributionPointUrl ?? false) && {
         disableManagedCrlDistributionPointUrl: values.disableManagedCrlDistributionPointUrl
       }),
-      ...(isMirrorUrlListChanged && { crlDistributionPointUrls: submittedMirrorUrls })
+      ...(isMirrorUrlListChanged && { crlDistributionPointUrls: submittedMirrorUrls }),
+      ...(values.crlValidityDays !== crlValidityDays && { crlValidityDays: values.crlValidityDays })
     };
 
     if (Object.keys(changedConfiguration).length === 0) {
@@ -166,13 +179,21 @@ export const CaRevocationSection = ({ caId }: Props) => {
     }
 
     try {
-      await updateCa({
+      const { crlWarning } = await updateCa({
         id: ca.id,
         type: CaType.INTERNAL,
         configuration: changedConfiguration as TInternalCertificateAuthority["configuration"]
       });
-      createNotification({ text: "Revocation settings updated", type: "success" });
       handlePopUpToggle("editRevocation", false);
+      if (crlWarning) {
+        createNotification({
+          title: "Revocation settings updated, CRL not regenerated",
+          text: crlWarning,
+          type: "warning"
+        });
+        return;
+      }
+      createNotification({ text: "Revocation settings updated", type: "success" });
     } catch {
       handlePopUpToggle("editRevocation", true);
     }
@@ -243,6 +264,12 @@ export const CaRevocationSection = ({ caId }: Props) => {
                 )}
               </DetailValue>
             </Detail>
+            <Detail>
+              <DetailLabel>CRL Validity</DetailLabel>
+              <DetailValue>
+                {crlValidityDays} {crlValidityDays === 1 ? "day" : "days"}
+              </DetailValue>
+            </Detail>
           </DetailGroup>
         </CardContent>
       </Card>
@@ -258,7 +285,8 @@ export const CaRevocationSection = ({ caId }: Props) => {
           <DialogHeader>
             <DialogTitle>Edit Revocation</DialogTitle>
             <DialogDescription>
-              Changes apply to certificates issued after you save.
+              OCSP and CRL URL changes apply to certificates issued after you save. Changing the CRL
+              validity regenerates the CRL.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(onEditSubmit)} className="flex flex-col gap-4">
@@ -362,6 +390,13 @@ export const CaRevocationSection = ({ caId }: Props) => {
                   </FieldDescription>
                 </FieldContent>
               </Field>
+
+              <CrlValidityDaysField
+                control={control}
+                name="crlValidityDays"
+                trigger={trigger}
+                isCaExpired={isCaExpired}
+              />
             </FieldGroup>
 
             <DialogFooter>

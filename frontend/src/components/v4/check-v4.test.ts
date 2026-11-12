@@ -13,6 +13,7 @@ const ui = "src/components/v4/ui/sample.tsx";
 const css = "src/components/v4/ui/sample.module.css";
 const example = "src/pages/design-system/examples/sample/default.tsx";
 const page = "src/pages/v4/sample/page.tsx";
+const pageCss = "src/pages/v4/sample/page.module.css";
 
 const checksIn = (file: string, text: string) =>
   scanSource(file, text).map((finding) => finding.check);
@@ -217,6 +218,43 @@ const cases: Record<string, { bad: [string, string][]; good: [string, string][] 
         '<DropdownMenuItem variant="destructive">\n  <Icon name="trash" />\n  Delete token\n</DropdownMenuItem>'
       ],
       [example, 'const removed = { label: "Remove user", icon: "trash" };']
+    ]
+  },
+  "page-css-frame": {
+    bad: [
+      [
+        pageCss,
+        ".pane { padding: var(--v4-space-16); border: var(--v4-size-control-border) solid var(--v4-bad-line); }"
+      ],
+      [pageCss, ".box { border: 1px dashed var(--v4-line-soft); }"],
+      [
+        pageCss,
+        ".panel {\n  border-top: 1px solid var(--v4-line-soft);\n  border-right: 1px solid var(--v4-line-soft);\n  border-bottom: 1px solid var(--v4-line-soft);\n  border-left: 1px solid var(--v4-line-soft);\n}"
+      ],
+      [
+        pageCss,
+        ".well { border-block: 1px solid var(--v4-line-soft); border-inline: 1px solid var(--v4-line-soft); }"
+      ],
+      [pageCss, ".frame { outline: 1px solid var(--v4-line-soft); }"]
+    ],
+    good: [
+      [
+        pageCss,
+        ".head { border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft); }"
+      ],
+      [pageCss, ".pane { border: 0; background: var(--v4-tint); }"],
+      [pageCss, ".row { border: var(--v4-size-control-border) solid transparent; }"],
+      [
+        pageCss,
+        ".row:focus-visible { outline: var(--v4-size-focus-ring) solid var(--v4-focus-ring); }"
+      ],
+      [pageCss, '.pane[data-side="next"] { border-color: var(--v4-ok-line); }'],
+      [
+        pageCss,
+        "/* v4-check-ignore page-css-frame -- a dropzone keeps its dashed edge everywhere */\n.dropzone { border: 1px dashed var(--v4-line-soft); }"
+      ],
+      [css, ".face { border: var(--v4-size-control-border) solid var(--v4-line-soft); }"],
+      [page, '<div className="border border-[color:var(--v4-line-soft)]" />']
     ]
   },
   "nested-frame": {

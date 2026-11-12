@@ -35,6 +35,7 @@ import {
   TAgentVaultSkillScoped,
   TAgentVaultSkillVersion,
   TAgentVaultSkillWithBundles,
+  TAddBundleSkillsDTO,
   TBundleSkillDTO,
   TBundleSkillsDTO,
   TCreateSkillDTO,
@@ -523,8 +524,11 @@ export const agentVaultSkillServiceFactory = ({
 
   // The bundle is locked first, as every other bundle write does, then the skill, so a skill delete can't run
   // between the check and the insert.
-  const addToBundle = async ({ accessBundleId, skillId, ...scoped }: TBundleSkillDTO) => {
+  // All or nothing: one skill that's missing, or going over the bundle's limit, stops the rest. Skills already in the
+  // bundle are skipped.
+  const addToBundle = async ({ accessBundleId, skillIds, ...scoped }: TAddBundleSkillsDTO) => {
     await $authorizeBundleLink(scoped);
+    const requestedIds = [...new Set(skillIds.map((id) => id.toLowerCase()))];
 
     const add = () =>
       agentVaultSkillDAL.transaction(async (tx) => {
@@ -534,33 +538,56 @@ export const agentVaultSkillServiceFactory = ({
         );
         if (!bundle) throw bundleNotFound(accessBundleId);
 
-        const skill = await agentVaultSkillDAL.lockByIdInProject({ id: skillId, projectId: scoped.projectId }, tx);
-        if (!skill) throw skillNotFound(skillId);
+        // Locked in ID order, so two requests naming the same skills can't each hold one the other needs.
+        const lockedById = new Map<string, { id: string; name: string; description: string }>();
+        for (const id of [...requestedIds].sort()) {
+          // eslint-disable-next-line no-await-in-loop
+          const skill = await agentVaultSkillDAL.lockByIdInProject({ id, projectId: scoped.projectId }, tx);
+          if (!skill) throw skillNotFound(id);
+          lockedById.set(id, skill);
+        }
 
-        const existing = await agentVaultSkillBundleDAL.findOne({ accessBundleId: bundle.id, skillId: skill.id }, tx);
-        if (existing) {
-          throw new ConflictError({
-            message: `The skill '${skill.name}' is already in the access bundle '${bundle.name}'.`
-          });
+        const toAdd: { id: string; name: string; description: string }[] = [];
+        const skipped: { id: string; name: string }[] = [];
+        for (const id of requestedIds) {
+          const skill = lockedById.get(id) as { id: string; name: string; description: string };
+          // eslint-disable-next-line no-await-in-loop
+          if (await agentVaultSkillBundleDAL.findOne({ accessBundleId: bundle.id, skillId: skill.id }, tx)) {
+            skipped.push({ id: skill.id, name: skill.name });
+          } else {
+            toAdd.push(skill);
+          }
         }
 
         const bundleSkillCount = await agentVaultSkillBundleDAL.countForBundle(bundle.id, tx);
-        if (bundleSkillCount >= AGENT_VAULT_MAX_SKILLS_PER_BUNDLE) {
+        if (bundleSkillCount + toAdd.length > AGENT_VAULT_MAX_SKILLS_PER_BUNDLE) {
+          const room = Math.max(AGENT_VAULT_MAX_SKILLS_PER_BUNDLE - bundleSkillCount, 0);
           throw new BadRequestError({
-            message: `This access bundle already has ${AGENT_VAULT_MAX_SKILLS_PER_BUNDLE} skills, the maximum. Remove one to add another.`
+            message:
+              room === 0
+                ? `This access bundle already has ${AGENT_VAULT_MAX_SKILLS_PER_BUNDLE} skills, the maximum. Remove one to add another.`
+                : `This access bundle has ${bundleSkillCount} skills and can hold ${AGENT_VAULT_MAX_SKILLS_PER_BUNDLE}, so only ${room} more can be added.`
           });
         }
 
-        await agentVaultSkillBundleDAL.create({ accessBundleId: bundle.id, skillId: skill.id }, tx);
-        const latest = await agentVaultSkillVersionDAL.findLatest(skill.id, tx);
-        return { skill: toBundleSkill(skill, latest), accessBundle: { id: bundle.id, name: bundle.name } };
+        const skills: TAgentVaultBundleSkill[] = [];
+        for (const skill of toAdd) {
+          // eslint-disable-next-line no-await-in-loop
+          await agentVaultSkillBundleDAL.create({ accessBundleId: bundle.id, skillId: skill.id }, tx);
+          // eslint-disable-next-line no-await-in-loop
+          const latest = await agentVaultSkillVersionDAL.findLatest(skill.id, tx);
+          skills.push(toBundleSkill(skill, latest));
+        }
+        return { skills, skipped, accessBundle: { id: bundle.id, name: bundle.name } };
       });
 
     try {
       return await add();
     } catch (err) {
       if (isUniqueViolation(err)) {
-        throw new ConflictError({ message: "This skill is already in this access bundle." });
+        throw new ConflictError({
+          message: "One of these skills was added to this access bundle at the same time. Try again."
+        });
       }
       throw err;
     }

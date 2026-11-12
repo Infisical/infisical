@@ -132,7 +132,7 @@ export type TCreateSecretSyncDTO = DiscriminativePick<
   | "syncOptions"
   | "destination"
   | "isAutoSyncEnabled"
-> & { environment: string; secretPath: string; projectId: string };
+> & { environment: string; secretPath: string; includeAllSubFolders?: boolean; projectId: string };
 
 export type TUpdateSecretSyncDTO = Partial<
   Omit<TCreateSecretSyncDTO, "destination" | "projectId">

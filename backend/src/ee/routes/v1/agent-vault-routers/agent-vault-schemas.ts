@@ -1205,7 +1205,6 @@ const variableReferencesField = <TType extends AgentVaultServiceType, TOptional 
 
 const serviceResponseBase = {
   id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
-  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
   description: z.string().nullable().describe(AGENT_VAULT.SERVICE.descriptionRead),
   createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
@@ -1264,8 +1263,6 @@ export const agentVaultServiceResponseSchema = <T extends z.ZodRawShape, TOption
   { optionalVariableReferences }: { optionalVariableReferences: TOptional }
 ) => serviceResponseUnion({ ...serviceResponseBase, ...extra }, serviceResponseTypeExtras(optionalVariableReferences));
 
-export const AgentVaultServiceSchema = agentVaultServiceResponseSchema({}, { optionalVariableReferences: false });
-
 export const AgentVaultVariableKeySchema = z
   .string()
   .trim()
@@ -1293,8 +1290,13 @@ export const AgentVaultVariableSchema = z.object({
       name: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceName),
       type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.VARIABLE.usedByServiceType),
       hostPattern: z.string().nullable().describe(AGENT_VAULT.VARIABLE.usedByServiceHostPattern),
-      accessBundleId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleId),
-      accessBundleName: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleName)
+      accessBundles: z
+        .object({
+          id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleId),
+          name: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleName)
+        })
+        .array()
+        .describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundles)
     })
     .array()
     .describe(AGENT_VAULT.VARIABLE.usedByServices),
@@ -1338,6 +1340,29 @@ export const AgentVaultPersonalValuesSchema = z
       .describe(AGENT_VAULT.PERSONAL_VALUE.fields)
   })
   .describe(AGENT_VAULT.PERSONAL_VALUE.personalValues);
+
+// A service in the project, with the access bundles it is in. Only reads carry the caller's own setup status, and only
+// an admin's carry variableReferences.
+export const AgentVaultProjectServiceSchema = agentVaultServiceResponseSchema(
+  {
+    accessBundles: z
+      .object({
+        id: z.string().uuid().describe(AGENT_VAULT.SERVICE.accessBundleId),
+        name: z.string().describe(AGENT_VAULT.SERVICE.accessBundleName)
+      })
+      .array()
+      .describe(AGENT_VAULT.SERVICE.accessBundles),
+    personalValues: AgentVaultPersonalValuesSchema.nullable().optional()
+  },
+  { optionalVariableReferences: true }
+);
+
+// Enough for a bundle page that creates a service into several bundles at once, without a request that names every
+// bundle in a project.
+export const AGENT_VAULT_MAX_BUNDLES_PER_SERVICE_CREATE = 25;
+export const AGENT_VAULT_MAX_ADDS_PER_BUNDLE_REQUEST = 25;
+
+export const AgentVaultSkippedBundleItemSchema = z.object({ id: z.string().uuid(), name: z.string() });
 
 // A username follows the admin's rule for one, a token or password the admin's rule for those.
 export const AgentVaultPersonalValueInputSchema = z.discriminatedUnion("field", [

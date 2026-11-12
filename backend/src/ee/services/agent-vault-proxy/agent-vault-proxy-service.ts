@@ -56,9 +56,10 @@ import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault
 import { describeSessionForAudit, hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionInlineServiceDALFactory } from "../agent-vault-session/agent-vault-session-inline-service-dal";
 import {
-  parseInlineServiceSecrets,
+  openInlineServiceSecrets,
   toInlineServiceFacts,
-  toResolvedInlineService
+  toResolvedInlineService,
+  withoutShadowedBundleServices
 } from "../agent-vault-session/agent-vault-session-inline-service-fns";
 import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
@@ -994,18 +995,21 @@ export const agentVaultProxyServiceFactory = ({
       sessionToken
     });
 
-    const rows = await agentVaultResolveDAL.findResolvableServices({
-      sessionId: session.id,
-      projectId: session.projectId,
-      accessBundleIds,
-      onPrimary
-    });
     // Starting a session with inline services is an admin's call, and like a grant it is re-checked on every resolve: an
     // owner who is no longer an admin keeps the session's bundle, if it has one, and loses its inline services until
     // they are an admin again.
     const inlineServiceRows = isOwnerAdmin
       ? await agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary })
       : [];
+    const rows = withoutShadowedBundleServices(
+      await agentVaultResolveDAL.findResolvableServices({
+        sessionId: session.id,
+        projectId: session.projectId,
+        accessBundleIds,
+        onPrimary
+      }),
+      inlineServiceRows
+    );
 
     // The values of whoever the session uses (its owner, or the user it acts for), read once: a member's OAuth
     // connection is refreshed below with the services' own tokens, and every value is applied after expansion.
@@ -1121,7 +1125,10 @@ export const agentVaultProxyServiceFactory = ({
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
       rows.some((row) => row.encryptedCredential || row.memberProvidedFields?.length) ||
-      inlineServiceRows.some((row) => row.encryptedSecrets) ||
+      inlineServiceRows.some(
+        (row) =>
+          !row.secretsDeletedAt && (row.encryptedCredential || row.customHeaders.length || row.substitutions.length)
+      ) ||
       customHeaderRows.length > 0 ||
       substitutionRows.length > 0 ||
       sessionLogKeyNeeded;
@@ -1138,7 +1145,11 @@ export const agentVaultProxyServiceFactory = ({
       if (!decryptor) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
       return JSON.parse(decryptor({ cipherTextBlob: encrypted }).toString("utf-8"));
     };
-    const $decryptValue = (encryptedValue: Buffer) => ($decryptJson(encryptedValue) as { value: string }).value;
+    // Only an inline service's values are ever deleted, and those are opened by openInlineServiceSecrets.
+    const $decryptValue = (encryptedValue: Buffer | null | undefined) => {
+      if (!encryptedValue) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
+      return ($decryptJson(encryptedValue) as { value: string }).value;
+    };
 
     const decryptedServices: TResolvedService[] = rows.map((row) => ({
       id: row.id,
@@ -1187,10 +1198,7 @@ export const agentVaultProxyServiceFactory = ({
     // Never expanded: an inline service's values were sent exactly as they are. After the bundle's services, so a host a
     // later bundle edit shares with one goes to the bundle's service, which the Go matcher picks on a tie by order.
     const inlineServices = inlineServiceRows.flatMap((row) => {
-      const resolved = toResolvedInlineService(
-        row,
-        row.encryptedSecrets ? parseInlineServiceSecrets($decryptJson(row.encryptedSecrets)) : null
-      );
+      const resolved = toResolvedInlineService(row, openInlineServiceSecrets(row, $decryptJson));
       if (!resolved) {
         logger.warn(
           `agentVaultResolve: inline service has no secrets to send, leaving it out [sessionId=${session.id}] [inlineServiceId=${row.id}]`
@@ -1382,19 +1390,21 @@ export const agentVaultProxyServiceFactory = ({
     const { accessBundleIds, isOwnerAdmin } = await $authorizeSessionOwner(session, project.orgId);
 
     const scope = { sessionId: session.id, projectId: session.projectId, accessBundleIds, onPrimary };
-    const [rows, bundles] = await Promise.all([
+    const [bundleRows, bundles, inlineRows] = await Promise.all([
       agentVaultResolveDAL.findResolvableServices(scope),
-      agentVaultResolveDAL.findReachableBundles(scope)
+      agentVaultResolveDAL.findReachableBundles(scope),
+      isOwnerAdmin ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary }) : []
     ]);
+    // The same services resolve sends: a bundle service the session sent one of its own by name for is left out.
+    const rows = withoutShadowedBundleServices(bundleRows, inlineRows);
     const serviceIds = rows.map((row) => row.id);
-    const [customHeaderRows, substitutionRows, personalValueRows, inlineRows, proxy] = await Promise.all([
+    const [customHeaderRows, substitutionRows, personalValueRows, proxy] = await Promise.all([
       agentVaultServiceCustomHeaderDAL.findByServiceIds(serviceIds),
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds),
       agentVaultPersonalValueDAL.findForResolve({
         serviceIds: rows.filter((row) => row.memberProvidedFields?.length).map((row) => row.id),
         owner: personalValuesOwner(session)
       }),
-      isOwnerAdmin ? agentVaultSessionInlineServiceDAL.findBySessionId(session.id, { onPrimary }) : [],
       proxyId ? agentVaultProxyDAL.findByIdWithOrg(proxyId) : undefined
     ]);
 

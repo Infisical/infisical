@@ -65,9 +65,15 @@ const SessionInlineServicesSchema = AgentVaultInlineServiceSchema.array().descri
   AGENT_VAULT.SESSION.inlineServicesRead
 );
 
+const SessionStatsSchema = z.object({
+  requests: z.number().describe(AGENT_VAULT.SESSION.statsRequests),
+  brokered: z.number().nullable().describe(AGENT_VAULT.SESSION.statsBrokered)
+});
+
 const SessionWithAccessBundleSchema = SessionSchema.extend({
   accessBundle: SessionAccessBundleSchema.nullable().describe(AGENT_VAULT.SESSION.accessBundleRead),
-  services: SessionInlineServicesSchema
+  services: SessionInlineServicesSchema,
+  stats: SessionStatsSchema.nullable().describe(AGENT_VAULT.SESSION.stats)
 });
 
 // CLI 0.43.132+ and the Python SDK send the list form. Keep until 2027-01-04, then remove.
@@ -100,7 +106,8 @@ const EXAMPLE_SESSION = {
   revokedAt: null,
   createdAt: "2026-10-31T18:00:00.000Z",
   accessBundle: EXAMPLE_ACCESS_BUNDLE,
-  services: []
+  services: [],
+  stats: { requests: 1284, brokered: 1102 }
 };
 
 const docsExample = (example: unknown) => JSON.stringify({ example });

@@ -1,9 +1,10 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 import { TReactQueryOptions } from "@app/types/reactQuery";
 
+import { TListActorProjectMembershipsParams } from "../projects/types";
 import {
   ClientSecretData,
   IdentityAccessToken,
@@ -62,8 +63,8 @@ export const identitiesKeys = {
     [{ identityId }, "identity-project-memberships"] as const,
   // The membership list is filtered to the viewing org (Membership.scopeOrgId),
   // so a sub-org and its parent must not share this cache entry.
-  getIdentityProjectMembershipsForOrg: (orgId: string, identityId: string) =>
-    [...identitiesKeys.getIdentityProjectMemberships(identityId), orgId] as const
+  getIdentityProjectMembershipsForOrg: (orgId: string, identityId: string, params: object = {}) =>
+    [...identitiesKeys.getIdentityProjectMemberships(identityId), orgId, params] as const
 };
 
 export const useGetOrgIdentityMembershipById = (identityId: string) => {
@@ -118,28 +119,38 @@ export const useCountOrgIdentityMemberships = (dto: TCountIdentitiesDTO) => {
   });
 };
 
-export const identityProjectMembershipsQuery = (orgId: string, identityId: string) =>
+export const identityProjectMembershipsQuery = (
+  orgId: string,
+  identityId: string,
+  params: TListActorProjectMembershipsParams = {}
+) =>
   queryOptions({
     enabled: Boolean(identityId),
-    queryKey: identitiesKeys.getIdentityProjectMembershipsForOrg(orgId, identityId),
+    queryKey: identitiesKeys.getIdentityProjectMembershipsForOrg(orgId, identityId, params),
     queryFn: async () => {
-      const {
-        data: { identityMemberships }
-      } = await apiRequest.get<{ identityMemberships: IdentityProjectMembershipV1[] }>(
-        `/api/v1/identities/${identityId}/identity-memberships`
-      );
-      return identityMemberships;
-    }
+      const { data } = await apiRequest.get<{
+        identityMemberships: IdentityProjectMembershipV1[];
+        totalCount: number;
+      }>(`/api/v1/identities/${identityId}/identity-memberships`, { params });
+      return data;
+    },
+    placeholderData: (prev) => prev
   });
 
-export const useGetIdentityProjectMemberships = (identityId: string) => {
+export const useGetIdentityProjectMemberships = (
+  identityId: string,
+  params: TListActorProjectMembershipsParams = {},
+  options: { enabled?: boolean } = {}
+) => {
   const { currentOrg } = useOrganization();
-  return useQuery(identityProjectMembershipsQuery(currentOrg?.id || "", identityId));
+  const query = identityProjectMembershipsQuery(currentOrg?.id || "", identityId, params);
+  return useQuery({ ...query, enabled: query.enabled && (options.enabled ?? true) });
 };
 
 export const useGetIdentityUniversalAuth = (
   identityId: string,
-  options?: TReactQueryOptions["options"]
+  options?: TReactQueryOptions["options"] &
+    Pick<UseQueryOptions<IdentityUniversalAuth>, "retry" | "refetchOnWindowFocus">
 ) => {
   return useQuery({
     queryKey: identitiesKeys.getIdentityUniversalAuth(identityId),

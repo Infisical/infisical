@@ -44,7 +44,7 @@ import {
   TAgentVaultMemberProvidedField,
   useConnectAgentVaultPersonalOauth,
   useDeleteAgentVaultPersonalValues,
-  useGetAgentVaultAccessBundle,
+  useGetAgentVaultService,
   useListAgentVaultVariables,
   useSetAgentVaultPersonalValues
 } from "@app/hooks/api/agentVault";
@@ -124,7 +124,7 @@ const buildSchema = (
   });
 };
 
-export type TPersonalValuesTarget = { service: TAgentVaultService; accessBundleName: string };
+export type TPersonalValuesTarget = { service: TAgentVaultService };
 
 type Props = {
   target: TPersonalValuesTarget | null;
@@ -138,15 +138,13 @@ type Props = {
 export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
   const { projectId } = useProject();
   const isOpen = Boolean(target);
-  // Read from the bundle query rather than the copy the dialog opened with, so a refetch after an admin changes the
+  // Read from the service query rather than the copy the dialog opened with, so a refetch after an admin changes the
   // service (a save answered 409) shows the service as it is now.
-  const { data: liveBundle } = useGetAgentVaultAccessBundle(
+  const { data: liveService } = useGetAgentVaultService(
     projectId,
-    isOpen ? (target?.service.accessBundleId ?? "") : ""
+    isOpen ? (target?.service.id ?? "") : ""
   );
-  const service =
-    liveBundle?.services.find((candidate) => candidate.id === target?.service.id) ??
-    target?.service;
+  const service = liveService ?? target?.service;
   const personalValues = service?.personalValues;
   const setValues = useSetAgentVaultPersonalValues(projectId);
   const connectOauth = useConnectAgentVaultPersonalOauth(projectId);
@@ -260,7 +258,6 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     if (!service) return;
     try {
       await setValues.mutateAsync({
-        accessBundleId: service.accessBundleId,
         serviceId: service.id,
         credentialType: service.credential.type,
         // A blank field keeps its saved value, so only the ones typed are sent.
@@ -284,7 +281,6 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
   const saveConnection = async (authorizationId: string) => {
     if (!service) return;
     await connectOauth.mutateAsync({
-      accessBundleId: service.accessBundleId,
       serviceId: service.id,
       credentialType: AgentVaultCredentialType.OAuth,
       authorizationId
@@ -300,7 +296,6 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     if (!service) return;
     try {
       await deleteValues.mutateAsync({
-        accessBundleId: service.accessBundleId,
         serviceId: service.id
       });
       createNotification({
@@ -316,11 +311,12 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     }
   };
 
-  let description = `Sessions you start with ${target?.accessBundleName} use your personal ${providerName} values. Only you can read them.`;
+  // Values belong to the service, so they apply in every access bundle it's in.
+  let description = `Your sessions use your personal ${providerName} values in every access bundle with this service. Only you can read them.`;
   if (isOAuth) {
-    description = `Sessions you start with ${target?.accessBundleName} use your own ${host} account. Only your sessions can use this connection.`;
+    description = `Your sessions use your own ${host} account in every access bundle with this service. Only your sessions can use this connection.`;
   } else if (personalValues?.isConfigured && lastSetAt) {
-    description = `You set these up on ${format(new Date(lastSetAt), "MMM d, yyyy")}. Sessions you start with ${target?.accessBundleName} use them. A field you leave blank keeps its saved value.`;
+    description = `You set these up on ${format(new Date(lastSetAt), "MMM d, yyyy")}. Your sessions use them in every access bundle with this service. A field you leave blank keeps its saved value.`;
   }
 
   const removeButton = hasSavedValues ? (

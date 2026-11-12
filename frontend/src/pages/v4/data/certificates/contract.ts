@@ -13,7 +13,8 @@ import type {
   TDashboardStats,
   TDeleteCertDTO,
   TPqcTrendResponse,
-  TRevokeCertDTO
+  TRevokeCertDTO,
+  TRevokeCertResponse
 } from "@app/hooks/api/certificates/types";
 import type { TCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import type {
@@ -57,5 +58,5 @@ export type CertificatesAdapter = {
   }>;
   useInstallations: (dto: TListPkiInstallationsDTO) => V4QueryResult<TListPkiInstallationsResponse>;
   useDeleteCertificate: V4Mutation<TDeleteCertDTO, TCertificate>;
-  useRevokeCertificate: V4Mutation<TRevokeCertDTO, TCertificate>;
+  useRevokeCertificate: V4Mutation<TRevokeCertDTO, TRevokeCertResponse>;
 };

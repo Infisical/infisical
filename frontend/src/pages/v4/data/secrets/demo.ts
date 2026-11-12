@@ -9,16 +9,13 @@ import {
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
 import {
-  CommitType,
-  type TSecretApprovalRequest
-} from "@app/hooks/api/secretApprovalRequest/types";
-import {
   type TSecretDependencyTreeNode,
   type TSecretReferenceTraceNode,
   SecretType
 } from "@app/hooks/api/secrets/types";
 
 import type { SecretsAdapter } from "./contract";
+import { secretsChangeRequestsDemo } from "./demo-change-requests";
 import { secretsFlowsDemo } from "./demo-flows";
 import {
   childPath,
@@ -33,7 +30,7 @@ import {
   useStore,
   within
 } from "./demo-store";
-import { DEMO_USER, type DemoSecret, type SecretsFixtures } from "./fixtures";
+import type { DemoSecret, SecretsFixtures } from "./fixtures";
 
 const overviewOf = (
   state: SecretsFixtures,
@@ -289,11 +286,9 @@ const dependentsOf = (
   };
 };
 
-const reviewed = (request: TSecretApprovalRequest, patch: Partial<TSecretApprovalRequest>) =>
-  ({ ...request, ...patch, updatedAt: now() }) as TSecretApprovalRequest;
-
 export const secretsDemo: SecretsAdapter = {
   ...secretsFlowsDemo,
+  ...secretsChangeRequestsDemo,
   useProject: (projectId) => {
     const scenario = useScenario();
     const project = useStore()
@@ -655,171 +650,6 @@ export const secretsDemo: SecretsAdapter = {
               keep(entry.projectId, entry.environment, entry.path)
             ),
             secrets: state.secrets.filter((entry) => keep(entry.projectId, entry.env, entry.path))
-          };
-        });
-        return {};
-      }
-    };
-  },
-  useApprovalRequests: ({
-    projectId,
-    status,
-    environment,
-    committer,
-    search,
-    offset = 0,
-    limit = 20
-  }) => {
-    const needle = (search ?? "").trim().toLowerCase();
-    const matched = useStore()
-      .use()
-      .approvals.filter(
-        (request) =>
-          request.project === projectId &&
-          (!status || request.status === status) &&
-          (!environment || request.environment === environment) &&
-          (!committer || request.committerUserId === committer) &&
-          (!needle ||
-            request.secretPath.toLowerCase().includes(needle) ||
-            request.commits.some((commit) => commit.secretKey.toLowerCase().includes(needle)))
-      )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return {
-      data: { approvals: matched.slice(offset, offset + limit), totalCount: matched.length },
-      isPending: false,
-      error: null
-    };
-  },
-  useApprovalRequestCount: ({ projectId }) => {
-    const requests = useStore()
-      .use()
-      .approvals.filter((request) => request.project === projectId);
-    return {
-      data: {
-        open: requests.filter((request) => request.status === "open").length,
-        closed: requests.filter((request) => request.status === "close").length
-      },
-      isPending: false,
-      error: null
-    };
-  },
-  useApprovalRequestDetails: ({ id }) => {
-    const request = useStore()
-      .use()
-      .approvals.find((entry) => entry.id === id);
-    return {
-      data: request,
-      isPending: false,
-      error: request || !id ? null : new Error("Change request not found")
-    };
-  },
-  useReviewApprovalRequest: () => {
-    const store = useStore();
-    return {
-      isPending: false,
-      mutateAsync: async ({ id, status, comment }) => {
-        store.update((state) => ({
-          ...state,
-          approvals: state.approvals.map((request) =>
-            request.id === id
-              ? reviewed(request, {
-                  reviewers: [
-                    ...request.reviewers.filter((entry) => entry.userId !== DEMO_USER.userId),
-                    {
-                      ...DEMO_USER,
-                      status,
-                      comment: comment ?? "",
-                      isOrgMembershipActive: true,
-                      createdAt: new Date()
-                    }
-                  ]
-                })
-              : request
-          )
-        }));
-        return {};
-      }
-    };
-  },
-  useUpdateApprovalRequestStatus: () => {
-    const store = useStore();
-    return {
-      isPending: false,
-      mutateAsync: async ({ id, status }) => {
-        store.update((state) => ({
-          ...state,
-          approvals: state.approvals.map((request) =>
-            request.id === id
-              ? reviewed(request, { status, statusChangedByUserId: DEMO_USER.userId })
-              : request
-          )
-        }));
-        return {};
-      }
-    };
-  },
-  useMergeApprovalRequest: () => {
-    const store = useStore();
-    return {
-      isPending: false,
-      mutateAsync: async ({ id, bypassReason }) => {
-        const request = store.get().approvals.find((entry) => entry.id === id);
-        if (!request) return {};
-        const timestamp = now();
-        store.update((state) => {
-          let { secrets } = state;
-          request.commits.forEach((commit) => {
-            const match = secretAt(
-              request.project,
-              request.environment,
-              request.secretPath,
-              commit.secretKey
-            );
-            if (commit.op === CommitType.DELETE) {
-              secrets = secrets.filter((secret) => !match(secret));
-              return;
-            }
-            const value = commit.secretValue ?? "";
-            if (secrets.some(match)) {
-              secrets = secrets.map((secret) =>
-                match(secret)
-                  ? { ...secret, value, version: secret.version + 1, updatedAt: timestamp }
-                  : secret
-              );
-              return;
-            }
-            secrets = [
-              ...secrets,
-              {
-                id: crypto.randomUUID(),
-                projectId: request.project,
-                env: request.environment,
-                path: request.secretPath,
-                key: commit.secretKey,
-                value,
-                secretValueHidden: false,
-                version: 1,
-                comment: "",
-                tags: [],
-                secretMetadata: [],
-                createdAt: timestamp,
-                updatedAt: timestamp
-              }
-            ];
-          });
-          return {
-            ...state,
-            secrets,
-            approvals: state.approvals.map((entry) =>
-              entry.id === id
-                ? reviewed(entry, {
-                    hasMerged: true,
-                    status: "close",
-                    bypassReason: bypassReason ?? null,
-                    statusChangedByUserId: DEMO_USER.userId
-                  })
-                : entry
-            )
           };
         });
         return {};

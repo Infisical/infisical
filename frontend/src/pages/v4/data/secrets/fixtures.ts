@@ -14,7 +14,6 @@ import {
   HoneyTokenType
 } from "@app/hooks/api/honeyTokens/enums";
 import type { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
-import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import {
   ProjectType,
   ProjectVersion,
@@ -23,11 +22,7 @@ import {
 } from "@app/hooks/api/projects/types";
 import { ProxiedServiceCredentialRole } from "@app/hooks/api/proxiedServices/enums";
 import type { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
-import {
-  ApprovalStatus,
-  CommitType,
-  type TSecretApprovalRequest
-} from "@app/hooks/api/secretApprovalRequest/types";
+import type { TSecretApprovalRequest } from "@app/hooks/api/secretApprovalRequest/types";
 import type { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 import type { TSecretImport } from "@app/hooks/api/secretImports/types";
 import { SecretRotation, SecretRotationStatus } from "@app/hooks/api/secretRotationsV2/enums";
@@ -38,6 +33,7 @@ import type { WsTag } from "@app/hooks/api/tags/types";
 
 import { V4_DEMO_ORG_ID } from "../../mode";
 import { type DemoFolderAccess, seedFolderAccess } from "./demo-access-seed";
+import { seedChangeRequests } from "./demo-change-requests-seed";
 import { type DemoCommit, seedDemoCommits } from "./demo-commits-seed";
 import { seedSecretSyncs } from "./demo-syncs";
 
@@ -71,14 +67,6 @@ export type DemoVersion = {
   actor: string;
   actorType: string;
   redacted?: boolean;
-};
-
-export const DEMO_USER = {
-  userId: "demo-user-sarah",
-  email: "sarah@acme.dev",
-  firstName: "Sarah",
-  lastName: "Lin",
-  username: "sarah@acme.dev"
 };
 
 const created = "2026-10-20T09:00:00Z";
@@ -356,81 +344,6 @@ const proxiedService = (
   projectId: "payments-api"
 });
 
-const person = (firstName: string, lastName: string) => ({
-  userId: `demo-user-${firstName.toLowerCase()}`,
-  email: `${firstName.toLowerCase()}@acme.dev`,
-  firstName,
-  lastName,
-  username: `${firstName.toLowerCase()}@acme.dev`
-});
-
-const approvalPolicy: TSecretApprovalRequest["policy"] = {
-  id: "policy-production",
-  project: "payments-api",
-  name: "Production changes",
-  environments: [envOf("prod")],
-  secretPath: "/",
-  approvals: 1,
-  updatedAt: new Date(created),
-  enforcementLevel: EnforcementLevel.Hard,
-  allowedSelfApprovals: false,
-  bypassForMachineIdentities: false,
-  approvers: [DEMO_USER, person("Jordan", "Lee")].map((user) => ({
-    ...user,
-    isOrgMembershipActive: true
-  })),
-  bypassers: []
-};
-
-const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3600000).toISOString();
-
-const approval = (
-  slug: string,
-  committer: ReturnType<typeof person>,
-  hours: number,
-  changes: { op: CommitType; key: string }[]
-): TSecretApprovalRequest => ({
-  id: `request-${slug}`,
-  slug,
-  createdAt: hoursAgo(hours),
-  updatedAt: hoursAgo(hours),
-  committerUserId: committer.userId,
-  reviewers: [],
-  project: "payments-api",
-  environment: "prod",
-  folderId: id("payments-api", "prod", "/"),
-  secretPath: "/",
-  hasMerged: false,
-  status: "open",
-  policy: approvalPolicy,
-  statusChangedByUserId: "",
-  committerUser: committer,
-  committerIdentity: null,
-  conflicts: [],
-  commits: changes.map((change, index) => ({
-    id: `request-${slug}-commit-${index + 1}`,
-    op: change.op,
-    secretKey: change.key,
-    secretValue: change.op === CommitType.DELETE ? undefined : `fake-${slug}-value`,
-    algorithm: "aes-256-gcm",
-    keyEncoding: "utf8",
-    version: 1,
-    secretVersion: {
-      id: `request-${slug}-version-${index + 1}`,
-      _id: `request-${slug}-version-${index + 1}`,
-      project: "payments-api",
-      environment: "prod",
-      version: 1,
-      type: "shared",
-      secretValueHidden: false,
-      secretKey: change.key,
-      secretPath: "/",
-      createdAt: hoursAgo(hours),
-      updatedAt: hoursAgo(hours)
-    }
-  }))
-});
-
 const lease = (
   dynamicSecretId: string,
   index: number,
@@ -695,36 +608,6 @@ export const createSecretsFixtures = (large: boolean): SecretsFixtures => {
         )
       )
     ],
-    approvals: [
-      approval("smtp", person("Priya", "Raman"), 1, [
-        { op: CommitType.DELETE, key: "SMTP_PASSWORD" }
-      ]),
-      approval("batch", person("Diego", "Alvarez"), 4, [
-        { op: CommitType.UPDATE, key: "LOG_LEVEL" },
-        { op: CommitType.UPDATE, key: "REDIS_URL" }
-      ]),
-      approval("webhook", person("Marcus", "Webb"), 7, [
-        { op: CommitType.CREATE, key: "STRIPE_WEBHOOK_SECRET" }
-      ]),
-      approval("stripe", person("Tom", "Becker"), 10, [
-        { op: CommitType.UPDATE, key: "STRIPE_API_KEY" }
-      ]),
-      {
-        ...approval("rotate-jwt", person("Jordan", "Lee"), 50, [
-          { op: CommitType.UPDATE, key: "JWT_SIGNING_KEY" }
-        ]),
-        status: "close",
-        hasMerged: true,
-        reviewers: [
-          {
-            ...DEMO_USER,
-            status: ApprovalStatus.APPROVED,
-            comment: "",
-            isOrgMembershipActive: true,
-            createdAt: new Date(hoursAgo(48))
-          }
-        ]
-      }
-    ]
+    approvals: seedChangeRequests()
   };
 };

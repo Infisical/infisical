@@ -742,6 +742,41 @@ func TestSecretApprovalRequest_Status(t *testing.T) {
 		require.Equal(t, "close", getRequest(t, p.proj, held.ID).Status)
 	})
 
+	t.Run("should refuse reopening a request whose folder was renamed out of its policy, and keep it closed", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		p := newProtectedProject(t, func(b *api.CreateSecretApprovalPolicyJSONRequestBody) {
+			b.SecretPath = "/app/api"
+			b.Name = new("app-api-guard")
+		})
+		appID := secretmanager.CreateFolder(t, p.proj, "dev", "/app")
+		secretmanager.CreateFolder(t, p.proj, "dev", "/app/api")
+		created, err := p.committer.API.CreateSecretV4WithResponse(t.Context(), "API_KEY", api.CreateSecretV4JSONRequestBody{
+			ProjectId: p.proj.ID, Environment: "dev", SecretPath: new("/app/api"), SecretValue: "value",
+		})
+		require.NoError(t, err)
+		held := heldRequest(t, p.proj, created.Body)
+		closeRequest(t, p.committer, held.ID)
+		renamed, err := p.tn.Admin.API.UpdateSecretFolderWithResponse(t.Context(), appID, api.UpdateSecretFolderJSONRequestBody{
+			ProjectId: p.proj.ID, Environment: "dev", Path: new("/"), Name: "service",
+		})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, renamed.StatusCode(), "renaming returned %s", renamed.Body)
+		spec.Why(t, `A closed request does not block the rename, and a reopened request keeps the policy it was
+			opened under, so reopening here would merge into /service/api under a policy that does not cover it.`)
+
+		// Action
+		res := setStatus(t, p.committer, held.ID, api.UpdateSecretApprovalRequestStatusJSONBodyStatusOpen)
+
+		// Assert
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			`This change request cannot be reopened because its folder is now at path "/service/api", which the change policy "app-api-guard" no longer covers. Create a new change request instead.`,
+			res.JSON400.Message)
+		require.Equal(t, "close", getRequest(t, p.proj, held.ID).Status)
+	})
+
 	t.Run("should refuse reopening a closed request when the plan does not include approvals, and keep it closed", func(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `[LICENSE] Reopening is gated on the secretApproval entitlement today, although it only

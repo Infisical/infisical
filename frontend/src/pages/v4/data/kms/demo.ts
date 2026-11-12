@@ -34,6 +34,9 @@ const key = (
   isExportable: true,
   hasDeleteProtection: false,
   version: 1,
+  isPublicKeyPublished: false,
+  kid: null,
+  jwksUrl: null,
   createdAt,
   updatedAt: createdAt,
   ...extra

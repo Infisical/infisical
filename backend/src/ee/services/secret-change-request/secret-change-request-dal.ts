@@ -447,10 +447,29 @@ export const secretChangeRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findFolderIdsWithOpenRequests = async (folderIds: string[], tx?: Knex) => {
+    if (!folderIds.length) return [];
+    try {
+      const rows = (await (tx || db.replicaNode())(TableName.SecretChangeRequests)
+        .join(
+          TableName.ApprovalRequests,
+          `${TableName.SecretChangeRequests}.approvalRequestId`,
+          `${TableName.ApprovalRequests}.id`
+        )
+        .whereIn(`${TableName.SecretChangeRequests}.folderId`, folderIds)
+        .where(`${TableName.ApprovalRequests}.status`, RequestState.Open)
+        .distinct(`${TableName.SecretChangeRequests}.folderId`)) as { folderId: string }[];
+      return rows.map((row) => row.folderId);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindFolderIdsWithOpenSecretChangeRequests" });
+    }
+  };
+
   return {
     ...orm,
     findByProjectId,
     countByProjectId,
+    findFolderIdsWithOpenRequests,
     insertV2Bridge: commitOrm.insertMany,
     updateV2ById: commitOrm.updateById,
     insertApprovalSecretV2Tags: commitTagOrm.insertMany,

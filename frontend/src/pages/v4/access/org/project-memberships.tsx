@@ -299,14 +299,14 @@ const useMembershipRows = (subject: MembershipSubject, subjectId: string) => {
   });
   const rows = useMemo((): ProjectMembershipRow[] => {
     if (subject === "user")
-      return (users.data ?? []).map((entry) => ({
+      return (users.data?.memberships ?? []).map((entry) => ({
         id: entry.id,
         project: entry.project,
         roles: entry.roles,
         createdAt: entry.createdAt
       }));
     if (subject === "identity")
-      return (identities.data ?? []).map((entry) => ({
+      return (identities.data?.identityMemberships ?? []).map((entry) => ({
         id: entry.id,
         project: entry.project,
         roles: entry.roles,
