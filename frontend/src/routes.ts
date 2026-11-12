@@ -364,6 +364,7 @@ const pamRoutes = route("/organizations/$orgId/pam", [
     route("/access", [index("redirects/pam-org-access-redirect.tsx")]),
     route("/accounts", [
       index("pam/PamAccountsPage/route.tsx"),
+      route("/my-accounts", "pam/PamAccountsPage/PamMyAccountsPage/route.tsx"),
       route("/$folderId", "pam/PamAccountsPage/PamFolderPage/route.tsx")
     ]),
     route("/templates", "pam/PamTemplatesPage/route.tsx"),
