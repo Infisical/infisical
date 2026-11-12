@@ -15,6 +15,7 @@ type TOpenRouterCreateKeyResponse = {
 };
 
 const OPEN_ROUTER_REQUEST_TIMEOUT_MS = 30_000;
+const OPEN_ROUTER_KEY_NAME_MAX_LENGTH = 255;
 
 export const OpenRouterProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
@@ -70,6 +71,12 @@ export const OpenRouterProvider = (): TDynamicProviderFns => {
       usernamePrefix: "infisical-",
       usernameLength: 16
     });
+
+    if (name.length >= OPEN_ROUTER_KEY_NAME_MAX_LENGTH) {
+      throw new BadRequestError({
+        message: `OpenRouter API key name must be less than ${OPEN_ROUTER_KEY_NAME_MAX_LENGTH} characters. The generated name is ${name.length} characters. Shorten the dynamic secret name or the key name template.`
+      });
+    }
 
     try {
       const { data: response } = await request.post<TOpenRouterCreateKeyResponse>(
