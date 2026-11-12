@@ -83,9 +83,9 @@
     {
       "id": "theme-scheme",
       "title": "Branch on the scheme, not the theme name",
-      "instruction": "Themes are named palettes (peach, pale, dark, dark-alt) declared in tokens.json themes.list, each with a light or dark scheme. Anything that differs between light and dark, such as an on-light logo, a chart cursor, a toast theme or an opacity swap, reads the scheme: [data-scheme=\"dark\"] in CSS and useV4Scheme() in code. A new theme lists only the tokens it overrides and inherits the rest.",
+      "instruction": "Themes are named palettes (peach, pale, dark) declared in tokens.json themes.list, each with a light or dark scheme. Anything that differs between light and dark, such as an on-light logo, a chart cursor, a toast theme or an opacity swap, reads the scheme: [data-scheme=\"dark\"] in CSS and useV4Scheme() in code. A new theme lists only the tokens it overrides and inherits the rest.",
       "good": ":global(.v4[data-scheme=\"dark\"]) .segment, or useV4Scheme() === \"light\" ? onLight : image.",
-      "avoid": ".v4[data-theme=\"dark\"] in a stylesheet, which misses dark-alt, or a theme name compared against light.",
+      "avoid": ".v4[data-theme=\"dark\"] in a stylesheet, which misses any later dark theme, or a theme name compared against light.",
       "detect": {
         "by": "lint",
         "check": "theme-name-branch"
