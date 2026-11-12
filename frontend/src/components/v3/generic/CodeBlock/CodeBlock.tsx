@@ -7,6 +7,8 @@ type CodeBlockProps = React.ComponentProps<"pre"> & {
   label?: React.ReactNode;
   isCopyable?: boolean;
   isFill?: boolean;
+  // Renders in place of value, e.g. syntax-highlighted spans. Copying still uses value.
+  children?: React.ReactNode;
 };
 
 const CodeBlock = ({
@@ -15,6 +17,7 @@ const CodeBlock = ({
   isCopyable = true,
   isFill = false,
   className,
+  children,
   ...props
 }: CodeBlockProps) => {
   const copyAriaLabel = typeof label === "string" ? `Copy ${label.toLowerCase()}` : "Copy code";
@@ -43,7 +46,7 @@ const CodeBlock = ({
           )}
           {...props}
         >
-          <code>{value}</code>
+          <code>{children ?? value}</code>
         </pre>
         {isCopyable && (
           <CopyButton

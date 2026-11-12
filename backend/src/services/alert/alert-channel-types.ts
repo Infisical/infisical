@@ -28,6 +28,7 @@ export type TAlertItem = {
   summary?: string;
   severity?: TAlertSeverity;
   resource?: Record<string, unknown>;
+  url?: string; // this item's page in the app; email and Slack link the item's title to it
 };
 
 export type TAlertPayload = {

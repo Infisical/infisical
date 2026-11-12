@@ -4,7 +4,6 @@ import {
   AccessScope,
   ProjectMembershipRole,
   RESOURCE_SCOPE,
-  TableName,
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
@@ -18,8 +17,6 @@ import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-
 import { terminatePamSessionsLosingGroupAccess } from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { TSecretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
-import { TSecretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -58,8 +55,6 @@ import { newProjectMembershipGroupFactory } from "./project/project-membership-g
 type TMembershipGroupServiceFactoryDep = {
   membershipGroupDAL: TMembershipGroupDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete" | "find">;
-  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
-  secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   approvalPolicyDAL: Pick<
     TApprovalPolicyDALFactory,
     "findPoliciesWhereSubjectIsApprover" | "deleteStepApproversBySubject" | "deleteBypassersBySubject"
@@ -94,8 +89,6 @@ export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupSe
 export const membershipGroupServiceFactory = ({
   membershipGroupDAL,
   roleDAL,
-  secretApprovalPolicyDAL,
-  secretApprovalPolicyApproverDAL,
   approvalPolicyDAL,
   approvalRequestDAL,
   membershipRoleDAL,
@@ -534,27 +527,6 @@ export const membershipGroupServiceFactory = ({
       throw new BadRequestError({
         message: `Cannot remove group from ${existingMembership.scopeProjectId ? "project" : "organization"}: group is an approver in access approval ${secretAccessPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
       });
-    }
-
-    // check if group is assigned to any secret approval policy
-    const secretApprovalPolicyApprovers = await secretApprovalPolicyApproverDAL.find({
-      approverGroupId: dto.selector.groupId
-    });
-    const secretApprovalPolicyApproverGroupIds = secretApprovalPolicyApprovers.map(({ policyId }) => policyId);
-    if (secretApprovalPolicyApprovers.length > 0) {
-      const secretApprovalPolicies = await secretApprovalPolicyDAL.find({
-        $in: {
-          [`${TableName.SecretApprovalPolicy}.id` as "id"]: [...new Set(secretApprovalPolicyApproverGroupIds)]
-        },
-        projectId: existingMembership.scopeProjectId ?? undefined,
-        deletedAt: null
-      });
-      if (secretApprovalPolicies.length > 0) {
-        const policyNames = secretApprovalPolicies.map((p) => p.name).join(", ");
-        throw new BadRequestError({
-          message: `Cannot remove group from project: group is an approver in secret approval ${secretApprovalPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
-        });
-      }
     }
 
     if (existingMembership.scopeProjectId) {

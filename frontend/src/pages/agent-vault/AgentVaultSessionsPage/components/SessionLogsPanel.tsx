@@ -34,6 +34,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission, useProject } from "@app/context";
+import { isInfisicalSessionEndpointRequest } from "@app/helpers/agentVaultSessionLogs";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
@@ -53,11 +54,18 @@ import {
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { LiveState, LiveStateBadge, LiveStatusRow } from "./LiveStatusRow";
-import { DECISION_PRESENTATION, hostPatternFor, SessionLogRow } from "./SessionLogRow";
+import {
+  DECISION_PRESENTATION,
+  hostPatternFor,
+  SESSION_LOG_COLUMN_COUNT,
+  SessionLogRow
+} from "./SessionLogRow";
 import {
   chunkIdTime,
   groupSessionLogGaps,
+  isNativeSessionLogRecord,
   matchesSessionLogSearch,
+  nativeSessionLogSearchTerm,
   sessionLogSearchTerm
 } from "./SessionLogsPanel.utils";
 import { useNewRequestsCounter } from "./useNewRequestsCounter";
@@ -94,7 +102,8 @@ const GAP_EXPLANATION: Record<TAgentVaultSessionLogGapReason, { one: string; man
   }
 };
 
-const COLUMN_COUNT = 7;
+const COLUMN_COUNT = SESSION_LOG_COLUMN_COUNT;
+const NO_EXPANDED_ROWS: ReadonlySet<string> = new Set();
 
 type Props = {
   session: TAgentVaultSession;
@@ -116,6 +125,19 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const [servicePath, setServicePath] = useState<string | undefined>();
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [addedHosts, setAddedHosts] = useState<Set<string>>(() => new Set());
+  // Kept here, not in each row, because the virtualizer unmounts rows scrolled out of view and must keep sizing
+  // an expanded one while it is gone. Tied to the session so another session's rows open collapsed.
+  const [expanded, setExpanded] = useState<{ sessionId: string; keys: ReadonlySet<string> }>(
+    () => ({ sessionId: session.id, keys: new Set() })
+  );
+  const expandedKeys = expanded.sessionId === session.id ? expanded.keys : NO_EXPANDED_ROWS;
+  const toggleExpanded = (key: string) =>
+    setExpanded((prev) => {
+      const keys = new Set(prev.sessionId === session.id ? prev.keys : NO_EXPANDED_ROWS);
+      if (keys.has(key)) keys.delete(key);
+      else keys.add(key);
+      return { sessionId: session.id, keys };
+    });
 
   const [search, setSearch] = useState("");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("all");
@@ -208,7 +230,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
     [records, search, decisionFilter]
   );
 
-  const hasBrowserFilter = Boolean(sessionLogSearchTerm(search)) || decisionFilter !== "all";
+  const hasBrowserFilter =
+    Boolean(sessionLogSearchTerm(search) || nativeSessionLogSearchTerm(search)) ||
+    decisionFilter !== "all";
   const isFiltered = hasBrowserFilter || Boolean(range);
 
   // Counted once opened: a chunk's request count isn't known until it is decrypted.
@@ -237,6 +261,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
 
   const filterKey = [
     sessionLogSearchTerm(search),
+    nativeSessionLogSearchTerm(search),
     decisionFilter,
     range?.startDate.getTime(),
     range?.endDate.getTime()
@@ -267,6 +292,8 @@ export const SessionLogsPanel = ({ session }: Props) => {
     count: visible.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => SESSION_LOG_ROW_HEIGHT,
+    // Keyed by record, so an expanded row keeps its height when newer rows land above it.
+    getItemKey: (index) => sessionLogRecordKey(visible[index]),
     overscan: 16
   });
   const virtualRows = rowVirtualizer.getVirtualItems();
@@ -301,9 +328,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const { newRequestCount, showNewRequests } = useNewRequestsCounter({
     scrollRef,
     visible,
+    measuredRows: rowVirtualizer.measurementsCache,
     arrivals,
-    resetKey: `${session.id}|${filterKey}`,
-    rowHeight: SESSION_LOG_ROW_HEIGHT
+    resetKey: `${session.id}|${filterKey}`
   });
 
   const padTop = virtualRows.length ? virtualRows[0].start : 0;
@@ -508,7 +535,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             <InputGroupInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search host, path, method, tool or service..."
+              placeholder="Search host, path, method, tool, service, statement, command or output..."
             />
             {search && (
               <InputGroupAddon align="inline-end">
@@ -705,13 +732,19 @@ export const SessionLogsPanel = ({ session }: Props) => {
               const isAddable =
                 canAddService &&
                 !record.service &&
+                !isNativeSessionLogRecord(record) &&
                 (record.decision === AgentVaultSessionLogDecision.Blocked ||
                   record.decision === AgentVaultSessionLogDecision.Passthrough) &&
+                !isInfisicalSessionEndpointRequest(record) &&
                 !addedHosts.has(hostPatternFor(record));
+              const recordKey = sessionLogRecordKey(record);
               return (
                 <SessionLogRow
-                  key={sessionLogRecordKey(record)}
+                  key={recordKey}
                   record={record}
+                  isExpanded={expandedKeys.has(recordKey)}
+                  onToggleExpanded={() => toggleExpanded(recordKey)}
+                  onMeasure={(height) => rowVirtualizer.resizeItem(virtualRow.index, height)}
                   arrivedAt={arrivals.get(sessionLogRecordKey(record))}
                   accessBundleName={accessBundle?.name}
                   onAddService={
