@@ -1,20 +1,34 @@
 import { BadRequestError } from "@app/lib/errors";
-import { CertStatus, CrlReason } from "@app/services/certificate/certificate-types";
+import { logger } from "@app/lib/logger";
+import { CertStatus, CrlReason, PlatformRevocationOutcome } from "@app/services/certificate/certificate-types";
 
-import { ScepChallengeType } from "./challenge/scep-challenge-types";
 import { scepIntuneRevocationSyncQueueFactory } from "./scep-intune-revocation-sync-queue";
 
 type TUploadedResults = {
   results: { requestContext: string; succeeded: boolean; errorCode: string; errorMessage: string | null }[];
 };
+type TRequest = { requestContext: string; serialNumber: string; issuerName?: string | null };
+type TMatched = { id: string; serialNumber: string; status: string; projectId: string };
 
-const downloadRevocationRequests = vi.fn<(...args: unknown[]) => Promise<unknown>>();
+const downloadRevocationRequests = vi.fn<(...args: unknown[]) => Promise<TRequest[]>>();
 const uploadRevocationResults = vi.fn<(args: TUploadedResults) => Promise<void>>();
 const decryptAppConnectionCredentials = vi.fn<(args: { encryptedCredentials: string }) => Promise<unknown>>();
 const getMicrosoftEntraToken = vi.fn<(...args: unknown[]) => Promise<unknown>>();
 
 vi.mock("@app/lib/logger", () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() } }));
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({ isSecondaryInstance: false }) }));
+vi.mock("@app/services/project/project-fns", () => ({
+  getProjectKmsCertificateKeyId: vi.fn().mockResolvedValue("kms-1")
+}));
+vi.mock("@peculiar/x509", () => ({
+  X509Certificate: class {
+    issuer: string;
+
+    constructor(raw: Uint8Array) {
+      this.issuer = Buffer.from(raw).toString();
+    }
+  }
+}));
 vi.mock("@app/services/app-connection/app-connection-fns", () => ({
   decryptAppConnectionCredentials: (args: { encryptedCredentials: string }) => decryptAppConnectionCredentials(args)
 }));
@@ -29,31 +43,54 @@ vi.mock("@app/services/app-connection/microsoft-intune", () => ({
   intuneUploadRevocationResults: (args: TUploadedResults) => uploadRevocationResults(args)
 }));
 
-const connection = (id: string, tenantId: string) => ({ id, tenantId, orgId: `org-${id}`, projectId: null });
+const ISSUER = "CN=Test";
+const connection = (id: string, tenantId: string, orgId = `org-${id}`) => ({ id, tenantId, orgId, projectId: null });
+const matched = (id: string, serialNumber: string, status: string = CertStatus.ACTIVE): TMatched => ({
+  id,
+  serialNumber,
+  status,
+  projectId: "project-1"
+});
+const revoked = (certificateId: string, caId = "ca-1") => ({
+  outcome: PlatformRevocationOutcome.Revoked,
+  cert: { id: certificateId, commonName: "device", serialNumber: "s", applicationId: null },
+  ca: { id: caId, projectId: "project-1" },
+  applicationName: null
+});
 
 const runSync = async ({
   connections,
-  requests,
+  batches,
   certificates,
-  revokeCertAsPlatform = vi.fn().mockImplementation(({ certificateId }: { certificateId: string }) =>
-    Promise.resolve({
-      cert: { id: certificateId, commonName: "device", serialNumber: "s", applicationId: null },
-      ca: { projectId: "project-1" },
-      applicationName: null
-    })
-  )
+  issuers = {},
+  revokeCertAsPlatform = vi
+    .fn()
+    .mockImplementation(({ certificateId }: { certificateId: string }) => Promise.resolve(revoked(certificateId)))
 }: {
   connections: ReturnType<typeof connection>[];
-  requests: { requestContext: string; serialNumber: string; issuerName?: string }[];
-  certificates: { id: string; serialNumber: string; status: string; validationConnectionId: string }[];
+  batches: TRequest[][];
+  certificates: TMatched[];
+  issuers?: Record<string, string>;
   revokeCertAsPlatform?: ReturnType<typeof vi.fn>;
 }) => {
   let handler: (() => Promise<void>) | undefined;
-  decryptAppConnectionCredentials.mockImplementation(({ encryptedCredentials }: { encryptedCredentials: string }) =>
+  decryptAppConnectionCredentials.mockImplementation(({ encryptedCredentials }) =>
     Promise.resolve({ tenantId: encryptedCredentials, clientId: "client", clientSecret: "secret" })
   );
-  downloadRevocationRequests.mockResolvedValueOnce(requests).mockResolvedValue([]);
-  const certificateDAL = { findScepCertsByValidationConnectionsAndSerials: vi.fn().mockResolvedValue(certificates) };
+  batches.forEach((batch) => downloadRevocationRequests.mockResolvedValueOnce(batch));
+  downloadRevocationRequests.mockResolvedValue([]);
+
+  const certificateDAL = {
+    findScepIssuedCertsByOrgsAndSerials: vi
+      .fn()
+      .mockImplementation((_orgIds: string[], serials: string[]) =>
+        Promise.resolve(certificates.filter((certificate) => serials.includes(certificate.serialNumber)))
+      )
+  };
+  const certificateService = {
+    revokeCertAsPlatform,
+    rebuildCrlsAfterPlatformRevocations: vi.fn().mockResolvedValue(undefined)
+  };
 
   scepIntuneRevocationSyncQueueFactory({
     cronJob: {
@@ -61,29 +98,30 @@ const runSync = async ({
         handler = registered;
       }
     },
-    scepEnrollmentConfigDAL: {
-      find: vi
-        .fn()
-        .mockResolvedValue(
-          connections.map((c) => ({ challengeType: ScepChallengeType.MICROSOFT_INTUNE, validationConnectionId: c.id }))
-        )
-    },
     appConnectionDAL: {
-      find: vi
+      find: vi.fn().mockResolvedValue(connections.map((c) => ({ ...c, encryptedCredentials: c.tenantId })))
+    },
+    kmsService: {
+      decryptWithKmsKey: vi.fn().mockResolvedValue(({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob)
+    },
+    projectDAL: {},
+    certificateDAL,
+    certificateBodyDAL: {
+      findOne: vi
         .fn()
-        .mockResolvedValue(
-          connections.map((c) => ({ ...c, app: "microsoft-intune", encryptedCredentials: c.tenantId }))
+        .mockImplementation(({ certId }: { certId: string }) =>
+          Promise.resolve({ encryptedCertificate: Buffer.from(issuers[certId] ?? ISSUER) })
         )
     },
-    kmsService: {},
-    certificateDAL,
-    certificateService: { revokeCertAsPlatform },
+    certificateService,
     auditLogService: { createAuditLog: vi.fn() }
   } as unknown as Parameters<typeof scepIntuneRevocationSyncQueueFactory>[0]).init();
 
   await handler!();
-  return { certificateDAL, revokeCertAsPlatform };
+  return { certificateDAL, certificateService, revokeCertAsPlatform };
 };
+
+const uploadedResults = (call = 0) => uploadRevocationResults.mock.calls[call][0].results;
 
 describe("Intune SCEP revocation sync", () => {
   beforeEach(() => {
@@ -92,134 +130,131 @@ describe("Intune SCEP revocation sync", () => {
     getMicrosoftEntraToken.mockReset().mockResolvedValue({ accessToken: "token", expiresAt: Date.now() + 60_000 });
   });
 
-  test("revokes a matched certificate and reports success to Intune", async () => {
-    const { revokeCertAsPlatform } = await runSync({
+  test("revokes a matched certificate with a deferred CRL rebuild and reports success", async () => {
+    const { revokeCertAsPlatform, certificateService } = await runSync({
       connections: [connection("conn-1", "tenant-a")],
-      requests: [{ requestContext: "ctx-1", serialNumber: "ABCDEF" }],
-      certificates: [
-        { id: "cert-1", serialNumber: "abcdef", status: CertStatus.ACTIVE, validationConnectionId: "conn-1" }
-      ]
+      batches: [[{ requestContext: "ctx-1", serialNumber: "AA", issuerName: ISSUER }]],
+      certificates: [matched("cert-1", "aa")]
     });
 
     expect(revokeCertAsPlatform).toHaveBeenCalledWith({
       certificateId: "cert-1",
-      revocationReason: CrlReason.UNSPECIFIED
+      revocationReason: CrlReason.UNSPECIFIED,
+      deferCrlRebuild: true
     });
-    expect(uploadRevocationResults).toHaveBeenCalledWith(
-      expect.objectContaining({
-        results: [{ requestContext: "ctx-1", succeeded: true, errorCode: "0", errorMessage: null }]
-      })
-    );
-  });
-
-  test("leaves requests for certificates it did not issue in the Intune queue", async () => {
-    await runSync({
-      connections: [connection("conn-1", "tenant-a")],
-      requests: [
-        { requestContext: "ours", serialNumber: "aa" },
-        { requestContext: "other-ca", serialNumber: "bb" }
-      ],
-      certificates: [{ id: "cert-1", serialNumber: "aa", status: CertStatus.ACTIVE, validationConnectionId: "conn-1" }]
-    });
-
-    expect(uploadRevocationResults).toHaveBeenCalledTimes(1);
-    expect(uploadRevocationResults.mock.calls[0][0].results).toEqual([
-      expect.objectContaining({ requestContext: "ours", succeeded: true })
+    expect(certificateService.rebuildCrlsAfterPlatformRevocations).toHaveBeenCalledWith(["ca-1"]);
+    expect(uploadedResults()).toEqual([
+      { requestContext: "ctx-1", succeeded: true, errorCode: "0", errorMessage: null }
     ]);
   });
 
-  test("uploads nothing when no request matches", async () => {
-    await runSync({
+  test("rebuilds the CRLs once for a batch with several revocations", async () => {
+    const { certificateService } = await runSync({
       connections: [connection("conn-1", "tenant-a")],
-      requests: [{ requestContext: "other-ca", serialNumber: "bb" }],
-      certificates: []
+      batches: [
+        [
+          { requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER },
+          { requestContext: "ctx-2", serialNumber: "bb", issuerName: ISSUER }
+        ]
+      ],
+      certificates: [matched("cert-1", "aa"), matched("cert-2", "bb")]
     });
 
+    expect(certificateService.rebuildCrlsAfterPlatformRevocations).toHaveBeenCalledTimes(1);
+    expect(certificateService.rebuildCrlsAfterPlatformRevocations).toHaveBeenCalledWith(["ca-1", "ca-1"]);
+  });
+
+  test("leaves a request whose issuer differs from the stored certificate's issuer in the queue", async () => {
+    const { revokeCertAsPlatform } = await runSync({
+      connections: [connection("conn-1", "tenant-a")],
+      batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: "CN=Other CA" }]],
+      certificates: [matched("cert-1", "aa")]
+    });
+
+    expect(revokeCertAsPlatform).not.toHaveBeenCalled();
     expect(uploadRevocationResults).not.toHaveBeenCalled();
   });
 
-  test("reads one queue per tenant and matches certificates from every connection to it", async () => {
-    const { certificateDAL, revokeCertAsPlatform } = await runSync({
-      connections: [connection("conn-1", "tenant-a"), connection("conn-2", "TENANT-A")],
-      requests: [{ requestContext: "ctx-1", serialNumber: "aa" }],
-      certificates: [{ id: "cert-2", serialNumber: "aa", status: CertStatus.ACTIVE, validationConnectionId: "conn-2" }]
+  test("leaves requests for certificates it did not issue in the queue", async () => {
+    await runSync({
+      connections: [connection("conn-1", "tenant-a")],
+      batches: [
+        [
+          { requestContext: "ours", serialNumber: "aa", issuerName: ISSUER },
+          { requestContext: "other-ca", serialNumber: "bb", issuerName: ISSUER }
+        ]
+      ],
+      certificates: [matched("cert-1", "aa")]
+    });
+
+    expect(uploadedResults()).toEqual([expect.objectContaining({ requestContext: "ours", succeeded: true })]);
+  });
+
+  test("reads one queue per tenant and matches certificates from every org connected to it", async () => {
+    const { certificateDAL } = await runSync({
+      connections: [connection("conn-1", "tenant-a", "org-1"), connection("conn-2", "TENANT-A", "org-2")],
+      batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
+      certificates: [matched("cert-2", "aa")]
     });
 
     expect(downloadRevocationRequests).toHaveBeenCalledTimes(1);
-    expect(certificateDAL.findScepCertsByValidationConnectionsAndSerials).toHaveBeenCalledWith(
-      ["conn-1", "conn-2"],
-      ["aa"]
-    );
-    expect(revokeCertAsPlatform).toHaveBeenCalledWith(expect.objectContaining({ certificateId: "cert-2" }));
+    expect(certificateDAL.findScepIssuedCertsByOrgsAndSerials).toHaveBeenCalledWith(["org-1", "org-2"], ["aa"]);
   });
 
   test("reports an already revoked certificate as succeeded without revoking it again", async () => {
     const { revokeCertAsPlatform } = await runSync({
       connections: [connection("conn-1", "tenant-a")],
-      requests: [{ requestContext: "ctx-1", serialNumber: "aa" }],
-      certificates: [{ id: "cert-1", serialNumber: "aa", status: CertStatus.REVOKED, validationConnectionId: "conn-1" }]
+      batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
+      certificates: [matched("cert-1", "aa", CertStatus.REVOKED)]
     });
 
     expect(revokeCertAsPlatform).not.toHaveBeenCalled();
-    expect(uploadRevocationResults.mock.calls[0][0].results).toEqual([
-      expect.objectContaining({ requestContext: "ctx-1", succeeded: true })
-    ]);
+    expect(uploadedResults()).toEqual([expect.objectContaining({ requestContext: "ctx-1", succeeded: true })]);
   });
 
   test("reports success when the certificate was revoked after the batch was read", async () => {
-    const { revokeCertAsPlatform } = await runSync({
-      connections: [connection("conn-1", "tenant-a")],
-      requests: [
-        { requestContext: "ctx-1", serialNumber: "aa" },
-        { requestContext: "ctx-2", serialNumber: "aa" }
-      ],
-      certificates: [{ id: "cert-1", serialNumber: "aa", status: CertStatus.ACTIVE, validationConnectionId: "conn-1" }],
-      revokeCertAsPlatform: vi
-        .fn()
-        .mockResolvedValueOnce({
-          cert: { id: "cert-1", commonName: "device", serialNumber: "aa", applicationId: null },
-          ca: { projectId: "project-1" },
-          applicationName: null
-        })
-        .mockResolvedValueOnce(null)
-    });
-
-    expect(revokeCertAsPlatform).toHaveBeenCalledTimes(2);
-    expect(uploadRevocationResults.mock.calls[0][0].results).toEqual([
-      expect.objectContaining({ requestContext: "ctx-1", succeeded: true }),
-      expect.objectContaining({ requestContext: "ctx-2", succeeded: true })
-    ]);
-  });
-
-  test("leaves a transient revocation failure in the queue so the next run retries it", async () => {
     await runSync({
       connections: [connection("conn-1", "tenant-a")],
-      requests: [{ requestContext: "ctx-1", serialNumber: "aa" }],
-      certificates: [{ id: "cert-1", serialNumber: "aa", status: CertStatus.ACTIVE, validationConnectionId: "conn-1" }],
-      revokeCertAsPlatform: vi.fn().mockRejectedValue(new Error("connection reset by peer"))
+      batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
+      certificates: [matched("cert-1", "aa")],
+      revokeCertAsPlatform: vi.fn().mockResolvedValue({ outcome: PlatformRevocationOutcome.AlreadyRevoked })
     });
 
-    expect(uploadRevocationResults).not.toHaveBeenCalled();
+    expect(uploadedResults()).toEqual([expect.objectContaining({ requestContext: "ctx-1", succeeded: true })]);
   });
 
-  test("reports a revocation that can never succeed as failed", async () => {
+  test("reports a certificate this CA cannot revoke as a permanent failure", async () => {
     await runSync({
       connections: [connection("conn-1", "tenant-a")],
-      requests: [{ requestContext: "ctx-1", serialNumber: "aa" }],
-      certificates: [{ id: "cert-1", serialNumber: "aa", status: CertStatus.ACTIVE, validationConnectionId: "conn-1" }],
-      revokeCertAsPlatform: vi
-        .fn()
-        .mockRejectedValue(new BadRequestError({ message: "Cannot revoke imported certificates" }))
+      batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
+      certificates: [matched("cert-1", "aa")],
+      revokeCertAsPlatform: vi.fn().mockResolvedValue({
+        outcome: PlatformRevocationOutcome.NotRevocable,
+        reason: "Certificate revocation is not supported by this certificate authority type"
+      })
     });
 
-    expect(uploadRevocationResults.mock.calls[0][0].results).toEqual([
+    expect(uploadedResults()).toEqual([
       {
         requestContext: "ctx-1",
         succeeded: false,
         errorCode: "4000",
-        errorMessage: "Cannot revoke imported certificates"
+        errorMessage: "Certificate revocation is not supported by this certificate authority type"
       }
     ]);
+  });
+
+  test("leaves an upstream CA failure in the queue so a later run retries it", async () => {
+    await runSync({
+      connections: [connection("conn-1", "tenant-a")],
+      batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
+      certificates: [matched("cert-1", "aa")],
+      revokeCertAsPlatform: vi
+        .fn()
+        .mockRejectedValue(new BadRequestError({ message: "ADCS gateway operation failed: 503 Service Unavailable" }))
+    });
+
+    expect(uploadRevocationResults).not.toHaveBeenCalled();
   });
 
   test("falls back to the next connection when the first one cannot reach Intune", async () => {
@@ -229,11 +264,28 @@ describe("Intune SCEP revocation sync", () => {
 
     const { revokeCertAsPlatform } = await runSync({
       connections: [connection("conn-1", "tenant-a"), connection("conn-2", "tenant-a")],
-      requests: [{ requestContext: "ctx-1", serialNumber: "aa" }],
-      certificates: [{ id: "cert-1", serialNumber: "aa", status: CertStatus.ACTIVE, validationConnectionId: "conn-1" }]
+      batches: [[{ requestContext: "ctx-1", serialNumber: "aa", issuerName: ISSUER }]],
+      certificates: [matched("cert-1", "aa")]
     });
 
     expect(revokeCertAsPlatform).toHaveBeenCalledTimes(1);
     expect(uploadRevocationResults).toHaveBeenCalledTimes(1);
+  });
+
+  test("warns when the run stops at the batch limit", async () => {
+    const fullBatch = Array.from({ length: 500 }, (_, index) => ({
+      requestContext: `ctx-${index}`,
+      serialNumber: `s${index}`,
+      issuerName: ISSUER
+    }));
+
+    await runSync({
+      connections: [connection("conn-1", "tenant-a")],
+      batches: Array.from({ length: 10 }, () => fullBatch),
+      certificates: fullBatch.map((request, index) => matched(`cert-${index}`, request.serialNumber))
+    });
+
+    expect(downloadRevocationRequests).toHaveBeenCalledTimes(10);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("stopped at the batch limit"));
   });
 });

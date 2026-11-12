@@ -4451,10 +4451,11 @@ export const registerRoutes = async (
 
   const scepIntuneRevocationSyncQueue = scepIntuneRevocationSyncQueueFactory({
     cronJob,
-    scepEnrollmentConfigDAL,
     appConnectionDAL,
     kmsService,
+    projectDAL,
     certificateDAL,
+    certificateBodyDAL,
     certificateService,
     auditLogService
   });
