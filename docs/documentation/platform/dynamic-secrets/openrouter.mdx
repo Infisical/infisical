@@ -16,7 +16,7 @@ To learn how leases work across providers, see [Dynamic secrets](/documentation/
 Infisical uses the management key only to create and delete API keys. A management key can't call OpenRouter models, so leases always return a separate API key.
 
 <Note>
-  If your management key has an expiration date, the dynamic secret stops working when the key expires. Before that date, create a new management key and enter it in the dynamic secret.
+  If your management key has an expiration date, the dynamic secret stops working when the key expires. Before that date, create a new management key in the same OpenRouter organization and enter it in the dynamic secret. You can't change the management key while the dynamic secret has active leases, so revoke them first.
 </Note>
 
 ## Step 1: Create the dynamic secret

@@ -70,6 +70,13 @@ export const OpenRouterProvider = (): TDynamicProviderFns => {
       return providerInputs;
     }
 
+    if (metadata?.hasActiveLeases) {
+      throw new BadRequestError({
+        message:
+          "The management key can't be changed while this dynamic secret has active leases, because Infisical deletes their API keys with the current management key. Revoke the active leases first, then change the management key."
+      });
+    }
+
     let previousAccountId: string;
     try {
       previousAccountId = await $getAccountId(previousManagementKey);

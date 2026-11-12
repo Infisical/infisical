@@ -165,6 +165,25 @@ describe("OpenRouterProvider management key replacement", () => {
     expect(mockedGet).not.toHaveBeenCalled();
   });
 
+  test("rejects a key change while the dynamic secret has active leases", async () => {
+    await expect(
+      OpenRouterProvider().validateProviderInputs(
+        { ...inputs, managementKey: NEW_MANAGEMENT_KEY },
+        { projectId: "proj-1", previousInputs: inputs, hasActiveLeases: true }
+      )
+    ).rejects.toThrow("The management key can't be changed while this dynamic secret has active leases");
+    expect(mockedGet).not.toHaveBeenCalled();
+  });
+
+  test("allows other edits while the dynamic secret has active leases", async () => {
+    await expect(
+      OpenRouterProvider().validateProviderInputs(
+        { ...inputs, limit: "5" },
+        { projectId: "proj-1", previousInputs: inputs, hasActiveLeases: true }
+      )
+    ).resolves.toMatchObject({ limit: "5" });
+  });
+
   test("accepts a key from the same organization", async () => {
     mockAccounts({
       [MANAGEMENT_KEY]: { organizationId: "org_1", userId: "user_1" },
