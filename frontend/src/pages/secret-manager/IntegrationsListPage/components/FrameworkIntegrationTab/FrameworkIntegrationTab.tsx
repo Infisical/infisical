@@ -14,9 +14,9 @@ import {
   InputGroupAddon,
   InputGroupInput
 } from "@app/components/v3";
+import frameworks from "@app/const/integrationDocs/frameworkIntegrations.json";
 
 import { IntegrationDocsCard } from "../IntegrationDocsCard";
-import frameworks from "../json/frameworkIntegrations.json";
 
 const TOOLING_INTEGRATIONS = [
   {
