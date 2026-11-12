@@ -48,7 +48,10 @@ export const sendRevocationPendingApproval = async (
         applicationName,
         revocationReason: req.body.revocationReason,
         approvalRequestId: result.approvalRequestId,
-        approvalPolicyId: result.approvalPolicyId
+        requesterName: result.requesterName,
+        requesterEmail: result.requesterEmail,
+        approvalPolicyId: result.approvalPolicyId,
+        approvalPolicyName: result.approvalPolicyName
       }
     }
   });

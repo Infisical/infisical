@@ -1027,7 +1027,10 @@ export const certificateServiceFactory = ({
       return {
         status: CertificateRevocationStatus.PendingApproval as const,
         approvalRequestId: approvalRequest.id,
+        requesterName: approvalRequest.requesterName,
+        requesterEmail: approvalRequest.requesterEmail,
         approvalPolicyId: policy.id,
+        approvalPolicyName: policy.name,
         cert,
         applicationName,
         ca: caResult
@@ -1143,8 +1146,11 @@ export const certificateServiceFactory = ({
             cn: cert?.commonName,
             serialNumber: cert?.serialNumber,
             applicationId: cert?.applicationId,
+            applicationName: await $resolveApplicationName(cert?.applicationId),
             revocationReason,
             approvalRequestId: approvalRequest.id,
+            requesterName: approvalRequest.requesterName,
+            requesterEmail: approvalRequest.requesterEmail,
             error: reason
           }
         }
@@ -1167,6 +1173,8 @@ export const certificateServiceFactory = ({
           applicationName: await $resolveApplicationName(cert.applicationId),
           revocationReason,
           approvalRequestId: approvalRequest.id,
+          requesterName: approvalRequest.requesterName,
+          requesterEmail: approvalRequest.requesterEmail,
           crlWarning
         }
       }

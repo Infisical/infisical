@@ -321,13 +321,14 @@ describe("certificate revocation behind an approval policy", () => {
     internalCa: { id: "internal-ca-1", keyAlgorithm: "RSA_2048", notAfter: new Date("2099-01-01T00:00:00.000Z") }
   };
 
-  const revocationPolicy = { id: "policy-1", maxRequestTtl: null };
+  const revocationPolicy = { id: "policy-1", name: "prod-revocations", maxRequestTtl: null };
 
   const approvedRevocation = {
     id: "approval-request-1",
     projectId: "project-1",
     organizationId: "org-1",
     requesterId: "user-1",
+    requesterName: "Ada Lovelace",
     requesterEmail: "requester@example.com",
     machineIdentityId: null,
     requestData: {
@@ -367,7 +368,7 @@ describe("certificate revocation behind an approval policy", () => {
     const approvalPolicyService = {
       matchPolicy: vi.fn().mockResolvedValue(revocationPolicy),
       createRequestFromPolicy: vi.fn().mockResolvedValue({
-        request: { id: "approval-request-1" },
+        request: { id: "approval-request-1", requesterName: "Ada Lovelace", requesterEmail: "ada@example.com" },
         notifyApprovers: vi.fn().mockResolvedValue(undefined)
       }),
       notifyApprovedActionFailed: vi.fn().mockResolvedValue(undefined)
@@ -427,7 +428,11 @@ describe("certificate revocation behind an approval policy", () => {
       expect(result).toMatchObject({
         status: CertificateRevocationStatus.PendingApproval,
         approvalRequestId: "approval-request-1",
-        approvalPolicyId: "policy-1"
+        requesterName: "Ada Lovelace",
+        requesterEmail: "ada@example.com",
+        approvalPolicyId: "policy-1",
+        approvalPolicyName: "prod-revocations",
+        applicationName: "web"
       });
       expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -569,7 +574,7 @@ describe("certificate revocation behind an approval policy", () => {
   });
 
   describe("revokeApprovedCertificate", () => {
-    it("revokes the certificate and records who approved it", async () => {
+    it("revokes the certificate and records who requested it", async () => {
       const ctx = buildRevocationService();
 
       await ctx.service.revokeApprovedCertificate(approvedRevocation);
@@ -578,7 +583,14 @@ describe("certificate revocation behind an approval policy", () => {
       expect(ctx.auditEvents()).toEqual([
         expect.objectContaining({
           type: EventType.REVOKE_CERT,
-          metadata: expect.objectContaining({ certId: "cert-1", approvalRequestId: "approval-request-1" }) as unknown
+          metadata: expect.objectContaining({
+            certId: "cert-1",
+            applicationId: "app-1",
+            applicationName: "web",
+            approvalRequestId: "approval-request-1",
+            requesterName: "Ada Lovelace",
+            requesterEmail: "requester@example.com"
+          }) as unknown
         })
       ]);
     });
@@ -594,7 +606,11 @@ describe("certificate revocation behind an approval policy", () => {
         expect.objectContaining({
           type: EventType.CERT_REVOCATION_FAILED,
           metadata: expect.objectContaining({
+            applicationId: "app-1",
+            applicationName: "web",
             approvalRequestId: "approval-request-1",
+            requesterName: "Ada Lovelace",
+            requesterEmail: "requester@example.com",
             error: "An unexpected error stopped the revocation. The certificate is still active."
           }) as unknown
         })
