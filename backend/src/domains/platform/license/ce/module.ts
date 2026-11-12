@@ -89,7 +89,6 @@ export class LicenseModule {
     this.licenseService = new LicenseService(
       this.instanceEntitlementsHolder,
       new PlanCache(keyStore),
-      usageReportCache,
       usageQueue,
       organizationsProjectsService,
       licensePolicyService,

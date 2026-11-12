@@ -3,7 +3,7 @@ import { ExternalSystemError } from "@app/domains/lib/errors";
 import { InstanceType } from "../../models/instance-entitlements";
 import { buildLicense, OTHER_ROOT, ROOT, SUB_ORG_ID, WORKSPACES_USED } from "../../testing/build-license";
 import { FakeLicenseServer } from "../../testing/fake-license-server";
-import { enterprisePlan } from "../../testing/test-features";
+import { enterprisePlan, testFeatures } from "../../testing/test-features";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
@@ -20,6 +20,41 @@ const selfHostedLicenseServer = () => {
 };
 
 describe("LicenseService.getPlan", () => {
+  const queuedDimensions = async (queue: { jobs: { data: unknown }[] }) => {
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+    return queue.jobs.map((job) => (job.data as { dimensionKey: string }).dimensionKey).sort();
+  };
+
+  test("should resend every meter of a paid org on its first plan read, then not again", async () => {
+    // Setup
+    const { licenseService, module, queue } = await buildLicense();
+    await licenseService.getPlan(ROOT.id);
+    const firstRead = await queuedDimensions(queue);
+    queue.jobs = [];
+
+    // Action
+    await licenseService.getPlan(ROOT.id);
+
+    // Assert
+    expect(firstRead).toEqual(module.usageDimensions().sort());
+    expect(await queuedDimensions(queue)).toEqual([]);
+  });
+
+  test("should not resend the meters of a free org", async () => {
+    // Setup
+    const licenseServer = new FakeLicenseServer();
+    licenseServer.plans.set(ROOT.id, testFeatures());
+    const { licenseService, queue } = await buildLicense({ licenseServer });
+
+    // Action
+    await licenseService.getPlan(ROOT.id);
+
+    // Assert
+    expect(await queuedDimensions(queue)).toEqual([]);
+  });
+
   test("should name the root org to the License Server when fetching a sub-org's plan", async () => {
     // Setup
     const { licenseService, licenseServer } = await buildLicense();

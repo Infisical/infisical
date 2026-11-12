@@ -5,7 +5,7 @@ import { logger } from "@app/lib/logger";
 import { InstanceEntitlements } from "../../models/instance-entitlements";
 import { Plan } from "../../models/plan";
 import { SeatUsage } from "../../models/seat-usage";
-import { TLicensePolicyService, TLicenseServer, TPlanCache, TUsageReportCache } from "../dependencies";
+import { TLicensePolicyService, TLicenseServer, TPlanCache } from "../dependencies";
 import { TEntitlementOrg, TOrgDeletedResult } from "../helpers/license-server-types";
 import { UsageQueue } from "../helpers/usage-queue";
 import { InstanceEntitlementsHolder } from "./instance-entitlements-holder";
@@ -41,7 +41,6 @@ export class LicenseService implements TLicenseService {
   constructor(
     private readonly instanceEntitlementsHolder: InstanceEntitlementsHolder,
     private readonly planCache: TPlanCache,
-    private readonly usageReportCache: TUsageReportCache,
     private readonly usageQueue: UsageQueue,
     private readonly organizationsProjectsService: TOrganizationsProjectsService,
     private readonly licensePolicyService: TLicensePolicyService,
@@ -66,13 +65,10 @@ export class LicenseService implements TLicenseService {
     const rootOrgId = await this.organizationsProjectsService.findRootOrgId(orgId);
     if (!rootOrgId) return this.licensePolicyService.fallbackPlan();
 
-    const [cached, isReconciled] = await Promise.all([
-      this.planCache.read(rootOrgId),
-      this.usageReportCache.isReconciled(orgId)
-    ]);
+    const cached = await this.planCache.read(rootOrgId);
     const plan = cached.plan ?? (await this.fetchPlanOrFallback(rootOrgId));
     if (cached.plan && cached.passThrough) this.revalidateInBackground(rootOrgId);
-    if (!isReconciled && plan.isPaid) this.usageQueue.reconcile(orgId);
+    if (plan.isPaid) this.usageQueue.reconcile(orgId);
     return plan;
   }
 

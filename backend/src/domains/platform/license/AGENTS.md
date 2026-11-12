@@ -60,8 +60,9 @@ Rules:
 - **Name a meter with `Meter`, never its key.** `emit`, `countUsage`, `recordMeteringEvents` and `usageCounter` take a
   `Meter` (`Meter.SecretIdentities`). A key arrives as a string only from a queued job or a License Server catalog
   dimension; turn it into a meter once with `Meter.fromKey`, which returns null for a key no meter defines.
-- **The two services share the queue, not internals.** `getPlan` asks `UsageQueue.reconcile` to resend an active
-  paid org's meters; `UsageReportService` and `syncSeats` call `getPlan`/`refreshPlan`.
+- **The two services share the queue, not internals.** `getPlan` asks `UsageQueue.reconcile` to resend a paid
+  org's meters, and `reconcile` alone decides whether the org is due (its marker), off `getPlan`'s path;
+  `UsageReportService` and `syncSeats` call `getPlan`/`refreshPlan`.
 - **Deleted orgs close from the outbox.** Only the `license-org-deleted` consumer
   (`services/org/license-org-deleted-consumer.ts`) calls `closeDeletedOrg`, for root orgs on cloud. It throws so
   the outbox retries; the License Server delete is idempotent.

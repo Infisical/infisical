@@ -73,6 +73,7 @@ export class UsageQueue {
     if (!this.licenseServer.isEnabled()) return;
 
     void (async () => {
+      if (await this.usageReportCache.isReconciled(orgId)) return;
       if (!(await this.usageReportCache.acquireReconcileMarker(orgId))) return;
       this.emitAll(orgId);
     })().catch((error) => {
