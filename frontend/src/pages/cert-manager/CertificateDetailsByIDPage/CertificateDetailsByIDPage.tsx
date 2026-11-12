@@ -55,6 +55,7 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
+import { getCertManagerLink } from "../cert-manager-link";
 import { BlockedActionTooltip } from "../CertificatesPage/components/BlockedActionTooltip";
 import { CertificateCertModal } from "../CertificatesPage/components/CertificateCertModal";
 import { CertificateDeletionSyncImpact } from "../CertificatesPage/components/CertificateDeletionSyncImpact";
@@ -359,9 +360,13 @@ const Page = () => {
               <>
                 This certificate stays active until its{" "}
                 <Link
-                  to="/organizations/$orgId/cert-manager/approvals/$approvalRequestId"
-                  params={{ orgId: currentOrg.id, approvalRequestId: pendingRevocationRequestId }}
-                  search={{ policyType: ApprovalPolicyType.CertRevocation }}
+                  {...getCertManagerLink(
+                    currentProject,
+                    `approvals/${pendingRevocationRequestId}`,
+                    {
+                      policyType: ApprovalPolicyType.CertRevocation
+                    }
+                  )}
                   className="text-foreground underline underline-offset-2 hover:text-project"
                 >
                   revocation request
