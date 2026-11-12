@@ -1033,7 +1033,7 @@ tbody > .nativeTableRow[data-loading] {
   box-shadow: var(--v4-shadow-raised);
 }
 .tableScroll tbody::after {
-  z-index: 3;
+  z-index: 4;
   border: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .tableScroll thead {
