@@ -116,7 +116,9 @@ export const DonutCard = ({
                           style={{ background: slice.color }}
                         />
                         {slice.filters ? (
-                          <RowLink to={inventory} params={{ orgId }} search={slice.filters}>
+                          <RowLink
+                            link={{ to: inventory, params: { orgId }, search: slice.filters }}
+                          >
                             {slice.label}
                           </RowLink>
                         ) : (

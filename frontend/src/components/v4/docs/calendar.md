@@ -94,7 +94,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/calendar/default.tsx`; its relative imports are generated for that exact path. States: default, disabled, controlled.
 
-Registry items used: @infisical/calendar. Additional packages: react-day-picker@^9.13.0. Install every listed item before compiling this example.
+Registry items used: @infisical/calendar. Additional packages: react-day-picker@^10.0.2. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

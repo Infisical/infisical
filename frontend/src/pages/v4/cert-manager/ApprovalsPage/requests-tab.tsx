@@ -80,9 +80,11 @@ export const RequestsTab = ({ orgId, projectId }: { orgId: string; projectId: st
       text: (request) => request.requesterName || request.requesterEmail,
       render: (request) => (
         <RowLink
-          to={detailPath}
-          params={{ orgId, approvalRequestId: request.id }}
-          search={{ policyType: ApprovalPolicyType.CertRequest }}
+          link={{
+            to: detailPath,
+            params: { orgId, approvalRequestId: request.id },
+            search: { policyType: ApprovalPolicyType.CertRequest }
+          }}
         >
           {request.requesterName || "Unknown"}
         </RowLink>

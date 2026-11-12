@@ -104,9 +104,11 @@ const RequestsTable = ({
       : undefined;
   const link = (request: TApprovalRequest, text: string) => (
     <RowLink
-      to={detailPath}
-      params={{ orgId, approvalRequestId: request.id }}
-      search={{ policyType, from: "root-requests" }}
+      link={{
+        to: detailPath,
+        params: { orgId, approvalRequestId: request.id },
+        search: { policyType, from: "root-requests" }
+      }}
     >
       {text}
     </RowLink>

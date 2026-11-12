@@ -213,7 +213,7 @@ export const RelaysPanel = ({
       render: (relay) =>
         relay.orgId ? (
           <RowLink
-            {...go.link(orgHref(orgId, `/networking/relays/${relay.id}`))}
+            link={go.link(orgHref(orgId, `/networking/relays/${relay.id}`))}
             title={relay.name}
           >
             {relay.name}

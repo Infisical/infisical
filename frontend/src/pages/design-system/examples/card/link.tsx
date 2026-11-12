@@ -18,8 +18,10 @@ export default function Example() {
             <ProviderIcon icon="Infisical.png" alt="" size="xl" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <CardLink
-                to="/design-system/components/$group/$component"
-                params={{ group: "data-display", component: "detail" }}
+                link={{
+                  to: "/design-system/components/$group/$component",
+                  params: { group: "data-display", component: "detail" }
+                }}
               >
                 Detail
               </CardLink>
@@ -51,8 +53,10 @@ export default function Example() {
             <ProviderIcon icon="Kafka.png" alt="" size="xl" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <CardLink
-                to="/design-system/components/$group/$component"
-                params={{ group: "data-display", component: "detail" }}
+                link={{
+                  to: "/design-system/components/$group/$component",
+                  params: { group: "data-display", component: "detail" }
+                }}
                 disabled
               >
                 Unreleased page

@@ -263,7 +263,7 @@ export const OrgMembersTab = () => {
       grow: true,
       render: (member) => (
         <RowLink
-          {...go.link(
+          link={go.link(
             member.membership ? accessLinks.orgMember(orgId, member.membership.id) : undefined
           )}
           title={displayName(member.user) ?? undefined}

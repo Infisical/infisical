@@ -85,7 +85,7 @@ export const AgentVaultIdentitiesTab = () => {
       grow: true,
       render: (identity) => (
         <RowLink
-          {...go.link(accessLinks.projectIdentity(scope, identity.id))}
+          link={go.link(accessLinks.projectIdentity(scope, identity.id))}
           title={identity.name}
         >
           {identity.name}

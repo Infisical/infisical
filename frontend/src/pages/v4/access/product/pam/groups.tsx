@@ -199,7 +199,10 @@ export const PamGroupsTab = () => {
       sortable: true,
       grow: true,
       render: (row) => (
-        <RowLink {...go.link(accessLinks.projectGroup(scope, row.group.id))} title={row.group.name}>
+        <RowLink
+          link={go.link(accessLinks.projectGroup(scope, row.group.id))}
+          title={row.group.name}
+        >
           {row.group.name}
         </RowLink>
       )
