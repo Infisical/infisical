@@ -275,6 +275,14 @@ describe("output masking presets", () => {
     }
   );
 
+  test("connection string matches stay inside one URL's credentials", () => {
+    const matches = (value: string) =>
+      new RE2(PAM_OUTPUT_MASKING_PRESET_PATTERNS[PamOutputMaskingPreset.ConnectionString], "g").match(value);
+    expect(matches(`{"url":"https://example.com:8443/a","email":"jane@corp.com"}`)).toBeNull();
+    expect(matches(`{"a":"https://u:p1@h1/x","b":"https://u:p2@h2/y"}`)).toEqual(["https://u:p1@", "https://u:p2@"]);
+    expect(matches("postgres://app:p@ss@db:5432/app")).toEqual(["postgres://app:p@ss@"]);
+  });
+
   test("dedupes presets and caps the list at the number of presets", () => {
     expect(
       validatePolicyValues(PamAccountType.SSH, { [PamPolicyType.OutputMasking]: { presets: ["email", "email"] } })

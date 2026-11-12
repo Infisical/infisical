@@ -30,7 +30,7 @@ export const PAM_OUTPUT_MASKING_PRESET_PATTERNS: Record<
   string
 > = {
   [PamOutputMaskingPreset.Jwt]: String.raw`\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*`,
-  [PamOutputMaskingPreset.ConnectionString]: String.raw`[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@]*:\S*@`,
+  [PamOutputMaskingPreset.ConnectionString]: String.raw`[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@]*:[^\s/"']*@`,
   [PamOutputMaskingPreset.Ssn]: String.raw`\b\d{3}-\d{2}-\d{4}\b`,
   [PamOutputMaskingPreset.Email]: String.raw`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`,
   [PamOutputMaskingPreset.IpAddress]: String.raw`\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b`,
