@@ -16,6 +16,17 @@ All commands run from the `frontend/` directory:
 - `make reviewable-ui` (from repo root) — runs `lint:fix` + `type:check` (run before PRs)
 - `npm run storybook` — Storybook on port 6006
 
+### React health tooling
+
+Both tools are dev-only and never reach the production bundle.
+
+- `npm run react:doctor:diff` — React Doctor static checks (effects, state, performance, accessibility) on the issues your branch introduces. Run it before opening a PR that touches components or pages, and fix what it reports. It detects the base branch; on a stacked branch pass it (`npm run react:doctor:diff -- --base origin/<parent-branch>`). CI runs the same scan as the advisory `React Doctor` job.
+- `npm run react:doctor` — full scan of the frontend. Use it to audit an area (`-- --verbose` lists every file), not as a pre-PR gate, since existing findings are not fixed yet.
+- `npm run dev:scan` — the dev server with the React Scan overlay, which outlines components as they re-render and records slow frames. Use it when an interaction feels slow or you changed state, context, or memoization. Plain `npm run dev` never loads it.
+- `npm run react:doctor:trace` — records a Chrome performance trace of one interaction against a running app. Prefer a production build (`npm run build && npm run preview`) for real timings.
+
+`doctor.config.json` keeps React Doctor to its own rules (the Oxlint config is `npm run lint`'s job) and turns off its score upload, share links, and Socket.dev dependency lookups so source details stay local. Keep `--no-telemetry` on the scripts, since it also stops React Doctor's Sentry crash reports.
+
 Path alias: `@app/*` maps to `./src/*`.
 
 ## Architecture Overview

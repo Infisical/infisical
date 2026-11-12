@@ -39,6 +39,21 @@ const hashLocales = () => {
   return hash.digest("hex").slice(0, 12);
 };
 
+const reactScanPlugin = (enabled: boolean): PluginOption => ({
+  name: "react-scan",
+  apply: "serve",
+  transformIndexHtml() {
+    if (!enabled) return [];
+    return [
+      {
+        tag: "script",
+        attrs: { type: "module", src: "/src/dev/reactScan.ts" },
+        injectTo: "head"
+      }
+    ];
+  }
+});
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
@@ -129,6 +144,7 @@ export default defineConfig(({ mode }) => {
         virtualRouteConfig: "./src/routes.ts"
       }),
       react(),
+      reactScanPlugin(env.VITE_REACT_SCAN === "true"),
       virtualRouteFileChangeReloadPlugin,
       v4BundleFence()
     ]
