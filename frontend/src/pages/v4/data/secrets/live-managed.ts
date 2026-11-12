@@ -30,6 +30,7 @@ import {
 } from "@app/hooks/api/secretSyncs/mutations";
 import {
   useCheckDuplicateDestination,
+  useCheckRecursiveConflicts,
   useGetSecretSync,
   useListSecretSyncs,
   useSecretSyncOptions
@@ -75,6 +76,15 @@ export const secretsManagedLive: SecretsManagedAdapter = {
   useSecretSync: (destination, syncId) =>
     useGetSecretSync(destination, syncId, { refetchInterval: 30_000 }),
   useSecretSyncOptions: () => useSecretSyncOptions(),
+  useSecretSyncRecursiveConflicts: (dto, options) =>
+    useCheckRecursiveConflicts(
+      dto.destination,
+      dto.projectId,
+      dto.environment,
+      dto.secretPath,
+      dto.keySchema,
+      { enabled: options?.enabled, staleTime: 0, gcTime: 0 }
+    ),
   useSecretSyncDuplicate: (dto, options) =>
     useCheckDuplicateDestination(
       dto.destination,

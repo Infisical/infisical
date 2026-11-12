@@ -23,6 +23,7 @@ import type {
   TViewSecretRotationGeneratedCredentialsResponse
 } from "@app/hooks/api/secretRotationsV2/types";
 import type { SecretSync } from "@app/hooks/api/secretSyncs/enums";
+import type { TSecretSyncRecursiveConflict } from "@app/hooks/api/secretSyncs/queries";
 import type {
   TCreateSecretSyncDTO,
   TDeleteSecretSyncDTO,
@@ -95,6 +96,16 @@ export type SecretsManagedAdapter = SecretsOptionsAdapter &
       },
       options?: { enabled?: boolean }
     ) => V4QueryResult<{ hasDuplicate: boolean; duplicateProjectId?: string }>;
+    useSecretSyncRecursiveConflicts: (
+      dto: {
+        destination: SecretSync;
+        projectId: string;
+        environment?: string;
+        secretPath?: string;
+        keySchema?: string;
+      },
+      options?: { enabled?: boolean }
+    ) => V4QueryResult<{ conflicts: TSecretSyncRecursiveConflict[] }>;
     useCreateSecretSync: V4Mutation<TCreateSecretSyncDTO>;
     useUpdateSecretSync: V4Mutation<TUpdateSecretSyncDTO, TSecretSync>;
     useDeleteSecretSync: V4Mutation<TDeleteSecretSyncDTO>;

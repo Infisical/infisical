@@ -46,7 +46,7 @@ import {
   winRMConnectionBaseFormSchema
 } from "@app/lib/schemas/app-connections";
 
-import { methodLabel } from "./shared";
+import { methodLabel, ROTATION_VALUES, rotationFields, withRotation } from "./shared";
 
 const gatewayValues = { gatewayId: null, gatewayPoolId: null };
 
@@ -293,8 +293,8 @@ export const DATABASE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset
   [AppConnection.LDAP]: {
     app: AppConnection.LDAP,
     name: APP_CONNECTION_MAP[AppConnection.LDAP].name,
-    schema: ldapConnectionFormSchema,
-    values: gatewayValues,
+    schema: withRotation(ldapConnectionFormSchema),
+    values: { ...gatewayValues, ...ROTATION_VALUES },
     methods: [
       {
         value: LdapConnectionMethod.SimpleBind,
@@ -328,7 +328,8 @@ export const DATABASE_PRESETS: Partial<Record<AppConnection, AppConnectionPreset
             placeholder: "CN=John,OU=Users,DC=example,DC=com"
           },
           { name: "credentials.password", label: "Binding password", kind: "secret" },
-          ...sslFields(isLdaps)
+          ...sslFields(isLdaps),
+          ...rotationFields()
         ]
       }
     ]

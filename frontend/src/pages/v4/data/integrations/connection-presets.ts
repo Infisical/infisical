@@ -1,5 +1,6 @@
 import type { AppConnectionPreset } from "@app/components/v4/patterns/app-connection-form";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 
 import { CLOUD_PRESETS } from "./presets/cloud";
 import { CORE_PRESETS } from "./presets/core";
@@ -29,6 +30,7 @@ export const CONNECTION_GATEWAYS: Partial<Record<AppConnection, "optional" | "re
   [AppConnection.HCVault]: "optional",
   [AppConnection.HpeIloRedFish]: "optional",
   [AppConnection.Imperva]: "optional",
+  [AppConnection.Jenkins]: "optional",
   [AppConnection.Jira]: "optional",
   [AppConnection.KempLoadMaster]: "optional",
   [AppConnection.LDAP]: "optional",
@@ -46,3 +48,18 @@ export const CONNECTION_GATEWAYS: Partial<Record<AppConnection, "optional" | "re
   [AppConnection.VenafiTpp]: "optional",
   [AppConnection.WinRM]: "required"
 };
+
+/** Methods whose connection only works after a step that follows create, which only the add sheet has. */
+const POST_CREATE_STEP_METHODS = new Set<string>([AzureKeyVaultConnectionMethod.ManagedIdentity]);
+
+/** Presets for flows that create a connection inline and select it, so without a follow-up step. */
+export const INLINE_CONNECTION_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>> =
+  Object.fromEntries(
+    Object.entries(CONNECTION_PRESETS).map(([app, preset]) => [
+      app,
+      {
+        ...preset,
+        methods: preset.methods.filter((entry) => !POST_CREATE_STEP_METHODS.has(entry.value))
+      }
+    ])
+  );

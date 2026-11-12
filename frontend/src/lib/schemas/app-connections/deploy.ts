@@ -7,6 +7,7 @@ import { ConvexConnectionMethod } from "@app/hooks/api/appConnections/types/conv
 import { FlyioConnectionMethod } from "@app/hooks/api/appConnections/types/flyio-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HumanitecConnectionMethod } from "@app/hooks/api/appConnections/types/humanitec-connection";
+import { JenkinsConnectionMethod } from "@app/hooks/api/appConnections/types/jenkins-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
@@ -72,6 +73,44 @@ export const teamCityConnectionFormSchema = z.discriminatedUnion("method", [
     credentials: z.object({
       accessToken: z.string().trim().min(1, "Access Token required"),
       instanceUrl: z.string().trim().url("Invalid Instance URL")
+    })
+  })
+]);
+
+const isValidJenkinsInstanceUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  } catch {
+    return false;
+  }
+};
+
+const jenkinsRootSchema = genericAppConnectionFieldsSchema.extend({
+  app: z.literal(AppConnection.Jenkins)
+});
+
+export const jenkinsConnectionFormSchema = z.discriminatedUnion("method", [
+  jenkinsRootSchema.extend({
+    method: z.literal(JenkinsConnectionMethod.ApiToken),
+    credentials: z.object({
+      instanceUrl: z
+        .string()
+        .trim()
+        .min(1, "Instance URL required")
+        .max(255)
+        .refine(
+          isValidJenkinsInstanceUrl,
+          "Instance URL must be an http or https URL without credentials, a query, or a fragment"
+        ),
+      username: z.string().trim().min(1, "Username required").max(255),
+      apiToken: z.string().trim().min(1, "API Token required").max(255)
     })
   })
 ]);
