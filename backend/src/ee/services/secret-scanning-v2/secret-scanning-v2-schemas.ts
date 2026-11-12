@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   SecretScanningDataSourcesSchema,
+  SecretScanningFindingLocationsSchema,
   SecretScanningFindingsSchema,
   SecretScanningResourcesSchema,
   SecretScanningScansSchema
@@ -114,13 +115,17 @@ export const GitRepositoryScanFindingDetailsSchema = z.object({
 });
 
 export const BaseSecretScanningFindingSchema = SecretScanningFindingsSchema.omit({
-  details: true,
   secretFindingBlindIndex: true
 }).extend({
   projectId: z.string(),
   dataSourceId: z.string().uuid(),
   dataSourceName: z.string(),
-  resourceName: z.string()
+  resourceName: z.string(),
+  locationCount: z.number()
+});
+
+export const SecretScanningFindingLocationSchema = SecretScanningFindingLocationsSchema.extend({
+  details: GitRepositoryScanFindingDetailsSchema
 });
 
 export const SecretScanningResourceSchema = SecretScanningResourcesSchema;

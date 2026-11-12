@@ -680,8 +680,12 @@ export const getPullRequestScanCheckRunResult = ({
         .join("\n")}`
     : "";
 
+  // Each row is a location, so a secret found in several places of the pull request counts once.
+  const countSecrets = (rows: typeof allFindings) => new Set(rows.map(({ id }, index) => id ?? index)).size;
+
   const findings = allFindings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
-  const skippedCount = allFindings.length - findings.length;
+  const secretCount = countSecrets(findings);
+  const skippedCount = countSecrets(allFindings) - secretCount;
 
   if (!findings.length && skippedCount) {
     return {
@@ -717,7 +721,7 @@ export const getPullRequestScanCheckRunResult = ({
   }
 
   const intro = [
-    `Found ${findings.length} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
+    `Found ${secretCount} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
     "If the findings are false positives or safe to ignore, use Skip: False positive or Skip: Ignore above to mark them in Infisical and re-run this check. To stop a value from being reported anywhere, add it to the allowlist in your Infisical secret scanning configuration.",
     skippedCount ? `${skippedCount} more secret(s) were marked as false positives or ignored in Infisical.` : "",
     truncationAlert
@@ -772,7 +776,7 @@ export const getPullRequestScanCheckRunResult = ({
 
   return {
     conclusion: "failure",
-    title: `${findings.length} secret(s) found`,
+    title: `${secretCount} secret(s) found`,
     summary,
     findings,
     oversizedFiles,
@@ -893,7 +897,10 @@ export const createPullRequestScanReport = ({
       }
     },
     getCompletedScanMetadata: ({ findings }) =>
-      ({ ...metadata, findingIds: findings.map((finding) => finding.id) }) satisfies TGitHubPullRequestScanMetadata,
+      ({
+        ...metadata,
+        findingIds: [...new Set(findings.map((finding) => finding.id))]
+      }) satisfies TGitHubPullRequestScanMetadata,
     // Judged on every finding in the pull request's commits, including ones an earlier push scan saved first.
     complete: ({ findings, details }) =>
       tryCompletePullRequestCheckRun({

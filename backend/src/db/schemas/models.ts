@@ -226,6 +226,7 @@ export enum TableName {
   SecretScanningResource = "secret_scanning_resources",
   SecretScanningScan = "secret_scanning_scans",
   SecretScanningFinding = "secret_scanning_findings",
+  SecretScanningFindingLocation = "secret_scanning_finding_locations",
   SecretScanningConfig = "secret_scanning_configs",
 
   Membership = "memberships",

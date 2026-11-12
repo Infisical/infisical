@@ -31,10 +31,10 @@ export enum SecretScanningFindingStatus {
 }
 
 export enum SecretScanningFindingOrderBy {
+  LastDetectedAt = "lastDetectedAt",
   CreatedAt = "createdAt",
   Rule = "rule",
   ResourceName = "resourceName",
-  Author = "author",
   Status = "status"
 }
 

@@ -5,8 +5,7 @@ import {
   BaseCreateSecretScanningDataSourceSchema,
   BaseSecretScanningDataSourceSchema,
   BaseSecretScanningFindingSchema,
-  BaseUpdateSecretScanningDataSourceSchema,
-  GitRepositoryScanFindingDetailsSchema
+  BaseUpdateSecretScanningDataSourceSchema
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
@@ -62,8 +61,7 @@ export const GitHubDataSourceListItemSchema = z
   );
 
 export const GitHubFindingSchema = BaseSecretScanningFindingSchema.extend({
-  dataSourceType: z.literal(SecretScanningDataSource.GitHub),
-  details: GitRepositoryScanFindingDetailsSchema
+  dataSourceType: z.literal(SecretScanningDataSource.GitHub)
 });
 
 export const GitHubPullRequestScanMetadataSchema = z.object({

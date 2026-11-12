@@ -1,11 +1,6 @@
 import { join } from "path";
 
-import {
-  ProjectMembershipRole,
-  TSecretScanningDataSources,
-  TSecretScanningFindings,
-  TSecretScanningResourcesInsert
-} from "@app/db/schemas";
+import { ProjectMembershipRole, TSecretScanningDataSources, TSecretScanningResourcesInsert } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
   assertClonedRepositoryWithinSizeLimit,
@@ -43,13 +38,16 @@ import { PostHogEventTypes, TSecretScanningScanCompletedEvent } from "@app/servi
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import {
   SecretScanningDataSource,
+  SecretScanningFindingStatus,
   SecretScanningScanStatus,
   SecretScanningScanTrigger,
   SecretScanningScanType
 } from "./secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
 import {
+  TFindingLocationRow,
   TFindingsPayload,
+  TGitRepositoryScanFindingDetails,
   TQueueSecretScanningDataSourceEvent,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
@@ -57,7 +55,6 @@ import {
   TQueueSecretScanningSendNotification,
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDiscoverResource,
-  TSecretScanningFinding,
   TSecretScanningQueueReportedRealtimeScan
 } from "./secret-scanning-v2-types";
 
@@ -116,28 +113,39 @@ export const secretScanningV2QueueServiceFactory = ({
 }: TSecretRotationV2QueueServiceFactoryDep) => {
   // Resolves the org data key once per scan rather than once per finding. The blind index is generated the same way as
   // secrets_v2.secretValueOrgBlindIndex, so a finding can be matched against secrets in the org without decrypting.
-  const createFindingRowsBuilder = async ({
-    projectId,
-    resourceId,
-    scanId
-  }: {
-    projectId: string;
-    resourceId: string;
-    scanId: string;
-  }) => {
+  const createFindingRowsBuilder = async (projectId: string) => {
     const project = await projectDAL.findById(projectId);
     const blindIndexer = await createOrgSecretBlindIndexer({ orgId: project.orgId, kmsService });
 
-    return (findings: TFindingsPayload) =>
+    // a finding is one secret value, so a match without a value would group every such match into one finding
+    return (findings: TFindingsPayload): Promise<TFindingLocationRow[]> =>
       Promise.all(
-        findings.map(async ({ secretValue, ...finding }) => ({
-          ...finding,
-          resourceId,
-          scanId,
-          secretFindingBlindIndex: await blindIndexer.generateOrgLevelBlindIndex(Buffer.from(secretValue))
-        }))
+        findings
+          .filter(({ secretValue }) => secretValue)
+          .map(async ({ secretValue, ...finding }) => ({
+            ...finding,
+            secretFindingBlindIndex: await blindIndexer.generateOrgLevelBlindIndex(Buffer.from(secretValue))
+          }))
       );
   };
+
+  // Written after the transaction that reopened them commits, so the log never shows a reopen that rolled back.
+  const auditReopenedFindings = (projectId: string, findingIds: string[]) =>
+    Promise.all(
+      findingIds.map((findingId) =>
+        auditLogService.createAuditLog({
+          projectId,
+          actor: {
+            type: ActorType.PLATFORM,
+            metadata: {}
+          },
+          event: {
+            type: EventType.SECRET_SCANNING_FINDING_UPDATE,
+            metadata: { findingId, status: SecretScanningFindingStatus.Unresolved }
+          }
+        })
+      )
+    );
 
   /**
    * Full scans of one resource are serialized across pods by a lease in Redis holding the ID of the
@@ -443,7 +451,7 @@ export const secretScanningV2QueueServiceFactory = ({
         await writeTextToFile(configPath, config.content);
       }
 
-      const buildFindingRows = await createFindingRowsBuilder({ projectId: dataSource.projectId, resourceId, scanId });
+      const buildFindingRows = await createFindingRowsBuilder(dataSource.projectId);
 
       // Counts what this attempt scanned, for the progress logs only. The scan's finding total is
       // read from the database at the end, because an attempt that resumes a partly-scanned scan
@@ -462,17 +470,10 @@ export const secretScanningV2QueueServiceFactory = ({
       ) => {
         const findingRows = await buildFindingRows(batchFindings);
 
-        const owned = await secretScanningV2DAL.findings.transaction(async (tx) => {
-          if (findingRows.length) {
-            await secretScanningV2DAL.findings.upsert(
-              findingRows,
-              ["resourceId", "fingerprint"],
-              tx,
-              // rows already found by an earlier scan keep their original scanId; the blind index is merged so findings
-              // saved before it existed get one
-              ["rule", "secretFindingBlindIndex"]
-            );
-          }
+        const { owned, reopenedFindingIds } = await secretScanningV2DAL.findings.transaction(async (tx) => {
+          const persisted = findingRows.length
+            ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows: findingRows }, tx)
+            : undefined;
 
           const progressed = await secretScanningV2DAL.scans.update(
             { id: scanId, status: SecretScanningScanStatus.Scanning },
@@ -480,8 +481,11 @@ export const secretScanningV2QueueServiceFactory = ({
             tx
           );
 
-          return Boolean(progressed.length);
+          return { owned: Boolean(progressed.length), reopenedFindingIds: persisted?.reopenedFindingIds ?? [] };
         });
+
+        // the batch committed even when the scan was taken from this run, so its reopens happened
+        await auditReopenedFindings(dataSource.projectId, reopenedFindingIds);
 
         if (!owned) return false;
 
@@ -579,18 +583,23 @@ export const secretScanningV2QueueServiceFactory = ({
 
       // Read back rather than counted in the handler: the findings an earlier attempt persisted are
       // part of this scan's total, and a resumed attempt never scanned the batches they came from.
-      const findingsCount = await secretScanningV2DAL.findings.countByScanId(scanId);
+      const {
+        locations: locationsCount,
+        findings: findingsCount,
+        unresolvedFindings: unresolvedFindingsCount
+      } = await secretScanningV2DAL.findings.countByScanId(scanId);
 
       sendScanTelemetry(dataSource, {
         event: PostHogEventTypes.SecretScanningScanCompleted,
         properties: {
           type: dataSource.type as SecretScanningDataSource,
           scanType: SecretScanningScanType.Historical,
-          findingCount: findingsCount
+          findingCount: locationsCount
         }
       });
 
-      if (findingsCount) {
+      // a new location of a false positive or an ignored finding needs no action, so it isn't a leak
+      if (unresolvedFindingsCount) {
         await queueService.queue(
           QueueName.SecretScanningV2,
           QueueJobs.SecretScanningV2SendNotification,
@@ -599,7 +608,7 @@ export const secretScanningV2QueueServiceFactory = ({
             resourceName: resource.name,
             isDiffScan: false,
             dataSource,
-            numberOfSecrets: findingsCount,
+            numberOfSecrets: unresolvedFindingsCount,
             scanId
           },
           { removeOnFail: true, jobId: `secret-scanning-notification-${scanId}` }
@@ -883,32 +892,32 @@ export const secretScanningV2QueueServiceFactory = ({
         configPath
       });
 
-      const buildFindingRows = await createFindingRowsBuilder({ projectId: dataSource.projectId, resourceId, scanId });
+      const buildFindingRows = await createFindingRowsBuilder(dataSource.projectId);
       const findingRows = await buildFindingRows(findingsPayload);
 
-      const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {
-        let findings: TSecretScanningFindings[] = [];
+      const { scannedLocations, reopenedFindingIds, closedOutByThisRun } =
+        await secretScanningV2DAL.findings.transaction(async (tx) => {
+          const persisted = findingRows.length
+            ? await secretScanningV2DAL.findings.persistLocations({ resourceId, scanId, rows: findingRows }, tx)
+            : { scannedLocations: [], reopenedFindingIds: [] };
 
-        if (findingRows.length) {
-          findings = await secretScanningV2DAL.findings.upsert(findingRows, ["resourceId", "fingerprint"], tx, [
-            "rule",
-            "secretFindingBlindIndex"
-          ]);
-        }
+          // Same guard as the full scan: a scan the reaper already failed keeps that outcome.
+          const completedScans = await secretScanningV2DAL.scans.update(
+            { id: scanId, status: SecretScanningScanStatus.Scanning },
+            {
+              status: SecretScanningScanStatus.Completed,
+              completedAt: new Date(),
+              ...(report
+                ? { metadata: report.getCompletedScanMetadata({ findings: persisted.scannedLocations, details }) }
+                : {})
+            },
+            tx
+          );
 
-        // Same guard as the full scan: a scan the reaper already failed keeps that outcome.
-        const completedScans = await secretScanningV2DAL.scans.update(
-          { id: scanId, status: SecretScanningScanStatus.Scanning },
-          {
-            status: SecretScanningScanStatus.Completed,
-            completedAt: new Date(),
-            ...(report ? { metadata: report.getCompletedScanMetadata({ findings, details }) } : {})
-          },
-          tx
-        );
+          return { ...persisted, closedOutByThisRun: Boolean(completedScans.length) };
+        });
 
-        return { allFindings: findings, closedOutByThisRun: Boolean(completedScans.length) };
-      });
+      await auditReopenedFindings(dataSource.projectId, reopenedFindingIds);
 
       if (!closedOutByThisRun) {
         logger.warn(
@@ -917,22 +926,27 @@ export const secretScanningV2QueueServiceFactory = ({
         return;
       }
 
-      // The upsert returns findings an earlier scan saved first too, with the status each was triaged to.
-      await report?.complete({ findings: allFindings, details });
+      // Every location the scan matched, including ones an earlier scan saved first, with its finding's status.
+      await report?.complete({ findings: scannedLocations, details });
 
-      const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
+      const { locations: locationsCount, unresolvedFindings: unresolvedFindingsCount } =
+        await secretScanningV2DAL.findings.countByScanId(scanId);
 
       sendScanTelemetry(dataSource, {
         event: PostHogEventTypes.SecretScanningScanCompleted,
         properties: {
           type: dataSource.type as SecretScanningDataSource,
           scanType: SecretScanningScanType.Realtime,
-          findingCount: newFindings.length
+          findingCount: locationsCount
         }
       });
 
-      if (newFindings.length) {
-        const finding = newFindings[0] as TSecretScanningFinding;
+      // a new location of a false positive or an ignored finding needs no action, so it isn't a leak
+      if (unresolvedFindingsCount) {
+        // every location of a diff scan is in the pushed commits, so any leak's author is the person to tell
+        const leakDetails = scannedLocations.find(({ status }) => status === SecretScanningFindingStatus.Unresolved)
+          ?.details as TGitRepositoryScanFindingDetails | undefined;
+
         await queueService.queue(
           QueueName.SecretScanningV2,
           QueueJobs.SecretScanningV2SendNotification,
@@ -941,10 +955,10 @@ export const secretScanningV2QueueServiceFactory = ({
             resourceName: resource.name,
             isDiffScan: true,
             dataSource,
-            numberOfSecrets: newFindings.length,
+            numberOfSecrets: unresolvedFindingsCount,
             scanId,
-            authorName: finding?.details?.author,
-            authorEmail: finding?.details?.email
+            authorName: leakDetails?.author,
+            authorEmail: leakDetails?.email
           },
           { jobId: `secret-scanning-notification-${scanId}` }
         );
@@ -1091,8 +1105,8 @@ export const secretScanningV2QueueServiceFactory = ({
               : `Encountered an error while attempting to scan the resource **${resourceName}**: ${payload.errorMessage}`,
           link:
             payload.status === SecretScanningScanStatus.Completed
-              ? `/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
-              : `/projects/secret-scanning/${projectId}/data-sources/${dataSource.type}/${dataSource.id}`
+              ? `/organizations/${project.orgId}/projects/secret-scanning/${projectId}/findings?scanId=${payload.scanId}`
+              : `/organizations/${project.orgId}/projects/secret-scanning/${projectId}/data-sources/${dataSource.type}/${dataSource.id}`
         }))
       );
 
@@ -1112,7 +1126,7 @@ export const secretScanningV2QueueServiceFactory = ({
                 numberOfSecrets: payload.numberOfSecrets,
                 isDiffScan: payload.isDiffScan,
                 url: encodeURI(
-                  `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
+                  `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-scanning/${projectId}/findings?scanId=${payload.scanId}`
                 ),
                 timestamp
               }

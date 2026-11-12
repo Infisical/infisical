@@ -1,5 +1,8 @@
+import { z } from "zod";
+
 import {
   TSecretScanningDataSources,
+  TSecretScanningFindingLocationsInsert,
   TSecretScanningFindings,
   TSecretScanningFindingsInsert,
   TSecretScanningResources,
@@ -42,6 +45,10 @@ import {
   SecretScanningScanStatus,
   SecretScanningScanTrigger
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  GitRepositoryScanFindingDetailsSchema,
+  SecretScanningFindingLocationSchema
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
@@ -236,14 +243,14 @@ export type TSecretScanningScanReport = {
   start: () => Promise<void>;
   // Saved on the completed scan, in the transaction that saves its findings.
   getCompletedScanMetadata: (params: TSecretScanningScanReportCompletion) => unknown;
-  // `findings` are every finding the scan matched, with the status each was triaged to.
+  // `findings` are every location the scan matched, with the status its finding was triaged to.
   complete: (params: TSecretScanningScanReportCompletion) => Promise<void>;
   fail: (params: { reason: string; isTimedOut?: boolean }) => Promise<void>;
   cancel: () => Promise<void>;
 };
 
 export type TSecretScanningScanReportCompletion = {
-  findings: TSecretScanningFindings[];
+  findings: TSecretScanningScannedLocation[];
   details?: TSecretScanningRealtimeScanDetails;
 };
 
@@ -366,10 +373,28 @@ export type TSecretScanningFactoryProcessEvent<E extends TQueueSecretScanningDat
 }) => Promise<void>;
 
 // `secretValue` is only used to compute the finding's blind index before it is saved; it is never stored.
-export type TFindingsPayload = (Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule"> & {
-  secretValue: string;
-})[];
+export type TFindingsPayload = (Pick<TSecretScanningFindingLocationsInsert, "details" | "fingerprint" | "rule"> &
+  Pick<TSecretScanningFindingsInsert, "severity"> & {
+    secretValue: string;
+  })[];
+
+export type TGitRepositoryScanFindingDetails = z.infer<typeof GitRepositoryScanFindingDetailsSchema>;
+
+// A row of a scan's findings, with its secret value replaced by the value's blind index.
+export type TFindingLocationRow = Omit<TFindingsPayload[number], "secretValue"> & { secretFindingBlindIndex: string };
+
+// A place a scan matched, with the finding (the secret value) it belongs to: `id` and `status` are the finding's.
+export type TSecretScanningScannedLocation = Pick<TFindingLocationRow, "fingerprint" | "rule" | "details"> &
+  Pick<TSecretScanningFindings, "id" | "status">;
 export type TGetFindingsPayload = Promise<TFindingsPayload>;
+
+export type TSecretScanningFindingLocation = z.infer<typeof SecretScanningFindingLocationSchema>;
+
+export type TListSecretScanningFindingLocationsDTO = {
+  findingId: string;
+  offset: number;
+  limit: number;
+};
 
 export type TUpdateSecretScanningFindingDTO = {
   status?: SecretScanningFindingStatus;

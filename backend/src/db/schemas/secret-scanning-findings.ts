@@ -13,9 +13,6 @@ export const SecretScanningFindingsSchema = z.object({
   severity: z.string(),
   status: z.string().default("unresolved"),
   triageComment: z.string().nullable().optional(),
-  fingerprint: z.string(),
-  details: z.unknown(),
-  scanId: z.string().uuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
   resourceId: z.string().uuid(),
@@ -23,7 +20,8 @@ export const SecretScanningFindingsSchema = z.object({
   triagedByUserId: z.string().uuid().nullable().optional(),
   triagedAt: z.date().nullable().optional(),
   resolvedAt: z.date().nullable().optional(),
-  secretFindingBlindIndex: z.string().nullable().optional()
+  secretFindingBlindIndex: z.string().nullable().optional(),
+  lastDetectedAt: z.date()
 });
 
 export type TSecretScanningFindings = z.infer<typeof SecretScanningFindingsSchema>;

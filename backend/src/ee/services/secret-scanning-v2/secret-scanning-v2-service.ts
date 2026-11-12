@@ -36,6 +36,7 @@ import {
   TFindSecretScanningDataSourceByIdDTO,
   TFindSecretScanningDataSourceByNameDTO,
   TListSecretScanningDataSourcesByProjectId,
+  TListSecretScanningFindingLocationsDTO,
   TRemoveSecretScanningResourceDTO,
   TSecretScanningDataSource,
   TSecretScanningDataSourceCredentials,
@@ -43,6 +44,7 @@ import {
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDataSourceWithDetails,
   TSecretScanningFinding,
+  TSecretScanningFindingLocation,
   TSecretScanningResourceWithDetails,
   TSecretScanningScanWithDetails,
   TTriggerSecretScanningDataSourceDTO,
@@ -1309,8 +1311,9 @@ export const secretScanningV2ServiceFactory = ({
     return { findings: findings as TSecretScanningFinding[], totalCount };
   };
 
-  const updateSecretScanningFindingById = async (
-    { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
+  const findSecretScanningFindingWithPermission = async (
+    findingId: string,
+    action: ProjectPermissionSecretScanningFindingActions,
     actor: OrgServiceActor
   ) => {
     const plan = await licenseService.getPlan(actor.orgId);
@@ -1337,9 +1340,37 @@ export const secretScanningV2ServiceFactory = ({
       projectId: finding.projectId
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
+    ForbiddenError.from(permission).throwUnlessCan(action, ProjectPermissionSub.SecretScanningFindings);
+
+    return finding;
+  };
+
+  const listSecretScanningFindingLocations = async (
+    { findingId, offset, limit }: TListSecretScanningFindingLocationsDTO,
+    actor: OrgServiceActor
+  ) => {
+    const finding = await findSecretScanningFindingWithPermission(
+      findingId,
+      ProjectPermissionSecretScanningFindingActions.Read,
+      actor
+    );
+
+    const { locations, totalCount } = await secretScanningV2DAL.locations.findByFindingId(findingId, {
+      offset,
+      limit
+    });
+
+    return { locations: locations as TSecretScanningFindingLocation[], totalCount, projectId: finding.projectId };
+  };
+
+  const updateSecretScanningFindingById = async (
+    { findingId, triageComment, status }: TUpdateSecretScanningFindingDTO,
+    actor: OrgServiceActor
+  ) => {
+    const finding = await findSecretScanningFindingWithPermission(
+      findingId,
       ProjectPermissionSecretScanningFindingActions.Update,
-      ProjectPermissionSub.SecretScanningFindings
+      actor
     );
 
     const isStatusChange = status !== undefined && status !== finding.status;
@@ -1487,6 +1518,7 @@ export const secretScanningV2ServiceFactory = ({
     listSecretScanningScansWithDetailsByDataSourceId,
     getSecretScanningUnresolvedFindingsCountByProjectId,
     listSecretScanningFindingsByProjectId,
+    listSecretScanningFindingLocations,
     updateSecretScanningFindingById,
     findSecretScanningConfigByProjectId,
     upsertSecretScanningConfig,

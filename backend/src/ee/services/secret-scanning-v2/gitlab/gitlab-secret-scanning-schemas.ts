@@ -6,8 +6,7 @@ import {
   BaseCreateSecretScanningDataSourceSchema,
   BaseSecretScanningDataSourceSchema,
   BaseSecretScanningFindingSchema,
-  BaseUpdateSecretScanningDataSourceSchema,
-  GitRepositoryScanFindingDetailsSchema
+  BaseUpdateSecretScanningDataSourceSchema
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import { SecretScanningDataSources } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -77,8 +76,7 @@ export const GitLabDataSourceListItemSchema = z
   );
 
 export const GitLabFindingSchema = BaseSecretScanningFindingSchema.extend({
-  dataSourceType: z.literal(SecretScanningDataSource.GitLab),
-  details: GitRepositoryScanFindingDetailsSchema
+  dataSourceType: z.literal(SecretScanningDataSource.GitLab)
 });
 
 // A group or project data source has one hook. GitLab has no account-level hook, so an account data source
