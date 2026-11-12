@@ -97,4 +97,4 @@ export const testFeatures = (): TInstanceFeatures => ({
   instanceUserManagement: false
 });
 
-export const enterprisePlan = (): TInstanceFeatures => ({ ...testFeatures(), slug: "enterprise", rbac: true as false });
+export const enterprisePlan = (): TInstanceFeatures => ({ ...testFeatures(), slug: "enterprise", rbac: true });

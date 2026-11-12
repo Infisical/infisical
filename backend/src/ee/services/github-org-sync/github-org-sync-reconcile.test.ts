@@ -107,7 +107,7 @@ const createService = () => {
   };
   const identityGroupMembershipDAL = { find: vi.fn() };
   const agentVaultPersonalValueDAL = { deleteForActorsWithoutGrant: vi.fn(), findProjectIdsWithValues: vi.fn() };
-  const licenseService = new FakeLicenseService().setPlan(ORG_ID, { githubOrgSync: true as false });
+  const licenseService = new FakeLicenseService().setPlan(ORG_ID, { githubOrgSync: true });
 
   const service = githubOrgSyncServiceFactory({
     githubOrgSyncDAL: {

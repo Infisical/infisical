@@ -102,7 +102,7 @@ const buildProvider = (opts?: {
     }))
   };
   const licenseService = new FakeLicenseService().setPlan("org-1", {
-    pkiEnterpriseAlerting: (opts?.pkiEnterpriseAlerting ?? false) as false
+    pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false
   });
   const provider = certManagerAlertProviderFactory({
     certManagerCertificateAlertDAL: dal,

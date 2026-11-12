@@ -18,7 +18,7 @@ describe("Plan.assert", () => {
 
   test("should allow a feature the plan includes", () => {
     // Setup
-    const plan = Plan.restore({ ...testFeatures(), externalKms: true as false });
+    const plan = Plan.restore({ ...testFeatures(), externalKms: true });
 
     // Action
     const result = () => plan.assert("externalKms");
@@ -34,7 +34,7 @@ describe("Plan.enforcedIdentityLimit", () => {
     const plan = Plan.restore({
       ...testFeatures(),
       slug: "enterprise",
-      identityLimit: 5 as unknown as null
+      identityLimit: 5
     });
 
     // Action
@@ -46,11 +46,11 @@ describe("Plan.enforcedIdentityLimit", () => {
 
   test("should keep a limit as a number when the plan is not enterprise, or enforces it", () => {
     // Setup
-    const pro = Plan.restore({ ...testFeatures(), slug: "pro", identityLimit: 5 as unknown as null });
+    const pro = Plan.restore({ ...testFeatures(), slug: "pro", identityLimit: 5 });
     const enforced = Plan.restore({
       ...testFeatures(),
       slug: "enterprise",
-      identityLimit: 7 as unknown as null,
+      identityLimit: 7,
       enforceIdentityLimit: true
     });
 

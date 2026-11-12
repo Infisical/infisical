@@ -25,7 +25,7 @@ export class FakeLicenseService implements TLicenseService {
   lastKnown = new Map<string, { plan: TPlanProps; fetchedAt: number }>();
 
   setPlan(orgId: string, plan: Partial<TPlanProps>) {
-    this.plans.set(orgId, { ...testFeatures(), ...plan } as TPlanProps);
+    this.plans.set(orgId, { ...testFeatures(), ...plan });
     return this;
   }
 

@@ -92,7 +92,7 @@ const buildProvider = (opts?: {
     getResourcePermission: vi.fn(async () => ({ permission: ability() }))
   };
   const licenseService = new FakeLicenseService().setPlan("org-1", {
-    pkiEnterpriseAlerting: (opts?.pkiEnterpriseAlerting ?? false) as false
+    pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false
   });
   const provider = certManagerApplicationAlertProviderFactory({
     certManagerCertificateAlertDAL: dal,

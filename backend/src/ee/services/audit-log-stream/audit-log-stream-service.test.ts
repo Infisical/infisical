@@ -43,8 +43,8 @@ const buildService = () => {
   const licenseService = new FakeLicenseService();
   licenseService.defaultPlan = {
     ...licenseService.defaultPlan,
-    auditLogStreams: true as false,
-    auditLogStreamLimit: 5 as 3
+    auditLogStreams: true,
+    auditLogStreamLimit: 5
   };
 
   const deps = {

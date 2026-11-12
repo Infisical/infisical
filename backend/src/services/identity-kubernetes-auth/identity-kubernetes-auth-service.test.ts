@@ -128,10 +128,10 @@ const createService = ({
       getActorGrantAbilities: vi.fn().mockResolvedValue([])
     },
     licenseService: new FakeLicenseService().setPlan(ORG_ID, {
-      machineIdentityAuthTemplates: true as false,
-      gateway: true as false,
-      gatewayPool: true as false,
-      ipAllowlisting: true as false
+      machineIdentityAuthTemplates: true,
+      gateway: true,
+      gatewayPool: true,
+      ipAllowlisting: true
     }),
     kmsService: {
       createCipherPairWithDataKey: vi.fn().mockResolvedValue({

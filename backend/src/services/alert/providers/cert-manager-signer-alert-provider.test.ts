@@ -86,7 +86,7 @@ const buildProvider = (opts?: {
       })
     },
     licenseService: new FakeLicenseService().setPlan("org-1", {
-      pkiEnterpriseAlerting: (opts?.pkiEnterpriseAlerting ?? false) as false
+      pkiEnterpriseAlerting: opts?.pkiEnterpriseAlerting ?? false
     }),
     certManagerProjectResolver: { getActiveProjectId: async (orgId: string) => (orgId === "org-1" ? "proj-1" : null) }
   } as unknown as TCertManagerSignerAlertProviderDep);

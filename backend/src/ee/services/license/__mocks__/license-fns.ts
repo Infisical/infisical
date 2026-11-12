@@ -1,3 +1,5 @@
+import type { TInstanceFeatures } from "@app/domains/platform/license/ce/module";
+
 export const getDefaultOnPremFeatures = () => {
   return {
     _id: null,
@@ -69,6 +71,8 @@ export const getDefaultOnPremFeatures = () => {
     pkiScep: false,
     pkiPqc: false,
     caCrl: true,
+    pkiOcsp: false,
+    pkiAwsKmsSigning: false,
     pkiEnterpriseCaIntegrations: false,
     pkiExternalIntermediateCa: false,
     pkiCrossSignedCa: false,
@@ -90,7 +94,7 @@ export const getDefaultOnPremFeatures = () => {
     enterprisePamAccount: null,
     crossProjectSecretSharing: false,
     secretsFolderRbac: true
-  };
+  } satisfies TInstanceFeatures;
 };
 
 export const getLicenseKeyConfig = () => {

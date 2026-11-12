@@ -9,8 +9,8 @@ export enum InstanceType {
 }
 
 export type TInstanceFeatures = TPlanProps & {
-  fips: false;
-  instanceUserManagement: false;
+  fips: boolean;
+  instanceUserManagement: boolean;
 };
 
 export type TInstanceEntitlementsProps = {
@@ -53,7 +53,7 @@ export class InstanceEntitlements {
   withFeatures(features: Partial<TInstanceFeatures>): InstanceEntitlements {
     return new InstanceEntitlements({
       ...this.props,
-      features: { ...this.props.features, ...features } as TInstanceFeatures
+      features: { ...this.props.features, ...features }
     });
   }
 

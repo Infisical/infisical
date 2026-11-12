@@ -126,7 +126,7 @@ const buildService = (catalog: TSecretsProjectWarning[]) => {
         hasRole: () => false
       })
     } as TInsightsServiceFactoryDep["permissionService"],
-    licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretAccessInsights: true as false }),
+    licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretAccessInsights: true }),
     keyStore: {
       getItem: async () => null,
       setItemWithExpiry: async () => "OK",
@@ -264,7 +264,7 @@ describe("project access insights audit log store", () => {
         }),
         getOrgPermission: unreachable("permissionService.getOrgPermission")
       } as unknown as TInsightsServiceFactoryDep["permissionService"],
-      licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretAccessInsights: true as false }),
+      licenseService: new FakeLicenseService().setPlan(ORG_ID, { secretAccessInsights: true }),
       keyStore: {
         getItem: async () => null,
         setItemWithExpiry: async () => "OK",

@@ -7,8 +7,8 @@ const licensed = (instanceType: InstanceType) =>
     features: {
       ...testFeatures(),
       slug: "enterprise",
-      rbac: true as false,
-      fips: true as false
+      rbac: true,
+      fips: true
     },
     licenseId: "lic-1",
     customerId: null
@@ -39,7 +39,7 @@ describe("InstanceEntitlements.withFeatures", () => {
     });
 
     // Action
-    const overridden = instance.withFeatures({ rbac: true as false });
+    const overridden = instance.withFeatures({ rbac: true });
 
     // Assert
     expect([overridden.features.rbac, instance.features.rbac]).toEqual([true, false]);

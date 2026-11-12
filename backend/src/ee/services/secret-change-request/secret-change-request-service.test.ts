@@ -158,7 +158,7 @@ const buildService = ({
 } = {}) => {
   let requestCounter = 0;
   const hasRole = vi.fn().mockReturnValue(false);
-  const licenseService = new FakeLicenseService().setPlan("org-1", { secretApproval: true as false });
+  const licenseService = new FakeLicenseService().setPlan("org-1", { secretApproval: true });
   vi.spyOn(licenseService, "getPlan");
   const deps = {
     approvalRequestDAL: {

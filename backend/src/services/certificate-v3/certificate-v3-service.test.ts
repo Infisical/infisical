@@ -280,7 +280,7 @@ describe("CertificateV3Service", () => {
     mockKeyStore.deleteItem.mockResolvedValue(1);
     licenseService = new FakeLicenseService();
     licenseService.instance = { ...licenseService.instance, instanceType: InstanceType.OnPrem };
-    licenseService.defaultPlan = { ...licenseService.defaultPlan, pkiPqc: true as false };
+    licenseService.defaultPlan = { ...licenseService.defaultPlan, pkiPqc: true };
     vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
       const mockTx = {};
       return callback(mockTx);
