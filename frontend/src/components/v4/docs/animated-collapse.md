@@ -88,7 +88,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/animated-collapse/default.tsx`; its relative imports are generated for that exact path. States: default, keyboard.
 
-Registry items used: @infisical/animated-collapse, @infisical/button, @infisical/field, @infisical/input. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/animated-collapse, @cipher/button, @cipher/field, @cipher/input. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

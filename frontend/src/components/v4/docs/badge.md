@@ -158,7 +158,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/badge/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/badge. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";
@@ -233,7 +233,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/badge/sizes.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/badge. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";
@@ -263,7 +263,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/badge/control-height.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/badge, @infisical/button, @infisical/icon, @infisical/input, @infisical/layout. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/button, @cipher/icon, @cipher/input, @cipher/layout. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Badge } from "../../../../components/v4/ui/badge";
@@ -328,7 +328,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/badge/count.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/badge. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Count } from "../../../../components/v4/ui/badge";

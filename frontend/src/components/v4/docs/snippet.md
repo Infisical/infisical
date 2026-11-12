@@ -113,7 +113,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/snippet/default.tsx`; its relative imports are generated for that exact path. States: read-only.
 
-Registry items used: @infisical/snippet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/snippet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Snippet } from "../../../../components/v4/ui/snippet";
@@ -134,7 +134,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/snippet/states.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/field, @infisical/snippet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/snippet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Field } from "../../../../components/v4/ui/field";
@@ -180,7 +180,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/snippet/behavior.tsx`; its relative imports are generated for that exact path. States: default, loading, error, success.
 
-Registry items used: @infisical/snippet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/snippet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -211,7 +211,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/snippet/multiline.tsx`; its relative imports are generated for that exact path. States: default, overflow.
 
-Registry items used: @infisical/snippet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/snippet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Snippet } from "../../../../components/v4/ui/snippet";

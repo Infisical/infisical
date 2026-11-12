@@ -444,7 +444,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/table/variants.tsx`; its relative imports are generated for that exact path. States: default, overflow.
 
-Registry items used: @infisical/button, @infisical/data-table, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/data-table, @cipher/sonner. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -520,7 +520,7 @@ export default function Variants() {
 
 Save this example at `src/pages/design-system/examples/table/states.tsx`; its relative imports are generated for that exact path. States: empty, controlled, disabled, keyboard, loading.
 
-Registry items used: @infisical/badge, @infisical/data-table, @infisical/empty. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/data-table, @cipher/empty. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -618,7 +618,7 @@ export default function States() {
 
 Save this example at `src/pages/design-system/examples/table/native-loading.tsx`; its relative imports are generated for that exact path. States: loading.
 
-Registry items used: @infisical/data-table, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/data-table, @cipher/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { DataTable, type DataTableColumn } from "../../../../components/v4/ui/data-table";
@@ -703,7 +703,7 @@ export default function NativeLoading() {
 
 Save this example at `src/pages/design-system/examples/table/semantic.tsx`; its relative imports are generated for that exact path. States: default, controlled.
 
-Registry items used: @infisical/checkbox, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/checkbox, @cipher/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -822,7 +822,7 @@ export default function SemanticTable() {
 
 Save this example at `src/pages/design-system/examples/table/sorting.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
 
-Registry items used: @infisical/data-table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/data-table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -898,7 +898,7 @@ export default function Sorting() {
 
 Save this example at `src/pages/design-system/examples/table/data-table.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard, overflow.
 
-Registry items used: @infisical/data-table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/data-table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useMemo, useState } from "react";
@@ -972,7 +972,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/table/load-more.tsx`; its relative imports are generated for that exact path. States: default, loading, keyboard.
 
-Registry items used: @infisical/data-table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/data-table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useEffect, useState } from "react";
@@ -1042,7 +1042,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/table/scroll-container.tsx`; its relative imports are generated for that exact path. States: default, overflow.
 
-Registry items used: @infisical/button, @infisical/data-table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/data-table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
@@ -1105,7 +1105,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/table/row-actions.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/sonner, @infisical/table. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
+Registry items used: @cipher/data-table, @cipher/dropdown-menu, @cipher/icon, @cipher/layout, @cipher/sonner, @cipher/table. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
 
 ```tsx
 import { CodeXmlIcon, EditIcon, TagsIcon } from "lucide-react";
@@ -1297,7 +1297,7 @@ export default function RowActions() {
 
 Save this example at `src/pages/design-system/examples/table/shared-tooltips.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/sonner, @infisical/text, @infisical/tooltip. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/data-table, @cipher/dropdown-menu, @cipher/icon, @cipher/layout, @cipher/sonner, @cipher/text, @cipher/tooltip. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import {
@@ -1437,7 +1437,7 @@ export default function SharedTooltips() {
 
 Save this example at `src/pages/design-system/examples/table/lazy-row-actions.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard.
 
-Registry items used: @infisical/dropdown-menu, @infisical/icon, @infisical/sonner, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/dropdown-menu, @cipher/icon, @cipher/sonner, @cipher/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { DropdownMenuItem, DropdownMenuSeparator } from "../../../../components/v4/ui/dropdown-menu";
@@ -1536,7 +1536,7 @@ export default function LazyRowActions() {
 
 Save this example at `src/pages/design-system/examples/table/row-activation.tsx`; its relative imports are generated for that exact path. States: default, keyboard, controlled.
 
-Registry items used: @infisical/button, @infisical/data-table, @infisical/dropdown-menu, @infisical/sonner, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/data-table, @cipher/dropdown-menu, @cipher/sonner, @cipher/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -1673,7 +1673,7 @@ export default function RowActivation() {
 
 Save this example at `src/pages/design-system/examples/table/pagination.tsx`; its relative imports are generated for that exact path. States: default, controlled.
 
-Registry items used: @infisical/data-table, @infisical/pagination. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/data-table, @cipher/pagination. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -1737,7 +1737,7 @@ export default function PaginationSlot() {
 
 Save this example at `src/pages/design-system/examples/table/loading.tsx`; its relative imports are generated for that exact path. States: loading, default.
 
-Registry items used: @infisical/badge, @infisical/button, @infisical/data-table, @infisical/layout. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/button, @cipher/data-table, @cipher/layout. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -1839,7 +1839,7 @@ export default function Loading() {
 
 Save this example at `src/pages/design-system/examples/table/grouped-rows.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
 
-Registry items used: @infisical/badge, @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/sonner, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/data-table, @cipher/dropdown-menu, @cipher/icon, @cipher/layout, @cipher/sonner, @cipher/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -2024,7 +2024,7 @@ export default function GroupedRows() {
 
 Save this example at `src/pages/design-system/examples/table/column-toggle.tsx`; its relative imports are generated for that exact path. States: default, disabled, keyboard, controlled.
 
-Registry items used: @infisical/button, @infisical/data-table, @infisical/icon, @infisical/sonner, @infisical/tooltip. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/data-table, @cipher/icon, @cipher/sonner, @cipher/tooltip. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -2154,7 +2154,7 @@ export default function ColumnToggle() {
 
 Save this example at `src/pages/design-system/examples/table/leading-pin.tsx`; its relative imports are generated for that exact path. States: default, controlled, overflow.
 
-Registry items used: @infisical/button, @infisical/checkbox, @infisical/data-table, @infisical/dropdown-menu, @infisical/icon, @infisical/input, @infisical/popover, @infisical/table. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/checkbox, @cipher/data-table, @cipher/dropdown-menu, @cipher/icon, @cipher/input, @cipher/popover, @cipher/table. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";
@@ -2447,7 +2447,7 @@ export default function LeadingPinExample() {
 
 Save this example at `src/pages/design-system/examples/table/row-focus.tsx`; its relative imports are generated for that exact path. States: default, controlled.
 
-Registry items used: @infisical/badge, @infisical/button, @infisical/data-table, @infisical/popover, @infisical/table, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/badge, @cipher/button, @cipher/data-table, @cipher/popover, @cipher/table, @cipher/text. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";

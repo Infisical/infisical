@@ -97,7 +97,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/hover-card/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/hover-card. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/hover-card. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -139,7 +139,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/hover-card/placements.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/hover-card. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/hover-card. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -208,7 +208,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/hover-card/widths.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/code, @infisical/hover-card. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/code, @cipher/hover-card. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Code } from "../../../../components/v4/ui/code";

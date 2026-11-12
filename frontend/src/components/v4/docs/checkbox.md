@@ -95,7 +95,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/checkbox/default.tsx`; its relative imports are generated for that exact path. States: controlled, keyboard.
 
-Registry items used: @infisical/checkbox. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/checkbox. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -157,7 +157,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/checkbox/states.tsx`; its relative imports are generated for that exact path. States: default, disabled, invalid.
 
-Registry items used: @infisical/checkbox. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/checkbox. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Checkbox } from "../../../../components/v4/ui/checkbox";
@@ -198,7 +198,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/checkbox/media.tsx`; its relative imports are generated for that exact path. States: controlled, default.
 
-Registry items used: @infisical/checkbox, @infisical/provider-icon. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/checkbox, @cipher/provider-icon. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";

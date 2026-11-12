@@ -110,7 +110,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/dialog/default.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
 
-Registry items used: @infisical/button, @infisical/dialog, @infisical/field, @infisical/input. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/dialog, @cipher/field, @cipher/input. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -164,7 +164,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/dialog/variants.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/dialog. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/dialog. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -221,7 +221,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/dialog/content.tsx`; its relative imports are generated for that exact path. States: overflow.
 
-Registry items used: @infisical/button, @infisical/dialog. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/dialog. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";
@@ -254,7 +254,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/dialog/pending.tsx`; its relative imports are generated for that exact path. States: controlled, loading, editing.
 
-Registry items used: @infisical/alert-dialog, @infisical/button, @infisical/dialog, @infisical/field, @infisical/input. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/alert-dialog, @cipher/button, @cipher/dialog, @cipher/field, @cipher/input. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useEffect, useId, useState } from "react";

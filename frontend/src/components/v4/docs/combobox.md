@@ -189,7 +189,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/combobox/default.tsx`; its relative imports are generated for that exact path. States: controlled, keyboard.
 
-Registry items used: @infisical/combobox, @infisical/field. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/combobox, @cipher/field. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -227,7 +227,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/combobox/multiple.tsx`; its relative imports are generated for that exact path. States: controlled, disabled, keyboard.
 
-Registry items used: @infisical/combobox, @infisical/field. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/combobox, @cipher/field. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -275,7 +275,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/combobox/creation.tsx`; its relative imports are generated for that exact path. States: controlled.
 
-Registry items used: @infisical/combobox, @infisical/field. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/combobox, @cipher/field. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -320,7 +320,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/combobox/async.tsx`; its relative imports are generated for that exact path. States: controlled, loading, empty.
 
-Registry items used: @infisical/combobox, @infisical/field. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/combobox, @cipher/field. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useEffect, useRef, useState } from "react";
@@ -398,7 +398,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/app-connection-form/default.tsx`; its relative imports are generated for that exact path. States: controlled, loading, disabled.
 
-Registry items used: @infisical/app-connection-form, @infisical/combobox, @infisical/field. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/app-connection-form, @cipher/combobox, @cipher/field. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -480,7 +480,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/combobox/tags.tsx`; its relative imports are generated for that exact path. States: controlled, empty, invalid, disabled.
 
-Registry items used: @infisical/field, @infisical/tags-input. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/tags-input. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -554,7 +554,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/combobox/secret-path.tsx`; its relative imports are generated for that exact path. States: controlled, keyboard, disabled.
 
-Registry items used: @infisical/field, @infisical/secret-path-input. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/field, @cipher/secret-path-input. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

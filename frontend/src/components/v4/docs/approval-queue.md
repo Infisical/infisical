@@ -152,7 +152,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/approval-queue/default.tsx`; its relative imports are generated for that exact path. States: default, loading, success, error.
 
-Registry items used: @infisical/approval-queue. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/approval-queue. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -288,7 +288,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/approval-queue/without-undo.tsx`; its relative imports are generated for that exact path. States: default, success.
 
-Registry items used: @infisical/approval-queue. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/approval-queue. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -357,7 +357,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/approval-queue/variants.tsx`; its relative imports are generated for that exact path. States: default, loading, success, error.
 
-Registry items used: @infisical/approval-queue, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/approval-queue, @cipher/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -524,7 +524,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/approval-queue/loading.tsx`; its relative imports are generated for that exact path. States: loading.
 
-Registry items used: @infisical/approval-queue. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/approval-queue. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import {
@@ -562,7 +562,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/approval-queue/grouped.tsx`; its relative imports are generated for that exact path. States: default, loading, success, error.
 
-Registry items used: @infisical/approval-queue, @infisical/button. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/approval-queue, @cipher/button. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

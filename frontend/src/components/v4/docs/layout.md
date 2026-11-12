@@ -145,7 +145,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/layout/default.tsx`; its relative imports are generated for that exact path. States: default, overflow.
 
-Registry items used: @infisical/button, @infisical/layout, @infisical/text. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/layout, @cipher/text. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";

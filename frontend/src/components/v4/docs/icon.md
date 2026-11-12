@@ -90,7 +90,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/icon/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/icon. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/icon. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Icon, iconNames } from "../../../../components/v4/ui/icon";
@@ -113,7 +113,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/icon/fallbacks.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/icon. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
+Registry items used: @cipher/icon. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
 
 ```tsx
 import {
@@ -163,7 +163,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/icon/sizes.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/button, @infisical/icon. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/icon. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Button } from "../../../../components/v4/ui/button";

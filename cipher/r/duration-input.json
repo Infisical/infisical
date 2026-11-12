@@ -1,0 +1,24 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "duration-input",
+  "type": "registry:ui",
+  "registryDependencies": [
+    "@cipher/cipher-base",
+    "@cipher/input",
+    "@cipher/select"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/ui/duration-input.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/duration-input.tsx",
+      "content": "import * as React from \"react\";\n\nimport { FieldControlContext, useFieldControlAttributes } from \"../lib/field-context\";\nimport { Input } from \"./input\";\nimport { Select } from \"./select\";\n\nimport styles from \"./duration-input.module.css\";\n\nconst DURATION_UNITS = [\n  { value: \"s\", label: \"Seconds\", milliseconds: 1_000 },\n  { value: \"m\", label: \"Minutes\", milliseconds: 60_000 },\n  { value: \"h\", label: \"Hours\", milliseconds: 3_600_000 },\n  { value: \"d\", label: \"Days\", milliseconds: 86_400_000 },\n  { value: \"w\", label: \"Weeks\", milliseconds: 604_800_000 }\n] as const;\n\nexport type DurationUnit = (typeof DURATION_UNITS)[number][\"value\"];\n\nconst parseDuration = (value: string) => {\n  const explicit = value.trim().match(/^(\\d+(?:\\.\\d+)?)\\s*([smhdw])$/i);\n  if (explicit) return { amount: explicit[1], unit: explicit[2].toLowerCase() as DurationUnit };\n  if (!/^\\d+(?:\\.\\d+)?$/.test(value.trim())) return null;\n  const milliseconds = Number(value);\n  const unit = [...DURATION_UNITS]\n    .reverse()\n    .find((option) => milliseconds % option.milliseconds === 0);\n  if (unit) return { amount: String(milliseconds / unit.milliseconds), unit: unit.value };\n  return { amount: String(milliseconds / 1_000), unit: \"s\" as const };\n};\n\nexport type DurationInputProps = {\n  value: string;\n  onChange: (value: string) => void;\n  invalid?: boolean;\n  disabled?: boolean;\n  placeholder?: string;\n  id?: string;\n  \"aria-label\"?: string;\n  \"aria-labelledby\"?: string;\n  \"aria-describedby\"?: string;\n};\n\n/**\n * An amount and a unit that read and emit the ms() string main sends for access durations:\n * the amount followed by s, m, h, d or w (\"1h\", \"1.5d\"), or \"\" when the amount is cleared.\n */\nexport function DurationInput({\n  value,\n  onChange,\n  invalid,\n  disabled,\n  placeholder,\n  ref,\n  ...props\n}: DurationInputProps & { ref?: React.Ref<HTMLInputElement> }) {\n  const field = useFieldControlAttributes(props);\n  const unitLabelId = React.useId();\n  const parsed = parseDuration(value);\n  const [pendingUnit, setPendingUnit] = React.useState<DurationUnit>(\"h\");\n  const unit = parsed?.unit ?? pendingUnit;\n  const amount = parsed?.amount ?? \"\";\n  const label = props[\"aria-label\"] ?? (field[\"aria-labelledby\"] ? undefined : \"Duration\");\n  const labelledBy = label ? undefined : field[\"aria-labelledby\"];\n  return (\n    <FieldControlContext value={{}}>\n      <div\n        role=\"group\"\n        data-slot=\"duration-input\"\n        aria-label={label}\n        aria-labelledby={labelledBy}\n        className={styles.durationInput}\n      >\n        <Input\n          ref={ref}\n          id={field.id}\n          type=\"number\"\n          inputMode=\"decimal\"\n          min=\"0.001\"\n          step=\"any\"\n          value={amount}\n          placeholder={placeholder}\n          disabled={disabled}\n          invalid={invalid || Boolean(field[\"aria-invalid\"])}\n          aria-label={label}\n          aria-labelledby={labelledBy}\n          aria-describedby={field[\"aria-describedby\"]}\n          onChange={(event) => onChange(event.target.value ? `${event.target.value}${unit}` : \"\")}\n        />\n        <Select\n          value={unit}\n          disabled={disabled}\n          invalid={invalid || Boolean(field[\"aria-invalid\"])}\n          options={DURATION_UNITS.map(({ value: option, label: optionLabel }) => ({\n            value: option,\n            label: optionLabel\n          }))}\n          aria-label={label ? `${label} unit` : undefined}\n          aria-labelledby={labelledBy ? `${labelledBy} ${unitLabelId}` : undefined}\n          onChange={(next) => {\n            setPendingUnit(next as DurationUnit);\n            if (amount) onChange(`${amount}${next}`);\n          }}\n        />\n        {labelledBy && (\n          <span id={unitLabelId} hidden>\n            unit\n          </span>\n        )}\n      </div>\n    </FieldControlContext>\n  );\n}\nDurationInput.displayName = \"DurationInput\";\n"
+    },
+    {
+      "path": "src/components/v4/ui/duration-input.module.css",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/duration-input.module.css",
+      "content": ".durationInput {\n  display: grid;\n  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);\n  gap: var(--v4-space-8);\n  min-width: 0;\n}\n"
+    }
+  ]
+}

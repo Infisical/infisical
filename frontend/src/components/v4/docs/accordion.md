@@ -98,7 +98,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/accordion/default.tsx`; its relative imports are generated for that exact path. States: default, disabled.
 
-Registry items used: @infisical/accordion. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/accordion. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as UI from "../../../../components/v4/ui/accordion";
@@ -125,7 +125,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/accordion/variants.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/accordion. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/accordion. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import {
@@ -183,7 +183,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/accordion/controlled.tsx`; its relative imports are generated for that exact path. States: default, controlled.
 
-Registry items used: @infisical/accordion. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/accordion. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -221,7 +221,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/accordion/growing.tsx`; its relative imports are generated for that exact path. States: default, overflow.
 
-Registry items used: @infisical/accordion, @infisical/button, @infisical/layout. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/accordion, @cipher/button, @cipher/layout. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -278,7 +278,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/accordion/badges.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/accordion, @infisical/badge. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/accordion, @cipher/badge. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import {

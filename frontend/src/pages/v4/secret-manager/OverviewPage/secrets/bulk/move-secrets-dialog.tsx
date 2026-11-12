@@ -23,17 +23,12 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 
-import type { Resource, Secret } from "../../secrets-model";
+import type { Resource } from "../../secrets-model";
 import { childPath, Gate } from "../flows/shared";
 import type { ApplyFeedback, EnvironmentOption, FlowFeedback } from "../flows/types";
 import { useManagedBlock } from "../row-actions/permissions";
 import type { OverlayHostProps } from "../row-actions/types";
-import {
-  isPathInsideFolder,
-  moveFolderResources,
-  planSecretMove,
-  relocate
-} from "./move-resources";
+import { isPathInsideFolder, moveFolderResources, planSecretMove } from "./move-resources";
 
 import styles from "./bulk-dialogs.module.css";
 
@@ -41,7 +36,6 @@ export { isPathInsideFolder, moveFolderResources } from "./move-resources";
 
 type Of<K extends Resource["kind"]> = Extract<Resource, { kind: K }>;
 type Folder = Of<"folder">;
-type Rotation = Of<"rotation">;
 type BlockingType = "secret_import" | "dynamic_secret" | "honey_token" | "secret_rotation";
 type MoveResult = {
   id: string;
@@ -49,6 +43,7 @@ type MoveResult = {
   status: "success" | "info" | "error";
   message: string;
 };
+const ROTATION_MOVE_UNSUPPORTED = "Moving secret rotations isn't supported yet.";
 type Step = (current: Resource[]) => { next: Resource[] } | { error: string };
 type MovedFolder = { name: string; sourceEnv: string; destinationEnvironment: string };
 
@@ -348,48 +343,6 @@ function MoveSecretsDialogContent({
         shouldOverwrite
       });
 
-  const moveRotationStep =
-    (rotation: Rotation, destination: string): Step =>
-    (current) => {
-      if (
-        current.some(
-          (resource) =>
-            resource.kind === "rotation" &&
-            at(resource, destination, selectedPath) &&
-            resource.name === rotation.name
-        )
-      )
-        return {
-          error: `A Secret Rotation with the name "${rotation.name}" already exists at the secret path "${selectedPath}"`
-        };
-      const managed = current.filter(
-        (resource): resource is Secret =>
-          resource.kind === "secret" &&
-          at(resource, rotation.environment, sourcePath) &&
-          resource.managedBy === rotation.name
-      );
-      const managedNames = new Set(managed.map(({ name }) => name));
-      const conflicts = current.filter(
-        (resource) =>
-          resource.kind === "secret" &&
-          at(resource, destination, selectedPath) &&
-          managedNames.has(resource.name)
-      );
-      if (conflicts.length && !shouldOverwrite)
-        return {
-          error: `The following secrets already exist at the destination path "${selectedPath}": ${conflicts.map(({ name }) => name).join(", ")}. Set "overwriteDestination" to true to replace them.`
-        };
-      const conflictIds = new Set(conflicts.map(({ id }) => id));
-      const moving = new Set([rotation.id, ...managed.map(({ id }) => id)]);
-      return {
-        next: current
-          .filter(({ id }) => !conflictIds.has(id))
-          .map((resource) =>
-            moving.has(resource.id) ? relocate(resource, destination, selectedPath) : resource
-          )
-      };
-    };
-
   const moveFolderStep =
     (folder: Folder, destination: string): Step =>
     (current) => {
@@ -476,20 +429,10 @@ function MoveSecretsDialogContent({
         );
       }
     }
-    const rotationSteps: Step[] = [];
-    const rotationFailures: string[] = [];
-    rotationsToMove.forEach((rotation) => {
-      const step = moveRotationStep(rotation, destinationEnv);
-      if ("error" in run(step)) rotationFailures.push(rotation.name);
-      else rotationSteps.push(step);
-    });
-    if (rotationSteps.length)
-      apply(rotationSteps, {
-        title: `Successfully moved ${plural(rotationSteps.length, "secret rotation")}`
-      });
-    if (rotationFailures.length)
+    if (rotationsToMove.length)
       onToast("bad", {
-        title: `Failed to move ${plural(rotationFailures.length, "secret rotation")}: ${rotationFailures.join(", ")}`
+        title: `Failed to move ${plural(rotationsToMove.length, "secret rotation")}: ${rotationsToMove.map(({ name }) => name).join(", ")}`,
+        description: ROTATION_MOVE_UNSUPPORTED
       });
     const folderSteps: Step[] = [];
     const moved: FolderMove[] = [];
@@ -576,19 +519,14 @@ function MoveSecretsDialogContent({
           `${plural(secretsToMove.length, "secret")} moved.`
         );
       }
-      rotationsToMove.forEach((rotation) => {
-        const step = moveRotationStep(rotation, env);
-        if (
-          record(
-            env,
-            step,
-            `${env}-${rotation.name}`,
-            `${environment.label} / ${rotation.name}`,
-            "Secret rotation moved."
-          )
-        )
-          nonSecretMoves.add(env);
-      });
+      rotationsToMove.forEach((rotation) =>
+        nextResults.push({
+          id: `${env}-${rotation.name}`,
+          name: `${environment.label} / ${rotation.name}`,
+          status: "error",
+          message: ROTATION_MOVE_UNSUPPORTED
+        })
+      );
       foldersToMove.forEach((folder) => {
         const step = moveFolderStep(folder, env);
         if (

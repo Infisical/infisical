@@ -115,7 +115,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/multi-step/default.tsx`; its relative imports are generated for that exact path. States: default, invalid, controlled, keyboard.
 
-Registry items used: @infisical/button, @infisical/checkbox, @infisical/field, @infisical/input, @infisical/multi-step, @infisical/sonner. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/checkbox, @cipher/field, @cipher/input, @cipher/multi-step, @cipher/sonner. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import * as React from "react";

@@ -80,7 +80,7 @@ Exports: AppConnectionForm, AppConnectionFieldPreset, AppConnectionFormProps, Ap
 
 Save this example at `src/pages/design-system/examples/app-connection-form/default.tsx`; its relative imports are generated for that exact path. States: controlled, loading, disabled.
 
-Registry items used: @infisical/app-connection-form, @infisical/combobox, @infisical/field. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/app-connection-form, @cipher/combobox, @cipher/field. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -162,7 +162,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/app-connection-form/redirect.tsx`; its relative imports are generated for that exact path. States: default, error.
 
-Registry items used: @infisical/app-connection-form, @infisical/combobox, @infisical/field. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/app-connection-form, @cipher/combobox, @cipher/field. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { connectionCreation } from "../../../../components/v4/patterns/app-connection-form";

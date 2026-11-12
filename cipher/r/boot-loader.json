@@ -1,0 +1,23 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "boot-loader",
+  "type": "registry:ui",
+  "registryDependencies": [
+    "@cipher/cipher-base",
+    "@cipher/loader"
+  ],
+  "files": [
+    {
+      "path": "src/components/v4/ui/boot-loader.tsx",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/boot-loader.tsx",
+      "content": "import * as React from \"react\";\n\nimport { readV4BootTheme } from \"../lib/boot-theme\";\nimport { toV4Theme, v4ThemeScheme } from \"../lib/theme-registry\";\nimport { cn } from \"../lib/utils\";\nimport { Loader } from \"./loader\";\n\nimport \"../v4.css\";\nimport styles from \"./boot-loader.module.css\";\n\nexport type BootLoaderProps = Omit<React.ComponentPropsWithoutRef<\"div\">, \"children\"> & {\n  label: string;\n  description?: string;\n  theme?: string;\n  fill?: \"viewport\" | \"container\";\n  delay?: number;\n};\n\n/** The page loader for app and session boot, themed from storage so it renders before V4Scope. */\nexport function BootLoader({\n  label,\n  description,\n  theme,\n  fill = \"viewport\",\n  delay,\n  className,\n  ref,\n  ...props\n}: BootLoaderProps & { ref?: React.Ref<HTMLDivElement> }) {\n  const resolved = toV4Theme(theme) ?? readV4BootTheme();\n  return (\n    <div\n      ref={ref}\n      data-slot=\"boot-loader\"\n      data-fill={fill}\n      data-theme={resolved}\n      data-scheme={v4ThemeScheme(resolved)}\n      className={cn(\"v4\", styles.boot, className)}\n      {...props}\n    >\n      <Loader size=\"page\" label={label} description={description} delay={delay} />\n    </div>\n  );\n}\nBootLoader.displayName = \"BootLoader\";\n"
+    },
+    {
+      "path": "src/components/v4/ui/boot-loader.module.css",
+      "type": "registry:file",
+      "target": "src/components/v4/ui/boot-loader.module.css",
+      "content": ".boot {\n  display: flex;\n  flex-direction: column;\n  height: 100dvh;\n}\n.boot[data-fill=\"container\"] {\n  height: 100%;\n}\n"
+    }
+  ]
+}

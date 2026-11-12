@@ -116,7 +116,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/kbd/default.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/input, @infisical/kbd. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/input, @cipher/kbd. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Input } from "../../../../components/v4/ui/input";
@@ -167,7 +167,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/kbd/sizes.tsx`; its relative imports are generated for that exact path. States: default.
 
-Registry items used: @infisical/kbd. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/kbd. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { Kbd } from "../../../../components/v4/ui/kbd";

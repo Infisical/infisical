@@ -127,7 +127,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/command-menu/default.tsx`; its relative imports are generated for that exact path. States: default, controlled, disabled, keyboard.
 
-Registry items used: @infisical/button, @infisical/command-menu. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/command-menu. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
@@ -225,7 +225,7 @@ export default function Example() {
 
 Save this example at `src/pages/design-system/examples/command-menu/states.tsx`; its relative imports are generated for that exact path. States: loading, empty, controlled.
 
-Registry items used: @infisical/button, @infisical/command-menu. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/button, @cipher/command-menu. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";

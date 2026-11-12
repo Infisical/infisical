@@ -102,7 +102,7 @@ Source declarations and review criteria only. Generation checks references and c
 
 Save this example at `src/pages/design-system/examples/announcements/default.tsx`; its relative imports are generated for that exact path. States: default, controlled, keyboard.
 
-Registry items used: @infisical/announcements, @infisical/badge, @infisical/button, @infisical/list, @infisical/snippet. Additional packages: none. Install every listed item before compiling this example.
+Registry items used: @cipher/announcements, @cipher/badge, @cipher/button, @cipher/list, @cipher/snippet. Additional packages: none. Install every listed item before compiling this example.
 
 ```tsx
 import { useState } from "react";
