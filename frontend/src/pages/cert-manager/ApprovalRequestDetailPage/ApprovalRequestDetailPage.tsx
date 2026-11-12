@@ -36,12 +36,14 @@ import {
 import { crlReasonToNameMap } from "@app/hooks/api/certificates/constants";
 import { CrlReason } from "@app/hooks/api/certificates/enums";
 import { useGetPkiApplicationById } from "@app/hooks/api/pkiApplications";
+import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import {
   CodeSigningScopeField,
   codeSigningScopeFieldLabels,
   MONOSPACED_SCOPE_FIELDS
 } from "@app/hooks/api/signers";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
+import { getCertManagerLink } from "@app/pages/cert-manager/cert-manager-link";
 
 import {
   ApprovalStepsSection,
@@ -53,13 +55,13 @@ const ROUTE_ID =
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/approvals/$approvalRequestId" as const;
 
 const RevocationDetailsSection = ({
-  orgId,
+  requestProject,
   requestData,
   isPending,
   requesterName,
   requesterEmail
 }: {
-  orgId: string;
+  requestProject: Pick<Project, "id" | "type" | "orgId">;
   requestData: CertRevocationRequestData;
   isPending: boolean;
   requesterName?: string;
@@ -89,8 +91,7 @@ const RevocationDetailsSection = ({
             <span className="text-xs text-muted">Certificate</span>
             <p className="text-sm text-foreground">
               <Link
-                to="/organizations/$orgId/cert-manager/certificates/$certificateId"
-                params={{ orgId, certificateId: requestData.certificateId }}
+                {...getCertManagerLink(requestProject, `certificates/${requestData.certificateId}`)}
                 className="font-mono underline hover:text-foreground-secondary"
               >
                 {requestData.commonName || requestData.certificateId}
@@ -329,6 +330,12 @@ const PageContent = () => {
     );
   }
 
+  const requestProject = {
+    id: request.projectId,
+    orgId: currentOrg.id,
+    type: ProjectType.CertificateManager
+  };
+
   const getStatusBadgeVariant = (status: ApprovalRequestStatus) => {
     switch (status) {
       case ApprovalRequestStatus.Pending:
@@ -376,11 +383,7 @@ const PageContent = () => {
         {" "}
         on application{" "}
         <Link
-          to="/organizations/$orgId/cert-manager/applications/$applicationName"
-          params={{
-            orgId: currentOrg.id,
-            applicationName: requestApplication.name
-          }}
+          {...getCertManagerLink(requestProject, `applications/${requestApplication.name}`)}
           className="font-medium text-foreground-secondary underline hover:text-foreground"
         >
           {requestApplication.name}
@@ -445,7 +448,7 @@ const PageContent = () => {
     if (isRevocation) {
       return (
         <RevocationDetailsSection
-          orgId={currentOrg.id}
+          requestProject={requestProject}
           requestData={request.requestData.requestData as CertRevocationRequestData}
           isPending={request.status === ApprovalRequestStatus.Pending}
           requesterName={request.requesterName}
