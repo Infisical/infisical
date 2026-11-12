@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
@@ -27,6 +27,24 @@ import {
   TUpdateCertificateDTO,
   TUpdateRenewalConfigDTO
 } from "./types";
+
+export const invalidateRevokedCertificate = (queryClient: QueryClient, certificateId: string) => {
+  queryClient.invalidateQueries({
+    queryKey: certKeys.getCertificateById(certificateId)
+  });
+  queryClient.invalidateQueries({
+    queryKey: certificateProfileKeys.lists()
+  });
+  queryClient.invalidateQueries({
+    queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
+  });
+  queryClient.invalidateQueries({
+    queryKey: projectKeys.allProjectCertificates()
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["cert-dashboard-stats"]
+  });
+};
 
 export const useDeleteCert = () => {
   const queryClient = useQueryClient();
@@ -74,21 +92,7 @@ export const useRevokeCert = () => {
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
-      queryClient.invalidateQueries({
-        queryKey: certKeys.getCertificateById(id)
-      });
-      queryClient.invalidateQueries({
-        queryKey: certificateProfileKeys.lists()
-      });
-      queryClient.invalidateQueries({
-        queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
-      });
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.allProjectCertificates()
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["cert-dashboard-stats"]
-      });
+      invalidateRevokedCertificate(queryClient, id);
     }
   });
 };
