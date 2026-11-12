@@ -1,10 +1,10 @@
-import { createMongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError, MongoAbility, RawRuleOf } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { Knex } from "knex";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -354,7 +354,11 @@ describe("certificate revocation behind an approval policy", () => {
     requesterEmail: string;
   };
 
-  const buildRevocationService = ({ ca = externalCa as object, renewals = [] as TPendingRenewal[] } = {}) => {
+  const buildRevocationService = ({
+    ca = externalCa as object,
+    renewals = [] as TPendingRenewal[],
+    applicationPermissions = [{ action: "manage", subject: "all" }] as RawRuleOf<MongoAbility>[]
+  } = {}) => {
     let stored: Record<string, unknown> = { ...applicationCertificate };
     const renewalRequests = new Map(renewals.map((renewal) => [renewal.id, { ...renewal }]));
     const certificateDAL = {
@@ -434,9 +438,7 @@ describe("certificate revocation behind an approval policy", () => {
       usageMeteringService: { emit: vi.fn() },
       telemetryService: { sendPostHogEvents: vi.fn().mockResolvedValue(undefined) },
       permissionService: {
-        getResourcePermission: vi
-          .fn()
-          .mockResolvedValue({ permission: createMongoAbility([{ action: "manage", subject: "all" }]) })
+        getResourcePermission: vi.fn().mockResolvedValue({ permission: createMongoAbility(applicationPermissions) })
       }
     } as unknown as TDeps;
 
@@ -522,6 +524,71 @@ describe("certificate revocation behind an approval policy", () => {
         expect.objectContaining({ serialNumber: applicationCertificate.serialNumber })
       );
       expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("revokeCert permissions", () => {
+    const canOnlyRequest = [{ action: "request-revocation", subject: "certificates" }];
+    const canRevoke = [{ action: "delete", subject: "certificates" }];
+    const canNeither = [{ action: ["read", "list"], subject: "certificates" }];
+
+    const isForbidden = (error: unknown) => error instanceof ForbiddenError || error instanceof ForbiddenRequestError;
+
+    it("opens an approval request for an actor who can only request a revocation", async () => {
+      const ctx = buildRevocationService({ applicationPermissions: canOnlyRequest });
+
+      const result = await ctx.service.revokeCert(revokeRequest);
+
+      expect(result.status).toBe(CertificateRevocationStatus.PendingApproval);
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).toHaveBeenCalledTimes(1);
+      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+    });
+
+    it("refuses an actor who can only request a revocation when no policy covers the certificate", async () => {
+      const ctx = buildRevocationService({ applicationPermissions: canOnlyRequest });
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+
+      await expect(ctx.service.revokeCert(revokeRequest)).rejects.toSatisfy(isForbidden);
+      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+      expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+      expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+    });
+
+    it("opens an approval request for an actor who can revoke when a policy covers the certificate", async () => {
+      const ctx = buildRevocationService({ applicationPermissions: canRevoke });
+
+      const result = await ctx.service.revokeCert(revokeRequest);
+
+      expect(result.status).toBe(CertificateRevocationStatus.PendingApproval);
+      expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+    });
+
+    it("revokes for an actor who can revoke when no policy covers the certificate", async () => {
+      const ctx = buildRevocationService({ applicationPermissions: canRevoke });
+      ctx.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+
+      const result = await ctx.service.revokeCert(revokeRequest);
+
+      expect(result.status).toBe(CertificateRevocationStatus.Revoked);
+      expect(ctx.storedCertificate().status).toBe(CertStatus.REVOKED);
+    });
+
+    it("refuses an actor who can neither revoke nor request, the same way whether or not a policy applies", async () => {
+      const covered = buildRevocationService({ applicationPermissions: canNeither });
+      const uncovered = buildRevocationService({ applicationPermissions: canNeither });
+      uncovered.approvalPolicyService.matchPolicy.mockResolvedValue(null);
+
+      const coveredError = await covered.service.revokeCert(revokeRequest).catch((error: unknown) => error);
+      const uncoveredError = await uncovered.service.revokeCert(revokeRequest).catch((error: unknown) => error);
+
+      expect(isForbidden(coveredError)).toBe(true);
+      expect((coveredError as Error).message).toBe((uncoveredError as Error).message);
+      for (const ctx of [covered, uncovered]) {
+        expect(ctx.storedCertificate().status).toBe(CertStatus.ACTIVE);
+        expect(ctx.approvalPolicyService.createRequestFromPolicy).not.toHaveBeenCalled();
+        expect(ctx.certificateAuthorityService.revokeCertificate).not.toHaveBeenCalled();
+      }
     });
   });
 
