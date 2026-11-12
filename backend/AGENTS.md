@@ -987,8 +987,8 @@ EE routes register before community routes so they can override/extend endpoints
 
 **Secret Scanning** is single-project (see the root `AGENTS.md`): `secret-scanning-v2-project-bootstrap.ts` creates the project with the org when it has a creator to make admin (like PAM), `secret-scanning-v2-project-resolver.ts` picks the active project and lazily creates it, with every org admin as project admin, for older orgs and for orgs created from the admin console, whose admins are only invited after the org exists, and routes that take `projectId` read `req.internalSecretScanningProjectId`. A data source covers the resources it has rows for (added by a user or discovered from a push); its `config` only says where to look (Bitbucket workspace, GitLab group), never which resources, so scans, "included" state and GitLab account-scope webhooks all key off rows. Stored configs may still carry the old `includeRepos` / `includeProjects` keys, which nothing reads.
 
-**Secret scanning scans and GitHub pull request checks**: before changing scan triggers,
-`secret-scanning-v2-queue.ts` or the PR check flow, read
+**Secret scanning scans, findings and GitHub pull request checks**: before changing scan triggers,
+`secret-scanning-v2-queue.ts`, how findings are saved or triaged, or the PR check flow, read
 [`src/ee/services/secret-scanning-v2/AGENTS.md`](src/ee/services/secret-scanning-v2/AGENTS.md). The queue stays
 provider-agnostic: provider behavior goes behind hooks on the data source factory, never a provider check in the
 queue.
