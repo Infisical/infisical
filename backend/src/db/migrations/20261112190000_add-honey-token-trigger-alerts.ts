@@ -28,8 +28,10 @@ type THoneyTokenRow = {
 
 // Every honey token used to email its org's admins when it was triggered. That email now comes from the
 // shared alert module, so each live honey token gets an alert emailing its project's admins. Revoked tokens
-// can no longer trigger and can't be edited, so they get none. Tokens in an environment or project awaiting
-// deletion do get one: their credentials stay live through the grace period, and a restore creates no alerts.
+// can no longer trigger and can't be edited, so they get none. Tokens in an environment awaiting deletion do
+// get one: deleting an environment doesn't revoke them, and a restore creates no alerts. Tokens in a project
+// awaiting deletion don't: deleting a project revokes them, one left over is a failed revocation, and its
+// project's key no longer resolves, so encrypting the channel config for it would fail the upgrade.
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.HoneyToken)) || !(await knex.schema.hasTable(TableName.Alert))) return;
 
@@ -58,6 +60,7 @@ export async function up(knex: Knex): Promise<void> {
       .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
       .join(TableName.Project, `${TableName.Environment}.projectId`, `${TableName.Project}.id`)
       .whereNot(`${TableName.HoneyToken}.status`, REVOKED_STATUS)
+      .whereNull(`${TableName.Project}.deleteAfter`)
       .modify((qb) => {
         if (cursor) void qb.where(`${TableName.HoneyToken}.id`, ">", cursor);
       })

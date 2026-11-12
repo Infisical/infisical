@@ -153,10 +153,10 @@ describe("honey token alert provider", () => {
     expect(emitted.sourceIp).toBeNull();
   });
 
-  test("reads honey token paths from the primary", async () => {
+  test("reads honey token paths from the primary, including environments awaiting deletion", async () => {
     const { provider, pathLookupOptions } = buildProvider();
     await provider.findEventTargets(triggeredEvent());
-    expect(pathLookupOptions).toEqual([{ readFromPrimary: true }]);
+    expect(pathLookupOptions).toEqual([{ readFromPrimary: true, includePendingDeletion: true }]);
   });
 
   test("drops a token that is gone, sits in another project, or has no resolvable path", async () => {

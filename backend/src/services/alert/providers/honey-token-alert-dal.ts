@@ -27,17 +27,19 @@ export const honeyTokenAlertDALFactory = (db: TDbClient) => {
   const findHoneyTokensByIds = async (honeyTokenIds: string[]): Promise<THoneyTokenWithLocation[]> => {
     if (honeyTokenIds.length === 0) return [];
     try {
-      return (await $honeyTokensWithProject(honeyTokenIds).select(
-        db.ref("id").withSchema(TableName.HoneyToken).as("honeyTokenId"),
-        db.ref("name").withSchema(TableName.HoneyToken).as("honeyTokenName"),
-        db.ref("type").withSchema(TableName.HoneyToken).as("honeyTokenType"),
-        db.ref("status").withSchema(TableName.HoneyToken).as("honeyTokenStatus"),
-        db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
-        db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-        db.ref("name").withSchema(TableName.Environment).as("envName"),
-        db.ref("id").withSchema(TableName.Project).as("projectId"),
-        db.ref("orgId").withSchema(TableName.Project).as("orgId")
-      )) as THoneyTokenWithLocation[];
+      return (await $honeyTokensWithProject(honeyTokenIds)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .select(
+          db.ref("id").withSchema(TableName.HoneyToken).as("honeyTokenId"),
+          db.ref("name").withSchema(TableName.HoneyToken).as("honeyTokenName"),
+          db.ref("type").withSchema(TableName.HoneyToken).as("honeyTokenType"),
+          db.ref("status").withSchema(TableName.HoneyToken).as("honeyTokenStatus"),
+          db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
+          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
+          db.ref("name").withSchema(TableName.Environment).as("envName"),
+          db.ref("id").withSchema(TableName.Project).as("projectId"),
+          db.ref("orgId").withSchema(TableName.Project).as("orgId")
+        )) as THoneyTokenWithLocation[];
     } catch (error) {
       throw new DatabaseError({ error, name: "FindHoneyTokensByIds" });
     }

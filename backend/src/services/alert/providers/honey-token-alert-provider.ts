@@ -64,13 +64,14 @@ export const honeyTokenAlertProviderFactory = ({
     for (const [projectId, projectHoneyTokens] of Object.entries(
       groupBy(honeyTokens, (honeyToken) => honeyToken.projectId)
     )) {
-      // The path decides what a permission check allows, so it comes from the primary like the token.
+      // The path decides what a permission check allows, so it comes from the primary like the token. Tokens
+      // in an environment awaiting deletion keep their alerts (see the DAL), so their paths must resolve too.
       // eslint-disable-next-line no-await-in-loop -- a trigger event names one token, so this is one project
       const folders = await folderDAL.findSecretPathByFolderIds(
         projectId,
         projectHoneyTokens.map((honeyToken) => honeyToken.folderId),
         undefined,
-        { readFromPrimary: true }
+        { readFromPrimary: true, includePendingDeletion: true }
       );
       folders.forEach((folder) => {
         if (folder?.path) paths.set(folder.id, folder.path);
