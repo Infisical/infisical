@@ -370,7 +370,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
 
     expect(scanContents.mock.calls.map(([contents]) => contents.length)).toEqual([50, 10]);
     expect(findings).toHaveLength(1);
-    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:file-52.txt:rule:1:1`);
+    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:file-52.txt:rule:1:2`);
   });
 
   test("scans the files GitHub lists for a commit with more, and returns the commit", async () => {
@@ -419,7 +419,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
     expect(scanContents).toHaveBeenCalledTimes(1);
     expect(scannedContents()).toHaveLength(4);
     expect(findings).toHaveLength(1);
-    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:d-two.txt:rule:2:1`);
+    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:d-two.txt:rule:2:2`);
     expect(findings[0].details).toEqual(
       expect.objectContaining({ file: "d-two.txt", commit: secondCommit.sha, author: "b", startLine: 2 })
     );

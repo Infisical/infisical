@@ -273,21 +273,17 @@ const scanGitHubFilesAndGetFindings = async (
     const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);
     const endLine =
       finding.StartLine === finding.EndLine ? startLine : convertPatchLineToFileLineNumber(patch, finding.EndLine);
-    const startColumn = finding.StartColumn - 1; // subtract 1 for +
-    const endColumn = finding.EndColumn - 1; // subtract 1 for +
 
     return {
       ...finding,
       StartLine: startLine,
       EndLine: endLine,
-      StartColumn: startColumn,
-      EndColumn: endColumn,
       File: filename,
       Commit: commit.sha,
       Author: commit.authorName,
       Email: commit.authorEmail,
       Message: commit.message,
-      Fingerprint: `${commit.sha}:${filename}:${finding.RuleID}:${startLine}:${startColumn}`,
+      Fingerprint: `${commit.sha}:${filename}:${finding.RuleID}:${startLine}:${finding.StartColumn}`,
       Date: commit.date,
       Attributes: {
         ...finding.Attributes,
