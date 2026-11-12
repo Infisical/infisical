@@ -127,7 +127,7 @@ export const agentVaultKeys = {
       "available",
       params
     ] as const,
-  // Nested under accessBundleMembers() so a grant invalidates it too.
+  // Nested under accessBundle(), the prefix a grant or revoke invalidates, so either refetches it.
   accessBundleMemberCheck: (
     orgId: string,
     projectId: string,

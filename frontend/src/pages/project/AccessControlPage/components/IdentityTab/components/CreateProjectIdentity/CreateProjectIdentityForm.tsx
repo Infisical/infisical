@@ -85,8 +85,9 @@ type Props = {
   productLabel: string;
   canGrantPrivileges: boolean;
   onClose: () => void;
-  // Replaces the redirect to the identity page, for callers that keep the user in their own flow.
-  onComplete?: (identity: TAssignableIdentity) => void;
+  // Replaces onClose and the redirect to the identity page, for callers that keep the user in their
+  // own flow and close their overlay themselves.
+  onComplete?: (identity: TAssignableIdentity & { role: string }) => void;
   // For a caller whose overlay must stay open while the form saves.
   onPendingChange?: (pending: boolean) => void;
 };
@@ -268,18 +269,21 @@ const ProjectIdentityFormContent = ({
         });
       }
 
-      onClose();
-
       if (onComplete) {
         onComplete({
           id: identityId,
           name:
-            data.mode === CreateProjectIdentityMode.Create ? data.name!.trim() : data.identity!.name
+            data.mode === CreateProjectIdentityMode.Create
+              ? data.name!.trim()
+              : data.identity!.name,
+          role: data.role.slug
         });
-      } else if (
-        data.mode === CreateProjectIdentityMode.Create ||
-        (hasTemplateGrants && !grantFailed)
-      ) {
+        return;
+      }
+
+      onClose();
+
+      if (data.mode === CreateProjectIdentityMode.Create || (hasTemplateGrants && !grantFailed)) {
         navigate({
           to: `${getProjectBaseURL(projectType)}/identities/$identityId`,
           params: { identityId }

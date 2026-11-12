@@ -1,19 +1,22 @@
-import { ReactNode } from "react";
+import { CSSProperties, ReactNode } from "react";
 import { typescriptLanguage } from "@codemirror/lang-javascript";
 import { pythonLanguage } from "@codemirror/lang-python";
 import { yamlLanguage } from "@codemirror/lang-yaml";
 import { Language, StreamLanguage } from "@codemirror/language";
 import { dockerFile } from "@codemirror/legacy-modes/mode/dockerfile";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
-import { highlightCode, tagHighlighter, tags } from "@lezer/highlight";
+import { highlightCode, tagHighlighter } from "@lezer/highlight";
 
-// The same colors as the v3 CodeEditor's highlight style.
-const highlighter = tagHighlighter([
-  { tag: tags.keyword, class: "text-info" },
-  { tag: tags.string, class: "text-success" },
-  { tag: [tags.number, tags.bool, tags.null, tags.atom], class: "text-warning" },
-  { tag: tags.comment, class: "text-muted italic" }
-]);
+import { CODE_HIGHLIGHT_RULES } from "@app/components/v3/generic/CodeEditor/codeHighlightRules";
+
+// The rules carry CSS, not class names, so each rule gets a stand-in class that maps back to its style.
+const RULE_STYLES = CODE_HIGHLIGHT_RULES.map(({ tag: _tag, ...style }) => style as CSSProperties);
+const highlighter = tagHighlighter(
+  CODE_HIGHLIGHT_RULES.map(({ tag }, index) => ({ tag, class: String(index) }))
+);
+
+const styleFor = (classes: string): CSSProperties =>
+  Object.assign({}, ...classes.split(" ").map((index) => RULE_STYLES[Number(index)]));
 
 const shellLanguage = StreamLanguage.define(shell);
 const dockerfileLanguage = StreamLanguage.define(dockerFile);
@@ -53,7 +56,7 @@ export const highlight = (code: string, language: CodeLanguage | null): ReactNod
     (text, classes) =>
       nodes.push(
         classes ? (
-          <span key={nodes.length} className={classes}>
+          <span key={nodes.length} style={styleFor(classes)}>
             {text}
           </span>
         ) : (

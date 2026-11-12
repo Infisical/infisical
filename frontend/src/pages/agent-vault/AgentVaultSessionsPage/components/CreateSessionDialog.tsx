@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { SiPython, SiTypescript } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
 import {
@@ -153,16 +153,31 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
       limit: 50
     }
   );
-  const { data: proxies } = useListAgentVaultProxies(projectId, { limit: 1 });
-  const hasProxy = (proxies?.totalCount ?? 0) > 0;
-  const { clientId } = useSnippetClientId(identity);
+  const { data: proxies } = useListAgentVaultProxies(
+    projectId,
+    { limit: 1 },
+    // The dialog stays mounted on the sessions page, so it must not poll while closed.
+    { enabled: isOpen }
+  );
+  // Unknown until the list loads, so the notice doesn't flash for a project that has proxies.
+  const hasNoProxy = proxies !== undefined && proxies.totalCount === 0;
+  const snippet = useSnippetClientId(identity);
+  const { clientId } = snippet;
   const createSession = useCreateAgentVaultSession(projectId);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    setStep(DialogStep.Platform);
-    setCreatedSession(null);
-  }, [isOpen]);
+  // Reset while rendering, not in an effect, so the first render after opening already shows the
+  // platform picker instead of the last session's one-time token.
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) {
+      setStep(DialogStep.Platform);
+      setCreatedSession(null);
+      setAccessBundle(null);
+      setIdentity(null);
+      setBundleSearch("");
+    }
+  }
 
   const { protocol, hostname, port } = window.location;
   const siteUrl = `${protocol}//${hostname}${port && port !== "80" ? `:${port}` : ""}`;
@@ -279,6 +294,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           identity={identity}
           onIdentityChange={setIdentity}
           accessBundle={accessBundle}
+          snippet={snippet}
         />
       )}
       {!isCreateNow && !isAdmin && (
@@ -303,6 +319,14 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
     clientId: clientId ?? "<client-id>",
     clientSecret: "<client-secret>"
   });
+  const highlightedInstall = useMemo(
+    () => highlight(INSTALL_COMMANDS[language], CodeLanguage.Shell),
+    [language]
+  );
+  const highlightedCreateSnippet = useMemo(
+    () => highlight(createSnippet, SNIPPET_CODE_LANGUAGES[language]),
+    [createSnippet, language]
+  );
 
   const ownSandbox = (
     <div className="flex flex-col gap-4">
@@ -363,11 +387,11 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
       {!isCreateNow && (
         <>
           <CodeBlock label="Install" value={INSTALL_COMMANDS[language]}>
-            {highlight(INSTALL_COMMANDS[language], CodeLanguage.Shell)}
+            {highlightedInstall}
           </CodeBlock>
           <div className="flex flex-col gap-2">
             <CodeBlock label="Create a session" value={createSnippet}>
-              {highlight(createSnippet, SNIPPET_CODE_LANGUAGES[language])}
+              {highlightedCreateSnippet}
             </CodeBlock>
             <p className="text-xs text-accent">
               {language === SnippetLanguage.Cli ? (
@@ -456,12 +480,15 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange }: Props) => {
           </DialogHeader>
 
           <DialogBody className="flex flex-col gap-4">
-            {!hasProxy && (
+            {hasNoProxy && (
               <p className="text-xs text-accent">
                 Agents reach their services through a proxy, and this project has none yet.{" "}
                 <Link
                   to="/organizations/$orgId/projects/agent-vault/$projectId/proxies"
                   params={{ orgId: currentOrg.id, projectId }}
+                  // A new tab, so the dialog keeps its picks while the user sets up a proxy.
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="underline underline-offset-2 hover:text-foreground"
                 >
                   Create a proxy

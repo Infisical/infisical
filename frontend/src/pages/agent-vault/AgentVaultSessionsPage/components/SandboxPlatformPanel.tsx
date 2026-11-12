@@ -96,7 +96,7 @@ export const setupPrompt = (platform: TPlatformDetails, values: TPromptValues) =
 const ScriptPreview = ({ script }: { script: TSandboxScript }) => {
   const highlighted = useMemo(
     () => highlight(script.code, codeLanguageForFile(script.fileName)),
-    [script]
+    [script.code, script.fileName]
   );
 
   return (
@@ -143,7 +143,11 @@ export const SandboxPlatformPanel = ({
   values
 }: Props) => {
   const hasLanguages = hasScriptLanguages(platform);
-  const scripts = sandboxScripts(platform, language, { siteUrl, projectId, accessBundle });
+  // Stable across renders, so ScriptPreview only re-highlights when a script's text changes.
+  const scripts = useMemo(
+    () => sandboxScripts(platform, language, { siteUrl, projectId, accessBundle }),
+    [platform, language, siteUrl, projectId, accessBundle]
+  );
   // An index, since the same file has a different name in each language.
   const [fileIndex, setFileIndex] = useState(0);
   const activeIndex = Math.min(fileIndex, scripts.length - 1);

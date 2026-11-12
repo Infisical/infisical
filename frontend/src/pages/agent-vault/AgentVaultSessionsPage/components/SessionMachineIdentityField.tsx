@@ -38,12 +38,6 @@ import { CreateProjectIdentityForm } from "@app/pages/project/AccessControlPage/
 // The role travels with the pick, because the search results it came from change as the user types.
 export type TSnippetIdentity = { id: string; name: string; role?: string };
 
-type Props = {
-  identity: TSnippetIdentity | null;
-  onIdentityChange: (identity: TSnippetIdentity | null) => void;
-  accessBundle: TAgentVaultAccessBundleListItem | null;
-};
-
 type TSnippetClientId = {
   identity: TSnippetIdentity | null;
   clientId: string | null;
@@ -52,10 +46,13 @@ type TSnippetClientId = {
 };
 
 // The endpoint answers 404 when the identity has no Universal Auth configuration, and 400 when it
-// has one but Universal Auth isn't among its auth methods. Any other failure says nothing about
-// the identity, so it gets the usual retry and isn't reported as missing Universal Auth.
+// has one but Universal Auth isn't among its auth methods; both messages name Universal Auth. Any
+// other failure, including a 404 or 400 for another reason, says nothing about the identity's auth,
+// so it gets the usual retry and isn't reported as missing Universal Auth.
 const isNoUniversalAuthError = (error: unknown) =>
-  axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 400);
+  axios.isAxiosError<{ message?: string }>(error) &&
+  (error.response?.status === 404 || error.response?.status === 400) &&
+  /universal auth/i.test(error.response?.data?.message ?? "");
 
 // Holds the last loaded result while the next identity's loads, so switching identities doesn't
 // blank the snippet and the notices before filling them back in.
@@ -83,10 +80,19 @@ export const useSnippetClientId = (identity: TSnippetIdentity | null): TSnippetC
   return isLoading ? settled : latest;
 };
 
+type Props = {
+  identity: TSnippetIdentity | null;
+  onIdentityChange: (identity: TSnippetIdentity | null) => void;
+  accessBundle: TAgentVaultAccessBundleListItem | null;
+  // From useSnippetClientId in the dialog, which also needs the client ID for its snippets.
+  snippet: TSnippetClientId;
+};
+
 export const SessionMachineIdentityField = ({
   identity,
   onIdentityChange,
-  accessBundle
+  accessBundle,
+  snippet
 }: Props) => {
   const { projectId } = useProject();
   const { currentOrg } = useOrganization();
@@ -106,34 +112,34 @@ export const SessionMachineIdentityField = ({
   });
   const isAdminIdentity = identity?.role === ProjectMembershipRole.Admin;
 
-  const snippet = useSnippetClientId(identity);
-
-  const {
-    data: isGranted,
-    isPlaceholderData: isGrantCheckStale,
-    refetch: refetchGrantCheck
-  } = useIsAgentVaultAccessBundleMember(
-    projectId,
-    accessBundle?.id ?? "",
-    identity
-      ? { type: AgentVaultMemberType.MachineIdentity, id: identity.id, name: identity.name }
-      : null
-  );
+  const { data: isGranted, isPlaceholderData: isGrantCheckStale } =
+    useIsAgentVaultAccessBundleMember(
+      projectId,
+      accessBundle?.id ?? "",
+      identity
+        ? { type: AgentVaultMemberType.MachineIdentity, id: identity.id, name: identity.name }
+        : null
+    );
   const latestGrant = {
     identity,
+    accessBundle,
     needsGrant:
       Boolean(identity && accessBundle) && isGranted !== undefined && !isAdminIdentity && !isGranted
   };
-  // The check keeps the previous identity's answer until the new one loads, which would
-  // flash the warning for an identity that has the bundle.
+  // The check keeps the previous identity and bundle's answer until the new one loads, which would
+  // flash the warning for a pair that has the grant. Until then the warning keeps naming the pair
+  // it was answered for.
   const [settledGrant, setSettledGrant] = useState(latestGrant);
   if (
     !isGrantCheckStale &&
     (settledGrant.identity?.id !== latestGrant.identity?.id ||
+      settledGrant.accessBundle?.id !== latestGrant.accessBundle?.id ||
       settledGrant.needsGrant !== latestGrant.needsGrant)
   )
     setSettledGrant(latestGrant);
   const grant = isGrantCheckStale ? settledGrant : latestGrant;
+  const isGrantForCurrentPick =
+    grant.identity?.id === identity?.id && grant.accessBundle?.id === accessBundle?.id;
 
   const grantAccess = useAddAgentVaultAccessBundleMembers(projectId);
 
@@ -144,7 +150,6 @@ export const SessionMachineIdentityField = ({
         accessBundleId: accessBundle.id,
         machineIdentityIds: [identity.id]
       });
-      await refetchGrantCheck();
       createNotification({
         text: `Granted ${accessBundle.name} to ${identity.name}`,
         type: "success"
@@ -159,6 +164,9 @@ export const SessionMachineIdentityField = ({
       <Link
         to="/organizations/$orgId/projects/agent-vault/$projectId/identities/$identityId"
         params={{ orgId: currentOrg.id, projectId, identityId: target.id }}
+        // A new tab, so the dialog keeps its picks while the user looks something up.
+        target="_blank"
+        rel="noopener noreferrer"
         className="underline underline-offset-2 hover:text-foreground"
       >
         {text ?? `${target.name}'s page`}
@@ -215,14 +223,17 @@ export const SessionMachineIdentityField = ({
                     emptyLabel: "Create New Machine Identity",
                     formatLabel: () => "Create New Machine Identity",
                     isPending: isCreatingIdentity,
-                    renderForm: ({ cancel }) => (
+                    renderForm: ({ cancel, complete }) => (
                       <CreateProjectIdentityForm
                         projectId={projectId}
                         projectType={ProjectType.AgentVault}
                         productLabel="Agent Vault"
                         canGrantPrivileges={false}
                         onClose={cancel}
-                        onComplete={onIdentityChange}
+                        onComplete={(created) => {
+                          onIdentityChange(created);
+                          complete();
+                        }}
                         onPendingChange={setIsCreatingIdentity}
                       />
                     )
@@ -274,7 +285,7 @@ export const SessionMachineIdentityField = ({
             <Alert variant="warning">
               <TriangleAlertIcon />
               <AlertTitle>
-                {grant.identity?.name} can&apos;t use {accessBundle?.name}
+                {grant.identity?.name} can&apos;t use {grant.accessBundle?.name}
               </AlertTitle>
               <AlertDescription>
                 <p>Creating a session fails until the access bundle is granted to it.</p>
@@ -283,8 +294,8 @@ export const SessionMachineIdentityField = ({
                   size="xs"
                   className="mt-2"
                   isPending={grantAccess.isPending}
-                  // While the next identity's grants load, the warning still names the previous one.
-                  isDisabled={grant.identity?.id !== identity?.id}
+                  // While the next pick's grants load, the warning still names the previous one.
+                  isDisabled={!isGrantForCurrentPick}
                   onClick={onGrant}
                 >
                   Grant Access
