@@ -23,6 +23,7 @@ import {
   useDeleteProjectIdentityMembership,
   useGetIdentityProjectMemberships
 } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAddToProjectModal } from "./IdentityAddToProjectModal";
@@ -68,7 +69,10 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
     handlePopUpClose("removeIdentityFromProject");
   };
 
-  const { data: projectMemberships } = useGetIdentityProjectMemberships(identityId);
+  const { data: projectMemberships } = useGetIdentityProjectMemberships(identityId, {
+    limit: 1,
+    excludeProjectType: ProjectType.CertificateManager
+  });
 
   return (
     <>
@@ -76,7 +80,7 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
         <CardHeader>
           <CardTitle>Projects</CardTitle>
           <CardDescription>Manage machine identity project memberships</CardDescription>
-          {Boolean(projectMemberships?.length) && (
+          {Boolean(projectMemberships?.totalCount) && (
             <CardAction>
               <Button
                 onClick={() => {

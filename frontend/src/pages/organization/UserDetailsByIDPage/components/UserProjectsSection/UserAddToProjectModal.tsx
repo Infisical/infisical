@@ -64,12 +64,17 @@ export const UserAddToProjectModal = ({ membershipId, popUp, handlePopUpToggle }
     resolver: zodResolver(schema)
   });
 
-  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(orgId, membershipId);
+  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(
+    orgId,
+    membershipId,
+    {},
+    { enabled: Boolean(popUp.addUserToProject.isOpen) }
+  );
 
   const filteredWorkspaces = useMemo(() => {
     const wsWorkspaceIds = new Map();
 
-    projectMemberships?.forEach((projectMembership) => {
+    projectMemberships?.memberships.forEach((projectMembership) => {
       wsWorkspaceIds.set(projectMembership.project.id, true);
     });
 

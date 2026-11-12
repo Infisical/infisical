@@ -34,6 +34,8 @@ import {
 } from "../secret-v2-bridge/secret-tree-hard-delete-fns";
 import { Filter, ProjectFilterType, SearchProjectSortBy } from "./project-types";
 
+const PROJECT_COLUMNS = Object.keys(ProjectsSchema.shape) as (keyof TProjects)[];
+
 type TDeletedByRow = {
   deletedByUserId: string | null;
   deletedByIdentityId: string | null;
@@ -296,41 +298,59 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
+  const findActorProjects = async ({
+    actorType,
+    actorId,
+    orgIds,
+    projectType,
+    limit,
+    offset = 0
+  }: {
+    actorType: ActorType.USER | ActorType.IDENTITY;
+    actorId: string;
+    orgIds: string[];
+    projectType?: ProjectType;
+    limit?: number;
+    offset?: number;
+  }) => {
     try {
-      const identityGroupSubquery = db
+      const isUser = actorType === ActorType.USER;
+      const groupMembershipTable = isUser ? TableName.UserGroupMembership : TableName.IdentityGroupMembership;
+      const groupMembershipActorColumn = isUser ? "userId" : "identityId";
+      const actorColumn = isUser ? "actorUserId" : "actorIdentityId";
+
+      const groupSubquery = db
         .replicaNode()(TableName.Groups)
-        .leftJoin(
-          TableName.IdentityGroupMembership,
-          `${TableName.IdentityGroupMembership}.groupId`,
-          `${TableName.Groups}.id`
-        )
-        .where(`${TableName.IdentityGroupMembership}.identityId`, identityId)
+        .leftJoin(groupMembershipTable, `${groupMembershipTable}.groupId`, `${TableName.Groups}.id`)
+        .where(`${groupMembershipTable}.${groupMembershipActorColumn}`, actorId)
         .select(db.ref("id").withSchema(TableName.Groups));
 
-      const workspaces = await db
-        .replicaNode()(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .where(`${TableName.Project}.orgId`, orgId)
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .andWhere((qb) => {
-          void qb
-            .where(`${TableName.Membership}.actorIdentityId`, identityId)
-            .orWhereIn(`${TableName.Membership}.actorGroupId`, identityGroupSubquery);
-        })
-        .andWhere((qb) => {
-          if (projectType) {
-            void qb.where(`${TableName.Project}.type`, projectType);
-          }
-        })
+      const accessibleProjects = () =>
+        db
+          .replicaNode()(TableName.Membership)
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+          .whereIn(`${TableName.Project}.orgId`, orgIds)
+          .whereNull(`${TableName.Project}.deleteAfter`)
+          .andWhere((qb) => {
+            void qb
+              .where(`${TableName.Membership}.${actorColumn}`, actorId)
+              .orWhereIn(`${TableName.Membership}.actorGroupId`, groupSubquery);
+          })
+          .andWhere((qb) => {
+            if (projectType) {
+              void qb.where(`${TableName.Project}.type`, projectType);
+            }
+          });
+
+      const query = accessibleProjects()
         .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
           this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
             `${TableName.Environment}.deleteAfter`
           );
         })
-        .select(
-          selectAllTableCols(TableName.Project),
+        .select<(TProjects & { _id: string; envId: string; envSlug: string; envName: string })[]>(
+          ...PROJECT_COLUMNS.map((column) => db.ref(column).withSchema(TableName.Project)),
           db.ref("id").withSchema(TableName.Project).as("_id"),
           db.ref("id").withSchema(TableName.Environment).as("envId"),
           db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
@@ -338,13 +358,35 @@ export const projectDALFactory = (db: TDbClient) => {
         )
         .orderBy([
           { column: `${TableName.Project}.name`, order: "asc" },
+          { column: `${TableName.Project}.id`, order: "asc" },
           { column: `${TableName.Environment}.position`, order: "asc" }
         ]);
 
-      const nestedWorkspaces = sqlNestRelationships({
-        data: workspaces,
+      let totalCount: number | undefined;
+      if (limit !== undefined || offset > 0) {
+        const countRow = await accessibleProjects()
+          .countDistinct<{ count: string }[]>({ count: `${TableName.Project}.id` })
+          .first();
+        totalCount = Number(countRow?.count ?? 0);
+
+        // The page is cut over projects, not over the project-environment rows the outer query returns.
+        const page = accessibleProjects()
+          .select(db.ref("id").withSchema(TableName.Project))
+          .groupBy(`${TableName.Project}.id`)
+          .orderBy([
+            { column: `${TableName.Project}.name`, order: "asc" },
+            { column: `${TableName.Project}.id`, order: "asc" }
+          ])
+          .offset(offset);
+        if (limit !== undefined) void page.limit(limit);
+        void query.whereIn(`${TableName.Project}.id`, page);
+      }
+
+      const projects = sqlNestRelationships({
+        data: await query,
         key: "id",
-        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        parentMapper: ({ envId, envSlug, envName, ...project }) => project,
         childrenMapper: [
           {
             key: "envId",
@@ -356,82 +398,35 @@ export const projectDALFactory = (db: TDbClient) => {
             })
           }
         ]
-      });
-
-      return nestedWorkspaces.map((workspace) => ({
-        ...workspace,
-        organization: workspace.orgId
+      }).map((project) => ({
+        ...project,
+        organization: project.orgId
       }));
+
+      return { projects, totalCount: totalCount ?? projects.length };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find identity projects" });
+      throw new DatabaseError({ error, name: "Find actor projects" });
     }
   };
 
+  const findIdentityProjects = async (identityId: string, orgId: string, projectType?: ProjectType) => {
+    const { projects } = await findActorProjects({
+      actorType: ActorType.IDENTITY,
+      actorId: identityId,
+      orgIds: [orgId],
+      projectType
+    });
+    return projects;
+  };
+
   const findUserProjects = async (userId: string, orgId: string | string[], projectType?: ProjectType) => {
-    try {
-      const userGroupSubquery = db
-        .replicaNode()(TableName.Groups)
-        .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
-        .where(`${TableName.UserGroupMembership}.userId`, userId)
-        .select(db.ref("id").withSchema(TableName.Groups));
-
-      const projects = await db
-        .replicaNode()(TableName.Membership)
-        .where(`${TableName.Membership}.scope`, AccessScope.Project)
-        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .whereIn(`${TableName.Project}.orgId`, Array.isArray(orgId) ? orgId : [orgId])
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .andWhere((qb) => {
-          void qb
-            .where(`${TableName.Membership}.actorUserId`, userId)
-            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupSubquery);
-        })
-        .andWhere((qb) => {
-          if (projectType) {
-            void qb.where(`${TableName.Project}.type`, projectType);
-          }
-        })
-        .leftJoin(TableName.Environment, function joinActiveEnvByProject() {
-          this.on(`${TableName.Environment}.projectId`, `${TableName.Project}.id`).andOnNull(
-            `${TableName.Environment}.deleteAfter`
-          );
-        })
-        .select(
-          selectAllTableCols(TableName.Project),
-          db.ref("id").withSchema(TableName.Project).as("_id"),
-          db.ref("id").withSchema(TableName.Environment).as("envId"),
-          db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
-          db.ref("name").withSchema(TableName.Environment).as("envName")
-        )
-        .orderBy([
-          { column: `${TableName.Project}.name`, order: "asc" },
-          { column: `${TableName.Environment}.position`, order: "asc" }
-        ]);
-
-      const formattedProjects = sqlNestRelationships({
-        data: projects,
-        key: "id",
-        parentMapper: ({ _id, ...el }) => ({ _id, ...ProjectsSchema.parse(el) }),
-        childrenMapper: [
-          {
-            key: "envId",
-            label: "environments" as const,
-            mapper: ({ envId: id, envSlug: slug, envName: name }) => ({
-              id,
-              slug,
-              name
-            })
-          }
-        ]
-      });
-
-      return formattedProjects.map((workspace) => ({
-        ...workspace,
-        organization: workspace.orgId
-      }));
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find all projects" });
-    }
+    const { projects } = await findActorProjects({
+      actorType: ActorType.USER,
+      actorId: userId,
+      orgIds: Array.isArray(orgId) ? orgId : [orgId],
+      projectType
+    });
+    return projects;
   };
 
   // Lightweight variant of findUserProjects/findIdentityProjects that returns only the
@@ -1151,6 +1146,7 @@ export const projectDALFactory = (db: TDbClient) => {
     softDeleteProjectEnvironments,
     countProjectEnvironments,
     findUserProjects,
+    findActorProjects,
     findIdentityProjects,
     findActorAccessibleProjectIds,
     findEffectiveProjectMemberships,

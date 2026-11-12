@@ -1,3 +1,4 @@
+import { ProjectType } from "@app/db/schemas";
 import { IPType } from "@app/lib/ip";
 import { TSearchResourceOperator } from "@app/lib/search-resource/search";
 import { OrderByDirection, TOrgPermission } from "@app/lib/types";
@@ -35,6 +36,11 @@ export interface TIdentityTrustedIp {
 
 export type TListProjectIdentitiesByIdentityIdDTO = {
   identityId: string;
+  limit?: number;
+  offset?: number;
+  search?: string;
+  orderDirection?: OrderByDirection;
+  excludeProjectType?: ProjectType;
 } & Omit<TOrgPermission, "orgId">;
 
 export type TListOrgIdentitiesByOrgIdDTO = {

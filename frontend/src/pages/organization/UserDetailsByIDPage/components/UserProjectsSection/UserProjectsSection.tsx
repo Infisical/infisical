@@ -17,6 +17,7 @@ import {
   useGetOrgMembership,
   useGetOrgMembershipProjectMemberships
 } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { UserAddToProjectModal } from "./UserAddToProjectModal";
@@ -34,7 +35,10 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
   const orgId = currentOrg?.id || "";
 
   const { data: membership } = useGetOrgMembership(orgId, membershipId);
-  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(orgId, membershipId);
+  const { data: projectMemberships } = useGetOrgMembershipProjectMemberships(orgId, membershipId, {
+    limit: 1,
+    excludeProjectType: ProjectType.CertificateManager
+  });
 
   const { mutateAsync: removeUserFromWorkspace } = useDeleteUserFromWorkspace();
 
@@ -64,7 +68,7 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
         <CardHeader>
           <CardTitle>Projects</CardTitle>
           <CardDescription>Manage user project memberships</CardDescription>
-          {canAddToProject && Boolean(projectMemberships?.length) && (
+          {canAddToProject && Boolean(projectMemberships?.totalCount) && (
             <CardAction>
               <Button
                 onClick={() => {

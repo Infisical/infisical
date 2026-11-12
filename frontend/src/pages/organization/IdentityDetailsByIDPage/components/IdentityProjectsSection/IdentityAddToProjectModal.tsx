@@ -67,13 +67,17 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
   });
 
   const projectId = watch("project")?.id;
-  const { data: projectMemberships } = useGetIdentityProjectMemberships(identityId);
+  const { data: projectMemberships } = useGetIdentityProjectMemberships(
+    identityId,
+    {},
+    { enabled: Boolean(popUp.addIdentityToProject.isOpen) }
+  );
   const { data: roles = [], isPending: isRolesLoading } = useGetProjectRoles(projectId ?? "");
 
   const filteredWorkspaces = useMemo(() => {
     const wsWorkspaceIds = new Map();
 
-    projectMemberships?.forEach((projectMembership) => {
+    projectMemberships?.identityMemberships.forEach((projectMembership) => {
       wsWorkspaceIds.set(projectMembership.project.id, true);
     });
 

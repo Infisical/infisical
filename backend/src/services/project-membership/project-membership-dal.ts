@@ -1,9 +1,18 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, OrgMembershipStatus, TableName, TMemberships, TUserEncryptionKeys } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrgMembershipStatus,
+  ProjectType,
+  TableName,
+  TMemberships,
+  TUserEncryptionKeys
+} from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn";
 import { selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
 
 export type TProjectMembershipDALFactory = ReturnType<typeof projectMembershipDALFactory>;
 
@@ -250,19 +259,46 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findProjectMembershipsByUserId = async (orgId: string, userId: string) => {
+  const findProjectMembershipsByUserId = async (
+    orgId: string,
+    userId: string,
+    {
+      limit,
+      offset = 0,
+      search,
+      orderDirection = OrderByDirection.ASC,
+      excludeProjectType
+    }: {
+      limit?: number;
+      offset?: number;
+      search?: string;
+      orderDirection?: OrderByDirection;
+      excludeProjectType?: ProjectType;
+    } = {}
+  ) => {
     try {
-      const docs = await db
-        .replicaNode()(TableName.Membership)
-        .where({ [`${TableName.Membership}.scope` as "scope"]: AccessScope.Project })
-        .whereNotNull(`${TableName.Membership}.actorUserId`)
-        .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
-        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
-        .where(`${TableName.Users}.id`, userId)
-        .where(`${TableName.Project}.orgId`, orgId)
-        .whereNull(`${TableName.Project}.deleteAfter`)
-        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+      const matchingMemberships = () => {
+        const qb = db
+          .replicaNode()(TableName.Membership)
+          .where({ [`${TableName.Membership}.scope` as "scope"]: AccessScope.Project })
+          .whereNotNull(`${TableName.Membership}.actorUserId`)
+          .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
+          .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+          .where(`${TableName.Users}.id`, userId)
+          .where(`${TableName.Users}.isGhost`, false)
+          .where(`${TableName.Project}.orgId`, orgId)
+          .whereNull(`${TableName.Project}.deleteAfter`)
+          .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`);
+        if (search) void qb.whereILike(`${TableName.Project}.name`, `%${sanitizeSqlLikeString(search)}%`);
+        if (excludeProjectType) void qb.whereNot(`${TableName.Project}.type`, excludeProjectType);
+        return qb;
+      };
+      const projectNameOrder = `lower(??) ${orderDirection === OrderByDirection.DESC ? "desc" : "asc"}`;
+
+      const query = matchingMemberships()
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+        .orderByRaw(projectNameOrder, [`${TableName.Project}.name`])
+        .orderBy(`${TableName.Membership}.id`, "asc")
         .select(
           db.ref("id").withSchema(TableName.Membership),
           db.ref("isGhost").withSchema(TableName.Users),
@@ -284,11 +320,28 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           db.ref("name").as("projectName").withSchema(TableName.Project),
           db.ref("id").as("projectId").withSchema(TableName.Project),
           db.ref("type").as("projectType").withSchema(TableName.Project)
-        )
-        .where({ isGhost: false });
+        );
+
+      let totalCount: number | undefined;
+      if (limit !== undefined || offset > 0) {
+        const countRow = await matchingMemberships()
+          .countDistinct<{ count: string }[]>({ count: `${TableName.Membership}.id` })
+          .first();
+        totalCount = Number(countRow?.count ?? 0);
+
+        // The page is cut over memberships, not over the membership-role rows the outer query returns.
+        const page = matchingMemberships()
+          .select(db.ref("id").withSchema(TableName.Membership))
+          .groupBy(`${TableName.Membership}.id`, `${TableName.Project}.name`)
+          .orderByRaw(projectNameOrder, [`${TableName.Project}.name`])
+          .orderBy(`${TableName.Membership}.id`, "asc")
+          .offset(offset);
+        if (limit !== undefined) void page.limit(limit);
+        void query.whereIn(`${TableName.Membership}.id`, page);
+      }
 
       const members = sqlNestRelationships({
-        data: docs,
+        data: await query,
         parentMapper: ({ email, firstName, username, lastName, isGhost, id, projectId, projectName, projectType }) => ({
           id,
           userId,
@@ -341,7 +394,7 @@ export const projectMembershipDALFactory = (db: TDbClient) => {
           }
         ]
       });
-      return members;
+      return { memberships: members, totalCount: totalCount ?? members.length };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project memberships by user id" });
     }
