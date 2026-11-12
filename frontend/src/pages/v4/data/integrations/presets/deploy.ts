@@ -6,6 +6,7 @@ import { ConvexConnectionMethod } from "@app/hooks/api/appConnections/types/conv
 import { FlyioConnectionMethod } from "@app/hooks/api/appConnections/types/flyio-connection";
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HumanitecConnectionMethod } from "@app/hooks/api/appConnections/types/humanitec-connection";
+import { JenkinsConnectionMethod } from "@app/hooks/api/appConnections/types/jenkins-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
 import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
@@ -24,6 +25,7 @@ import {
   terraformCloudConnectionFormSchema,
   vercelConnectionFormSchema,
   teamCityConnectionFormSchema,
+  jenkinsConnectionFormSchema,
   renderConnectionFormSchema,
   flyioConnectionFormSchema,
   railwayConnectionFormSchema,
@@ -101,6 +103,28 @@ export const DEPLOY_PRESETS: Partial<Record<AppConnection, AppConnectionPreset>>
             placeholder: "https://yourcompany.teamcity.com"
           },
           { name: "credentials.accessToken", label: "Access token", kind: "secret" }
+        ]
+      }
+    ]
+  },
+  [AppConnection.Jenkins]: {
+    app: AppConnection.Jenkins,
+    name: APP_CONNECTION_MAP[AppConnection.Jenkins].name,
+    schema: jenkinsConnectionFormSchema,
+    methods: [
+      {
+        value: JenkinsConnectionMethod.ApiToken,
+        label: methodLabel(JenkinsConnectionMethod.ApiToken),
+        credentials: { instanceUrl: "", username: "", apiToken: "" },
+        fields: [
+          {
+            name: "credentials.instanceUrl",
+            label: "Instance URL",
+            mono: true,
+            placeholder: "https://jenkins.example.com"
+          },
+          { name: "credentials.username", label: "Username" },
+          { name: "credentials.apiToken", label: "API token", kind: "secret" }
         ]
       }
     ]

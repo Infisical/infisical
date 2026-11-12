@@ -32,7 +32,8 @@ import {
   DetailsFields,
   InitialSyncFields,
   OptionsFields,
-  SourceFields
+  SourceFields,
+  useSourceConflicts
 } from "../../OverviewPage/secrets/secret-sync/create-secret-sync-sheet";
 import { SyncConnections } from "../../OverviewPage/secrets/secret-sync/sync-fields";
 import type { LocalSyncConnection } from "../../OverviewPage/secrets/secret-sync/sync-model";
@@ -119,6 +120,8 @@ export const EditSyncSheet = ({
     }
   });
   const { isDirty } = form.formState;
+  const values = useWatch({ control: form.control }) as FieldValues;
+  const conflicts = useSourceConflicts(sync.projectId, section === "source" ? values : {});
   const [pending, setPending] = useState(false);
   const guard = useDiscardChangesGuard({ isDirty, onDiscard: onClose });
   const name = destinationNameOf(sync.destination);
@@ -157,6 +160,7 @@ export const EditSyncSheet = ({
   };
 
   const save = async () => {
+    if (conflicts.length) return;
     if (!(await form.trigger(SECTION_FIELDS[section]))) return;
     await form.handleSubmit(submit, (errors) =>
       failed("Some sync settings are invalid", new Error(firstError(errors)))
@@ -164,7 +168,8 @@ export const EditSyncSheet = ({
   };
 
   let body = <DetailsFields />;
-  if (section === "source") body = <SourceFields environments={[...environments]} conflicts={[]} />;
+  if (section === "source")
+    body = <SourceFields environments={[...environments]} conflicts={conflicts} />;
   if (section === "options")
     body = (
       <>
@@ -216,7 +221,10 @@ export const EditSyncSheet = ({
                 </Button>
                 <Button
                   loading={pending}
-                  disabledReason={isDirty ? undefined : "No changes to save"}
+                  disabledReason={
+                    (conflicts.length > 0 && "Resolve the secret name conflicts first") ||
+                    (isDirty ? undefined : "No changes to save")
+                  }
                   onClick={save}
                 >
                   Save changes

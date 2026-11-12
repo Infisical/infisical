@@ -58,7 +58,6 @@ import {
   connectionRedirect,
   startConnectionRedirect
 } from "../../../../data/integrations/connection-redirect";
-import type { Resource } from "../../secrets-model";
 import type { FlowFeedback, FlowScope } from "../flows";
 import {
   ReviewSection,
@@ -198,30 +197,23 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
 const useSyncValues = () => useWatch() as FieldValues;
 const useSyncFormContext = () => useFormContext<FieldValues>();
 
-const recursiveConflicts = (
-  resources: readonly Resource[] | undefined,
-  project: string,
-  environment: string | undefined,
-  secretPath: string | undefined,
-  includeAllSubFolders: boolean
-) => {
-  if (!resources || !includeAllSubFolders || !environment || !secretPath) return [];
-  const base = secretPath === "/" ? "/" : secretPath.replace(/\/+$/, "");
-  const prefix = base === "/" ? "/" : `${base}/`;
-  const byKey = new Map<string, Set<string>>();
-  resources.forEach((resource) => {
-    if (
-      resource.kind !== "secret" ||
-      resource.project !== project ||
-      resource.environment !== environment ||
-      !(resource.path === base || resource.path.startsWith(prefix))
-    )
-      return;
-    byKey.set(resource.name, (byKey.get(resource.name) ?? new Set()).add(resource.path));
-  });
-  return [...byKey]
-    .filter(([, paths]) => paths.size > 1)
-    .map(([key, paths]) => ({ key, paths: [...paths].sort() }));
+export const useSourceConflicts = (projectId: string, values: FieldValues) => {
+  const enabled =
+    Boolean(values.destination) &&
+    Boolean(values.syncOptions?.includeAllSubFolders) &&
+    Boolean(values.environment?.slug) &&
+    Boolean(values.secretPath);
+  const { data } = useV4Adapter("secrets").useSecretSyncRecursiveConflicts(
+    {
+      destination: values.destination,
+      projectId,
+      environment: values.environment?.slug,
+      secretPath: values.secretPath,
+      keySchema: values.syncOptions?.keySchema
+    },
+    { enabled }
+  );
+  return enabled ? (data?.conflicts ?? []) : [];
 };
 
 const MAX_DISPLAYED_CONFLICTS = 5;
@@ -938,7 +930,6 @@ export function CreateSecretSyncSheet({
   scope,
   initial,
   syncs,
-  resources,
   onCreate,
   onToast,
   destination: requestedDestination,
@@ -950,7 +941,6 @@ export function CreateSecretSyncSheet({
   scope: FlowScope;
   initial?: { environment: string; path: string };
   syncs: readonly LocalSecretSync[];
-  resources?: readonly Resource[];
   onCreate: (sync: LocalSecretSync, feedback: FlowFeedback) => void;
   onToast: (tone: RowActionTone, feedback: FlowFeedback) => void;
   destination?: SecretSync;
@@ -1003,13 +993,7 @@ export function CreateSecretSyncSheet({
     values.secretPath ?? initial?.path ?? "/",
     "create secret syncs here"
   );
-  const conflicts = recursiveConflicts(
-    resources,
-    scope.project,
-    values.environment?.slug,
-    values.secretPath,
-    Boolean(values.syncOptions?.includeAllSubFolders)
-  );
+  const conflicts = useSourceConflicts(scope.project, values);
   const duplicate =
     destination && values.connection?.id
       ? syncs.find(

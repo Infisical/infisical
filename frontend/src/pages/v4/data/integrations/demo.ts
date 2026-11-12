@@ -4,14 +4,19 @@ import type { TAppConnectionOption } from "@app/hooks/api/appConnections/types/a
 import { AwsConnectionMethod } from "@app/hooks/api/appConnections/types/aws-connection";
 import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
-import { DatabricksConnectionMethod } from "@app/hooks/api/appConnections/types/databricks-connection";
+import {
+  DatabricksConnectionMethod,
+  DatabricksConnectionScope
+} from "@app/hooks/api/appConnections/types/databricks-connection";
 import { GcpConnectionMethod } from "@app/hooks/api/appConnections/types/gcp-connection";
 import { GitHubConnectionMethod } from "@app/hooks/api/appConnections/types/github-connection";
 import { GitHubRadarConnectionMethod } from "@app/hooks/api/appConnections/types/github-radar-connection";
 import { GitLabConnectionMethod } from "@app/hooks/api/appConnections/types/gitlab-connection";
 import { PostgresConnectionMethod } from "@app/hooks/api/appConnections/types/postgres-connection";
 import { AppConnectionCredentialRotationStatus } from "@app/hooks/api/appConnections/types/root-connection-enums";
+import { S3CompatibleConnectionMethod } from "@app/hooks/api/appConnections/types/s3-compatible-connection";
 import { VercelConnectionMethod } from "@app/hooks/api/appConnections/types/vercel-connection";
+import type { TGitHubApp } from "@app/hooks/api/gitHubApps/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import type { WorkflowIntegration } from "@app/hooks/api/workflowIntegrations/types";
 
@@ -41,7 +46,7 @@ const seededOptions: { app: AppConnection; methods: string[]; [key: string]: unk
   { app: AppConnection.GCP, methods: [GcpConnectionMethod.ServiceAccountImpersonation] },
   {
     app: AppConnection.AzureKeyVault,
-    methods: [AzureKeyVaultConnectionMethod.OAuth, AzureKeyVaultConnectionMethod.ClientSecret]
+    methods: Object.values(AzureKeyVaultConnectionMethod)
   },
   { app: AppConnection.Databricks, methods: [DatabricksConnectionMethod.ServicePrincipal] }
 ];
@@ -55,6 +60,48 @@ const options = [
       methods: preset.methods.map((method) => method.value)
     }))
 ].map((option) => ({ ...option, name: option.app }) as TAppConnectionOption);
+
+const ORG_GITHUB_APP_ID = "9e1b3d5f-7a9c-4e1b-8d3f-5a7c9e1b3d02";
+
+const gitHubApp = (app: Partial<TGitHubApp> & Pick<TGitHubApp, "id" | "name" | "slug">) => ({
+  orgId: V4_DEMO_ORG_ID,
+  projectId: null,
+  appId: "104233",
+  clientId: null,
+  owner: null,
+  host: null,
+  instanceType: null,
+  connectionCount: 0,
+  createdAt: null,
+  updatedAt: null,
+  ...app
+});
+
+const gitHubApps: TGitHubApp[] = [
+  gitHubApp({ id: null, name: "Infisical", slug: "infisical-demo", connectionCount: 2 }),
+  gitHubApp({
+    id: ORG_GITHUB_APP_ID,
+    name: "infisical-acme-deploy",
+    slug: "infisical-acme-deploy",
+    owner: "acme-corp",
+    instanceType: "cloud",
+    connectionCount: 1,
+    createdAt: "2026-04-02T09:00:00Z",
+    updatedAt: "2026-04-02T09:00:00Z"
+  })
+];
+
+/** What the server sends back for a managed identity connection; the issuer follows SITE_URL. */
+const federatedCredential = (connectionId: string) => ({
+  issuerUrl: `${window.location.origin}/api/v1/oidc-issuer/organizations/${V4_DEMO_ORG_ID}`,
+  subjectIdentifier: `app-connection:${connectionId}`,
+  audience: "api://AzureADTokenExchange"
+});
+
+/** The API never returns secrets, so the fixtures keep only what a read would show. */
+const SECRET_KEY = /secret|password|privatekey|token|certificatebody|code/i;
+const readableCredentials = (credentials: Record<string, unknown> = {}) =>
+  Object.fromEntries(Object.entries(credentials).filter(([key]) => !SECRET_KEY.test(key)));
 
 const project = (id: string, type: ProjectType) => ({ id, name: id, slug: id, type });
 const days = (count: number) => new Date(Date.now() + count * 86_400_000);
@@ -142,7 +189,14 @@ const store = createFixtureStore<TAppConnection[]>([
     AppConnection.Databricks,
     "databricks-analytics",
     DatabricksConnectionMethod.ServicePrincipal,
-    "2026-05-27T17:40:00Z"
+    "2026-05-27T17:40:00Z",
+    {
+      credentials: {
+        workspaceUrl: "https://dbc-4f2a91c7-8e3b.cloud.databricks.com",
+        clientId: "6f1c2a9e-4b7d-4e3a-9c5f-2d8b1e7a4c60",
+        scopes: [DatabricksConnectionScope.Secrets]
+      }
+    } as Partial<TAppConnection>
   ),
   connection(
     "1c3e5a7b-9d1f-4b3d-a5e7-9b1d3f5a7c87",
@@ -234,6 +288,47 @@ const store = createFixtureStore<TAppConnection[]>([
       rotation: rotation(AppConnectionCredentialRotationStatus.Success, 18),
       project: project("payments-api", ProjectType.SecretManager)
     } as Partial<TAppConnection>
+  ),
+  connection(
+    "9e1b3d5f-7a9c-4e1b-8d3f-5a7c9e1b3d16",
+    AppConnection.AzureKeyVault,
+    "payments-kv-managed-identity",
+    AzureKeyVaultConnectionMethod.ManagedIdentity,
+    "2026-10-21T15:30:00Z",
+    {
+      credentials: {
+        tenantId: "8b1e4c7a-2d5f-4a9e-b3c6-1f7d9e2a5b48",
+        clientId: "3c6f9a2d-5e8b-4c1f-a7d4-0b3e6f9c2a51",
+        federatedCredential: federatedCredential("9e1b3d5f-7a9c-4e1b-8d3f-5a7c9e1b3d16")
+      },
+      project: project("payments-api", ProjectType.SecretManager)
+    } as Partial<TAppConnection>
+  ),
+  connection(
+    "0f2c4e6a-8b0d-4f2c-9e4a-6b8d0f2c4e07",
+    AppConnection.GitHub,
+    "payments-github-deploy",
+    GitHubConnectionMethod.App,
+    "2026-10-29T11:05:00Z",
+    {
+      credentials: { gitHubAppId: ORG_GITHUB_APP_ID, instanceType: "cloud" },
+      project: project("payments-api", ProjectType.SecretManager)
+    } as Partial<TAppConnection>
+  ),
+  connection(
+    "1a3c5e7b-9d0f-4a3c-8e5b-7d9f1a3c5e98",
+    AppConnection.S3Compatible,
+    "payments-minio-archive",
+    S3CompatibleConnectionMethod.AccessKey,
+    "2026-11-03T08:40:00Z",
+    {
+      credentials: {
+        endpoint: "https://minio.acme.internal",
+        accessKeyId: "payments-archive",
+        region: "eu-central-1"
+      },
+      project: project("payments-api", ProjectType.SecretManager)
+    } as Partial<TAppConnection>
   )
 ]);
 
@@ -249,37 +344,62 @@ export const integrationsDemo: IntegrationsAdapter = {
   }),
   useConnectionOptions: () => ({ data: options, isPending: false, error: null }),
   useCreateConnection: fixtureMutation((input) => {
-    const created = connection(
-      crypto.randomUUID(),
-      input.app,
-      input.name,
-      input.method,
-      new Date().toISOString(),
-      {
-        description: input.description ?? null,
-        ...(input.projectId && { project: project(input.projectId, ProjectType.SecretManager) })
-      }
-    );
+    const id = crypto.randomUUID();
+    const { isAutoRotationEnabled, rotation: schedule } = input as typeof input & {
+      isAutoRotationEnabled?: boolean;
+      rotation?: { rotationInterval: number; rotateAtUtc: { hours: number; minutes: number } };
+    };
+    const created = connection(id, input.app, input.name, input.method, new Date().toISOString(), {
+      description: input.description ?? null,
+      credentials: {
+        ...readableCredentials(input.credentials as Record<string, unknown>),
+        ...(input.method === AzureKeyVaultConnectionMethod.ManagedIdentity && {
+          federatedCredential: federatedCredential(id)
+        })
+      },
+      ...(isAutoRotationEnabled &&
+        schedule && {
+          isAutoRotationEnabled,
+          rotation: {
+            ...rotation(AppConnectionCredentialRotationStatus.Success, schedule.rotationInterval),
+            ...schedule
+          }
+        }),
+      ...(input.projectId && { project: project(input.projectId, ProjectType.SecretManager) })
+    } as Partial<TAppConnection>);
     store.update((entries) => [...entries, created]);
     return created;
   }),
-  useUpdateConnection: fixtureMutation(({ connectionId, credentials, ...changes }) => {
-    store.update((entries) =>
-      entries.map((entry) =>
-        entry.id === connectionId
-          ? ({
-              ...entry,
-              ...changes,
-              credentials: credentials
-                ? { ...entry.credentials, ...credentials }
-                : entry.credentials,
-              updatedAt: new Date().toISOString()
-            } as TAppConnection)
-          : entry
-      )
-    );
-    return store.get().find((entry) => entry.id === connectionId) as TAppConnection;
-  }),
+  useUpdateConnection: fixtureMutation(
+    ({ connectionId, credentials: next, rotation: schedule, ...changes }) => {
+      const credentials = next && readableCredentials(next as Record<string, unknown>);
+      store.update((entries) =>
+        entries.map((entry) =>
+          entry.id === connectionId
+            ? ({
+                ...entry,
+                ...changes,
+                credentials: credentials
+                  ? { ...entry.credentials, ...credentials }
+                  : entry.credentials,
+                ...(schedule && {
+                  rotation: {
+                    ...(entry.rotation ??
+                      rotation(
+                        AppConnectionCredentialRotationStatus.Success,
+                        schedule.rotationInterval ?? 30
+                      )),
+                    ...schedule
+                  }
+                }),
+                updatedAt: new Date().toISOString()
+              } as TAppConnection)
+            : entry
+        )
+      );
+      return store.get().find((entry) => entry.id === connectionId) as TAppConnection;
+    }
+  ),
   useRotateCredentials: fixtureMutation(({ connectionId }) => {
     store.update((entries) =>
       entries.map((entry) =>
@@ -298,5 +418,6 @@ export const integrationsDemo: IntegrationsAdapter = {
     store.update((entries) => entries.filter((entry) => entry.id !== connectionId));
     return removed;
   }),
+  useGitHubApps: () => ({ data: gitHubApps, isPending: false, error: null }),
   useWorkflowIntegrations: () => ({ data: workflowIntegrations, isPending: false, error: null })
 };

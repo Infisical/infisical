@@ -107,10 +107,9 @@ jobs:
         working-directory: frontend
 
   react-doctor:
-    name: React Doctor (advisory)
+    name: React Doctor
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
 
     steps:
       - name: ☁️ Checkout source
@@ -132,13 +131,16 @@ jobs:
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: npm ci
         working-directory: frontend
-      - name: 🩺 Report React issues this PR introduces
+      - name: 🩺 Fail on React errors this PR introduces
+        shell: bash
         run: |
           {
             echo '### React Doctor: issues introduced by this PR'
             echo '```'
-            npm run --silent react:doctor:diff -- --base "origin/$BASE_REF" --blocking none --no-color --verbose
+            status=0
+            npm run --silent react:doctor:diff -- --base "origin/$BASE_REF" --blocking error --no-color --verbose || status=$?
             echo '```'
+            exit $status
           } | tee -a "$GITHUB_STEP_SUMMARY"
         working-directory: frontend
         env:
