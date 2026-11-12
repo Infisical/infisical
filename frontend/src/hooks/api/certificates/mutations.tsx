@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { approvalRequestQuery } from "../approvalRequests/queries";
 import { certificateProfileKeys } from "../certificateProfiles/queries";
 import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
 import { pkiSyncKeys } from "../pkiSyncs/queries";
@@ -72,6 +73,7 @@ export const useRevokeCert = () => {
       return data;
     },
     onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
       queryClient.invalidateQueries({
         queryKey: certKeys.getCertificateById(id)
       });

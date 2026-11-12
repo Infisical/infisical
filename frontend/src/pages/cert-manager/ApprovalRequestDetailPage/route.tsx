@@ -19,23 +19,38 @@ export const Route = createFileRoute(
   component: ApprovalRequestDetailPage,
   validateSearch: zodValidator(ApprovalRequestSearchSchema),
   beforeLoad: ({ context, params, search }) => {
-    const parent =
-      search.policyType === ApprovalPolicyType.CertCodeSigning
-        ? {
-            label: "Requests",
-            link: linkOptions({
-              to: "/organizations/$orgId/cert-manager/requests",
-              params: { orgId: params.orgId },
-              search: { selectedTab: "signing-requests" as const }
-            })
-          }
-        : {
-            label: "Approvals",
-            link: linkOptions({
-              to: "/organizations/$orgId/cert-manager/approvals",
-              params: { orgId: params.orgId }
-            })
-          };
+    const getParent = () => {
+      if (search.policyType === ApprovalPolicyType.CertCodeSigning) {
+        return {
+          label: "Requests",
+          link: linkOptions({
+            to: "/organizations/$orgId/cert-manager/requests",
+            params: { orgId: params.orgId },
+            search: { selectedTab: "signing-requests" as const }
+          })
+        };
+      }
+      // Revocation requests only exist in Applications, so they live in Application Requests, not the
+      // legacy Approvals page.
+      if (search.policyType === ApprovalPolicyType.CertRevocation) {
+        return {
+          label: "Requests",
+          link: linkOptions({
+            to: "/organizations/$orgId/cert-manager/requests",
+            params: { orgId: params.orgId },
+            search: { selectedTab: "application-requests" as const }
+          })
+        };
+      }
+      return {
+        label: "Approvals",
+        link: linkOptions({
+          to: "/organizations/$orgId/cert-manager/approvals",
+          params: { orgId: params.orgId }
+        })
+      };
+    };
+    const parent = getParent();
     return {
       breadcrumbs: [
         ...context.breadcrumbs,

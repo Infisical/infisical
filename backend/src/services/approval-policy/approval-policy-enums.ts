@@ -17,6 +17,7 @@ export enum ApprovalAuditAction {
 export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
+  CertRevocation = "cert-revocation",
   CertCodeSigning = "cert-code-signing",
   SecretChange = "secret-change",
   SecretAccess = "secret-access"

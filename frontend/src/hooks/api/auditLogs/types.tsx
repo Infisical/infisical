@@ -740,6 +740,31 @@ interface RevokeCert {
     cn: string;
     serialNumber: string;
     revocationReason?: CrlReason;
+    approvalRequestId?: string;
+  };
+}
+
+interface RequestCertRevocation {
+  type: EventType.REQUEST_CERT_REVOCATION;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+    revocationReason: CrlReason;
+    approvalRequestId: string;
+    approvalPolicyId: string;
+  };
+}
+
+interface CertRevocationFailed {
+  type: EventType.CERT_REVOCATION_FAILED;
+  metadata: {
+    certId: string;
+    cn?: string;
+    serialNumber?: string;
+    revocationReason: CrlReason;
+    approvalRequestId: string;
+    error: string;
   };
 }
 
@@ -1137,6 +1162,8 @@ export type Event =
   | GetCert
   | DeleteCert
   | RevokeCert
+  | RequestCertRevocation
+  | CertRevocationFailed
   | GetCertBody
   | GetCertPrivateKey
   | GetCertBundle

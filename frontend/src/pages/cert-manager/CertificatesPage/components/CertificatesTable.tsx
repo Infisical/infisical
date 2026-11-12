@@ -65,6 +65,7 @@ import {
 } from "@app/context";
 import { useSlashFocusSearch } from "@app/hooks";
 import { useUpdateRenewalConfig } from "@app/hooks/api";
+import { usePendingCertificateRevocations } from "@app/hooks/api/approvalRequests";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
@@ -200,6 +201,7 @@ export const CertificatesTable = ({
   const [appliedSearch, setAppliedSearch] = useState(externalFilter?.search || "");
 
   const { data: appPermissionData } = useGetPkiApplicationPermissions(applicationId ?? "");
+  const { data: pendingRevocations } = usePendingCertificateRevocations(applicationId);
   const canReadAtApplication = Boolean(
     appPermissionData?.permission?.can(
       PkiApplicationResourceActions.Read,
@@ -942,6 +944,7 @@ export const CertificatesTable = ({
                     certificate,
                     certificateCaType
                   );
+                  const hasPendingRevocation = Boolean(pendingRevocations?.has(certificate.id));
                   const canOfferRevoke =
                     canRevokeCertificate &&
                     !isRevoked &&
@@ -1004,7 +1007,12 @@ export const CertificatesTable = ({
                       )}
                       {visibleColumns.has("status") && (
                         <TableCell>
-                          <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
+                            {hasPendingRevocation && (
+                              <Badge variant="warning">Revocation Pending</Badge>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                       {visibleColumns.has("health") && (
@@ -1370,14 +1378,19 @@ export const CertificatesTable = ({
 
                                 return (
                                   <BlockedActionTooltip
-                                    reason={rowApplicationAccess?.revokeBlockedReason}
+                                    reason={
+                                      hasPendingRevocation
+                                        ? "A revocation of this certificate is already waiting for approval."
+                                        : rowApplicationAccess?.revokeBlockedReason
+                                    }
                                   >
                                     <DropdownMenuItem
                                       variant="danger"
-                                      isDisabled={!canDeleteCertificate}
-                                      isDisabledFocusable={Boolean(
-                                        rowApplicationAccess?.revokeBlockedReason
-                                      )}
+                                      isDisabled={!canDeleteCertificate || hasPendingRevocation}
+                                      isDisabledFocusable={
+                                        hasPendingRevocation ||
+                                        Boolean(rowApplicationAccess?.revokeBlockedReason)
+                                      }
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handlePopUpOpen("revokeCertificate", {

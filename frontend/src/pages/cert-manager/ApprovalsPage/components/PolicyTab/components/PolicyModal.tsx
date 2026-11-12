@@ -63,6 +63,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     resolver: zodResolver(PolicyFormSchema),
     defaultValues: {
       name: "",
+      policyType: ApprovalPolicyType.CertRequest,
       maxRequestTtl: null,
       conditions: [{ profileNames: [] }],
       constraints: {},
@@ -82,8 +83,10 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     handleSubmit,
     trigger,
     reset,
+    watch,
     formState: { isDirty, isSubmitting, isValidating }
   } = formMethods;
+  const selectedPolicyType = watch("policyType");
 
   const { mutateAsync: createPolicy, isPending: isCreating } = useCreateApprovalPolicy();
   const { mutateAsync: updatePolicy, isPending: isUpdating } = useUpdateApprovalPolicy();
@@ -99,6 +102,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
       const conditions = policyData.policy.conditions.conditions as CertRequestPolicyConditions;
       reset({
         name: policyData.policy.name,
+        policyType: policyData.policy.type,
         maxRequestTtl: policyData.policy.maxRequestTtl,
         conditions,
         constraints: {},
@@ -111,6 +115,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     } else {
       reset({
         name: "",
+        policyType: ApprovalPolicyType.CertRequest,
         maxRequestTtl: null,
         conditions: [{ profileNames: [] }],
         constraints: {},
@@ -128,15 +133,22 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
     setSelectedStepIndex(0);
   }, [policyData, reset, isOpen]);
 
-  const onSubmit = async (data: TPolicyForm) => {
+  const onSubmit = async ({ policyType, ...data }: TPolicyForm) => {
     if (!currentProject?.id) return;
+
+    // Revocation policies can't be bypassed by machine identities, so the field is never sent as true for them.
+    const policyFields = {
+      ...data,
+      bypassForMachineIdentities:
+        policyType === ApprovalPolicyType.CertRevocation ? false : data.bypassForMachineIdentities
+    };
 
     try {
       if (policyData?.policyId) {
         await updatePolicy({
-          policyType: ApprovalPolicyType.CertRequest,
+          policyType: policyData.policy.type,
           policyId: policyData.policyId,
-          ...data
+          ...policyFields
         });
         createNotification({
           text: "Successfully updated policy",
@@ -144,10 +156,10 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
         });
       } else {
         await createPolicy({
-          policyType: ApprovalPolicyType.CertRequest,
+          policyType: applicationId ? policyType : ApprovalPolicyType.CertRequest,
           scope: applicationId ? ApprovalPolicyScope.PkiApplication : ApprovalPolicyScope.Project,
           scopeId: applicationId || currentProject.id,
-          ...data
+          ...policyFields
         });
         createNotification({
           text: "Successfully created policy",
@@ -216,7 +228,9 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
               : "Create Certificate Approval Policy"}
           </SheetTitle>
           <SheetDescription>
-            Configure a certificate approval policy requiring approval for certificate issuance.
+            {selectedPolicyType === ApprovalPolicyType.CertRevocation
+              ? "Configure a certificate approval policy requiring approval for certificate revocation."
+              : "Configure a certificate approval policy requiring approval for certificate issuance."}
           </SheetDescription>
         </SheetHeader>
         <FormProvider {...formMethods}>
@@ -251,7 +265,10 @@ export const PolicyModal = ({ popUp, handlePopUpToggle, applicationId }: Props) 
                   ))}
                 </TabsList>
                 <TabsContent value="configuration">
-                  <PolicyDetailsStep applicationId={applicationId} />
+                  <PolicyDetailsStep
+                    applicationId={applicationId}
+                    isEditing={Boolean(policyData?.policyId)}
+                  />
                 </TabsContent>
                 <TabsContent value="approvals">
                   <PolicyApprovalSteps applicationId={applicationId} />

@@ -303,6 +303,7 @@ import {
 import { approvalPolicyAutoApprovalDALFactory } from "@app/services/approval-policy/auto-approval/auto-approval-dal";
 import { autoApprovalServiceFactory } from "@app/services/approval-policy/auto-approval/auto-approval-service";
 import { certRequestApprovalResourceFactory } from "@app/services/approval-policy/cert-request/cert-request-policy-factory";
+import { certRevocationApprovalResourceFactory } from "@app/services/approval-policy/cert-revocation/cert-revocation-policy-factory";
 import { codeSigningApprovalResourceFactory } from "@app/services/approval-policy/code-signing/code-signing-policy-factory";
 import { secretAccessApprovalGlobalResourceFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { tokenDALFactory } from "@app/services/auth-token/auth-token-dal";
@@ -3984,6 +3985,68 @@ export const registerRoutes = async (
     projectDAL
   });
 
+  const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
+    pamFolderNotificationConfigDAL,
+    approvalPolicyDAL,
+    userGroupMembershipDAL,
+    approvalRequestDAL,
+    approvalRequestGrantsDAL,
+    pamAccountDAL,
+    pamAccountTemplateDAL,
+    pamFolderDAL,
+    pamSessionDAL,
+    membershipDAL,
+    membershipRoleDAL,
+    permissionService,
+    userDAL,
+    gatewayV2Service,
+    kmsService
+  });
+
+  const approvalResources: TApprovalResourceRegistry = {
+    [ApprovalPolicyType.PamAccess]: pamAccessApprovalResource as TApprovalResourceRegistry[ApprovalPolicyType],
+    [ApprovalPolicyType.CertCodeSigning]: codeSigningApprovalResourceFactory({
+      approvalPolicyDAL,
+      approvalRequestGrantsDAL
+    }) as TApprovalResourceRegistry[ApprovalPolicyType]
+  };
+
+  const autoApprovalService = autoApprovalServiceFactory({
+    approvalPolicyAutoApprovalDAL,
+    appConnectionDAL,
+    appConnectionService,
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService
+  });
+
+  const approvalPolicyService = approvalPolicyServiceFactory({
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    approvalPolicyBypassersDAL,
+    permissionService,
+    licenseService,
+    projectMembershipDAL,
+    membershipDAL,
+    pkiApplicationDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestApprovalsDAL,
+    userGroupMembershipDAL,
+    notificationService,
+    approvalRequestGrantsDAL,
+    smtpService,
+    userDAL,
+    groupDAL,
+    slackIntegrationDAL,
+    kmsService,
+    eventEmitter: eventOutboxService,
+    autoApprovalService,
+    resources: approvalResources
+  });
+
   const certificateService = certificateServiceFactory({
     certManagerService: domains.certManager.certManagerService,
     keyStore,
@@ -4020,7 +4083,11 @@ export const registerRoutes = async (
     internalCertificateAuthorityDAL,
     signerDAL,
     userDAL,
-    identityDAL
+    identityDAL,
+    approvalPolicyService,
+    approvalPolicyDAL,
+    approvalRequestDAL,
+    telemetryService
   });
 
   const godaddyCaFns = GoDaddyCertificateAuthorityFns({
@@ -4103,68 +4170,6 @@ export const registerRoutes = async (
     pkiSyncQueue,
     pkiAlertV2Queue,
     certificateAlertEventEmitter
-  });
-
-  const pamAccessApprovalResource = pamAccessApprovalResourceFactory({
-    pamFolderNotificationConfigDAL,
-    approvalPolicyDAL,
-    userGroupMembershipDAL,
-    approvalRequestDAL,
-    approvalRequestGrantsDAL,
-    pamAccountDAL,
-    pamAccountTemplateDAL,
-    pamFolderDAL,
-    pamSessionDAL,
-    membershipDAL,
-    membershipRoleDAL,
-    permissionService,
-    userDAL,
-    gatewayV2Service,
-    kmsService
-  });
-
-  const approvalResources: TApprovalResourceRegistry = {
-    [ApprovalPolicyType.PamAccess]: pamAccessApprovalResource as TApprovalResourceRegistry[ApprovalPolicyType],
-    [ApprovalPolicyType.CertCodeSigning]: codeSigningApprovalResourceFactory({
-      approvalPolicyDAL,
-      approvalRequestGrantsDAL
-    }) as TApprovalResourceRegistry[ApprovalPolicyType]
-  };
-
-  const autoApprovalService = autoApprovalServiceFactory({
-    approvalPolicyAutoApprovalDAL,
-    appConnectionDAL,
-    appConnectionService,
-    kmsService,
-    gatewayV2Service,
-    gatewayPoolService
-  });
-
-  const approvalPolicyService = approvalPolicyServiceFactory({
-    approvalPolicyDAL,
-    approvalPolicyStepsDAL,
-    approvalPolicyStepApproversDAL,
-    approvalPolicyBypassersDAL,
-    permissionService,
-    licenseService,
-    projectMembershipDAL,
-    membershipDAL,
-    pkiApplicationDAL,
-    approvalRequestDAL,
-    approvalRequestStepsDAL,
-    approvalRequestStepEligibleApproversDAL,
-    approvalRequestApprovalsDAL,
-    userGroupMembershipDAL,
-    notificationService,
-    approvalRequestGrantsDAL,
-    smtpService,
-    userDAL,
-    groupDAL,
-    slackIntegrationDAL,
-    kmsService,
-    eventEmitter: eventOutboxService,
-    autoApprovalService,
-    resources: approvalResources
   });
 
   const pkiApplicationEnrollmentService = pkiApplicationEnrollmentServiceFactory({
@@ -4373,6 +4378,11 @@ export const registerRoutes = async (
     certificateRequestService,
     certificateRenewalService: certificateV3Service,
     telemetryService
+  }) as TApprovalResourceRegistry[ApprovalPolicyType];
+
+  approvalResources[ApprovalPolicyType.CertRevocation] = certRevocationApprovalResourceFactory({
+    approvalPolicyDAL,
+    certificateService
   }) as TApprovalResourceRegistry[ApprovalPolicyType];
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

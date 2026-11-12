@@ -40,7 +40,12 @@ import {
   TCertificateIssuanceResponse
 } from "@app/services/certificate-v3/certificate-v3-types";
 import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
-import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
+import {
+  CertificateRevocationStatus,
+  CertKeyAlgorithm,
+  CertSignatureAlgorithm,
+  CrlReason
+} from "@app/services/certificate/certificate-types";
 import { ResourceMetadataNonEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
@@ -1870,15 +1875,22 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           message: z.string().trim(),
+          status: z.literal(CertificateRevocationStatus.Revoked).describe(CERTIFICATES.REVOKE.status),
           serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumberRes),
           revokedAt: z.date().describe(CERTIFICATES.REVOKE.revokedAt),
           crlWarning: z.string().optional().describe(CERTIFICATES.REVOKE.crlWarning)
+        }),
+        202: z.object({
+          message: z.string().trim(),
+          status: z.literal(CertificateRevocationStatus.PendingApproval).describe(CERTIFICATES.REVOKE.status),
+          serialNumber: z.string().trim().describe(CERTIFICATES.REVOKE.serialNumberRes),
+          approvalRequestId: z.string().uuid().describe(CERTIFICATES.REVOKE.approvalRequestId)
         })
       }
     },
-    handler: async (req) => {
+    handler: async (req, reply) => {
       const { id: identifier } = req.params;
-      const { revokedAt, cert, applicationName, ca, crlWarning } = await server.services.certificate.revokeCert({
+      const result = await server.services.certificate.revokeCert({
         ...(isUuidV4(identifier) ? { id: identifier } : { thumbprint: identifier }),
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -1886,6 +1898,35 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
+      const { cert, applicationName, ca } = result;
+
+      if (result.status === CertificateRevocationStatus.PendingApproval) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: ca.projectId,
+          event: {
+            type: EventType.REQUEST_CERT_REVOCATION,
+            metadata: {
+              certId: cert.id,
+              cn: cert.commonName,
+              serialNumber: cert.serialNumber,
+              applicationId: cert.applicationId,
+              applicationName,
+              revocationReason: req.body.revocationReason,
+              approvalRequestId: result.approvalRequestId,
+              approvalPolicyId: result.approvalPolicyId
+            }
+          }
+        });
+
+        return reply.status(202).send({
+          message:
+            "This certificate's Application requires approval to revoke it. It stays active until the request is approved.",
+          status: CertificateRevocationStatus.PendingApproval,
+          serialNumber: cert.serialNumber,
+          approvalRequestId: result.approvalRequestId
+        });
+      }
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -1916,11 +1957,10 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
       return {
         message: "Successfully revoked certificate",
+        status: result.status,
         serialNumber: cert.serialNumber,
-        applicationId: cert.applicationId,
-        applicationName,
-        revokedAt,
-        crlWarning
+        revokedAt: result.revokedAt,
+        crlWarning: result.crlWarning
       };
     }
   });

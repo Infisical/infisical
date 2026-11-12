@@ -2,6 +2,7 @@ import ms from "ms";
 import { z } from "zod";
 
 import { ApprovalStepsSchema } from "@app/components/approvals";
+import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 
 const DurationSchema = (
   min = 86400,
@@ -19,6 +20,7 @@ const DurationSchema = (
 
 export const PolicyFormSchema = z.object({
   name: z.string().min(1, "Policy name is required").max(128),
+  policyType: z.nativeEnum(ApprovalPolicyType).default(ApprovalPolicyType.CertRequest),
   maxRequestTtl: DurationSchema().nullish(),
   conditions: z
     .object({

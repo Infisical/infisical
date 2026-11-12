@@ -151,6 +151,8 @@ Both automatic types reissue the certificate exactly as it is. To change the sub
 
 Revoke a certificate when it's compromised or no longer needed. Specify a [reason code](https://datatracker.ietf.org/doc/html/rfc5280#section-5.3.1) (key compromise, superseded, etc.).
 
+If your Application requires approval for revocation, revoking a certificate creates an approval request, and the certificate stays active until the request is approved. See [Revocation approvals](/documentation/platform/pki/applications/approvals#revocation).
+
 Revoked certificates are added to the issuing CA's [CRL](/documentation/platform/pki/ca/crl-distribution). Verify revocation status:
 
 ```bash
