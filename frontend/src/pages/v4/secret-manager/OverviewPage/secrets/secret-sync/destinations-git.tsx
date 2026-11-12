@@ -629,13 +629,14 @@ export const GIT_SYNC_VIEWS: Record<
     defaults: {
       destinationConfig: { workspaceSlug: "", repositorySlug: "", environmentId: "" }
     },
-    destinationReview: (config) => [
-      ["Workspace", config.workspaceSlug],
-      ["Repository", config.repositorySlug],
-      ...(config.environmentId
-        ? [["Deployment environment", <BitbucketEnvironmentName config={config} />] as const]
-        : [])
-    ]
+    destinationReview: (config) => {
+      const environment = <BitbucketEnvironmentName config={config} />;
+      return [
+        ["Workspace", config.workspaceSlug],
+        ["Repository", config.repositorySlug],
+        ...(config.environmentId ? [["Deployment environment", environment] as const] : [])
+      ];
+    }
   },
   [SecretSync.CircleCI]: {
     Destination: CircleCIDestination,
@@ -656,11 +657,13 @@ export const GIT_SYNC_VIEWS: Record<
   [SecretSync.TeamCity]: {
     Destination: TeamCityDestination,
     defaults: { destinationConfig: { project: "", buildConfig: "" } },
-    destinationReview: (config) => [
-      ["Project", <TeamCityNames config={config} field="project" />],
-      ...(config.buildConfig
-        ? [["Build configuration", <TeamCityNames config={config} field="buildConfig" />] as const]
-        : [])
-    ]
+    destinationReview: (config) => {
+      const project = <TeamCityNames config={config} field="project" />;
+      const buildConfig = <TeamCityNames config={config} field="buildConfig" />;
+      return [
+        ["Project", project],
+        ...(config.buildConfig ? [["Build configuration", buildConfig] as const] : [])
+      ];
+    }
   }
 };

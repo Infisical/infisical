@@ -1012,13 +1012,17 @@ function TagsReviewValue({ tags }: { tags: { key: string; value: string }[] }) {
   );
 }
 
-const awsOptionsReview = (options: FieldValues, tagsLabel: string): ReviewItems => [
-  ...(options.keyId ? [["KMS key", options.keyId] as const] : []),
-  ...(options.tags?.length ? [[tagsLabel, <TagsReviewValue tags={options.tags} />] as const] : []),
-  ...(options.syncSecretMetadataAsTags
-    ? [["Sync secret metadata as resource tags", <Badge tone="ok">Enabled</Badge>] as const]
-    : [])
-];
+const awsOptionsReview = (options: FieldValues, tagsLabel: string): ReviewItems => {
+  const tags = <TagsReviewValue tags={options.tags} />;
+  const enabled = <Badge tone="ok">Enabled</Badge>;
+  return [
+    ...(options.keyId ? [["KMS key", options.keyId] as const] : []),
+    ...(options.tags?.length ? [[tagsLabel, tags] as const] : []),
+    ...(options.syncSecretMetadataAsTags
+      ? [["Sync secret metadata as resource tags", enabled] as const]
+      : [])
+  ];
+};
 
 const githubReview = (config: FieldValues): ReviewItems => {
   const scopeLabel = GITHUB_SCOPES.find((entry) => entry.value === config.scope)?.label;

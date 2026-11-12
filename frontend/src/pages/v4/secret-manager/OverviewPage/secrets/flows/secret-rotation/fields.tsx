@@ -442,6 +442,7 @@ export function ReviewSection({
   label: string;
   items: (readonly [string, ReactNode])[];
 }) {
+  const none = <SmallText muted>None</SmallText>;
   return (
     <Stack gap={12}>
       <Heading level={3} size="subsection">
@@ -449,10 +450,7 @@ export function ReviewSection({
       </Heading>
       <DataList
         variant="meta"
-        items={items.map(([term, value]) => [
-          term,
-          present(value) ? value : <SmallText muted>None</SmallText>
-        ])}
+        items={items.map(([term, value]) => [term, present(value) ? value : none])}
       />
     </Stack>
   );

@@ -348,7 +348,10 @@ const octopusDeployReview = (config: FieldValues): ReviewItems => [
   ["Scope", labelFor(OCTOPUS_SCOPES, config.scope)],
   ["Project", config.projectName || config.projectId],
   ...OCTOPUS_SCOPE_FIELDS.filter(({ key }) => config.scopeValues?.[key]?.length).map(
-    ({ key, label }) => [label, <OctopusScopeNames config={config} field={key} />] as const
+    ({ key, label }) => {
+      const names = <OctopusScopeNames config={config} field={key} />;
+      return [label, names] as const;
+    }
   )
 ];
 
