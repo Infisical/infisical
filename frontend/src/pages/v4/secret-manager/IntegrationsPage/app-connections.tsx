@@ -34,12 +34,12 @@ import {
   AddConnectionSheet,
   appName,
   ConnectionCredentialsSheet,
-  credentialsBlock,
   DeleteConnectionDialog,
   EditConnectionDetailsDialog,
   methodName,
   RotationBadge
 } from "../../integrations/app-connection-dialogs";
+import { credentialsBlock } from "../../integrations/app-connection-model";
 import { orgHref, v4Path } from "../../links";
 import { AppLogo } from "../../organization/IntegrationsPage/AppLogo";
 
@@ -393,6 +393,7 @@ export const AppConnectionsTab = ({ orgId, projectId }: { orgId: string; project
         }
       />
       <AddConnectionSheet
+        key={presetApp ?? "picker"}
         open={adding}
         onOpenChange={(open) => {
           setAdding(open);

@@ -16,8 +16,6 @@ import { Field, FieldDescription, FieldLegend, FieldSet } from "@app/components/
 import { MultiSelect } from "@app/components/v4/ui/multi-select";
 import { Snippet } from "@app/components/v4/ui/snippet";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import type { TAppConnection } from "@app/hooks/api/appConnections/types";
-import { AzureKeyVaultConnectionMethod } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
 import { DatabricksConnectionScope } from "@app/hooks/api/appConnections/types/databricks-connection";
 
 import { useOrgId } from "../access/permissions";
@@ -25,6 +23,7 @@ import { useV4Adapter } from "../data/adapters";
 import { CONNECTION_PRESETS } from "../data/integrations/connection-presets";
 import { s3CompatiblePreset } from "../data/integrations/presets/cloud";
 import { gitHubPreset } from "../data/integrations/presets/core";
+import type { FederatedCredential } from "./app-connection-model";
 
 /**
  * The app's preset with the parts main builds from server data: the organization's GitHub Apps and
@@ -89,20 +88,6 @@ export const useRotationConfirmation = () => {
     )
   };
 };
-
-export const isManagedIdentity = (connection: Pick<TAppConnection, "app" | "method">) =>
-  connection.app === AppConnection.AzureKeyVault &&
-  connection.method === AzureKeyVaultConnectionMethod.ManagedIdentity;
-
-type FederatedCredential = {
-  issuerUrl: string | null;
-  subjectIdentifier: string;
-  audience: string;
-};
-
-export const federatedCredentialOf = (connection: TAppConnection) =>
-  (connection.credentials as { federatedCredential?: FederatedCredential } | undefined)
-    ?.federatedCredential;
 
 /** What to add to the managed identity in Azure. The subject names the connection, so it exists first. */
 export const FederatedCredentialDetails = ({
@@ -188,8 +173,3 @@ export const DatabricksScopesField = ({
     />
   </Field>
 );
-
-export const storedScopes = (connection: TAppConnection) =>
-  connection.app === AppConnection.Databricks
-    ? ((connection.credentials as { scopes?: string[] } | undefined)?.scopes ?? [])
-    : [];

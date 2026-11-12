@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import {
   type Control,
   Controller,
@@ -85,24 +85,20 @@ import { AppLogo } from "../organization/IntegrationsPage/AppLogo";
 import {
   DatabricksScopesField,
   FederatedCredentialDetails,
-  federatedCredentialOf,
-  isManagedIdentity,
-  storedScopes,
   useConnectionPreset,
   useRotationConfirmation
 } from "./app-connection-extras";
-
-export const NOT_IN_V4 = "Not in v4 yet";
+import {
+  credentialsBlock,
+  federatedCredentialOf,
+  isManagedIdentity,
+  methodPreset,
+  NOT_IN_V4,
+  storedScopes
+} from "./app-connection-model";
 
 export const appName = (app: AppConnection) => APP_CONNECTION_MAP[app].name;
 export const methodName = (row: TAppConnection) => getAppConnectionMethodDetails(row.method).name;
-
-const methodPreset = (row: TAppConnection) =>
-  CONNECTION_PRESETS[row.app]?.methods.find((entry) => entry.value === row.method);
-
-/** Why the credentials sheet can't open for this connection in v4, or undefined when it can. */
-export const credentialsBlock = (row: TAppConnection) =>
-  row.isPlatformManagedCredentials || methodPreset(row) ? undefined : NOT_IN_V4;
 
 const scopesPayload = (scopes: string[]) => (scopes.length ? { scopes } : {});
 
@@ -270,6 +266,12 @@ export const AddConnectionSheet = ({
   const [gateway, setGateway] = useState(NO_GATEWAY);
   const [gatewayError, setGatewayError] = useState<string>();
   const [scopes, setScopes] = useState<string[]>([]);
+  const pick = (next: AppConnection | undefined) => {
+    setSelected(next);
+    setGateway(NO_GATEWAY);
+    setGatewayError(undefined);
+    setScopes([]);
+  };
   const [created, setCreated] = useState<TAppConnection>();
   const [verifyFailure, setVerifyFailure] = useState("");
   const { preset, loading } = useConnectionPreset(selected, projectId);
@@ -278,29 +280,16 @@ export const AddConnectionSheet = ({
   const gatewaySupport = useGatewaySupport(selected);
   const gatewayValues = gatewaySupport ? gateway : {};
 
-  useEffect(() => {
-    if (!open) return;
-    setSelected(app);
-    setDirty(false);
-    setCreated(undefined);
-  }, [open, app]);
-
-  useEffect(() => {
-    setGateway(NO_GATEWAY);
-    setGatewayError(undefined);
-    setScopes([]);
-  }, [selected]);
-
   const close = () => {
     setDirty(false);
-    setSelected(undefined);
+    pick(undefined);
     setCreated(undefined);
     setVerifyFailure("");
     onOpenChange(false);
   };
   const back = () => {
     setDirty(false);
-    setSelected(undefined);
+    pick(undefined);
   };
   const { requestDiscard, discardDialogProps } = useDiscardChangesGuard({
     isDirty: !created && (dirty || gateway !== NO_GATEWAY || scopes.length > 0),
@@ -330,7 +319,7 @@ export const AddConnectionSheet = ({
     }
   };
 
-  let body: React.ReactNode = <AppPicker projectType={projectType} onPick={setSelected} />;
+  let body: React.ReactNode = <AppPicker projectType={projectType} onPick={pick} />;
   if (created)
     body = (
       <Stack gap={16}>

@@ -149,9 +149,11 @@ const okmsFields: readonly AppConnectionFieldPreset[] = [
   { name: "credentials.okmsId", label: "KMS ID", mono: true }
 ];
 
+const listFormat = new Intl.ListFormat("en");
+
 /** Main builds the S3 Compatible schema from the server's allowed storage hostnames. */
 export const s3CompatiblePreset = (allowedStorageHostnames: string[]): AppConnectionPreset => {
-  const supported = new Intl.ListFormat("en").format([
+  const supported = listFormat.format([
     "AWS S3",
     "Cloudflare R2",
     "Google Cloud Storage",
