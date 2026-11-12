@@ -7630,6 +7630,10 @@ interface ApprovalRequestCancelEvent {
     approvalRequestId: string;
     requesterName: string;
     requesterEmail: string;
+    // Set when Infisical cancelled the request on its own, such as a renewal of a certificate whose revocation
+    // was approved.
+    reason?: string;
+    revocationApprovalRequestId?: string;
   } & TApprovalRequestSubjectMetadata;
 }
 

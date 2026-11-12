@@ -25,6 +25,7 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
@@ -2031,6 +2032,32 @@ export const approvalPolicyServiceFactory = ({
     return { request: decorated };
   };
 
+  // For a product that closes requests because their subject changed (a certificate was revoked), so there is no
+  // requester to check. A request that was decided in the meantime is skipped by the conditional update.
+  const cancelPendingRequests = async (policyType: ApprovalPolicyType, requestIds: string[]) => {
+    if (requestIds.length === 0) return [];
+
+    const cancelled = await approvalRequestDAL.update(
+      { $in: { id: requestIds }, type: policyType, status: ApprovalRequestStatus.Pending },
+      { status: ApprovalRequestStatus.Cancelled }
+    );
+
+    const resource = resources[policyType];
+    for (const request of cancelled) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await resource?.postRejectionRoutine?.(request as TApprovalRequest);
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to run the rejection routine of a cancelled approval request [approvalRequestId=${request.id}] [policyType=${policyType}]`
+        );
+      }
+    }
+
+    return cancelled;
+  };
+
   const listGrants = async (
     policyType: ApprovalPolicyType,
     scope: ApprovalPolicyScope,
@@ -2847,6 +2874,7 @@ export const approvalPolicyServiceFactory = ({
     approveRequest,
     rejectRequest,
     cancelRequest,
+    cancelPendingRequests,
     listGrants,
     getGrantById,
     revokeGrant,

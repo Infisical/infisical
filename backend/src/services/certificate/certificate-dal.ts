@@ -889,6 +889,21 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findPendingRenewalApprovalRequestIds = async (
+    { certificateId, projectId }: { certificateId: string; projectId: string },
+    tx?: Knex
+  ) => {
+    try {
+      const rows = (await (tx || db)(TableName.ApprovalRequests)
+        .where({ projectId, type: ApprovalPolicyType.CertRequest, status: ApprovalRequestStatus.Pending })
+        .whereRaw(`${PENDING_RENEWAL_CERTIFICATE_ID} = ?`, [certificateId])
+        .select("id")) as { id: string }[];
+      return rows.map((row) => row.id);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find pending renewal approval requests" });
+    }
+  };
+
   const findPendingRevocationApprovalRequest = async (
     { certificateId, projectId }: { certificateId: string; projectId: string },
     tx?: Knex
@@ -1668,6 +1683,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findLatestCertificatesByOrderIds,
     findCertificatesEligibleForRenewal,
     hasRenewalAwaitingApproval,
+    findPendingRenewalApprovalRequestIds,
     findPendingRevocationApprovalRequest,
     getRequestEnrollmentTypeByCertId,
     getOriginatingRequestByCertId,
