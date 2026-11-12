@@ -741,6 +741,7 @@ interface RevokeCert {
     serialNumber: string;
     revocationReason?: CrlReason;
     approvalRequestId?: string;
+    crlWarning?: string;
   };
 }
 

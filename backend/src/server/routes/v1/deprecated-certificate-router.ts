@@ -560,7 +560,8 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
             serialNumber: cert.serialNumber,
             applicationId: cert.applicationId,
             applicationName,
-            revocationReason: req.body.revocationReason
+            revocationReason: req.body.revocationReason,
+            crlWarning: result.crlWarning
           }
         }
       });

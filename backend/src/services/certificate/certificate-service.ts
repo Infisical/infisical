@@ -1035,72 +1035,92 @@ export const certificateServiceFactory = ({
     };
   };
 
-  // Runs once an approval request for a revocation is approved, with no caller waiting on it, so it records
-  // its outcome in the audit log instead of throwing.
-  const revokeApprovedCertificate = async (approvalRequest: TApprovalRequest) => {
-    const { certificateId, revocationReason } = approvalRequest.requestData.requestData as TCertRevocationRequestData;
-    const auditActor = { type: ActorType.PLATFORM as const, metadata: {} };
+  type TApprovedRevocationOutcome =
+    | { kind: "revoked"; cert: TRevocableCertificate; crlWarning?: string }
+    | { kind: "already-revoked" }
+    | { kind: "failed"; cert?: TRevocableCertificate; reason: string };
 
-    const cert = await certificateDAL.findById(certificateId);
+  // A failure can land before or after the certificate was revoked locally, so the outcome comes from the
+  // certificate's current status rather than from the error.
+  const $settleFailedApprovedRevocation = async (
+    approvalRequestId: string,
+    certificateId: string,
+    error: unknown
+  ): Promise<TApprovedRevocationOutcome> => {
+    const logContext = `[certificateId=${certificateId}] [approvalRequestId=${approvalRequestId}]`;
+
+    let current: TRevocableCertificate | undefined;
     try {
-      if (!cert) {
-        throw new NotFoundError({ message: `Certificate '${certificateId}' no longer exists.` });
-      }
+      current = await certificateDAL.findById(certificateId);
+    } catch (readError) {
+      logger.error(error, `Failed to revoke certificate after approval ${logContext}`);
+      logger.error(readError, `Failed to read certificate status after a failed approved revocation ${logContext}`);
+      return {
+        kind: "failed",
+        reason:
+          "Infisical couldn't confirm whether the certificate was revoked. Check its status, and request the revocation again if it is still active."
+      };
+    }
 
+    if (current?.status === CertStatus.REVOKED) {
+      logger.error(error, `Certificate revoked after approval, but a follow-up step failed ${logContext}`);
+      return { kind: "revoked", cert: current };
+    }
+
+    logger.error(error, `Failed to revoke certificate after approval ${logContext}`);
+    return {
+      kind: "failed",
+      cert: current,
+      reason:
+        error instanceof BadRequestError || error instanceof NotFoundError
+          ? error.message
+          : "The revocation didn't complete, so the certificate is still active. Request the revocation again."
+    };
+  };
+
+  const $revokeForApproval = async (
+    approvalRequest: TApprovalRequest,
+    { certificateId, revocationReason }: TCertRevocationRequestData
+  ): Promise<TApprovedRevocationOutcome> => {
+    try {
+      const cert = await certificateDAL.findById(certificateId);
+      if (!cert) {
+        return { kind: "failed", reason: `Certificate '${certificateId}' no longer exists.` };
+      }
       if (cert.status === CertStatus.REVOKED) {
-        logger.info(
-          `Approved revocation skipped: certificate already revoked [certificateId=${cert.id}] [approvalRequestId=${approvalRequest.id}]`
-        );
-        return;
+        return { kind: "already-revoked" };
       }
 
       const ca = await $loadRevocationCa(cert);
       await $assertCertificateRevocable(cert, ca);
-      await $performRevocation({ cert, ca, revocationReason, orgId: approvalRequest.organizationId });
-
-      await auditLogService.createAuditLog({
-        projectId: ca.projectId,
-        actor: auditActor,
-        event: {
-          type: EventType.REVOKE_CERT,
-          metadata: {
-            certId: cert.id,
-            cn: cert.commonName,
-            serialNumber: cert.serialNumber,
-            applicationId: cert.applicationId,
-            applicationName: await $resolveApplicationName(cert.applicationId),
-            revocationReason,
-            approvalRequestId: approvalRequest.id
-          }
-        }
+      const { crlWarning } = await $performRevocation({
+        cert,
+        ca,
+        revocationReason,
+        orgId: approvalRequest.organizationId
       });
-
-      const requesterDistinctId = approvalRequest.machineIdentityId
-        ? `identity-${approvalRequest.machineIdentityId}`
-        : approvalRequest.requesterId && approvalRequest.requesterEmail;
-      if (requesterDistinctId) {
-        await telemetryService.sendPostHogEvents({
-          event: PostHogEventTypes.CertificateRevoked,
-          distinctId: requesterDistinctId,
-          organizationId: approvalRequest.organizationId,
-          properties: {
-            orgId: approvalRequest.organizationId,
-            projectId: ca.projectId,
-            revocationReason
-          }
-        });
-      }
+      return { kind: "revoked", cert, crlWarning };
     } catch (error) {
-      logger.error(
-        error,
-        `Failed to revoke certificate after approval [certificateId=${certificateId}] [approvalRequestId=${approvalRequest.id}]`
+      return $settleFailedApprovedRevocation(approvalRequest.id, certificateId, error);
+    }
+  };
+
+  const $recordApprovedRevocation = async (
+    approvalRequest: TApprovalRequest,
+    { certificateId, revocationReason }: TCertRevocationRequestData,
+    outcome: TApprovedRevocationOutcome
+  ) => {
+    const auditActor = { type: ActorType.PLATFORM as const, metadata: {} };
+
+    if (outcome.kind === "already-revoked") {
+      logger.info(
+        `Approved revocation skipped: certificate already revoked [certificateId=${certificateId}] [approvalRequestId=${approvalRequest.id}]`
       );
+      return;
+    }
 
-      const reason =
-        error instanceof BadRequestError || error instanceof NotFoundError
-          ? error.message
-          : "The certificate authority didn't revoke the certificate. It is still active; request the revocation again once the certificate authority is reachable.";
-
+    if (outcome.kind === "failed") {
+      const { cert, reason } = outcome;
       await auditLogService.createAuditLog({
         projectId: approvalRequest.projectId,
         actor: auditActor,
@@ -1117,6 +1137,58 @@ export const certificateServiceFactory = ({
           }
         }
       });
+      return;
+    }
+
+    const { cert, crlWarning } = outcome;
+    await auditLogService.createAuditLog({
+      projectId: approvalRequest.projectId,
+      actor: auditActor,
+      event: {
+        type: EventType.REVOKE_CERT,
+        metadata: {
+          certId: cert.id,
+          cn: cert.commonName,
+          serialNumber: cert.serialNumber,
+          applicationId: cert.applicationId,
+          applicationName: await $resolveApplicationName(cert.applicationId),
+          revocationReason,
+          approvalRequestId: approvalRequest.id,
+          crlWarning
+        }
+      }
+    });
+
+    const requesterDistinctId = approvalRequest.machineIdentityId
+      ? `identity-${approvalRequest.machineIdentityId}`
+      : approvalRequest.requesterId && approvalRequest.requesterEmail;
+    if (requesterDistinctId) {
+      await telemetryService.sendPostHogEvents({
+        event: PostHogEventTypes.CertificateRevoked,
+        distinctId: requesterDistinctId,
+        organizationId: approvalRequest.organizationId,
+        properties: {
+          orgId: approvalRequest.organizationId,
+          projectId: approvalRequest.projectId,
+          revocationReason
+        }
+      });
+    }
+  };
+
+  // Runs as the approval's post-approval routine after the approval has committed, with no caller waiting on
+  // it, so it records its outcome in the audit log and never throws.
+  const revokeApprovedCertificate = async (approvalRequest: TApprovalRequest) => {
+    const requestData = approvalRequest.requestData.requestData as TCertRevocationRequestData;
+    const outcome = await $revokeForApproval(approvalRequest, requestData);
+
+    try {
+      await $recordApprovedRevocation(approvalRequest, requestData, outcome);
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to record the outcome of an approved revocation [outcome=${outcome.kind}] [certificateId=${requestData.certificateId}] [approvalRequestId=${approvalRequest.id}]`
+      );
     }
   };
 
