@@ -54,7 +54,7 @@ While a renewal is waiting for approval, you can't submit another renewal that n
 
 ### Revocation
 
-If a revocation policy covers a certificate's profile, revoking the certificate creates an approval request instead of revoking it, whether you revoke it in Infisical or with the [Revoke](/api-reference/endpoints/certificates/revoke) endpoint. The certificate stays active while the request is pending, and the Application's certificate list marks it **Revocation Pending**.
+If a revocation policy covers a certificate's profile, revoking the certificate creates an approval request instead of revoking it, whether you revoke it in Infisical or with the [Revoke](/api-reference/endpoints/certificates/revoke) endpoint. The endpoint then responds with `202 Accepted`, a `pending_approval` status, and the approval request's ID. The certificate stays active while the request is pending, and the Application's certificate list marks it **Revocation Pending**.
 
 - If every step approves the request, Infisical revokes the certificate with the reason the requester chose
 - If an approver rejects the request, or it's cancelled or expires, the certificate isn't revoked
