@@ -11,7 +11,6 @@ import {
   TUsageSnapshotOutcome
 } from "../services/dependencies";
 import { TEntitlementOrg } from "../services/helpers/license-server-types";
-import { FakeLicenseServerBilling } from "./fake-license-server-billing";
 import { enterprisePlan, testFeatures } from "./test-features";
 
 // Plays both EE's provider and the License Server in memory. Cloud by default.
@@ -54,8 +53,6 @@ export class FakeLicenseServer implements TLicensePolicyService, TLicenseServer 
   deletedOrgs: string[] = [];
 
   deleteFailure: Error | null = null;
-
-  billing = new FakeLicenseServerBilling();
 
   resolveInstanceEntitlements = async () => InstanceEntitlements.restore(this.instance);
 

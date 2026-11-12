@@ -4,18 +4,18 @@ import { logger } from "@app/lib/logger";
 import { InstanceType } from "../../models/instance-entitlements";
 import { Meter } from "../../models/meter";
 import { TLicenseServer, TUsageReportCache, TUsageSource } from "../dependencies";
-import { CounterRegistry } from "../helpers/counter-registry";
 import { SELF_HOSTED_LICENSE_ORG_ID } from "../helpers/license-server-types";
+import { CounterRegistry } from "../helpers/usage-counters";
 import { TMeteringEventPayload, UsageQueue } from "../helpers/usage-queue";
 import { TLicenseService } from "../license/service";
 
-export type TUsageReportWorkerService = {
+export type TUsageReportService = {
   handleUsageEvent(orgId: string, dimensionKey: string): Promise<void>;
   handleMeteringEvents(orgId: string, events: TMeteringEventPayload): Promise<void>;
   flushInstanceUsage(): void;
 };
 
-export type TUsageReportWorkerServiceDeps = {
+export type TUsageReportServiceDeps = {
   counters: CounterRegistry;
   usageReportCache: TUsageReportCache;
   usageQueue: UsageQueue;
@@ -25,8 +25,8 @@ export type TUsageReportWorkerServiceDeps = {
 };
 
 // Only LicenseModule.start() registers these.
-export class UsageReportWorkerService implements TUsageReportWorkerService {
-  constructor(private readonly deps: TUsageReportWorkerServiceDeps) {}
+export class UsageReportService implements TUsageReportService {
+  constructor(private readonly deps: TUsageReportServiceDeps) {}
 
   async handleUsageEvent(orgId: string, dimensionKey: string): Promise<void> {
     if (!this.deps.licenseServer.canReportUsage()) return;

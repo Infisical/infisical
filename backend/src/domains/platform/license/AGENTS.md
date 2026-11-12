@@ -21,8 +21,8 @@ anyone can edit into a paid one.
 | --- | --- |
 | `ce/models/` | `Plan`, `InstanceEntitlements`, `SeatUsage`, `Meter`. No feature data |
 | `ce/data-access/` | `PlanCache`, `UsageReportCache` (key store) and their key names |
-| `ce/services/` | `license/`, `usage-metering/`, `usage-report-worker/`, `dependencies.ts` |
-| `ce/services/helpers/` | `UsageQueue`, `CounterRegistry`, seat counters, and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`) |
+| `ce/services/` | `license/`, `usage-metering/`, `usage-report/`, `dependencies.ts` |
+| `ce/services/helpers/` | `UsageQueue`, `usage-counters.ts` (`CounterRegistry` and the seat counters), and the License Server billing and entitlement shapes (`license-server-types.ts`, with `TLicenseServerBilling`) |
 | `ee/services/license-policy/` | `LicensePolicyService` (the instance's license: cloud, online or offline key, or community; and cloud org plans), with `default-features.ts` (the free tier only), `license-key.ts` (key parsing, offline key shape), entitlement projection (the only place the free tier is applied), feature mapping |
 | `ee/clients/license-server/` | `LicenseServerClient` (entitlements, billing, usage) for both cloud and self-hosted, the self-hosted token provider, error mapping |
 
@@ -61,20 +61,20 @@ Rules:
   `Meter` (`Meter.SecretIdentities`). A key arrives as a string only from a queued job or a License Server catalog
   dimension; turn it into a meter once with `Meter.fromKey`, which returns null for a key no meter defines.
 - **The two services share the queue, not internals.** `getPlan` asks `UsageQueue.reconcile` to resend an active
-  paid org's meters; `UsageReportWorkerService` and `syncSeats` call `getPlan`/`refreshPlan`.
+  paid org's meters; `UsageReportService` and `syncSeats` call `getPlan`/`refreshPlan`.
 - **Deleted orgs close from the outbox.** Only the `license-org-deleted` consumer
   (`services/org/license-org-deleted-consumer.ts`) calls `closeDeletedOrg`, for root orgs on cloud. It throws so
   the outbox retries; the License Server delete is idempotent.
 - **License knows no product.** It sits on `organizationsProjectsService` and builds the two seat meters
-  (`identities`, `user_identities`) itself (`services/helpers/seat-usage-counters.ts`). Every other meter comes in as a
+  (`identities`, `user_identities`) itself (`seatUsageCounters` in `services/helpers/usage-counters.ts`). Every other meter comes in as a
   `TUsageCounter` from the owning product domain. organizations-projects never imports License. A meter's
   `scope` picks the reporter: `org-tree` reports at the root, `org` at the org that changed. Self-hosted reports
   everything once as `self-hosted`, counting the whole instance (`count(null)`).
 - **Build it with `LicenseModule.create(deps)`**, which reads the instance license first so nothing runs without
-  one. `start()` only registers the usage workers and daily flush. `UsageReportWorkerService` stays inside the module: only its queues and cron call it.
+  one. `start()` only registers the usage workers and daily flush. `UsageReportService` stays inside the module: only its queues and cron call it.
 - **CE never sees the usage wire format.** The EE client builds the body and idempotency key and maps responses
   to outcomes: `no-license`, `not-priced`, `rejected` are final, anything else throws so the queue retries. A new
-  final answer goes in the client, not as a status check in `UsageReportWorkerService`.
+  final answer goes in the client, not as a status check in `UsageReportService`.
 - **Billing isn't on `TLicenseService`.** It's the EE `LicenseServerClient`, returned by `createDomains` as
   `licenseBilling` and passed only to subscription code.
 - **Offline licenses never hit the License Server** (`LicenseServerClient.fromConfig` stays dormant).

@@ -5,8 +5,9 @@ import type { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from 
 
 import { Meter } from "../../models/meter";
 import { TLicenseServer, TUsageReportCache } from "../dependencies";
-import { CounterRegistry } from "./counter-registry";
+import type { TMeteringEventInput } from "../usage-metering/service";
 import { MAX_USAGE_EVENTS_PER_REQUEST } from "./license-server-types";
+import { CounterRegistry } from "./usage-counters";
 
 // Same names as the old pods so their queued jobs still run. Typed against the queue catalog without importing
 // it, since the queue module is in an import cycle with crypto.
@@ -15,16 +16,6 @@ export const UsageQueues = {
   usageEventJob: "usage-event-job" as QueueJobs.UsageEvent,
   meteringEvent: "metering-event" as QueueName.MeteringEvent,
   meteringEventJob: "metering-event-job" as QueueJobs.MeteringEvent
-};
-
-// A metered fact for a sum or count meter. The license server dedups on (eventId, occurredAt), so both
-// must be stable for the fact: recording it again with the same pair is a no-op. quantity is required
-// because the server reads a missing one as 0; a count meter ignores it, so pass 1.
-export type TMeteringEventInput = {
-  eventId: string;
-  meter: Meter;
-  quantity: number;
-  occurredAt: Date;
 };
 
 export type TMeteringEventPayload = TQueueJobTypes[QueueName.MeteringEvent]["payload"]["events"];

@@ -13,7 +13,7 @@ vi.mock("@app/lib/logger", () => ({
 const snapshotsFor = (licenseServer: FakeLicenseServer, dimension: string) =>
   licenseServer.snapshots.filter((s) => s.snapshot.dimensionKey === dimension).map((s) => [s.orgId, s.snapshot.value]);
 
-describe("UsageReportWorkerService.handleUsageEvent", () => {
+describe("UsageReportService.handleUsageEvent", () => {
   test("should report the counter's value and record it", async () => {
     // Setup
     const counter = new FakeUsageCounter(Meter.SecretIdentities).set(ROOT.id, 4);
@@ -169,7 +169,7 @@ describe("UsageReportWorkerService.handleUsageEvent", () => {
   });
 });
 
-describe("UsageReportWorkerService.flushInstanceUsage", () => {
+describe("UsageReportService.flushInstanceUsage", () => {
   test("should report every meter once under the instance, counting the whole instance", async () => {
     // Setup
     const licenseServer = new FakeLicenseServer();

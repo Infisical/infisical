@@ -314,7 +314,7 @@ sets the pattern from the rules above, and its PR names it here.
 | --- | --- | --- |
 | Folder | kebab-case noun | `static-secrets` |
 | Module | `<Domain>Module` in `ce/module.ts`, `<Domain>EeModule` in `ee/module.ts` | `StaticSecretsModule` |
-| Service | `class <Name>Service implements T<Name>Service`: both the class and its type end in `Service`. That holds for every class in `services/<name>/service.ts`, including workers and an EE class implementing a CE type | `LicenseService`, `UsageReportWorkerService`, `LicensePolicyService` |
+| Service | `class <Name>Service implements T<Name>Service`: both the class and its type end in `Service`. That holds for every class in `services/<name>/service.ts`, including one that queue jobs or a cron call and an EE class implementing a CE type. Name it for what it does, not how it is triggered (`UsageReportService`, not `UsageReportWorkerService`) | `LicenseService`, `UsageReportService`, `LicensePolicyService` |
 | Service as a dep | Always `<name>Service: T<Name>Service`, whole type, never a `Pick<>` or a short name like `license` | `licenseService: TLicenseService` |
 | Deps type | `T<Name>Deps`, named, beside the class, never inline | `TKmsCoreDeps` |
 | Dependency type | Named for what the service needs | `TPlanCache`, `TUsageCounter` |

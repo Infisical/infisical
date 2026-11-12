@@ -3,9 +3,19 @@ import { logger } from "@app/lib/logger";
 
 import { InstanceType } from "../../models/instance-entitlements";
 import { Meter } from "../../models/meter";
-import { CounterRegistry } from "../helpers/counter-registry";
-import { TMeteringEventInput, UsageQueue } from "../helpers/usage-queue";
+import { CounterRegistry } from "../helpers/usage-counters";
+import { UsageQueue } from "../helpers/usage-queue";
 import { TLicenseService } from "../license/service";
+
+// A metered fact for a sum or count meter. The license server dedups on (eventId, occurredAt), so both
+// must be stable for the fact: recording it again with the same pair is a no-op. quantity is required
+// because the server reads a missing one as 0; a count meter ignores it, so pass 1.
+export type TMeteringEventInput = {
+  eventId: string;
+  meter: Meter;
+  quantity: number;
+  occurredAt: Date;
+};
 
 export type TUsageMeteringService = {
   // Org count on cloud, whole instance on self-hosted. Null when nothing counts the dimension.

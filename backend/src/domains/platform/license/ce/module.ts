@@ -9,13 +9,12 @@ import { PlanCache } from "./data-access/plan-cache";
 import { UsageReportCache } from "./data-access/usage-report-cache";
 import { InstanceEntitlements } from "./models/instance-entitlements";
 import { TLicensePolicyService, TLicenseServer, TUsageCounter } from "./services/dependencies";
-import { CounterRegistry } from "./services/helpers/counter-registry";
-import { seatUsageCounters } from "./services/helpers/seat-usage-counters";
+import { CounterRegistry, seatUsageCounters } from "./services/helpers/usage-counters";
 import { UsageQueue, UsageQueues } from "./services/helpers/usage-queue";
 import { InstanceEntitlementsHolder } from "./services/license/instance-entitlements-holder";
 import { LicenseService, TLicenseService } from "./services/license/service";
 import { TUsageMeteringService, UsageMeteringService } from "./services/usage-metering/service";
-import { TUsageReportWorkerService, UsageReportWorkerService } from "./services/usage-report-worker/service";
+import { TUsageReportService, UsageReportService } from "./services/usage-report/service";
 
 export * from "./models/instance-entitlements";
 export * from "./models/meter";
@@ -38,7 +37,7 @@ export type {
   TUsageReportCache
 } from "./services/dependencies";
 export type { TUsageMeteringService } from "./services/usage-metering/service";
-export type { TMeteringEventInput } from "./services/helpers/usage-queue";
+export type { TMeteringEventInput } from "./services/usage-metering/service";
 
 export type TLicenseDeps = {
   keyStore: TDomainKeyStore;
@@ -65,7 +64,7 @@ export class LicenseModule {
 
   private readonly counters: CounterRegistry;
 
-  private readonly usageReportWorkerService: TUsageReportWorkerService;
+  private readonly usageReportService: TUsageReportService;
 
   static async create(deps: TLicenseDeps): Promise<LicenseModule> {
     const instanceEntitlements = await deps.licensePolicyService.resolveInstanceEntitlements();
@@ -104,7 +103,7 @@ export class LicenseModule {
       licenseService: this.licenseService,
       organizationsProjectsService
     });
-    this.usageReportWorkerService = new UsageReportWorkerService({
+    this.usageReportService = new UsageReportService({
       counters: this.counters,
       usageReportCache,
       usageQueue,
@@ -122,13 +121,13 @@ export class LicenseModule {
   start(): void {
     this.deps.queueService.start(
       UsageQueues.usageEvent,
-      (job) => this.usageReportWorkerService.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
+      (job) => this.usageReportService.handleUsageEvent(job.data.orgId, job.data.dimensionKey),
       // Counts are DB-heavy, so rate limit the backlog instead of hammering the read replica.
       { concurrency: 5, limiter: { max: 50, duration: 1000 } }
     );
     this.deps.queueService.start(
       UsageQueues.meteringEvent,
-      (job) => this.usageReportWorkerService.handleMeteringEvents(job.data.orgId, job.data.events),
+      (job) => this.usageReportService.handleMeteringEvents(job.data.orgId, job.data.events),
       { concurrency: 5 }
     );
 
@@ -137,7 +136,7 @@ export class LicenseModule {
       pattern: "0 0 * * *",
       runHashTtlS: 60 * 60,
       enabled: !this.instanceEntitlements.isCloud() && !this.deps.licensePolicyService.isOffline(),
-      handler: async () => this.usageReportWorkerService.flushInstanceUsage()
+      handler: async () => this.usageReportService.flushInstanceUsage()
     });
   }
 
