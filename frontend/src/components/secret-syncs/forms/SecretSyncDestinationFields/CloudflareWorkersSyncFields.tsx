@@ -92,6 +92,7 @@ export const CloudflareWorkersSyncFields = () => {
             setIsPreview(checked);
             // An empty name fails validation, so a Preview sync can't be saved without one.
             setValue("destinationConfig.previewName", checked ? "" : undefined, {
+              shouldDirty: true,
               shouldValidate: !checked
             });
           }}

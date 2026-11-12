@@ -23,11 +23,20 @@ const NO_PREVIEW_DEPLOYMENT_ERROR_CODES = new Set([10032, 10222]);
 // Cloudflare refuses the second of two writes to a Preview that overlap, such as two syncs to it running at once.
 const CONCURRENT_MODIFICATION_ERROR_CODE = 11024;
 
+type TPreviewOperation = "sync" | "removal";
+
+// Only a sync is retried; a removal job runs once.
+const CONCURRENT_MODIFICATION_NEXT_STEP: Record<TPreviewOperation, string> = {
+  sync: "Infisical retries the sync automatically. If it keeps failing, sync again later.",
+  removal: "Remove the secrets again."
+};
+
 type TPreviewDeployment = { id: string; env?: Record<string, { type: string }> };
 
 type TPreviewContext = {
   scriptId: string;
   previewName: string;
+  operation: TPreviewOperation;
   deploymentUrl: string;
   headers: Record<string, string>;
 };
@@ -54,9 +63,9 @@ const $throwPreviewRequestError = (ctx: TPreviewContext, err: unknown): never =>
 
     if (codes.includes(CONCURRENT_MODIFICATION_ERROR_CODE)) {
       throw new SecretSyncError({
-        message: `Another change to Preview '${ctx.previewName}' on Cloudflare Worker '${ctx.scriptId}' was saved at the same time. Infisical retries the sync automatically. If it keeps failing, sync again later.`,
+        message: `Another change to Preview '${ctx.previewName}' on Cloudflare Worker '${ctx.scriptId}' was saved at the same time. ${CONCURRENT_MODIFICATION_NEXT_STEP[ctx.operation]}`,
         error: err,
-        shouldRetry: true
+        shouldRetry: ctx.operation === "sync"
       });
     }
   }
@@ -103,7 +112,11 @@ const $patchBindings = async (ctx: TPreviewContext, env: Record<string, unknown>
   }
 };
 
-const $getContext = (secretSync: TCloudflareWorkersSyncWithCredentials, previewName: string): TPreviewContext => {
+const $getContext = (
+  secretSync: TCloudflareWorkersSyncWithCredentials,
+  previewName: string,
+  operation: TPreviewOperation
+): TPreviewContext => {
   const {
     connection: {
       credentials: { apiToken, accountId }
@@ -114,6 +127,7 @@ const $getContext = (secretSync: TCloudflareWorkersSyncWithCredentials, previewN
   return {
     scriptId,
     previewName,
+    operation,
     deploymentUrl: `${IntegrationUrls.CLOUDFLARE_WORKERS_API_URL}/client/v4/accounts/${accountId}/workers/workers/${scriptId}/previews/${encodeURIComponent(previewName)}/deployments/latest`,
     headers: { Authorization: `Bearer ${apiToken}`, Accept: "application/json" }
   };
@@ -124,7 +138,7 @@ export const syncPreviewSecrets = async (
   previewName: string,
   secretMap: TSecretMap
 ) => {
-  const ctx = $getContext(secretSync, previewName);
+  const ctx = $getContext(secretSync, previewName, "sync");
 
   const plan = planSyncBindings(secretSync, secretMap, await $getBindings(ctx));
   if (!plan.written.length && !plan.dropped.length) return;
@@ -137,7 +151,7 @@ export const removePreviewSecrets = async (
   previewName: string,
   secretMap: TSecretMap
 ) => {
-  const ctx = $getContext(secretSync, previewName);
+  const ctx = $getContext(secretSync, previewName, "removal");
 
   const dropped = planRemovedBindings(secretSync, secretMap, await $getBindings(ctx));
   if (!dropped.length) return;

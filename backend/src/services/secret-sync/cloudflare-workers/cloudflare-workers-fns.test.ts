@@ -231,6 +231,18 @@ describe("CloudflareWorkersSyncFns", () => {
       );
     });
 
+    it("asks to remove the secrets again when a removal overlaps another write, since removals aren't retried", async () => {
+      stubPreview({ API_KEY: { type: "secret_text" } });
+      patch.mockRejectedValueOnce(cloudflareError(11024));
+
+      const error = await CloudflareWorkersSyncFns.removeSecrets(previewSync(), payloadOf({ API_KEY: "key" })).catch(
+        (err: unknown) => err
+      );
+
+      expect(error).toMatchObject({ shouldRetry: false });
+      expect((error as Error).message).toContain("was saved at the same time. Remove the secrets again.");
+    });
+
     it("removes only the Preview's variables of the sync's type", async () => {
       stubPreview({
         API_KEY: { type: "secret_text" },
