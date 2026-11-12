@@ -6,7 +6,12 @@ import type { TServerConfig } from "@app/hooks/api/admin/types";
 import type { MfaMethod } from "@app/hooks/api/auth/types";
 import type { Organization } from "@app/hooks/api/organization/types";
 import type { ServerStatus } from "@app/hooks/api/serverDetails/types";
-import type { AuthMethod, TokenVersion, User } from "@app/hooks/api/users/types";
+import type {
+  AuthMethod,
+  TokenVersion,
+  TUserDeletionEligibility,
+  User
+} from "@app/hooks/api/users/types";
 import type { TGetWebAuthnCredentialsResponse } from "@app/hooks/api/webauthn/types";
 
 import type { V4Mutation, V4QueryResult } from "../contract";
@@ -49,7 +54,12 @@ export type PersonalAdapter = MfaEnrollmentAdapter & {
   useUpdateAuthMethods: V4Mutation<{ authMethods: AuthMethod[] }, User>;
   useRevokeSession: V4Mutation<string>;
   useRevokeAllSessions: V4Mutation<void>;
-  useDeleteMe: V4Mutation<void>;
+  useDeletionEligibility: () => {
+    data?: TUserDeletionEligibility;
+    isFetching: boolean;
+    refetch: () => Promise<{ isSuccess: boolean }>;
+  };
+  useDeleteMe: V4Mutation<{ lastMemberOrganizationIds: string[] }>;
   useRequestEmailChange: V4Mutation<{ newEmail: string }>;
   useVerifyCurrentEmail: V4Mutation<{ otpCode: string }>;
   useUpdateEmail: V4Mutation<{ newEmail: string; otpCode: string }>;

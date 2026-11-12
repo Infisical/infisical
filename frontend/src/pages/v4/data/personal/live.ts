@@ -23,6 +23,7 @@ import {
   clearSession,
   useDeleteMe,
   useEnrollMfa,
+  useGetMyDeletionEligibility,
   useGetMySessions,
   useGetUser,
   useGetUserTotpConfiguration,
@@ -312,10 +313,8 @@ export const personalLive: PersonalAdapter = {
   useUpdateAuthMethods: useUpdateUserAuthMethods,
   useRevokeSession: useRevokeMySessionById,
   useRevokeAllSessions: useRevokeMySessions,
-  useDeleteMe: () => {
-    const deleteMe = useDeleteMe();
-    return { mutateAsync: () => deleteMe.mutateAsync({}), isPending: deleteMe.isPending };
-  },
+  useDeletionEligibility: () => useGetMyDeletionEligibility({ enabled: false }),
+  useDeleteMe,
   useRequestEmailChange: useRequestEmailChangeOTP,
   useVerifyCurrentEmail: useVerifyCurrentEmailOTP,
   useUpdateEmail: useUpdateUserEmail,
